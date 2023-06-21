@@ -4,22 +4,22 @@
 > 
 > 有没有人知道某种秘方，不必永生只要回忆不忘。我不怕死亡，只害怕遗忘，回忆是你我生存的地方。——五月天《转眼》
 
-* [在线阅读](https://php.apachecn.org)
+* [在线阅读](https://php.flygon.net)
 ## 下载
 
 ### Docker
 
 ```
-docker pull apachecn0/apachecn-php-zh
-docker run -tid -p <port>:80 apachecn0/apachecn-php-zh
+docker pull apachecn0/flygon-php-zh
+docker run -tid -p <port>:80 apachecn0/flygon-php-zh
 # 访问 http://localhost:{port} 查看文档
 ```
 
 ### NPM
 
 ```
-npm install -g apachecn-php-zh
-apachecn-php-zh <port>
+npm install -g flygon-php-zh
+flygon-php-zh <port>
 # 访问 http://localhost:{port} 查看文档
 ```
 
