@@ -41,145 +41,145 @@
 1.  以下 HTML 代码构成了聊天系统的布局：
 
 ```php
-    <form name="chatform" id="chatform">
-    <div id="chatwrapper">
-    <h2>Ajax Chat Utility</h2>
-    <div>
-    User Name: <input id="username" type="text" maxlength="14" />
-    </div>
-    <div id="chattext" class="chatbox"> </div>
-    <div>
-    <input id="message" name="message" type="text" maxlength="100" />
-    <input type="submit" name="submit" id="send" value="Send" />
-    </div>
-    </div>
-    </form>
+<form name="chatform" id="chatform">
+<div id="chatwrapper">
+<h2>Ajax Chat Utility</h2>
+<div>
+User Name: <input id="username" type="text" maxlength="14" />
+</div>
+<div id="chattext" class="chatbox"> </div>
+<div>
+<input id="message" name="message" type="text" maxlength="100" />
+<input type="submit" name="submit" id="send" value="Send" />
+</div>
+</div>
+</form>
 
-    ```
+```
 
 1.  现在让我们看看保存消息到文本文件并保持 Ajax 请求开放直到文件中保存了新消息的 PHP 代码。您可以在`chat-backend.php`文件中找到这段代码。
 
 ```php
-    //set the maximum execution time to 90 seconds
-    set_time_limit(91);
-    //make sure this file is writable
-    $file_name = 'chatdata.txt';
-    //get the script entrance time
-    $entrance_time = time();
-    // store new message in the file
-    //used for ajax call to store the mesage
-    if(!empty($_GET['msg']) && !empty($_GET['user_name']))
-    {
-    $user_name = htmlentities($_GET['user_name'],ENT_QUOTES);
-    $message = htmlentities(stripslashes($_GET['msg']),ENT_QUOTES);
-    $message = '<div><b>'.$user_name.'</b> : '.$message.'</div>';
-    file_put_contents($file_name,$message);
-    exit();
-    }
-    //user for getting chat messages
-    // infinite loop until the data file is not modified
-    $last_modif = !empty($_GET['ts']) ? $_GET['ts'] : 0;
-    $curr_ftime = filemtime($filename);
-    //now get the difference
-    while ($curr_ftime <= $last_modif && time()-$entrance_time<90) // check if the data file has been modified
-    {
-    //sleep for 500 micro seconds
-    usleep(500000);
-    //clear the file status cache
-    clearstatcache();
-    //get the file modified time
-    $curr_ftime = filemtime($file_name);
-    }
-    // return a json encoded value
-    $response = array();
-    $response['msg'] = file_get_contents($file_name);
-    $response['ts'] = $curr_ftime;
-    echo json_encode($response);
+//set the maximum execution time to 90 seconds
+set_time_limit(91);
+//make sure this file is writable
+$file_name = 'chatdata.txt';
+//get the script entrance time
+$entrance_time = time();
+// store new message in the file
+//used for ajax call to store the mesage
+if(!empty($_GET['msg']) && !empty($_GET['user_name']))
+{
+$user_name = htmlentities($_GET['user_name'],ENT_QUOTES);
+$message = htmlentities(stripslashes($_GET['msg']),ENT_QUOTES);
+$message = '<div><b>'.$user_name.'</b> : '.$message.'</div>';
+file_put_contents($file_name,$message);
+exit();
+}
+//user for getting chat messages
+// infinite loop until the data file is not modified
+$last_modif = !empty($_GET['ts']) ? $_GET['ts'] : 0;
+$curr_ftime = filemtime($filename);
+//now get the difference
+while ($curr_ftime <= $last_modif && time()-$entrance_time<90) // check if the data file has been modified
+{
+//sleep for 500 micro seconds
+usleep(500000);
+//clear the file status cache
+clearstatcache();
+//get the file modified time
+$curr_ftime = filemtime($file_name);
+}
+// return a json encoded value
+$response = array();
+$response['msg'] = file_get_contents($file_name);
+$response['ts'] = $curr_ftime;
+echo json_encode($response);
 
-    ```
+```
 
 1.  现在，让我们看看使聊天功能生效的 JavaScript 代码。
 
 ```php
-    var Comet ={
-    ts : 0 ,
-    url : 'chat-backend.php',
-    //to display the response
-    show_response : function(message){
-    $('#chattext').append(message);
-    $('#chattext').scrollTop( $('#chattext').attr('scrollHeight') );
-    },
-    //validation fuction for empty user name or message
-    validate : function()
-    {
-    if($.trim( $('#username').val() )=='')
-    {
-    alert('Please enter the username');
-    return false;
-    }
-    else if($.trim( $('#message').val() )=='')
-    {
-    alert('Please enter chat message');
-    return false;
-    }
-    else
-    {
-    return true;
-    }
-    },
-    send_message : function()
-    {
-    if(this.validate())
-    {
-    var request_data = 'user_name='+$('#username').val()+'&msg='+$('#message').val();
-    var request_url = this.url+'?'+request_data;
-    //make the ajax call
-    $.get(request_url);
-    $('#message').val('');
-    $('#message').focus();
-    }
-    cometused, for building Ajax chat},
-    connect : function()
-    {
-    //call the ajax now to get the response
-    $.ajax({
-    url: this.url,
-    data: 'ts='+this.ts,
-    cache : false,
-    dataType : 'json',
-    success: function(data){
-    //only add the response if file time has been modified
-    if(data.ts>Comet.ts)
-    {
-    Comet.ts = data.ts;
-    Comet.show_response(data.msg);
-    }
-    Comet.connect();
-    },
-    error : function(data)
-    {
-    //wait for 5 second before sending another request
-    setTimeout(function(){
-    Comet.connect()
-    }, 5000);
-    }
-    });
-    }
-    };
-    //event handler for DOM ready
-    $(document).ready(function()
-    {
-    //call the comet connection function
-    Comet.connect();
-    //submit event handlder of the form
-    $('#chatform').submit(function()
-    {
-    Comet.send_message();
-    return false;
-    });
-    });
+var Comet ={
+ts : 0 ,
+url : 'chat-backend.php',
+//to display the response
+show_response : function(message){
+$('#chattext').append(message);
+$('#chattext').scrollTop( $('#chattext').attr('scrollHeight') );
+},
+//validation fuction for empty user name or message
+validate : function()
+{
+if($.trim( $('#username').val() )=='')
+{
+alert('Please enter the username');
+return false;
+}
+else if($.trim( $('#message').val() )=='')
+{
+alert('Please enter chat message');
+return false;
+}
+else
+{
+return true;
+}
+},
+send_message : function()
+{
+if(this.validate())
+{
+var request_data = 'user_name='+$('#username').val()+'&msg='+$('#message').val();
+var request_url = this.url+'?'+request_data;
+//make the ajax call
+$.get(request_url);
+$('#message').val('');
+$('#message').focus();
+}
+cometused, for building Ajax chat},
+connect : function()
+{
+//call the ajax now to get the response
+$.ajax({
+url: this.url,
+data: 'ts='+this.ts,
+cache : false,
+dataType : 'json',
+success: function(data){
+//only add the response if file time has been modified
+if(data.ts>Comet.ts)
+{
+Comet.ts = data.ts;
+Comet.show_response(data.msg);
+}
+Comet.connect();
+},
+error : function(data)
+{
+//wait for 5 second before sending another request
+setTimeout(function(){
+Comet.connect()
+}, 5000);
+}
+});
+}
+};
+//event handler for DOM ready
+$(document).ready(function()
+{
+//call the comet connection function
+Comet.connect();
+//submit event handlder of the form
+$('#chatform').submit(function()
+{
+Comet.send_message();
+return false;
+});
+});
 
-    ```
+```
 
 ### 它是如何工作的...
 
@@ -190,12 +190,12 @@
 聊天消息被保存到文件中。在我们的应用程序中，只有最新的聊天消息被保存到文件中。之前的聊天消息被最新消息替换。
 
 ```php
-    $user_name = htmlentities(stripslashes($_$_GET['user_name']),ENT_QUOTES);
-    $message = htmlentities(stripslashes($_GET['msg']),ENT_QUOTES);
-    $message = '<div><b>'.$user_name.'</b> : '.$message.'</div>';
-    file_put_contents($file_name,$message);
+$user_name = htmlentities(stripslashes($_$_GET['user_name']),ENT_QUOTES);
+$message = htmlentities(stripslashes($_GET['msg']),ENT_QUOTES);
+$message = '<div><b>'.$user_name.'</b> : '.$message.'</div>';
+file_put_contents($file_name,$message);
 
-    ```
+```
 
 消息的特殊字符被转换为 HTML 实体，以转换 HTML 特殊字符并避免聊天字符串中的格式错误。然后，带有用户名的消息存储在`$file_name`变量中。
 
@@ -204,53 +204,53 @@
 现在，让我们看看我们如何使用长 Ajax 轮询实现 Comet。
 
 ```php
-    $entrance_time = time();
+$entrance_time = time();
 
-    ```
+```
 
 在代码的第一行，我们将 PHP 脚本的进入时间存储在`$entrance_time`变量中，以防止脚本执行超过 90 秒，如下所示：
 
 ```php
-    set_time_limit(91);
+set_time_limit(91);
 
-    ```
+```
 
 在`chat-backend.php`代码的第一行中，我们将脚本的最大执行时间设置为`91`（秒），这样 PHP 在脚本的长时间执行时不会抛出致命错误；因为默认情况下，PHP 脚本的`max_execution_time`在`php.ini`文件中设置为`30`。
 
 现在，让我们来看看主要的`while`循环，它会阻塞 Ajax 调用，直到接收到新的聊天消息为止：
 
 ```php
-    $last_modif = !empty($_GET['ts']) ? $_GET['ts'] : 0;
-    $curr_ftime = filemtime($filename);
-    while ($curr_ftime <= $last_modif && time()-$entrance_time<90) {
-    usleep(500000);
-    clearstatcache();
-    $curr_ftime = filemtime($file_name);
-    }
+$last_modif = !empty($_GET['ts']) ? $_GET['ts'] : 0;
+$curr_ftime = filemtime($filename);
+while ($curr_ftime <= $last_modif && time()-$entrance_time<90) {
+usleep(500000);
+clearstatcache();
+$curr_ftime = filemtime($file_name);
+}
 
-    ```
+```
 
 我们将最后一次文件修改时间值存储在`$last_modif`变量中，将当前文件修改时间存储在`$curre_ftime`变量中。`while`循环一直执行，直到满足两个条件：第一个条件是文本文件的最后修改时间应大于或等于当前文件修改时间，第二个条件检查脚本执行时间是否达到 90 秒。因此，如果文件已被修改或脚本执行时间为 90 秒，则请求完成并将响应发送到浏览器。否则，请求将被长时间的 Ajax 轮询阻塞。
 
 在 JavaScript 端，当 DOM 准备好进行操作时，我们调用`Comet.connect()`函数。此函数向`chat-backend.php`文件发出 Ajax 请求。现在，让我们看看这里如何处理 Ajax 响应：
 
 ```php
-    success: function(data){
-    if(data.ts>Comet.ts)
-    {
-    Comet.ts = data.ts;
-    Comet.show_response(data.msg);
-    }
-    Comet.connect();
-    },
-    error : function(data)
-    {
-    setTimeout(function(){
-    Comet.connect()
-    }, 5000);
-    }
+success: function(data){
+if(data.ts>Comet.ts)
+{
+Comet.ts = data.ts;
+Comet.show_response(data.msg);
+}
+Comet.connect();
+},
+error : function(data)
+{
+setTimeout(function(){
+Comet.connect()
+}, 5000);
+}
 
-    ```
+```
 
 当我们收到成功的 Ajax 响应时，我们会检查文件修改时间是否大于发送到服务器进行检查的时间戳。如果文件的修改时间已经改变，则满足此条件。在这种情况下，我们将`ts`变量赋值为文件修改时间的当前时间戳，并调用`show_response()`函数将最新的聊天消息显示给浏览器。然后立即调用`Comet.function()`。
 
@@ -261,12 +261,12 @@
 现在，让我们看一下响应是如何显示的：
 
 ```php
-    show_response : function(message){
-    $('#chattext').append(message);
-    $('#chattext').scrollTop( $('#chattext').attr('scrollHeight') );
-    },
+show_response : function(message){
+$('#chattext').append(message);
+$('#chattext').scrollTop( $('#chattext').attr('scrollHeight') );
+},
 
-    ```
+```
 
 在这个函数中，我们将 Ajax 响应附加到具有 ID`chattext`的`div`。之后，我们将`scrollTop`的值（如果存在滚动条，则表示滚动条的垂直位置）设置为`scrollHeight`。`ScrollHeight`属性给出元素的滚动视图的高度。
 
@@ -283,9 +283,9 @@
 首先，我们需要在网页中放置一个包含图表的 HTML 元素。通常，它应该是一个块级元素。让我们从流行的块级元素<div>开始，如下所示：
 
 ```php
-    <div id="chart"></div>
+<div id="chart"></div>
 
-    ```
+```
 
 请确保为此 HTML 元素分配一个 ID 属性，因为可以使用`document.getElementById()` JavaScript 函数传递此元素的引用。
 
@@ -294,25 +294,25 @@
 创建图表容器后，让我们尝试在这里加载 Google 可视化 API，如下所示：
 
 ```php
-    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+<script type="text/javascript" src="https://www.google.com/jsapi"></script>
 
-    ```
+```
 
 在前面的代码片段中，我们在网页中包含了 Google JavaScript API。在包含 JavaScript 文件之后，我们现在需要加载 Google API 的可视化模块：
 
 ```php
-    google.load("visualization", "1", {packages:["corechart"]});
+google.load("visualization", "1", {packages:["corechart"]});
 
-    ```
+```
 
 在`load()`函数中，第一个参数是我们想要加载的模块的名称；在我们的情况下是`visualization`模块。第二个参数是模块的版本；这里是 1 是最新版本。在第三个参数中，我们指定了从模块中加载哪个特定的包。在我们的情况下，是`corechart`包。`corechart`库支持常见图表类型，如条形图、折线图和饼图。
 
 一旦 JavaScript 库完全加载，我们需要使用 JavaScript API 的函数。为了帮助解决这种情况，Google 的 JavaScript API 提供了一个名为 setOnloadCallback()的函数；它允许我们在特定模块加载时添加回调函数：
 
 ```php
-    google.setOnLoadCallback(draw_line_chart));
+google.setOnLoadCallback(draw_line_chart));
 
-    ```
+```
 
 在上面的例子中，当 Google Visualization 库加载时，会调用名为`draw_line_chart`的用户定义函数。
 
@@ -335,40 +335,40 @@
 +   为了为图表准备数据，我们首先需要将数据存储在 Google Visualization API 中的`DataTable`类的对象中，以表示数组的二维数据。
 
 ```php
-        var data = new google.visualization.DataTable();
+var data = new google.visualization.DataTable();
 
-        ```
+```
 
 +   现在，下一步是为图表添加列。我们在图表上显示两条线，显示纽约和伦敦的人口增长，以十年为单位。为此，我们需要使用`addColumn()`函数为`DataTable`对象创建三列：
 
 ```php
-        data.addColumn('string', 'Year');
-        data.addColumn('number', 'New York');
-        data.addColumn('number', 'London');
+data.addColumn('string', 'Year');
+data.addColumn('number', 'New York');
+data.addColumn('number', 'London');
 
-        ```
+```
 
 +   接下来，使用`addRows()`函数创建三行空行。您还可以将数组传递给`addRows()`函数，以创建带有数据的行。我们将在创建柱状图时看到如何做到这一点。
 
 ```php
-        data.addRows(3);
+data.addRows(3);
 
-        ```
+```
 
 +   在创建空行之后，让我们使用`setValue()`函数在这些空行上设置值，如下所示：
 
 ```php
-        data.setValue(0, 0, '1980');
-        data.setValue(0, 1, 7071639);
-        data.setValue(0, 2, 6805000);
-        data.setValue(1, 0, '1990');
-        data.setValue(1, 1, 7322564);
-        data.setValue(1, 2, 6829300);
-        data.setValue(2, 0, '2000');
-        data.setValue(2, 1, 8008278);
-        data.setValue(2, 2, 7322400);
+data.setValue(0, 0, '1980');
+data.setValue(0, 1, 7071639);
+data.setValue(0, 2, 6805000);
+data.setValue(1, 0, '1990');
+data.setValue(1, 1, 7322564);
+data.setValue(1, 2, 6829300);
+data.setValue(2, 0, '2000');
+data.setValue(2, 1, 8008278);
+data.setValue(2, 2, 7322400);
 
-        ```
+```
 
 `setValue()`函数的第一个和第二个参数表示矩阵的行和列。例如，值`1,2`表示矩阵的第二行和第三列。
 
@@ -377,16 +377,16 @@
 在 data 变量中创建图表数据后，现在创建并显示图表：
 
 ```php
-    var chart = new google.visualization.LineChart(document.getElementById('chart'));
+var chart = new google.visualization.LineChart(document.getElementById('chart'));
 
-    ```
+```
 
 在上面的代码中，我们正在使用 Google Visualization API 的 LineChart()函数在 ID.chart 的 div 中创建折线图。现在，图表对象已经创建，并且可以在 chart 变量中使用。
 
 ```php
-    chart.draw(data, {width: 600, height: 360, title: 'Population by Years'});
+chart.draw(data, {width: 600, height: 360, title: 'Population by Years'});
 
-    ```
+```
 
 现在，使用 draw()函数绘制图表，该函数接受两个参数：
 
@@ -407,17 +407,17 @@
 让我们看一下使用柱状图可视化创建数据的代码。为了保存图表数据，我们需要创建`DataTable()`类的实例，如下所示：
 
 ```php
-    var data = new google.visualization.DataTable();
-    data.addColumn('string', 'Year');
-    data.addColumn('number', 'New York');
-    data.addColumn('number', 'London');
-    data.addRows([
-    ['1980', 7071639,6805000],
-    ['1990', 7322564,6829300],
-    ['2000', 8008278,7322400]
-    ]);
+var data = new google.visualization.DataTable();
+data.addColumn('string', 'Year');
+data.addColumn('number', 'New York');
+data.addColumn('number', 'London');
+data.addRows([
+['1980', 7071639,6805000],
+['1990', 7322564,6829300],
+['2000', 8008278,7322400]
+]);
 
-    ```
+```
 
 如前面的代码中所示，在为数据表添加列之后，我们使用`addRows()`函数添加了行。我们之前以不同的方式使用了这个函数，创建了空行。在这里，它将直接创建三行，带有数组的数据。
 
@@ -426,11 +426,11 @@
 准备好数据后，让我们在网页上绘制它：
 
 ```php
-    var chart = new google.visualization.ColumnChart(document.getElementById('chart'));
-    chart.draw(data, {width: 600, height: 360, title: 'Population by Years', hAxis: {title: 'Year'} , vAxis : {title: 'Population'}
-    });
+var chart = new google.visualization.ColumnChart(document.getElementById('chart'));
+chart.draw(data, {width: 600, height: 360, title: 'Population by Years', hAxis: {title: 'Year'} , vAxis : {title: 'Population'}
+});
 
-    ```
+```
 
 我们正在绘制一个宽度为 600 像素，高度为 360 像素的条形图，使用`object ColumnChart()`类。使用`hAxis`和`vAxix`选项，我们在水平轴上显示标签`Year`，在垂直轴上显示标签`Population`。您可以在[`code.google.com/apis/chart/interactive/docs/gallery/columnchart.html`](http://code.google.com/apis/chart/interactive/docs/gallery/columnchart.html)了解有关柱状图 API 的更多选项。
 
@@ -449,18 +449,18 @@
 让我们看看如何创建用于项目可视化的饼图数据。和往常一样，我们需要创建`DataTable()`类的实例来存储需要填充的数据。
 
 ```php
-    var data = new google.visualization.DataTable();
-    data.addColumn('string', 'Phase');
-    data.addColumn('number', 'Hours spent');
-    data.addRows([
-    ['Analysis', 10],
-    ['Designing', 25],
-    ['Coding', 70],
-    ['Testing', 15],
-    ['Debugging', 30]
-    ]);
+var data = new google.visualization.DataTable();
+data.addColumn('string', 'Phase');
+data.addColumn('number', 'Hours spent');
+data.addRows([
+['Analysis', 10],
+['Designing', 25],
+['Coding', 70],
+['Testing', 15],
+['Debugging', 30]
+]);
 
-    ```
+```
 
 如您在上面的代码中所见，我们正在创建两列来存储项目不同阶段所花费的时间的数据。第一列是`Phase`，第二列是`Hours spent`（在项目的特定阶段花费的时间）。
 
@@ -469,10 +469,10 @@
 现在，让我们看一下实际的代码，它将在 ID 为 chart 的 div 上绘制饼图：
 
 ```php
-    var chart = new google.visualization.PieChart(document.getElementById('chart'));
-    chart.draw(data, {width: 600, height: 360, is3D: true, title: 'Project Overview'});
+var chart = new google.visualization.PieChart(document.getElementById('chart'));
+chart.draw(data, {width: 600, height: 360, is3D: true, title: 'Project Overview'});
 
-    ```
+```
 
 在上面的代码中，首先创建了`PieChart()`类的对象。然后，使用`draw()`函数绘制图表。饼图是通过将第 2 列中给定的总小时数作为 100%来绘制的。请注意，我们将`is3D`选项设置为`true`，以显示 3D 饼图。
 
@@ -529,58 +529,58 @@ Greasemonkey 最初是一个 Firefox 扩展，用于在特定域和 URL 上执�
 验证码图像通过 Greasemonkey 的 Ajax 调用加载到画布上以获取图像：
 
 ```php
-    var image = document.getElementById('captchaform').parentNode.getElementsByTagName('img')[0];
-    GM_xmlhttpRequest( {
-    method: 'GET',
-    url: image.src,
-    overrideMimeType: 'text/plain; charset=x-user-defined',
-    onload: function (response) {
-    load_image(response.responseText);
-    }
-    });
+var image = document.getElementById('captchaform').parentNode.getElementsByTagName('img')[0];
+GM_xmlhttpRequest( {
+method: 'GET',
+url: image.src,
+overrideMimeType: 'text/plain; charset=x-user-defined',
+onload: function (response) {
+load_image(response.responseText);
+}
+});
 
-    ```
+```
 
 1.  将图像转换为灰度：
 
 ```php
-    for (var x = 0; x < image_data.width; x++) {
-    for (var y = 0; y < image_data.height; y++) {
-    var i = x * 4 + y * 4 * image_data.width;
-    var luma = Math.floor(image_data.data[i] * 299 / 1000 + image_data.data[i + 1] * 587 / 1000 + image_data.data[i + 2] * 114 / 1000);
-    image_data.data[i] = luma;
-    image_data.data[i + 1] = luma;
-    image_data.data[i + 2] = luma;
-    image_data.data[i + 3] = 255;
-    }
-    }
+for (var x = 0; x < image_data.width; x++) {
+for (var y = 0; y < image_data.height; y++) {
+var i = x * 4 + y * 4 * image_data.width;
+var luma = Math.floor(image_data.data[i] * 299 / 1000 + image_data.data[i + 1] * 587 / 1000 + image_data.data[i + 2] * 114 / 1000);
+image_data.data[i] = luma;
+image_data.data[i + 1] = luma;
+image_data.data[i + 2] = luma;
+image_data.data[i + 3] = 255;
+}
+}
 
-    ```
+```
 
 如前面的代码块所示，图像数据是逐像素采取的。每个像素的颜色值取平均值。最后，通过调整颜色值将图像转换为灰度。
 
 1.  将图像转换为只有黑色和白色颜色：
 
 ```php
-    for (var x = 0; x < image_data.width; x++) {
-    for (var y = 0; y < image_data.height; y++) {
-    var i = x * 4 + y * 4 * image_data.width;
-    // Turn all the pixels of the certain colour to white
-    if (image_data.data[i] == colour) {
-    image_data.data[i] = 255;
-    image_data.data[i + 1] = 255;
-    image_data.data[i + 2] = 255;
-    // Everything else to black
-    }
-    else {
-    image_data.data[i] = 0;
-    image_data.data[i + 1] = 0;
-    image_data.data[i + 2] = 0;
-    }
-    }
-    }
+for (var x = 0; x < image_data.width; x++) {
+for (var y = 0; y < image_data.height; y++) {
+var i = x * 4 + y * 4 * image_data.width;
+// Turn all the pixels of the certain colour to white
+if (image_data.data[i] == colour) {
+image_data.data[i] = 255;
+image_data.data[i + 1] = 255;
+image_data.data[i + 2] = 255;
+// Everything else to black
+}
+else {
+image_data.data[i] = 0;
+image_data.data[i + 1] = 0;
+image_data.data[i + 2] = 0;
+}
+}
+}
 
-    ```
+```
 
 在这里，其他颜色可以称为“噪音”。通过保留只有黑色和白色颜色来去除“嘈杂”的颜色。
 
@@ -589,11 +589,11 @@ Greasemonkey 最初是一个 Firefox 扩展，用于在特定域和 URL 上执�
 由于图像的尺寸固定且文本距离固定，矩阵的矩形大小设置为去除不必要的数据，因此图像被裁剪。
 
 ```php
-    cropped_canvas.getContext("2d").fillRect(0, 0, 20, 25);
-    var edges = find_edges(image_data[i]);
-    cropped_canvas.getContext("2d").drawImage(canvas, edges[0], edges[1], edges[2] - edges[0], edges[3] - edges[1], 0, 0, edges[2] - edges[0], edges[3] - edges[1]);
+cropped_canvas.getContext("2d").fillRect(0, 0, 20, 25);
+var edges = find_edges(image_data[i]);
+cropped_canvas.getContext("2d").drawImage(canvas, edges[0], edges[1], edges[2] - edges[0], edges[3] - edges[1], 0, 0, edges[2] - edges[0], edges[3] - edges[1]);
 
-    ```
+```
 
 1.  应用神经网络：
 
@@ -602,9 +602,9 @@ Greasemonkey 最初是一个 Firefox 扩展，用于在特定域和 URL 上执�
 处理后的图像数据充当神经网络的受体。当传递给预先种植数据的神经网络时，它可以帮助我们找出验证码图像中的字符：
 
 ```php
-    image_data[i] = cropped_canvas.getContext("2d").getImageData(0, 0, cropped_canvas.width, cropped_canvas.height);
+image_data[i] = cropped_canvas.getContext("2d").getImageData(0, 0, cropped_canvas.width, cropped_canvas.height);
 
-    ```
+```
 
 根据验证码的复杂性，甚至可以在字符识别的最后一步使用线性代数。应用线性代数而不是神经网络可能会提高检测速度。但是，神经网络在各个方面表现相对更好。
 

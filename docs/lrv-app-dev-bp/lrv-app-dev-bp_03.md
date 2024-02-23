@@ -171,40 +171,40 @@ Config::get('image.upload_folder')
 目前，我们的`composer.json`文件的`require`部分如下所示：
 
 ```php
-    "require": {
-      "laravel/framework": "4.0.*",
-      "intervention/image": "dev-master"
-    }
-    ```
+"require": {
+  "laravel/framework": "4.0.*",
+  "intervention/image": "dev-master"
+}
+```
 
 您可以在[www.packagist.org](http://www.packagist.org)上找到更多 Composer 包。
 
 1.  设置完值后，打开您的终端，导航到项目的`root`文件夹，并输入以下命令：
 
 ```php
-    **php composer.phar update**
+**php composer.phar update**
 
-    ```
+```
 
 这个命令将检查`composer.json`并更新所有依赖项（包括 Laravel 本身），如果添加了新的要求，它将下载并安装它们。
 
 1.  成功下载库后，我们现在将激活它。为此，我们参考`Intervention`类的网站。现在打开你的`app/config/app.php`，并将以下值添加到`providers`键中：
 
 ```php
-    Intervention\Image\ImageServiceProvider
-    ```
+Intervention\Image\ImageServiceProvider
+```
 
 1.  现在，我们需要设置一个别名，以便我们可以轻松调用该类。为此，在同一文件的别名键中添加以下值：
 
 ```php
-    'Image' => 'Intervention\Image\Facades\Image',
-    ```
+'Image' => 'Intervention\Image\Facades\Image',
+```
 
 1.  该类有一个相当容易理解的注释。要调整图像大小，运行以下代码就足够了：
 
 ```php
-    Image::make(Input::file('photo')->getRealPath())->resize(300, 200)->save('foo.jpg');
-    ```
+Image::make(Input::file('photo')->getRealPath())->resize(300, 200)->save('foo.jpg');
+```
 
 ### 注意
 
@@ -221,11 +221,11 @@ Config::get('image.upload_folder')
 1.  首先，打开`app/routes.php`，删除以 Laravel 开头的`Route::get()`行，并添加以下行：
 
 ```php
-    //This is for the get event of the index page
-    Route::get('/',array('as'=>'index_page','uses'=>'ImageController@getIndex'));
-    //This is for the post event of the index.page
-    Route::post('/',array('as'=>'index_page_post','before' =>'csrf', 'uses'=>'ImageController@postIndex'));
-    ```
+//This is for the get event of the index page
+Route::get('/',array('as'=>'index_page','uses'=>'ImageController@getIndex'));
+//This is for the post event of the index.page
+Route::post('/',array('as'=>'index_page_post','before' =>'csrf', 'uses'=>'ImageController@postIndex'));
+```
 
 键`'as'`定义了路由的名称（类似于快捷方式）。因此，如果您为路由创建链接，即使路由的 URL 发生变化，您的应用链接也不会断开。`before`键定义了在动作开始之前将使用哪些过滤器。您可以定义自己的过滤器，或者使用内置的过滤器。我们设置了`csrf`，因此在动作开始之前将进行**CSRF**（跨站点请求伪造）检查。这样，您可以防止攻击者向您的应用程序注入未经授权的请求。您可以使用分隔符与多个过滤器；例如，`filter1|filter2`。
 
@@ -236,75 +236,75 @@ Config::get('image.upload_folder')
 1.  现在，让我们为控制器创建我们的第一个方法。添加一个新文件，其中包含以下代码，并将其命名为`ImageController.php`，放在`app/controllers/`中：
 
 ```php
-    <?php
+<?php
 
-    class ImageController extends BaseController {
+class ImageController extends BaseController {
 
-      public function getIndex()
-      {
-        //Let's load the form view
-        return View::make('tpl.index');
-      }
+  public function getIndex()
+  {
+    //Let's load the form view
+    return View::make('tpl.index');
+  }
 
-    }
-    ```
+}
+```
 
 我们的控制器是 RESTful 的；这就是为什么我们的方法 index 被命名为`getIndex()`。在这个方法中，我们只是加载一个视图。
 
 1.  现在让我们使用以下代码为视图创建一个主页面。将此文件保存为`frontend_master.blade.php`，放在`app/views/`中：
 
 ```php
-    <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" 
-    "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" 
+"http://www.w3.org/TR/html4/loose.dtd">
 
-    <html lang="en">
-      <head>
-      <meta http-equiv="content-type"content="text/html; charset=utf-8">
-      <title>Laravel Image Sharing</title>
-      {{HTML::style('css/styles.css')}}
-      </head>
+<html lang="en">
+  <head>
+  <meta http-equiv="content-type"content="text/html; charset=utf-8">
+  <title>Laravel Image Sharing</title>
+  {{HTML::style('css/styles.css')}}
+  </head>
 
-      <body>
-        {{--Your title of the image (and yeah, blade enginehas its own commenting, cool, isn't it?)--}}
-        <h2>Your Awesome Image Sharing Website</h2>
+  <body>
+    {{--Your title of the image (and yeah, blade enginehas its own commenting, cool, isn't it?)--}}
+    <h2>Your Awesome Image Sharing Website</h2>
 
-        {{--If there is an error flashdata in session(from form validation), we show the first one--}}
-        @if(Session::has('errors'))
-          <h3 class="error">{{$errors->first()}}</h3>
-        @endif
+    {{--If there is an error flashdata in session(from form validation), we show the first one--}}
+    @if(Session::has('errors'))
+      <h3 class="error">{{$errors->first()}}</h3>
+    @endif
 
-        {{--If there is an error flashdata in session whichis set manually, we will show it--}}
-        @if(Session::has('error'))
-          <h3 class="error">{{Session::get('error')}}</h3>
-        @endif
+    {{--If there is an error flashdata in session whichis set manually, we will show it--}}
+    @if(Session::has('error'))
+      <h3 class="error">{{Session::get('error')}}</h3>
+    @endif
 
-        {{--If we have a success message to show, we printit--}}
-        @if(Session::has('success'))
-          <h3 class="error">{{Session::get('success')}}</h3>
-        @endif
+    {{--If we have a success message to show, we printit--}}
+    @if(Session::has('success'))
+      <h3 class="error">{{Session::get('success')}}</h3>
+    @endif
 
-        {{--We yield (get the contents of) the section named'content' from the view files--}}
-        @yield('content')
+    {{--We yield (get the contents of) the section named'content' from the view files--}}
+    @yield('content')
 
-      </body>
-    </html>
-    ```
+  </body>
+</html>
+```
 
 要添加一个`CSS`文件（我们将在下一步中创建），我们使用`HTML`类的`style()`方法。我们的主页面产生一个名为`content`的部分，它将用`view files`部分填充。
 
 1.  现在，让我们使用以下代码创建我们的`view file`部分。将此文件保存为`index.blade.php`，放在`app/views/tpl/`目录中：
 
 ```php
-    @extends('frontend_master')
+@extends('frontend_master')
 
-    @section('content')
-      {{Form::open(array('url' => '/', 'files' => true))}}
-      {{Form::text('title','',array('placeholder'=>'Please insert your title here'))}}
-      {{Form::file('image')}}
-      {{Form::submit('save!',array('name'=>'send'))}}
-      {{Form::close()}}
-    @stop
-    ```
+@section('content')
+  {{Form::open(array('url' => '/', 'files' => true))}}
+  {{Form::text('title','',array('placeholder'=>'Please insert your title here'))}}
+  {{Form::file('image')}}
+  {{Form::submit('save!',array('name'=>'send'))}}
+  {{Form::close()}}
+@stop
+```
 
 在上述代码的第一行中，我们告诉 Blade 引擎，我们将使用`frontend_master.blade.php`作为布局。这是使用 Laravel 4 中的`@extends()`方法完成的。
 
@@ -319,23 +319,23 @@ Config::get('image.upload_folder')
 自动生成的隐藏 CSRF 表单元素如下所示：
 
 ```php
-    <input name="_token" type="hidden" value="SnRocsQQlOnqEDH45ewP2GLxPFUy5eH4RyLzeKm3">
-    ```
+<input name="_token" type="hidden" value="SnRocsQQlOnqEDH45ewP2GLxPFUy5eH4RyLzeKm3">
+```
 
 1.  现在让我们稍微整理一下表单。这与我们的项目没有直接关系，只是为了外观。将`styles.css`文件保存在`public/css/`（我们在主页面上定义的路径）中：
 
 ```php
-    /*Body adjustment*/
-    body{width:60%; margin:auto; background:#dedede}
-    /*The title*/
-    h2{font-size:40px; text-align:center; font-family:Tahoma,Arial,sans-serif}
-    /*Sub title (success and error messages)*/
-    h3{font-size:25px; border-radius:4px; font-family:Tahoma,Arial,sans-serif; text-align:center;width:100%}
-    h3.error{border:3px solid #d00; background-color:#f66; color:#d00 }
-    h3.success{border:3px solid #0d0; background-color:#0f0; color:#0d0}p{font-size:25px; font-weight: bold; color: black;font-family: Tahoma,Arial,sans-serif}ul{float:left;width:100%;list-style:none}li{float:left;margin-right:10px}
-    /*For the input files of the form*/
-    input{float:left; width:100%; border-radius:13px;font-size:20px; height:30px; border:10px 0 10px 0;margin-bottom:20px}
-    ```
+/*Body adjustment*/
+body{width:60%; margin:auto; background:#dedede}
+/*The title*/
+h2{font-size:40px; text-align:center; font-family:Tahoma,Arial,sans-serif}
+/*Sub title (success and error messages)*/
+h3{font-size:25px; border-radius:4px; font-family:Tahoma,Arial,sans-serif; text-align:center;width:100%}
+h3.error{border:3px solid #d00; background-color:#f66; color:#d00 }
+h3.success{border:3px solid #0d0; background-color:#0f0; color:#0d0}p{font-size:25px; font-weight: bold; color: black;font-family: Tahoma,Arial,sans-serif}ul{float:left;width:100%;list-style:none}li{float:left;margin-right:10px}
+/*For the input files of the form*/
+input{float:left; width:100%; border-radius:13px;font-size:20px; height:30px; border:10px 0 10px 0;margin-bottom:20px}
+```
 
 我们通过将其宽度设置为 60％，使其居中对齐，并给它一个灰色的背景来样式化主体。我们还使用`success`和`error`类以及`forms`格式化了`h2`和`h3`消息。
 
@@ -352,12 +352,12 @@ Config::get('image.upload_folder')
 1.  首先，我们需要定义表单验证规则。我们更喜欢将这些值添加到相关模型中，这样规则就可以重复使用，这可以防止代码变得臃肿。为此，请在`app/models/`目录中的`photo.php`文件中添加以下代码（在本章前面生成的模型中）类定义的最后一个右花括号（`}`）之前：
 
 ```php
-    //rules of the image upload form
-    public static $upload_rules = array(
-      'title'=> 'required|min:3',
-      'image'=> 'required|image'
-    );
-    ```
+//rules of the image upload form
+public static $upload_rules = array(
+  'title'=> 'required|min:3',
+  'image'=> 'required|image'
+);
+```
 
 我们将变量设置为`public`，这样它就可以在模型文件之外使用，并将其设置为静态，这样我们就可以直接访问变量。
 
@@ -370,57 +370,57 @@ Laravel 的 MIME 类型检查需要安装`Fileinfo`扩展。因此，请确保�
 1.  现在我们需要控制器的`post`方法来处理表单。在`app/controllers/`中的`ImageController.php`文件中添加此方法，放在最后一个右花括号（`}`）之前：
 
 ```php
-    public function postIndex()
-    {
+public function postIndex()
+{
 
-      //Let's validate the form first with the rules which areset at the model
-      $validation = Validator::make(Input::all(),Photo::$upload_rules);
+  //Let's validate the form first with the rules which areset at the model
+  $validation = Validator::make(Input::all(),Photo::$upload_rules);
 
-      //If the validation fails, we redirect the user to theindex page, with the error messages 
-      if($validation->fails()) {
-        return Redirect::to('/')->withInput()->withErrors($validation);
-      }
-      else {
+  //If the validation fails, we redirect the user to theindex page, with the error messages 
+  if($validation->fails()) {
+    return Redirect::to('/')->withInput()->withErrors($validation);
+  }
+  else {
 
-        //If the validation passes, we upload the image to thedatabase and process it
-        $image = Input::file('image');
+    //If the validation passes, we upload the image to thedatabase and process it
+    $image = Input::file('image');
 
-        //This is the original uploaded client name of theimage
-        $filename = $image->getClientOriginalName();
-        //Because Symfony API does not provide filename//without extension, we will be using raw PHP here
-        $filename = pathinfo($filename, PATHINFO_FILENAME);
+    //This is the original uploaded client name of theimage
+    $filename = $image->getClientOriginalName();
+    //Because Symfony API does not provide filename//without extension, we will be using raw PHP here
+    $filename = pathinfo($filename, PATHINFO_FILENAME);
 
-        //We should salt and make an url-friendly version of//the filename
-        //(In ideal application, you should check the filename//to be unique)
-        $fullname = Str::slug(Str::random(8).$filename).'.'.$image->getClientOriginalExtension();
+    //We should salt and make an url-friendly version of//the filename
+    //(In ideal application, you should check the filename//to be unique)
+    $fullname = Str::slug(Str::random(8).$filename).'.'.$image->getClientOriginalExtension();
 
-        //We upload the image first to the upload folder, thenget make a thumbnail from the uploaded image
-        $upload = $image->move(Config::get( 'image.upload_folder'),$fullname);
+    //We upload the image first to the upload folder, thenget make a thumbnail from the uploaded image
+    $upload = $image->move(Config::get( 'image.upload_folder'),$fullname);
 
-        //Our model that we've created is named Photo, thislibrary has an alias named Image, don't mix them two!
-        //These parameters are related to the image processingclass that we've included, not really related toLaravel
-        Image::make(Config::get( 'image.upload_folder').'/'.$fullname)->resize(Config::get( 'image.thumb_width'),null, true)->save(Config::get( 'image.thumb_folder').'/'.$fullname);
+    //Our model that we've created is named Photo, thislibrary has an alias named Image, don't mix them two!
+    //These parameters are related to the image processingclass that we've included, not really related toLaravel
+    Image::make(Config::get( 'image.upload_folder').'/'.$fullname)->resize(Config::get( 'image.thumb_width'),null, true)->save(Config::get( 'image.thumb_folder').'/'.$fullname);
 
-        //If the file is now uploaded, we show an error messageto the user, else we add a new column to the databaseand show the success message
-        if($upload) {
+    //If the file is now uploaded, we show an error messageto the user, else we add a new column to the databaseand show the success message
+    if($upload) {
 
-          //image is now uploaded, we first need to add columnto the database
-          $insert_id = DB::table('photos')->insertGetId(
-            array(
-              'title' => Input::get('title'),
-              'image' => $fullname
-            )
-          );
+      //image is now uploaded, we first need to add columnto the database
+      $insert_id = DB::table('photos')->insertGetId(
+        array(
+          'title' => Input::get('title'),
+          'image' => $fullname
+        )
+      );
 
-          //Now we redirect to the image's permalink
-          return Redirect::to(URL::to('snatch/'.$insert_id))->with('success','Your image is uploadedsuccessfully!');
-        } else {
-          //image cannot be uploaded
-          return Redirect::to('/')->withInput()->with('error','Sorry, the image could not beuploaded, please try again later');
-        }
-      }
+      //Now we redirect to the image's permalink
+      return Redirect::to(URL::to('snatch/'.$insert_id))->with('success','Your image is uploadedsuccessfully!');
+    } else {
+      //image cannot be uploaded
+      return Redirect::to('/')->withInput()->with('error','Sorry, the image could not beuploaded, please try again later');
     }
-    ```
+  }
+}
+```
 
 让我们逐行查看代码。
 
@@ -443,57 +443,57 @@ Laravel 的 MIME 类型检查需要安装`Fileinfo`扩展。因此，请确保�
 1.  首先，我们需要为控制器定义一个`GET`路由。为此，打开`app`文件夹中的`routes.php`文件，并添加以下代码：
 
 ```php
-    //This is to show the image's permalink on our website
-    Route::get('snatch/{id}',
-      array('as'=>'get_image_information',
-      'uses'=>'ImageController@getSnatch'))
-      ->where('id', '[0-9]+');
-    ```
+//This is to show the image's permalink on our website
+Route::get('snatch/{id}',
+  array('as'=>'get_image_information',
+  'uses'=>'ImageController@getSnatch'))
+  ->where('id', '[0-9]+');
+```
 
 我们在路由上定义了一个`id`变量，并使用正则表达式的`where()`方法首先进行了过滤。因此，我们不需要担心过滤 ID 字段，无论它是自然数还是其他。
 
 1.  现在，让我们创建我们的控制器方法。在`app/controllers/`中的`ImageController.php`中最后一个右花括号(`}`)之前添加以下代码：
 
 ```php
-    public function getSnatch($id) {
-      //Let's try to find the image from database first
-      $image = Photo::find($id);
-      //If found, we load the view and pass the image info asparameter, else we redirect to main page with errormessage
-      if($image) {
-        return View::make('tpl.permalink')->with('image',$image);
-      } else {
-        return Redirect::to('/')->with('error','Image not found');
-      }
-    }
-    ```
+public function getSnatch($id) {
+  //Let's try to find the image from database first
+  $image = Photo::find($id);
+  //If found, we load the view and pass the image info asparameter, else we redirect to main page with errormessage
+  if($image) {
+    return View::make('tpl.permalink')->with('image',$image);
+  } else {
+    return Redirect::to('/')->with('error','Image not found');
+  }
+}
+```
 
 首先，我们使用 Eloquent ORM 的`find()`方法查找图像。如果它返回 false，那意味着找到了一行。因此，我们可以简单地使用一个简单的`if`子句来检查是否有结果。如果有结果，我们将使用`with()`方法将找到的图像信息作为名为`$image`的变量加载到我们的视图中。如果没有找到值，我们将返回到索引页面并显示错误消息。
 
 1.  现在让我们创建包含以下代码的模板文件。将此文件保存为`permalink.blade.php`，放在`app/views/tpl/`中：
 
 ```php
-    @extends('frontend_master')
-    @section('content')
-    <table cellpadding="0" cellspacing="0" border="0"width="100percent">
-      <tr>
-        <td width="450" valign="top">
-          <p>Title: {{$image->title}}</p>
-        {{HTML::image(Config::get('image.thumb_folder').'/'.$image->image)}}
-        </td>
-          <td valign="top">
-          <p>Direct Image URL</p>
-          <input onclick="this.select()" type="text"width="100percent" value="{{URL::to(Config::get('image.upload_folder').'/'$image->image)}}" />
+@extends('frontend_master')
+@section('content')
+<table cellpadding="0" cellspacing="0" border="0"width="100percent">
+  <tr>
+    <td width="450" valign="top">
+      <p>Title: {{$image->title}}</p>
+    {{HTML::image(Config::get('image.thumb_folder').'/'.$image->image)}}
+    </td>
+      <td valign="top">
+      <p>Direct Image URL</p>
+      <input onclick="this.select()" type="text"width="100percent" value="{{URL::to(Config::get('image.upload_folder').'/'$image->image)}}" />
 
-          <p>Thumbnail Forum BBCode</p>
-          <input onclick="this.select()" type="text"width="100percent" value="[url={{URL::to('snatch/'$image->id)}}][img]{{URL::to(Config::get('image.thumb_folder')'/'.$image->image)}}[/img][/url]" />
+      <p>Thumbnail Forum BBCode</p>
+      <input onclick="this.select()" type="text"width="100percent" value="[url={{URL::to('snatch/'$image->id)}}][img]{{URL::to(Config::get('image.thumb_folder')'/'.$image->image)}}[/img][/url]" />
 
-          <p>Thumbnail HTML Code</p>
-          <input onclick="this.select()" type="text"width="100percent"value="{{HTML::entities(HTML::link(URL::to('snatch/'.$image->id),HTML::image(Config::get('image.thumb_folder').'/'$image->image)))}}" />
-        </td>
-      </tr>
-    </table>
-    @stop
-    ```
+      <p>Thumbnail HTML Code</p>
+      <input onclick="this.select()" type="text"width="100percent"value="{{HTML::entities(HTML::link(URL::to('snatch/'.$image->id),HTML::image(Config::get('image.thumb_folder').'/'$image->image)))}}" />
+    </td>
+  </tr>
+</table>
+@stop
+```
 
 现在，您应该对此模板中使用的大多数方法都很熟悉了。还有一个名为`entities()`的新方法，属于`HTML`类，实际上是原始 PHP 的`htmlentities()`，但带有一些预检查，并且是 Laravel 的方式。
 
@@ -512,48 +512,48 @@ Laravel 的 MIME 类型检查需要安装`Fileinfo`扩展。因此，请确保�
 1.  首先，我们需要从我们的`route.php`文件中定义其 URL。为此，打开`app/routes.php`并添加以下行：
 
 ```php
-    //This route is to show all images.
-    Route::get('all',array('as'=>'all_images','uses'=>'ImageController@getAll'));
-    ```
+//This route is to show all images.
+Route::get('all',array('as'=>'all_images','uses'=>'ImageController@getAll'));
+```
 
 1.  现在，我们需要一个名为`getAll()`的方法（因为它将是一个 RESTful 控制器，所以在开头有一个`get`方法）来获取值并加载视图。为此，请打开`app/controllers/ImageController.php`，并在最后一个右花括号（}）之前添加以下代码：
 
 ```php
-    public function getAll(){
+public function getAll(){
 
-      //Let's first take all images with a pagination feature
-      $all_images = DB::table('photos')->orderBy('id','desc')->paginate(6);
+  //Let's first take all images with a pagination feature
+  $all_images = DB::table('photos')->orderBy('id','desc')->paginate(6);
 
-      //Then let's load the view with found data and pass thevariable to the view
-      return View::make('tpl.all_images')->with('images',$all_images);
-    }
-    ```
+  //Then let's load the view with found data and pass thevariable to the view
+  return View::make('tpl.all_images')->with('images',$all_images);
+}
+```
 
 首先，我们使用`paginate()`方法从数据库中获取了所有图像，这将使我们能够轻松获取分页链接。之后，我们加载了用户的视图，并显示了带有分页的图像数据。
 
 1.  要正确查看这个，我们需要一个视图文件。将以下代码保存在名为`all_image.blade.php`的文件中，放在`app/views/tpl/`目录中：
 
 ```php
-    @extends('frontend_master')
+@extends('frontend_master')
 
-    @section('content')
+@section('content')
 
-    @if(count($images))
-      <ul>
+@if(count($images))
+  <ul>
 
-        @foreach($images as $each)
-          <li>
-            <a href="{{URL::to('snatch/'$each->id)}}">{{HTML::image(Config::get('image.thumb_folder')'/'.$each->image)}}</a>
-          </li>
-        @endforeach
-      </ul> 
-      <p>{{$images->links()}}</p>
-    @else
-      {{--If no images are found on the database, we will showa no image found error message--}}
-      <p>No images uploaded yet, {{HTML::link('/','care to upload one?')}}</p>
-    @endif
-    @stop
-    ```
+    @foreach($images as $each)
+      <li>
+        <a href="{{URL::to('snatch/'$each->id)}}">{{HTML::image(Config::get('image.thumb_folder')'/'.$each->image)}}</a>
+      </li>
+    @endforeach
+  </ul> 
+  <p>{{$images->links()}}</p>
+@else
+  {{--If no images are found on the database, we will showa no image found error message--}}
+  <p>No images uploaded yet, {{HTML::link('/','care to upload one?')}}</p>
+@endif
+@stop
+```
 
 我们首先用我们的内容部分扩展了`frontend_master.blade.php`文件。至于内容部分，我们首先检查是否返回了任何行。如果是，那么我们将它们全部循环在列表项标签（`<li>`）中，并附上它们的永久链接。`paginate`类提供的`links()`方法将为我们创建分页。
 
@@ -572,38 +572,38 @@ Laravel 的 MIME 类型检查需要安装`Fileinfo`扩展。因此，请确保�
 1.  首先，我们需要为该操作创建一个新路由。为此，请打开`app/routes.php`，并添加以下行：
 
 ```php
-    //This route is to delete the image with given ID
-    Route::get('delete/{id}', array
-    ('as'=>'delete_image','uses'=>
-    'ImageController@getDelete'))
-    ->where('id', '[0-9]+');
-    ```
+//This route is to delete the image with given ID
+Route::get('delete/{id}', array
+('as'=>'delete_image','uses'=>
+'ImageController@getDelete'))
+->where('id', '[0-9]+');
+```
 
 1.  现在，我们需要在`ImageController`中定义控制器方法`getDelete($id)`。为此，请打开`app/controllers/ImageController.php`，并在最后一个右花括号（`}`）之前添加以下代码：
 
 ```php
-    public function getDelete($id) {
-      //Let's first find the image
-      $image = Photo::find($id);
+public function getDelete($id) {
+  //Let's first find the image
+  $image = Photo::find($id);
 
-      //If there's an image, we will continue to the deletingprocess
-      if($image) {
-        //First, let's delete the images from FTP
-        File::delete(Config::get('image.upload_folder').'/'$image->image);
-        File::delete(Config::get('image.thumb_folder').'/'$image->image);
+  //If there's an image, we will continue to the deletingprocess
+  if($image) {
+    //First, let's delete the images from FTP
+    File::delete(Config::get('image.upload_folder').'/'$image->image);
+    File::delete(Config::get('image.thumb_folder').'/'$image->image);
 
-        //Now let's delete the value from database
-        $image->delete();
+    //Now let's delete the value from database
+    $image->delete();
 
-        //Let's return to the main page with a success message
-        return Redirect::to('/')->with('success','Image deleted successfully');
+    //Let's return to the main page with a success message
+    return Redirect::to('/')->with('success','Image deleted successfully');
 
-      } else {
-        //Image not found, so we will redirect to the indexpage with an error message flash data.
-        return Redirect::to('/')->with('error','No image with given ID found');
-      }
-    }
-    ```
+  } else {
+    //Image not found, so we will redirect to the indexpage with an error message flash data.
+    return Redirect::to('/')->with('error','No image with given ID found');
+  }
+}
+```
 
 让我们理解这段代码：
 

@@ -155,39 +155,39 @@ sql/
 1.  现在，将以下代码复制到`config.xml`文件中（文件位置为`app/code/local/Mdg/Giftregistry/etc/config.xml`）：
 
 ```php
-    <?xml version="1.0"?>
-    <config>
-        <modules>
-            <Mdg_Giftregistry>
-                <version>0.1.0</version>
-            </Mdg_Giftregistry>
-        </modules>
-        <global>
-            <models>
-                <mdg_giftregistry>
-                    <class>Mdg_Giftregistry_Model</class>
-                </mdg_giftregistry>
-            </models>
-            <blocks>
-                <mdg_giftregistry>
-                    <class>Mdg_Giftregistry_Block</class>
-                </mdg_giftregistry>
-            </blocks>
-            <helpers>
-                <mdg_giftregistry>
-                    <class>Mdg_Giftregistry_Helper</class>
-                </mdg_giftregistry>
-            </helpers>
-            <resources>
-                <mdg_giftregistry_setup>
-                    <setup>
-                        <module>Mdg_Giftregistry</module>
-                    </setup>
-                </mdg_giftregistry_setup>
-            </resources>
-        </global>
-    </config>
-    ```
+<?xml version="1.0"?>
+<config>
+    <modules>
+        <Mdg_Giftregistry>
+            <version>0.1.0</version>
+        </Mdg_Giftregistry>
+    </modules>
+    <global>
+        <models>
+            <mdg_giftregistry>
+                <class>Mdg_Giftregistry_Model</class>
+            </mdg_giftregistry>
+        </models>
+        <blocks>
+            <mdg_giftregistry>
+                <class>Mdg_Giftregistry_Block</class>
+            </mdg_giftregistry>
+        </blocks>
+        <helpers>
+            <mdg_giftregistry>
+                <class>Mdg_Giftregistry_Helper</class>
+            </mdg_giftregistry>
+        </helpers>
+        <resources>
+            <mdg_giftregistry_setup>
+                <setup>
+                    <module>Mdg_Giftregistry</module>
+                </setup>
+            </mdg_giftregistry_setup>
+        </resources>
+    </global>
+</config>
+```
 
 所有模块配置都包含在`<config>`节点内。在这个节点内，我们有`<global>`和`<modules>`节点。
 
@@ -286,16 +286,16 @@ Mage::helper('mdg_registry');
 1.  创建一个名为`Type.php`的新文件，并将以下内容复制到文件中（文件位置为`app/code/local/Mdg/Giftregistry/Model/Type.php`）：
 
 ```php
-    <?php
-    class Mdg_Giftregistry_Model_Type extends Mage_Core_Model_Abstract
+<?php
+class Mdg_Giftregistry_Model_Type extends Mage_Core_Model_Abstract
+{
+    public function __construct()
     {
-        public function __construct()
-        {
-            $this->_init('mdg_giftregistry/type');
-            parent::_construct();
-        }
+        $this->_init('mdg_giftregistry/type');
+        parent::_construct();
     }
-    ```
+}
+```
 
 我们还需要创建一个资源类；每个 Magento 数据模型都有自己的资源类。还需要澄清的是，只有直接处理数据的模型，无论是简单数据模型还是 EAV 模型，都需要一个`resource`类。要做到这一点，请按照以下步骤：
 
@@ -306,15 +306,15 @@ Mage::helper('mdg_registry');
 1.  创建一个名为`Type.php`的新文件，并将以下内容复制到文件中（文件位置为`app/code/local/Mdg/Giftregistry/Model/Mysql4/Type.php`）：
 
 ```php
-    <?php
-    class Mdg_Giftregistry_Model_Mysql4_Type extends Mage_Core_Model_Mysql4_Abstract
+<?php
+class Mdg_Giftregistry_Model_Mysql4_Type extends Mage_Core_Model_Mysql4_Abstract
+{
+    public function _construct()
     {
-        public function _construct()
-        {
-            $this->_init('mdg_giftregistry/type', 'type_id');
-        }
+        $this->_init('mdg_giftregistry/type', 'type_id');
     }
-    ```
+}
+```
 
 最后，我们还需要一个`collection`类来检索所有可用的事件类型：
 
@@ -323,16 +323,16 @@ Mage::helper('mdg_registry');
 1.  创建一个名为`Type.php`的新文件，并将以下内容复制到文件中（文件位置为`app/code/local/Mdg/Giftregistry/Model/Mysql4/Type/Collection.php`）：
 
 ```php
-    <?php
-    class Mdg_Giftregistry_Model_Mysql4_Type_Collection extends Mage_Core_Model_Mysql4_Collection_Abstract
+<?php
+class Mdg_Giftregistry_Model_Mysql4_Type_Collection extends Mage_Core_Model_Mysql4_Collection_Abstract
+{
+    public function _construct()
     {
-        public function _construct()
-        {
-            $this->_init('mdg_giftregistry/type');
-            parent::_construct();
-        }
+        $this->_init('mdg_giftregistry/type');
+        parent::_construct();
     }
-    ```
+}
+```
 
 通过创建一个处理礼品注册项目的模型来做同样的事情。此模型将保存注册项目的所有相关产品信息。要做到这一点，请按照以下步骤：
 
@@ -341,16 +341,16 @@ Mage::helper('mdg_registry');
 1.  创建一个名为`Item.php`的新文件，并将以下内容复制到文件中（文件位置为`app/code/local/Mdg/Giftregistry/Model/Item.php`）：
 
 ```php
-    <?php
-    class Mdg_Giftregistry_Model_Item extends Mage_Core_Model_Abstract
+<?php
+class Mdg_Giftregistry_Model_Item extends Mage_Core_Model_Abstract
+{
+    public function __construct()
     {
-        public function __construct()
-        {
-            $this->_init('mdg_giftregistry/item');
-            parent::_construct();
-        }
+        $this->_init('mdg_giftregistry/item');
+        parent::_construct();
     }
-    ```
+}
+```
 
 让我们继续创建资源类：
 
@@ -361,15 +361,15 @@ Mage::helper('mdg_registry');
 1.  创建一个名为`Item.php`的新文件，并将以下内容复制到文件中（文件位置为`app/code/local/Mdg/Giftregistry/Model/Mysql4/Item.php`）：
 
 ```php
-    <?php
-    class Mdg_Giftregistry_Model_Mysql4_Item extends Mage_Core_Model_Mysql4_Abstract
+<?php
+class Mdg_Giftregistry_Model_Mysql4_Item extends Mage_Core_Model_Mysql4_Abstract
+{
+    public function _construct()
     {
-        public function _construct()
-        {
-            $this->_init('mdg_giftregistry/item', 'item_id');
-        }
+        $this->_init('mdg_giftregistry/item', 'item_id');
     }
-    ```
+}
+```
 
 最后，让我们创建相应的`collection`类：
 
@@ -378,16 +378,16 @@ Mage::helper('mdg_registry');
 1.  创建一个名为`Collection.php`的新文件，并将以下内容复制到文件中（文件位置为`app/code/local/Mdg/Giftregistry/Model/Mysql4/Item/Collection.php`）：
 
 ```php
-    <?php
-    class Mdg_Giftregistry_Model_Mysql4_Item_Collection extends Mage_Core_Model_Mysql4_Collection_Abstract
+<?php
+class Mdg_Giftregistry_Model_Mysql4_Item_Collection extends Mage_Core_Model_Mysql4_Collection_Abstract
+{
+    public function _construct()
     {
-        public function _construct()
-        {
-            $this->_init('mdg_giftregistry/item');
-            parent::_construct();
-        }
+        $this->_init('mdg_giftregistry/item');
+        parent::_construct();
     }
-    ```
+}
+```
 
 我们的下一步将是创建我们的注册表实体；这是我们注册表的核心，也是将所有内容联系在一起的模型。要做到这一点，请按照以下步骤进行：
 
@@ -396,16 +396,16 @@ Mage::helper('mdg_registry');
 1.  创建一个名为`Entity.php`的新文件，并将以下内容复制到文件中（文件位置为`app/code/local/Mdg/Giftregistry/Model/Entity.php`）：
 
 ```php
-    <?php
-    class Mdg_Giftregistry_Model_Entity extends Mage_Core_Model_Abstract
+<?php
+class Mdg_Giftregistry_Model_Entity extends Mage_Core_Model_Abstract
+{
+    public function __construct()
     {
-        public function __construct()
-        {
-            $this->_init('mdg_giftregistry/entity');
-            parent::_construct();
-        }
+        $this->_init('mdg_giftregistry/entity');
+        parent::_construct();
     }
-    ```
+}
+```
 
 让我们继续创建`resource`类：
 
@@ -416,15 +416,15 @@ Mage::helper('mdg_registry');
 1.  创建一个名为`Entity.php`的新文件，并将以下内容复制到文件中（文件位置为`app/code/local/Mdg/Giftregistry/Model/Mysql4/Entity.php`）：
 
 ```php
-    <?php
-    class Mdg_Giftregistry_Model_Mysql4_Entity extends Mage_Core_Model_Mysql4_Abstract
+<?php
+class Mdg_Giftregistry_Model_Mysql4_Entity extends Mage_Core_Model_Mysql4_Abstract
+{
+    public function _construct()
     {
-        public function _construct()
-        {
-            $this->_init('mdg_giftregistry/entity', 'entity_id');
-        }
+        $this->_init('mdg_giftregistry/entity', 'entity_id');
     }
-    ```
+}
+```
 
 最后，让我们创建相应的`collection`类：
 
@@ -433,16 +433,16 @@ Mage::helper('mdg_registry');
 1.  创建一个名为`Collection.php`的新文件，并将以下内容复制到文件中（文件位置为`app/code/local/Mdg/Giftregistry/Model/Mysql4/Entity/Collection.php`）：
 
 ```php
-    <?php
-    class Mdg_Giftregistry_Model_Mysql4_Entity_Collection extends Mage_Core_Model_Mysql4_Collection_Abstract
+<?php
+class Mdg_Giftregistry_Model_Mysql4_Entity_Collection extends Mage_Core_Model_Mysql4_Collection_Abstract
+{
+    public function _construct()
     {
-        public function _construct()
-        {
-            $this->_init('mdg_giftregistry/entity');
-            parent::_construct();
-        }
+        $this->_init('mdg_giftregistry/entity');
+        parent::_construct();
     }
-    ```
+}
+```
 
 到目前为止，我们除了盲目地复制代码并将模型类添加到我们的模块中之外，还没有做任何事情。让我们使用**交互式 Magento 控制台**（**IMC**）测试我们新创建的模型。
 
@@ -458,50 +458,50 @@ Mage::helper('mdg_registry');
 1.  我们将从加载客户端模型开始：
 
 ```php
-    **magento > $customer = Mage::getModel('customer/customer')->load(1);**
+**magento > $customer = Mage::getModel('customer/customer')->load(1);**
 
-    ```
+```
 
 1.  接下来，我们需要实例化一个新的注册表对象：
 
 ```php
-    **magento > $registry = Mage::getModel('mdg_giftregistry/entity');**
+**magento > $registry = Mage::getModel('mdg_giftregistry/entity');**
 
-    ```
+```
 
 1.  所有 Magento 模型中的一个方便的函数是“getData（）”函数，它返回所有对象属性的数组。让我们在 a，注册表和客户对象上运行此函数并比较输出：
 
 ```php
-    **magento > print_r($customer->getData());**
-    **magento > print_r($registry->getData());**
+**magento > print_r($customer->getData());**
+**magento > print_r($registry->getData());**
 
-    ```
+```
 
 1.  正如我们注意到的，客户端为我们的 John Doe 示例记录设置了所有数据，而注册表对象返回完全空的`$regiarray`。通过运行以下代码来更改这一点：
 
 ```php
-    **magento > $registry->setCustomerId($customer->getId());**
-    **magento > $registry->setTypeId(1);**
-    **magento > $registry->setWebsiteId(1);**
-    **magento > $registry->setEventDate('2012-12-12');**
-    **magento > $registry->setEventCountry('CA');**
-    **magento > $registry->setEventLocation('Toronto');**
+**magento > $registry->setCustomerId($customer->getId());**
+**magento > $registry->setTypeId(1);**
+**magento > $registry->setWebsiteId(1);**
+**magento > $registry->setEventDate('2012-12-12');**
+**magento > $registry->setEventCountry('CA');**
+**magento > $registry->setEventLocation('Toronto');**
 
-    ```
+```
 
 1.  现在让我们尝试再次打印注册表数据：
 
 ```php
-    **magento > print_r($registry->getData());**
+**magento > print_r($registry->getData());**
 
-    ```
+```
 
 1.  最后，为了使我们的更改永久生效，我们需要调用模型的`save`函数：
 
 ```php
-    **magento > $registry->save();**
+**magento > $registry->save();**
 
-    ```
+```
 
 哎呀！在保存产品时出现了问题；我们在控制台中得到了以下错误：
 
@@ -520,29 +520,29 @@ Fatal error: Call to a member function beginTransaction() on a non-object in …
 1.  使用以下代码更新`<model>`节点（文件位置为`app/code/local/Mdg/Giftregistry/Model/Entity.php`）：
 
 ```php
-    …
-    <models>
-        <mdg_giftregistry>
-            <class>Mdg_Giftregistry_Model</class>
-            <resourceModel>mdg_giftregistry_mysql4</resourceModel>
-        </mdg_giftregistry>
-        <mdg_giftregistry_mysql4>
-            <class>Mdg_Giftregistry_Model_Mysql4</class>
-            <entities>
-                <entity>
-                    <table>mdg_giftregistry_entity</table>
-                </entity>
-                <item>
-                    <table>mdg_giftregistry_item</table>
-                </item>
-                <type>
-                    <table>mdg_giftregistry_type</table>
-                </type>
-            </entities>
-        </mdg_giftregistry_mysql4>
-    </models>
-    …
-    ```
+…
+<models>
+    <mdg_giftregistry>
+        <class>Mdg_Giftregistry_Model</class>
+        <resourceModel>mdg_giftregistry_mysql4</resourceModel>
+    </mdg_giftregistry>
+    <mdg_giftregistry_mysql4>
+        <class>Mdg_Giftregistry_Model_Mysql4</class>
+        <entities>
+            <entity>
+                <table>mdg_giftregistry_entity</table>
+            </entity>
+            <item>
+                <table>mdg_giftregistry_item</table>
+            </item>
+            <type>
+                <table>mdg_giftregistry_type</table>
+            </type>
+        </entities>
+    </mdg_giftregistry_mysql4>
+</models>
+…
+```
 
 现在，在我们实际将产品保存到数据库之前，我们必须首先创建我们的数据库表；接下来，我们将学习如何使用设置资源来创建我们的表结构并设置我们的默认数据。
 
@@ -841,38 +841,38 @@ $installer->getTable('mdg_giftregistry/entity')
 1.  将以下代码复制到`data-install-0.1.0.php`文件中（文件位置为`app/code/local/Mdg/Giftregistry/data/mdg_giftregistry_setup/data-install-0.1.0.php`）：
 
 ```php
-    <?php
-    $registryTypes = array(
-        array(
-            'code' => 'baby_shower',
-            'name' => 'Baby Shower',
-            'description' => 'Baby Shower',
-            'store_id' => Mage_Core_Model_App::ADMIN_STORE_ID,
-            'is_active' => 1,
-        ),
-        array(
-            'code' => 'wedding',
-            'name' => 'Wedding',
-            'description' => 'Wedding',
-            'store_id' => Mage_Core_Model_App::ADMIN_STORE_ID,
-            'is_active' => 1,
-        ),
-        array(
-            'code' => 'birthday',
-            'name' => 'Birthday',
-            'description' => 'Birthday',
-            'store_id' => Mage_Core_Model_App::ADMIN_STORE_ID,
-            'is_active' => 1,
-        ),
-    );
+<?php
+$registryTypes = array(
+    array(
+        'code' => 'baby_shower',
+        'name' => 'Baby Shower',
+        'description' => 'Baby Shower',
+        'store_id' => Mage_Core_Model_App::ADMIN_STORE_ID,
+        'is_active' => 1,
+    ),
+    array(
+        'code' => 'wedding',
+        'name' => 'Wedding',
+        'description' => 'Wedding',
+        'store_id' => Mage_Core_Model_App::ADMIN_STORE_ID,
+        'is_active' => 1,
+    ),
+    array(
+        'code' => 'birthday',
+        'name' => 'Birthday',
+        'description' => 'Birthday',
+        'store_id' => Mage_Core_Model_App::ADMIN_STORE_ID,
+        'is_active' => 1,
+    ),
+);
 
-    foreach ($registryTypes as $data) {
-        Mage::getModel('mdg_giftregistry/type')
-            ->addData($data)
-            ->setStoreId($data['store_id'])
-            ->save();
-    }
-    ```
+foreach ($registryTypes as $data) {
+    Mage::getModel('mdg_giftregistry/type')
+        ->addData($data)
+        ->setStoreId($data['store_id'])
+        ->save();
+}
+```
 
 让我们仔细看一下`data-install-0.1.0.php`脚本上的最后一个条件块：
 
@@ -902,9 +902,9 @@ foreach ($registryTypes as $data) {
 1.  最后，我们需要使用以下查询进入`core_resource`表：
 
 ```php
-    **mysql> DELETE FROM `core_resource` WHERE `code` =  'mdg_giftregistry_setup'**
+**mysql> DELETE FROM `core_resource` WHERE `code` =  'mdg_giftregistry_setup'**
 
-    ```
+```
 
 ## 我们学到了什么？
 
@@ -1079,14 +1079,14 @@ class Mdg_Giftregistry_IndexController extends Mage_Core_Controller_Front_Action
 1.  我们将添加到动作的第一件事是一个`if`语句，以检查请求是否是 post 请求，我们可以使用以下代码检索到：
 
 ```php
-    $this->getRequest()->isPost()
-    ```
+$this->getRequest()->isPost()
+```
 
 1.  除此之外，我们还希望检查请求是否有实际数据；为此，我们可以使用以下代码：
 
 ```php
-    $this->getRequest()->getParams()
-    ```
+$this->getRequest()->getParams()
+```
 
 一旦我们验证了请求是一个合适的请求，并且我们正在接收数据，我们需要实际创建礼品注册。为此，我们将通过以下步骤在我们的注册表模型中添加一个新函数：
 
@@ -1097,27 +1097,27 @@ class Mdg_Giftregistry_IndexController extends Mage_Core_Controller_Front_Action
 1.  文件位置为`app/code/local/Mdg/Giftregistry/Model/Entity.php`。在此函数内添加以下代码：
 
 ```php
-    public function updateRegistryData(Mage_Customer_Model_Customer $customer, $data)
-    {
-        try{
-            if(!empty($data))
-            {
-                $this->setCustomerId($customer->getId());
-                $this->setWebsiteId($customer->getWebsiteId());
-                $this->setTypeId($data['type_id']);
-                $this->setEventName($data['event_name']);
-                $this->setEventDate($data['event_date']);
-                $this->setEventCountry($data['event_country']);
-                $this->setEventLocation($data['event_location']);
-            }else{
-                throw new Exception("Error Processing Request: Insufficient Data Provided");
-            }
-        } catch (Exception $e){
-            Mage::logException($e);
+public function updateRegistryData(Mage_Customer_Model_Customer $customer, $data)
+{
+    try{
+        if(!empty($data))
+        {
+            $this->setCustomerId($customer->getId());
+            $this->setWebsiteId($customer->getWebsiteId());
+            $this->setTypeId($data['type_id']);
+            $this->setEventName($data['event_name']);
+            $this->setEventDate($data['event_date']);
+            $this->setEventCountry($data['event_country']);
+            $this->setEventLocation($data['event_location']);
+        }else{
+            throw new Exception("Error Processing Request: Insufficient Data Provided");
         }
-        return $this;
+    } catch (Exception $e){
+        Mage::logException($e);
     }
-    ```
+    return $this;
+}
+```
 
 这个函数将通过将表单数据添加到注册表对象的当前实例来帮助我们，这意味着我们需要在我们的控制器内创建一个实例。让我们把我们的控制器代码放在一起：
 
@@ -1238,23 +1238,23 @@ public function deleteAction()
 1.  文件位置为`app/code/local/Mdg/Giftregistry/controllers/SearchController.php`。将以下代码复制到搜索控制器中：
 
 ```php
-    <?php
-    class Mdg_Giftregistry_SearchController extends Mage_Core_Controller_Front_Action
+<?php
+class Mdg_Giftregistry_SearchController extends Mage_Core_Controller_Front_Action
+{
+    public function indexAction()
     {
-        public function indexAction()
-        {
-            $this->loadLayout();
-            $this->renderLayout();
-            return $this;
-        }
-        public function resultsAction()
-        {
-            $this->loadLayout();
-            $this->renderLayout();
-            return $this;
-        }
+        $this->loadLayout();
+        $this->renderLayout();
+        return $this;
     }
-    ```
+    public function resultsAction()
+    {
+        $this->loadLayout();
+        $this->renderLayout();
+        return $this;
+    }
+}
+```
 
 我们现在将暂时留下`indexAction`，并且将专注于`resultsAction()`中涉及的逻辑，它将获取搜索参数并加载注册集合。
 
@@ -1301,29 +1301,29 @@ $this->getLayout()->getBlock('mdg_giftregistry.search.results')
 1.  打开我们刚创建的控制器，并参考以下占位符代码（文件位置为`app/code/local/Mdg/Giftregistry/controllers/ViewController.php`）：
 
 ```php
-    <?php
-    class Mdg_Giftregistry_ViewController extends Mage_Core_Controller_Front_Action
+<?php
+class Mdg_Giftregistry_ViewController extends Mage_Core_Controller_Front_Action
+{
+    public function viewAction()
     {
-        public function viewAction()
-        {
-            $registryId = $this->getRequest()->getParam('registry_id');
-            if($registryId){
-                $entity = Mage::getModel('mdg_giftregistry/entity');
-                if($entity->load($registryId))
-                {
-                    Mage::register('loaded_registry', $entity);
-                    $this->loadLayout();
-                    $this->_initLayoutMessages('customer/session');
-                    $this->renderLayout();
-                    return $this;
-                } else {
-                    $this->_forward('noroute');
-                    return $this;
-                }
+        $registryId = $this->getRequest()->getParam('registry_id');
+        if($registryId){
+            $entity = Mage::getModel('mdg_giftregistry/entity');
+            if($entity->load($registryId))
+            {
+                Mage::register('loaded_registry', $entity);
+                $this->loadLayout();
+                $this->_initLayoutMessages('customer/session');
+                $this->renderLayout();
+                return $this;
+            } else {
+                $this->_forward('noroute');
+                return $this;
             }
         }
     }
-    ```
+}
+```
 
 因此，我们在这里使用了一个新的函数`Mage::register()`，它设置了一个全局变量，我们可以在应用程序流程中的任何方法中稍后检索。这个函数是 Magento Registry 模式的一部分，由以下三个函数组成：
 
@@ -1348,26 +1348,26 @@ $this->getLayout()->getBlock('mdg_giftregistry.search.results')
 1.  添加以下代码（文件位置为`app/design/frontend/base/default/layout/mdg_giftregistry.xml`）：
 
 ```php
-    <layout version="0.1.0">
-      <mdg_giftregistry_index_index>
-      </mdg_giftregistry_index_index>  
+<layout version="0.1.0">
+  <mdg_giftregistry_index_index>
+  </mdg_giftregistry_index_index>  
 
-      <mdg_giftregistry_index_new>
-      </mdg_giftregistry_index_new>
+  <mdg_giftregistry_index_new>
+  </mdg_giftregistry_index_new>
 
-      <mdg_giftregistry_index_edit>
-      </mdg_giftregistry_index_edit>
+  <mdg_giftregistry_index_edit>
+  </mdg_giftregistry_index_edit>
 
-      <mdg_giftregistry_view_view>
-      </mdg_giftregistry_view_view>
+  <mdg_giftregistry_view_view>
+  </mdg_giftregistry_view_view>
 
-      <mdg_giftregistry_search_index>
-      </mdg_giftregistry_search_index>
+  <mdg_giftregistry_search_index>
+  </mdg_giftregistry_search_index>
 
-      <mdg_giftregistry_search_results>
-      </mdg_giftregistry_search_results>
-    </layout>
-    ```
+  <mdg_giftregistry_search_results>
+  </mdg_giftregistry_search_results>
+</layout>
+```
 
 ### 注意
 
@@ -1386,17 +1386,17 @@ $this->getLayout()->getBlock('mdg_giftregistry.search.results')
 1.  在`<frontend>`节点内添加以下代码（文件位置为`app/design/frontend/base/default/layout/mdg_giftregistry.xml`）：
 
 ```php
-    <frontend>
-       <layout>
-           <updates>
-               <mdg_giftregistry module="mdg_giftregistry">
-                   <file>mdg_giftregistry.xml</file>
-               </mdg_giftregistry>
-           </updates>
-       </layout>
-       …
-    </frontend>
-    ```
+<frontend>
+   <layout>
+       <updates>
+           <mdg_giftregistry module="mdg_giftregistry">
+               <file>mdg_giftregistry.xml</file>
+           </mdg_giftregistry>
+       </updates>
+   </layout>
+   …
+</frontend>
+```
 
 ## IndexController 块和视图
 
@@ -1417,22 +1417,22 @@ $this->getLayout()->getBlock('mdg_giftregistry.search.results')
 1.  复制以下代码（文件位置为`app/code/local/Mdg/Giftregistry/Block/List.php`）。
 
 ```php
-    <?php
-    class Mdg_Giftregistry_Block_list extends Mage_Core_Block_Template
+<?php
+class Mdg_Giftregistry_Block_list extends Mage_Core_Block_Template
+{
+    public function getCustomerRegistries()
     {
-        public function getCustomerRegistries()
+        $collection = null;
+        $currentCustomer = Mage::getSingleton('customer/session')->getCustomer();
+        if($currentCustomer)
         {
-            $collection = null;
-            $currentCustomer = Mage::getSingleton('customer/session')->getCustomer();
-            if($currentCustomer)
-            {
-                $collection = Mage::getModel('mdg_giftregistry/entity')->getCollection()
-                    ->addFieldToFilter('customer_id', $currentCustomer->getId());
-            }
-            return $collection;
+            $collection = Mage::getModel('mdg_giftregistry/entity')->getCollection()
+                ->addFieldToFilter('customer_id', $currentCustomer->getId());
         }
+        return $collection;
     }
-    ```
+}
+```
 
 前面的代码声明了我们将在`IndexController`中使用的列表块。块声明了`getCustomerRegistries()`方法，该方法将检查当前客户并尝试基于该客户检索注册表集合。
 
@@ -1443,10 +1443,10 @@ $this->getLayout()->getBlock('mdg_giftregistry.search.results')
 1.  在`<mdg_gifregistry_index_index>`内添加以下代码（文件位置为`app/design/frontend/base/default/layout/mdg_giftregistry.xml`）：
 
 ```php
-    <reference name="content">
-        <block name="giftregistry.list" type="mdg_giftregistry/list" template="mdg/list.phtml" as="giftregistry_list"/>
-    </reference>
-    ```
+<reference name="content">
+    <block name="giftregistry.list" type="mdg_giftregistry/list" template="mdg/list.phtml" as="giftregistry_list"/>
+</reference>
+```
 
 在布局中，我们声明了我们的块；在该声明内，我们设置了块名称、模板和类型。如果我们现在尝试加载索引控制器页面，由于我们还没有创建我们的模板文件，我们应该会看到有关缺少模板的错误。
 
@@ -1459,24 +1459,24 @@ $this->getLayout()->getBlock('mdg_giftregistry.search.results')
 1.  在该文件夹内，创建一个名为`list.phtml`的文件（文件位置为`app/design/frontend/base/default/template/mdg/list.phtml`）：
 
 ```php
-    <?php
-    $_collection = $this->getCustomerRegistries();
-    ?>
-    <div class="customer-list">
-        <ul>
-            <?php foreach($_collection as $registry): ?>
-                <li>
-                    <h3><?php echo $registry->getEventName(); ?></h3>
-                    <p><strong><?php echo $this->__('Event Date:') ?> <?php echo $registry->getEventDate(); ?></strong></p>
-                    <p><strong><?php echo $this->__('Event Location:') ?> <?php echo $registry->getEventLocation(); ?></strong></p>
-                    <a href="<?php echo $this->getUrl('giftregistry/view/view', array('_query' => array('registry_id' => $registry->getEntityId()))) ?>">
-                        <?php echo $this->__('View Registry') ?>
-                    </a>
-                </li>
-            <?php endforeach; ?>
-        </ul>
-    </div>
-    ```
+<?php
+$_collection = $this->getCustomerRegistries();
+?>
+<div class="customer-list">
+    <ul>
+        <?php foreach($_collection as $registry): ?>
+            <li>
+                <h3><?php echo $registry->getEventName(); ?></h3>
+                <p><strong><?php echo $this->__('Event Date:') ?> <?php echo $registry->getEventDate(); ?></strong></p>
+                <p><strong><?php echo $this->__('Event Location:') ?> <?php echo $registry->getEventLocation(); ?></strong></p>
+                <a href="<?php echo $this->getUrl('giftregistry/view/view', array('_query' => array('registry_id' => $registry->getEntityId()))) ?>">
+                    <?php echo $this->__('View Registry') ?>
+                </a>
+            </li>
+        <?php endforeach; ?>
+    </ul>
+</div>
+```
 
 这是我们第一次生成`.phtml`文件。正如我们之前提到的，`.phtml`文件只是 PHP 和 HTML 代码的组合。
 
@@ -1535,10 +1535,10 @@ $this->getLayout()->getBlock('mdg_giftregistry.search.results')
 1.  在`<mdg_gifregistry_index_new>`节点内添加以下代码（文件位置为`app/design/frontend/base/default/layout/mdg_giftregistry.xml`）：
 
 ```php
-    <reference name="content">
-        <block name="giftregistry.new" type="core/template" template="mdg/new.phtml" as="giftregistry_new"/>
-    </reference>
-    ```
+<reference name="content">
+    <block name="giftregistry.new" type="core/template" template="mdg/new.phtml" as="giftregistry_new"/>
+</reference>
+```
 
 由于我们只是显示一个表单来将注册表信息发布到`newPostAction()`，我们只是创建一个带有包含表单代码的自定义模板文件的 core/template 块。我们的模板文件将如下所示。
 
@@ -1598,16 +1598,16 @@ $this->getLayout()->getBlock('mdg_giftregistry.search.results')
 1.  在其中添加以下代码（文件位置为`app/code/local/Mdg/Giftregistry/Helper/Data.php`）：
 
 ```php
-    <?php
-    class Mdg_Giftregistry_Helper_Data extends Mage_Core_Helper_Abstract {
+<?php
+class Mdg_Giftregistry_Helper_Data extends Mage_Core_Helper_Abstract {
 
-    public function getEventTypes()
-        {
-            $collection = Mage::getModel('mdg_giftregistry/type')->getCollection();
-            return $collection;
-        }
+public function getEventTypes()
+    {
+        $collection = Mage::getModel('mdg_giftregistry/type')->getCollection();
+        return $collection;
     }
-    ```
+}
+```
 
 最后，我们需要设置编辑模板；编辑模板将与新模板完全相同，但有一个主要区别。我们将检查加载的注册表是否存在，并预填充我们字段的值。
 
@@ -1663,10 +1663,10 @@ $this->getLayout()->getBlock('mdg_giftregistry.search.results')
 1.  在`<mdg_gifregistry_index_edit>`节点内添加以下代码（文件位置为`app/design/frontend/base/default/layout/mdg_giftregistry.xml`）：
 
 ```php
-    <reference name="content">
-        <block name="giftregistry.edit" type="core/template" template="mdg/edit.phtml" as="giftregistry_edit"/>
-    </reference>
-    ```
+<reference name="content">
+    <block name="giftregistry.edit" type="core/template" template="mdg/edit.phtml" as="giftregistry_edit"/>
+</reference>
+```
 
 设置好后，我们可以尝试创建一对测试注册表并修改它们的属性。
 
@@ -1685,49 +1685,49 @@ $this->getLayout()->getBlock('mdg_giftregistry.search.results')
 1.  添加以下代码（文件位置为`app/design/frontend/base/default/template/mdg/search.phtml`）：
 
 ```php
-    <?php $helper = Mage::helper('mdg_giftregistry'); ?>
-    <form action="<?php echo $this->getUrl('giftregistry/search/results/') ?>" method="post" id="form-validate">
-        <fieldset>
-            <?php echo $this->getBlockHtml('formkey')?>
-            <ul class="form-list">
-                <li>
-                    <label for="type">Event type</label>
-                    <select name="type" id="type">
-                        <?php foreach($helper->getEventTypes() as $type): ?>
-                            <option id="<?php echo $type->getTypeId(); ?>" value="<?php echo $type->getCode(); ?>">
-                                <?php echo $type->getName(); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </li>
-                <li class="field">
-                    <label class="giftreg" for="name"><?php echo $this->__('Event Name') ?></label>
-                    <input type="text" name="name" id="name" value="" title="Event Name"/>
-                </li>
-                <li class="field">
-                    <label class="giftreg" for="location"><?php echo $this->__('Event Location') ?></label>
-                    <input type="text" name="location" id="location" value="" title="Event Location"/>
-                </li>
-                <li class="field">
-                    <label class="giftreg" for="country"><?php echo $this->__('Event Country') ?></label>
-                    <input type="text" name="country" id="country" value="" title="Event Country"/>
-                </li>
-            </ul>
-            <div class="buttons-set">
-                <button type="submit" title="Save" class="button">
-                        <span>
-                            <span><?php echo $this->__('Save') ?></span>
-                        </span>
-                </button>
-            </div>
-        </fieldset>
-    </form>
-    <script type="text/javascript">
-        //<![CDATA[
-        var dataForm = new VarienForm('form-validate', true);
-        //]]>
-    </script>
-    ```
+<?php $helper = Mage::helper('mdg_giftregistry'); ?>
+<form action="<?php echo $this->getUrl('giftregistry/search/results/') ?>" method="post" id="form-validate">
+    <fieldset>
+        <?php echo $this->getBlockHtml('formkey')?>
+        <ul class="form-list">
+            <li>
+                <label for="type">Event type</label>
+                <select name="type" id="type">
+                    <?php foreach($helper->getEventTypes() as $type): ?>
+                        <option id="<?php echo $type->getTypeId(); ?>" value="<?php echo $type->getCode(); ?>">
+                            <?php echo $type->getName(); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </li>
+            <li class="field">
+                <label class="giftreg" for="name"><?php echo $this->__('Event Name') ?></label>
+                <input type="text" name="name" id="name" value="" title="Event Name"/>
+            </li>
+            <li class="field">
+                <label class="giftreg" for="location"><?php echo $this->__('Event Location') ?></label>
+                <input type="text" name="location" id="location" value="" title="Event Location"/>
+            </li>
+            <li class="field">
+                <label class="giftreg" for="country"><?php echo $this->__('Event Country') ?></label>
+                <input type="text" name="country" id="country" value="" title="Event Country"/>
+            </li>
+        </ul>
+        <div class="buttons-set">
+            <button type="submit" title="Save" class="button">
+                    <span>
+                        <span><?php echo $this->__('Save') ?></span>
+                    </span>
+            </button>
+        </div>
+    </fieldset>
+</form>
+<script type="text/javascript">
+    //<![CDATA[
+    var dataForm = new VarienForm('form-validate', true);
+    //]]>
+</script>
+```
 
 有几件事情需要注意：
 
@@ -1742,10 +1742,10 @@ $this->getLayout()->getBlock('mdg_giftregistry.search.results')
 1.  在`<mdg_gifregistry_search_index>`内添加以下代码（文件位置为`app/design/frontend/base/default/layout/mdg_giftregistry.xml`）：
 
 ```php
-    <reference name="content">
-        <block name="giftregistry.search" type="core/template" template="mdg/search.phtml" as="giftregistry_search"/>
-    </reference>
-    ```
+<reference name="content">
+    <block name="giftregistry.search" type="core/template" template="mdg/search.phtml" as="giftregistry_search"/>
+</reference>
+```
 
 对于搜索结果，我们不需要创建新的块类型，因为我们直接将结果集合传递给块。在布局中，我们的更改将是最小的，我们可以重用列表块来显示搜索注册表结果。
 
@@ -1783,10 +1783,10 @@ public function resultsAction()
 1.  在`<mdg_gifregistry_search_results>`内添加以下代码（文件位置为`app/design/frontend/base/default/layout/mdg_giftregistry.xml`）：
 
 ```php
-    <reference name="content">
-        <block name="giftregistry.results" type="mdg_giftregistry/list" template="mdg/list.phtml"/>
-    </reference>
-    ```
+<reference name="content">
+    <block name="giftregistry.results" type="mdg_giftregistry/list" template="mdg/list.phtml"/>
+</reference>
+```
 
 这将是我们的`SearchController`模板的结束；然而，我们的搜索结果显示了一个问题。对于注册表的删除和编辑链接，我们需要一种方法来仅限制这些链接只对所有者可见。
 
@@ -1858,19 +1858,19 @@ public function isRegistryOwner($registryCustomerId)
 1.  添加以下代码（文件位置为`app/design/frontend/base/default/template/mdg/view.phtml`）：
 
 ```php
-    <?php $registry = Mage::registry('loaded_registry'); ?>
-    <h3><?php echo $registry->getEventName(); ?></h3>
-    <p><strong><?php $this->__('Event Date:') ?> <?php echo $registry->getEventDate(); ?></strong></p>
-    <p><strong><?php $this->__('Event Location:') ?> <?php echo $registry->getEventLocation(); ?></strong></p>
-    ```
+<?php $registry = Mage::registry('loaded_registry'); ?>
+<h3><?php echo $registry->getEventName(); ?></h3>
+<p><strong><?php $this->__('Event Date:') ?> <?php echo $registry->getEventDate(); ?></strong></p>
+<p><strong><?php $this->__('Event Location:') ?> <?php echo $registry->getEventLocation(); ?></strong></p>
+```
 
 1.  更新布局 XML 文件`<mdg_gifregistry_view_view>`。
 
 ```php
-    <reference name="content">
-        <block name="giftregistry.view" type="core/template" template="mdg/view.phtml" as="giftregistry_view"/>
-    </reference>
-    ```
+<reference name="content">
+    <block name="giftregistry.view" type="core/template" template="mdg/view.phtml" as="giftregistry_view"/>
+</reference>
+```
 
 ### 注意
 

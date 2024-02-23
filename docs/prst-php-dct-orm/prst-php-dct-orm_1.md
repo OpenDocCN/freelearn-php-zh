@@ -166,18 +166,18 @@ Doctrine 的实体管理器有很多其他有用的方法，这些方法在 Doct
 1.  打开您喜欢的终端，转到`blog/`目录（我们项目的根目录），并输入以下命令来安装 Composer：
 
 ```php
-     **curl -sS https://getcomposer.org/installer | php**
+ **curl -sS https://getcomposer.org/installer | php**
 
-    ```
+```
 
 一个名为`composer.phar`的新文件已经在目录中下载。这是 Composer 的一个自包含存档。
 
 1.  现在输入以下命令：
 
 ```php
-     **php composer.phar**
+ **php composer.phar**
 
-    ```
+```
 
 如果一切正常，将列出所有可用的命令。您的 Composer 安装已经准备就绪！
 
@@ -188,20 +188,20 @@ Doctrine 的实体管理器有很多其他有用的方法，这些方法在 Doct
 1.  要安装 Doctrine，我们需要在新的`blog`目录中创建一个名为`composer.json`的文件。它列出了我们项目的依赖项，如下面的代码所示：
 
 ```php
-    {
-        "name": "myname/blog",
-        "type": "project",
-        "description": "My small blog to play with Doctrine",
+{
+    "name": "myname/blog",
+    "type": "project",
+    "description": "My small blog to play with Doctrine",
 
-        "require": {
-     **"doctrine/orm": "2.4.*"**
-        },
+    "require": {
+ **"doctrine/orm": "2.4.*"**
+    },
 
-        "autoload": {
-     **"psr-0": { "": "src/" }**
-        }
-    } 
-    ```
+    "autoload": {
+ **"psr-0": { "": "src/" }**
+    }
+} 
+```
 
 Composer 将解析这个标准的 JSON 文件，以下载和安装所有指定的依赖项。一旦安装完成，Composer 将自动加载这些库的所有类。
 
@@ -228,9 +228,9 @@ PHP 规范请求是为了改进 PHP 应用程序和库的互操作性而尝试�
 1.  现在是使用 Composer 来安装 ORM 的时候了。运行以下命令：
 
 ```php
-     **php composer.phar install**
+ **php composer.phar install**
 
-    ```
+```
 
 `vendor/`目录中出现了新文件。Doctrine ORM 已经安装，Composer 足够智能，可以获取所有它的依赖，包括 Doctrine DBAL 和 Doctrine Common。
 
@@ -241,9 +241,9 @@ Doctrine 现在已经正确安装。很容易，不是吗？
 1.  要在 2.4 分支中有新版本发布时更新库，我们只需要输入以下命令：
 
 ```php
-     **php composer.phar update**
+ **php composer.phar update**
 
-    ```
+```
 
 # 引导应用程序
 
@@ -252,17 +252,17 @@ Doctrine 现在已经正确安装。很容易，不是吗？
 1.  创建一个名为`config/config.php`的新文件，其中包含我们应用程序的配置参数，如下所示：
 
 ```php
-      <?php
+  <?php
 
-      // App configuration
-      $dbParams = [
-        'driver' => 'pdo_sqlite',
-        'path' => __DIR__.'/../data/blog.db'
-      ];
+  // App configuration
+  $dbParams = [
+    'driver' => 'pdo_sqlite',
+    'path' => __DIR__.'/../data/blog.db'
+  ];
 
-      // Dev mode?
-      $dev = true;
-    ```
+  // Dev mode?
+  $dev = true;
+```
 
 Doctrine 的配置参数存储在`$dbParams`数组中。我们将使用一个名为`blog.db`的 SQLite 数据库，存储在`data/`目录中。如果你想使用 MySQL 或任何其他 DBMS，你将在这里配置要使用的驱动程序、数据库名称和访问凭据。
 
@@ -271,14 +271,14 @@ Doctrine 的配置参数存储在`$dbParams`数组中。我们将使用一个名
 以下是使用 MySQL 而不是 SQLite 的示例配置：
 
 ```php
-    $dbParams = [
-        'driver' => 'pdo_mysql',
-        'host' => '127.0.0.1',
-        'dbname' => 'blog',
-        'user' => 'root',
-        'password' => ''
-    ];
-    ```
+$dbParams = [
+    'driver' => 'pdo_mysql',
+    'host' => '127.0.0.1',
+    'dbname' => 'blog',
+    'user' => 'root',
+    'password' => ''
+];
+```
 
 配置键是不言自明的。
 
@@ -291,11 +291,11 @@ Doctrine 的配置参数存储在`$dbParams`数组中。我们将使用一个名
 1.  接下来，我们需要一种方法来引导我们的应用程序。在`src/`目录中创建一个名为`bootstrap.php`的文件。这个文件将加载我们需要的一切，如下面的代码所示：
 
 ```php
-      <?php
+  <?php
 
-      require_once __DIR__.'/../vendor/autoload.php';
-      require_once __DIR__.'/../config/config.php';
-    ```
+  require_once __DIR__.'/../vendor/autoload.php';
+  require_once __DIR__.'/../config/config.php';
+```
 
 第一行需要 Composer 自动加载程序。它允许您自动加载 Doctrine 的类、项目的类（将在`src/`目录中），以及使用 Composer 安装的任何库的类。
 

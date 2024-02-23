@@ -110,14 +110,14 @@
 有关完整的代码片段，请参考代码文件夹中的`Lesson 4.php`文件。
 
 ```php
-    <html>
-        <body>
-            <form action="index.php" method="post">
-    ......
-            </form>
-        </body>
-    </html>
-    ```
+<html>
+    <body>
+        <form action="index.php" method="post">
+......
+        </form>
+    </body>
+</html>
+```
 
 1.  现在我们有了表单，我们希望能够查看提交给表单的数据：
 
@@ -126,24 +126,24 @@
 有关完整的代码片段，请参考代码文件夹中的`Lesson 4.php`文件。
 
 ```php
-    <?php
-        if($_POST){
-            echo "First Name: " . $_POST['firstname'] . "\n";
-            echo "Last Name: " . $_POST['lastname'] . "\n";
-    ......
-    id="email"/>
-                <br>
-                <button type="submit">Save</button>
-            </form>
-        </body>
-    </html>
-    ```
+<?php
+    if($_POST){
+        echo "First Name: " . $_POST['firstname'] . "\n";
+        echo "Last Name: " . $_POST['lastname'] . "\n";
+......
+id="email"/>
+            <br>
+            <button type="submit">Save</button>
+        </form>
+    </body>
+</html>
+```
 
 1.  现在，为了看到我们的表单起作用，我们将在终端中打开工作目录并运行以下命令：
 
 ```php
-    php -S localhost:8000 -t
-    ```
+php -S localhost:8000 -t
+```
 
 对于任何 Web 应用程序，您都需要一种存储数据的方式。允许您将当前状态持久保存在 MySQL 数据库中的服务称为持久性。如果变量允许您暂时存储数据，持久性允许您长期存储数据在数据库中。
 
@@ -388,31 +388,31 @@ PHP 中主要使用的数据库类型是 MySQL。MySQL 数据库被称为关系�
 1.  使用以下命令连接到 MySQL：
 
 ```php
-    mysql –u root –p
-    ```
+mysql –u root –p
+```
 
 1.  接下来，创建`packt_database`数据库：
 
 ```php
-    create database packt_database;
-    ```
+create database packt_database;
+```
 
 1.  告诉 MySQL 使用新创建的数据库：
 
 ```php
-    use packt_database;
-    ```
+use packt_database;
+```
 
 1.  最后，创建用户表：
 
 ```php
-    CREATE TABLE users (
-                id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY,
-                firstname VARCHAR(30) NOT NULL,
-               lastname VARCHAR(30) NOT NULL,
-    email VARCHAR(30) NOT NULL
-    );
-    ```
+CREATE TABLE users (
+            id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY,
+            firstname VARCHAR(30) NOT NULL,
+           lastname VARCHAR(30) NOT NULL,
+email VARCHAR(30) NOT NULL
+);
+```
 
 1.  现在，我们可以关闭我们的终端并开始完成我们的应用程序。
 
@@ -431,26 +431,26 @@ PHP 中主要使用的数据库类型是 MySQL。MySQL 数据库被称为关系�
 有关完整的代码片段，请参考代码文件夹中的`Lesson 4.php`文件。
 
 ```php
-    <?php
+<?php
 
-        if($_POST){
-            if(!$_POST['firstname'] || !$_POST['lastname'] || !$_POST['email']){
-                exit("All fields are required.");
-            }
+    if($_POST){
+        if(!$_POST['firstname'] || !$_POST['lastname'] || !$_POST['email']){
+            exit("All fields are required.");
+        }
 
-            $host = "DATABASE_HOST";
-            $username = "DATABASE_USERNAME";
-            $password = "DATABASE_PASSWORD";
-            $database = "packt_database";
+        $host = "DATABASE_HOST";
+        $username = "DATABASE_USERNAME";
+        $password = "DATABASE_PASSWORD";
+        $database = "packt_database";
 
-            try {
-                $conn = new PDO("mysql:host=$host;dbname=$database", $username, $password);
-    ......
-      <button type="submit">Save</button>
-            </form>
-        </body>
-    </html>
-    ```
+        try {
+            $conn = new PDO("mysql:host=$host;dbname=$database", $username, $password);
+......
+  <button type="submit">Save</button>
+        </form>
+    </body>
+</html>
+```
 
 1.  接下来，继续使用`INSERT`查询将用户输入添加到数据库中：
 
@@ -459,29 +459,29 @@ PHP 中主要使用的数据库类型是 MySQL。MySQL 数据库被称为关系�
 有关完整的代码片段，请参考代码文件夹中的`Lesson 4.php`文件。
 
 ```php
-    <?php
+<?php
 
-        if($_POST){
-            if(!$_POST['firstname'] || !$_POST['lastname'] || !$_POST['email']){
-                exit("All fields are required.");
-            }
+    if($_POST){
+        if(!$_POST['firstname'] || !$_POST['lastname'] || !$_POST['email']){
+            exit("All fields are required.");
+        }
 
-    .......
-                <br>
-                <label>Email</label>
-                <input type="text" name="email" id="email"/>
-                <br>
-                <button type="submit">Save</button>
-            </form>
-        </body>
-    </html>
-    ```
+.......
+            <br>
+            <label>Email</label>
+            <input type="text" name="email" id="email"/>
+            <br>
+            <button type="submit">Save</button>
+        </form>
+    </body>
+</html>
+```
 
 1.  现在，您已经准备好测试简单的应用程序。在终端中打开`user_list`目录，并使用以下命令来启动您的应用程序：
 
 ```php
-    php -S localhost:8000 -t .
-    ```
+php -S localhost:8000 -t .
+```
 
 # 总结
 

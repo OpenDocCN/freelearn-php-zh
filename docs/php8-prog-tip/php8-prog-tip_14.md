@@ -269,121 +269,121 @@ foreach ($config['callbacks'] as $key => $value)
 1.  首先，我们设置类基础设施，将其放在`/repo/src/Php8/Migration`目录中：
 
 ```php
-    // /repo/src/Php8/Migration/BreakScan.php
-    declare(strict_types=1);
-    namespace Php8\Migration;
-    use InvalidArgumentException;
-    use UnexpectedValueException;
-    class BreakScan {
-    ```
+// /repo/src/Php8/Migration/BreakScan.php
+declare(strict_types=1);
+namespace Php8\Migration;
+use InvalidArgumentException;
+use UnexpectedValueException;
+class BreakScan {
+```
 
 1.  接下来，我们定义一组类常量，用于表示任何给定的后扫描失败的性质的消息：
 
 ```php
-        const ERR_MAGIC_SIGNATURE = 'WARNING: magic method '
-            . 'signature for %s does not appear to match '
-            . 'required signature';
-        const ERR_NAMESPACE = 'WARNING: namespaces can no '
-            . 'longer contain spaces in PHP 8.';
-        const ERR_REMOVED = 'WARNING: the following function'
-            . 'has been removed: %s.  Use this instead: %s';
-        // not all constants are shown
-    ```
+    const ERR_MAGIC_SIGNATURE = 'WARNING: magic method '
+        . 'signature for %s does not appear to match '
+        . 'required signature';
+    const ERR_NAMESPACE = 'WARNING: namespaces can no '
+        . 'longer contain spaces in PHP 8.';
+    const ERR_REMOVED = 'WARNING: the following function'
+        . 'has been removed: %s.  Use this instead: %s';
+    // not all constants are shown
+```
 
 1.  我们还定义了一组表示配置数组键的常量。我们这样做是为了在配置文件和调用程序中保持键定义的一致性（稍后讨论）：
 
 ```php
-        const KEY_REMOVED         = 'removed';
-        const KEY_CALLBACK        = 'callbacks';
-        const KEY_MAGIC           = 'magic';
-        const KEY_RESOURCE        = 'resource';
-    ```
+    const KEY_REMOVED         = 'removed';
+    const KEY_CALLBACK        = 'callbacks';
+    const KEY_MAGIC           = 'magic';
+    const KEY_RESOURCE        = 'resource';
+```
 
 1.  然后我们初始化关键属性，表示配置，要扫描的文件的内容和任何消息：
 
 ```php
-        public $config = [];
-        public $contents = '';
-        public $messages = [];
-    ```
+    public $config = [];
+    public $contents = '';
+    public $messages = [];
+```
 
 1.  `__construct()`方法接受我们的断点扫描配置文件作为参数，并循环遍历所有键以确保它们存在：
 
 ```php
-        public function __construct(array $config) {
-            $this->config = $config;
-            $required = [self::KEY_CALLBACK,
-                self::KEY_REMOVED,
-                self::KEY_MAGIC, 
-                self::KEY_RESOURCE];
-            foreach ($required as $key) {
-                if (!isset($this->config[$key])) {
-                    $message = sprintf(
-                        self::ERR_MISSING_KEY, $key);
-                    throw new Exception($message);
-                }
-            }
-        }
-    ```
+    public function __construct(array $config) {
+        $this->config = $config;
+        $required = [self::KEY_CALLBACK,
+            self::KEY_REMOVED,
+            self::KEY_MAGIC, 
+            self::KEY_RESOURCE];
+        foreach ($required as $key) {
+            if (!isset($this->config[$key])) {
+                $message = sprintf(
+                    self::ERR_MISSING_KEY, $key);
+                throw new Exception($message);
+            }
+        }
+    }
+```
 
 1.  然后我们定义一个方法，读取要扫描的文件的内容。请注意，我们删除回车（`"\r"`)和换行符（`"\n"`)，以便通过正则表达式更容易处理扫描：
 
 ```php
-        public function getFileContents(string $fn) {
-            if (!file_exists($fn)) {
-                self::$className = '';
-                $this->contents  = '';
-                throw new  Exception(
-                    sprintf(self::ERR_FILE_NOT_FOUND, $fn));
-            }
-            $this->contents = file_get_contents($fn);
-            $this->contents = str_replace(["\r","\n"],
-                ['', ' '], $this->contents);
-            return $this->contents;
-        }
-    ```
+    public function getFileContents(string $fn) {
+        if (!file_exists($fn)) {
+            self::$className = '';
+            $this->contents  = '';
+            throw new  Exception(
+                sprintf(self::ERR_FILE_NOT_FOUND, $fn));
+        }
+        $this->contents = file_get_contents($fn);
+        $this->contents = str_replace(["\r","\n"],
+            ['', ' '], $this->contents);
+        return $this->contents;
+    }
+```
 
 1.  一些回调需要一种方法来提取类名或命名空间。为此，我们定义了静态的`getKeyValue()`方法：
 
 ```php
-        public static function getKeyValue(
-            string $contents, string $key, string $end) {
-            $pos = strpos($contents, $key);
-            $end = strpos($contents, $end, 
-                $pos + strlen($key) + 1);
-            return trim(substr($contents, 
-                $pos + strlen($key), 
-                $end - $pos - strlen($key)));
-        }
-    ```
+    public static function getKeyValue(
+        string $contents, string $key, string $end) {
+        $pos = strpos($contents, $key);
+        $end = strpos($contents, $end, 
+            $pos + strlen($key) + 1);
+        return trim(substr($contents, 
+            $pos + strlen($key), 
+            $end - $pos - strlen($key)));
+    }
+```
 
 这个方法寻找关键字（例如，`class`）。然后找到关键字后面的内容，直到分隔符（例如，`';'）。所以，如果你想要获取类名，你可以执行以下操作：`$name = BreakScan::geyKeyValue($contents,'class',';')`。
 
 1.  我们还需要一种方法来检索和重置`$this->messages`。以下是这两种方法：
 
 ```php
-        public function clearMessages() : void {
-            $this->messages = [];
-        }
-        public function getMessages(bool $clear = FALSE) {
-            $messages = $this->messages;
-            if ($clear) $this->clearMessages();
-            return $messages;
-        }
-    ```
+    public function clearMessages() : void {
+        $this->messages = [];
+    }
+    public function getMessages(bool $clear = FALSE) {
+        $messages = $this->messages;
+        if ($clear) $this->clearMessages();
+        return $messages;
+    }
+```
 
 1.  然后我们定义一个运行所有扫描的方法（在下一节中涵盖）。这个方法还会收集检测到的潜在 BC 断点的数量并报告总数：
 
 ```php
-        public function runAllScans() : int {
-            $found = 0;
-            $found += $this->scanRemovedFunctions();
-            $found += $this->scanIsResource();
-            $found += $this->scanMagicSignatures();
-            $found += $this->scanFromCallbacks();
-            return $found;
-        }
-    ```
+    public function runAllScans() : int {
+        $found = 0;
+        $found += $this->scanRemovedFunctions();
+        $found += $this->scanIsResource();
+        $found += $this->scanMagicSignatures();
+        $found += $this->scanFromCallbacks();
+        return $found;
+    }
+```
 
 现在你已经对基本的`BreakScan`类基础设施可能是什么有了一个概念，让我们来看看单独的扫描方法。
 
@@ -396,130 +396,130 @@ foreach ($config['callbacks'] as $key => $value)
 1.  我们首先检查的方法是`scanRemovedFunctions()`。在这个方法中，我们搜索函数名称，后面直接跟着开括号`'('`，或者是空格和开括号`' ('`。如果找到函数，我们递增`$found`，并将适当的警告和建议的替换添加到`$this-> messages`中。如果没有发现潜在的破坏，我们添加一个成功消息并返回`0`：
 
 ```php
-    public function scanRemovedFunctions() : int {
-        $found = 0;
-        $config = $this->config[self::KEY_REMOVED];
-        foreach ($config as $func => $replace) {
-            $search1 = ' ' . $func . '(';
-            $search2 = ' ' . $func . ' (';
-            if (
-                strpos($this->contents, $search1) !== FALSE
-                || 
-                strpos($this->contents, $search2) !== FALSE)
-            {
-                $this->messages[] = sprintf(
-                    self::ERR_REMOVED, $func, $replace);
-                $found++;
-            }
-        }
-        if ($found === 0)
-            $this->messages[] = sprintf(
-                self::OK_PASSED, __FUNCTION__);
-        return $found;
-    }
-    ```
+public function scanRemovedFunctions() : int {
+    $found = 0;
+    $config = $this->config[self::KEY_REMOVED];
+    foreach ($config as $func => $replace) {
+        $search1 = ' ' . $func . '(';
+        $search2 = ' ' . $func . ' (';
+        if (
+            strpos($this->contents, $search1) !== FALSE
+            || 
+            strpos($this->contents, $search2) !== FALSE)
+        {
+            $this->messages[] = sprintf(
+                self::ERR_REMOVED, $func, $replace);
+            $found++;
+        }
+    }
+    if ($found === 0)
+        $this->messages[] = sprintf(
+            self::OK_PASSED, __FUNCTION__);
+    return $found;
+}
+```
 
 这种方法的主要问题是，如果函数没有在空格之前，则不会检测到其使用。但是，如果我们在搜索中不包括前导空格，我们可能会得到错误的结果。例如，没有前导空格，每个`foreach()`的实例在寻找`each()`时都会触发破坏扫描器的警告！
 
 1.  接下来，我们看一下扫描`is_resource()`使用的方法。如果找到引用，此方法将遍历不再生成资源的函数列表。如果同时找到`is_resource()`和其中一个这些方法，将标记潜在的 BC 破坏：
 
 ```php
-    public function scanIsResource() : int {
-        $found = 0;
-        $search = 'is_resource';
-        if (strpos($this->contents, $search) === FALSE)
-            return 0;
-        $config = $this->config[self::KEY_RESOURCE];
-        foreach ($config as $func) {
-            if ((strpos($this->contents, $func) !== FALSE)){
-                $this->messages[] =
-                    sprintf(self::ERR_IS_RESOURCE, $func);
-                $found++;
-            }
-        }
-        if ($found === 0)
-            $this->messages[] = 
-                sprintf(self::OK_PASSED, __FUNCTION__);
-        return $found;
-    }
-    ```
+public function scanIsResource() : int {
+    $found = 0;
+    $search = 'is_resource';
+    if (strpos($this->contents, $search) === FALSE)
+        return 0;
+    $config = $this->config[self::KEY_RESOURCE];
+    foreach ($config as $func) {
+        if ((strpos($this->contents, $func) !== FALSE)){
+            $this->messages[] =
+                sprintf(self::ERR_IS_RESOURCE, $func);
+            $found++;
+        }
+    }
+    if ($found === 0)
+        $this->messages[] = 
+            sprintf(self::OK_PASSED, __FUNCTION__);
+    return $found;
+}
+```
 
 1.  然后我们看一下需要通过我们的回调列表的内容。您还记得，我们需要在简单的`strpos()`无法满足的情况下使用回调。因此，我们首先收集所有回调子键并依次循环遍历每个子键。如果没有底层键*callback*，我们会抛出一个`Exception`。否则，我们运行回调，提供`$this->contents`作为参数。如果发现任何潜在的 BC 破坏，我们添加适当的错误消息，并递增`$found`：
 
 ```php
-    public function scanFromCallbacks() {
-        $found = 0;
-        $list = array_keys($this-config[self::KEY_CALLBACK]);
-        foreach ($list as $key) {
-            $config = $this->config[self::KEY_CALLBACK][$key] 
-                ?? NULL;
-            if (empty($config['callback']) 
-                || !is_callable($config['callback'])) {
-                $message = sprintf(self::ERR_INVALID_KEY,
-                    self::KEY_CALLBACK . ' => ' 
-                    . $key . ' => callback');
-                throw new Exception($message);
-            }
-            if ($config'callback') {
-                $this->messages[] = $config['msg'];
-                $found++;
-            }
-        }
-        return $found;
-    }
-    ```
+public function scanFromCallbacks() {
+    $found = 0;
+    $list = array_keys($this-config[self::KEY_CALLBACK]);
+    foreach ($list as $key) {
+        $config = $this->config[self::KEY_CALLBACK][$key] 
+            ?? NULL;
+        if (empty($config['callback']) 
+            || !is_callable($config['callback'])) {
+            $message = sprintf(self::ERR_INVALID_KEY,
+                self::KEY_CALLBACK . ' => ' 
+                . $key . ' => callback');
+            throw new Exception($message);
+        }
+        if ($config'callback') {
+            $this->messages[] = $config['msg'];
+            $found++;
+        }
+    }
+    return $found;
+}
+```
 
 1.  最后，我们转向迄今为止最复杂的方法，该方法扫描无效的魔术方法签名。主要问题是方法签名差异很大，因此我们需要构建单独的正则表达式来正确测试有效性。正则表达式存储在 BC 破坏配置文件中。如果检测到魔术方法，我们检索其正确的签名并将其添加到`$this->messages`中。
 
 1.  首先，我们检查是否有任何魔术方法，通过查找与`function __`匹配的内容：
 
 ```php
-    public function scanMagicSignatures() : int {
-        $found   = 0;
-        $matches = [];
-        $result  = preg_match_all(
-            '/function __(.+?)\b/', 
-            $this->contents, $matches);
-    ```
+public function scanMagicSignatures() : int {
+    $found   = 0;
+    $matches = [];
+    $result  = preg_match_all(
+        '/function __(.+?)\b/', 
+        $this->contents, $matches);
+```
 
 1.  如果匹配数组不为空，我们循环遍历匹配集并将魔术方法名称分配给`$key`：
 
 ```php
-       if (!empty($matches[1])) {
-            $config = $this->config[self::KEY_MAGIC] ?? NULL;
-            foreach ($matches[1] as $name) {
-                $key = '__' . $name;
-    ```
+   if (!empty($matches[1])) {
+        $config = $this->config[self::KEY_MAGIC] ?? NULL;
+        foreach ($matches[1] as $name) {
+            $key = '__' . $name;
+```
 
 1.  如果未设置与假定魔术方法匹配的配置键，我们假设它既不是魔术方法，也不在配置文件中，因此无需担心。否则，如果存在键，我们提取表示分配给`$sub`的方法调用的子字符串：
 
 ```php
-                if (empty($config[$key])) continue;
-                if ($pos = strpos($this->contents, $key)) {
-                    $end = strpos($this->contents, 
-                        '{', $pos);
-                $sub = (empty($sub) || !is_string($sub))
-                     ? '' : trim($sub);
-    ```
+            if (empty($config[$key])) continue;
+            if ($pos = strpos($this->contents, $key)) {
+                $end = strpos($this->contents, 
+                    '{', $pos);
+            $sub = (empty($sub) || !is_string($sub))
+                 ? '' : trim($sub);
+```
 
 1.  然后，我们从配置中提取正则表达式并将其与子字符串匹配。该模式表示该特定魔术方法的正确签名。如果`preg_match()`返回`FALSE`，我们知道实际签名不正确，并将其标记为潜在的 BC 破坏。我们检索并存储警告消息并递增`$found`：
 
 ```php
-                $ptn = $config[$key]['regex'] ?? '/.*/';
-                if (!preg_match($ptn, $sub)) {
-                    $this->messages[] = sprintf(
-                      self::ERR_MAGIC_SIGNATURE, $key);
-                    $this->messages[] = 
-                      $config[$key]['signature'] 
-                      ?? 'Check signature'
-                    $found++;
-        }}}}
-        if ($found === 0)
-            $this->messages[] = sprintf(
-                self::OK_PASSED, __FUNCTION__);
-         return $found;
-    }
-    ```
+            $ptn = $config[$key]['regex'] ?? '/.*/';
+            if (!preg_match($ptn, $sub)) {
+                $this->messages[] = sprintf(
+                  self::ERR_MAGIC_SIGNATURE, $key);
+                $this->messages[] = 
+                  $config[$key]['signature'] 
+                  ?? 'Check signature'
+                $found++;
+    }}}}
+    if ($found === 0)
+        $this->messages[] = sprintf(
+            self::OK_PASSED, __FUNCTION__);
+     return $found;
+}
+```
 
 这结束了我们对`BreakScan`类的审查。现在我们将注意力转向定义调用程序，该程序需要运行`BreakScan`类中编程的扫描。
 
@@ -532,129 +532,129 @@ foreach ($config['callbacks'] as $key => $value)
 1.  我们首先通过配置自动加载程序并从命令行（`$argv`）或 URL（`$_GET`）获取路径和详细级别。此外，我们提供了一个选项，将结果写入 CSV 文件，并接受此类文件的名称作为参数。您可能注意到我们还进行了一定程度的输入消毒，尽管理论上 BC 破坏扫描器只会在开发服务器上直接由开发人员使用：
 
 ```php
-    // /repo/ch11/php7_bc_break_scanner.php
-    define('DEMO_PATH', __DIR__);
-    require __DIR__ . '/../src/Server/Autoload/Loader.php';
-    $loader = new \Server\Autoload\Loader();
-    use Php8\Migration\BreakScan;
-    // some code not shown
-    $path = $_GET['path'] ?? $argv[1] ?? NULL;
-    $show = $_GET['show'] ?? $argv[2] ?? 0;
-    $show = (int) $show;
-    $csv  = $_GET['csv']  ?? $argv[3] ?? '';
-    $csv  = basename($csv);
-    ```
+// /repo/ch11/php7_bc_break_scanner.php
+define('DEMO_PATH', __DIR__);
+require __DIR__ . '/../src/Server/Autoload/Loader.php';
+$loader = new \Server\Autoload\Loader();
+use Php8\Migration\BreakScan;
+// some code not shown
+$path = $_GET['path'] ?? $argv[1] ?? NULL;
+$show = $_GET['show'] ?? $argv[2] ?? 0;
+$show = (int) $show;
+$csv  = $_GET['csv']  ?? $argv[3] ?? '';
+$csv  = basename($csv);
+```
 
 1.  接下来我们确认路径。如果找不到，我们将退出并显示使用信息（`$usage`未显示）：
 
 ```php
-    if (empty($path)) {
-        if (!empty($_SERVER['REQUEST_URI']))
-            echo '<pre>' . $usage . '</pre>';
-        else
-            echo $usage;
-        exit;
-    }
-    ```
+if (empty($path)) {
+    if (!empty($_SERVER['REQUEST_URI']))
+        echo '<pre>' . $usage . '</pre>';
+    else
+        echo $usage;
+    exit;
+}
+```
 
 1.  然后我们抓取 BC 破坏配置文件并创建`BreakScan`实例：
 
 ```php
-    $config  = include __DIR__ 
-    . '/php8_bc_break_scanner_config.php';
-    $scanner = new BreakScan($config);
-    ```
+$config  = include __DIR__ 
+. '/php8_bc_break_scanner_config.php';
+$scanner = new BreakScan($config);
+```
 
 1.  为了构建文件列表，我们使用`RecursiveDirectoryIterator`，包装在`RecursiveIteratorIterator`中，从给定路径开始。然后，这个列表通过`FilterIterator`进行过滤，限制扫描仅限于 PHP 文件：
 
 ```php
-    $iter = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($path));
-    $filter = new class ($iter) extends FilterIterator {
-        public function accept() {
-            $obj = $this->current();
-            return ($obj->getExtension() === 'php');
-        }
-    };
-    ```
+$iter = new RecursiveIteratorIterator(
+    new RecursiveDirectoryIterator($path));
+$filter = new class ($iter) extends FilterIterator {
+    public function accept() {
+        $obj = $this->current();
+        return ($obj->getExtension() === 'php');
+    }
+};
+```
 
 1.  如果开发人员选择 CSV 选项，将创建一个`SplFileObject`实例。与此同时，我们还输出了一个标题数组。此外，我们定义了一个写入 CSV 文件的匿名函数：
 
 ```php
-    if ($csv) {
-        $csv_file = new SplFileObject($csv, 'w');
-        $csv_file->fputcsv(
-            ['Directory','File','OK','Messages']);
-    }
-    $write = function ($dir, $fn, $found, $messages) 
-        use ($csv_file) {
-        $ok = ($found === 0) ? 1 : 0;
-        $csv_file->fputcsv([$dir, $fn, $ok, $messages]);
-        return TRUE;
-    };
-    ```
+if ($csv) {
+    $csv_file = new SplFileObject($csv, 'w');
+    $csv_file->fputcsv(
+        ['Directory','File','OK','Messages']);
+}
+$write = function ($dir, $fn, $found, $messages) 
+    use ($csv_file) {
+    $ok = ($found === 0) ? 1 : 0;
+    $csv_file->fputcsv([$dir, $fn, $ok, $messages]);
+    return TRUE;
+};
+```
 
 1.  我们通过循环遍历`FilterIterator`实例呈现的文件列表来启动扫描。由于我们是逐个文件扫描，所以在每次通过时`$found`都被清零。但是，我们确实保持`$total`，以便在最后给出潜在 BC 破坏的总数。您可能还注意到我们区分文件和目录。如果目录发生变化，其名称将显示为标题：
 
 ```php
-    $dir   = '';
-    $total = 0;
-    foreach ($filter as $name => $obj) {
-        $found = 0;
-        $scanner->clearMessages();
-        if (dirname($name) !== $dir) {
-            $dir = dirname($name);
-            echo "Processing Directory: $name\n";
-        }
-    ```
+$dir   = '';
+$total = 0;
+foreach ($filter as $name => $obj) {
+    $found = 0;
+    $scanner->clearMessages();
+    if (dirname($name) !== $dir) {
+        $dir = dirname($name);
+        echo "Processing Directory: $name\n";
+    }
+```
 
 1.  我们使用`SplFileObject::isDir()`来确定文件列表中的项目是否是目录。如果是，我们将继续处理列表中的下一个项目。然后我们将文件内容推送到`$scanner`并运行所有扫描。然后以字符串形式检索消息：
 
 ```php
-        if ($obj->isDir()) continue;
-        $fn = basename($name);
-        $scanner->getFileContents($name);
-        $found    = $scanner->runAllScans();
-        $messages = implode("\n", $scanner->getMessages());
-    ```
+    if ($obj->isDir()) continue;
+    $fn = basename($name);
+    $scanner->getFileContents($name);
+    $found    = $scanner->runAllScans();
+    $messages = implode("\n", $scanner->getMessages());
+```
 
 1.  我们使用`switch()`块根据`$show`表示的显示级别采取行动。级别`0`仅显示发现潜在 BC 破坏的文件。级别`1`显示此外还有消息。级别`2`显示所有可能的输出，包括成功消息：
 
 ```php
-        switch ($show) {
-            case 2 :
-                echo "Processing: $fn\n";
-                echo "$messages\n";
-                if ($csv) 
-                    $write($dir, $fn, $found, $messages);
-                break;
-            case 1 :
-                if (!$found) break;
-                echo "Processing: $fn\n";
-                echo BreakScan::WARN_BC_BREAKS . "\n";
-                printf(BreakScan::TOTAL_BREAKS, $found);
-                echo "$messages\n";
-                if ($csv) 
-                    $write($dir, $fn, $found, $messages);
-                break;
-            case 0 :
-            default :
-                if (!$found) break;
-                echo "Processing: $fn\n";
-                echo BreakScan::WARN_BC_BREAKS . "\n";
-                if ($csv) 
-                    $write($dir, $fn, $found, $messages);
-        }
-    ```
+    switch ($show) {
+        case 2 :
+            echo "Processing: $fn\n";
+            echo "$messages\n";
+            if ($csv) 
+                $write($dir, $fn, $found, $messages);
+            break;
+        case 1 :
+            if (!$found) break;
+            echo "Processing: $fn\n";
+            echo BreakScan::WARN_BC_BREAKS . "\n";
+            printf(BreakScan::TOTAL_BREAKS, $found);
+            echo "$messages\n";
+            if ($csv) 
+                $write($dir, $fn, $found, $messages);
+            break;
+        case 0 :
+        default :
+            if (!$found) break;
+            echo "Processing: $fn\n";
+            echo BreakScan::WARN_BC_BREAKS . "\n";
+            if ($csv) 
+                $write($dir, $fn, $found, $messages);
+    }
+```
 
 1.  最后，我们累积总数并显示最终结果：
 
 ```php
-        $total += $found;
-    }
-    echo "\n" . str_repeat('-', 40) . "\n";
-    echo "\nTotal number of possible BC breaks: $total\n";
-    ```
+    $total += $found;
+}
+echo "\n" . str_repeat('-', 40) . "\n";
+echo "\nTotal number of possible BC breaks: $total\n";
+```
 
 现在您已经了解了调用可能的外观，让我们来看一下测试扫描的结果。
 
@@ -829,33 +829,33 @@ docker run -it \
 1.  使用**apt**实用程序更新和升级当前的软件包集。可以使用任何软件包管理器；但是，我们展示了使用`apt`来保持这里涵盖的安装步骤之间的一致性：
 
 ```php
-    apt update
-    apt upgrade
-    ```
+apt update
+apt upgrade
+```
 
 1.  将`Ondrej PPA`存储库添加到您的`apt`源中：
 
 ```php
-    add-apt-repository ppa:ondrej/php
-    ```
+add-apt-repository ppa:ondrej/php
+```
 
 1.  安装 PHP 8。这只安装了 PHP 8 核心和基本扩展：
 
 ```php
-    apt install php8.0
-    ```
+apt install php8.0
+```
 
 1.  使用以下命令扫描存储库以获取额外的扩展，并使用`apt`根据需要安装它们：
 
 ```php
-    apt search php8.0-*
-    ```
+apt search php8.0-*
+```
 
 1.  进行 PHP 版本检查，以确保您现在正在运行 PHP 8：
 
 ```php
-    php --version
-    ```
+php --version
+```
 
 以下是版本检查输出：
 
@@ -919,66 +919,66 @@ docker run -it unlikelysource/fedora_34_with_php_7_4 /bin/bash
 1.  首先，确认您正在使用的操作系统版本和发行版是一个好主意。为此，使用`uname`命令，以及一个简单的`cat`命令来查看发行版（存储在`/etc`目录中的文本文件）：
 
 ```php
-    [root@9d4e8c93d7b6 /]# uname -a
-    Linux 9d4e8c93d7b6 5.8.0-55-generic #62~20.04.1-Ubuntu
-    SMP Wed Jun 2 08:55:04 UTC 2021 x86_64 x86_64 x86_64 GNU/Linux
-    [root@9d4e8c93d7b6 /]# cat /etc/fedora-release 
-    Fedora release 34 (Thirty Four)
-    ```
+[root@9d4e8c93d7b6 /]# uname -a
+Linux 9d4e8c93d7b6 5.8.0-55-generic #62~20.04.1-Ubuntu
+SMP Wed Jun 2 08:55:04 UTC 2021 x86_64 x86_64 x86_64 GNU/Linux
+[root@9d4e8c93d7b6 /]# cat /etc/fedora-release 
+Fedora release 34 (Thirty Four)
+```
 
 1.  在开始之前，请确保更新`dnf`并安装配置管理器：
 
 ```php
-    dnf upgrade  
-    dnf install 'dnf-command(config-manager)'
-    ```
+dnf upgrade  
+dnf install 'dnf-command(config-manager)'
+```
 
 1.  然后，您可以将 Remi 的存储库添加到您的软件包源中，使用您喜欢的版本号替换`NN`：
 
 ```php
-    dnf install \
-      https://rpms.remirepo.net/fedora/remi-release-NN.rpm
-    ```
+dnf install \
+  https://rpms.remirepo.net/fedora/remi-release-NN.rpm
+```
 
 1.  此时，您可以使用`dnf module list`确认已安装的 PHP 版本。我们还使用`grep`来限制显示的模块列表仅为 PHP。`[e]`表示*已启用*：
 
 ```php
-    [root@56b9fbf499d6 /]# dnf module list |grep php
-    php                    remi-7.4 [e]     common [d] [i],
-    devel, minimal    PHP scripting language                        php                    remi-8.0         common [d], devel, minimal        PHP scripting language
-    ```
+[root@56b9fbf499d6 /]# dnf module list |grep php
+php                    remi-7.4 [e]     common [d] [i],
+devel, minimal    PHP scripting language                        php                    remi-8.0         common [d], devel, minimal        PHP scripting language
+```
 
 1.  然后我们检查当前的 PHP 版本：
 
 ```php
-    [root@d044cbe477c8 /]# php --version
-    PHP 7.4.20 (cli) (built: Jun  1 2021 15:41:56) (NTS)
-    Copyright (c) The PHP Group
-    Zend Engine v3.4.0, Copyright (c) Zend Technologies
-    ```
+[root@d044cbe477c8 /]# php --version
+PHP 7.4.20 (cli) (built: Jun  1 2021 15:41:56) (NTS)
+Copyright (c) The PHP Group
+Zend Engine v3.4.0, Copyright (c) Zend Technologies
+```
 
 1.  接下来，我们重置 PHP 模块，并安装 PHP 8：
 
 ```php
-    dnf -y module reset php
-    dnf -y module install php:remi-8.0
-    ```
+dnf -y module reset php
+dnf -y module install php:remi-8.0
+```
 
 1.  另一个快速的 PHP 版本检查显示我们现在使用的是 PHP 8 而不是 PHP 7：
 
 ```php
-    [root@56b9fbf499d6 /]# php -v
-    PHP 8.0.7 (cli) (built: Jun  1 2021 18:43:05) 
-    ( NTS gcc x86_64 ) Copyright (c) The PHP Group
-    Zend Engine v4.0.7, Copyright (c) Zend Technologies
-    ```
+[root@56b9fbf499d6 /]# php -v
+PHP 8.0.7 (cli) (built: Jun  1 2021 18:43:05) 
+( NTS gcc x86_64 ) Copyright (c) The PHP Group
+Zend Engine v4.0.7, Copyright (c) Zend Technologies
+```
 
 1.  要切换回较早版本的 PHP，请按照以下步骤进行，其中`X.Y`是您打算使用的版本：
 
 ```php
-    dnf -y module reset php
-    dnf -y module install php:remi-X.Y
-    ```
+dnf -y module reset php
+dnf -y module install php:remi-X.Y
+```
 
 这完成了 Red Hat、CentOS 或 Fedora 的 PHP 安装说明。在本演示中，我们只向您展示了 PHP 命令行安装。如果您计划与 Web 服务器一起使用 PHP，还需要安装适当的 PHP Web 服务器包和/或安装 PHP-FPM（FastCGI 处理模块）包。
 

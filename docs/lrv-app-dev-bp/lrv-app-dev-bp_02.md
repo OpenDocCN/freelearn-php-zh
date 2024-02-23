@@ -120,52 +120,52 @@ Laravel 使用一个名为**Blade**的模板引擎来处理静态和应用程序
 1.  文件包含以下代码：
 
 ```php
-    <html>
-      <head>
-        <title>To-do List Application</title>
-        <link rel="stylesheet" href="assets/css/style.css">
-        <!--[if lt IE 9]><scriptsrc="//html5shim.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+<html>
+  <head>
+    <title>To-do List Application</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <!--[if lt IE 9]><scriptsrc="//html5shim.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
 
-      </head>
-      <body>
-        <div class="container">
-          <section id="data_section" class="todo">
-            <ul class="todo-controls">
-            <li><img src="/assets/img/add.png" width="14px"onClick="show_form('add_task');" /></li>
-            </ul>
-              <ul id="task_list" class="todo-list">
-              @foreach($todos as $todo)
-                @if($todo->status)
-                  <li id="{{$todo->id}}" class="done"><a href="#" class="toggle"></a><span id="span_{{$todo->id}}">{{$todo->title}}</span> <a href="#"onClick="delete_task('{{$todo->id}}');"class="icon-delete">Delete</a> <a href="#"onClick="edit_task('{{$todo->id}}','{{$todo->title}}');"class="icon-edit">Edit</a></li>
-                @else
-                  <li id="{{$todo->id}}"><a href="#"onClick="task_done('{{$todo->id}}');"class="toggle"></a> <span id="span_{{$todo->id}}">{{$todo->title}}</span><a href="#" onClick="delete_task('{{$todo->id}}');" class="icon-delete">Delete</a>
-                    <a href="#" onClick="edit_task('{{$todo->id}}','{{$todo->title}}');"class="icon-edit">Edit</a></li>
-                @endif
-              @endforeach
-            </ul>
-          </section>
-          <section id="form_section">
+  </head>
+  <body>
+    <div class="container">
+      <section id="data_section" class="todo">
+        <ul class="todo-controls">
+        <li><img src="/assets/img/add.png" width="14px"onClick="show_form('add_task');" /></li>
+        </ul>
+          <ul id="task_list" class="todo-list">
+          @foreach($todos as $todo)
+            @if($todo->status)
+              <li id="{{$todo->id}}" class="done"><a href="#" class="toggle"></a><span id="span_{{$todo->id}}">{{$todo->title}}</span> <a href="#"onClick="delete_task('{{$todo->id}}');"class="icon-delete">Delete</a> <a href="#"onClick="edit_task('{{$todo->id}}','{{$todo->title}}');"class="icon-edit">Edit</a></li>
+            @else
+              <li id="{{$todo->id}}"><a href="#"onClick="task_done('{{$todo->id}}');"class="toggle"></a> <span id="span_{{$todo->id}}">{{$todo->title}}</span><a href="#" onClick="delete_task('{{$todo->id}}');" class="icon-delete">Delete</a>
+                <a href="#" onClick="edit_task('{{$todo->id}}','{{$todo->title}}');"class="icon-edit">Edit</a></li>
+            @endif
+          @endforeach
+        </ul>
+      </section>
+      <section id="form_section">
 
-          <form id="add_task" class="todo"
-            style="display:none">
-          <input id="task_title" type="text" name="title"placeholder="Enter a task name" value=""/>
-          <button name="submit">Add Task</button>
-          </form>
+      <form id="add_task" class="todo"
+        style="display:none">
+      <input id="task_title" type="text" name="title"placeholder="Enter a task name" value=""/>
+      <button name="submit">Add Task</button>
+      </form>
 
-            <form id="edit_task" class="todo"style="display:none">
-            <input id="edit_task_id" type="hidden" value="" />
-            <input id="edit_task_title" type="text"name="title" value="" />
-            <button name="submit">Edit Task</button>
-          </form>
+        <form id="edit_task" class="todo"style="display:none">
+        <input id="edit_task_id" type="hidden" value="" />
+        <input id="edit_task_title" type="text"name="title" value="" />
+        <button name="submit">Edit Task</button>
+      </form>
 
-        </section>
+    </section>
 
-        </div>
-        <script src="http://code.jquery.com/jquery-latest.min.js"type="text/javascript"></script>
-        <script src="assets/js/todo.js"type="text/javascript"></script>
-      </body>
-    </html>
-    ```
+    </div>
+    <script src="http://code.jquery.com/jquery-latest.min.js"type="text/javascript"></script>
+    <script src="assets/js/todo.js"type="text/javascript"></script>
+  </body>
+</html>
+```
 
 如果您是第一次编写 Blade 模板，上面的代码可能很难理解，所以我们将尝试解释一下。您会在文件中看到一个`foreach`循环。这个语句循环遍历我们的`todo`记录。
 

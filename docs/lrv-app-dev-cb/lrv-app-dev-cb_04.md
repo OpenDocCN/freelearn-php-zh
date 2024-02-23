@@ -43,103 +43,103 @@
 1.  使用`artisan`从命令提示符中安装我们的迁移表：
 
 ```php
-    **php artisan migrate:install**
+**php artisan migrate:install**
 
-    ```
+```
 
 1.  创建一个迁移以保存我们的模式代码来创建一个新表：
 
 ```php
-    **php artisan migrate:make create_shows_table**
+**php artisan migrate:make create_shows_table**
 
-    ```
+```
 
 1.  在我们的`app/database/migrations`目录中，找到一个名为`2012_01_01_222551_create_shows_table.php`的类似文件。添加用于创建表和添加列的模式：
 
 ```php
-    class CreateShowsTable extends Migration {
+class CreateShowsTable extends Migration {
 
-        /**
-         * Make changes to the database.
-         *
-         * @return void
-         */
-        public function up()
+    /**
+     * Make changes to the database.
+     *
+     * @return void
+     */
+    public function up()
+    {
+        Schema::create('shows', function($table)
         {
-            Schema::create('shows', function($table)
-            {
-                $table->increments('id');
-                $table->string('name', 140);
-                $table->integer('rating')->nullable();
-                $table->timestamps();
-            });
-        }
-
-        /**
-         * Revert the changes to the database.
-         *
-         * @return void
-         */
-        public function down()
-        {
-            Schema::drop('shows');
-        }
+            $table->increments('id');
+            $table->string('name', 140);
+            $table->integer('rating')->nullable();
+            $table->timestamps();
+        });
     }
-    ```
+
+    /**
+     * Revert the changes to the database.
+     *
+     * @return void
+     */
+    public function down()
+    {
+        Schema::drop('shows');
+    }
+}
+```
 
 1.  运行迁移以将表添加到数据库，使用以下命令：
 
 ```php
-    **php artisan migrate**
+**php artisan migrate**
 
-    ```
+```
 
 1.  创建另一个迁移，以便我们可以向我们的表中添加一列：
 
 ```php
-    **php artisan migrate:make add_actor_to_shows_table**
+**php artisan migrate:make add_actor_to_shows_table**
 
-    ```
+```
 
 1.  在`app/database/migrations`目录中，找到一个类似于`2012_01_01_222551_add_actor_to_shows_table.php`的文件。向我们的模式中添加列：
 
 ```php
-    class AddActorToShowsTable extends Migration {
+class AddActorToShowsTable extends Migration {
 
-        /**
-         * Make changes to the database.
-         *
-         * @return void
-         */
-        public function up()
+    /**
+     * Make changes to the database.
+     *
+     * @return void
+     */
+    public function up()
+    {
+        Schema::table('shows', function($table)
         {
-            Schema::table('shows', function($table)
-            {
-                $table->string('actor')->nullable();
-            });
-        }
-
-        /**
-         * Revert the changes to the database.
-         *
-         * @return void
-         */
-        public function down()
-        {
-            Schema::table('shows', function($table)
-            {
-                $table->drop_column('actor');
-            });
-        }
+            $table->string('actor')->nullable();
+        });
     }
-    ```
+
+    /**
+     * Revert the changes to the database.
+     *
+     * @return void
+     */
+    public function down()
+    {
+        Schema::table('shows', function($table)
+        {
+            $table->drop_column('actor');
+        });
+    }
+}
+```
 
 1.  在命令提示符中运行迁移，以向我们的表中添加列：
 
 ```php
-    **php artisan migrate**
+**php artisan migrate**
 
-    ```
+```
 
 ## 它是如何工作的...
 
@@ -210,80 +210,80 @@ Laravel 提供了许多访问数据库的方式。如果我们有以前使用过
 1.  在命令提示符中，创建一个迁移，以便我们可以添加一些数据：
 
 ```php
-    **php artisan migrate:make add_data_to_shows_table**
+**php artisan migrate:make add_data_to_shows_table**
 
-    ```
+```
 
 1.  在我们的`app/database/migrations`目录中，找到一个类似于`2012_01_01_222551_add_data_to_shows_table.php`的文件，并使用原始 SQL 添加一些数据：
 
 ```php
-    class AddDataToShowsTable {
+class AddDataToShowsTable {
 
-        /**
-         * Make changes to the database.
-         *
-         * @return void
-         */
+    /**
+     * Make changes to the database.
+     *
+     * @return void
+     */
 
-    public function up()
-        {
-            $sql = 'INSERT INTO shows (name, rating, actor)
-                VALUES (?, ?, ?)';
-            $data1 = array('Doctor Who', '9', 'Matt Smith');
-            $data2 = array('Arrested Development', '10', 'Jason
-                Bateman');
-            $data3 = array('Joanie Loves Chachi', '3', 'Scott
-                Baio');
-            DB::insert($sql, $data1);
-            DB::insert($sql, $data2);
-            DB::insert($sql, $data3);
-        }
-
-        /**
-         * Revert the changes to the database.
-         *
-         * @return void
-         */
-        public function down()
-        {
-            $sql = "DELETE FROM shows WHERE name = ?";
-            DB::delete($sql, array('Doctor Who'));
-            DB::delete($sql, array('Arrested Development'));
-            DB::delete($sql, array('Joanie Loves Chachi'));
-        }
+public function up()
+    {
+        $sql = 'INSERT INTO shows (name, rating, actor)
+            VALUES (?, ?, ?)';
+        $data1 = array('Doctor Who', '9', 'Matt Smith');
+        $data2 = array('Arrested Development', '10', 'Jason
+            Bateman');
+        $data3 = array('Joanie Loves Chachi', '3', 'Scott
+            Baio');
+        DB::insert($sql, $data1);
+        DB::insert($sql, $data2);
+        DB::insert($sql, $data3);
     }
-    ```
+
+    /**
+     * Revert the changes to the database.
+     *
+     * @return void
+     */
+    public function down()
+    {
+        $sql = "DELETE FROM shows WHERE name = ?";
+        DB::delete($sql, array('Doctor Who'));
+        DB::delete($sql, array('Arrested Development'));
+        DB::delete($sql, array('Joanie Loves Chachi'));
+    }
+}
+```
 
 1.  在命令提示符中运行迁移以添加数据：
 
 ```php
-    **php artisan migrate**
+**php artisan migrate**
 
-    ```
+```
 
 1.  在我们的`app/models`目录中，创建一个名为`Show.php`的文件，并添加一个获取节目的方法：
 
 ```php
-    class Show {
-        public function allShows($order_by = FALSE,$direction = 'ASC')
-        {
-            $sql = 'SELECT * FROM shows';
-            $sql .= $order_by ? ' ORDER BY ' . $order_by. ' ' . $direction : '';
-            return DB::select($sql);
-        }
+class Show {
+    public function allShows($order_by = FALSE,$direction = 'ASC')
+    {
+        $sql = 'SELECT * FROM shows';
+        $sql .= $order_by ? ' ORDER BY ' . $order_by. ' ' . $direction : '';
+        return DB::select($sql);
     }
-    ```
+}
+```
 
 1.  在我们的`routes.php`文件中，创建一个`Show`路由来显示模型中的信息：
 
 ```php
-    Route::get('shows', function()
-    {
-        $shows = new Show();
-        $shows_by_rating = $shows->allShows('rating', 'DESC');
-        dd($shows_by_rating);
-    }); 
-    ```
+Route::get('shows', function()
+{
+    $shows = new Show();
+    $shows_by_rating = $shows->allShows('rating', 'DESC');
+    dd($shows_by_rating);
+}); 
+```
 
 ## 它是如何工作的...
 
@@ -312,77 +312,77 @@ Laravel 提供了许多访问数据库的方式。如果我们选择不编写原
 1.  在命令提示符中，创建一个迁移以便我们添加一些数据：
 
 ```php
-    **php artisan migrate:make add_data_to_shows_table**
+**php artisan migrate:make add_data_to_shows_table**
 
-    ```
+```
 
 1.  在我们的`app/database/migrations`目录中，找到一个类似于`2012_01_01_222551_add_data_to_shows_table.php`的文件，并使用 Fluent 查询构建器添加一些数据：
 
 ```php
-    class AddDataToShowsTable {
+class AddDataToShowsTable {
 
-        /**
-         * Make changes to the database.
-         *
-         * @return void
-         */
-        public function up()
-        {
-            $data1 = array('name' => 'Doctor Who',
-                'rating' => 9, 'actor' => 'Matt Smith');
-            $data2 = array('name' => 'Arrested Development',
-                'rating' => 10, 'actor' => 'Jason Bateman');
-            $data3 = array('name' => 'Joanie Loves Chachi',
-                'rating' => 3, 'actor' => 'Scott Baio');
-            DB::table('shows')->insert(array($data1, $data2,
-                $data3));
-        }
-
-        /**
-         * Revert the changes to the database.
-         *
-         * @return void
-         */
-        public function down()
-        {
-            DB::table('shows')
-                ->where('name', 'Doctor Who')
-                ->orWhere('name', 'Arrested Development')
-                ->orWhere('name', 'Joanie Loves Chachi')
-                ->delete();
-        }
+    /**
+     * Make changes to the database.
+     *
+     * @return void
+     */
+    public function up()
+    {
+        $data1 = array('name' => 'Doctor Who',
+            'rating' => 9, 'actor' => 'Matt Smith');
+        $data2 = array('name' => 'Arrested Development',
+            'rating' => 10, 'actor' => 'Jason Bateman');
+        $data3 = array('name' => 'Joanie Loves Chachi',
+            'rating' => 3, 'actor' => 'Scott Baio');
+        DB::table('shows')->insert(array($data1, $data2,
+            $data3));
     }
-    ```
+
+    /**
+     * Revert the changes to the database.
+     *
+     * @return void
+     */
+    public function down()
+    {
+        DB::table('shows')
+            ->where('name', 'Doctor Who')
+            ->orWhere('name', 'Arrested Development')
+            ->orWhere('name', 'Joanie Loves Chachi')
+            ->delete();
+    }
+}
+```
 
 1.  运行迁移以添加数据：
 
 ```php
-    **php artisan migrate**
+**php artisan migrate**
 
-    ```
+```
 
 1.  在我们的`app/models`目录中，创建一个名为`Show.php`的文件，并添加一个获取节目的方法：
 
 ```php
-    class Show {
-        public function allShows($order_by = FALSE,$direction = 'ASC')
-        {
-            $shows = DB::table('shows');
-            return $order_by ? $shows->order_by($order_by,$direction)->get() : $shows->get();
-        }
+class Show {
+    public function allShows($order_by = FALSE,$direction = 'ASC')
+    {
+        $shows = DB::table('shows');
+        return $order_by ? $shows->order_by($order_by,$direction)->get() : $shows->get();
     }
-    ```
+}
+```
 
 1.  在我们的`routes.php`文件中，创建一个`Show`路由来显示模型中的信息：
 
 ```php
-    Route::get('shows', function()
-    {
-        $shows = new Show();
-        $shows_by_rating = $shows->allShows('rating', 'DESC');
-        dd($shows_by_rating);
-    }); 
-    ```
+Route::get('shows', function()
+{
+    $shows = new Show();
+    $shows_by_rating = $shows->allShows('rating', 'DESC');
+    dd($shows_by_rating);
+}); 
+```
 
 ## 它是如何工作的...
 
@@ -415,88 +415,88 @@ Laravel 提供了许多与数据库交互的方式。其中最简单的一种方
 1.  在命令提示符中，创建一个迁移以便我们添加一些数据：
 
 ```php
-    **php artisan migrate:make add_data_to_shows_table**
+**php artisan migrate:make add_data_to_shows_table**
 
-    ```
+```
 
 1.  在我们的`app/database/migrations`目录中，找到一个类似于`2012_01_01_222551_add_data_to_shows_table.php`的文件，并使用 Fluent 查询构建器添加一些数据：
 
 ```php
-    class AddDataToShowsTable {
+class AddDataToShowsTable {
 
-        /**
-         * Make changes to the database.
-         *
-         * @return void
-         */
-        public function up()
-        {
-            $data1 = array('name' => 'Doctor Who',
-                'rating' => 9, 'actor' => 'Matt Smith');
-            $data2 = array('name' => 'Arrested Development',
-                'rating' => 10, 'actor' => 'Jason Bateman');
-            $data3 = array('name' => 'Joanie Loves Chachi',
-                'rating' => 3, 'actor' => 'Scott Baio');
-            DB::table('shows')->insert(array($data1, $data2,
-                $data3));
-        }
-
-        /**
-         * Revert the changes to the database.
-         *
-         * @return void
-         */
-        public function down()
-        {
-            DB::table('shows')
-                ->where('name', 'Doctor Who')
-                ->orWhere('name', 'Arrested Development')
-                ->orWhere('name', 'Joanie Loves Chachi')
-                ->delete();
-        }
+    /**
+     * Make changes to the database.
+     *
+     * @return void
+     */
+    public function up()
+    {
+        $data1 = array('name' => 'Doctor Who',
+            'rating' => 9, 'actor' => 'Matt Smith');
+        $data2 = array('name' => 'Arrested Development',
+            'rating' => 10, 'actor' => 'Jason Bateman');
+        $data3 = array('name' => 'Joanie Loves Chachi',
+            'rating' => 3, 'actor' => 'Scott Baio');
+        DB::table('shows')->insert(array($data1, $data2,
+            $data3));
     }
-    ```
+
+    /**
+     * Revert the changes to the database.
+     *
+     * @return void
+     */
+    public function down()
+    {
+        DB::table('shows')
+            ->where('name', 'Doctor Who')
+            ->orWhere('name', 'Arrested Development')
+            ->orWhere('name', 'Joanie Loves Chachi')
+            ->delete();
+    }
+}
+```
 
 1.  运行迁移以添加数据：
 
 ```php
-    **php artisan migrate**
+**php artisan migrate**
 
-    ```
+```
 
 1.  在我们的`app/models`目录中，创建一个名为`Show.php`的文件，它继承自`Eloquent`：
 
 ```php
-    class Show extends Eloquent{
-        public function getTopShows() {
-            return $this->where('rating', '>', 5)->orderBy('rating', 'DESC')->get();
-        }
+class Show extends Eloquent{
+    public function getTopShows() {
+        return $this->where('rating', '>', 5)->orderBy('rating', 'DESC')->get();
     }
-    ```
+}
+```
 
 1.  在我们的`routes.php`文件中，创建一个 show 路由来显示模型中的信息：
 
 ```php
-    Route::get('shows', function()
+Route::get('shows', function()
+{
+    $shows = Show::all();
+    echo '<h1>All Shows</h1>';
+    foreach ($shows as $show)
     {
-        $shows = Show::all();
-        echo '<h1>All Shows</h1>';
-        foreach ($shows as $show)
-        {
-            echo $show->name . ' - ' . $show->rating . ' - '
-    		    . $show->actor . '<br>';
-        }
+        echo $show->name . ' - ' . $show->rating . ' - '
+		    . $show->actor . '<br>';
+    }
 
-        $show_object = new Show();
-        $top_shows = $show_object->getTopShows();
-        echo '<h1>Top Shows</h1>';
-        foreach ($top_shows as $top_show)
-        {
-            echo $top_show->name . ' - ' . $top_show->rating
-    		     . ' - '. $top_show->actor . '<br>';
-        }
-    });
-    ```
+    $show_object = new Show();
+    $top_shows = $show_object->getTopShows();
+    echo '<h1>Top Shows</h1>';
+    foreach ($top_shows as $top_show)
+    {
+        echo $top_show->name . ' - ' . $top_show->rating
+		     . ' - '. $top_show->actor . '<br>';
+    }
+});
+```
 
 ## 它是如何工作的...
 
@@ -529,87 +529,87 @@ Laravel 提供了许多与数据库交互的方式。其中最简单的一种方
 1.  在命令提示符中，创建一个简单的`users`表的迁移：
 
 ```php
-    **php artisan migrate:make create_users_table**
+**php artisan migrate:make create_users_table**
 
-    ```
+```
 
 1.  在迁移文件中创建模式。该文件位于`app/database/migrations`目录中，名称类似于`2012_01_01_222551_create_users_table.php`：
 
 ```php
-    use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Migrations\Migration;
 
-    class CreateUsersTable extends Migration {
+class CreateUsersTable extends Migration {
 
-        /**
-         * Make changes to the database.
-         *
-         * @return void
-         */
-        public function up()
+    /**
+     * Make changes to the database.
+     *
+     * @return void
+     */
+    public function up()
+    {
+        Schema::create('users', function($table)
         {
-            Schema::create('users', function($table)
-            {
-                $table->increments('id');
-                $table->string('username', 100);
-                $table->string('email', 100);
-                $table->timestamps();
-            });
-        }
-
-        /**
-         * Revert the changes to the database.
-         *
-         * @return void
-         */
-        public function down()
-        {
-            Schema::drop('users');
-        }
+            $table->increments('id');
+            $table->string('username', 100);
+            $table->string('email', 100);
+            $table->timestamps();
+        });
     }
-    ```
+
+    /**
+     * Revert the changes to the database.
+     *
+     * @return void
+     */
+    public function down()
+    {
+        Schema::drop('users');
+    }
+}
+```
 
 1.  运行迁移：
 
 ```php
-    **php artisan migrate**
+**php artisan migrate**
 
-    ```
+```
 
 1.  在我们的`app/models`目录中创建一个名为`User.php`的文件。如果已经有一个名为`User.php`的文件，我们可以简单地重命名它：
 
 ```php
-    <?php
-    class User extends Eloquent {
+<?php
+class User extends Eloquent {
 
-        protected $table = 'users';
+    protected $table = 'users';
 
-        private $rules = array(
-            'email' => 'required|email',
-            'username' => 'required|min:6'
-        );
+    private $rules = array(
+        'email' => 'required|email',
+        'username' => 'required|min:6'
+    );
 
-        public function validate($input) {
-            return Validator::make($input, $this->rules);
-        }
+    public function validate($input) {
+        return Validator::make($input, $this->rules);
     }
-    ```
+}
+```
 
 1.  创建一个加载 ORM 并尝试保存一些数据的路由：
 
 ```php
-    $user = new User();
-        $input = array();
+$user = new User();
+    $input = array();
 
-        $input['email'] = 'racerx@example.com';
-        $input['username'] = 'Short';
-        $valid = $user->validate($input);
-        if ($valid->passes()) {
-            echo 'Everything is Valid!';
-            // Save to the database
-        } else {
-            var_dump($valid->messages());
-        }
-    ```
+    $input['email'] = 'racerx@example.com';
+    $input['username'] = 'Short';
+    $valid = $user->validate($input);
+    if ($valid->passes()) {
+        echo 'Everything is Valid!';
+        // Save to the database
+    } else {
+        var_dump($valid->messages());
+    }
+```
 
 ## 它是如何工作的...
 
@@ -638,104 +638,104 @@ Laravel 提供了许多与数据库交互的方式。其中最简单的一种方
 1.  在命令提示符中，创建一个新的中间表的迁移：
 
 ```php
-    **php artisan migrate:make create_show_user**
+**php artisan migrate:make create_show_user**
 
-    ```
+```
 
 1.  打开`app/database/migrations`目录中的迁移文件，并添加模式：
 
 ```php
-    use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Migrations\Migration;
 
-    class CreateShowUser extends Migration {
+class CreateShowUser extends Migration {
 
-        /**
-         * Make changes to the database.
-         *
-         * @return void
-         */
-        public function up()
+    /**
+     * Make changes to the database.
+     *
+     * @return void
+     */
+    public function up()
+    {
+        Schema::create('show_user', function($table)
         {
-            Schema::create('show_user', function($table)
-            {
-                $table->increments('id');
-                $table->integer('user_id');
-                $table->integer('show_id');
-                $table->timestamps();
-            });
-        }
-
-        /**
-         * Revert the changes to the database.
-         *
-         * @return void
-         */
-        public function down()
-        {
-            Schema::drop('show_user');
-        }
+            $table->increments('id');
+            $table->integer('user_id');
+            $table->integer('show_id');
+            $table->timestamps();
+        });
     }
-    ```
+
+    /**
+     * Revert the changes to the database.
+     *
+     * @return void
+     */
+    public function down()
+    {
+        Schema::drop('show_user');
+    }
+}
+```
 
 1.  运行迁移：
 
 ```php
-    **php artisan migrate**
+**php artisan migrate**
 
-    ```
+```
 
 1.  在`app/model`目录中创建一个`User.php`文件：
 
 ```php
-    class User extends Eloquent {
-        public function shows()
-        {
-            return $this->belongsToMany ('Show');
-        }
+class User extends Eloquent {
+    public function shows()
+    {
+        return $this->belongsToMany ('Show');
     }
-    ```
+}
+```
 
 1.  在我们的`app/model`目录中创建一个`Show.php`文件：
 
 ```php
-    class Show extends Eloquent {
-        public function users()
-        {
-            return $this->belongsToMany ('User');
-        }
+class Show extends Eloquent {
+    public function users()
+    {
+        return $this->belongsToMany ('User');
     }
-    ```
+}
+```
 
 1.  在`routes.php`中创建一个路由来添加一个新用户并附加两个节目：
 
 ```php
-    Route::get('add-show', function()
-    {
-        // Create a new User
-        $user = new User();
-        $user->username = 'John Doe';
-        $user->email = 'johndoe@example.com';
-        $user->save();
+Route::get('add-show', function()
+{
+    // Create a new User
+    $user = new User();
+    $user->username = 'John Doe';
+    $user->email = 'johndoe@example.com';
+    $user->save();
 
-        // Attach two Shows
-        $user->shows()->attach(1);
-        $user->shows()->attach(3);
+    // Attach two Shows
+    $user->shows()->attach(1);
+    $user->shows()->attach(3);
 
-        foreach($user->shows()->get() as $show) {
-            var_dump($show->name);
-        }
-    });
-    ```
+    foreach($user->shows()->get() as $show) {
+        var_dump($show->name);
+    }
+});
+```
 
 1.  创建一个路由来获取与一个节目关联的所有用户：
 
 ```php
-    Route::get('view-show', function()
-    {
-        $show = Show::find(1)->users;
-        dd($show);
-    });
-    ```
+Route::get('view-show', function()
+{
+    $show = Show::find(1)->users;
+    dd($show);
+});
+```
 
 ## 它是如何工作的...
 
@@ -766,123 +766,123 @@ Laravel 提供了许多与数据库交互的方式。其中最简单的一种方
 1.  在`app/controllers`目录中，创建一个名为`UsersController.php`的文件，并添加以下代码：
 
 ```php
-    <?php
+<?php
 
-    class UsersController extends BaseController {
+class UsersController extends BaseController {
 
-        public function getIndex()
-        {
-            $users = User::all();
-            return View::make('users.index')->with('users',$users);
-        }
-
-        public function getCreate()
-        {
-            return View::make('users.create');
-        }
-
-        public function postCreate()
-        {
-            $user = new User();
-            $user->username = Input::get('username');
-            $user->email = Input::get('email');
-            $user->save();
-            return Redirect::to('users');
-        }
-
-        public function getRecord($id)
-        {
-            $user = User::find($id);
-            return View::make('users.record')->with('user',$user);
-        }
-
-        public function putRecord()
-        {
-            $user = User::find(Input::get('user_id'));
-            $user->username = Input::get('username');
-            $user->email = Input::get('email');
-            $user->save();
-            return Redirect::to('users');
-        }
-
-        public function deleteRecord()
-        {
-            $user = User::find(Input::get('user_id'))->delete();
-            return Redirect::to('users');
-        }
+    public function getIndex()
+    {
+        $users = User::all();
+        return View::make('users.index')->with('users',$users);
     }
-    ```
+
+    public function getCreate()
+    {
+        return View::make('users.create');
+    }
+
+    public function postCreate()
+    {
+        $user = new User();
+        $user->username = Input::get('username');
+        $user->email = Input::get('email');
+        $user->save();
+        return Redirect::to('users');
+    }
+
+    public function getRecord($id)
+    {
+        $user = User::find($id);
+        return View::make('users.record')->with('user',$user);
+    }
+
+    public function putRecord()
+    {
+        $user = User::find(Input::get('user_id'));
+        $user->username = Input::get('username');
+        $user->email = Input::get('email');
+        $user->save();
+        return Redirect::to('users');
+    }
+
+    public function deleteRecord()
+    {
+        $user = User::find(Input::get('user_id'))->delete();
+        return Redirect::to('users');
+    }
+}
+```
 
 1.  在我们的`routes.php`文件中，添加一个指向控制器的路由：
 
 ```php
-    **Route::controller('users', 'UsersController');**
+**Route::controller('users', 'UsersController');**
 
-    ```
+```
 
 1.  在`app/views`目录中，创建一个名为`users`的新目录，在其中创建一个名为`index.php`的文件，并添加以下代码：
 
 ```php
-    <style>
-    table, th, td {
-        border:1px solid #444
-    }
-    </style>
-    <table>
-        <thead>
+<style>
+table, th, td {
+    border:1px solid #444
+}
+</style>
+<table>
+    <thead>
+        <tr>
+            <th>User ID</th>
+            <th>User Name</th>
+            <th>Email</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php foreach($users as $user): ?>
             <tr>
-                <th>User ID</th>
-                <th>User Name</th>
-                <th>Email</th>
-                <th>Actions</th>
+                <td><?php echo $user->id ?></td>
+                <td><?php echo $user->username ?></td>
+                <td><?php echo $user->email ?></td>
+                <td>
+                    <a href="users/record/<?php echo $user->id ?>">Edit</a> 
+                    <form action="users/record"method="post">
+                        <input type="hidden" name="_method"value="DELETE">
+                        <input type="hidden" name="user_id"value="<?php echo $user->id?>">
+                        <input type="submit"value="Delete">
+                    </form>
+                </td>
             </tr>
-        </thead>
-        <tbody>
-            <?php foreach($users as $user): ?>
-                <tr>
-                    <td><?php echo $user->id ?></td>
-                    <td><?php echo $user->username ?></td>
-                    <td><?php echo $user->email ?></td>
-                    <td>
-                        <a href="users/record/<?php echo $user->id ?>">Edit</a> 
-                        <form action="users/record"method="post">
-                            <input type="hidden" name="_method"value="DELETE">
-                            <input type="hidden" name="user_id"value="<?php echo $user->id?>">
-                            <input type="submit"value="Delete">
-                        </form>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
-    <a href="users/create">Add New User</a>
-    ```
+        <?php endforeach; ?>
+    </tbody>
+</table>
+<a href="users/create">Add New User</a>
+```
 
 1.  在`app/views/users`目录中，创建一个名为`create.php`的新文件，并添加以下表单：
 
 ```php
-    <form action="create" method="post">
-        Username:<br>
-        <input name="username"><br>
-        Email<br>
-        <input name="email"><br>
-        <input type="submit">
-    </form>
-    ```
+<form action="create" method="post">
+    Username:<br>
+    <input name="username"><br>
+    Email<br>
+    <input name="email"><br>
+    <input type="submit">
+</form>
+```
 
 1.  在`app/views/users`目录中，添加一个名为`record.php`的文件，并使用以下表单：
 
 ```php
-    <form action="" method="post">
-        <input type="hidden" name="_method" value="put">
-        <input type="hidden" name="user_id" value="<?php echo$user->id ?>">
-        Username:<br>
-        <input name="username" value="<?php echo $user->username ?>"><br>
-        Email<br>
-        <input name="email" value="<?php echo $user->email?>"><br>
-        <input type="submit">
-    </form>
-    ```
+<form action="" method="post">
+    <input type="hidden" name="_method" value="put">
+    <input type="hidden" name="user_id" value="<?php echo$user->id ?>">
+    Username:<br>
+    <input name="username" value="<?php echo $user->username ?>"><br>
+    Email<br>
+    <input name="email" value="<?php echo $user->email?>"><br>
+    <input type="submit">
+</form>
+```
 
 ## 它是如何工作的...
 
@@ -915,91 +915,91 @@ Laravel 提供了许多与数据库交互的方式。其中最简单的一种方
 1.  在文本编辑器中创建一个名为`scifi.csv`的文件，将其保存到应用程序的`public`文件夹中。添加以下数据：
 
 ```php
-    Spock,Star Trek
-    Kirk,Star Trek
-    Luke,Star Wars
-    Lando,Star Wars
-    Deckard,Blade Runner
-    Dave,2001
-    ```
+Spock,Star Trek
+Kirk,Star Trek
+Luke,Star Wars
+Lando,Star Wars
+Deckard,Blade Runner
+Dave,2001
+```
 
 1.  在命令提示符中创建一个迁移：
 
 ```php
-    **php artisan migrate:make create_scifi_table**
+**php artisan migrate:make create_scifi_table**
 
-    ```
+```
 
 1.  打开刚刚创建的迁移文件，并添加我们的模式：
 
 ```php
-    use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Migrations\Migration;
 
-    class CreateScifiTable extends Migration {
+class CreateScifiTable extends Migration {
 
-        /**
-         * Make changes to the database.
-         *
-         * @return void
-         */
-        public function up()
+    /**
+     * Make changes to the database.
+     *
+     * @return void
+     */
+    public function up()
+    {
+        Schema::create('scifi', function($table)
         {
-            Schema::create('scifi', function($table)
-            {
-                $table->increments('id');
-                $table->string('character');
-                $table->string('movie');
-                $table->timestamps();
-            });
-        }
-
-        /**
-         * Revert the changes to the database.
-         *
-         * @return void
-         */
-        public function down()
-        {
-            Schema::drop('scifi');
-        }
+            $table->increments('id');
+            $table->string('character');
+            $table->string('movie');
+            $table->timestamps();
+        });
     }
-    ```
+
+    /**
+     * Revert the changes to the database.
+     *
+     * @return void
+     */
+    public function down()
+    {
+        Schema::drop('scifi');
+    }
+}
+```
 
 1.  运行迁移以创建表：
 
 ```php
-    **php artisan migrate**
+**php artisan migrate**
 
-    ```
+```
 
 1.  在`app/models`目录中创建一个名为`Scifi.php`的模型：
 
 ```php
-    class Scifi extends Eloquent {
-        protected $table = 'scifi';
-    }
-    ```
+class Scifi extends Eloquent {
+    protected $table = 'scifi';
+}
+```
 
 1.  创建一个新的路由来处理我们的 CSV 并保存结果：
 
 ```php
-    Route::get('csv', function()
+Route::get('csv', function()
+{
+    if (($handle = fopen(public_path() .. '/scifi.csv','r')) !== FALSE)
     {
-        if (($handle = fopen(public_path() .. '/scifi.csv','r')) !== FALSE)
+        while (($data = fgetcsv($handle, 1000, ',')) !==FALSE)
         {
-            while (($data = fgetcsv($handle, 1000, ',')) !==FALSE)
-            {
-                    $scifi = new Scifi();
-                    $scifi->character = $data[0];
-                    $scifi->movie = $data[1];
-                    $scifi->save();
-            }
-            fclose($handle);
+                $scifi = new Scifi();
+                $scifi->character = $data[0];
+                $scifi->movie = $data[1];
+                $scifi->save();
         }
+        fclose($handle);
+    }
 
-        return Scifi::all();
-    });
-    ```
+    return Scifi::all();
+});
+```
 
 ## 它是如何工作的...
 
@@ -1026,34 +1026,34 @@ Laravel 提供了许多与数据库交互的方式。其中最简单的一种方
 1.  在我们的`routes.php`文件中创建一个新的路由来读取 RSS：
 
 ```php
-    Route::get('rss', function()
+Route::get('rss', function()
+{
+    $source = 'http://rss.cnn.com/rss/cnn_topstories.rss';
+
+    $headers = get_headers($source);
+    $response = substr($headers[0], 9, 3);
+    if ($response == '404')
     {
-        $source = 'http://rss.cnn.com/rss/cnn_topstories.rss';
+        return 'Invalid Source';
+    }
 
-        $headers = get_headers($source);
-        $response = substr($headers[0], 9, 3);
-        if ($response == '404')
+    $data = simplexml_load_string(file_get_contents($source));
+
+    if (count($data) == 0)
+    {
+        return 'No Posts';
+    }
+        $posts = '';
+        foreach($data->channel->item as $item)
         {
-            return 'Invalid Source';
+            $posts .= '<h1><a href="' . $item->link . '">'. $item->title . '</a></h1>';
+            $posts .= '<h4>' . $item->pubDate . '</h4>';
+            $posts .= '<p>' . $item->description . '</p>';
+            $posts .= '<hr><hr>';
         }
-
-        $data = simplexml_load_string(file_get_contents($source));
-
-        if (count($data) == 0)
-        {
-            return 'No Posts';
-        }
-            $posts = '';
-            foreach($data->channel->item as $item)
-            {
-                $posts .= '<h1><a href="' . $item->link . '">'. $item->title . '</a></h1>';
-                $posts .= '<h4>' . $item->pubDate . '</h4>';
-                $posts .= '<p>' . $item->description . '</p>';
-                $posts .= '<hr><hr>';
-            }
-            return $posts;
-    });
-    ```
+        return $posts;
+});
+```
 
 ## 它是如何工作的...
 
@@ -1078,136 +1078,136 @@ Laravel 提供了许多与数据库交互的方式。其中最简单的一种方
 1.  为我们的表创建一个名为`odd`的列的迁移，在命令提示符中：
 
 ```php
-    **php artisan migrate:make create_odd_table --table=odd --create**
+**php artisan migrate:make create_odd_table --table=odd --create**
 
-    ```
+```
 
 1.  创建一个迁移以向表中添加一些数据，在命令提示符中：
 
 ```php
-    **php artisan migrate:make add_data_to_odd_table**
+**php artisan migrate:make add_data_to_odd_table**
 
-    ```
+```
 
 1.  在`app/database/migrations`文件夹中，打开`create_odd_table`迁移并添加模式：
 
 ```php
-    use Illuminate\Database\Schema\Blueprint;
-    use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\Migrations\Migration;
 
-    class CreateOddTable extends Migration {
+class CreateOddTable extends Migration {
 
-        /**
-         * Run the migrations.
-         *
-         * @return void
-         */
-        public function up()
+    /**
+     * Run the migrations.
+     *
+     * @return void
+     */
+    public function up()
+    {
+        Schema::create('odd', function(Blueprint $table)
         {
-            Schema::create('odd', function(Blueprint $table)
-            {
-                $table->increments('MyIDcolumn');
-                $table->string('MyUsernameGoesHere');
-                $table->string('ThisIsAnEmail');
-                $table->timestamps();
-            });
-        }
-
-        /**
-         * Reverse the migrations.
-         *
-         * @return void
-         */
-        public function down()
-        {
-            Schema::drop('odd');
-        }
+            $table->increments('MyIDcolumn');
+            $table->string('MyUsernameGoesHere');
+            $table->string('ThisIsAnEmail');
+            $table->timestamps();
+        });
     }
-    ```
+
+    /**
+     * Reverse the migrations.
+     *
+     * @return void
+     */
+    public function down()
+    {
+        Schema::drop('odd');
+    }
+}
+```
 
 1.  在`app/database/migrations`目录中，打开`add_data_to_odd_table`文件并添加一些数据：
 
 ```php
-    use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Migrations\Migration;
 
-    class AddDataToOddTable extends Migration {
+class AddDataToOddTable extends Migration {
 
-        /**
-         * Make changes to the database.
-         *
-         * @return void
-         */
-        public function up()
-        {
-            $data1 = array('MyUsernameGoesHere' => 'John Doe','ThisIsAnEmail' => 'johndoe@example.com');
-            $data2 = array('MyUsernameGoesHere' => 'Jane Doe','ThisIsAnEmail' => 'janedoe@example.com');
-            DB::table('odd')->insert(array($data1, $data2));
-        }
-
-        /**
-         * Revert the changes to the database.
-         *
-         * @return void
-         */
-        public function down()
-        {
-            DB::table('odd')->delete();
-        }
+    /**
+     * Make changes to the database.
+     *
+     * @return void
+     */
+    public function up()
+    {
+        $data1 = array('MyUsernameGoesHere' => 'John Doe','ThisIsAnEmail' => 'johndoe@example.com');
+        $data2 = array('MyUsernameGoesHere' => 'Jane Doe','ThisIsAnEmail' => 'janedoe@example.com');
+        DB::table('odd')->insert(array($data1, $data2));
     }
-    ```
+
+    /**
+     * Revert the changes to the database.
+     *
+     * @return void
+     */
+    public function down()
+    {
+        DB::table('odd')->delete();
+    }
+}
+```
 
 1.  在命令提示符中，运行迁移：
 
 ```php
-    **php artisan migrate**
+**php artisan migrate**
 
-    ```
+```
 
 1.  在`app/models`目录中，创建一个名为`Odd.php`的新文件并创建 getter：
 
 ```php
-    class Odd extends Eloquent {
-        protected $table = 'odd';
+class Odd extends Eloquent {
+    protected $table = 'odd';
 
-        public function getIdAttribute($value) {
-            return $this->attributes['MyIDcolumn'];
-        }
-
-        public function getUsernameAttribute($value) {
-            return $this->attributes['MyUsernameGoesHere'];
-        }
-
-        public function getEmailAttribute($value) {
-            return $this->attributes['ThisIsAnEmail'];
-        }
+    public function getIdAttribute($value) {
+        return $this->attributes['MyIDcolumn'];
     }
-    ```
+
+    public function getUsernameAttribute($value) {
+        return $this->attributes['MyUsernameGoesHere'];
+    }
+
+    public function getEmailAttribute($value) {
+        return $this->attributes['ThisIsAnEmail'];
+    }
+}
+```
 
 1.  在`routes.php`中创建一个新的路由来访问表，使用常规的列名：
 
 ```php
-    Route::get('odd', function()
+Route::get('odd', function()
+{
+    $odds = Odd::all();
+    foreach($odds as $odd) 
     {
-        $odds = Odd::all();
-        foreach($odds as $odd) 
-        {
-            echo $odd->MyIDcolumn . ' - ' . $odd->MyUsernameGoesHere . ' - ' . $odd->ThisIsAnEmail . '<br>';
-        }
-    });
-    ```
+        echo $odd->MyIDcolumn . ' - ' . $odd->MyUsernameGoesHere . ' - ' . $odd->ThisIsAnEmail . '<br>';
+    }
+});
+```
 
 1.  创建另一个路由，使用更标准的列名：
 
 ```php
-    Route::get('notodd', function()
+Route::get('notodd', function()
+{
+    $odds = Odd::all();
+    foreach($odds as $odd) 
     {
-        $odds = Odd::all();
-        foreach($odds as $odd) 
-        {
-            echo $odd->id . ' - ' . $odd->username . ' - '. $odd->email . '<br>';
-        }
-    });
-    ```
+        echo $odd->id . ' - ' . $odd->username . ' - '. $odd->email . '<br>';
+    }
+});
+```
 
 ## 工作原理...
 
@@ -1232,67 +1232,67 @@ Laravel 的 Eloquent ORM 易于使用且非常高效。但是，有许多不同�
 1.  在`composer.json`文件中，使我们的自动加载器加载我们的`libraries`目录。`autoload`部分应该类似于这样：
 
 ```php
-    "autoload": {
-        "classmap": [
-            "app/commands",
-            "app/controllers",
-            "app/models",
-            "app/database/migrations",
-            "app/database/seeds",
-            "app/tests/TestCase.php",
-            "app/libraries"
-        ],
-    }
-    ```
+"autoload": {
+    "classmap": [
+        "app/commands",
+        "app/controllers",
+        "app/models",
+        "app/database/migrations",
+        "app/database/seeds",
+        "app/tests/TestCase.php",
+        "app/libraries"
+    ],
+}
+```
 
 1.  在命令提示符中，转储我们的自动加载器：
 
 ```php
-    **php composer.phar dump-autoload**
+**php composer.phar dump-autoload**
 
-    ```
+```
 
 1.  在我们的`routes.php`文件中，我们将添加一个简单的配置：
 
 ```php
-    $db_setup = Config::get('database.connections.mysql');
-    R::setup('mysql:host=' . $db_setup['host'] . ';dbname='. $db_setup['database'], $db_setup['username'],$db_setup['password']);
-    ```
+$db_setup = Config::get('database.connections.mysql');
+R::setup('mysql:host=' . $db_setup['host'] . ';dbname='. $db_setup['database'], $db_setup['username'],$db_setup['password']);
+```
 
 1.  创建一个路由，将添加一些数据然后显示它：
 
 ```php
-    Route::get('orm', function() 
+Route::get('orm', function() 
+{
+    $superhero = R::dispense('superheroes');
+    $superhero->name = 'Spiderman';
+    $superhero->city = 'New York';
+    $superhero->age = 24;
+
+    $id1 = R::store($superhero);
+
+    $superhero = R::dispense('superheroes');
+    $superhero->name = 'Superman';
+    $superhero->city = 'Metropolis';
+    $superhero->age = 50;
+
+    $id2 = R::store($superhero);
+
+    $superhero = R::dispense('superheroes');
+    $superhero->name = 'Batman';
+    $superhero->city = 'Gotham';
+    $superhero->age = 36;
+
+    $id3 = R::store($superhero);
+
+    $heroes = R::batch('superheroes',array($id1, $id2,$id3));
+
+    foreach ($heroes as $hero)
     {
-        $superhero = R::dispense('superheroes');
-        $superhero->name = 'Spiderman';
-        $superhero->city = 'New York';
-        $superhero->age = 24;
-
-        $id1 = R::store($superhero);
-
-        $superhero = R::dispense('superheroes');
-        $superhero->name = 'Superman';
-        $superhero->city = 'Metropolis';
-        $superhero->age = 50;
-
-        $id2 = R::store($superhero);
-
-        $superhero = R::dispense('superheroes');
-        $superhero->name = 'Batman';
-        $superhero->city = 'Gotham';
-        $superhero->age = 36;
-
-        $id3 = R::store($superhero);
-
-        $heroes = R::batch('superheroes',array($id1, $id2,$id3));
-
-        foreach ($heroes as $hero)
-        {
-            echo $hero->name . ' - ' .  $hero->city . ' - '. $hero->age . '<br>';
-        }
-    });
-    ```
+        echo $hero->name . ' - ' .  $hero->city . ' - '. $hero->age . '<br>';
+    }
+});
+```
 
 ## 工作原理...
 

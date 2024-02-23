@@ -84,30 +84,30 @@ class UserController extends BaseController {
 +   您可以使用闭包函数并直接从 `app/routes.php` 设置动作的逻辑。看一下以下代码：
 
 ```php
-    Route::get('hello', function(){
-       return 'Ahoy, everyone!';
-    });
-    ```
+Route::get('hello', function(){
+   return 'Ahoy, everyone!';
+});
+```
 
 在这里，我们调用了 `get()` 方法，因为我们希望此路由成为 `GET` 请求。第一个参数是动作的路径，因此如果我们调用 `http://ourwebsite.com/hello`，将调用此路由动作。第二个参数可以来自各种选择。它可以是一个包含名称、过滤器和动作的数组，一个定义控制器方法的字符串，或者直接包含逻辑的闭包函数。在我们的示例中，我们放置了一个闭包函数并直接向最终用户返回了一个字符串。因此，如果用户导航到 `http://ourwebsite.com/hello`，最终用户将直接看到消息**Ahoy, everyone!**。
 
 +   设置路由的第二种方法是将第二个参数作为字符串传递，定义它传递到哪个控制器，并调用哪个动作。看一下以下代码：
 
 ```php
-    Route::get('hello', 'ProfileController@hello'); 
-    ```
+Route::get('hello', 'ProfileController@hello'); 
+```
 
 在这里，字符串 `ProfileController@hello` 告诉 Laravel 方法 `hello` 将从名为 `ProfileController` 的控制器中调用。我们使用字符 `@` 将它们分开。
 
 +   第三种方法是将数组作为第二个参数，其中包含各种键和值。看一下以下代码：
 
 ```php
-    Route::get('hello', array(
-       'before'   => 'member',
-       'as'       => 'our_hello_page'
-       'uses'     => 'ProfileController@hello'
-    ));
-    ```
+Route::get('hello', array(
+   'before'   => 'member',
+   'as'       => 'our_hello_page'
+   'uses'     => 'ProfileController@hello'
+));
+```
 
 数组可以有多个参数，定义路由的名称、在调用动作之前将应用的过滤器，以及将使用哪个控制器及其方法。以下是三个不同的键：
 
@@ -150,56 +150,56 @@ Route::get('users/{id}', function($id){
 1.  然后，您需要在`app/routes.php`中设置 RESTful 控制器，方法是运行以下命令：
 
 ```php
-    Route::controller('users', 'UserController');
-    ```
+Route::controller('users', 'UserController');
+```
 
 Laravel 提供了一种更快的方法来创建资源控制器。这些被 Laravel 称为资源控制器。遵循以下步骤来设置资源控制器的路由：
 
 1.  首先，您需要使用 Laravel 的 PHP 客户端`artisan`创建一个具有资源方法的新控制器。看一下以下代码：
 
 ```php
-    php artisan controller:make NewsController
-    ```
+php artisan controller:make NewsController
+```
 
 使用此命令，将在`app/controllers`文件夹中自动生成一个名为`NewsController.php`的新文件，并在其中已经定义了所有资源方法。
 
 1.  然后，您需要通过运行以下命令在`app/routes.php`中设置资源控制器：
 
 ```php
-    Route::resource('news', 'NewsController');
-    ```
+Route::resource('news', 'NewsController');
+```
 
 在设置资源控制器时，您可以通过将第三个参数设置为此`Route`定义来设置要包含或排除的操作。
 
 1.  要包含将在资源控制器中定义的操作（类似于白名单），您可以使用`only`键，如下所示：
 
 ```php
-    Route::resource(
-       'news', 
-       'NewsController',
-       array('only' => array('index', 'show'))
-    );
-    ```
+Route::resource(
+   'news', 
+   'NewsController',
+   array('only' => array('index', 'show'))
+);
+```
 
 1.  要排除将在资源控制器中定义的操作（类似于黑名单），您可以使用`except`键，如下所示：
 
 ```php
-    Route::resource(
-       'news', 
-       'NewsController',
-       array('except' => array('create', 'store', 'update', 'destroy'))
-    );
-    ```
+Route::resource(
+   'news', 
+   'NewsController',
+   array('except' => array('create', 'store', 'update', 'destroy'))
+);
+```
 
 1.  所有资源控制器操作都有定义的路由名称。在某些情况下，您可能还想覆盖操作名称，可以通过设置第三个参数`names`来实现，如下所示：
 
 ```php
-    Route::resource(
-       'news', 
-       'NewsController',
-       array('names' => array('create' => 'news.myCoolCreateAction')
-    );
-    ```
+Route::resource(
+   'news', 
+   'NewsController',
+   array('names' => array('create' => 'news.myCoolCreateAction')
+);
+```
 
 如果您已经阅读了上一章，您可能还记得我们在路由中有过滤器，但我们没有在 RESTful 和资源控制器中使用`before`键。要使用`before`键，我们可以执行之前遵循的步骤或在控制器中设置过滤器。这些可以在控制器的`__construct()`方法中设置（如果没有，则创建一个），如下所示：
 

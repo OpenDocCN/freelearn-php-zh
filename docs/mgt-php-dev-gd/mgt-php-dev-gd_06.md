@@ -512,30 +512,30 @@ $updatedProduct = json_decode($oauthClient->getLastResponseInfo());
 文件位置是`app/code/local/Mdg/Giftregistry/Model/Api.php`。
 
 ```php
-    <?php
-    class Mdg_Giftregisty_Model_Api extends Mage_Api_Model_Resource_Abstract
+<?php
+class Mdg_Giftregisty_Model_Api extends Mage_Api_Model_Resource_Abstract
+{
+    public function getRegistryList($customerId = null)
     {
-        public function getRegistryList($customerId = null)
-        {
 
-        }
-
-        public function getRegistryInfo($registryId)
-        {
-
-        }
-
-        public function getRegistryItems($registryId)
-        {
-
-        }
-
-        public function getRegistryItemInfo($registryItemId)
-        {
-
-        }
     }
-    ```
+
+    public function getRegistryInfo($registryId)
+    {
+
+    }
+
+    public function getRegistryItems($registryId)
+    {
+
+    }
+
+    public function getRegistryItemInfo($registryItemId)
+    {
+
+    }
+}
+```
 
 1.  创建一个名为`Api/`的新目录。
 
@@ -544,12 +544,12 @@ $updatedProduct = json_decode($oauthClient->getLastResponseInfo());
 文件位置是`app/code/local/Mdg/Giftregistry/Model/Api/V2.php`。
 
 ```php
-    <?php
-    class Mdg_Giftregisty_Model_Api_V2 extends Mdg_Giftregisty_Model_Api
-    {
+<?php
+class Mdg_Giftregisty_Model_Api_V2 extends Mdg_Giftregisty_Model_Api
+{
 
-    }
-    ```
+}
+```
 
 您可能注意到的第一件事是`V2.php`文件正在扩展我们刚刚创建的`API`类。唯一的区别是`V2`类由`SOAP_v2`协议使用，而常规的`API`类用于所有其他请求。
 
@@ -627,52 +627,52 @@ class Mdg_Giftregisty_Model_Api extends Mage_Api_Model_Resource_Abstract
 文件位置是`app/code/local/Mdg/Giftregistry/etc/api.xml`。
 
 ```php
-    <?xml version="1.0"?>
-    <config>
-        <api>
-            <resources>
-                <giftregistry_registry translate="title" module="mdg_giftregistry">
-                    <model>mdg_giftregistry/api</model>
-                    <title>Mdg Giftregistry Registry functions</title>
-                    <methods>
-                        <list translate="title" module="mdg_giftregistry">
-                            <title>getRegistryList</title>
-                            <method>getRegistryList</method>
-                        </list>
-                        <info translate="title" module="mdg_giftregistry">
-                            <title>getRegistryInfo</title>
-                            <method>getRegistryInfo</method>
-                        </info>
-                    </methods>
-                </giftregistry_registry>
-                <giftregistry_item translate="title" module="mdg_giftregistry">
-                    <model>mdg_giftregistry/api</model>
-                    <title>Mdg Giftregistry Registry Items functions</title>
-                    <methods>
-                        <list translate="title" module="mdg_giftregistry">
-                            <title>getRegistryItems</title>
-                            <method>getRegistryItems</method>
-                        </list>
-                        <info translate="title" module="mdg_giftregistry">
-                            <title>getRegistryItemInfo</title>
-                            <method>getRegistryItemInfo</method>
-                        </info>
-                    </methods>
-                </giftregistry_item>
-            </resources>
-            <resources_alias>
+<?xml version="1.0"?>
+<config>
+    <api>
+        <resources>
+            <giftregistry_registry translate="title" module="mdg_giftregistry">
+                <model>mdg_giftregistry/api</model>
+                <title>Mdg Giftregistry Registry functions</title>
+                <methods>
+                    <list translate="title" module="mdg_giftregistry">
+                        <title>getRegistryList</title>
+                        <method>getRegistryList</method>
+                    </list>
+                    <info translate="title" module="mdg_giftregistry">
+                        <title>getRegistryInfo</title>
+                        <method>getRegistryInfo</method>
+                    </info>
+                </methods>
+            </giftregistry_registry>
+            <giftregistry_item translate="title" module="mdg_giftregistry">
+                <model>mdg_giftregistry/api</model>
+                <title>Mdg Giftregistry Registry Items functions</title>
+                <methods>
+                    <list translate="title" module="mdg_giftregistry">
+                        <title>getRegistryItems</title>
+                        <method>getRegistryItems</method>
+                    </list>
+                    <info translate="title" module="mdg_giftregistry">
+                        <title>getRegistryItemInfo</title>
+                        <method>getRegistryItemInfo</method>
+                    </info>
+                </methods>
+            </giftregistry_item>
+        </resources>
+        <resources_alias>
+            <giftregistry_registry>giftregistry_registry</giftregistry_registry>
+            <giftregistry_item>giftregistry_item</giftregistry_item>
+        </resources_alias>
+        <v2>
+            <resources_function_prefix>
                 <giftregistry_registry>giftregistry_registry</giftregistry_registry>
                 <giftregistry_item>giftregistry_item</giftregistry_item>
-            </resources_alias>
-            <v2>
-                <resources_function_prefix>
-                    <giftregistry_registry>giftregistry_registry</giftregistry_registry>
-                    <giftregistry_item>giftregistry_item</giftregistry_item>
-                </resources_function_prefix>
-            </v2>
-        </api>
-    </config>
-    ```
+            </resources_function_prefix>
+        </v2>
+    </api>
+</config>
+```
 
 还有一个文件需要更新，以确保 SOAP 适配器接收到我们的新 API 函数：
 
@@ -683,74 +683,74 @@ class Mdg_Giftregisty_Model_Api extends Mage_Api_Model_Resource_Abstract
 文件位置是`app/code/local/Mdg/Giftregistry/etc/wsdl.xml`。
 
 ```php
-    <?xml version="1.0" encoding="UTF-8"?>
-    <definitions   
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions   
 
-                 name="{{var wsdl.name}}" targetNamespace="urn:{{var wsdl.name}}">
-        <types>
+             name="{{var wsdl.name}}" targetNamespace="urn:{{var wsdl.name}}">
+    <types>
 
-        </types>
-        <message name="gitregistryRegistryListRequest">
+    </types>
+    <message name="gitregistryRegistryListRequest">
 
-        </message>
-        <portType name="{{var wsdl.handler}}PortType">
+    </message>
+    <portType name="{{var wsdl.handler}}PortType">
 
-        </portType>
-        <binding name="{{var wsdl.handler}}Binding" type="typens:{{var wsdl.handler}}PortType">
-            <soap:binding style="rpc" transport="http://schemas.xmlsoap.org/soap/http" />
+    </portType>
+    <binding name="{{var wsdl.handler}}Binding" type="typens:{{var wsdl.handler}}PortType">
+        <soap:binding style="rpc" transport="http://schemas.xmlsoap.org/soap/http" />
 
-        </binding>
-        <service name="{{var wsdl.name}}Service">
-            <port name="{{var wsdl.handler}}Port" binding="typens:{{var wsdl.handler}}Binding">
-                <soap:address location="{{var wsdl.url}}" />
-            </port>
-        </service>
-    </definitions> 
-    ```
+    </binding>
+    <service name="{{var wsdl.name}}Service">
+        <port name="{{var wsdl.handler}}Port" binding="typens:{{var wsdl.handler}}Binding">
+            <soap:address location="{{var wsdl.url}}" />
+        </port>
+    </service>
+</definitions> 
+```
 
 1.  这是基本的占位符。我们有本章开头定义的所有主要节点。我们首先要定义的是我们的 API 将使用的自定义数据类型：
 
 文件位置是`app/code/local/Mdg/Giftregistry/etc/wsdl.xml`。
 
 ```php
-    …
-    <schema  targetNamespace="urn:Magento">
-                <import namespace="http://schemas.xmlsoap.org/soap/encoding/" schemaLocation="http://schemas.xmlsoap.org/soap/encoding/"/>
-                <complexType name="giftRegistryEntity">
-                    <all>
-                        <element name="entity_id" type="xsd:integer" minOccurs="0" />
-                        <element name="customer_id" type="xsd:integer" minOccurs="0" />
-                        <element name="type_id" type="xsd:integer" minOccurs="0" />
-                        <element name="website_id" type="xsd:integer" minOccurs="0" />
-                        <element name="event_date" type="xsd:string" minOccurs="0" />
-                        <element name="event_country" type="xsd:string" minOccurs="0" />
-                        <element name="event_location" type="xsd:string" minOccurs="0" />
-                    </all>
-                </complexType>
-                <complexType name="giftRegistryEntityArray">
-                    <complexContent>
-                        <restriction base="soapenc:Array">
-                            <attribute ref="soapenc:arrayType" wsdl:arrayType="typens:giftRegistryEntity[]" />
-                        </restriction>
-                    </complexContent>
-                </complexType>
-                <complexType name="registryItemsEntity">
-                    <all>
-                        <element name="item_id" type="xsd:integer" minOccurs="0" />
-                        <element name="registry_id" type="xsd:integer" minOccurs="0" />
-                        <element name="product_id" type="xsd:integer" minOccurs="0" />
-                    </all>
-                </complexType>
-                <complexType name="registryItemsArray">
-                    <complexContent>
-                        <restriction base="soapenc:Array">
-                            <attribute ref="soapenc:arrayType" wsdl:arrayType="typens:registryItemsEntity[]" />
-                        </restriction>
-                    </complexContent>
-                </complexType>
-            </schema>
-    …
-    ```
+…
+<schema  targetNamespace="urn:Magento">
+            <import namespace="http://schemas.xmlsoap.org/soap/encoding/" schemaLocation="http://schemas.xmlsoap.org/soap/encoding/"/>
+            <complexType name="giftRegistryEntity">
+                <all>
+                    <element name="entity_id" type="xsd:integer" minOccurs="0" />
+                    <element name="customer_id" type="xsd:integer" minOccurs="0" />
+                    <element name="type_id" type="xsd:integer" minOccurs="0" />
+                    <element name="website_id" type="xsd:integer" minOccurs="0" />
+                    <element name="event_date" type="xsd:string" minOccurs="0" />
+                    <element name="event_country" type="xsd:string" minOccurs="0" />
+                    <element name="event_location" type="xsd:string" minOccurs="0" />
+                </all>
+            </complexType>
+            <complexType name="giftRegistryEntityArray">
+                <complexContent>
+                    <restriction base="soapenc:Array">
+                        <attribute ref="soapenc:arrayType" wsdl:arrayType="typens:giftRegistryEntity[]" />
+                    </restriction>
+                </complexContent>
+            </complexType>
+            <complexType name="registryItemsEntity">
+                <all>
+                    <element name="item_id" type="xsd:integer" minOccurs="0" />
+                    <element name="registry_id" type="xsd:integer" minOccurs="0" />
+                    <element name="product_id" type="xsd:integer" minOccurs="0" />
+                </all>
+            </complexType>
+            <complexType name="registryItemsArray">
+                <complexContent>
+                    <restriction base="soapenc:Array">
+                        <attribute ref="soapenc:arrayType" wsdl:arrayType="typens:registryItemsEntity[]" />
+                    </restriction>
+                </complexContent>
+            </complexType>
+        </schema>
+…
+```
 
 ### 注意
 
@@ -761,113 +761,113 @@ class Mdg_Giftregisty_Model_Api extends Mage_Api_Model_Resource_Abstract
 文件位置是`app/code/local/Mdg/Giftregistry/etc/wsdl.xml`。
 
 ```php
-    …
-        <message name="gitregistryRegistryListRequest">
-            <part name="sessionId" type="xsd:string" />
-            <part name="customerId" type="xsd:integer"/>
-        </message>
-        <message name="gitregistryRegistryListResponse">
-            <part name="result" type="typens:giftRegistryEntityArray" />
-        </message>
-        <message name="gitregistryRegistryInfoRequest">
-            <part name="sessionId" type="xsd:string" />
-            <part name="registryId" type="xsd:integer"/>
-        </message>
-        <message name="gitregistryRegistryInfoResponse">
-            <part name="result" type="typens:giftRegistryEntity" />
-        </message>
-        <message name="gitregistryItemListRequest">
-            <part name="sessionId" type="xsd:string" />
-            <part name="registryId" type="xsd:integer"/>
-        </message>
-        <message name="gitregistryItemListResponse">
-            <part name="result" type="typens:registryItemsArray" />
-        </message>
-        <message name="gitregistryItemInfoRequest">
-            <part name="sessionId" type="xsd:string" />
-            <part name="registryItemId" type="xsd:integer"/>
-        </message>
-        <message name="gitregistryItemInfoResponse">
-            <part name="result" type="typens:registryItemsEntity" />
-        </message>
-    …
-    ```
+…
+    <message name="gitregistryRegistryListRequest">
+        <part name="sessionId" type="xsd:string" />
+        <part name="customerId" type="xsd:integer"/>
+    </message>
+    <message name="gitregistryRegistryListResponse">
+        <part name="result" type="typens:giftRegistryEntityArray" />
+    </message>
+    <message name="gitregistryRegistryInfoRequest">
+        <part name="sessionId" type="xsd:string" />
+        <part name="registryId" type="xsd:integer"/>
+    </message>
+    <message name="gitregistryRegistryInfoResponse">
+        <part name="result" type="typens:giftRegistryEntity" />
+    </message>
+    <message name="gitregistryItemListRequest">
+        <part name="sessionId" type="xsd:string" />
+        <part name="registryId" type="xsd:integer"/>
+    </message>
+    <message name="gitregistryItemListResponse">
+        <part name="result" type="typens:registryItemsArray" />
+    </message>
+    <message name="gitregistryItemInfoRequest">
+        <part name="sessionId" type="xsd:string" />
+        <part name="registryItemId" type="xsd:integer"/>
+    </message>
+    <message name="gitregistryItemInfoResponse">
+        <part name="result" type="typens:registryItemsEntity" />
+    </message>
+…
+```
 
 1.  一个重要的事情要注意的是，每个请求消息将始终包括一个`sessionId`属性，用于验证和认证每个请求，而响应用于指定返回的编译数据类型或值：
 
 文件位置是`app/code/local/Mdg/Giftregistry/etc/wsdl.xml`。
 
 ```php
-    …
-        <portType name="{{var wsdl.handler}}PortType">
-            <operation name="giftregistryRegistryList">
-                <documentation>Get Registries List</documentation>
-                <input message="typens:gitregistryRegistryListRequest" />
-                <output message="typens:gitregistryRegistryListResponse" />
-            </operation>
-            <operation name="giftregistryRegistryInfo">
-                <documentation>Get Registry Info</documentation>
-                <input message="typens:gitregistryRegistryInfoRequest" />
-                <output message="typens:gitregistryRegistryInfoResponse" />
-            </operation>
-            <operation name="giftregistryItemList">
-                <documentation>getAllProductsInfo</documentation>
-                <input message="typens:gitregistryItemListRequest" />
-                <output message="typens:gitregistryItemListResponse" />
-            </operation>
-            <operation name="giftregistryItemInfo">
-                <documentation>getAllProductsInfo</documentation>
-                <input message="typens:gitregistryItemInfoRequest" />
-                <output message="typens:gitregistryItemInfoResponse" />
-            </operation>
-        </portType>
-    …
-    ```
+…
+    <portType name="{{var wsdl.handler}}PortType">
+        <operation name="giftregistryRegistryList">
+            <documentation>Get Registries List</documentation>
+            <input message="typens:gitregistryRegistryListRequest" />
+            <output message="typens:gitregistryRegistryListResponse" />
+        </operation>
+        <operation name="giftregistryRegistryInfo">
+            <documentation>Get Registry Info</documentation>
+            <input message="typens:gitregistryRegistryInfoRequest" />
+            <output message="typens:gitregistryRegistryInfoResponse" />
+        </operation>
+        <operation name="giftregistryItemList">
+            <documentation>getAllProductsInfo</documentation>
+            <input message="typens:gitregistryItemListRequest" />
+            <output message="typens:gitregistryItemListResponse" />
+        </operation>
+        <operation name="giftregistryItemInfo">
+            <documentation>getAllProductsInfo</documentation>
+            <input message="typens:gitregistryItemInfoRequest" />
+            <output message="typens:gitregistryItemInfoResponse" />
+        </operation>
+    </portType>
+…
+```
 
 1.  为了正确添加新的 API 端点，下一个需要的是定义绑定，用于指定哪些方法是公开的：
 
 文件位置是`app/code/local/Mdg/Giftregistry/etc/wsdl.xml`。
 
 ```php
-    …        
-    <operation name="giftregistryRegistryList">
-                <soap:operation soapAction="urn:{{var wsdl.handler}}Action" />
-                <input>
-                    <soap:body namespace="urn:{{var wsdl.name}}" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
-                </input>
-                <output>
-                    <soap:body namespace="urn:{{var wsdl.name}}" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
-                </output>
-            </operation>
-            <operation name="giftregistryRegistryInfo">
-                <soap:operation soapAction="urn:{{var wsdl.handler}}Action" />
-                <input>
-                    <soap:body namespace="urn:{{var wsdl.name}}" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
-                </input>
-                <output>
-                    <soap:body namespace="urn:{{var wsdl.name}}" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
-                </output>
-            </operation>
-            <operation name="giftregistryItemList">
-                <soap:operation soapAction="urn:{{var wsdl.handler}}Action" />
-                <input>
-                    <soap:body namespace="urn:{{var wsdl.name}}" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
-                </input>
-                <output>
-                    <soap:body namespace="urn:{{var wsdl.name}}" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
-                </output>
-            </operation>
-            <operation name="giftregistryInfoList">
-                <soap:operation soapAction="urn:{{var wsdl.handler}}Action" />
-                <input>
-                    <soap:body namespace="urn:{{var wsdl.name}}" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
-                </input>
-                <output>
-                    <soap:body namespace="urn:{{var wsdl.name}}" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
-                </output>
-            </operation>
-    …
-    ```
+…        
+<operation name="giftregistryRegistryList">
+            <soap:operation soapAction="urn:{{var wsdl.handler}}Action" />
+            <input>
+                <soap:body namespace="urn:{{var wsdl.name}}" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
+            </input>
+            <output>
+                <soap:body namespace="urn:{{var wsdl.name}}" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
+            </output>
+        </operation>
+        <operation name="giftregistryRegistryInfo">
+            <soap:operation soapAction="urn:{{var wsdl.handler}}Action" />
+            <input>
+                <soap:body namespace="urn:{{var wsdl.name}}" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
+            </input>
+            <output>
+                <soap:body namespace="urn:{{var wsdl.name}}" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
+            </output>
+        </operation>
+        <operation name="giftregistryItemList">
+            <soap:operation soapAction="urn:{{var wsdl.handler}}Action" />
+            <input>
+                <soap:body namespace="urn:{{var wsdl.name}}" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
+            </input>
+            <output>
+                <soap:body namespace="urn:{{var wsdl.name}}" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
+            </output>
+        </operation>
+        <operation name="giftregistryInfoList">
+            <soap:operation soapAction="urn:{{var wsdl.handler}}Action" />
+            <input>
+                <soap:body namespace="urn:{{var wsdl.name}}" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
+            </input>
+            <output>
+                <soap:body namespace="urn:{{var wsdl.name}}" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
+            </output>
+        </operation>
+…
+```
 
 ### 注意
 
@@ -894,74 +894,74 @@ REST API 是在 Magento Community Edition 1.7 和 Enterprise Edition 1.12 中引
 文件位置是`app/code/local/Mdg/Giftregistry/etc/api2.xml`。
 
 ```php
-    <?xml version="1.0"?>
-    <config>
-        <api2>
-            <resource_groups>
-                <giftregistry translate="title" module="mdg_giftregistry">
-                    <title>MDG GiftRegistry API calls</title>
-                    <sort_order>30</sort_order>
-                    <children>
-                        <giftregistry_registry translate="title" module="mdg_giftregistry">
-                            <title>Gift Registries</title>
-                            <sort_order>50</sort_order>
-                        </giftregistry_registry>
-                        <giftregistry_item translate="title" module="mdg_giftregistry">
-                            <title>Gift Registry Items</title>
-                            <sort_order>50</sort_order>
-                        </giftregistry_item>
-                    </children>
-                </giftregistry>
-            </resource_groups>
-            <resources>
-                <giftregistryregistry translate="title" module="mdg_giftregistry">
-                    <group>giftregistry_registry</group>
-                    <model>mdg_giftregistry/api_registry</model>
-                    <working_model>mdg_giftregistry/api_registry</working_model>
-                    <title>Gift Registry</title>
-                    <sort_order>10</sort_order>
-                    <privileges>
-                        <admin>
-                            <create>1</create>
-                            <retrieve>1</retrieve>
-                            <update>1</update>
-                            <delete>1</delete>
-                        </admin>
-                    </privileges>
-                    <attributes translate="product_count" module="mdg_giftregistry">
-                        <registry_list>Registry List</registry_list>
-                        <registry>Registry</registry>
-                        <item_list>Item List</item_list>
-                        <item>Item</item>
-                    </attributes>
-                    <entity_only_attributes>
-                    </entity_only_attributes>
-                    <exclude_attributes>
-                    </exclude_attributes>
-                    <routes>
-                        <route_registry_list>
-                            <route>/mdg/registry/list</route>
-                            <action_type>collection</action_type>
-                        </route_registry_list>
-                        <route_registry_entity>
-                            <route>/mdg/registry/:registry_id</route>
-                            <action_type>entity</action_type>
-                        </route_registry_entity>
-                        <route_registry_list>
-                            <route>/mdg/registry_item/list</route>
-                            <action_type>collection</action_type>
-                        </route_registry_list>
-                        <route_registry_list>
-                            <route>/mdg/registry_item/:item_id</route>
-                            <action_type>entity</action_type>
-                        </route_registry_list>
-                    </routes>
-                    <versions>1</versions>
-                </giftregistryregistry>
-            </resources>
-        </api2>
-    </config>
-    ```
+<?xml version="1.0"?>
+<config>
+    <api2>
+        <resource_groups>
+            <giftregistry translate="title" module="mdg_giftregistry">
+                <title>MDG GiftRegistry API calls</title>
+                <sort_order>30</sort_order>
+                <children>
+                    <giftregistry_registry translate="title" module="mdg_giftregistry">
+                        <title>Gift Registries</title>
+                        <sort_order>50</sort_order>
+                    </giftregistry_registry>
+                    <giftregistry_item translate="title" module="mdg_giftregistry">
+                        <title>Gift Registry Items</title>
+                        <sort_order>50</sort_order>
+                    </giftregistry_item>
+                </children>
+            </giftregistry>
+        </resource_groups>
+        <resources>
+            <giftregistryregistry translate="title" module="mdg_giftregistry">
+                <group>giftregistry_registry</group>
+                <model>mdg_giftregistry/api_registry</model>
+                <working_model>mdg_giftregistry/api_registry</working_model>
+                <title>Gift Registry</title>
+                <sort_order>10</sort_order>
+                <privileges>
+                    <admin>
+                        <create>1</create>
+                        <retrieve>1</retrieve>
+                        <update>1</update>
+                        <delete>1</delete>
+                    </admin>
+                </privileges>
+                <attributes translate="product_count" module="mdg_giftregistry">
+                    <registry_list>Registry List</registry_list>
+                    <registry>Registry</registry>
+                    <item_list>Item List</item_list>
+                    <item>Item</item>
+                </attributes>
+                <entity_only_attributes>
+                </entity_only_attributes>
+                <exclude_attributes>
+                </exclude_attributes>
+                <routes>
+                    <route_registry_list>
+                        <route>/mdg/registry/list</route>
+                        <action_type>collection</action_type>
+                    </route_registry_list>
+                    <route_registry_entity>
+                        <route>/mdg/registry/:registry_id</route>
+                        <action_type>entity</action_type>
+                    </route_registry_entity>
+                    <route_registry_list>
+                        <route>/mdg/registry_item/list</route>
+                        <action_type>collection</action_type>
+                    </route_registry_list>
+                    <route_registry_list>
+                        <route>/mdg/registry_item/:item_id</route>
+                        <action_type>entity</action_type>
+                    </route_registry_list>
+                </routes>
+                <versions>1</versions>
+            </giftregistryregistry>
+        </resources>
+    </api2>
+</config>
+```
 
 一个重要的事情要注意的是，我们在这个配置文件中定义了一个路由节点。这被 Magento 视为前端路由，用于访问 RESTful `api`函数。还要注意的是，我们不需要为此创建一个新的控制器。
 
@@ -974,19 +974,19 @@ REST API 是在 Magento Community Edition 1.7 和 Enterprise Edition 1.12 中引
 文件位置是`app/code/local/Mdg/Giftregistry/Model/Api/Registry/Rest/Admin/V1.php`。
 
 ```php
-    <?php
+<?php
 
-    class Mdg_Giftregistry_Model_Api_Registry_Rest_Admin_V1 extends Mage_Catalog_Model_Api2_Product_Rest {
-        /**
-         * @return stdClass
-         */
-        protected function _retrieve()
-        {
-            $registryCollection = Mage::getModel('mdg_giftregistry/entity')->getCollection();
-            return $registryCollection;
-        }
+class Mdg_Giftregistry_Model_Api_Registry_Rest_Admin_V1 extends Mage_Catalog_Model_Api2_Product_Rest {
+    /**
+     * @return stdClass
+     */
+    protected function _retrieve()
+    {
+        $registryCollection = Mage::getModel('mdg_giftregistry/entity')->getCollection();
+        return $registryCollection;
     }
-    ```
+}
+```
 
 # 保护 API
 
@@ -1001,33 +1001,33 @@ REST API 是在 Magento Community Edition 1.7 和 Enterprise Edition 1.12 中引
 文件位置为`app/code/local/Mdg/Giftregistry/etc/api.xml`。
 
 ```php
-    <acl>
-        <resources>
-            <giftregistry translate="title" module="mdg_giftregistry">
+<acl>
+    <resources>
+        <giftregistry translate="title" module="mdg_giftregistry">
+            <title>MDG Gift Registry</title>
+            <sort_order>1</sort_order>
+            <registry translate="title" module="mdg_giftregistry">
                 <title>MDG Gift Registry</title>
-                <sort_order>1</sort_order>
-                <registry translate="title" module="mdg_giftregistry">
-                    <title>MDG Gift Registry</title>
-                    <list translate="title" module="mdg_giftregistry">
-                        <title>List Available Registries</title>
-                    </list>
-                    <info translate="title" module="mdg_giftregistry">
-                        <title>Retrieve registry data</title>
-                    </info>
-                </registry>
-                <item translate="title" module="mdg_giftregistry">
-                    <title>MDG Gift Registry Item</title>
-                    <list translate="title" module="mdg_giftregistry">
-                        <title>List Available Items inside a registry</title>
-                    </list>
-                    <info translate="title" module="mdg_giftregistry">
-                        <title>Retrieve registry item data</title>
-                    </info>
-                </item>
-            </giftregistry>
-        </resources>
-    </acl>
-    ```
+                <list translate="title" module="mdg_giftregistry">
+                    <title>List Available Registries</title>
+                </list>
+                <info translate="title" module="mdg_giftregistry">
+                    <title>Retrieve registry data</title>
+                </info>
+            </registry>
+            <item translate="title" module="mdg_giftregistry">
+                <title>MDG Gift Registry Item</title>
+                <list translate="title" module="mdg_giftregistry">
+                    <title>List Available Items inside a registry</title>
+                </list>
+                <info translate="title" module="mdg_giftregistry">
+                    <title>Retrieve registry item data</title>
+                </info>
+            </item>
+        </giftregistry>
+    </resources>
+</acl>
+```
 
 # 总结
 

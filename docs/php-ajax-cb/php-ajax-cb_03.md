@@ -398,17 +398,17 @@ tab navigationcreating, steps});
 获取远程链接以在选项卡中加载很容易。jQuery UI 选项卡内置支持此功能。因此，仅更改 HTML 标记就足够了：
 
 ```php
-    <div id="tabs">
-    <ul>
-    <li><a href="#tab-1">Tab 1</a></li>
-    <li><a href="http:///remote-link.html">Tab 2</a></li>
-    </ul>
-    <div id="tab-1">
-    <p>Tab 1</p>
-    </div>
-    </div>
+<div id="tabs">
+<ul>
+<li><a href="#tab-1">Tab 1</a></li>
+<li><a href="http:///remote-link.html">Tab 2</a></li>
+</ul>
+<div id="tab-1">
+<p>Tab 1</p>
+</div>
+</div>
 
-    ```
+```
 
 在这里，请注意我们不必为远程链接加载添加任何容器`div`元素。
 
@@ -417,13 +417,13 @@ tab navigationcreating, steps});
 Firefox 浏览器的选项卡是**可排序**的-它们可以拖放以更改顺序。**jQuery UI 选项卡**默认情况下不可排序，但可以通过使用`sortable`UI 插件添加该功能：
 
 ```php
-    jQuery(document).ready(function($) {
-    $('#tabs').tabs().find('.ui-tabs-nav').sortable( {
-    axis: 'x'
-    });
-    });
+jQuery(document).ready(function($) {
+$('#tabs').tabs().find('.ui-tabs-nav').sortable( {
+axis: 'x'
+});
+});
 
-    ```
+```
 
 请注意，当调用`tabs()`并且无序列表的`ul`元素已经与`sortable()`调用连接时，无序列表中找到的选项卡导航链接部分将动态添加`ui-tabs-nav`类。
 
@@ -1124,100 +1124,100 @@ $('#dob').datepicker( {
 1.  当 jQuery 库与 jQuery UI 准备就绪时，我们可以开始使用 HTML。我们将构建四个主要的`div`元素：`top, sidebar, sidebar2`和`mainContent`。每个都包括一个`sortable`列表：
 
 ```php
-    <div id="page">
-    <div id="top">
-    <ul class="sortable">
-    <li id="news"><h2>News</h2></li>
-    <li id="about"><h2>About</h2></li>
-    <li id="contact-us"><h2>Contact Us</h2></li>
-    </ul>
-    </div>
-    <div id="sidebar">
-    <ul class="sortable">
-    <li id="item1">
-    <div class="imgContainer">
-    <img src="images/p2.jpg" /></div>
-    <h2>Sidebar Item 1</h2>
-    </li>
-    <li id="item...">...</li>
-    <li id="item3">
-    <div class="imgContainer">
-    <img src="images/p2.jpg" /></div>
-    <h2>Sidebar Item 3</h2>
-    </li>
-    </ul>
-    </div>
-    <div id="mainContent">
-    <ul class="sortable">
-    <li id="milan">
-    <div class="imgContainer">
-    <img src="images/p2.jpg" /></div>
-    <h2>Milan Sedliak</h2>
-    <p>Web designer, jQuery guru, front end psycho</p>
-    </li>
-    <li id="...">...</li>
-    <li id="james">
-    <div class="imgContainer">
-    <img src="images/p2.jpg" /></div>
-    <h2>James Watt</h2>
-    <p>Scottish inventor and mechanical engineer</p>
-    </li>
-    </ul>
-    </div>
-    <div id="sidebar2">
-    <ul class="sortable">
-    <li id="item4">Sidebar Item 4</li>
-    <li id="item5">Sidebar Item 5</li>
-    </ul>
-    </div>
-    </div>
+<div id="page">
+<div id="top">
+<ul class="sortable">
+<li id="news"><h2>News</h2></li>
+<li id="about"><h2>About</h2></li>
+<li id="contact-us"><h2>Contact Us</h2></li>
+</ul>
+</div>
+<div id="sidebar">
+<ul class="sortable">
+<li id="item1">
+<div class="imgContainer">
+<img src="images/p2.jpg" /></div>
+<h2>Sidebar Item 1</h2>
+</li>
+<li id="item...">...</li>
+<li id="item3">
+<div class="imgContainer">
+<img src="images/p2.jpg" /></div>
+<h2>Sidebar Item 3</h2>
+</li>
+</ul>
+</div>
+<div id="mainContent">
+<ul class="sortable">
+<li id="milan">
+<div class="imgContainer">
+<img src="images/p2.jpg" /></div>
+<h2>Milan Sedliak</h2>
+<p>Web designer, jQuery guru, front end psycho</p>
+</li>
+<li id="...">...</li>
+<li id="james">
+<div class="imgContainer">
+<img src="images/p2.jpg" /></div>
+<h2>James Watt</h2>
+<p>Scottish inventor and mechanical engineer</p>
+</li>
+</ul>
+</div>
+<div id="sidebar2">
+<ul class="sortable">
+<li id="item4">Sidebar Item 4</li>
+<li id="item5">Sidebar Item 5</li>
+</ul>
+</div>
+</div>
 
-    ```
+```
 
 1.  现在需要应用 CSS 样式：
 
 ```php
-    <style>
-    #page { width:900px; margin:0px auto; }
-    #top, #sidebar, #sidebar2 { display:block; }
-    #top { width:100%; min-height:50px; border: 1px solid #000000; overflow:hidden; margin-bottom:10px; }
-    #sidebar { clear:both; float:left; width:190px; }
-    #sidebar2 { float:right; width:190px; }
-    #mainContent { float:left; width:500px; margin-left:10px; }
-    ul li { background-color: #FFFFFF; border: 1px solid #000000;
-    cursor: move; display: block; font-weight: bold;
-    list-style:none; margin-bottom: 5px; padding: 20px 0;
-    text-align: center; }
-    #top ul li { width: 200px; float:left; border:none; }
-    #top p { display: none; }
-    .imgContainer { display:none; }
-    .placeholder { background-color: #E2F2CE;
-    border: 1px dashed #000000; }
-    #mainContent ul li { text-align: left; height:80px; }
-    #mainContent p { font-weight: normal; }
-    #mainContent h2, #mainContent p { margin-left:200px; }
-    #mainContent .imgContainer { display:block; overflow:hidden;
-    float:left; width:150px; height:70px; margin-left:20px; }
-    </style>
+<style>
+#page { width:900px; margin:0px auto; }
+#top, #sidebar, #sidebar2 { display:block; }
+#top { width:100%; min-height:50px; border: 1px solid #000000; overflow:hidden; margin-bottom:10px; }
+#sidebar { clear:both; float:left; width:190px; }
+#sidebar2 { float:right; width:190px; }
+#mainContent { float:left; width:500px; margin-left:10px; }
+ul li { background-color: #FFFFFF; border: 1px solid #000000;
+cursor: move; display: block; font-weight: bold;
+list-style:none; margin-bottom: 5px; padding: 20px 0;
+text-align: center; }
+#top ul li { width: 200px; float:left; border:none; }
+#top p { display: none; }
+.imgContainer { display:none; }
+.placeholder { background-color: #E2F2CE;
+border: 1px dashed #000000; }
+#mainContent ul li { text-align: left; height:80px; }
+#mainContent p { font-weight: normal; }
+#mainContent h2, #mainContent p { margin-left:200px; }
+#mainContent .imgContainer { display:block; overflow:hidden;
+float:left; width:150px; height:70px; margin-left:20px; }
+</style>
 
-    ```
+```
 
 1.  当 HTML 和 CSS 准备就绪时，我们可以看到以下结果：![如何做...](img/3081_03_11.jpg)
 
 1.  现在我们有了漂亮的静态布局。让我们从 JavaScript 开始：
 
 ```php
-    <script>
-    $(document).ready(function(){
-    $('#sidebar ul, #top ul, #sidebar2 ul, #mainContent ul')
-    .sortable({
-    connectWith: '.sortable',
-    placeholder: 'placeholder'
-    });
-    });
-    </script>
+<script>
+$(document).ready(function(){
+$('#sidebar ul, #top ul, #sidebar2 ul, #mainContent ul')
+.sortable({
+connectWith: '.sortable',
+placeholder: 'placeholder'
+});
+});
+</script>
 
-    ```
+```
 
 1.  应用这个简单的功能后，我们的结果将如下所示：![如何做...](img/3081_03_12.jpg)
 
@@ -1254,60 +1254,60 @@ $('#dob').datepicker( {
 我们可以创建一个`getItems()`函数，来查找文档中的每个未排序列表，将其 ID 保存为 groupName，并找到与该组相关的所有项目。结果将是以`"group1=item1,item2&group2=item3,item4,..."`形式的字符串`items`：
 
 ```php
-    function getItems(){
-    var items = [];
-    $('ul').each(function(){
-    var groupName = $(this).parent().attr('id');
-    var groupItems = $(this).sortable('toArray')
-    .join(',').toString();
-    var item = groupName + '=' + groupItems;
-    items.push(item);
-    });
-    return items.join('&');
-    }
+function getItems(){
+var items = [];
+$('ul').each(function(){
+var groupName = $(this).parent().attr('id');
+var groupItems = $(this).sortable('toArray')
+.join(',').toString();
+var item = groupName + '=' + groupItems;
+items.push(item);
+});
+return items.join('&');
+}
 
-    ```
+```
 
 一旦我们知道如何获取所有的物品，我们就想要将它们保存在 cookies 中。为此，我们将在`sortable`函数中使用`update`方法：
 
 ```php
-    $('#sidebar ul, #top ul, #sidebar2 ul, #mainContent ul')
-    sortable function.sortable({
-    connectWith: '.sortable',
-    placeholder: 'placeholder',
-    update: function(){
-    $.cookie('items', getItems());
-    $.ajax({
-    type: "POST",
-    url: "ajax/saveLayout.php",
-    data: { items: getItems()},
-    success: function(data) {
-    if(data.status=="OK"){
-    // processing the further actions
-    } else {
-    // some logic for error handling
-    }
-    }
-    });
-    }
-    });
+$('#sidebar ul, #top ul, #sidebar2 ul, #mainContent ul')
+sortable function.sortable({
+connectWith: '.sortable',
+placeholder: 'placeholder',
+update: function(){
+$.cookie('items', getItems());
+$.ajax({
+type: "POST",
+url: "ajax/saveLayout.php",
+data: { items: getItems()},
+success: function(data) {
+if(data.status=="OK"){
+// processing the further actions
+} else {
+// some logic for error handling
+}
+}
+});
+}
+});
 
-    ```
+```
 
 我们的`ajax/saveLayout.php`文件可能如下所示：
 
 ```php
-    <?php
-    if($_POST["items"]){
-    // logic for saving items
-    ...
-    $result["status"] = "OK";
-    $result["message"] = "Items saved...";
-    echo json_encode($result);
-    }
-    ?>
+<?php
+if($_POST["items"]){
+// logic for saving items
+...
+$result["status"] = "OK";
+$result["message"] = "Items saved...";
+echo json_encode($result);
+}
+?>
 
-    ```
+```
 
 +   **加载物品：**
 
@@ -1417,152 +1417,152 @@ echo json_encode($result);
 1.  让我们从 HTML 开始：
 
 ```php
-    <div id="page">
-    <div id="shoppingCartContainer">
-    <h1>Your Basket:</h1>
-    <ul id="shoppingCart">
-    <li id="incart-product-template">
-    {productname} (<span>$</span>
-    <span class="value">{price}</span>)
-    <input type="button" value="delete" />
-    </li>
-    <li id="incart-product3">Product 3 (<span>$</span>
-    <span class="value">35</span>)
-    <input type="button" value="delete" /></li>
-    <li id="incart-product4">Product 4 (<span>$</span>
-    <span class="value">12</span>)
-    <input type="button" value="delete" /></li>
-    <li id="total">Total: $<span>47</span></li>
-    </ul>
-    </div>
-    <div id="productListContainer">
-    <ul id="productList">
-    <li id="product1">
-    <h1>Product 1</h1>
-    <div class="productPrice">
-    <span class="currency">$</span>
-    <span class="value">95</span></div>
-    <input type="button" value="Buy" />
-    </li>
-    <li id="product2">
-    <h1>Product 2</h1>
-    <div class="productPrice">
-    <span class="currency">$</span>
-    <span class="value">34</span></div>
-    <input type="button" value="Buy" />
-    </li>
-    <li id="product3">
-    <h1>Product 3</h1>
-    <div class="productPrice">
-    <span class="currency">$</span>
-    <span class="value">66</span></div>
-    <input type="button" value="Buy" />
-    </li>
-    </ul>
-    </div>
-    </div>
+<div id="page">
+<div id="shoppingCartContainer">
+<h1>Your Basket:</h1>
+<ul id="shoppingCart">
+<li id="incart-product-template">
+{productname} (<span>$</span>
+<span class="value">{price}</span>)
+<input type="button" value="delete" />
+</li>
+<li id="incart-product3">Product 3 (<span>$</span>
+<span class="value">35</span>)
+<input type="button" value="delete" /></li>
+<li id="incart-product4">Product 4 (<span>$</span>
+<span class="value">12</span>)
+<input type="button" value="delete" /></li>
+<li id="total">Total: $<span>47</span></li>
+</ul>
+</div>
+<div id="productListContainer">
+<ul id="productList">
+<li id="product1">
+<h1>Product 1</h1>
+<div class="productPrice">
+<span class="currency">$</span>
+<span class="value">95</span></div>
+<input type="button" value="Buy" />
+</li>
+<li id="product2">
+<h1>Product 2</h1>
+<div class="productPrice">
+<span class="currency">$</span>
+<span class="value">34</span></div>
+<input type="button" value="Buy" />
+</li>
+<li id="product3">
+<h1>Product 3</h1>
+<div class="productPrice">
+<span class="currency">$</span>
+<span class="value">66</span></div>
+<input type="button" value="Buy" />
+</li>
+</ul>
+</div>
+</div>
 
-    ```
+```
 
 1.  现在，我们需要包含我们的 CSS：
 
 ```php
-    <style>
-    * { margin:0px; padding:0px; }
-    body { font-family: Arial, sans-serif; font-size: 16px; }
-    h1 { font-size:18px; padding: 10px 0; }
-    ul li { list-style:none; }
-    #page { width:900px; margin:20px auto; }
-    #productList li { float:left; width:200px;
-    text-align:center; }
-    #productListContainer { float:left; }
-    #shoppingCartContainer { float:right; }
-    #shoppingCart { width: 200px; }
-    #shoppingCart li { height:20px; }
-    #shoppingCart li span { color:#A3A3A3; font-weight:normal; }
-    #shoppingCart li#total { border-top:1px solid gray;
-    margin-top:5px; padding-top:5px; text-align:right; }
-    #shoppingCart li#total span { color:#000; font-weight:bold; }
-    #shoppingCart span { width:50px; font-weight:bold; }
-    #shoppingCart input[type=button] { float:right; }
-    #incart-product-template { display:none; }
-    </style>
+<style>
+* { margin:0px; padding:0px; }
+body { font-family: Arial, sans-serif; font-size: 16px; }
+h1 { font-size:18px; padding: 10px 0; }
+ul li { list-style:none; }
+#page { width:900px; margin:20px auto; }
+#productList li { float:left; width:200px;
+text-align:center; }
+#productListContainer { float:left; }
+#shoppingCartContainer { float:right; }
+#shoppingCart { width: 200px; }
+#shoppingCart li { height:20px; }
+#shoppingCart li span { color:#A3A3A3; font-weight:normal; }
+#shoppingCart li#total { border-top:1px solid gray;
+margin-top:5px; padding-top:5px; text-align:right; }
+#shoppingCart li#total span { color:#000; font-weight:bold; }
+#shoppingCart span { width:50px; font-weight:bold; }
+#shoppingCart input[type=button] { float:right; }
+#incart-product-template { display:none; }
+</style>
 
-    ```
+```
 
 1.  最后，但最重要的是 JavaScript 功能：
 
 ```php
-    <script src="js/jquery-1.4.4.js"></script>
-    <script>
-    $(document).ready(function(){
-    // product list functionality
-    $('#productList > li > input[type=button]')
-    .live('click', function(){
-    var $this = $(this).parents('li');
-    var productID = $this.attr('id');
-    var productName = $this.find('h1').html();
-    var productPrice =
-    $this.find('.productPrice .value').html();
-    var productCurrency =
-    $this.find('.productPrice .currency').html();
-    $.ajax({
-    type: "POST",
-    url: "ajax/shopping-cart.php",
-    data: { productID: productID, action: "add"},
-    success: function(data) {
-    if(data.status=="OK"){
-    var $item = $('#incart-product-template').clone();
-    var itemHTML = $item.html();
-    itemHTML =
-    itemHTML.replace(/{productname}/gi, productName);
-    itemHTML =
-    itemHTML.replace(/{price}/gi, productPrice);
-    $item.html(itemHTML);
-    $item.attr('id', productID);
-    $item.show()
-    .insertBefore($('#shoppingCart li#total'));
-    displayTotalPrice();
-    } else {
-    // some logic for error handling
-    }
-    }
-    });
-    });
-    // shopping cart functionality
-    $('#shoppingCart li input[type=button]')
-    .live('click', function(){
-    var $item = $(this).parents('li');
-    var itemID = $item.attr('id');
-    $.ajax({
-    type: "POST",
-    url: "ajax/shopping-cart.php",
-    data: { productID: itemID, action: "remove"},
-    success: function(data) {
-    if(data.status=="OK"){
-    $item.remove();
-    displayTotalPrice();
-    } else {
-    // some logic for error handling
-    }
-    }
-    });
-    });
-    });
-    // calculate the total price
-    var displayTotalPrice = function(){
-    var totalPrice = 0;
-    $('#shoppingCart
-    li:not(#incart-product-template)
-    span.value')
-    .each(function(){
-    totalPrice += parseInt($(this).html());
-    });
-    $('#shoppingCart #total span').html(totalPrice);
-    }
-    </script>
+<script src="js/jquery-1.4.4.js"></script>
+<script>
+$(document).ready(function(){
+// product list functionality
+$('#productList > li > input[type=button]')
+.live('click', function(){
+var $this = $(this).parents('li');
+var productID = $this.attr('id');
+var productName = $this.find('h1').html();
+var productPrice =
+$this.find('.productPrice .value').html();
+var productCurrency =
+$this.find('.productPrice .currency').html();
+$.ajax({
+type: "POST",
+url: "ajax/shopping-cart.php",
+data: { productID: productID, action: "add"},
+success: function(data) {
+if(data.status=="OK"){
+var $item = $('#incart-product-template').clone();
+var itemHTML = $item.html();
+itemHTML =
+itemHTML.replace(/{productname}/gi, productName);
+itemHTML =
+itemHTML.replace(/{price}/gi, productPrice);
+$item.html(itemHTML);
+$item.attr('id', productID);
+$item.show()
+.insertBefore($('#shoppingCart li#total'));
+displayTotalPrice();
+} else {
+// some logic for error handling
+}
+}
+});
+});
+// shopping cart functionality
+$('#shoppingCart li input[type=button]')
+.live('click', function(){
+var $item = $(this).parents('li');
+var itemID = $item.attr('id');
+$.ajax({
+type: "POST",
+url: "ajax/shopping-cart.php",
+data: { productID: itemID, action: "remove"},
+success: function(data) {
+if(data.status=="OK"){
+$item.remove();
+displayTotalPrice();
+} else {
+// some logic for error handling
+}
+}
+});
+});
+});
+// calculate the total price
+var displayTotalPrice = function(){
+var totalPrice = 0;
+$('#shoppingCart
+li:not(#incart-product-template)
+span.value')
+.each(function(){
+totalPrice += parseInt($(this).html());
+});
+$('#shoppingCart #total span').html(totalPrice);
+}
+</script>
 
-    ```
+```
 
 ### 它是如何工作的...
 
@@ -1654,115 +1654,115 @@ success: function(data) {
 1.  一开始，我们将使用`searchPlaceHolder`和`datalist`构建 HTML 代码，如下面的代码片段所示：
 
 ```php
-    <div class="searchPlaceHolder">
-    <label for="search" style="">Type to Search: </label>
-    <div class="loader hidden"></div>
-    <input type="text" autocomplete="OFF" class="search" name="search" id="search">
-    </div>
-    <div class="hidden" id="contactItemTemplate">
-    <li>
-    <div>
-    <h1>{fullname}</h1>
-    <p>{contactlocation}</p>
-    </div>
-    <a href="#">{labels}</a>
-    </li>
-    </div>
-    <ul class="datalist">
-    </ul>
+<div class="searchPlaceHolder">
+<label for="search" style="">Type to Search: </label>
+<div class="loader hidden"></div>
+<input type="text" autocomplete="OFF" class="search" name="search" id="search">
+</div>
+<div class="hidden" id="contactItemTemplate">
+<li>
+<div>
+<h1>{fullname}</h1>
+<p>{contactlocation}</p>
+</div>
+<a href="#">{labels}</a>
+</li>
+</div>
+<ul class="datalist">
+</ul>
 
-    ```
+```
 
 1.  我们将使用一些巧妙的 CSS：
 
 ```php
-    <style>
-    body {
-    font-family: Georgia,"Times New Roman",Times,serif;
-    font-size: 12px; font-weight: 400; font-style: normal;
-    color: #60493E; }
-    ul li { list-style:none; padding:0px; margin:0px; }
-    a { color: #0181E3; text-decoration:none; }
-    p { padding:0px; margin:0px; }
-    h1 {
-    font: 14px/125% 'Copse',Georgia,serif;
-    letter-spacing: -0.03em; font-weight: 400;
-    font-style: normal; color: #8F0206;
-    text-shadow: 0 2px 0 #FCF9EE, 0 2px 0 rgba(0, 0, 0, 0.15);
-    margin-bottom:0px;
-    }
-    datasorting.hidden { display:none; }
-    .searchPlaceHolder { position:relative; z-index:0; }
-    .searchPlaceHolder .loader {
-    background: url("./images/loader-grey-on-transparent.gif") no-repeat scroll 0 0 transparent; height: 40px; position: absolute; right: 10px; top: 6px; width: 40px; z-index: 50;}
-    .search { width:300px; }
-    </style>
+<style>
+body {
+font-family: Georgia,"Times New Roman",Times,serif;
+font-size: 12px; font-weight: 400; font-style: normal;
+color: #60493E; }
+ul li { list-style:none; padding:0px; margin:0px; }
+a { color: #0181E3; text-decoration:none; }
+p { padding:0px; margin:0px; }
+h1 {
+font: 14px/125% 'Copse',Georgia,serif;
+letter-spacing: -0.03em; font-weight: 400;
+font-style: normal; color: #8F0206;
+text-shadow: 0 2px 0 #FCF9EE, 0 2px 0 rgba(0, 0, 0, 0.15);
+margin-bottom:0px;
+}
+datasorting.hidden { display:none; }
+.searchPlaceHolder { position:relative; z-index:0; }
+.searchPlaceHolder .loader {
+background: url("./images/loader-grey-on-transparent.gif") no-repeat scroll 0 0 transparent; height: 40px; position: absolute; right: 10px; top: 6px; width: 40px; z-index: 50;}
+.search { width:300px; }
+</style>
 
-    ```
+```
 
 1.  当 HTML 和 CSS 准备好后，我们可以开始使用 JavaScript：
 
 ```php
-    <script>
-    var developers = [];
-    $(document).ready(function(){
-    // get json data from the server
-    $.get('/json/developers.json', function(data) {
-    if(data){
-    developers = data;
-    // sort data
-    developers = developers.sort(function(a, b){
-    var nameA=a.fullname.toLowerCase(),
-    nameB=b.fullname.toLowerCase();
-    if (nameA < nameB) //sort string ascending
-    return -1
-    if (nameA > nameB)
-    return 1
-    return 0 //default return value (no sorting)
-    });
-    initContacts();
-    }
-    }, "json");
-    initSearch();
-    });
-    var initContacts = function(searchString){
-    var searchString = searchString || "";
-    var items="";
-    var contactItemTemplate = $('#contactItemTemplate').html();
-    for(var i in developers){
-    var fullname = developers[i].fullname || "";
-    var contactlocation = developers[i].contactlocation || "";
-    var labels = developers[i].labels || "";
-    if(searchString!=""){
-    var targetString = fullname + contactlocation + labels;
-    if(targetString.indexOf(searchString) >= 0){
-    items += contactItemTemplate
-    .replace(/{fullname}/g, fullname)
-    .replace(/{contactlocation}/g, contactlocation)
-    .replace(/{labels}/g, labels);
-    }
-    } else {
-    items += contactItemTemplate
-    .replace(/{fullname}/g, fullname)
-    .replace(/{contactlocation}/g, contactlocation)
-    .replace(/{labels}/g, labels);
-    }
-    }
-    $('.datalist').html(items);
-    }
-    var initSearch = function(){
-    var timerId;
-    $('.search').keyup(function() {
-    var string = $(this).val();
-    clearTimeout (timerId);
-    timerId = setTimeout(function(){
-    initContacts(string);
-    }, 500 );
-    })
-    }
-    </script>
+<script>
+var developers = [];
+$(document).ready(function(){
+// get json data from the server
+$.get('/json/developers.json', function(data) {
+if(data){
+developers = data;
+// sort data
+developers = developers.sort(function(a, b){
+var nameA=a.fullname.toLowerCase(),
+nameB=b.fullname.toLowerCase();
+if (nameA < nameB) //sort string ascending
+return -1
+if (nameA > nameB)
+return 1
+return 0 //default return value (no sorting)
+});
+initContacts();
+}
+}, "json");
+initSearch();
+});
+var initContacts = function(searchString){
+var searchString = searchString || "";
+var items="";
+var contactItemTemplate = $('#contactItemTemplate').html();
+for(var i in developers){
+var fullname = developers[i].fullname || "";
+var contactlocation = developers[i].contactlocation || "";
+var labels = developers[i].labels || "";
+if(searchString!=""){
+var targetString = fullname + contactlocation + labels;
+if(targetString.indexOf(searchString) >= 0){
+items += contactItemTemplate
+.replace(/{fullname}/g, fullname)
+.replace(/{contactlocation}/g, contactlocation)
+.replace(/{labels}/g, labels);
+}
+} else {
+items += contactItemTemplate
+.replace(/{fullname}/g, fullname)
+.replace(/{contactlocation}/g, contactlocation)
+.replace(/{labels}/g, labels);
+}
+}
+$('.datalist').html(items);
+}
+var initSearch = function(){
+var timerId;
+$('.search').keyup(function() {
+var string = $(this).val();
+clearTimeout (timerId);
+timerId = setTimeout(function(){
+initContacts(string);
+}, 500 );
+})
+}
+</script>
 
-    ```
+```
 
 1.  当一切准备就绪时，我们的结果如下所示：![如何做...](img/3081_03_14.jpg)
 
@@ -1781,23 +1781,23 @@ success: function(data) {
 这是一个按整数排序的示例函数（升序）：
 
 ```php
-    theArray.sort(function(a, b){
-    return a.age-b.age;});
+theArray.sort(function(a, b){
+return a.age-b.age;});
 
-    ```
+```
 
 +   **按日期排序：**
 
 在这里，数据按日期排序：
 
 ```php
-    theArray.sort(function(a, b){
-    var dateA=new Date(a.startingDate);
-    vaf dateB=new Date(b.startingDate);
-    return dateA-dateB;
-    });
+theArray.sort(function(a, b){
+var dateA=new Date(a.startingDate);
+vaf dateB=new Date(b.startingDate);
+return dateA-dateB;
+});
 
-    ```
+```
 
 # 添加视觉效果和动画
 
@@ -1812,101 +1812,101 @@ jQuery 最大的优势在于它能够与 DOM 一起工作，并创建整洁的�
 1.  像往常一样，我们将从 HTML 代码开始：
 
 ```php
-    <div class="slideBox">
-    <div id="slider1" class="mslider">
-    <ul>
-    <li title="1.jpg"></li>
-    <li title="2.jpg"></li>
-    <li title="3.jpg"></li>
-    <li title="5.jpg"></li>
-    </ul>
-    <div class="navContainer">
-    <div class="buttonsContainer">
-    <span class="btnPrev button">Prev</span>
-    <span class="btnNext button">Next</span>
-    </div>
-    </div>
-    </div>
-    </div>
+<div class="slideBox">
+<div id="slider1" class="mslider">
+<ul>
+<li title="1.jpg"></li>
+<li title="2.jpg"></li>
+<li title="3.jpg"></li>
+<li title="5.jpg"></li>
+</ul>
+<div class="navContainer">
+<div class="buttonsContainer">
+<span class="btnPrev button">Prev</span>
+<span class="btnNext button">Next</span>
+</div>
+</div>
+</div>
+</div>
 
-    ```
+```
 
 1.  在这个任务中，CSS 代码非常重要：
 
 ```php
-    <style>
-    .slideBox { width:900px; float:left; margin:0px; text-align:center; margin-bottom:50px; }
-    #slider1 { height:400px; width:800px; margin:0 auto; }
-    .mslider { border:1px solid black; position:relative;
-    overflow:hidden; text-align:left; }
-    .mslider ul { float:left; margin-left:0px; width:8000px;}
-    .mslider ul li { float:left; list-style-type: none;
-    margin:0px; }
-    .mslider .navContainer { display:none; position:absolute; bottom:0; left:0; background-color:#000;
-    width:100%; height:80px; color:white; }
-    .mslider .buttonsContainer { float:right; color:white;
-    margin-right:10px; margin-top:10px; font-weight:normal;
-    text-decoration:none; }
-    .mslider .buttonsContainer a { margin:5px; color:white;
-    font-weight:normal; text-decoration:none;
-    text-shadow:5px 5px 5px #000000; }
-    .mslider .buttonsContainer .button { cursor:pointer;
-    margin-left:10px; }
-    .mSlide-nav-panel { position:absolute; bottom:0; left:0; }
-    </style>
+<style>
+.slideBox { width:900px; float:left; margin:0px; text-align:center; margin-bottom:50px; }
+#slider1 { height:400px; width:800px; margin:0 auto; }
+.mslider { border:1px solid black; position:relative;
+overflow:hidden; text-align:left; }
+.mslider ul { float:left; margin-left:0px; width:8000px;}
+.mslider ul li { float:left; list-style-type: none;
+margin:0px; }
+.mslider .navContainer { display:none; position:absolute; bottom:0; left:0; background-color:#000;
+width:100%; height:80px; color:white; }
+.mslider .buttonsContainer { float:right; color:white;
+margin-right:10px; margin-top:10px; font-weight:normal;
+text-decoration:none; }
+.mslider .buttonsContainer a { margin:5px; color:white;
+font-weight:normal; text-decoration:none;
+text-shadow:5px 5px 5px #000000; }
+.mslider .buttonsContainer .button { cursor:pointer;
+margin-left:10px; }
+.mSlide-nav-panel { position:absolute; bottom:0; left:0; }
+</style>
 
-    ```
+```
 
 1.  最后，JavaScript 功能：
 
 ```php
-    <script>
-    var activeItem = 0;
-    var itemsNb = 0;
-    $(document).ready(function(){
-    preloadPictures(activeItem);
-    $('#slider1').hover(function(){
-    $(this).find('.navContainer').fadeIn('200');
-    }, function(){
-    $(this).find('.navContainer').fadeOut('200');
-    });
-    // our JS goodness
-    $('.btnPrev').bind('click', function(){
-    moveTo(activeItem-1);
-    });
-    $('.btnNext').bind('click', function(){
-    moveTo(activeItem+1);
-    });
-    itemsNb = $('#slider1 > ul > li').length;
-    });
-    var preloadPictures = function(activeItem){
-    for(var i = (activeItem == 0) ? 0:1; i < 2; i++){
-    var $activeItem = $(".mslider ul li").eq(activeItem+i);
-    var imageNextName = $activeItem.attr('title');
-    if(imageNextName!=""){
-    var $imageNext =
-    $('<img src="images/'+imageNextName+'" />');
-    $activeItem.html("");
-    $imageNext.appendTo($activeItem);
-    }
-    }
-    }
-    var moveTo = function ( itemNumber ){
-    var $btnPrev = $('.btnPrev');
-    var $btnNext = $('.btnNext');
-    var $mSliderList = $('#slider1 > ul');
-    var $mSliderItem = $('#slider1 > ul > li');
-    var margin = itemNumber * $mSliderItem.width();
-    $mSliderList.animate({ marginLeft: "-" + margin + "px" }, 500 );
-    activeItem = itemNumber;
-    // hide 'prev' button if the active item is #1
-    activeItem == 0 ? $btnPrev.hide():$btnPrev.show();
-    // hide 'next' button if the active item is the last item
-    activeItem == (itemsNb-1)?$btnNext.hide():$btnNext.show();
-    }
-    </script>
+<script>
+var activeItem = 0;
+var itemsNb = 0;
+$(document).ready(function(){
+preloadPictures(activeItem);
+$('#slider1').hover(function(){
+$(this).find('.navContainer').fadeIn('200');
+}, function(){
+$(this).find('.navContainer').fadeOut('200');
+});
+// our JS goodness
+$('.btnPrev').bind('click', function(){
+moveTo(activeItem-1);
+});
+$('.btnNext').bind('click', function(){
+moveTo(activeItem+1);
+});
+itemsNb = $('#slider1 > ul > li').length;
+});
+var preloadPictures = function(activeItem){
+for(var i = (activeItem == 0) ? 0:1; i < 2; i++){
+var $activeItem = $(".mslider ul li").eq(activeItem+i);
+var imageNextName = $activeItem.attr('title');
+if(imageNextName!=""){
+var $imageNext =
+$('<img src="images/'+imageNextName+'" />');
+$activeItem.html("");
+$imageNext.appendTo($activeItem);
+}
+}
+}
+var moveTo = function ( itemNumber ){
+var $btnPrev = $('.btnPrev');
+var $btnNext = $('.btnNext');
+var $mSliderList = $('#slider1 > ul');
+var $mSliderItem = $('#slider1 > ul > li');
+var margin = itemNumber * $mSliderItem.width();
+$mSliderList.animate({ marginLeft: "-" + margin + "px" }, 500 );
+activeItem = itemNumber;
+// hide 'prev' button if the active item is #1
+activeItem == 0 ? $btnPrev.hide():$btnPrev.show();
+// hide 'next' button if the active item is the last item
+activeItem == (itemsNb-1)?$btnNext.hide():$btnNext.show();
+}
+</script>
 
-    ```
+```
 
 1.  前面源代码的结果是一个简单的图像滑块：![如何做...](img/3081_03_15.jpg)
 

@@ -39,35 +39,35 @@
 1.  向浏览器输出任何 Unicode 必须得到正确的标识。这通常是通过`meta`标签完成的。您应该将字符集设置为 UTF-8。以下是一个示例：
 
 ```php
-    <head>
-      <title>PHP 7 Cookbook</title>
-      <meta http-equiv="content-type" content="text/html;charset=utf-8" />
-    </head>
-    ```
+<head>
+  <title>PHP 7 Cookbook</title>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+</head>
+```
 
 1.  传统的方法是简单地使用 HTML 来显示图标。因此，您可以做如下操作：
 
 ```php
-    <table>
-      <tr>
-        <td>&#x1F648;</td>
-        <td>&#x1F649;</td>
-        <td>&#x1F64A;</td>
-      </tr>
-    </table>
-    ```
+<table>
+  <tr>
+    <td>&#x1F648;</td>
+    <td>&#x1F649;</td>
+    <td>&#x1F64A;</td>
+  </tr>
+</table>
+```
 
 1.  从 PHP 7 开始，您现在可以使用此语法构造完整的 Unicode 字符：`"\u{xxx}"`。以下是与前述项目中相同的三个图标的示例：
 
 ```php
-    <table>
-      <tr>
-        <td><?php echo "\u{1F648}"; ?></td>
-        <td><?php echo "\u{1F649}"; ?></td>
-        <td><?php echo "\u{1F64A}"; ?></td>
-      </tr>
-    </table>
-    ```
+<table>
+  <tr>
+    <td><?php echo "\u{1F648}"; ?></td>
+    <td><?php echo "\u{1F649}"; ?></td>
+    <td><?php echo "\u{1F64A}"; ?></td>
+  </tr>
+</table>
+```
 
 ### 注意
 
@@ -136,9 +136,9 @@
 1.  有些语言是从右到左而不是从左到右阅读的。例如希伯来语和阿拉伯语。在这个例子中，我们向您展示如何使用`U+202E` Unicode 字符来呈现*反向*文本。以下代码行打印`txet desreveR`：
 
 ```php
-    echo "\u{202E}Reversed text";
-    echo "\u{202D}";    // returns output to left-to-right
-    ```
+echo "\u{202E}Reversed text";
+echo "\u{202D}";    // returns output to left-to-right
+```
 
 ### 注意
 
@@ -147,23 +147,23 @@
 1.  另一个考虑因素是使用组合字符。一个例子是`ñ`（字母`n`上面漂浮着一个波浪符`~`）。这在词语中使用，比如*mañana*（西班牙语中的早晨或明天，取决于上下文）。有一个*组合字符*，用 Unicode 代码`U+00F1`表示。这是它的使用示例，回显`mañana`：
 
 ```php
-    echo "ma\u{00F1}ana"; // shows mañana
-    ```
+echo "ma\u{00F1}ana"; // shows mañana
+```
 
 1.  然而，这可能会影响搜索的可能性。想象一下，您的客户没有带有这个组合字符的键盘。如果他们开始输入`man`试图搜索`mañana`，他们将不成功。
 
 1.  访问*完整*的 Unicode 集合提供了其他可能性。您可以使用*组合*字符，而不是使用*组合*字符，它可以在字母上方放置一个浮动的波浪符。在这个`echo`命令中，输出与以前相同。只是形成单词的方式不同：
 
 ```php
-    echo "man\u{0303}ana"; // also shows mañana
-    ```
+echo "man\u{0303}ana"; // also shows mañana
+```
 
 1.  类似的应用可以用于重音符号。考虑法语单词`élève`（学生）。您可以使用组合字符来呈现它，也可以使用组合代码将重音符号浮动在字母上方。考虑以下两个例子。这两个例子产生相同的输出，但呈现方式不同：
 
 ```php
-    echo "\u{00E9}l\u{00E8}ve";
-    echo "e\u{0301}le\u{0300}ve";
-    ```
+echo "\u{00E9}l\u{00E8}ve";
+echo "e\u{0301}le\u{0300}ve";
+```
 
 ## 它是如何工作的...
 
@@ -215,20 +215,20 @@
 I18n 是 Internationalization 的常见缩写。(计算字母的数量！)
 
 ```php
-    namespace Application\I18n;
-    use Locale as PhpLocale;
-    class Locale extends PhpLocale
-    {
-      const FALLBACK_LOCALE = 'en';
-      // some code
-    }
-    ```
+namespace Application\I18n;
+use Locale as PhpLocale;
+class Locale extends PhpLocale
+{
+  const FALLBACK_LOCALE = 'en';
+  // some code
+}
+```
 
 1.  为了了解传入请求的样子，使用`phpinfo(INFO_VARIABLES)`。在测试后立即禁用此功能，因为它会向潜在攻击者透露太多信息：
 
 ```php
-    <?php phpinfo(INFO_VARIABLES); ?>
-    ```
+<?php phpinfo(INFO_VARIABLES); ?>
+```
 
 1.  Locale 信息存储在`$_SERVER['HTTP_ACCEPT_LANGUAGE']`中。该值将采用这种一般形式：`ll-CC,rl;q=0.n, ll-CC,rl;q=0.n`，如表中所定义：
 
@@ -246,38 +246,38 @@ I18n 是 Internationalization 的常见缩写。(计算字母的数量！)
 1.  可能会列出多个 locale。例如，网站访问者可能在他们的计算机上安装了多种语言。PHP 的 Locale 类恰好有一个方法`acceptFromHttp()`，它读取`Accept-language`标头字符串并给我们所需的设置：
 
 ```php
-    protected $localeCode;
-    public function setLocaleCode($acceptLangHeader)
-    {
-      $this->localeCode = $this->acceptFromHttp($acceptLangHeader);
-    }
-    ```
+protected $localeCode;
+public function setLocaleCode($acceptLangHeader)
+{
+  $this->localeCode = $this->acceptFromHttp($acceptLangHeader);
+}
+```
 
 1.  然后我们可以定义适当的 getter。`get AcceptLanguage()`方法返回`$_SERVER['HTTP_ACCEPT_LANGUAGE']`中的值。
 
 ```php
-    public function getAcceptLanguage()
-    {
-      return $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? self::FALLBACK_LOCALE;
-    }
-    public function getLocaleCode()
-    {
-      return $this->localeCode;
-    }
-    ```
+public function getAcceptLanguage()
+{
+  return $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? self::FALLBACK_LOCALE;
+}
+public function getLocaleCode()
+{
+  return $this->localeCode;
+}
+```
 
 1.  接下来，我们定义一个构造函数，允许我们“手动”设置区域设置。否则，区域设置信息将从浏览器中获取：
 
 ```php
-    public function __construct($localeString = NULL)
-    {
-      if ($localeString) {
-        $this->setLocaleCode($localeString);
-      } else {
-        $this->setLocaleCode($this->getAcceptLanguage());
-      }
-    }
-    ```
+public function __construct($localeString = NULL)
+{
+  if ($localeString) {
+    $this->setLocaleCode($localeString);
+  } else {
+    $this->setLocaleCode($this->getAcceptLanguage());
+  }
+}
+```
 
 1.  现在要做出重要的决定：如何处理这些信息！这将在接下来的几篇文章中介绍。
 
@@ -357,9 +357,9 @@ echo '</table>';
 1.  接下来，我们将使用`NumberFormatter`类的`format()`方法，以区域特定的格式输出和解析数字。首先，我们添加一个属性，该属性将包含`NumberFormatter`类的一个实例：
 
 ```php
-    use NumberFormatter;
-    protected $numberFormatter;
-    ```
+use NumberFormatter;
+protected $numberFormatter;
+```
 
 ### 注意
 
@@ -368,33 +368,33 @@ echo '</table>';
 1.  通常，下一步将是在构造函数中设置`$numberFormatter`。然而，对于我们的`Application\I18n\Locale`类，这种方法的问题在于，我们最终会得到一个过于庞大的类，因为我们还需要执行货币和日期格式化。因此，我们添加一个`getter`，首先检查是否已经创建了`NumberFormatter`的实例。如果没有，则创建并返回一个实例。新的`NumberFormatter`中的第一个参数是区域代码。第二个参数`NumberFormatter::DECIMAL`表示我们需要的格式化类型：
 
 ```php
-    public function getNumberFormatter()
-    {
-      if (!$this->numberFormatter) {
-        $this->numberFormatter = new NumberFormatter($this->getLocaleCode(), NumberFormatter::DECIMAL);
-      }
-      return $this->numberFormatter;
-    }
-    ```
+public function getNumberFormatter()
+{
+  if (!$this->numberFormatter) {
+    $this->numberFormatter = new NumberFormatter($this->getLocaleCode(), NumberFormatter::DECIMAL);
+  }
+  return $this->numberFormatter;
+}
+```
 
 1.  然后我们添加一个方法，给定任何数字，将生成一个字符串，该字符串根据区域设置格式化该数字：
 
 ```php
-    public function formatNumber($number)
-    {
-      return $this->getNumberFormatter()->format($number);
-    }
-    ```
+public function formatNumber($number)
+{
+  return $this->getNumberFormatter()->format($number);
+}
+```
 
 1.  接下来，我们添加一个方法，该方法可用于根据区域设置解析数字，生成本机 PHP 数值。请注意，根据服务器的 ICU 版本，结果可能在解析失败时不会返回`FALSE`：
 
 ```php
-    public function parseNumber($string)
-    {
-      $result = $this->getNumberFormatter()->parse($string);
-      return ($result) ? $result : self::ERROR_UNABLE_TO_PARSE;
-    }
-    ```
+public function parseNumber($string)
+{
+  $result = $this->getNumberFormatter()->parse($string);
+  return ($result) ? $result : self::ERROR_UNABLE_TO_PARSE;
+}
+```
 
 ## 它是如何工作的...
 
@@ -484,14 +484,14 @@ echo '</table>';
 1.  首要任务是以某种格式使货币代码可用。一种可能性是将货币代码简单地添加为`Application\I18n\Locale`类的构造函数参数：
 
 ```php
-    const FALLBACK_CURRENCY = 'GBP';
-    protected $currencyCode;
-    public function __construct($localeString = NULL, $currencyCode = NULL)
-    {
-      // add this to the existing code:
-      $this->currencyCode = $currencyCode ?? self::FALLBACK_CURRENCY;
-    }
-    ```
+const FALLBACK_CURRENCY = 'GBP';
+protected $currencyCode;
+public function __construct($localeString = NULL, $currencyCode = NULL)
+{
+  // add this to the existing code:
+  $this->currencyCode = $currencyCode ?? self::FALLBACK_CURRENCY;
+}
+```
 
 ### 注意
 
@@ -500,131 +500,131 @@ echo '</table>';
 1.  我们首先需要建立某种查找机制，即给定一个国家代码，我们可以获取其主要货币代码。为此说明，我们将使用适配器软件设计模式。根据此模式，我们应该能够创建不同的类，这些类可能以完全不同的方式运行，但产生相同的结果。因此，我们需要定义所需的结果。为此目的，我们引入一个类，`Application\I18n\IsoCodes`。正如您所看到的，这个类具有所有相关的属性，以及一种类似通用的构造函数：
 
 ```php
-    namespace Application\I18n;
-    class IsoCodes
-    {
-      public $name;
-      public $iso2;
-      public $iso3;
-      public $iso_numeric;
-      public $iso_3166;
-      public $currency_name;
-      public $currency_code;
-      public $currency_number;
-      public function __construct(array $data)
-      {
-        $vars = get_object_vars($this);
-        foreach ($vars as $key => $value) {
-          $this->$key = $data[$key] ?? NULL;
-        }
-      }
+namespace Application\I18n;
+class IsoCodes
+{
+  public $name;
+  public $iso2;
+  public $iso3;
+  public $iso_numeric;
+  public $iso_3166;
+  public $currency_name;
+  public $currency_code;
+  public $currency_number;
+  public function __construct(array $data)
+  {
+    $vars = get_object_vars($this);
+    foreach ($vars as $key => $value) {
+      $this->$key = $data[$key] ?? NULL;
     }
-    ```
+  }
+}
+```
 
 1.  接下来，我们定义一个接口，其中包含我们需要执行*国家代码到货币代码*查找的方法。在这种情况下，我们引入`Application\I18n\IsoCodesInterface`：
 
 ```php
-    namespace Application\I18n;
+namespace Application\I18n;
 
-    interface IsoCodesInterface
-    {
-      public function getCurrencyCodeFromIso2CountryCode($iso2) : IsoCodes;
-    }
-    ```
+interface IsoCodesInterface
+{
+  public function getCurrencyCodeFromIso2CountryCode($iso2) : IsoCodes;
+}
+```
 
 1.  现在我们准备构建一个查找适配器类，我们将其称为`Application\I18n\IsoCodesDb`。它实现了上述接口，并接受一个`Application\Database\Connection`实例（参见第一章，“建立基础”），用于执行查找。构造函数设置所需的信息，包括连接、查找表名称和表示 ISO2 代码的列。接口所需的查找方法然后发出一个 SQL 语句并返回一个数组，然后用于构建一个`IsoCodes`实例：
 
 ```php
-    namespace Application\I18n;
+namespace Application\I18n;
 
-    use PDO;
-    use Application\Database\Connection;
+use PDO;
+use Application\Database\Connection;
 
-    class IsoCodesDb implements IsoCodesInterface
-    {
-      protected $isoTableName;
-      protected $iso2FieldName;
-      protected $connection;
-      public function __construct(Connection $connection, $isoTableName, $iso2FieldName)
-      {
-        $this->connection = $connection;
-        $this->isoTableName = $isoTableName;
-        $this->iso2FieldName = $iso2FieldName;
-      }
-      public function getCurrencyCodeFromIso2CountryCode($iso2) : IsoCodes
-      {
-        $sql = sprintf('SELECT * FROM %s WHERE %s = ?', $this->isoTableName, $this->iso2FieldName);
-        $stmt = $this->connection->pdo->prepare($sql);
-        $stmt->execute([$iso2]);
-        return new IsoCodes($stmt->fetch(PDO::FETCH_ASSOC);
-      }
-    }
-    ```
+class IsoCodesDb implements IsoCodesInterface
+{
+  protected $isoTableName;
+  protected $iso2FieldName;
+  protected $connection;
+  public function __construct(Connection $connection, $isoTableName, $iso2FieldName)
+  {
+    $this->connection = $connection;
+    $this->isoTableName = $isoTableName;
+    $this->iso2FieldName = $iso2FieldName;
+  }
+  public function getCurrencyCodeFromIso2CountryCode($iso2) : IsoCodes
+  {
+    $sql = sprintf('SELECT * FROM %s WHERE %s = ?', $this->isoTableName, $this->iso2FieldName);
+    $stmt = $this->connection->pdo->prepare($sql);
+    $stmt->execute([$iso2]);
+    return new IsoCodes($stmt->fetch(PDO::FETCH_ASSOC);
+  }
+}
+```
 
 1.  现在我们将注意力转回到`Application\I18n\Locale`类。我们首先添加了一些新的属性和类常量：
 
 ```php
-    const ERROR_UNABLE_TO_PARSE = 'ERROR: Unable to parse';
-    const FALLBACK_CURRENCY = 'GBP';
+const ERROR_UNABLE_TO_PARSE = 'ERROR: Unable to parse';
+const FALLBACK_CURRENCY = 'GBP';
 
-    protected $currencyFormatter;
-    protected $currencyLookup;
-    protected $currencyCode;
-    ```
+protected $currencyFormatter;
+protected $currencyLookup;
+protected $currencyCode;
+```
 
 1.  我们添加了一个新的方法，从区域设置字符串中检索国家代码。我们可以利用来自 PHP`Locale`类（我们扩展的类）的“getRegion（）”方法。以防需要，我们还添加了一个“getCurrencyCode（）”方法：
 
 ```php
-    public function getCountryCode()
-    {
-      return $this->getRegion($this->getLocaleCode());
-    }
-    public function getCurrencyCode()
-    {
-      return $this->currencyCode;
-    }
-    ```
+public function getCountryCode()
+{
+  return $this->getRegion($this->getLocaleCode());
+}
+public function getCurrencyCode()
+{
+  return $this->currencyCode;
+}
+```
 
 1.  与格式化数字一样，我们定义了一个“getCurrencyFormatter（I）”，就像我们之前所做的“getNumberFormatter（）”一样。请注意，使用`NumberFormatter`定义了`$currencyFormatter`，但第二个参数不同：
 
 ```php
-    public function getCurrencyFormatter()
-    {
-      if (!$this->currencyFormatter) {
-        $this->currencyFormatter = new NumberFormatter($this->getLocaleCode(), NumberFormatter::CURRENCY);
-      }
-      return $this->currencyFormatter;
-    }
-    ```
+public function getCurrencyFormatter()
+{
+  if (!$this->currencyFormatter) {
+    $this->currencyFormatter = new NumberFormatter($this->getLocaleCode(), NumberFormatter::CURRENCY);
+  }
+  return $this->currencyFormatter;
+}
+```
 
 1.  然后，如果已定义查找类，我们将在类构造函数中添加货币代码查找：
 
 ```php
-    public function __construct($localeString = NULL, IsoCodesInterface $currencyLookup = NULL)
-    {
-      // add this to the existing code:
-      $this->currencyLookup = $currencyLookup;
-      if ($this->currencyLookup) {
-        $this->currencyCode = $this->currencyLookup->getCurrencyCodeFromIso2CountryCode($this->getCountryCode())->currency_code;
-      } else {
-        $this->currencyCode = self::FALLBACK_CURRENCY;
-      }
-    }
-    ```
+public function __construct($localeString = NULL, IsoCodesInterface $currencyLookup = NULL)
+{
+  // add this to the existing code:
+  $this->currencyLookup = $currencyLookup;
+  if ($this->currencyLookup) {
+    $this->currencyCode = $this->currencyLookup->getCurrencyCodeFromIso2CountryCode($this->getCountryCode())->currency_code;
+  } else {
+    $this->currencyCode = self::FALLBACK_CURRENCY;
+  }
+}
+```
 
 1.  然后添加适当的货币格式和解析方法。请注意，与解析数字不同，如果解析操作不成功，解析货币将返回`FALSE`：
 
 ```php
-    public function formatCurrency($currency)
-    {
-      return $this->getCurrencyFormatter()->formatCurrency($currency, $this->currencyCode);
-    }
-    public function parseCurrency($string)
-    {
-      $result = $this->getCurrencyFormatter()->parseCurrency($string, $this->currencyCode);
-      return ($result) ? $result : self::ERROR_UNABLE_TO_PARSE;
-    }
-    ```
+public function formatCurrency($currency)
+{
+  return $this->getCurrencyFormatter()->formatCurrency($currency, $this->currencyCode);
+}
+public function parseCurrency($string)
+{
+  $result = $this->getCurrencyFormatter()->parseCurrency($string, $this->currencyCode);
+  return ($result) ? $result : self::ERROR_UNABLE_TO_PARSE;
+}
+```
 
 ## 工作原理...
 
@@ -698,122 +698,122 @@ $number   = 1234567.89;
 1.  首先，我们需要修改`Application\I18n\Locale`，添加语句以使用日期格式化类：
 
 ```php
-    use IntlCalendar;
-    use IntlDateFormatter;
-    ```
+use IntlCalendar;
+use IntlDateFormatter;
+```
 
 1.  接下来，我们添加一个属性来表示`IntlDateFormatter`实例，以及一系列预定义的常量：
 
 ```php
-    const DATE_TYPE_FULL   = IntlDateFormatter::FULL;
-    const DATE_TYPE_LONG   = IntlDateFormatter::LONG;
-    const DATE_TYPE_MEDIUM = IntlDateFormatter::MEDIUM;
-    const DATE_TYPE_SHORT  = IntlDateFormatter::SHORT;
+const DATE_TYPE_FULL   = IntlDateFormatter::FULL;
+const DATE_TYPE_LONG   = IntlDateFormatter::LONG;
+const DATE_TYPE_MEDIUM = IntlDateFormatter::MEDIUM;
+const DATE_TYPE_SHORT  = IntlDateFormatter::SHORT;
 
-    const ERROR_UNABLE_TO_PARSE = 'ERROR: Unable to parse';
-    const ERROR_UNABLE_TO_FORMAT = 'ERROR: Unable to format date';
-    const ERROR_ARGS_STRING_ARRAY = 'ERROR: Date must be string YYYY-mm-dd HH:ii:ss or array(y,m,d,h,i,s)';
-    const ERROR_CREATE_INTL_DATE_FMT = 'ERROR: Unable to create international date formatter';
+const ERROR_UNABLE_TO_PARSE = 'ERROR: Unable to parse';
+const ERROR_UNABLE_TO_FORMAT = 'ERROR: Unable to format date';
+const ERROR_ARGS_STRING_ARRAY = 'ERROR: Date must be string YYYY-mm-dd HH:ii:ss or array(y,m,d,h,i,s)';
+const ERROR_CREATE_INTL_DATE_FMT = 'ERROR: Unable to create international date formatter';
 
-    protected $dateFormatter;
-    ```
+protected $dateFormatter;
+```
 
 1.  之后，我们可以定义一个方法`getDateFormatter()`，它返回一个`IntlDateFormatter`实例。`$type`的值与之前定义的`DATE_TYPE_*`常量之一相匹配：
 
 ```php
-    public function getDateFormatter($type)
-    {
-      switch ($type) {
-        case self::DATE_TYPE_SHORT :
-          $formatter = new IntlDateFormatter($this->getLocaleCode(),
-            IntlDateFormatter::SHORT, IntlDateFormatter::SHORT);
-          break;
-        case self::DATE_TYPE_MEDIUM :
-          $formatter = new IntlDateFormatter($this->getLocaleCode(), IntlDateFormatter::MEDIUM, IntlDateFormatter::MEDIUM);
-          break;
-        case self::DATE_TYPE_LONG :
-          $formatter = new IntlDateFormatter($this->getLocaleCode(), IntlDateFormatter::LONG, IntlDateFormatter::LONG);
-          break;
-        case self::DATE_TYPE_FULL :
-          $formatter = new IntlDateFormatter($this->getLocaleCode(), IntlDateFormatter::FULL, IntlDateFormatter::FULL);
-          break;
-        default :
-          throw new InvalidArgumentException(self::ERROR_CREATE_INTL_DATE_FMT);
-      }
-      $this->dateFormatter = $formatter;
-      return $this->dateFormatter;
-    }
-    ```
+public function getDateFormatter($type)
+{
+  switch ($type) {
+    case self::DATE_TYPE_SHORT :
+      $formatter = new IntlDateFormatter($this->getLocaleCode(),
+        IntlDateFormatter::SHORT, IntlDateFormatter::SHORT);
+      break;
+    case self::DATE_TYPE_MEDIUM :
+      $formatter = new IntlDateFormatter($this->getLocaleCode(), IntlDateFormatter::MEDIUM, IntlDateFormatter::MEDIUM);
+      break;
+    case self::DATE_TYPE_LONG :
+      $formatter = new IntlDateFormatter($this->getLocaleCode(), IntlDateFormatter::LONG, IntlDateFormatter::LONG);
+      break;
+    case self::DATE_TYPE_FULL :
+      $formatter = new IntlDateFormatter($this->getLocaleCode(), IntlDateFormatter::FULL, IntlDateFormatter::FULL);
+      break;
+    default :
+      throw new InvalidArgumentException(self::ERROR_CREATE_INTL_DATE_FMT);
+  }
+  $this->dateFormatter = $formatter;
+  return $this->dateFormatter;
+}
+```
 
 1.  接下来，我们定义一个方法，生成一个区域设置格式的日期。定义传入的`$date`的格式有点棘手。它不能是特定于区域设置的，否则我们将需要根据区域设置规则解析它，结果难以预测。更好的策略是接受一个代表年、月、日等值的整数数组。作为备用方案，我们将接受一个字符串，但只能是这种格式：`YYYY-mm-dd HH:ii:ss`。时区是可选的，可以单独设置。首先我们初始化变量：
 
 ```php
-    public function formatDate($date, $type, $timeZone = NULL)
-    {
-      $result   = NULL;
-      $year     = date('Y');
-      $month    = date('m');
-      $day      = date('d');
-      $hour     = 0;
-      $minutes  = 0;
-      $seconds  = 0;
-    ```
+public function formatDate($date, $type, $timeZone = NULL)
+{
+  $result   = NULL;
+  $year     = date('Y');
+  $month    = date('m');
+  $day      = date('d');
+  $hour     = 0;
+  $minutes  = 0;
+  $seconds  = 0;
+```
 
 1.  之后，我们生成代表年、月、日等值的值的分解：
 
 ```php
-    if (is_string($date)) {
-      list($dateParts, $timeParts) = explode(' ', $date);
-      list($year,$month,$day) = explode('-',$dateParts);
-      list($hour,$minutes,$seconds) = explode(':',$timeParts);
-    } elseif (is_array($date)) {
-      list($year,$month,$day,$hour,$minutes,$seconds) = $date;
-    } else {
-      throw new InvalidArgumentException(self::ERROR_ARGS_STRING_ARRAY);
-    }
-    ```
+if (is_string($date)) {
+  list($dateParts, $timeParts) = explode(' ', $date);
+  list($year,$month,$day) = explode('-',$dateParts);
+  list($hour,$minutes,$seconds) = explode(':',$timeParts);
+} elseif (is_array($date)) {
+  list($year,$month,$day,$hour,$minutes,$seconds) = $date;
+} else {
+  throw new InvalidArgumentException(self::ERROR_ARGS_STRING_ARRAY);
+}
+```
 
 1.  接下来，我们创建一个`IntlCalendar`实例，它将作为运行`format()`时的参数。我们使用离散的整数值设置日期：
 
 ```php
-    $intlDate = IntlCalendar::createInstance($timeZone, $this->getLocaleCode());
-    $intlDate->set($year,$month,$day,$hour,$minutes,$seconds);
-    ```
+$intlDate = IntlCalendar::createInstance($timeZone, $this->getLocaleCode());
+$intlDate->set($year,$month,$day,$hour,$minutes,$seconds);
+```
 
 1.  最后，我们获得日期格式化程序实例，并生成结果：
 
 ```php
-      $formatter = $this->getDateFormatter($type);
-      if ($timeZone) {
-        $formatter->setTimeZone($timeZone);
-      }
-      $result = $formatter->format($intlDate);
-      return $result ?? self::ERROR_UNABLE_TO_FORMAT;
-    }
-    ```
+  $formatter = $this->getDateFormatter($type);
+  if ($timeZone) {
+    $formatter->setTimeZone($timeZone);
+  }
+  $result = $formatter->format($intlDate);
+  return $result ?? self::ERROR_UNABLE_TO_FORMAT;
+}
+```
 
 1.  `parseDate()`方法实际上比格式化更简单。唯一的复杂之处在于如果未指定类型要做什么（这可能是最常见的情况）。我们需要做的就是循环遍历所有可能的类型（只有四种），直到产生结果为止：
 
 ```php
-    public function parseDate($string, $type = NULL)
-    {
-     if ($type) {
-      $result = $this->getDateFormatter($type)->parse($string);
-     } else {
-      $tryThese = [self::DATE_TYPE_FULL,
-        self::DATE_TYPE_LONG,
-        self::DATE_TYPE_MEDIUM,
-        self::DATE_TYPE_SHORT];
-      foreach ($tryThese as $type) {
-      $result = $this->getDateFormatter($type)->parse($string);
-        if ($result) {
-          break;
-        }
-      }
-     }
-     return ($result) ? $result : self::ERROR_UNABLE_TO_PARSE;
+public function parseDate($string, $type = NULL)
+{
+ if ($type) {
+  $result = $this->getDateFormatter($type)->parse($string);
+ } else {
+  $tryThese = [self::DATE_TYPE_FULL,
+    self::DATE_TYPE_LONG,
+    self::DATE_TYPE_MEDIUM,
+    self::DATE_TYPE_SHORT];
+  foreach ($tryThese as $type) {
+  $result = $this->getDateFormatter($type)->parse($string);
+    if ($result) {
+      break;
     }
-    ```
+  }
+ }
+ return ($result) ? $result : self::ERROR_UNABLE_TO_PARSE;
+}
+```
 
 ## 它是如何工作的...
 
@@ -857,108 +857,108 @@ $localeUs->parseDate($localeFr->formatDate($date, Locale::DATE_TYPE_MEDIUM));
 1.  首先，我们需要创建一个通用类，用于保存单日的信息。最初，它只会保存一个整数值`$dayOfMonth`。稍后，在下一个示例中，我们将扩展它以包括事件。由于这个类的主要目的是产生`$dayOfMonth`，我们将把这个值纳入它的构造函数，并定义`__invoke()`来返回这个值：
 
 ```php
-    namespace Application\I18n;
+namespace Application\I18n;
 
-    class Day
-    {
-      public $dayOfMonth;
-      public function __construct($dayOfMonth)
-      {
-        $this->dayOfMonth = $dayOfMonth;
-      }
-      public function __invoke()
-      {
-        return $this->dayOfMonth ?? '';
-      }
-    }
-    ```
+class Day
+{
+  public $dayOfMonth;
+  public function __construct($dayOfMonth)
+  {
+    $this->dayOfMonth = $dayOfMonth;
+  }
+  public function __invoke()
+  {
+    return $this->dayOfMonth ?? '';
+  }
+}
+```
 
 1.  创建一个新的类，它将保存适当的日历生成方法。它将接受一个`Application\I18n\Locale`的实例，并定义一些类常量和属性。格式代码，如`EEEEE`和`MMMM`，是从 ICU 日期格式中提取的：
 
 ```php
-    namespace Application\I18n;
+namespace Application\I18n;
 
-    use IntlCalendar;
+use IntlCalendar;
 
-    class Calendar
-    {
+class Calendar
+{
 
-      const DAY_1 = 'EEEEE';  // T
-      const DAY_2 = 'EEEEEE'; // Tu
-      const DAY_3 = 'EEE';   // Tue
-      const DAY_FULL = 'EEEE'; // Tuesday
-      const MONTH_1 = 'MMMMM'; // M
-      const MONTH_3 = 'MMM';  // Mar
-      const MONTH_FULL = 'MMMM';  // March
-      const DEFAULT_ACROSS = 3;
-      const HEIGHT_FULL = '150px';
-      const HEIGHT_SMALL = '60px';
+  const DAY_1 = 'EEEEE';  // T
+  const DAY_2 = 'EEEEEE'; // Tu
+  const DAY_3 = 'EEE';   // Tue
+  const DAY_FULL = 'EEEE'; // Tuesday
+  const MONTH_1 = 'MMMMM'; // M
+  const MONTH_3 = 'MMM';  // Mar
+  const MONTH_FULL = 'MMMM';  // March
+  const DEFAULT_ACROSS = 3;
+  const HEIGHT_FULL = '150px';
+  const HEIGHT_SMALL = '60px';
 
-      protected $locale;
-      protected $dateFormatter;
-      protected $yearArray;
-      protected $height;
+  protected $locale;
+  protected $dateFormatter;
+  protected $yearArray;
+  protected $height;
 
-      public function __construct(Locale $locale)
-      {
-        $this->locale = $locale;
-      }
+  public function __construct(Locale $locale)
+  {
+    $this->locale = $locale;
+  }
 
-         // other methods are discussed in the following bullets
+     // other methods are discussed in the following bullets
 
-    }
-    ```
+}
+```
 
 1.  然后我们定义一个方法，从我们的`locale`类中返回一个`IntlDateFormatter`实例。这将存储在一个类属性中，因为它将经常被使用：
 
 ```php
-    protected function getDateFormatter()
-    {
-     if (!$this->dateFormatter) {
-      $this->dateFormatter = $this->locale->getDateFormatter(Locale::DATE_TYPE_FULL);
-     }
-     return $this->dateFormatter;
-    }
-    ```
+protected function getDateFormatter()
+{
+ if (!$this->dateFormatter) {
+  $this->dateFormatter = $this->locale->getDateFormatter(Locale::DATE_TYPE_FULL);
+ }
+ return $this->dateFormatter;
+}
+```
 
 1.  接下来，我们定义一个核心方法`buildMonthArray()`，它创建一个多维数组，其中外部键是一年中的周数，内部数组是表示一周的七个元素的天。我们接受年份、月份和可选的时区作为参数。请注意，在变量初始化的一部分中，我们从月份中减去 1。这是因为`IntlCalendar::set()`方法期望月份的基于 0 的值，其中 0 代表一月，1 代表二月，依此类推：
 
 ```php
-    public function buildMonthArray($year, $month, $timeZone = NULL)
-    {
-    $month -= 1; 
-    //IntlCalendar months are 0 based; Jan==0, Feb==1 and so on
-      $day = 1;
-      $first = TRUE;
-      $value = 0;
-      $monthArray = array();
-    ```
+public function buildMonthArray($year, $month, $timeZone = NULL)
+{
+$month -= 1; 
+//IntlCalendar months are 0 based; Jan==0, Feb==1 and so on
+  $day = 1;
+  $first = TRUE;
+  $value = 0;
+  $monthArray = array();
+```
 
 1.  然后，我们创建一个`IntlCalendar`实例，并使用它来确定这个月有多少天：
 
 ```php
-    $cal = IntlCalendar::createInstance($timeZone, $this->locale->getLocaleCode());
-    $cal->set($year, $month, $day);
-    $maxDaysInMonth = $cal->getActualMaximum(IntlCalendar::FIELD_DAY_OF_MONTH);
-    ```
+$cal = IntlCalendar::createInstance($timeZone, $this->locale->getLocaleCode());
+$cal->set($year, $month, $day);
+$maxDaysInMonth = $cal->getActualMaximum(IntlCalendar::FIELD_DAY_OF_MONTH);
+```
 
 1.  之后，我们使用我们的`IntlDateFormatter`实例来确定这个月的第一天是星期几。之后，我们将模式设置为`w`，随后将给出周数：
 
 ```php
-    $formatter = $this->getDateFormatter();
-    $formatter->setPattern('e');
-    $firstDayIsWhatDow = $formatter->format($cal);
-    ```
+$formatter = $this->getDateFormatter();
+$formatter->setPattern('e');
+$firstDayIsWhatDow = $formatter->format($cal);
+```
 
 1.  现在我们准备通过嵌套循环遍历该月的所有天。外部的`while()`循环确保我们不会超过月份的末尾。内部循环表示一周中的天。您会注意到我们利用`IntlCalendar::get()`，它允许我们从各种预定义字段中检索值。如果一年中的周数超过 52，我们还会将周数值调整为 0：
 
 ```php
-    while ($day <= $maxDaysInMonth) {
-      for ($dow = 1; $dow <= 7; $dow++) {
-        $cal->set($year, $month, $day);
-        $weekOfYear = $cal->get(IntlCalendar::FIELD_WEEK_OF_YEAR);
-        if ($weekOfYear > 52) $weekOfYear = 0;
-    ```
+while ($day <= $maxDaysInMonth) {
+  for ($dow = 1; $dow <= 7; $dow++) {
+    $cal->set($year, $month, $day);
+    $weekOfYear = $cal->get(IntlCalendar::FIELD_WEEK_OF_YEAR);
+    if ($weekOfYear > 52) $weekOfYear = 0;
+```
 
 1.  然后，我们检查`$first`是否仍然设置为`TRUE`。如果是，我们开始向数组添加日期。否则，数组值设置为`NULL`。然后，我们关闭所有打开的语句并返回数组。请注意，我们还需要确保内部循环不会超过月份的天数，因此在外部`else`子句中有额外的`if()`语句。
 
@@ -967,159 +967,159 @@ $localeUs->parseDate($localeFr->formatDate($date, Locale::DATE_TYPE_MEDIUM));
 请注意，我们不仅存储月份的值，还使用新定义的`Application\I18n\Day`类。
 
 ```php
-          if ($first) {
-            if ($dow == $firstDayIsWhatDow) {
-              $first = FALSE;
-              $value = $day++;
-            } else {
-              $value = NULL;
-            }
-          } else {
-            if ($day <= $maxDaysInMonth) {
-              $value = $day++;
-            } else {
-              $value = NULL;
-            }
-          }
-          $monthArray[$weekOfYear][$dow] = new Day($value);
+      if ($first) {
+        if ($dow == $firstDayIsWhatDow) {
+          $first = FALSE;
+          $value = $day++;
+        } else {
+          $value = NULL;
+        }
+      } else {
+        if ($day <= $maxDaysInMonth) {
+          $value = $day++;
+        } else {
+          $value = NULL;
         }
       }
-      return $monthArray;
+      $monthArray[$weekOfYear][$dow] = new Day($value);
     }
-    ```
+  }
+  return $monthArray;
+}
+```
 
 ### 完善国际化输出
 
 1.  首先，一系列小方法，从提取基于类型的国际格式化日期开始。类型决定我们是否提供星期几的全名、缩写，或者只是一个字母，都适合该区域设置：
 
 ```php
-    protected function getDay($type, $cal)
-    {
-      $formatter = $this->getDateFormatter();
-      $formatter->setPattern($type);
-      return $formatter->format($cal);
-    }
-    ```
+protected function getDay($type, $cal)
+{
+  $formatter = $this->getDateFormatter();
+  $formatter->setPattern($type);
+  return $formatter->format($cal);
+}
+```
 
 1.  接下来，我们需要一个方法来返回一个星期几的 HTML 行，调用新定义的`getDay()`方法。如前所述，类型决定了日期的外观：
 
 ```php
-    protected function getWeekHeaderRow($type, $cal, $year, $month, $week)
-    {
-      $output = '<tr>';
-      $width  = (int) (100/7);
-      foreach ($week as $day) {
-        $cal->set($year, $month, $day());
-        $output .= '<th style="vertical-align:top;" width="' . $width . '%">' . $this->getDay($type, $cal) . '</th>';
-      }
-      $output .= '</tr>' . PHP_EOL;
-      return $output;
-    }
-    ```
+protected function getWeekHeaderRow($type, $cal, $year, $month, $week)
+{
+  $output = '<tr>';
+  $width  = (int) (100/7);
+  foreach ($week as $day) {
+    $cal->set($year, $month, $day());
+    $output .= '<th style="vertical-align:top;" width="' . $width . '%">' . $this->getDay($type, $cal) . '</th>';
+  }
+  $output .= '</tr>' . PHP_EOL;
+  return $output;
+}
+```
 
 1.  之后，我们定义一个非常简单的方法来返回一行星期日期。请注意，我们利用`Day::__invoke()`使用：`$day()`：
 
 ```php
-    protected function getWeekDaysRow($week)
-    {
-      $output = '<tr style="height:' . $this->height . ';">';
-      $width  = (int) (100/7);
-      foreach ($week as $day) {
-        $output .= '<td style="vertical-align:top;" width="' . $width . '%">' . $day() .  '</td>';
-      }
-      $output .= '</tr>' . PHP_EOL;
-      return $output;
-    }
-    ```
+protected function getWeekDaysRow($week)
+{
+  $output = '<tr style="height:' . $this->height . ';">';
+  $width  = (int) (100/7);
+  foreach ($week as $day) {
+    $output .= '<td style="vertical-align:top;" width="' . $width . '%">' . $day() .  '</td>';
+  }
+  $output .= '</tr>' . PHP_EOL;
+  return $output;
+}
+```
 
 1.  最后，一个将较小方法组合在一起生成单个月份日历的方法。首先我们构建月份数组，但只有在`$yearArray`尚不可用时才这样做：
 
 ```php
-    public function calendarForMonth($year, 
-        $month, 
-        $timeZone = NULL, 
-        $dayType = self::DAY_3, 
-        $monthType = self::MONTH_FULL, 
-        $monthArray = NULL)
-    {
-      $first = 0;
-      if (!$monthArray) 
-        $monthArray = $this->yearArray[$year][$month]
-        ?? $this->buildMonthArray($year, $month, $timeZone);
-    ```
+public function calendarForMonth($year, 
+    $month, 
+    $timeZone = NULL, 
+    $dayType = self::DAY_3, 
+    $monthType = self::MONTH_FULL, 
+    $monthArray = NULL)
+{
+  $first = 0;
+  if (!$monthArray) 
+    $monthArray = $this->yearArray[$year][$month]
+    ?? $this->buildMonthArray($year, $month, $timeZone);
+```
 
 1.  月份需要减去`1`，因为`IntlCalendar`的月份是基于 0 的：1 月= 0，2 月= 1，依此类推。然后，我们使用时区（如果有的话）和区域设置构建一个`IntlCalendar`实例。接下来，我们创建一个`IntlDateFormatter`实例，根据区域设置检索月份名称和其他信息：
 
 ```php
-      $month--;
-      $cal = IntlCalendar::createInstance($timeZone, $this->locale->getLocaleCode());
-      $cal->set($year, $month, 1);
-      $formatter = $this->getDateFormatter();
-      $formatter->setPattern($monthType);
-    ```
+  $month--;
+  $cal = IntlCalendar::createInstance($timeZone, $this->locale->getLocaleCode());
+  $cal->set($year, $month, 1);
+  $formatter = $this->getDateFormatter();
+  $formatter->setPattern($monthType);
+```
 
 1.  然后，我们循环遍历月份数组，并调用刚才提到的较小方法来构建最终的输出：
 
 ```php
-      $this->height = ($dayType == self::DAY_FULL) 
-         ? self::HEIGHT_FULL : self::HEIGHT_SMALL;
-      $html = '<h1>' . $formatter->format($cal) . '</h1>';
-      $header = '';
-      $body   = '';
-      foreach ($monthArray as $weekNum => $week) {
-        if ($first++ == 1) {
-          $header .= $this->getWeekHeaderRow($dayType, $cal, $year, $month, $week);
-        }
-        $body .= $this->getWeekDaysRow($dayType, $week);
-      }
-      $html .= '<table>' . $header . $body . '</table>' . PHP_EOL;
-      return $html;
+  $this->height = ($dayType == self::DAY_FULL) 
+     ? self::HEIGHT_FULL : self::HEIGHT_SMALL;
+  $html = '<h1>' . $formatter->format($cal) . '</h1>';
+  $header = '';
+  $body   = '';
+  foreach ($monthArray as $weekNum => $week) {
+    if ($first++ == 1) {
+      $header .= $this->getWeekHeaderRow($dayType, $cal, $year, $month, $week);
     }
-    ```
+    $body .= $this->getWeekDaysRow($dayType, $week);
+  }
+  $html .= '<table>' . $header . $body . '</table>' . PHP_EOL;
+  return $html;
+}
+```
 
 1.  为了生成整年的日历，只需循环遍历 1 到 12 月。为了方便外部访问，我们首先定义一个构建年份数组的方法：
 
 ```php
-    public function buildYearArray($year, $timeZone = NULL)
-    {
-      $this->yearArray = array();
-      for ($month = 1; $month <= 12; $month++) {
-        $this->yearArray[$year][$month] = $this->buildMonthArray($year, $month, $timeZone);
-      }
-      return $this->yearArray;
-    }
+public function buildYearArray($year, $timeZone = NULL)
+{
+  $this->yearArray = array();
+  for ($month = 1; $month <= 12; $month++) {
+    $this->yearArray[$year][$month] = $this->buildMonthArray($year, $month, $timeZone);
+  }
+  return $this->yearArray;
+}
 
-    public function getYearArray()
-    {
-      return $this->yearArray;
-    }
-    ```
+public function getYearArray()
+{
+  return $this->yearArray;
+}
+```
 
 1.  要为一年生成日历，我们定义一个方法`calendarForYear()`。如果年份数组尚未构建，我们调用`buildYearArray()`。我们考虑要显示多少个月份的日历，然后调用`calendarForMonth()`：
 
 ```php
-    public function calendarForYear($year, 
-      $timeZone = NULL, 
-      $dayType = self::DAY_1, 
-      $monthType = self::MONTH_3, 
-      $across = self::DEFAULT_ACROSS)
-    {
-      if (!$this->yearArray) $this->buildYearArray($year, $timeZone);
-      $yMax = (int) (12 / $across);
-      $width = (int) (100 / $across);
-      $output = '<table>' . PHP_EOL;
-      $month = 1;
-      for ($y = 1; $y <= $yMax; $y++) {
-        $output .= '<tr>';
-        for ($x = 1; $x <= $across; $x++) {
-          $output .= '<td style="vertical-align:top;" width="' . $width . '%">' . $this->calendarForMonth($year, $month, $timeZone, $dayType, $monthType, $this->yearArray[$year][$month++]) . '</td>';
-        }
-        $output .= '</tr>' . PHP_EOL;
-      }
-      $output .= '</table>';
-      return $output;
+public function calendarForYear($year, 
+  $timeZone = NULL, 
+  $dayType = self::DAY_1, 
+  $monthType = self::MONTH_3, 
+  $across = self::DEFAULT_ACROSS)
+{
+  if (!$this->yearArray) $this->buildYearArray($year, $timeZone);
+  $yMax = (int) (12 / $across);
+  $width = (int) (100 / $across);
+  $output = '<table>' . PHP_EOL;
+  $month = 1;
+  for ($y = 1; $y <= $yMax; $y++) {
+    $output .= '<tr>';
+    for ($x = 1; $x <= $across; $x++) {
+      $output .= '<td style="vertical-align:top;" width="' . $width . '%">' . $this->calendarForMonth($year, $month, $timeZone, $dayType, $monthType, $this->yearArray[$year][$month++]) . '</td>';
     }
-    ```
+    $output .= '</tr>' . PHP_EOL;
+  }
+  $output .= '</table>';
+  return $output;
+}
+```
 
 ## 它是如何工作的...
 
@@ -1195,42 +1195,42 @@ echo $calendarEs->calendarForYear($year);
 1.  在任何其他事情之前，创建一个表示事件的类将是一个绝妙的主意。最终，您可能会将数据存储在数据库中的这样一个类中。然而，在本示例中，我们将简单地定义类，并将数据库方面留给您的想象力。您会注意到我们将使用`DateTime`扩展中包含的许多类，这些类非常适合事件生成：
 
 ```php
-    namespace Application\I18n;
+namespace Application\I18n;
 
-    use DateTime;
-    use DatePeriod;
-    use DateInterval;
-    use InvalidArgumentException;
+use DateTime;
+use DatePeriod;
+use DateInterval;
+use InvalidArgumentException;
 
-    class Event
-    {
-      // code
-    }
-    ```
+class Event
+{
+  // code
+}
+```
 
 1.  接下来，我们定义一系列有用的类常量和属性。您会注意到，我们将大多数属性定义为`public`，以节省所需的 getter 和 setter 的数量。间隔被定义为`sprintf()`格式字符串；`%d`将被替换为一个值：
 
 ```php
-    const INTERVAL_DAY = 'P%dD';
-    const INTERVAL_WEEK = 'P%dW';
-    const INTERVAL_MONTH = 'P%dM';
-    const FLAG_FIRST = 'FIRST';    // 1st of the month
-    const ERROR_INVALID_END  = 'Need to supply either # occurrences or an end date';
-    const ERROR_INVALID_DATE = 'String i.e. YYYY-mm-dd or DateTime instance only';
-    const ERROR_INVALID_INTERVAL = 'Interval must take the form "P\d+(D | W | M)"';
+const INTERVAL_DAY = 'P%dD';
+const INTERVAL_WEEK = 'P%dW';
+const INTERVAL_MONTH = 'P%dM';
+const FLAG_FIRST = 'FIRST';    // 1st of the month
+const ERROR_INVALID_END  = 'Need to supply either # occurrences or an end date';
+const ERROR_INVALID_DATE = 'String i.e. YYYY-mm-dd or DateTime instance only';
+const ERROR_INVALID_INTERVAL = 'Interval must take the form "P\d+(D | W | M)"';
 
-    public $id;
-    public $flag;
-    public $value;
-    public $title;
-    public $locale;
-    public $interval;
-    public $description;
-    public $occurrences;
-    public $nextDate;
-    protected $endDate;
-    protected $startDate;
-    ```
+public $id;
+public $flag;
+public $value;
+public $title;
+public $locale;
+public $interval;
+public $description;
+public $occurrences;
+public $nextDate;
+protected $endDate;
+protected $startDate;
+```
 
 1.  接下来，我们将注意力转向构造函数。我们需要收集和设置与事件相关的所有信息。变量名不言自明。
 
@@ -1239,141 +1239,141 @@ echo $calendarEs->calendarForYear($year);
 `$value`并不是那么清晰。这个参数最终将被替换为间隔格式字符串中的值。因此，例如，如果用户选择`$interval`为`INTERVAL_DAY`，并且`$value`为`2`，则生成的间隔字符串将是`P2D`，这意味着每隔一天（或每隔 2 天）。
 
 ```php
-    public function __construct($title, 
-        $description,
-        $startDate,
-        $interval,
-        $value,
-        $occurrences = NULL,
-        $endDate = NULL,
-        $flag = NULL)
-    {
-    ```
+public function __construct($title, 
+    $description,
+    $startDate,
+    $interval,
+    $value,
+    $occurrences = NULL,
+    $endDate = NULL,
+    $flag = NULL)
+{
+```
 
 1.  然后我们初始化变量。请注意，ID 是伪随机生成的，但最终可能成为数据库`events`表中的主键。在这里，我们使用`md5()`不是出于安全目的，而是为了快速生成哈希，以便 ID 具有一致的外观：
 
 ```php
-    $this->id = md5($title . $interval . $value) . sprintf('%04d', rand(0,9999));
-    $this->flag = $flag;
-    $this->value = $value;
-    $this->title = $title;
-    $this->description = $description;
-    $this->occurrences = $occurrences;
-    ```
+$this->id = md5($title . $interval . $value) . sprintf('%04d', rand(0,9999));
+$this->flag = $flag;
+$this->value = $value;
+$this->title = $title;
+$this->description = $description;
+$this->occurrences = $occurrences;
+```
 
 1.  如前所述，间隔参数是一个`sprintf()`模式，用于构造适当的`DateInterval`实例：
 
 ```php
-    try {
-      $this->interval = new DateInterval(sprintf($interval, $value));
-      } catch (Exception $e) {
-      error_log($e->getMessage());
-      throw new InvalidArgumentException(self::ERROR_INVALID_INTERVAL);
-    }
-    ```
+try {
+  $this->interval = new DateInterval(sprintf($interval, $value));
+  } catch (Exception $e) {
+  error_log($e->getMessage());
+  throw new InvalidArgumentException(self::ERROR_INVALID_INTERVAL);
+}
+```
 
 1.  要初始化`$startDate`，我们调用`stringOrDate()`。然后，我们尝试通过调用`stringOrDate()`或`calcEndDateFromOccurrences()`来生成`$endDate`的值。如果我们既没有结束日期也没有发生次数，就会抛出异常：
 
 ```php
-      $this->startDate = $this->stringOrDate($startDate);
-      if ($endDate) {
-        $this->endDate = $this->stringOrDate($endDate);
-      } elseif ($occurrences) {
-        $this->endDate = $this->calcEndDateFromOccurrences();
-      } else {
-      throw new InvalidArgumentException(self::ERROR_INVALID_END);
-      }
-      $this->nextDate = $this->startDate;
-    }
-    ```
+  $this->startDate = $this->stringOrDate($startDate);
+  if ($endDate) {
+    $this->endDate = $this->stringOrDate($endDate);
+  } elseif ($occurrences) {
+    $this->endDate = $this->calcEndDateFromOccurrences();
+  } else {
+  throw new InvalidArgumentException(self::ERROR_INVALID_END);
+  }
+  $this->nextDate = $this->startDate;
+}
+```
 
 1.  `stringOrDate()`方法由几行代码组成，用于检查日期变量的数据类型，并返回`DateTime`实例或`NULL`：
 
 ```php
-    protected function stringOrDate($date)
-    {
-      if ($date === NULL) { 
-        $newDate = NULL;
-      } elseif ($date instanceof DateTime) {
-        $newDate = $date;
-      } elseif (is_string($date)) {
-        $newDate = new DateTime($date);
-      } else {
-        throw new InvalidArgumentException(self::ERROR_INVALID_END);
-      }
-      return $newDate;
-    }
-    ```
+protected function stringOrDate($date)
+{
+  if ($date === NULL) { 
+    $newDate = NULL;
+  } elseif ($date instanceof DateTime) {
+    $newDate = $date;
+  } elseif (is_string($date)) {
+    $newDate = new DateTime($date);
+  } else {
+    throw new InvalidArgumentException(self::ERROR_INVALID_END);
+  }
+  return $newDate;
+}
+```
 
 1.  如果设置了`$occurrences`，我们将从构造函数中调用`calcEndDateFromOccurrences()`方法，以便我们知道此事件的结束日期。我们利用`DatePeriod`类，它提供了基于开始日期、`DateInterval`和发生次数的迭代：
 
 ```php
-    protected function calcEndDateFromOccurrences()
-    {
-      $endDate = new DateTime('now');
-      $period = new DatePeriod(
-    $this->startDate, $this->interval, $this->occurrences);
-      foreach ($period as $date) {
-        $endDate = $date;
-      }
-      return $endDate;
-    }
-    ```
+protected function calcEndDateFromOccurrences()
+{
+  $endDate = new DateTime('now');
+  $period = new DatePeriod(
+$this->startDate, $this->interval, $this->occurrences);
+  foreach ($period as $date) {
+    $endDate = $date;
+  }
+  return $endDate;
+}
+```
 
 1.  接下来，我们加入一个`__toString()`魔术方法，它简单地回显事件的标题：
 
 ```php
-    public function __toString()
-    {
-      return $this->title;
-    }
-    ```
+public function __toString()
+{
+  return $this->title;
+}
+```
 
 1.  我们需要为我们的`Event`类定义的最后一个方法是`getNextDate()`，在生成日历时使用：
 
 ```php
-    public function  getNextDate(DateTime $today)
-    {
-      if ($today > $this->endDate) {
-        return FALSE;
-      }
-      $next = clone $today;
-      $next->add($this->interval);
-      return $next;
-    }
-    ```
+public function  getNextDate(DateTime $today)
+{
+  if ($today > $this->endDate) {
+    return FALSE;
+  }
+  $next = clone $today;
+  $next->add($this->interval);
+  return $next;
+}
+```
 
 1.  接下来，我们将注意力转向上一篇食谱中描述的`Application\I18n\Calendar`类。通过进行一些小的修改，我们准备好将我们新定义的`Event`类与日历联系起来。首先，我们添加一个新属性`$events`，以及一个用于以数组形式添加事件的方法。我们使用`Event::$id`属性来确保事件被合并而不是被覆盖：
 
 ```php
-    protected $events = array();
-    public function addEvent(Event $event)
-    {
-      $this->events[$event->id] = $event;
-    }
-    ```
+protected $events = array();
+public function addEvent(Event $event)
+{
+  $this->events[$event->id] = $event;
+}
+```
 
 1.  接下来，我们添加一个名为`processEvents()`的方法，该方法在构建年历时将`Event`实例添加到`Day`对象中。首先，我们检查是否有任何事件，以及`Day`对象是否为`NULL`。您可能还记得，月初可能不是星期的第一天，因此需要将`Day`对象的值设置为`NULL`。我们当然不希望将事件添加到一个无效的日期！然后，我们调用`Event::getNextDate()`并查看日期是否匹配。如果匹配，我们将`Event`存储到`Day::$events[]`中，并在`Event`对象上设置下一个日期：
 
 ```php
-    protected function processEvents($dayObj, $cal)
-    {
-      if ($this->events && $dayObj()) {
-        $calDateTime = $cal->toDateTime();
-        foreach ($this->events as $id => $eventObj) {
-          $next = $eventObj->getNextDate($eventObj->nextDate);
-          if ($next) {
-            if ($calDateTime->format('Y-m-d') == 
-                $eventObj->nextDate->format('Y-m-d')) {
-              $dayObj->events[$eventObj->id] = $eventObj;
-              $eventObj->nextDate = $next;
-            }
-          }
+protected function processEvents($dayObj, $cal)
+{
+  if ($this->events && $dayObj()) {
+    $calDateTime = $cal->toDateTime();
+    foreach ($this->events as $id => $eventObj) {
+      $next = $eventObj->getNextDate($eventObj->nextDate);
+      if ($next) {
+        if ($calDateTime->format('Y-m-d') == 
+            $eventObj->nextDate->format('Y-m-d')) {
+          $dayObj->events[$eventObj->id] = $eventObj;
+          $eventObj->nextDate = $next;
         }
       }
-      return $dayObj;
     }
-    ```
+  }
+  return $dayObj;
+}
+```
 
 ### 注意
 
@@ -1382,39 +1382,39 @@ echo $calendarEs->calendarForYear($year);
 1.  现在我们需要在`buildMonthArray()`方法中添加对`processEvents()`的调用，使其如下所示：
 
 ```php
-      while ($day <= $maxDaysInMonth) {
-        for ($dow = 1; $dow <= 7; $dow++) {
-          // add this to the existing code:
-          $dayObj = $this->processEvents(new Day($value), $cal);
-          $monthArray[$weekOfYear][$dow] = $dayObj;
-        }
-      }
-    ```
+  while ($day <= $maxDaysInMonth) {
+    for ($dow = 1; $dow <= 7; $dow++) {
+      // add this to the existing code:
+      $dayObj = $this->processEvents(new Day($value), $cal);
+      $monthArray[$weekOfYear][$dow] = $dayObj;
+    }
+  }
+```
 
 1.  最后，我们需要修改`getWeekDaysRow()`，添加必要的代码以在框内输出事件信息以及日期：
 
 ```php
-    protected function getWeekDaysRow($type, $week)
-    {
-      $output = '<tr style="height:' . $this->height . ';">';
-      $width  = (int) (100/7);
-      foreach ($week as $day) {
-        $events = '';
-        if ($day->events) {
-          foreach ($day->events as $single) {
-            $events .= '<br>' . $single->title;
-            if ($type == self::DAY_FULL) {
-              $events .= '<br><i>' . $single->description . '</i>';
-            }
-          }
+protected function getWeekDaysRow($type, $week)
+{
+  $output = '<tr style="height:' . $this->height . ';">';
+  $width  = (int) (100/7);
+  foreach ($week as $day) {
+    $events = '';
+    if ($day->events) {
+      foreach ($day->events as $single) {
+        $events .= '<br>' . $single->title;
+        if ($type == self::DAY_FULL) {
+          $events .= '<br><i>' . $single->description . '</i>';
         }
-        $output .= '<td style="vertical-align:top;" width="' . $width . '%">' 
-      . $day() . $events . '</td>';
       }
-      $output .= '</tr>' . PHP_EOL;
-      return $output;
     }
-    ```
+    $output .= '<td style="vertical-align:top;" width="' . $width . '%">' 
+  . $day() . $events . '</td>';
+  }
+  $output .= '</tr>' . PHP_EOL;
+  return $output;
+}
+```
 
 ## 它是如何工作的...
 
@@ -1503,70 +1503,70 @@ try {
 1.  首先，我们将定义一个接口，稍后将用于标识翻译适配器。翻译适配器的要求非常简单，我们只需要为给定的消息 ID 返回一个消息字符串：
 
 ```php
-    namespace Application\I18n\Translate\Adapter;
-    interface TranslateAdapterInterface
-    {
-      public function translate($msgid);
-    }
-    ```
+namespace Application\I18n\Translate\Adapter;
+interface TranslateAdapterInterface
+{
+  public function translate($msgid);
+}
+```
 
 1.  接下来，我们定义一个与接口匹配的特质。特质将包含实际所需的代码。请注意，如果我们未能找到消息字符串，我们只需返回消息 ID：
 
 ```php
-    namespace Application\I18n\Translate\Adapter;
+namespace Application\I18n\Translate\Adapter;
 
-    trait TranslateAdapterTrait
-    {
-      protected $translation;
-      public function translate($msgid)
-      {
-        return $this->translation[$msgid] ?? $msgid;
-      }
-    }
-    ```
+trait TranslateAdapterTrait
+{
+  protected $translation;
+  public function translate($msgid)
+  {
+    return $this->translation[$msgid] ?? $msgid;
+  }
+}
+```
 
 1.  现在我们准备定义我们的第一个适配器。在这个示例中，我们将从使用`.ini`文件作为翻译源的适配器开始。您会注意到的第一件事是，我们使用了之前定义的特质。构造方法将在适配器之间有所不同。在这种情况下，我们使用`parse_ini_file()`来生成一个键/值对数组，其中键是消息 ID。请注意，我们使用`$filePattern`参数来替换区域设置，然后可以加载适当的翻译文件：
 
 ```php
-    namespace Application\I18n\Translate\Adapter;
+namespace Application\I18n\Translate\Adapter;
 
-    use Exception;
-    use Application\I18n\Locale;
+use Exception;
+use Application\I18n\Locale;
 
-    class Ini implements TranslateAdapterInterface
-    {
-      use TranslateAdapterTrait;
-      const ERROR_NOT_FOUND = 'Translation file not found';
-      public function __construct(Locale $locale, $filePattern)
-      {
-        $translateFileName = sprintf($filePattern, $locale->getLocaleCode());
-        if (!file_exists($translateFileName)) {
-          error_log(self::ERROR_NOT_FOUND . ':' . $translateFileName);
-          throw new Exception(self::ERROR_NOT_FOUND);
-        } else {
-          $this->translation = parse_ini_file($translateFileName);
-        }
-      }
+class Ini implements TranslateAdapterInterface
+{
+  use TranslateAdapterTrait;
+  const ERROR_NOT_FOUND = 'Translation file not found';
+  public function __construct(Locale $locale, $filePattern)
+  {
+    $translateFileName = sprintf($filePattern, $locale->getLocaleCode());
+    if (!file_exists($translateFileName)) {
+      error_log(self::ERROR_NOT_FOUND . ':' . $translateFileName);
+      throw new Exception(self::ERROR_NOT_FOUND);
+    } else {
+      $this->translation = parse_ini_file($translateFileName);
     }
-    ```
+  }
+}
+```
 
 1.  下一个适配器，`Application\I18n\Translate\Adapter\Csv`，除了打开翻译文件并使用`fgetcsv()`循环检索消息 ID / 消息字符串键值对外，其他都相同。这里我们只展示构造函数中的区别：
 
 ```php
-    public function __construct(Locale $locale, $filePattern)
-    {
-      $translateFileName = sprintf($filePattern, $locale->getLocaleCode());
-      if (!file_exists($translateFileName)) {
-        error_log(self::ERROR_NOT_FOUND . ':' . $translateFileName);
-        throw new Exception(self::ERROR_NOT_FOUND);
-      } else {
-        $fileObj = new SplFileObject($translateFileName, 'r');
-        while ($row = $fileObj->fgetcsv()) {
-          $this->translation[$row[0]] = $row[1];
-        }
-      }
+public function __construct(Locale $locale, $filePattern)
+{
+  $translateFileName = sprintf($filePattern, $locale->getLocaleCode());
+  if (!file_exists($translateFileName)) {
+    error_log(self::ERROR_NOT_FOUND . ':' . $translateFileName);
+    throw new Exception(self::ERROR_NOT_FOUND);
+  } else {
+    $fileObj = new SplFileObject($translateFileName, 'r');
+    while ($row = $fileObj->fgetcsv()) {
+      $this->translation[$row[0]] = $row[1];
     }
-    ```
+  }
+}
+```
 
 ### 注意
 
@@ -1575,113 +1575,113 @@ try {
 1.  现在我们介绍第三个适配器，它执行数据库查找，避免了其他两个适配器的问题。我们使用一个`PDO`准备语句，它在开始时发送到数据库，只发送一次。然后我们根据需要执行多次，提供消息 ID 作为参数。您还会注意到，我们需要覆盖特质中定义的`translate()`方法。最后，您可能已经注意到我们使用了`PDOStatement::fetchColumn()`，因为我们只需要一个值：
 
 ```php
-    namespace Application\I18n\Translate\Adapter;
+namespace Application\I18n\Translate\Adapter;
 
-    use Exception;
-    use Application\Database\Connection;
-    use Application\I18n\Locale;
+use Exception;
+use Application\Database\Connection;
+use Application\I18n\Locale;
 
-    class Database implements TranslateAdapterInterface
-    {
-      use TranslateAdapterTrait;
-      protected $connection;
-      protected $statement;
-      protected $defaultLocaleCode;
-      public function __construct(Locale $locale, 
-                                  Connection $connection, 
-                                  $tableName)
-      {
-        $this->defaultLocaleCode = $locale->getLocaleCode();
-        $this->connection = $connection;
-        $sql = 'SELECT msgstr FROM ' . $tableName 
-           . ' WHERE localeCode = ? AND msgid = ?';
-        $this->statement = $this->connection->pdo->prepare($sql);
-      }
-      public function translate($msgid, $localeCode = NULL)
-      {
-        if (!$localeCode) $localeCode = $this->defaultLocaleCode;
-        $this->statement->execute([$localeCode, $msgid]);
-        return $this->statement->fetchColumn();
-      }
-    }
-    ```
+class Database implements TranslateAdapterInterface
+{
+  use TranslateAdapterTrait;
+  protected $connection;
+  protected $statement;
+  protected $defaultLocaleCode;
+  public function __construct(Locale $locale, 
+                              Connection $connection, 
+                              $tableName)
+  {
+    $this->defaultLocaleCode = $locale->getLocaleCode();
+    $this->connection = $connection;
+    $sql = 'SELECT msgstr FROM ' . $tableName 
+       . ' WHERE localeCode = ? AND msgid = ?';
+    $this->statement = $this->connection->pdo->prepare($sql);
+  }
+  public function translate($msgid, $localeCode = NULL)
+  {
+    if (!$localeCode) $localeCode = $this->defaultLocaleCode;
+    $this->statement->execute([$localeCode, $msgid]);
+    return $this->statement->fetchColumn();
+  }
+}
+```
 
 1.  现在我们准备定义核心的`Translation`类，它与一个（或多个）适配器相关联。我们分配一个类常量来表示默认的区域设置，并为区域设置、适配器和文本文件模式（稍后解释）设置属性：
 
 ```php
-    namespace Application\I18n\Translate;
+namespace Application\I18n\Translate;
 
-    use Application\I18n\Locale;
-    use Application\I18n\Translate\Adapter\TranslateAdapterInterface;
+use Application\I18n\Locale;
+use Application\I18n\Translate\Adapter\TranslateAdapterInterface;
 
-    class Translation
-    {
-      const DEFAULT_LOCALE_CODE = 'en_GB';
-      protected $defaultLocaleCode;
-      protected $adapter = array();
-      protected $textFilePattern = array();
-    ```
+class Translation
+{
+  const DEFAULT_LOCALE_CODE = 'en_GB';
+  protected $defaultLocaleCode;
+  protected $adapter = array();
+  protected $textFilePattern = array();
+```
 
 1.  在构造函数中，我们确定区域设置，并将初始适配器设置为此区域设置。通过这种方式，我们能够托管多个适配器：
 
 ```php
-    public function __construct(TranslateAdapterInterface $adapter, 
-                  $defaultLocaleCode = NULL, 
-                  $textFilePattern = NULL)
-    {
-      if (!$defaultLocaleCode) {
-        $this->defaultLocaleCode = self::DEFAULT_LOCALE_CODE;
-      } else {
-        $this->defaultLocaleCode = $defaultLocaleCode;
-      }
-      $this->adapter[$this->defaultLocaleCode] = $adapter;
-      $this->textFilePattern[$this->defaultLocaleCode] = $textFilePattern;
-    }
-    ```
+public function __construct(TranslateAdapterInterface $adapter, 
+              $defaultLocaleCode = NULL, 
+              $textFilePattern = NULL)
+{
+  if (!$defaultLocaleCode) {
+    $this->defaultLocaleCode = self::DEFAULT_LOCALE_CODE;
+  } else {
+    $this->defaultLocaleCode = $defaultLocaleCode;
+  }
+  $this->adapter[$this->defaultLocaleCode] = $adapter;
+  $this->textFilePattern[$this->defaultLocaleCode] = $textFilePattern;
+}
+```
 
 1.  接下来，我们定义一系列的 setter，这给了我们更多的灵活性：
 
 ```php
-    public function setAdapter($localeCode, TranslateAdapterInterface $adapter)
-    {
-      $this->adapter[$localeCode] = $adapter;
-    }
-    public function setDefaultLocaleCode($localeCode)
-    {
-      $this->defaultLocaleCode = $localeCode;
-    }
-    public function setTextFilePattern($localeCode, $pattern)
-    {
-      $this->textFilePattern[$localeCode] = $pattern;
-    }
-    ```
+public function setAdapter($localeCode, TranslateAdapterInterface $adapter)
+{
+  $this->adapter[$localeCode] = $adapter;
+}
+public function setDefaultLocaleCode($localeCode)
+{
+  $this->defaultLocaleCode = $localeCode;
+}
+public function setTextFilePattern($localeCode, $pattern)
+{
+  $this->textFilePattern[$localeCode] = $pattern;
+}
+```
 
 1.  然后，我们定义了 PHP 魔术方法`__invoke()`，它让我们可以直接调用翻译实例，返回给定消息 ID 的消息字符串：
 
 ```php
-    public function __invoke($msgid, $locale = NULL)
-    {
-      if ($locale === NULL) $locale = $this->defaultLocaleCode;
-      return $this->adapter[$locale]->translate($msgid);
-    }
-    ```
+public function __invoke($msgid, $locale = NULL)
+{
+  if ($locale === NULL) $locale = $this->defaultLocaleCode;
+  return $this->adapter[$locale]->translate($msgid);
+}
+```
 
 1.  最后，我们还添加了一个方法，可以从文本文件中返回翻译的文本块。请记住，这可以修改为使用数据库。我们没有在适配器中包含这个功能，因为它的目的完全不同；我们只想根据一个键返回大块代码，这个键可能是翻译文本文件的文件名：
 
 ```php
-    public function text($key, $localeCode = NULL)
-    {
-      if ($localeCode === NULL) $localeCode = $this->defaultLocaleCode;
-      $contents = $key;
-      if (isset($this->textFilePattern[$localeCode])) {
-        $fn = sprintf($this->textFilePattern[$localeCode], $localeCode, $key);
-        if (file_exists($fn)) {
-          $contents = file_get_contents($fn);
-        }
-      }
-      return $contents;
+public function text($key, $localeCode = NULL)
+{
+  if ($localeCode === NULL) $localeCode = $this->defaultLocaleCode;
+  $contents = $key;
+  if (isset($this->textFilePattern[$localeCode])) {
+    $fn = sprintf($this->textFilePattern[$localeCode], $localeCode, $key);
+    if (file_exists($fn)) {
+      $contents = file_get_contents($fn);
     }
-    ```
+  }
+  return $contents;
+}
+```
 
 ## 它是如何工作的...
 

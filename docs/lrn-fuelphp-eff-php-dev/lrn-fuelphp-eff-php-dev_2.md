@@ -72,14 +72,14 @@ OS X 用户有多种安装 Git 的选项，包括**MacPorts** ([`www.macports.or
 +   在通过 MacPorts 安装时，我们使用以下命令：
 
 ```php
-    $ sudo port install git-core +svn
-    ```
+$ sudo port install git-core +svn
+```
 
 +   在使用 Homebrew 时，我们使用：
 
 ```php
-    $ brew install git
-    ```
+$ brew install git
+```
 
 Windows 用户可以在以下链接找到`msysGit`安装程序：
 

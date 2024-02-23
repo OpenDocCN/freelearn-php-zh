@@ -47,17 +47,17 @@
 1.  打开`layout.php`文件，并在`body`部分的末尾之前添加以下代码：
 
 ```php
-    <script type="text/javascript" src= "//ajax.googleapis.com/ajax/libs/jquery /1.7.2/jquery.min.js">
-    **<script type="text/javascript" src= "//ajax.googleapis.com/ajax/libs/jquery /1.7.2/jquery.min.js">
-    </script>
-    <script type="text/javascript" src="<?php echo $this- >make_route('/js/bootstrap.min.js') ?>">
-    </script>
-    <script type="text/javascript" src="<?php echo $this- >make_route('/js/master.js') ?>">
-    </script>** 
-    </body>
-    </html>
+<script type="text/javascript" src= "//ajax.googleapis.com/ajax/libs/jquery /1.7.2/jquery.min.js">
+**<script type="text/javascript" src= "//ajax.googleapis.com/ajax/libs/jquery /1.7.2/jquery.min.js">
+</script>
+<script type="text/javascript" src="<?php echo $this- >make_route('/js/bootstrap.min.js') ?>">
+</script>
+<script type="text/javascript" src="<?php echo $this- >make_route('/js/master.js') ?>">
+</script>** 
+</body>
+</html>
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -92,54 +92,54 @@
 1.  打开`public/js/master.js`，确保 jQuery 代码在页面加载完成后运行，通过在我们的文件中添加`$(document).ready`事件。这段代码意味着一旦页面加载完成，此函数内的任何 JavaScript 代码都将运行：
 
 ```php
-    $(document).ready(function() {
-    });
+$(document).ready(function() {
+});
 
-    ```
+```
 
 1.  现在，让我们添加一个事件，将`click`事件绑定到我们 HTML 中具有`delete`类的任何按钮。`function(event)`括号内的所有代码将在每次点击我们的删除帖子按钮时运行：
 
 ```php
-    $(document).ready(function() {
-    **$('.delete').bind('click', function(event){** 
-    });
-    });
+$(document).ready(function() {
+**$('.delete').bind('click', function(event){** 
+});
+});
 
-    ```
+```
 
 1.  让我们阻止链接像通常情况下那样将我们带到新页面，使用一个叫做`event.preventDefault()`的代码。然后，让我们将点击链接的`href`属性保存到一个叫做`location`的变量中，这样我们就可以在我们的 AJAX 调用中使用它：
 
 ```php
-    $(document).ready(function() {
-    $('.delete').bind( 'click', function(event){
-    **event.preventDefault();
-    var location = $(this).attr('href');** 
-    });
-    });
+$(document).ready(function() {
+$('.delete').bind( 'click', function(event){
+**event.preventDefault();
+var location = $(this).attr('href');** 
+});
+});
 
-    ```
+```
 
 1.  最后，让我们创建一个基本的 AJAX 请求，将调用我们的应用程序并为我们删除帖子：
 
 ```php
-    $(document).ready(function() {
-    $('.delete').bind( 'click', function(){
-    event.preventDefault();
-    var location = $(this).attr('href');
-    **$.ajax({
-    type: 'DELETE',
-    url: location,
-    context: $(this),
-    success: function(){
-    $(this).parent().parent().fadeOut();
-    },
-    error: function (request, status, error) {
-    alert('An error occurred, please try again.'); }
-    });** 
-    });
-    });
+$(document).ready(function() {
+$('.delete').bind( 'click', function(){
+event.preventDefault();
+var location = $(this).attr('href');
+**$.ajax({
+type: 'DELETE',
+url: location,
+context: $(this),
+success: function(){
+$(this).parent().parent().fadeOut();
+},
+error: function (request, status, error) {
+alert('An error occurred, please try again.'); }
+});** 
+});
+});
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -164,28 +164,28 @@
 1.  打开`index.php`，查找我们在上一章中创建的`post/delete/:id/:rev`路由：
 
 ```php
-    get('/post/delete/:id/:rev', function($app) {
-    $post = new Post();
-    $post->_id = $app->request('id');
-    $post->_rev = $app->request('rev');
-    $post->delete();
-    $app->set('success', 'Your post has been deleted');
-    $app->redirect('/user/' . User::current_user());
-    });
+get('/post/delete/:id/:rev', function($app) {
+$post = new Post();
+$post->_id = $app->request('id');
+$post->_rev = $app->request('rev');
+$post->delete();
+$app->set('success', 'Your post has been deleted');
+$app->redirect('/user/' . User::current_user());
+});
 
-    ```
+```
 
 1.  让我们通过将`get`更改为`delete`来更改路由以使用`delete`方法。然后，删除`success`变量和重定向代码，因为我们将不再需要它们：
 
 ```php
-    delete('/post/delete/:id/:rev', function($app) {
-    $post = new Post();
-    $post->_id = $app->request('id');
-    $post->_rev = $app->request('rev');
-    $post->delete();
-    });
+delete('/post/delete/:id/:rev', function($app) {
+$post = new Post();
+$post->_id = $app->request('id');
+$post->_rev = $app->request('rev');
+$post->delete();
+});
 
-    ```
+```
 
 #### 让我们来测试一下！
 
@@ -224,39 +224,39 @@
 1.  复制并粘贴从`views/user/profile.php`列出帖子的`foreach`代码，并将其粘贴到我们的新文件`_posts.php`中。`_posts.php`的最终结果应该如下所示：
 
 ```php
-    <?php foreach ($posts as $post): ?>
-    <div class="post-item row">
-    <div class="span7">
-    <strong><?php echo $user->name; ?></strong>
-    <p>
-    <?php echo $post->content; ?>
-    </p>
-    <?php echo $post->date_created; ?>
-    </div>
-    <div class="span1">
-    <?php if ($is_current_user) { ?>
-    <a href="<?php echo $this->make_route('/post/delete/' . $post->_id . '/' . $post->_rev)?>" class="delete">
-    (Delete)
-    </a>
-    <?php } ?>
-    </div>
-    <div class="span8"></div>
-    </div>
-    <?php endforeach; ?>
+<?php foreach ($posts as $post): ?>
+<div class="post-item row">
+<div class="span7">
+<strong><?php echo $user->name; ?></strong>
+<p>
+<?php echo $post->content; ?>
+</p>
+<?php echo $post->date_created; ?>
+</div>
+<div class="span1">
+<?php if ($is_current_user) { ?>
+<a href="<?php echo $this->make_route('/post/delete/' . $post->_id . '/' . $post->_rev)?>" class="delete">
+(Delete)
+</a>
+<?php } ?>
+</div>
+<div class="span8"></div>
+</div>
+<?php endforeach; ?>
 
-    ```
+```
 
 1.  现在，让我们从`views/user/profile.php`中删除相同的`foreach`语句，并将其替换为对新创建的`_posts`文件的`include`调用。然后让我们在我们的列表的`h2`元素内添加一个`span`，这样我们就可以很容易地通过 jQuery 访问它。
 
 ```php
-    **<h2>
-    Posts (<span id="post_count"><?php echo $post_count; ?></span>)
-    </h2>
-    <div id="post_list">
-    <?php include('_posts.php'); ?>
-    </div>** 
+**<h2>
+Posts (<span id="post_count"><?php echo $post_count; ?></span>)
+</h2>
+<div id="post_list">
+<?php include('_posts.php'); ?>
+</div>** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -277,38 +277,38 @@
 1.  找到我们的`get_posts_by_user`函数，并添加带有默认值`0`的`$skip`和带有默认值`10`的`$limit`。
 
 ```php
-    **public function get_posts_by_user($username, $skip = 0, $limit = 10) {** 
-    $bones = new Bones();
-    $posts = array();
-    ...
-    }
+**public function get_posts_by_user($username, $skip = 0, $limit = 10) {** 
+$bones = new Bones();
+$posts = array();
+...
+}
 
-    ```
+```
 
 1.  更新我们对 Sag 的`get`调用，以便将`$skip`和`$limit`的值传递给查询。
 
 ```php
-    public function get_posts_by_user($username, $skip = 0, $limit = 10) {
-    $bones = new Bones();
-    $posts = array();
-    **foreach ($bones->couch-> get('_design/application/_view/posts_by_user?key="' . $username . '"&descending=true&reduce=false&skip=' . $skip . '&limit=' . $limit)->body->rows as $_post) {** 
-    ...
-    }
+public function get_posts_by_user($username, $skip = 0, $limit = 10) {
+$bones = new Bones();
+$posts = array();
+**foreach ($bones->couch-> get('_design/application/_view/posts_by_user?key="' . $username . '"&descending=true&reduce=false&skip=' . $skip . '&limit=' . $limit)->body->rows as $_post) {** 
+...
+}
 
-    ```
+```
 
 1.  现在我们已经更新了我们的函数以包括`skip`和`limit`，让我们在`index.php`中创建一个类似于`user/:username`路由的新路由，但是接受`skip`的路由变量来驱动分页。在这个路由中，我们将返回部分`_posts`，而不是整个布局：
 
 ```php
-    get('/user/:username/:skip', function($app) {
-    $app->set('user', User::get_by_username($app-> request('username')));
-    $app->set('is_current_user', ($app->request('username') == User::current_user() ? true : false));
-    $app->set('posts', Post::get_posts_by_user($app-> request('username'), $app->request('skip')));
-    $app->set('post_count', Post::get_post_count_by_user($app-> request('username')));
-    $app->render('user/_posts', false);
-    });
+get('/user/:username/:skip', function($app) {
+$app->set('user', User::get_by_username($app-> request('username')));
+$app->set('is_current_user', ($app->request('username') == User::current_user() ? true : false));
+$app->set('posts', Post::get_posts_by_user($app-> request('username'), $app->request('skip')));
+$app->set('post_count', Post::get_post_count_by_user($app-> request('username')));
+$app->render('user/_posts', false);
+});
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -337,36 +337,36 @@
 1.  打开`index.php`，并创建一个名为`get_user_profile`的函数，它以`$app`作为参数，并将其放在`/user/:username`路由的上方。
 
 ```php
-    function get_user_profile($app) {
-    }
+function get_user_profile($app) {
+}
 
-    ```
+```
 
 1.  将`/user/:username/:skip`中的代码复制到此函数中。但是，这一次，我们不仅仅`传递$app->request('skip')`，让我们检查它是否存在。如果存在，让我们将其传递给`get_posts_by_user`函数。如果不存在，我们将只传递`0`。
 
 ```php
-    function get_user_profile($app) {
-    **$app->set('user', User::get_by_username($app-> request('username')));
-    $app->set('is_current_user', ($app->request('username') == User::current_user() ? true : false));
-    $app->set('posts', Post::get_posts_by_user($app-> request('username'), ($app->request('skip') ? $app-> request('skip') : 0)));
-    $app->set('post_count', Post::get_post_count_by_user($app-> request('username')));
-    }** 
+function get_user_profile($app) {
+**$app->set('user', User::get_by_username($app-> request('username')));
+$app->set('is_current_user', ($app->request('username') == User::current_user() ? true : false));
+$app->set('posts', Post::get_posts_by_user($app-> request('username'), ($app->request('skip') ? $app-> request('skip') : 0)));
+$app->set('post_count', Post::get_post_count_by_user($app-> request('username')));
+}** 
 
-    ```
+```
 
 1.  最后，让我们清理我们的两个 profile 函数，使它们都只调用`get_user_profile`函数。
 
 ```php
-    get('/user/:username', function($app) {
-    **get_user_profile($app);** 
-    $app->render('user/profile');
-    });
-    get('/user/:username/:skip', function($app) {
-    **get_user_profile($app);** 
-    $app->render('user/_posts', false);
-    });
+get('/user/:username', function($app) {
+**get_user_profile($app);** 
+$app->render('user/profile');
+});
+get('/user/:username/:skip', function($app) {
+**get_user_profile($app);** 
+$app->render('user/_posts', false);
+});
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -381,91 +381,91 @@
 1.  让我们从`master.css`文件中添加一行 CSS，这样我们的**加载更多**按钮看起来会很漂亮。
 
 ```php
-    #load_more a {padding: 10px 0 10px 0; display: block; text-align: center; background: #e4e4e4; cursor: pointer;}
+#load_more a {padding: 10px 0 10px 0; display: block; text-align: center; background: #e4e4e4; cursor: pointer;}
 
-    ```
+```
 
 1.  现在我们已经有了 CSS，让我们在`profile.php`视图中的`post`列表底部添加我们的**加载更多**按钮的 HTML。
 
 ```php
-    <h2>
-    Posts (<span id="post_count"><?php echo $post_count; ?></span>)
-    </h2>
-    <div id="post_list">
-    <?php include('_posts.php'); ?>
-    </div>
-    **<div id="load_more" class="row">
-    <div class="span8">
-    <a id="more_posts" href="#">Load More...</a>
-    </div>
-    </div>**
+<h2>
+Posts (<span id="post_count"><?php echo $post_count; ?></span>)
+</h2>
+<div id="post_list">
+<?php include('_posts.php'); ?>
+</div>
+**<div id="load_more" class="row">
+<div class="span8">
+<a id="more_posts" href="#">Load More...</a>
+</div>
+</div>**
 
-    ```
+```
 
 1.  现在，让我们打开`master.js`，并在`$(document).ready`函数的闭合括号内创建一个函数。这个函数将针对 ID 为`more_posts`的任何元素的`click`事件。
 
 ```php
-    **$('#more_posts').bind( 'click', function(event){
-    event.preventDefault();
-    });** 
-    });
+**$('#more_posts').bind( 'click', function(event){
+event.preventDefault();
+});** 
+});
 
-    ```
+```
 
 1.  为了调用`/user/:username/:skip`路由，我们需要使用一个名为`window.location.pathname`的 JavaScript 函数来获取页面的当前 URL。然后，我们将在字符串的末尾添加帖子项目的数量，以便跳过当前页面上显示的帖子数量。
 
 ```php
-    $('#more_posts').bind( 'click', function(event){
-    event.preventDefault();
-    **var location = window.location.pathname + "/" + $('.post-item') .size();** 
-    });
+$('#more_posts').bind( 'click', function(event){
+event.preventDefault();
+**var location = window.location.pathname + "/" + $('.post-item') .size();** 
+});
 
-    ```
+```
 
 1.  现在我们已经有了位置，让我们填写剩下的 AJAX 调用。这一次，我们将使用`GET HTTP`方法，并使用 ID 为`post_list`的帖子列表作为我们的上下文，这将允许我们在`success`事件中引用它。然后，让我们只添加一个通用的`error`事件，以便在发生错误时通知用户发生了错误。
 
 ```php
-    $('#more_posts').bind( 'click', function(event){
-    event.preventDefault();
-    var location = window.location.pathname + "/" + $('#post_list').children().size();
-    **$.ajax({
-    type: 'GET',
-    url: location,
-    context: $('#post_list'),
-    success: function(html){
-    // we'll fill this in, in just one second
-    },
-    error: function (request, status, error) {
-    alert('An error occurred, please try again.');
-    }
-    });** 
-    });
+$('#more_posts').bind( 'click', function(event){
+event.preventDefault();
+var location = window.location.pathname + "/" + $('#post_list').children().size();
+**$.ajax({
+type: 'GET',
+url: location,
+context: $('#post_list'),
+success: function(html){
+// we'll fill this in, in just one second
+},
+error: function (request, status, error) {
+alert('An error occurred, please try again.');
+}
+});** 
+});
 
-    ```
+```
 
 1.  最后，让我们用一些代码填充我们的`success`函数，将从我们的 AJAX 调用返回的 HTML 附加到`post_list div`的末尾。然后，我们将检查是否有其他帖子要加载。如果没有更多帖子要加载，我们将隐藏**加载更多**按钮。为了获取帖子数量，我们将查看我们使用`post_count`作为 ID 创建的`span`，并使用`parseInt`将其转换为整数。
 
 ```php
-    $('#more_posts').bind( 'click', function(event){
-    event.preventDefault();
-    var location = window.location.pathname + "/" + $('#post_list').children().size();
-    $.ajax({
-    type: 'GET',
-    url: location,
-    context: $('#post_list'),
-    success: function(html){
-    **$(this).append(html);
-    if ($('#post_list').children().size() <= " parseInt($('#post_count').text())) {
-    $('#load_more').hide();
-    }** 
-    },
-    error: function (request, status, error) {
-    alert('An error occurred, please try again.');
-    }
-    });
-    });
+$('#more_posts').bind( 'click', function(event){
+event.preventDefault();
+var location = window.location.pathname + "/" + $('#post_list').children().size();
+$.ajax({
+type: 'GET',
+url: location,
+context: $('#post_list'),
+success: function(html){
+**$(this).append(html);
+if ($('#post_list').children().size() <= " parseInt($('#post_count').text())) {
+$('#load_more').hide();
+}** 
+},
+error: function (request, status, error) {
+alert('An error occurred, please try again.');
+}
+});
+});
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -480,33 +480,33 @@
 1.  打开`master.js`，并将`delete`帖子代码更改为使用`live`而不是`bind`：
 
 ```php
-    **$('.delete').live( 'click', function(event){** 
-    event.preventDefault();
-    var location = $(this).attr('href');
+**$('.delete').live( 'click', function(event){** 
+event.preventDefault();
+var location = $(this).attr('href');
 
-    ```
+```
 
 1.  如果您开始删除帖子列表中的一堆项目，它目前不会使用 JavaScript 更改与用户帐户相关联的帖子数量。在这里，让我们修改`success`函数，以便它还更新我们帖子列表顶部的帖子数量：
 
 ```php
-    $('.delete').live( 'click', function(event){
-    event.preventDefault();
-    var location = $(this).attr('href');
-    $.ajax({
-    type: 'DELETE',
-    url: location,
-    context: $(this),
-    success: function(html){
-    $(this).parent().parent().parent().fadeOut();
-    **$('#post_count').text(parseInt($('#post_count').text()) - 1);** 
-    },
-    error: function (request, status, error) {
-    alert('An error occurred, please try again.');
-    }
-    });
-    });
+$('.delete').live( 'click', function(event){
+event.preventDefault();
+var location = $(this).attr('href');
+$.ajax({
+type: 'DELETE',
+url: location,
+context: $(this),
+success: function(html){
+$(this).parent().parent().parent().fadeOut();
+**$('#post_count').text(parseInt($('#post_count').text()) - 1);** 
+},
+error: function (request, status, error) {
+alert('An error occurred, please try again.');
+}
+});
+});
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -539,63 +539,63 @@
 1.  打开`user/profile.php`，并添加一个名为`gravatar`的`public`函数，它接受一个名为 size 的参数；我们将给它一个默认值`50`。
 
 ```php
-    public function gravatar($size='50') {
-    }
+public function gravatar($size='50') {
+}
 
-    ```
+```
 
 1.  为了获取用户的 Gravatar，我们只需要创建用户电子邮件地址的`md5`哈希，这将作为`gravatar_id`。然后，我们使用我们的`$size`变量设置大小，并将所有这些附加到 Gravatar 的网络服务 URL。
 
 ```php
-    public function gravatar($size='50') {
-    return 'http://www.gravatar.com/avatar/?gravatar_id=' .md5(strtolower($this->email)).'&size='.$size;
-    }
+public function gravatar($size='50') {
+return 'http://www.gravatar.com/avatar/?gravatar_id=' .md5(strtolower($this->email)).'&size='.$size;
+}
 
-    ```
+```
 
 1.  就是这样！我们现在在我们的应用程序中有了 Gravatar 支持。我们只需要在任何我们想要看到个人资料图片的地方开始添加它。让我们首先在`views/user/profile.php`文件的**用户信息**部分顶部添加一个大的 Gravatar。
 
 ```php
-    <div class="span4">
-    <div class="well sidebar-nav">
-    <ul class="nav nav-list">
-    <li><h3>User Information</h3></li>
-    **<li><img src="<?php echo $user->gravatar('100'); ?>" /></li>** 
-    <li><b>Username:</b> <?php echo $user->name; ?></li>
-    <li><b>Email:</b> <?php echo $user->email; ?></li>
-    </ul>
-    </div>
-    </div>
+<div class="span4">
+<div class="well sidebar-nav">
+<ul class="nav nav-list">
+<li><h3>User Information</h3></li>
+**<li><img src="<?php echo $user->gravatar('100'); ?>" /></li>** 
+<li><b>Username:</b> <?php echo $user->name; ?></li>
+<li><b>Email:</b> <?php echo $user->email; ?></li>
+</ul>
+</div>
+</div>
 
-    ```
+```
 
 1.  接下来，让我们更新`views/user/_posts.php`文件中的帖子列表，这样我们就可以很好地显示我们的 Gravatars。
 
 ```php
-    <?php foreach ($posts as $post): ?>
-    <div class="post-item row">
-    **<div class="span7">
-    <div class="span1">
-    <img src="<?php echo $user->gravatar('50'); ?>" />
-    </div>
-    <div class="span5">
-    <strong><?php echo $user->name; ?></strong>
-    <p>
-    <?php echo $post->content; ?>
-    </p>
-    <?php echo $post->date_created; ?>
-    </div>
-    </div>** 
-    <div class="span1">
-    <?php if ($is_current_user) { ?>
-    <a href="<?php echo $this->make_route('/post/delete/' . $post->_id . '/' . $post->_rev)?>" class="deletes">(Delete)</a>
-    <?php } ?>
-    </div>
-    <div class="span8"></div>
-    </div>
-    <?php endforeach; ?>
+<?php foreach ($posts as $post): ?>
+<div class="post-item row">
+**<div class="span7">
+<div class="span1">
+<img src="<?php echo $user->gravatar('50'); ?>" />
+</div>
+<div class="span5">
+<strong><?php echo $user->name; ?></strong>
+<p>
+<?php echo $post->content; ?>
+</p>
+<?php echo $post->date_created; ?>
+</div>
+</div>** 
+<div class="span1">
+<?php if ($is_current_user) { ?>
+<a href="<?php echo $this->make_route('/post/delete/' . $post->_id . '/' . $post->_rev)?>" class="deletes">(Delete)</a>
+<?php } ?>
+</div>
+<div class="span8"></div>
+</div>
+<?php endforeach; ?>
 
-    ```
+```
 
 ## 刚刚发生了什么？
 

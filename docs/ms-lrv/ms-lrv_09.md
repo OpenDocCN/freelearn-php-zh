@@ -351,9 +351,9 @@ Laravel 通过其读/写配置提供了管理主/从配置的能力。这使程�
 1.  第一步是确定 MySQL 服务器绑定到哪个地址。为此，请找到包含 bind-address 参数的 MySQL 配置文件的行：
 
 ```php
-    **bind-address            = 127.0.0.1**
+**bind-address            = 127.0.0.1**
 
-    ```
+```
 
 此 IP 地址将设置为主服务器使用的 IP 地址。
 
@@ -362,9 +362,9 @@ Laravel 通过其读/写配置提供了管理主/从配置的能力。这使程�
 1.  Unix 的`sed`命令可以轻松执行此操作：
 
 ```php
-    **$ sed -i s/#server-id/server-id/g  /etc/mysql/my.cnf**
+**$ sed -i s/#server-id/server-id/g  /etc/mysql/my.cnf**
 
-    ```
+```
 
 ### 提示
 
@@ -373,9 +373,9 @@ Laravel 通过其读/写配置提供了管理主/从配置的能力。这使程�
 1.  取消注释包含`server-id`的 MySQL 配置文件中的行：
 
 ```php
-    **$ sed -i s/#log_bin/log_bin/g  /etc/mysql/my.cnf**
+**$ sed -i s/#log_bin/log_bin/g  /etc/mysql/my.cnf**
 
-    ```
+```
 
 ### 提示
 
@@ -384,23 +384,23 @@ Laravel 通过其读/写配置提供了管理主/从配置的能力。这使程�
 1.  现在，需要重新启动 MySQL。您可以使用以下命令执行此操作：
 
 ```php
-    **$ sudo service mysql restart**
+**$ sudo service mysql restart**
 
-    ```
+```
 
 1.  以下占位符应替换为实际值：
 
 ```php
-    **MYSQLUSER**
-    **MYSQLPASSWORD**
-    **MASTERDATABASE**
-    **MASTERDATABASEUSER**
-    **MASTERDATABASEPASSWORD**
-    **SLAVEDATABASE**
-    **SLAVEDATABASEUSER**
-    **SLAVEDATABASEPASSWORD**
+**MYSQLUSER**
+**MYSQLPASSWORD**
+**MASTERDATABASE**
+**MASTERDATABASEUSER**
+**MASTERDATABASEPASSWORD**
+**SLAVEDATABASE**
+**SLAVEDATABASEUSER**
+**SLAVEDATABASEPASSWORD**
 
-    ```
+```
 
 ## 设置主服务器
 
@@ -409,58 +409,58 @@ Laravel 通过其读/写配置提供了管理主/从配置的能力。这使程�
 1.  授予从数据库用户权限：
 
 ```php
-    **$ echo  "GRANT REPLICATION SLAVE ON *.* TO 'DATABASEUSER'@'%' IDENTIFIED BY 'DATABASESLAVEPASSWORD';" | mysql -u MYSQLUSER -p"MYSQLPASSWORD"** 
+**$ echo  "GRANT REPLICATION SLAVE ON *.* TO 'DATABASEUSER'@'%' IDENTIFIED BY 'DATABASESLAVEPASSWORD';" | mysql -u MYSQLUSER -p"MYSQLPASSWORD"** 
 
-    ```
+```
 
 1.  接下来，必须使用以下命令刷新权限：
 
 ```php
-    **$ echo  "FLUSH PRIVILEGES;" | mysql -u MYSQLUSER -p"MYSQLPASSWORD"** 
+**$ echo  "FLUSH PRIVILEGES;" | mysql -u MYSQLUSER -p"MYSQLPASSWORD"** 
 
-    ```
+```
 
 1.  接下来，使用以下命令切换到主数据库：
 
 ```php
-    **$ echo  "USE MASTERDATABASE;" | mysql -u MYSQLUSER -p"DATABASEPASSWORD"** 
+**$ echo  "USE MASTERDATABASE;" | mysql -u MYSQLUSER -p"DATABASEPASSWORD"** 
 
-    ```
+```
 
 1.  接下来，使用以下命令刷新表：
 
 ```php
-    **$ echo  "FLUSH TABLES WITH READ LOCK;" | mysql -u MYSQLUSER -p"MYSQLPASSWORD"** 
+**$ echo  "FLUSH TABLES WITH READ LOCK;" | mysql -u MYSQLUSER -p"MYSQLPASSWORD"** 
 
-    ```
+```
 
 1.  使用以下命令显示主数据库状态：
 
 ```php
-    **$ echo  "SHOW MASTER STATUS;" | mysql -u MYSQLUSER -p"MYSQLPASSWORD"** 
+**$ echo  "SHOW MASTER STATUS;" | mysql -u MYSQLUSER -p"MYSQLPASSWORD"** 
 
-    ```
+```
 
 注意输出中的位置和文件名：
 
 ```php
-    POSITION
-    FILENAME
-    ```
+POSITION
+FILENAME
+```
 
 1.  使用以下命令转储主数据库：
 
 ```php
-    **$ mysqldump -u root -p"MYSQLPASSWORD"  --opt "MASTERDATABASE" > dumpfile.sql**
+**$ mysqldump -u root -p"MYSQLPASSWORD"  --opt "MASTERDATABASE" > dumpfile.sql**
 
-    ```
+```
 
 1.  使用以下命令解锁表：
 
 ```php
-    **$ echo  "UNLOCK TABLES;" | mysql -u MYSQLUSER -p"MYSQLPASSWORD"** 
+**$ echo  "UNLOCK TABLES;" | mysql -u MYSQLUSER -p"MYSQLPASSWORD"** 
 
-    ```
+```
 
 ## 设置从服务器
 
@@ -469,60 +469,60 @@ Laravel 通过其读/写配置提供了管理主/从配置的能力。这使程�
 1.  在从服务器上，使用以下命令创建从数据库：
 
 ```php
-    **$ echo  "CREATE DATABASE SLAVEDATABASE;" | mysql -u MYSQLUSER -p"MYSQLPASSWORD"** 
+**$ echo  "CREATE DATABASE SLAVEDATABASE;" | mysql -u MYSQLUSER -p"MYSQLPASSWORD"** 
 
-    ```
+```
 
 1.  使用以下命令导入从主数据库创建的转储文件：
 
 ```php
-    **$ mysql -u MYSQLUSER -p"MYSQLPASSWORD"  "MASTERDATABASE" < dumpfile.sql**
+**$ mysql -u MYSQLUSER -p"MYSQLPASSWORD"  "MASTERDATABASE" < dumpfile.sql**
 
-    ```
+```
 
 1.  现在，MySQL 配置文件使用 server-id 2：
 
 ```php
-    server-id            = 2
-    ```
+server-id            = 2
+```
 
 1.  在 MySQL 配置文件中，应取消注释两行，如下所示：
 
 ```php
-    **#log_bin			= /var/log/mysql/mysql-bin.log**
-    **expire_logs_days	= 10**
-    **max_binlog_size   = 100M**
-    **#binlog_do_db		= include_database_name**
+**#log_bin			= /var/log/mysql/mysql-bin.log**
+**expire_logs_days	= 10**
+**max_binlog_size   = 100M**
+**#binlog_do_db		= include_database_name**
 
-    ```
+```
 
 1.  您将得到以下结果：
 
 ```php
-    log_bin			= /var/log/mysql/mysql-bin.log
-    expire_logs_days	= 10
-    max_binlog_size    = 100M
-    binlog_do_db		= include_database_name
-    ```
+log_bin			= /var/log/mysql/mysql-bin.log
+expire_logs_days	= 10
+max_binlog_size    = 100M
+binlog_do_db		= include_database_name
+```
 
 1.  此外，需要在`binglog_do_db`下面添加以下行：
 
 ```php
-    relay-log                = /var/log/mysql/mysql-relay-bin.log
-    ```
+relay-log                = /var/log/mysql/mysql-relay-bin.log
+```
 
 1.  现在，需要使用以下命令重新启动 MySQL：
 
 ```php
-    **$ sudo service mysql restart**
+**$ sudo service mysql restart**
 
-    ```
+```
 
 1.  最后，设置主密码。主日志文件和位置将设置为步骤 5 中记录的文件名和位置。运行以下命令：
 
 ```php
-    MASTER_PASSWORD='password', MASTER_LOG_FILE='FILENAME', MASTER_LOG_POS= POSITION;
-    ```
+MASTER_PASSWORD='password', MASTER_LOG_FILE='FILENAME', MASTER_LOG_POS= POSITION;
+```
 
 # 总结
 

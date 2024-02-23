@@ -23,16 +23,16 @@
 1.  通过在**终端**中运行以下命令来创建一个新的数据库。确保用第三章中创建的数据库管理员用户替换`username`和`password`。
 
 ```php
-    **curl -X PUT username:password@localhost:5984/verge** 
+**curl -X PUT username:password@localhost:5984/verge** 
 
-    ```
+```
 
 1.  **终端**将以以下输出做出响应：
 
 ```php
-    **{"ok":true}** 
+**{"ok":true}** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -67,16 +67,16 @@
 1.  添加突出显示的代码以为电子邮件地址添加标签和输入字段：
 
 ```php
-    Signup
-    <form action="<?php echo $this->make_route('signup') ?>" method="post">
-    <label for="name">Name</label>
-    <input id="name" name="name" type="text"> <br />
-    **<label for="email">Email</label>
-    <input id="email" name="email" type="text"> <br />** 
-    <input type="Submit" value="Submit">
-    </form>
+Signup
+<form action="<?php echo $this->make_route('signup') ?>" method="post">
+<label for="name">Name</label>
+<input id="name" name="name" type="text"> <br />
+**<label for="email">Email</label>
+<input id="email" name="email" type="text"> <br />** 
+<input type="Submit" value="Submit">
+</form>
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -130,16 +130,16 @@ $app->render('home');
 1.  输入以下命令以更改目录到我们的工作目录：
 
 ```php
-    **cd /Library/Webserver/Documents/verge/** 
+**cd /Library/Webserver/Documents/verge/** 
 
-    ```
+```
 
 1.  给 Git 一个描述，说明我们自上次提交以来做了什么：
 
 ```php
-    **git commit am 'Added functionality to collect name and email through stdClass and display it onscreen.'** 
+**git commit am 'Added functionality to collect name and email through stdClass and display it onscreen.'** 
 
-    ```
+```
 
 现在我们已经用 JSON 表示了我们的数据，让我们使用一个`curl`语句来使用 PHP 创建一个 CouchDB 文档。
 
@@ -150,51 +150,51 @@ $app->render('home');
 1.  让我们从初始化一个`curl`会话开始，执行它，然后关闭它。在文本编辑器中打开`index.php`，并将以下代码添加到`/signup POST`路由中：
 
 ```php
-    post('/signup', function($app) {
-    $user = new stdClass;
-    $user->type = 'user';
-    $user->name = $app->form('name');
-    $user->email = $app->form('email');
-    echo json_encode($user);
-    **$curl = curl_init();
-    // curl options
-    curl_exec($curl);
-    curl_close($curl);** 
-    $app->set('message', 'Thanks for Signing Up ' . $app- >form('name') . '!');
-    $app->render('home');
-    });
+post('/signup', function($app) {
+$user = new stdClass;
+$user->type = 'user';
+$user->name = $app->form('name');
+$user->email = $app->form('email');
+echo json_encode($user);
+**$curl = curl_init();
+// curl options
+curl_exec($curl);
+curl_close($curl);** 
+$app->set('message', 'Thanks for Signing Up ' . $app- >form('name') . '!');
+$app->render('home');
+});
 
-    ```
+```
 
 1.  现在，让我们告诉`curl`实际要执行什么。我们使用一个`options`数组来做到这一点。在`curl_init()`和`curl_exec`语句之间添加以下代码：
 
 ```php
-    post('/signup', function($app) {
-    $user = new stdClass;
-    $user->name = $app->form('name');
-    $user->email = $app->form('email');
-    echo json_encode($user);
-    $curl = curl_init();
-    // curl options
-    **$options = array(
-    CURLOPT_URL => 'localhost:5984/verge',
-    CURLOPT_POSTFIELDS => json_encode($user),
-    CURLOPT_HTTPHEADER => array ("Content-Type: application/json"),
-    CURLOPT_CUSTOMREQUEST => 'POST',
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_ENCODING => "utf-8",
-    CURLOPT_HEADER => false,
-    CURLOPT_FOLLOWLOCATION => true,
-    CURLOPT_AUTOREFERER => true
-    );
-    curl_setopt_array($curl, $options);** 
-    curl_exec($curl);
-    curl_close($curl);
-    $app->set('message', 'Thanks for Signing Up ' . $app-> form('name') . '!');
-    $app->render('home');
-    });
+post('/signup', function($app) {
+$user = new stdClass;
+$user->name = $app->form('name');
+$user->email = $app->form('email');
+echo json_encode($user);
+$curl = curl_init();
+// curl options
+**$options = array(
+CURLOPT_URL => 'localhost:5984/verge',
+CURLOPT_POSTFIELDS => json_encode($user),
+CURLOPT_HTTPHEADER => array ("Content-Type: application/json"),
+CURLOPT_CUSTOMREQUEST => 'POST',
+CURLOPT_RETURNTRANSFER => true,
+CURLOPT_ENCODING => "utf-8",
+CURLOPT_HEADER => false,
+CURLOPT_FOLLOWLOCATION => true,
+CURLOPT_AUTOREFERER => true
+);
+curl_setopt_array($curl, $options);** 
+curl_exec($curl);
+curl_close($curl);
+$app->set('message', 'Thanks for Signing Up ' . $app-> form('name') . '!');
+$app->render('home');
+});
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -248,16 +248,16 @@ curl_close($curl);
 1.  键入以下命令以更改目录到我们的工作目录：
 
 ```php
-    cd /Library/Webserver/Documents/verge/
+cd /Library/Webserver/Documents/verge/
 
-    ```
+```
 
 1.  向 Git 描述我们自上次提交以来所做的工作：
 
 ```php
-    git commit am 'CouchDB Documents can now be created through the signup form using curl.'
+git commit am 'CouchDB Documents can now be created through the signup form using curl.'
 
-    ```
+```
 
 我们刚刚看了使用 PHP 创建 CouchDB 文档的最简单的方法之一。然而，我们需要评估我们刚刚编写的代码是否可持续，并且是否是我们开发应用程序的明智方式。
 
@@ -292,17 +292,17 @@ Git 使设置第三方库变得非常容易，并允许我们在可用时更新�
 1.  键入以下命令以确保您在工作目录中：
 
 ```php
-    **cd /Library/Webserver/Documents/verge/** 
+**cd /Library/Webserver/Documents/verge/** 
 
-    ```
+```
 
 1.  使用 Git 将 Sag 添加到我们的存储库：
 
 ```php
-    **git submodule add git://github.com/sbisbee/sag.git lib/sag
-    git submodule init** 
+**git submodule add git://github.com/sbisbee/sag.git lib/sag
+git submodule init** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -319,27 +319,27 @@ Git 使设置第三方库变得非常容易，并允许我们在可用时更新�
 1.  打开我们的工作目录中的`lib/bones.php`，并在我们的类顶部添加以下行：
 
 ```php
-    <?php
-    define('ROOT', __DIR__ . '/..');
-    **require_once ROOT . '/lib/sag/src/Sag.php';** 
+<?php
+define('ROOT', __DIR__ . '/..');
+**require_once ROOT . '/lib/sag/src/Sag.php';** 
 
-    ```
+```
 
 1.  我们需要确保 Sag 已准备好并在每个请求中可用。让我们通过在`Bones`中添加一个名为`$couch`的新变量，并在我们的`__construct`函数中设置它来实现这一点：
 
 ```php
-    public $route_segments = array();
-    public $route_variables = array();
-    **public $couch;** 
-    public function __construct() {
-    $this->route = $this->get_route();
-    $this->route_segments = explode('/', trim($this->route, '/'));
-    $this->method = $this->get_method();
-    **$this->couch = new Sag('127.0.0.1', '5984');
-    $this->couch->setDatabase('verge');** 
-    }
+public $route_segments = array();
+public $route_variables = array();
+**public $couch;** 
+public function __construct() {
+$this->route = $this->get_route();
+$this->route_segments = explode('/', trim($this->route, '/'));
+$this->method = $this->get_method();
+**$this->couch = new Sag('127.0.0.1', '5984');
+$this->couch->setDatabase('verge');** 
+}
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -434,62 +434,62 @@ include_once(ROOT . "/classes/" . strtolower($classname) . ".php");
 1.  在`base.php`中创建一个带有`__construct`函数的抽象类。在对象的`__construct`中，让我们将`$type`作为一个选项，并将其设置为一个受保护的变量，也称为`$type`。
 
 ```php
-    <?php
-    abstract class Base
-    {
-    protected $type;
-    public function __construct($type)
-    {
-    $this->type = $type;
-    }
-    }
+<?php
+abstract class Base
+{
+protected $type;
+public function __construct($type)
+{
+$this->type = $type;
+}
+}
 
-    ```
+```
 
 1.  为了方便以后在我们的类中获取和设置变量，让我们在`__construct`函数之后添加`__get()`和`__set()`函数。
 
 ```php
-    <?php
-    abstract class Base
-    {
-    protected $type;
-    public function __construct($type)
-    {
-    $this->type = $type;
-    }
-    **public function __get($property) {
-    return $this->$property;
-    }
-    public function __set($property, $value) {
-    $this->$property = $value;
-    }** 
-    }
+<?php
+abstract class Base
+{
+protected $type;
+public function __construct($type)
+{
+$this->type = $type;
+}
+**public function __get($property) {
+return $this->$property;
+}
+public function __set($property, $value) {
+$this->$property = $value;
+}** 
+}
 
-    ```
+```
 
 1.  每次我们将对象保存到 Couch DB 时，我们希望能够将其表示为 JSON 字符串。因此，让我们创建一个名为`to_json()`的辅助函数，它将把我们的对象转换成 JSON 格式。
 
 ```php
-    <?php
-    abstract class Base
-    {
-    protected $type;
-    public function __construct($type)
-    {
-    $this->type = $type;
-    }
-    public function __get($property) {
-    return $this->$property;
-    }
-    public function __set($property, $value) {
-    $this->$property = $value;
-    }
-    **public function to_json() {
-    return json_encode(get_object_vars($this));
-    }** 
-    }
+<?php
+abstract class Base
+{
+protected $type;
+public function __construct($type)
+{
+$this->type = $type;
+}
+public function __get($property) {
+return $this->$property;
+}
+public function __set($property, $value) {
+$this->$property = $value;
+}
+**public function to_json() {
+return json_encode(get_object_vars($this));
+}** 
+}
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -504,40 +504,40 @@ include_once(ROOT . "/classes/" . strtolower($classname) . ".php");
 1.  让我们创建一个继承我们`Base`类的类。
 
 ```php
-    <?php
-    class User extends Base
-    {
-    }
+<?php
+class User extends Base
+{
+}
 
-    ```
+```
 
 1.  让我们添加我们已经知道需要的两个属性`name`和`email`到我们的`User`类中。
 
 ```php
-    <?php
-    class User extends Base
-    {
-    **protected $name;
-    protected $email;** 
-    }
+<?php
+class User extends Base
+{
+**protected $name;
+protected $email;** 
+}
 
-    ```
+```
 
 1.  让我们添加一个`__construct`函数，告诉我们的`Base`类，在创建时我们的文档类型是`user`。
 
 ```php
-    <?php
-    class User extends Base
-    {
-    protected $name;
-    protected $email;
-    **public function __construct()
-    {
-    parent::__construct('user');
-    }** 
-    }
+<?php
+class User extends Base
+{
+protected $name;
+protected $email;
+**public function __construct()
+{
+parent::__construct('user');
+}** 
+}
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -550,26 +550,26 @@ include_once(ROOT . "/classes/" . strtolower($classname) . ".php");
 1.  打开`index.php`文件，将`stdClass`改为`User()`。与此同时，我们还可以移除`$user->type = 'user'`，因为现在这个问题已经在我们的类中处理了：
 
 ```php
-    post('/signup', function($app) {
-    **$user = new User();** 
-    $user->name = $app->form('name');
-    $user->email = $app->form('email');
-    $app->couch->post($user);
-    }
+post('/signup', function($app) {
+**$user = new User();** 
+$user->name = $app->form('name');
+$user->email = $app->form('email');
+$app->couch->post($user);
+}
 
-    ```
+```
 
 1.  调整 Sag 的`post`语句，以便我们可以以 JSON 格式传递我们的类。
 
 ```php
-    post('/signup', function($app) {
-    $user = new User();
-    $user->name = $app->form('name');
-    $user->email = $app->form('email');
-    **$app->couch->post($user->to_json);** 
-    }
+post('/signup', function($app) {
+$user = new User();
+$user->name = $app->form('name');
+$user->email = $app->form('email');
+**$app->couch->post($user->to_json);** 
+}
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -608,23 +608,23 @@ Sag 在技术上可以自己处理一个对象的 JSON，但重要的是我们�
 1.  输入以下命令以更改目录到我们的工作目录：
 
 ```php
-    **cd /Library/Webserver/Documents/verge/** 
+**cd /Library/Webserver/Documents/verge/** 
 
-    ```
+```
 
 1.  我们在`classes`文件夹中添加了一些新文件。所以，让我们确保将这些文件添加到 Git 中。
 
 ```php
-    **git add classes/*** 
+**git add classes/*** 
 
-    ```
+```
 
 1.  给 Git 一个描述，说明我们自上次提交以来做了什么：
 
 ```php
-    **git commit am 'Added class structure for Users and tested its functionality'** 
+**git commit am 'Added class structure for Users and tested its functionality'** 
 
-    ```
+```
 
 通过使用`classes/*`语法，我们告诉 Git 添加 classes 文件夹中的每个文件。当你添加了多个文件并且不想逐个添加每个文件时，这很方便。
 

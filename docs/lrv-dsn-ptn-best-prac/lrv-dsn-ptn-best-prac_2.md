@@ -95,139 +95,139 @@ class Builder {
 +   要从`users`表中获取所有名称并逐个显示它们，使用以下代码：
 
 ```php
-    $users = DB::table('users')->get();
-    foreach ($users as $user)
-    {
-        var_dump($user->name);
-    }
-    ```
+$users = DB::table('users')->get();
+foreach ($users as $user)
+{
+    var_dump($user->name);
+}
+```
 
 `get()`方法以集合的形式从表中获取所有记录。通过`foreach()`循环，记录被循环，然后我们使用`->name`（一个对象）访问每个名称列。如果要访问的列是电子邮件，则会像`$user->email`一样。
 
 +   要从`users`表中获取名为`Arda`的第一个用户，使用以下代码：
 
 ```php
-    $user = DB::table('users')->where('name', 'Arda')->first();
-    var_dump($user->name);
-    ```
+$user = DB::table('users')->where('name', 'Arda')->first();
+var_dump($user->name);
+```
 
 `where()`方法使用给定参数过滤查询。`first()`方法直接从第一个匹配的元素中返回单个项目的集合对象。如果有两个名为`Arda`的用户，则只会捕获第一个并将其设置为`$user`变量。
 
 +   如果要在`where`子句中使用`OR`语句，可以使用以下代码：
 
 ```php
-    $user = DB::table('users')
-    ->where('name', 'Arda')
-    ->orWhere('name', 'Ibrahim')
-    ->first();
-    var_dump($user->name);
-    ```
+$user = DB::table('users')
+->where('name', 'Arda')
+->orWhere('name', 'Ibrahim')
+->first();
+var_dump($user->name);
+```
 
 +   要在`where`子句中使用操作符，应在要过滤的列名和变量之间添加以下第三个参数：
 
 ```php
-    $user = DB::table('users')->where('id', '>', '2')->get();
-    foreach ($users as $user)
-    {
-        var_dump($user->email);
-    }
-    ```
+$user = DB::table('users')->where('id', '>', '2')->get();
+foreach ($users as $user)
+{
+    var_dump($user->email);
+}
+```
 
 +   如果你使用偏移和限制，执行以下查询：
 
 ```php
-    $users = DB::table('users')->skip(10)->take(5)->get();
-    ```
+$users = DB::table('users')->skip(10)->take(5)->get();
+```
 
 这在 MySQL 中产生了`SELECT` `* FROM` users `LIMIT 10,5`。`skip($integer)`方法将为查询设置一个偏移量，`take($ integer)`将限制输出为已设置为参数的自然数。
 
 +   你还可以使用`select()`方法限制要获取的内容，并在 Fluent Query Builder 中轻松使用以下`join`语句：
 
 ```php
-    DB::table('users')
-       ->join('contacts', 'users.id', '=', 'contacts.user_id')
-       ->join('orders', 'users.id', '=', 'orders.user_id')
-       ->select('users.id', 'contacts.phone', 'orders.price');
-    ```
+DB::table('users')
+   ->join('contacts', 'users.id', '=', 'contacts.user_id')
+   ->join('orders', 'users.id', '=', 'orders.user_id')
+   ->select('users.id', 'contacts.phone', 'orders.price');
+```
 
 这些方法简单地将`users`表与 contacts 连接，然后将 orders 与 users 连接，然后获取`contacts`表中的用户 ID 和电话列，以及`orders`表中的价格列。
 
 +   你可以使用闭包函数轻松地按参数分组查询。这将使您能够轻松编写更复杂的查询，如下所示：
 
 ```php
-    DB::table('users')
-        ->where('name', '=', 'John')
-        ->orWhere(function($query)
-        {
-            $query->where('votes', '>', 100)
-                  ->where('title', '<>', 'Admin');
-        })
-        ->get();
-    ```
+DB::table('users')
+    ->where('name', '=', 'John')
+    ->orWhere(function($query)
+    {
+        $query->where('votes', '>', 100)
+              ->where('title', '<>', 'Admin');
+    })
+    ->get();
+```
 
 这将产生以下 SQL 查询：
 
 ```php
-    select * from users 
-       where name = 'John' 
-       or 
-       (votes > 100 and title <> 'Admin')
-    ```
+select * from users 
+   where name = 'John' 
+   or 
+   (votes > 100 and title <> 'Admin')
+```
 
 +   你还可以在查询构建器中使用聚合（如`count`、`max`、`min`、`avg`和`sum`）：
 
 ```php
-    $users = DB::table('users')->count();
-    $price = DB::table('orders')->max('price');
-    ```
+$users = DB::table('users')->count();
+$price = DB::table('orders')->max('price');
+```
 
 +   有时，这样的构建器可能不够，或者你可能想要运行原始查询。你也可以将原始查询包装在 Fluent 中，如下所示：
 
 ```php
-    $users = DB::table('users')
-         ->select(
-    array(
-    DB::raw('count(*) as user_count'),
-    'status',
-    )
-    )
-         ->where('status', '<>', 1)
-         ->groupBy('status')
-         ->get();
-    ```
+$users = DB::table('users')
+     ->select(
+array(
+DB::raw('count(*) as user_count'),
+'status',
+)
+)
+     ->where('status', '<>', 1)
+     ->groupBy('status')
+     ->get();
+```
 
 +   要将新数据插入表中，请使用`insert()`方法：
 
 ```php
-    DB::table('users')->insert(
-        array('email' => 'me@ardakilicdagi.com', 'points' => 100)
-    ); 
-    ```
+DB::table('users')->insert(
+    array('email' => 'me@ardakilicdagi.com', 'points' => 100)
+); 
+```
 
 +   要从表中更新行，请使用`update()`方法：
 
 ```php
-    DB::table('users')
-    ->where('id', 1)
-    ->update(array('votes' => 100)); 
-    ```
+DB::table('users')
+->where('id', 1)
+->update(array('votes' => 100)); 
+```
 
 +   要从表中删除行，请使用`delete()`方法：
 
 ```php
-    DB::table('users')
-    ->where('last_login', '2013-01-01 00:00:00')
-    ->delete(); 
-    ```
+DB::table('users')
+->where('last_login', '2013-01-01 00:00:00')
+->delete(); 
+```
 
 +   利用`CachingIterator`，它使用`Collection`类，Fluent Query Builder 也可以在调用`remember()`方法时缓存结果：
 
 ```php
-    $user = DB::table('users')
-    ->where('name', 'Arda')
-    ->remember(10)
-    ->first();
-    ```
+$user = DB::table('users')
+->where('name', 'Arda')
+->remember(10)
+->first();
+```
 
 一旦调用了这个查询，它就会被缓存 10 分钟；如果再次调用这个查询，它将直接从缓存中获取，而不是从数据库中获取，直到 10 分钟过去。
 
@@ -309,121 +309,121 @@ User::find(5)->posts;
 +   **一对一关系**：当两个模型彼此只有一个元素时使用。比如你有一个`User`模型，它应该只有一个元素在你的`Phone`模型中。在这种情况下，关系将被定义如下：
 
 ```php
-    //User.php model
-    Class User Extends Eloquent {
+//User.php model
+Class User Extends Eloquent {
 
-       public function phone() {
-          return $this->hasOne('Phone'); //Phone is the name of Model Instance here, not a table or column name
-       }
+   public function phone() {
+      return $this->hasOne('Phone'); //Phone is the name of Model Instance here, not a table or column name
+   }
 
-    }
+}
 
-    //Phone.php model
-    Class Phone Extends Eloquent {
+//Phone.php model
+Class Phone Extends Eloquent {
 
-       public function user() {
-          return $this->hasOne('User');
-       }
+   public function user() {
+      return $this->hasOne('User');
+   }
 
-    }
-    ```
+}
+```
 
 +   **一对多关系**：当一个模型有另一个模型的多个元素时使用。比如你有一个带有分类的新闻系统。一个分类可以有多个项目。在这种情况下，关系将被定义如下：
 
 ```php
-    //Category.php model
-    class Category extends Eloquent {
+//Category.php model
+class Category extends Eloquent {
 
-       public function news() {
-          return $this->hasMany('News'); //News is the name of Model Instance here
-       }
+   public function news() {
+      return $this->hasMany('News'); //News is the name of Model Instance here
+   }
 
-    }
+}
 
-    //News.php model
-    class News extends Eloquent {
+//News.php model
+class News extends Eloquent {
 
-       public function categories() {
-          return $this->belongsTo('Category');
-       }
+   public function categories() {
+      return $this->belongsTo('Category');
+   }
 
-    }
-    ```
+}
+```
 
 +   **多对多关系**：当两个模型彼此有多个元素时使用。比如你有`Blog`和`Tag`模型。一篇博客文章可能有多个标签，一个标签可能被分配给多篇博客文章。对于这种情况，需要使用一个中间表和多对多关系来定义关系：
 
 ```php
-    //Blog.php Model
-    Class Blog Extends Eloquent {
+//Blog.php Model
+Class Blog Extends Eloquent {
 
-       public function tags() {
-          return $this->belongsToMany('Tag', 'blog_tag'); //blog_tag is the name of the pivot table
-       }
+   public function tags() {
+      return $this->belongsToMany('Tag', 'blog_tag'); //blog_tag is the name of the pivot table
+   }
 
-    }
+}
 
-    //Tag.php model
-    Class Tag Extends Eloquent {
+//Tag.php model
+Class Tag Extends Eloquent {
 
-       public function blogs() {
-          return $this->belongsToMany('Blog', 'blog_tag');
-       }
+   public function blogs() {
+      return $this->belongsToMany('Blog', 'blog_tag');
+   }
 
-    }
-    ```
+}
+```
 
 Laravel 4 为这些已知的关系添加了一些灵活性和额外的关系。它们是“has-many-through”和“多态关系”。
 
 +   **Has-many-through 关系**：这更像是快捷方式。比如你有一个`Country`模型，`User`模型和`Post`模型。一个国家可能有多个用户，一个用户可能有多个帖子。如果你想访问特定国家的用户创建的所有帖子，你需要定义关系如下：
 
 ```php
-    //Country.php Model
-    Class Country Extends Eloquent {
+//Country.php Model
+Class Country Extends Eloquent {
 
-       public function posts() {
-          return $this->hasManyThrough('Post', 'User');
-       }
+   public function posts() {
+      return $this->hasManyThrough('Post', 'User');
+   }
 
-    }
-    ```
+}
+```
 
 +   **多态关系**：这在 Laravel v4.1 中有。比如你有一个`News`模型，`Blog`模型和`Photo`模型。这个`Photo`模型为`News`和`Blog`都保存了图片，但是如何关联或识别特定的照片是为博客还是帖子？这可以很容易地完成。需要设置如下：
 
 ```php
-    //Photo.php Model
-    Class Photo Extends Eloquent {
+//Photo.php Model
+Class Photo Extends Eloquent {
 
-       public function imageable() {
-          return $this->morphTo(); //This method doesn't take any parameters, Eloquent will understand what will be morphed by calling this method
-       }
+   public function imageable() {
+      return $this->morphTo(); //This method doesn't take any parameters, Eloquent will understand what will be morphed by calling this method
+   }
 
-    }
+}
 
-    //News.php Model
-    Class News Extends Eloquent {
+//News.php Model
+Class News Extends Eloquent {
 
-       public function photos() {
-          return $this->morphMany('Photo', 'imageable');
-       }
+   public function photos() {
+      return $this->morphMany('Photo', 'imageable');
+   }
 
-    }
+}
 
-    //Blog.php Model
-    Class Blog Extends Eloquent {
+//Blog.php Model
+Class Blog Extends Eloquent {
 
-       public function photos() {
-          return $this->morphMany('Photo', 'imageable');
-       }
+   public function photos() {
+      return $this->morphMany('Photo', 'imageable');
+   }
 
-    }
-    ```
+}
+```
 
 关键字`imageable`，用来描述图片的所有者，不是必须的；它可以是任何东西，但你需要将它设置为一个方法名，并将它作为`morphMany`关系定义的第二个参数。这有助于我们理解我们将如何访问照片的所有者。这样，我们可以轻松地从`Photo`模型中调用它，而不需要了解它的所有者是`Blog`还是`News`：
 
 ```php
-    $photo = Photo::find(1);
-    $owner = $photo->imageable; //This brings either a blog collection or News according to its owner.
-    ```
+$photo = Photo::find(1);
+$owner = $photo->imageable; //This brings either a blog collection or News according to its owner.
+```
 
 ### 注意
 

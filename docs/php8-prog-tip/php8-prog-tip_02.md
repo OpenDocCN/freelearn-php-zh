@@ -61,8 +61,8 @@
 如果您已安装 Git，请使用以下命令：
 
 ```php
-    git clone https://github.com/PacktPublishing/PHP-8-Programming-Tips-Tricks-and-Best-Practices.git ~/repo
-    ```
+git clone https://github.com/PacktPublishing/PHP-8-Programming-Tips-Tricks-and-Best-Practices.git ~/repo
+```
 
 否则，您可以直接从以下**统一资源定位器**（**URL**）下载源代码：[`github.com/PacktPublishing/PHP-8-Programming-Tips-Tricks-and-Best-Practices/archive/main.zip`](https://github.com/PacktPublishing/PHP-8-Programming-Tips-Tricks-and-Best-Practices/archive/main.zip)。然后解压到一个您创建的文件夹中，在本书中我们将其称为`/repo`。
 
@@ -85,16 +85,16 @@
 1.  从您的本地计算机，打开命令提示符（终端窗口）。将目录更改为`/repo`。通过运行以下命令以后台模式启动 Docker 容器：
 
 ```php
-    docker-compose up -d
-    ```
+docker-compose up -d
+```
 
 请注意，实际上您不需要单独构建容器。如果在发出`docker-compose up`命令时容器尚未构建，它将自动构建。另一方面，单独构建容器可能很方便，这种情况下只需使用`docker build`即可。
 
 这是一个确保所有容器都在运行的有用命令：
 
 ```php
-    docker-compose ps
-    ```
+docker-compose ps
+```
 
 1.  要访问运行中的 Docker 容器 Web 服务器，请按照以下步骤进行。
 
@@ -111,20 +111,20 @@
 从您的本地计算机上，打开命令提示符（终端窗口）。发出此命令以访问 PHP 8 容器：
 
 ```php
-    docker exec -it php8_tips_php8 /bin/bash 
-    ```
+docker exec -it php8_tips_php8 /bin/bash 
+```
 
 发出此命令以访问 PHP 7 容器：
 
 ```php
-    docker exec -it php8_tips_php7 /bin/bash
-    ```
+docker exec -it php8_tips_php7 /bin/bash
+```
 
 1.  当您完成与容器的工作后，要将其脱机，请从您的本地计算机上打开命令提示符（终端窗口）并发出此命令：
 
 ```php
-    docker-compose down 
-    ```
+docker-compose down 
+```
 
 本章的源代码位于此处：
 
@@ -189,51 +189,51 @@ object(Test)#1 (3) {
 1.  声明属性，如下所示：
 
 ```php
-    /repo/src/Php8/Image/SingleChar.php
-    namespace Php7\Image;
-    class SingleChar {
-        public $text     = '';
-        public $fontFile = '';
-        public $width    = 100;
-        public $height   = 100;
-        public $size     = 0;
-        public $angle    = 0.00;
-        public $textX    = 0;
-        public $textY    = 0;
-    ```
+/repo/src/Php8/Image/SingleChar.php
+namespace Php7\Image;
+class SingleChar {
+    public $text     = '';
+    public $fontFile = '';
+    public $width    = 100;
+    public $height   = 100;
+    public $size     = 0;
+    public $angle    = 0.00;
+    public $textX    = 0;
+    public $textY    = 0;
+```
 
 1.  在`__construct()`方法签名中标识属性及其数据类型，如下所示：
 
 ```php
-    const DEFAULT_TX_X = 25;
-    const DEFAULT_TX_Y = 75;
-    const DEFAULT_TX_SIZE  = 60;
-    const DEFAULT_TX_ANGLE = 0;
-    public function __construct(
-        string $text,
-        string $fontFile,
-        int $width  = 100,
-        int $height = 100,
-        int $size   = self::DEFAULT_TX_SIZE,
-        float $angle = self::DEFAULT_TX_ANGLE,
-        int $textX  = self::DEFAULT_TX_X,
-        int $textY  = self::DEFAULT_TX_Y)   
-    ```
+const DEFAULT_TX_X = 25;
+const DEFAULT_TX_Y = 75;
+const DEFAULT_TX_SIZE  = 60;
+const DEFAULT_TX_ANGLE = 0;
+public function __construct(
+    string $text,
+    string $fontFile,
+    int $width  = 100,
+    int $height = 100,
+    int $size   = self::DEFAULT_TX_SIZE,
+    float $angle = self::DEFAULT_TX_ANGLE,
+    int $textX  = self::DEFAULT_TX_X,
+    int $textY  = self::DEFAULT_TX_Y)   
+```
 
 1.  在`__construct()`方法的主体中，为属性赋值，就像这样：
 
 ```php
-    {   $this->text     = $text;
-        $this->fontFile = $fontFile;
-        $this->width    = $width;
-        $this->height   = $height;
-        $this->size     = $size;
-        $this->angle    = $angle;
-        $this->textX    = $textX;
-        $this->textY    = $textY;
-        // other code not shown 
-    }
-    ```
+{   $this->text     = $text;
+    $this->fontFile = $fontFile;
+    $this->width    = $width;
+    $this->height   = $height;
+    $this->size     = $size;
+    $this->angle    = $angle;
+    $this->textX    = $textX;
+    $this->textY    = $textY;
+    // other code not shown 
+}
+```
 
 随着构造函数参数的增加，您需要做的工作量也会显著增加。当应用构造函数属性提升时，以前所需的相同代码量减少到原来的三分之一。
 
@@ -633,67 +633,67 @@ The currency symbol for MXD is $
 1.  首先我们定义一个**自动加载程序**，导入要使用的类，并列出要使用的潜在策略，如下所示：
 
 ```php
-    // /repo/ch01/php8_single_strategies.php
-    // not all code is shown
-    require_once __DIR__ . '/../src/Server/Autoload/Loader.php';
-    $loader = new \Server\Autoload\Loader();
-    use Php8\Image\SingleChar;
-    use Php8\Image\Strategy\ {LineFill,DotFill,Shadow,RotateText};
-    $strategies = ['rotate', 'line', 'line',
-                   'dot', 'dot', 'shadow'];
-    ```
+// /repo/ch01/php8_single_strategies.php
+// not all code is shown
+require_once __DIR__ . '/../src/Server/Autoload/Loader.php';
+$loader = new \Server\Autoload\Loader();
+use Php8\Image\SingleChar;
+use Php8\Image\Strategy\ {LineFill,DotFill,Shadow,RotateText};
+$strategies = ['rotate', 'line', 'line',
+               'dot', 'dot', 'shadow'];
+```
 
 1.  接下来，我们生成验证码短语，如下所示：
 
 ```php
-    $phrase = strtoupper(bin2hex(random_bytes(NUM_BYTES)));
-    $length = strlen($phrase);
-    ```
+$phrase = strtoupper(bin2hex(random_bytes(NUM_BYTES)));
+$length = strlen($phrase);
+```
 
 1.  然后我们循环遍历验证码短语中的每个字符，并创建一个`SingleChar`实例。对`writeFill()`的初始调用创建了白色背景画布。我们还需要调用`shuffle()`来随机排列扭曲策略的列表。该过程在以下代码片段中说明：
 
 ```php
-    $images = [];
-    for ($x = 0; $x < $length; $x++) {
-        $char = new SingleChar($phrase[$x], FONT_FILE);
-        $char->writeFill();
-        shuffle($strategies);
-    ```
+$images = [];
+for ($x = 0; $x < $length; $x++) {
+    $char = new SingleChar($phrase[$x], FONT_FILE);
+    $char->writeFill();
+    shuffle($strategies);
+```
 
 1.  然后我们循环遍历策略并在原始图像上叠加扭曲。这就是`match`表达式发挥作用的地方。请注意，一个策略需要额外的代码行。因为`match`只能支持单个表达式，所以我们简单地将多行代码包装到一个**匿名函数**中，如下所示：
 
 ```php
-    foreach ($strategies as $item) {
-        $func = match ($item) {    
-            'rotate' => RotateText::writeText($char),
-            'line' => LineFill::writeFill(
-                $char, rand(1, 10)),
-            'dot' => DotFill::writeFill($char, rand(10, 20)),
-            'shadow' => function ($char) {
-                $num = rand(1, 8);
-                $r   = rand(0x70, 0xEF);
-                $g   = rand(0x70, 0xEF);
-                $b   = rand(0x70, 0xEF);
-                return Shadow::writeText(
-                    $char, $num, $r, $g, $b);},
-            'default' => TRUE
-        };
-        if (is_callable($func)) $func($char);
-    }
-    ```
+foreach ($strategies as $item) {
+    $func = match ($item) {    
+        'rotate' => RotateText::writeText($char),
+        'line' => LineFill::writeFill(
+            $char, rand(1, 10)),
+        'dot' => DotFill::writeFill($char, rand(10, 20)),
+        'shadow' => function ($char) {
+            $num = rand(1, 8);
+            $r   = rand(0x70, 0xEF);
+            $g   = rand(0x70, 0xEF);
+            $b   = rand(0x70, 0xEF);
+            return Shadow::writeText(
+                $char, $num, $r, $g, $b);},
+        'default' => TRUE
+    };
+    if (is_callable($func)) $func($char);
+}
+```
 
 1.  现在要做的就是通过不带参数调用`writeText()`来覆盖图像。之后，我们将扭曲的图像保存为**便携式网络图形**（**PNG**）文件以供显示，如下面的代码片段所示：
 
 ```php
-        $char->writeText();
-        $fn = $x . '_' 
-             . substr(basename(__FILE__), 0, -4) 
-             . '.png';
-        $char->save(IMG_DIR . '/' . $fn);
-        $images[] = $fn;
-    }
-    include __DIR__ . '/captcha_simple.phtml';
-    ```
+    $char->writeText();
+    $fn = $x . '_' 
+         . substr(basename(__FILE__), 0, -4) 
+         . '.png';
+    $char->save(IMG_DIR . '/' . $fn);
+    $images[] = $fn;
+}
+include __DIR__ . '/captcha_simple.phtml';
+```
 
 这是从指向本书关联的 Docker 容器的浏览器中运行前面示例的结果：
 
@@ -898,46 +898,46 @@ public function colorAlloc(
 1.  首先，我们用更严格的数据类型`object`定义父类，如下所示：
 
 ```php
-    // /repo/ch01/php8_mixed_type.php
-    declare(strict_types=1);
-    class High {
-        const LOG_FILE = __DIR__ . '/../data/test.log';  
-        protected static function logVar(object $var) {     
-            $item = date('Y-m-d') . ':'
-                  . var_export($var, TRUE);
-            return error_log($item, 3, self::LOG_FILE);
-        }
-    }
-    ```
+// /repo/ch01/php8_mixed_type.php
+declare(strict_types=1);
+class High {
+    const LOG_FILE = __DIR__ . '/../data/test.log';  
+    protected static function logVar(object $var) {     
+        $item = date('Y-m-d') . ':'
+              . var_export($var, TRUE);
+        return error_log($item, 3, self::LOG_FILE);
+    }
+}
+```
 
 1.  接下来，我们定义一个`Low`类，它继承自`High`，如下所示：
 
 ```php
-    class Low extends High {
-        public static function logVar(mixed $var) {
-            $item = date('Y-m-d') . ':'
-                . var_export($var, TRUE);
-            return error_log($item, 3, self::LOG_FILE);
-        }
-    }
-    ```
+class Low extends High {
+    public static function logVar(mixed $var) {
+        $item = date('Y-m-d') . ':'
+            . var_export($var, TRUE);
+        return error_log($item, 3, self::LOG_FILE);
+    }
+}
+```
 
 请注意，在`Low`类中，`logVar()`方法的数据类型已经*扩宽*为`mixed`。
 
 1.  最后，我们创建了一个`Low`的实例，并用测试数据执行它。从下面的代码片段中显示的结果可以看出，一切都运行正常：
 
 ```php
-    if (file_exists(High::LOG_FILE)) unlink(High::LOG_FILE)
-    $test = [
-        'array' => range('A', 'F'),
-        'func' => function () { return __CLASS__; },
-        'anon' => new class () { 
-            public function __invoke() { 
-                return __CLASS__; } },
-    ];
-    foreach ($test as $item) Low::logVar($item);
-    readfile(High::LOG_FILE);
-    ```
+if (file_exists(High::LOG_FILE)) unlink(High::LOG_FILE)
+$test = [
+    'array' => range('A', 'F'),
+    'func' => function () { return __CLASS__; },
+    'anon' => new class () { 
+        public function __invoke() { 
+            return __CLASS__; } },
+];
+foreach ($test as $item) Low::logVar($item);
+readfile(High::LOG_FILE);
+```
 
 以下是前面示例的输出：
 
@@ -1069,51 +1069,51 @@ Fatal error: Uncaught TypeError: Cannot assign string to property Test::$token o
 1.  首先，我们定义一个带有受保护属性的`Test`类，如下所示：
 
 ```php
-    // /repo/ch01/php7_prop_reduce.php
-    declare(strict_types=1);
-    class Test {
-     protected $id = 0;
-     protected $token = 0;
-     protected $name = '';o
-    ```
+// /repo/ch01/php7_prop_reduce.php
+declare(strict_types=1);
+class Test {
+ protected $id = 0;
+ protected $token = 0;
+ protected $name = '';o
+```
 
 1.  接下来，我们定义一系列用于控制对受保护属性的访问的`get`和`set`方法，如下所示：
 
 ```php
-        public function getId() { return $this->id; }
-        public function setId(int $id) { $this->id = $id; 
-        public function getToken() { return $this->token; }
-        public function setToken(int $token) {
-            $this->token = $token;
-        }
-        public function getName() {
-            return $this->name;
-        }
-        public function setName(string $name) {
-            $this->name = $name;
-        }
-    }
-    ```
+    public function getId() { return $this->id; }
+    public function setId(int $id) { $this->id = $id; 
+    public function getToken() { return $this->token; }
+    public function setToken(int $token) {
+        $this->token = $token;
+    }
+    public function getName() {
+        return $this->name;
+    }
+    public function setName(string $name) {
+        $this->name = $name;
+    }
+}
+```
 
 1.  然后，我们使用`set`方法来分配值，如下所示：
 
 ```php
-    $test = new Test();
-    $test->setId(111);
-    $test->setToken(999999);
-    $test->setName('Fred');
-    ```
+$test = new Test();
+$test->setId(111);
+$test->setToken(999999);
+$test->setName('Fred');
+```
 
 1.  最后，我们使用`get`方法以表格形式显示结果，如下所示：
 
 ```php
-    $pattern = '<tr><th>%s</th><td>%s</td></tr>';
-    echo '<table width="50%" border=1>';
-    printf($pattern, 'ID', $test->getId());
-    printf($pattern, 'Token', $test->getToken());
-    printf($pattern, 'Name', $test->getName());
-    echo '</table>';
-    ```
+$pattern = '<tr><th>%s</th><td>%s</td></tr>';
+echo '<table width="50%" border=1>';
+printf($pattern, 'ID', $test->getId());
+printf($pattern, 'Token', $test->getToken());
+printf($pattern, 'Name', $test->getName());
+echo '</table>';
+```
 
 这可能如下所示：
 

@@ -43,47 +43,47 @@
 1.  添加一个名为`get_by_username()`的`public static`函数。
 
 ```php
-    public static function get_by_username() {
-    }
+public static function get_by_username() {
+}
 
-    ```
+```
 
 1.  为了通过 ID 查找用户，我们需要允许我们的函数接受参数`$username`。
 
 ```php
-    public static function get_by_username($username = null) {
-    }
+public static function get_by_username($username = null) {
+}
 
-    ```
+```
 
 1.  现在，让我们设置数据库来实例化 Bones 和代理 Sag。记住，我们正在处理`_users`数据库，所以我们需要以`admin`权限登录。
 
 ```php
-    public static function get_by_username($username = null) {
-    **$bones = new Bones();
-    $bones->couch->setDatabase('_users');
-    $bones->couch->login(ADMIN_USER, ADMIN_PASSWORD);
-    }**
+public static function get_by_username($username = null) {
+**$bones = new Bones();
+$bones->couch->setDatabase('_users');
+$bones->couch->login(ADMIN_USER, ADMIN_PASSWORD);
+}**
 
-    ```
+```
 
 1.  现在我们可以连接到`_users`数据库，让我们通过 Sag 发出一个`get`调用，通过添加`org.couchdb.user:`来返回一个用户的传递用户名。
 
 ```php
-    public static function get_by_username($username = null) {
-    $bones = new Bones()
-    $bones->couch->login(ADMIN_USER, ADMIN_PASSWORD);
-    $bones->couch->setDatabase('_users');
-    **$user = new User();
-    $document = $bones->couch->get('org.couchdb.user:' . $username)- >body;
-    $user->_id = $document->_id;
-    $user->name = $document->name;
-    $user->email = $document->email;
-    $user->full_name = $document->full_name;
-    return $user;
-    }** 
+public static function get_by_username($username = null) {
+$bones = new Bones()
+$bones->couch->login(ADMIN_USER, ADMIN_PASSWORD);
+$bones->couch->setDatabase('_users');
+**$user = new User();
+$document = $bones->couch->get('org.couchdb.user:' . $username)- >body;
+$user->_id = $document->_id;
+$user->name = $document->name;
+$user->email = $document->email;
+$user->full_name = $document->full_name;
+return $user;
+}** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -98,29 +98,29 @@
 1.  打开`index.php`，并创建一个用户个人资料的`get`路由，输入以下代码：
 
 ```php
-    get('/user/:username', function($app) {
-    });
+get('/user/:username', function($app) {
+});
 
-    ```
+```
 
 1.  让我们使用路由变量`:username`告诉我们要查找的用户名；我们将把这个变量传递给我们在`User`类中创建的`get_by_username`函数。最后，我们将返回的`user`对象传递给视图中的`user`变量：
 
 ```php
-    get('/user/:username', function($app) {
-    **$app->set('user', User::get_by_username($app- >request('username')));** 
-    });
+get('/user/:username', function($app) {
+**$app->set('user', User::get_by_username($app- >request('username')));** 
+});
 
-    ```
+```
 
 1.  最后，我们将呈现`user/profile.php`视图，我们很快就会创建。
 
 ```php
-    get('/user/:username', function($app) {
-    $app->set('user', User::get_by_username($app- >request('username')));
-    **$app->render('user/profile');** 
-    });
+get('/user/:username', function($app) {
+$app->set('user', User::get_by_username($app- >request('username')));
+**$app->render('user/profile');** 
+});
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -137,25 +137,25 @@
 1.  为配置文件创建一个简单的标题，使用以下 HTML：
 
 ```php
-    <div class="page-header">
-    <h1>User Profile</h1>
-    </div>
+<div class="page-header">
+<h1>User Profile</h1>
+</div>
 
-    ```
+```
 
 1.  由于我们还没有设计，让我们只使用`var_dump`来显示`User`文档的所有内容：
 
 ```php
-    <div class="page-header">
-    <h1>User Profile</h1>
-    </div>
-    <div class="container">
-    **<div class="row">
-    <?php var_dump($user); ?>
-    </div>
-    </div>** 
+<div class="page-header">
+<h1>User Profile</h1>
+</div>
+<div class="container">
+**<div class="row">
+<?php var_dump($user); ?>
+</div>
+</div>** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -180,23 +180,23 @@
 1.  输入以下命令以更改目录到我们的工作目录。
 
 ```php
-    **cd /Library/Webserver/Documents/verge/** 
+**cd /Library/Webserver/Documents/verge/** 
 
-    ```
+```
 
 1.  我们只添加了一个文件`views/user/profile.php`，所以让我们告诉 Git 将这个文件添加到源代码控制中。
 
 ```php
-    **git add views/user/profile.php** 
+**git add views/user/profile.php** 
 
-    ```
+```
 
 1.  给`Git`一个描述，说明自上次提交以来我们做了什么。
 
 ```php
-    **git commit am 'Created the get_by_username function, a basic user profile, and a route to display it'** 
+**git commit am 'Created the get_by_username function, a basic user profile, and a route to display it'** 
 
-    ```
+```
 
 ## 修复一些问题
 
@@ -223,16 +223,16 @@
 1.  通过运行以下命令检索日志的最后几行：
 
 ```php
-    **tail /private/var/log/apache2/error_log** 
+**tail /private/var/log/apache2/error_log** 
 
-    ```
+```
 
 1.  日志会显示很多东西，但最重要的消息是这个，说`PHP 致命错误`。你的消息可能略有不同，但总体消息是一样的。
 
 ```php
-    **[Wed Sep 28 09:29:49 2011] [error] [client 127.0.0.1] PHP Fatal error: Uncaught exception 'SagCouchException' with message 'CouchDB Error: not_found (missing)' in /Library/WebServer/Documents/verge/lib/sag/src/Sag.php:1221\nStack trace:\n#0 /Library/WebServer/Documents/verge/lib/sag/src/Sag.php(206): Sag->procPacket('GET', '/_users/org.cou...')\n#1 /Library/WebServer/Documents/verge/classes/user.php(81): Sag->get('org.couchdb.use...')\n#2 /Library/WebServer/Documents/verge/index.php(44): User::get_by_username('someone')\n#3 /Library/WebServer/Documents/verge/lib/bones.php(91): {closure}(Object(Bones))\n#4 /Library/WebServer/Documents/verge/lib/bones.php(13): Bones::register('/user/:username', Object(Closure), 'GET')\n#5 /Library/WebServer/Documents/verge/index.php(46): get('/user/:username', Object(Closure))\n#6 {main}\n thrown in /Library/WebServer/Documents/verge/lib/sag/src/Sag.php on line 1221** 
+**[Wed Sep 28 09:29:49 2011] [error] [client 127.0.0.1] PHP Fatal error: Uncaught exception 'SagCouchException' with message 'CouchDB Error: not_found (missing)' in /Library/WebServer/Documents/verge/lib/sag/src/Sag.php:1221\nStack trace:\n#0 /Library/WebServer/Documents/verge/lib/sag/src/Sag.php(206): Sag->procPacket('GET', '/_users/org.cou...')\n#1 /Library/WebServer/Documents/verge/classes/user.php(81): Sag->get('org.couchdb.use...')\n#2 /Library/WebServer/Documents/verge/index.php(44): User::get_by_username('someone')\n#3 /Library/WebServer/Documents/verge/lib/bones.php(91): {closure}(Object(Bones))\n#4 /Library/WebServer/Documents/verge/lib/bones.php(13): Bones::register('/user/:username', Object(Closure), 'GET')\n#5 /Library/WebServer/Documents/verge/index.php(46): get('/user/:username', Object(Closure))\n#6 {main}\n thrown in /Library/WebServer/Documents/verge/lib/sag/src/Sag.php on line 1221** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -264,30 +264,30 @@
 1.  在`500.php`中添加以下代码以输出异常信息：
 
 ```php
-    <div class="hero-unit">
-    <h1>An Error Has Occurred</h1>
-    <p>
-    <strong>Code:</strong><?php echo $exception->getCode(); ?>
-    </p>
-    <p>
-    <strong>Message:</strong>
-    <?php echo $exception->getMessage(); ?>
-    </p>
-    <p><strong>Exception:</strong> <?php echo $exception; ?></p>
-    </div>
+<div class="hero-unit">
+<h1>An Error Has Occurred</h1>
+<p>
+<strong>Code:</strong><?php echo $exception->getCode(); ?>
+</p>
+<p>
+<strong>Message:</strong>
+<?php echo $exception->getMessage(); ?>
+</p>
+<p><strong>Exception:</strong> <?php echo $exception; ?></p>
+</div>
 
-    ```
+```
 
 1.  在`lib/bones.php`中添加一个名为`error500`的函数，以便我们可以在我们的应用程序中轻松地显示 500 错误。
 
 ```php
-    public function error500($exception) {
-    $this->set('exception', $exception);
-    $this->render('error/500');
-    exit;
-    }
+public function error500($exception) {
+$this->set('exception', $exception);
+$this->render('error/500');
+exit;
+}
 
-    ```
+```
 
 ## 刚才发生了什么？
 
@@ -300,97 +300,97 @@
 1.  让我们打开`classes/user.php`，并在我们的 Sag 调用周围添加一个`try...catch`语句，以确保我们可以处理任何发生的错误。
 
 ```php
-    public static function get_by_username($username = null) {
-    $bones = new Bones();
-    $bones->couch->login(ADMIN_USER, ADMIN_PASSWORD);
-    $bones->couch->setDatabase('_users');
-    $user = new User();
-    **try {** 
-    $document = $bones->couch->get('org.couchdb.user:' . $username)->body;
-    $user->_id = $document->_id;
-    $user->name = $document->name;
-    $user->email = $document->email;
-    $user->full_name = $document->full_name;
-    return $user;
-    **} catch (SagCouchException $e) {
-    }** 
-    }
+public static function get_by_username($username = null) {
+$bones = new Bones();
+$bones->couch->login(ADMIN_USER, ADMIN_PASSWORD);
+$bones->couch->setDatabase('_users');
+$user = new User();
+**try {** 
+$document = $bones->couch->get('org.couchdb.user:' . $username)->body;
+$user->_id = $document->_id;
+$user->name = $document->name;
+$user->email = $document->email;
+$user->full_name = $document->full_name;
+return $user;
+**} catch (SagCouchException $e) {
+}** 
+}
 
-    ```
+```
 
 1.  既然我们正在捕获错误，让我们在`error500`函数中添加。
 
 ```php
-    public static function get_by_username($username = null) {
-    $bones = new Bones();
-    $bones->couch->login(ADMIN_USER, ADMIN_PASSWORD);
-    $bones->couch->setDatabase('_users');
-    $user = new User();
-    try {
-    $document = $bones->couch->get('org.couchdb.user:' . $username)->body;
-    $user->_id = $document->_id;
-    $user->name = $document->name;
-    $user->email = $document->email;
-    $user->full_name = $document->full_name;
-    return $user;
-    } catch (SagCouchException $e) {
-    **$bones->error500($e);** 
-    }
-    }
+public static function get_by_username($username = null) {
+$bones = new Bones();
+$bones->couch->login(ADMIN_USER, ADMIN_PASSWORD);
+$bones->couch->setDatabase('_users');
+$user = new User();
+try {
+$document = $bones->couch->get('org.couchdb.user:' . $username)->body;
+$user->_id = $document->_id;
+$user->name = $document->name;
+$user->email = $document->email;
+$user->full_name = $document->full_name;
+return $user;
+} catch (SagCouchException $e) {
+**$bones->error500($e);** 
+}
+}
 
-    ```
+```
 
 1.  当我们在`classes/user.php`中时，让我们捕获一些可能的异常。让我们从`public`函数注册开始。
 
 ```php
-    public function signup($username, $password) {
-    $bones = new Bones();
-    $bones->couch->setDatabase('_users');
-    $bones->couch->login(ADMIN_USER, ADMIN_PASSWORD);
-    $this->roles = array();
-    $this->name = preg_replace('/[^a-z0-9-]/', '', strtolower($username));
-    $this->_id = 'org.couchdb.user:' . $this->name;
-    $this->salt = $bones->couch->generateIDs(1)->body->uuids[0];
-    $this->password_sha = sha1($password . $this->salt);
-    try {
-    $bones->couch->put($this->_id, $this->to_json());
-    }
-    catch(SagCouchException $e) {
-    if($e->getCode() == "409") {
-    $bones->set('error', 'A user with this name already exists.');
-    $bones->render('user/signup');
-    **} else {
-    $bones->error500($e);
-    }** 
-    }
-    }
+public function signup($username, $password) {
+$bones = new Bones();
+$bones->couch->setDatabase('_users');
+$bones->couch->login(ADMIN_USER, ADMIN_PASSWORD);
+$this->roles = array();
+$this->name = preg_replace('/[^a-z0-9-]/', '', strtolower($username));
+$this->_id = 'org.couchdb.user:' . $this->name;
+$this->salt = $bones->couch->generateIDs(1)->body->uuids[0];
+$this->password_sha = sha1($password . $this->salt);
+try {
+$bones->couch->put($this->_id, $this->to_json());
+}
+catch(SagCouchException $e) {
+if($e->getCode() == "409") {
+$bones->set('error', 'A user with this name already exists.');
+$bones->render('user/signup');
+**} else {
+$bones->error500($e);
+}** 
+}
+}
 
-    ```
+```
 
 1.  接下来，让我们在我们的公共函数登录中添加到`catch`语句。
 
 ```php
-    public function login($password) {
-    $bones = new Bones();
-    $bones->couch->setDatabase('_users');
-    try {
-    $bones->couch->logiBn($this->name, $password, Sag::$AUTH_COOKIE);
-    session_start();
-    $_SESSION['username'] = $bones->couch->getSession()->body- >userCtx->name;
-    session_write_close();
-    }
-    catch(SagCouchException $e) {
-    if($e->getCode() == "401") {
-    $bones->set('error', 'Incorrect login credentials.');
-    $bones->render('user/login');
-    exit;
-    **} else {
-    $bones->error500($e);
-    }** 
-    }
-    }
+public function login($password) {
+$bones = new Bones();
+$bones->couch->setDatabase('_users');
+try {
+$bones->couch->logiBn($this->name, $password, Sag::$AUTH_COOKIE);
+session_start();
+$_SESSION['username'] = $bones->couch->getSession()->body- >userCtx->name;
+session_write_close();
+}
+catch(SagCouchException $e) {
+if($e->getCode() == "401") {
+$bones->set('error', 'Incorrect login credentials.');
+$bones->render('user/login');
+exit;
+**} else {
+$bones->error500($e);
+}** 
+}
+}
 
-    ```
+```
 
 ## 刚才发生了什么？
 
@@ -425,21 +425,21 @@
 1.  让我们在`404.php`中添加一些非常基本的代码，以通知访问者我们的应用程序找不到请求的页面。
 
 ```php
-    <div class="hero-unit">
-    <h1>Page Not Found</h1>
-    </div>
+<div class="hero-unit">
+<h1>Page Not Found</h1>
+</div>
 
-    ```
+```
 
 1.  为了呈现这个视图，让我们在`lib/bones.php`文件中添加另一个名为`error404`的函数。这个函数将为我们很好地显示`404`错误。
 
 ```php
-    public function error404() {
-    $this->render('error/404');
-    exit;
-    }
+public function error404() {
+$this->render('error/404');
+exit;
+}
 
-    ```
+```
 
 ## 刚才发生了什么？
 
@@ -490,34 +490,34 @@ $bones->error500($e);
 1.  打开`lib/bones.php`，在`Bones`类内部创建一个名为`resolve`的函数，我们可以在路由的末尾调用它，并确定是否找到了路由。
 
 ```php
-    public static function resolve() {
-    if (!static::$route_found) {
-    $bones = static::get_instance();
-    $bones->error404();
-    }
-    }
+public static function resolve() {
+if (!static::$route_found) {
+$bones = static::get_instance();
+$bones->error404();
+}
+}
 
-    ```
+```
 
 1.  转到`lib/bones.php`的顶部，并创建一个名为`resolve`的函数，放在`Bones`类之外（例如`get, post, put`或`delete`），我们可以在任何地方调用它。
 
 ```php
-    function resolve() {
-    Bones::resolve();
-    }
+function resolve() {
+Bones::resolve();
+}
 
-    ```
+```
 
 1.  我们要做的最后一件事就是在`index.php`的最底部添加一行代码，如果没有找到路由，就可以调用它。随着添加更多的路由，确保`resolve()`始终位于文件的末尾。
 
 ```php
-    get('/user/:username', function($app) {
-    $app->set('user', User::get_by_username($app- >request('username')));
-    $app->render('user/profile');
-    });
-    **resolve();** 
+get('/user/:username', function($app) {
+$app->set('user', User::get_by_username($app- >request('username')));
+$app->render('user/profile');
+});
+**resolve();** 
 
-    ```
+```
 
 ## 刚才发生了什么？
 
@@ -585,26 +585,26 @@ Login
 1.  打开`index.php`，并添加一个名为`is_current_user`的变量，用于确定您正在查看的个人资料是否等于当前登录用户。
 
 ```php
-    get('/user/:username', function($app) {
-    $app->set('user', User::get_by_username($app- >request('username')));
-    **$app->set('is_current_user', ($app->request('username') == User::current_user() ? true : false));** 
-    $app->render('user/profile');
-    });
+get('/user/:username', function($app) {
+$app->set('user', User::get_by_username($app- >request('username')));
+**$app->set('is_current_user', ($app->request('username') == User::current_user() ? true : false));** 
+$app->render('user/profile');
+});
 
-    ```
+```
 
 1.  让我们更改`views/user/profile.php`头部的代码，这样我们就可以输出用户的全名以及`This is you!`，如果这是当前用户的个人资料。
 
 ```php
-    <div class=－page-header－>
-    **<h1><?php echo $user->full_name; ?>
-    <?php if ($is_current_user) { ?>
-    <code>This is you!</code>
-    <?php } ?>
-    </h1>** 
-    </div>
+<div class=－page-header－>
+**<h1><?php echo $user->full_name; ?>
+<?php if ($is_current_user) { ?>
+<code>This is you!</code>
+<?php } ?>
+</h1>** 
+</div>
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -617,51 +617,51 @@ Login
 1.  让我们通过以下代码将我们的行`div`分成两列：
 
 ```php
-    <div class="page-header">
-    <h1><?php echo $user->full_name; ?>
-    <?php if ($is_current_user) { ?>
-    <code>This is you!</code>
-    <?php } ?>
-    </h1>
-    </div>
-    **<div class="container">
-    <div class="row">
-    <div class="span4">
-    <div class="well sidebar-nav">
-    <ul class="nav nav-list">
-    <li><h3>User Information</h3>
-    </ul>
-    </div>
-    </div>
-    <div class="span8">
-    <h2>Posts</h2>
-    </div>
-    </div>
-    </div>** 
+<div class="page-header">
+<h1><?php echo $user->full_name; ?>
+<?php if ($is_current_user) { ?>
+<code>This is you!</code>
+<?php } ?>
+</h1>
+</div>
+**<div class="container">
+<div class="row">
+<div class="span4">
+<div class="well sidebar-nav">
+<ul class="nav nav-list">
+<li><h3>User Information</h3>
+</ul>
+</div>
+</div>
+<div class="span8">
+<h2>Posts</h2>
+</div>
+</div>
+</div>** 
 
-    ```
+```
 
 1.  通过将更多的列表项添加到无序列表中，将用户的信息输出到左列。
 
 ```php
-    <div class="container">
-    <div class="row">
-    <div class="span4">
-    <div class="well sidebar-nav">
-    <ul class="nav nav-list">
-    <li><h3>User Information</h3></li>
-    **<li><b>Username:</b> <?php echo $user->name; ?></li>
-    <li><b>Email:</b> <?php echo $user->email; ?></li>** 
-    </ul>
-    </div>
-    </div>
-    <div class="span8">
-    <h2>Posts</h2>
-    </div>
-    </div>
-    </div>
+<div class="container">
+<div class="row">
+<div class="span4">
+<div class="well sidebar-nav">
+<ul class="nav nav-list">
+<li><h3>User Information</h3></li>
+**<li><b>Username:</b> <?php echo $user->name; ?></li>
+<li><b>Email:</b> <?php echo $user->email; ?></li>** 
+</ul>
+</div>
+</div>
+<div class="span8">
+<h2>Posts</h2>
+</div>
+</div>
+</div>
 
-    ```
+```
 
 #### 让我们来看看我们的新个人资料
 
@@ -686,23 +686,23 @@ Login
 1.  输入以下命令以更改目录到我们的`working`目录： 
 
 ```php
-    **cd /Library/Webserver/Documents/verge/** 
+**cd /Library/Webserver/Documents/verge/** 
 
-    ```
+```
 
 1.  我们在这一部分添加了一些文件。所以，让我们把它们都加入到源代码控制中。
 
 ```php
-    **git add .** 
+**git add .** 
 
-    ```
+```
 
 1.  给 Git 一个描述，说明自上次提交以来我们做了什么。
 
 ```php
-    **git commit -am 'Added 404 and 500 error exception handling and spruced up the layout of the user profile'** 
+**git commit -am 'Added 404 and 500 error exception handling and spruced up the layout of the user profile'** 
 
-    ```
+```
 
 # 帖子
 
@@ -791,53 +791,53 @@ parent::__construct('post');
 1.  打开`classes/post.php`，并滚动到底部。在这里，我们将创建一个名为`create`的新公共函数。
 
 ```php
-    public function create() {
-    }
+public function create() {
+}
 
-    ```
+```
 
 1.  让我们首先获得一个新的 Bones 实例，然后设置当前`post`对象的变量。
 
 ```php
-    public function create() {
-    **$bones = new Bones();
-    $this->_id = $bones->couch->generateIDs(1)->body->uuids[0];
-    $this->date_created = date('r');
-    $this->user = User::current_user();
-    }** 
+public function create() {
+**$bones = new Bones();
+$this->_id = $bones->couch->generateIDs(1)->body->uuids[0];
+$this->date_created = date('r');
+$this->user = User::current_user();
+}** 
 
-    ```
+```
 
 1.  最后，让我们使用 Sag 将文档放入 CouchDB。
 
 ```php
-    public function create() {
-    $bones = new Bones();
-    $this->_id = $bones->couch->generateIDs(1)->body->uuids[0];
-    $this->date_created = date('r');
-    $this->user = User::current_user();
-    **$bones->couch->put($this->_id, $this->to_json());** 
-    }
+public function create() {
+$bones = new Bones();
+$this->_id = $bones->couch->generateIDs(1)->body->uuids[0];
+$this->date_created = date('r');
+$this->user = User::current_user();
+**$bones->couch->put($this->_id, $this->to_json());** 
+}
 
-    ```
+```
 
 1.  让我们用一个`try...catch`语句包装对 CouchDB 的调用，在`catch`语句中，让我们像以前一样将其弹到`500`错误。
 
 ```php
-    public function create() {
-    $bones = new Bones();
-    $this->_id = $bones->couch->generateIDs(1)->body->uuids[0];
-    $this->date_created = date('r');
-    $this->user = User::current_user();
-    **try {
-    $bones->couch->put($this->_id, $this->to_json());
-    }
-    catch(SagCouchException $e) {
-    $bones->error500($e);
-    }** 
-    }
+public function create() {
+$bones = new Bones();
+$this->_id = $bones->couch->generateIDs(1)->body->uuids[0];
+$this->date_created = date('r');
+$this->user = User::current_user();
+**try {
+$bones->couch->put($this->_id, $this->to_json());
+}
+catch(SagCouchException $e) {
+$bones->error500($e);
+}** 
+}
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -854,32 +854,32 @@ parent::__construct('post');
 1.  让我们首先检查用户正在查看的个人资料是否是他们自己的。
 
 ```php
-    <div class="span8">
-    **<?php if ($is_current_user) { ?>
-    <h2>Create a new post</h2>
-    <?php } ?>** 
-    <h2>Posts</h2>
-    </div>
+<div class="span8">
+**<?php if ($is_current_user) { ?>
+<h2>Create a new post</h2>
+<?php } ?>** 
+<h2>Posts</h2>
+</div>
 
-    ```
+```
 
 1.  接下来，让我们添加一个表单，允许当前登录的用户发布帖子。
 
 ```php
-    <div class="span8">
-    <?php if ($is_current_user) { ?>
-    <h2>Create a new post</h2>
-    **<form action="<?php echo $this->make_route('/post')?>" method="post">
-    <textarea id="content" name="content" class="span8" rows="3">
-    </textarea>
-    <button id="create_post" class="btn btn-primary">Submit
-    </button>
-    </form>
-    <?php } ?>** 
-    <h2>Posts</h2>
-    </div>
+<div class="span8">
+<?php if ($is_current_user) { ?>
+<h2>Create a new post</h2>
+**<form action="<?php echo $this->make_route('/post')?>" method="post">
+<textarea id="content" name="content" class="span8" rows="3">
+</textarea>
+<button id="create_post" class="btn btn-primary">Submit
+</button>
+</form>
+<?php } ?>** 
+<h2>Posts</h2>
+</div>
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -896,39 +896,39 @@ parent::__construct('post');
 1.  创建一个基本的`post`路由，并将其命名为`post`。
 
 ```php
-    post('/post', function($app) {
-    });
+post('/post', function($app) {
+});
 
-    ```
+```
 
 1.  在我们的`post`路由中，让我们接受传递的值`content`并在我们的`Post`类上使用`create`函数来实际创建帖子。帖子创建完成后，我们将用户重定向回他们的个人资料页面。
 
 ```php
-    post('/post', function($app) {
-    **$post = new Post();
-    $post->content = $app->form('content');
-    $post->create();
-    $app->redirect('/user/' . User::current_user());** 
-    });
+post('/post', function($app) {
+**$post = new Post();
+$post->content = $app->form('content');
+$post->create();
+$app->redirect('/user/' . User::current_user());** 
+});
 
-    ```
+```
 
 1.  我们已经做了很多工作，以确保用户在创建帖子时经过身份验证，但让我们再三检查用户是否在这里经过了身份验证。如果他们没有经过身份验证，我们的应用程序将将他们转发到用户登录页面，并显示错误消息。
 
 ```php
-    post('/post', function($app) {
-    **if (User::is_authenticated()) {** 
-    $post = new Post();
-    $post->content = $app->form('content');
-    $post->create();
-    $app->redirect('/user/' . User::current_user());
-    **} else {
-    $app->set('error', 'You must be logged in to do that.');
-    $app->render('user/login');
-    }** 
-    });
+post('/post', function($app) {
+**if (User::is_authenticated()) {** 
+$post = new Post();
+$post->content = $app->form('content');
+$post->create();
+$app->redirect('/user/' . User::current_user());
+**} else {
+$app->set('error', 'You must be logged in to do that.');
+$app->render('user/login');
+}** 
+});
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -963,30 +963,30 @@ parent::__construct('post');
 1.  输入以下命令以更改目录到我们的`working`目录：
 
 ```php
-    **cd /Library/Webserver/Documents/verge/** 
+**cd /Library/Webserver/Documents/verge/** 
 
-    ```
+```
 
 1.  我们添加了`classes/post.php`文件，所以让我们把那个文件加入到源代码控制中：
 
 ```php
-    **git add classes/post.php** 
+**git add classes/post.php** 
 
-    ```
+```
 
 1.  给`Git`一个描述，说明自上次提交以来我们做了什么：
 
 ```php
-    **git commit –am 'Added a Post class, built out basic post creation into the user profile. Done with chapter 7.'**
+**git commit –am 'Added a Post class, built out basic post creation into the user profile. Done with chapter 7.'**
 
-    ```
+```
 
 1.  我知道我说过我不会再提醒你了，但我也只是个人。让我们把这些更改推送到 GitHub 上去。
 
 ```php
-    **git push origin master**
+**git push origin master**
 
-    ```
+```
 
 # 总结
 

@@ -181,59 +181,59 @@ Swoole 扩展可以使用与安装 C 语言编写的任何 PHP 扩展相同的�
 1.  我们需要做的第一件事是更新`pecl`的**通道**。这是 PHP 扩展源代码仓库和函数的列表，就像`apt`或`yum`包管理器使用的`sources`列表一样。以下是执行此操作的代码：
 
 ```php
-    pecl channel-update pecl.php.net
-    ```
+pecl channel-update pecl.php.net
+```
 
 1.  接下来，我们指定安装命令并使用`-D`标志添加选项，如下所示：
 
 ```php
-    pecl install -D \
-        'enable-sockets="yes" \
-         enable-openssl="no" \
-         enable-http2="no" \
-         enable-mysqlnd="no" \
-         enable-swoole-json="yes" \
-         enable-swoole-curl="yes"' \
-         swoole
-    ```
+pecl install -D \
+    'enable-sockets="yes" \
+     enable-openssl="no" \
+     enable-http2="no" \
+     enable-mysqlnd="no" \
+     enable-swoole-json="yes" \
+     enable-swoole-curl="yes"' \
+     swoole
+```
 
 1.  这开始了扩展安装过程。然后，您会看到各种 C 语言代码文件和头文件被下载，之后会使用本地 C 编译器来编译扩展。以下是编译过程的部分视图：
 
 ```php
-    root@php8_tips_php8 [ / ]# pecl install swoole
-    downloading swoole-4.6.7.tgz ...
-    Starting to download swoole-4.6.7.tgz (1,649,407 bytes)
-    .....................................................................................................................................................................................................................................................................................................................................done: 1,649,407 bytes
-    364 source files, building
-    running: phpize
-    Configuring for:
-    PHP Api Version:         20200930
-    Zend Module Api No:      20200930
-    Zend Extension Api No:   420200930
-    building in /tmp/pear/temp/pear-build-defaultuserQakGt8/swoole-4.6.7
-    running: /tmp/pear/temp/swoole/configure --with-php-config=/usr/bin/php-config --enable-sockets=no --enable-openssl=no --enable-http2=no --enable-mysqlnd=yes --enable-swoole-json=yes --enable-swoole-curl=yes
-    ...
-    Build process completed successfully
-    Installing '/usr/include/php/ext/swoole/config.h'
-    Installing '/usr/lib/php/extensions/no-debug-non-zts-20200930/swoole.so'
-    install ok: channel://pecl.php.net/swoole-4.6.7
-    configuration option "php_ini" is not set to php.ini location
-    You should add "extension=swoole.so" to php.ini
-    ```
+root@php8_tips_php8 [ / ]# pecl install swoole
+downloading swoole-4.6.7.tgz ...
+Starting to download swoole-4.6.7.tgz (1,649,407 bytes)
+.....................................................................................................................................................................................................................................................................................................................................done: 1,649,407 bytes
+364 source files, building
+running: phpize
+Configuring for:
+PHP Api Version:         20200930
+Zend Module Api No:      20200930
+Zend Extension Api No:   420200930
+building in /tmp/pear/temp/pear-build-defaultuserQakGt8/swoole-4.6.7
+running: /tmp/pear/temp/swoole/configure --with-php-config=/usr/bin/php-config --enable-sockets=no --enable-openssl=no --enable-http2=no --enable-mysqlnd=yes --enable-swoole-json=yes --enable-swoole-curl=yes
+...
+Build process completed successfully
+Installing '/usr/include/php/ext/swoole/config.h'
+Installing '/usr/lib/php/extensions/no-debug-non-zts-20200930/swoole.so'
+install ok: channel://pecl.php.net/swoole-4.6.7
+configuration option "php_ini" is not set to php.ini location
+You should add "extension=swoole.so" to php.ini
+```
 
 1.  如果找不到 C 编译器，将会收到警告。此外，您可能需要为您的操作系统安装 PHP 开发库。如果是这种情况，警告消息会给出进一步的指导。
 
 1.  完成后，您需要启用扩展。这可以通过将`extension=swoole`添加到`php.ini`文件中来实现。如果您不确定其位置，可以使用`php -i`命令并查找`php.ini`文件的位置。以下是您可以从命令行发出的添加此指令的命令：
 
 ```php
-    echo "extension=swoole" >>/etc/php.ini
-    ```
+echo "extension=swoole" >>/etc/php.ini
+```
 
 1.  然后，您可以使用以下命令来确认 Swoole 扩展的可用性：
 
 ```php
-    php --ri swoole
-    ```
+php --ri swoole
+```
 
 这就完成了 Swoole 扩展的安装。如果您正在自定义编译 PHP，还可以在运行`configure`之前添加`--enable-swoole`选项。这将导致 Swoole 扩展与核心 PHP 安装一起被编译和启用（并允许您跳过刚刚概述的安装步骤）。现在我们将看一下从文档中摘取的一个简短的*Hello World*示例，以测试安装。
 
@@ -250,33 +250,33 @@ Swoole 文档提供了一个简单的示例，您可以用来快速测试安装�
 1.  然后我们修改了`/repo/ch12/docker-compose.yml`文件，使端口`9501`在 Docker 容器外可用，如下所示：
 
 ```php
-    version: "3"
-    services:
-      ...
-      php8-tips-php8:
-        ...
-        ports:
-         - 8888:80
-         - 9501:9501
-        ...
-    ```
+version: "3"
+services:
+  ...
+  php8-tips-php8:
+    ...
+    ports:
+     - 8888:80
+     - 9501:9501
+    ...
+```
 
 1.  为了使这个变化生效，我们不得不关闭并重新启动服务。从本地计算机的命令提示符/终端窗口上，使用以下两个命令：
 
 ```php
-    /path/to/repo/init.sh down
-    /path/to/repo/init.sh up
-    ```
+/path/to/repo/init.sh down
+/path/to/repo/init.sh up
+```
 
 1.  请注意，如果您正在运行 Windows，请删除`.sh`。
 
 1.  然后我们打开了 PHP 8 Docker 容器的 shell，并运行了*Hello World*程序，如下所示：
 
 ```php
-    $ docker exec -it php8_tips_php8 /bin/bash
-    # cd /repo/ch12
-    # php php8_swoole_hello_world.php
-    ```
+$ docker exec -it php8_tips_php8 /bin/bash
+# cd /repo/ch12
+# php php8_swoole_hello_world.php
+```
 
 1.  最后，从 Docker 容器外部，我们打开了一个浏览器到这个 IP 地址和端口：`http://172.16.0.88:9501`。
 
@@ -321,62 +321,62 @@ Swoole 文档提供了一个简单的示例，您可以用来快速测试安装�
 1.  首先，我们定义了一个`Chat\Message\Pipe`类，标识了我们需要使用的所有外部类，如下所示：
 
 ```php
-    // /repo/src/Chat/Messsage/Api.php;
-    namespace Chat\Message;
-    use Chat\Handler\ {GetHandler, PostHandler,
-        NextHandler,GetAllNamesHandler,DeleteHandler};
-    use Chat\Middleware\ {Access,Validate,ValidatePost};
-    use Chat\Message\Render;
-    use Psr\Http\Message\ServerRequestInterface;
-    class Pipe {
-    ```
+// /repo/src/Chat/Messsage/Api.php;
+namespace Chat\Message;
+use Chat\Handler\ {GetHandler, PostHandler,
+    NextHandler,GetAllNamesHandler,DeleteHandler};
+use Chat\Middleware\ {Access,Validate,ValidatePost};
+use Chat\Message\Render;
+use Psr\Http\Message\ServerRequestInterface;
+class Pipe {
+```
 
 1.  然后我们定义一个`exec()`静态方法，调用一组符合**PHP 标准建议 15**（**PSR-15**）的处理程序。我们还通过调用`Chat\Middleware\Access`中间件类的`process`方法来调用管道的第一阶段。`NextHandler`的返回值被忽略：
 
 ```php
-    public static function exec(
-        ServerRequestInterface $request) {
-        $params   = $request->getQueryParams();
-        $method   = strtolower($request->getMethod());
-        $dontcare = (new Access())
-            ->process($request, new NextHandler());
-    ```
+public static function exec(
+    ServerRequestInterface $request) {
+    $params   = $request->getQueryParams();
+    $method   = strtolower($request->getMethod());
+    $dontcare = (new Access())
+        ->process($request, new NextHandler());
+```
 
 1.  在同一个方法中，我们使用`match()`结构来检查 HTTP 的`GET`、`POST`和`DELETE`方法调用。如果方法是`POST`，我们使用`Chat\Middleware\ValidatePost`验证中间件类来验证`POST`参数。如果验证成功，经过清理的数据然后传递给`Chat\Handler\PostHandler`。如果 HTTP 方法是`DELETE`，我们直接调用`Chat\Handler\DeleteHandler`：
 
 ```php
-        $response = match ($method) {
-            'post' => (new ValidatePost())
-                ->process($request, new PostHandler()),
-            'delete' => (new DeleteHandler())
-                ->handle($request),
-    ```
+    $response = match ($method) {
+        'post' => (new ValidatePost())
+            ->process($request, new PostHandler()),
+        'delete' => (new DeleteHandler())
+            ->handle($request),
+```
 
 1.  如果 HTTP 方法是`GET`，我们首先检查`all`参数是否已设置。如果是，我们调用`Chat\Handler\GetAllNamesHandler`。否则，*default*子句通过`Chat\MiddleWare\Validate`传递数据。如果验证成功，经过清理的数据将传递给`Chat\Handler\GetHandler`：
 
 ```php
-            'get'    => (!empty($params['all'])
-            ? (new GetAllNamesHandler())->handle($request)
-            : (new Validate())->process($request, 
-                    new GetHandler())),
-            default => (new Validate())
-                ->process($request, new GetHandler())};
-            return Render::output($request, $response);
-        }
-    }
-    ```
+        'get'    => (!empty($params['all'])
+        ? (new GetAllNamesHandler())->handle($request)
+        : (new Validate())->process($request, 
+                new GetHandler())),
+        default => (new Validate())
+            ->process($request, new GetHandler())};
+        return Render::output($request, $response);
+    }
+}
+```
 
 1.  然后可以使用一个简短的传统程序调用核心 API 类，如下所示。在这个调用程序中，我们使用`Laminas\Diactoros\ServerRequestFactory`构建一个符合 PSR-7 的`Psr\Http\Message\ServerRequestInterface`实例。然后将请求通过`Pipe`类，产生一个响应：
 
 ```php
-    // /repo/ch12/php8_chat_ajax.php
-    include __DIR__ . '/vendor/autoload.php';
-    use Laminas\Diactoros\ServerRequestFactory;
-    use Chat\Message\Pipe;
-    $request  = ServerRequestFactory::fromGlobals();
-    $response = Pipe::exec($request);
-    echo $response;
-    ```
+// /repo/ch12/php8_chat_ajax.php
+include __DIR__ . '/vendor/autoload.php';
+use Laminas\Diactoros\ServerRequestFactory;
+use Chat\Message\Pipe;
+$request  = ServerRequestFactory::fromGlobals();
+$response = Pipe::exec($request);
+echo $response;
+```
 
 我们还创建了一个测试程序（`/repo/ch12/php8_chat_test.php`—未显示），该程序调用 API 端点一定次数（默认为 100 次）。在每次迭代中，测试程序会发布一个随机消息，包括随机的接收者用户名、随机日期和来自`/repo/sample_data/geonames.db`数据库的顺序条目。测试程序需要两个参数。第一个参数是代表 API 的 URL。第二个（可选）参数代表迭代次数。
 
@@ -414,45 +414,45 @@ Elapsed Time: 3.3177478313446
 1.  首先，我们启用自动加载并识别所需的外部类：
 
 ```php
-    // /repo/ch12/php8_chat_swoole.php
-    include __DIR__ . '/vendor/autoload.php';
-    use Chat\Message\Pipe;
-    use Chat\Http\SwooleToPsr7;
-    use Swoole\Http\Server;
-    use Swoole\Http\Request;
-    use Swoole\Http\Response;
-    ```
+// /repo/ch12/php8_chat_swoole.php
+include __DIR__ . '/vendor/autoload.php';
+use Chat\Message\Pipe;
+use Chat\Http\SwooleToPsr7;
+use Swoole\Http\Server;
+use Swoole\Http\Request;
+use Swoole\Http\Response;
+```
 
 1.  接下来，我们启动一个 PHP 会话，并创建一个监听端口`9501`上任何 IP 地址的`Swoole\HTTP\Server`实例：
 
 ```php
-    session_start();
-    $server = new Swoole\HTTP\Server('0.0.0.0', 9501);
-    ```
+session_start();
+$server = new Swoole\HTTP\Server('0.0.0.0', 9501);
+```
 
 1.  然后我们调用`on()`方法并将其与`start`事件关联。在这种情况下，我们记录一个日志条目以标识 Swoole 服务器启动的时间。其他服务器事件在这里有文档记录：[`www.swoole.co.uk/docs/modules/swoole-http-server-doc`](https://www.swoole.co.uk/docs/modules/swoole-http-server-doc)：
 
 ```php
-    $server->on("start", function (Server $server) {
-        error_log('Swoole http server is started at '
-            . 'http://0.0.0.0:9501');
-    });
-    ```
+$server->on("start", function (Server $server) {
+    error_log('Swoole http server is started at '
+        . 'http://0.0.0.0:9501');
+});
+```
 
 1.  最后，我们定义了一个主服务器事件，`$server->on('request', function () {})`，用于处理传入的请求。以下是实现这一点的代码：
 
 ```php
-    $server->on("request", function (
-        Request $swoole_request, Response $swoole_response){
-        $request  = SwooleToPsr7::
-            swooleRequestToServerRequest($swoole_request);
-        $swoole_response->header(
-            "Content-Type", "text/plain");
-        $response = Pipe::exec($request);
-        $swoole_response->end($response);
-    }); 
-    $server->start();
-    ```
+$server->on("request", function (
+    Request $swoole_request, Response $swoole_response){
+    $request  = SwooleToPsr7::
+        swooleRequestToServerRequest($swoole_request);
+    $swoole_response->header(
+        "Content-Type", "text/plain");
+    $response = Pipe::exec($request);
+    $swoole_response->end($response);
+}); 
+$server->start();
+```
 
 不幸的是，传递给`on()`方法关联的回调的`Swoole\Http\Request`实例不符合 PSR-7！因此，我们需要定义一个`Chat\Http\SwooleToPsr7`类和一个`swooleRequestToServerRequest()`方法，使用静态调用执行转换。然后我们在`Swoole\Http|Response`实例上设置头，并从管道返回一个值以完成电路。
 
@@ -475,17 +475,17 @@ Elapsed Time: 3.3177478313446
 1.  从命令行进入 PHP 8.1 Docker 容器，我们运行我们的`Chat` API 的 Swoole 版本，如下所示。立即显示的消息是由`$server->on("start", function() {})`产生的：
 
 ```php
-    # cd /repo/ch12
-    # php php8_chat_swoole.php 
-    Swoole http server is started at http://0.0.0.0:9501
-    ```
+# cd /repo/ch12
+# php php8_chat_swoole.php 
+Swoole http server is started at http://0.0.0.0:9501
+```
 
 1.  然后我们在主机计算机上打开另一个终端窗口，并在 PHP 8.1 Docker 容器中打开另一个 shell。从那里，我们可以运行`/repo/ch12/php8_chat_test.php`测试程序，如下所示：
 
 ```php
-    # cd /repo/ch12
-    # php php8_chat_test.php http://localhost:9501 1000
-    ```
+# cd /repo/ch12
+# php php8_chat_test.php http://localhost:9501 1000
+```
 
 1.  注意两个额外的参数。第一个参数告诉测试程序使用 API 的 Swoole 版本，而不是使用 Apache Web 服务器的旧版本。最后的参数告诉测试程序运行 1,000 次迭代。
 
@@ -532,51 +532,51 @@ ReactPHP 的其他特性包括监听 UDP 请求的能力，非阻塞缓存以及
 1.  从命令提示符进入 Docker PHP 8 容器，使用 Composer 安装必要的 ReactPHP 组件：
 
 ```php
-    cd /repo/ch12
-    composer require --ignore-platform-reqs react/event-loop
-    composer require --ignore-platform-reqs react/http
-    composer require --ignore-platform-reqs react/socket
-    ```
+cd /repo/ch12
+composer require --ignore-platform-reqs react/event-loop
+composer require --ignore-platform-reqs react/http
+composer require --ignore-platform-reqs react/socket
+```
 
 1.  然后我们将`/repo/ch12/php8_chat_swoole.php`重写为`/repo/ch12/php8_chat_react.php`。我们需要更改的第一件事是`use`语句：
 
 ```php
-    // /repo/ch12/php8_chat_react.php
-    include __DIR__ . '/vendor/autoload.php';
-    use Chat\Message\Pipe;
-    use React\EventLoop\Factory;
-    use React\Http\Server;
-    use React\Http\Message\Response as ReactResponse;
-    use Psr\Http\Message\ServerRequestInterface;
-    ```
+// /repo/ch12/php8_chat_react.php
+include __DIR__ . '/vendor/autoload.php';
+use Chat\Message\Pipe;
+use React\EventLoop\Factory;
+use React\Http\Server;
+use React\Http\Message\Response as ReactResponse;
+use Psr\Http\Message\ServerRequestInterface;
+```
 
 1.  然后我们启动一个会话并创建一个`React\EventLoop\Loop`实例，如下所示：
 
 ```php
-    session_start();
-    $loop = Factory::create();
-    ```
+session_start();
+$loop = Factory::create();
+```
 
 1.  我们现在定义一个处理程序，它接受一个 PSR-7 `ServerRequestInterface`实例作为参数，并返回一个`React\Http\Message\Response`实例：
 
 ```php
-    $server = new Server($loop, 
-    function (ServerRequestInterface $request) {
-        return new ReactResponse(200,
-            ['Content-Type' => 'text/plain'],
-            <8 SPACES>Pipe::exec($request)
-        );
-    });
-    ```
+$server = new Server($loop, 
+function (ServerRequestInterface $request) {
+    return new ReactResponse(200,
+        ['Content-Type' => 'text/plain'],
+        <8 SPACES>Pipe::exec($request)
+    );
+});
+```
 
 1.  然后我们设置一个`React\Socker\Server`实例来监听端口`9501`并执行一个循环，就像这样：
 
 ```php
-    $socket = new React\Socket\Server(9501, $loop);
-    $server->listen($socket);
-    echo "Server running at http://locahost:9501\n";
-    $loop->run();
-    ```
+$socket = new React\Socket\Server(9501, $loop);
+$server->listen($socket);
+echo "Server running at http://locahost:9501\n";
+$loop->run();
+```
 
 然后我们在 PHP 8.1 容器中打开一个单独的命令行，并启动 ReactPHP 服务器，如下所示：
 
@@ -609,27 +609,27 @@ ReactPHP 的其他特性包括监听 UDP 请求的能力，非阻塞缓存以及
 1.  安装`mezzio-swoole`组件，就像这样：
 
 ```php
-    composer require mezzio/mezzio-swoole
-    ```
+composer require mezzio/mezzio-swoole
+```
 
 1.  然后需要使用 Swoole 服务器实例运行 Mezzio。可以使用以下命令完成此操作：
 
 ```php
-    /path/to/project/vendor/bin/laminas mezzio:swoole:start
-    ```
+/path/to/project/vendor/bin/laminas mezzio:swoole:start
+```
 
 1.  在 Mezzio 应用程序的配置文件中，您需要添加以下密钥：
 
 ```php
-    return [
-        'mezzio-swoole' => [
-            'swoole-http-server' => [
-                'host' => '0.0.0.0',    // all IP addresses
-                'port' => 9501,
-            ]
-        ],
-    ];
-    ```
+return [
+    'mezzio-swoole' => [
+        'swoole-http-server' => [
+            'host' => '0.0.0.0',    // all IP addresses
+            'port' => 9501,
+        ]
+    ],
+];
+```
 
 为了进一步提高性能，当然还应该重写代码的适当部分，以利用 PHP 异步功能。接下来，我们来看一下超越异步的 PHP 扩展。
 
@@ -735,51 +735,51 @@ PHP 8.1 fibers 构成了 PHP 异步应用程序的基础。尽管 fibers 的主�
 1.  首先，我们定义一个要包含的 PHP 文件，其中定义了回调：
 
 ```php
-    // /repo/ch12/php8_fibers_include.php
-    define('WAR_AND_PEACE',
-        'https://www.gutenberg.org/files/2600/2600-0.txt');
-    define('DB_FILE', __DIR__ 
-        . '/../sample_data/geonames.db');
-    define('ACCESS_LOG', __DIR__ . '/access.log');
-    $callbacks = [
-        'read_url' => function (string $url) {
-            return file_get_contents($url); },
-        'db_query' => function (string $iso2) {
-            $pdo = new PDO('sqlite:' . DB_FILE);
-            $sql = 'SELECT * FROM geonames '
-                 . 'WHERE country_code = ?'
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([$iso2]);
-            return var_export(
-                $stmt->fetchAll(PDO::FETCH_ASSOC), TRUE);
-            },
-        'access_log' => function (string $info) {
-            $info = date('Y-m-d H:i:s') . ": $info\n";
-            return file_put_contents(
-                ACCESS_LOG, $info, FILE_APPEND);
-            },
-    ];
-    return $callbacks;
-    ```
+// /repo/ch12/php8_fibers_include.php
+define('WAR_AND_PEACE',
+    'https://www.gutenberg.org/files/2600/2600-0.txt');
+define('DB_FILE', __DIR__ 
+    . '/../sample_data/geonames.db');
+define('ACCESS_LOG', __DIR__ . '/access.log');
+$callbacks = [
+    'read_url' => function (string $url) {
+        return file_get_contents($url); },
+    'db_query' => function (string $iso2) {
+        $pdo = new PDO('sqlite:' . DB_FILE);
+        $sql = 'SELECT * FROM geonames '
+             . 'WHERE country_code = ?'
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$iso2]);
+        return var_export(
+            $stmt->fetchAll(PDO::FETCH_ASSOC), TRUE);
+        },
+    'access_log' => function (string $info) {
+        $info = date('Y-m-d H:i:s') . ": $info\n";
+        return file_put_contents(
+            ACCESS_LOG, $info, FILE_APPEND);
+        },
+];
+return $callbacks;
+```
 
 1.  接下来，我们定义一个包含回调定义并按顺序执行它们的 PHP 程序。我们使用 PHP 8 的 `match {}` 结构来为适当的回调分配不同的参数。最后，我们通过简单返回一个字符串并运行 `strlen()` 来返回回调生成的字节数：
 
 ```php
-    // /repo/ch12/php8_fibers_blocked.php
-    $start = microtime(TRUE);
-    $callbacks = include __DIR__ . '/php8_fibers_include.php';
-    foreach ($callbacks as $key => $exec) {
-        $info = match ($key) {
-            'read_url' => WAR_AND_PEACE,
-            'db_query' => 'IN',
-            'access_log' => __FILE__,
-            default => ''
-        };
-        $result = $exec($info);
-        echo "Executing $key" . strlen($result) . "\n";
-    }
-    echo "Elapsed Time:" . (microtime(TRUE) - $start) . "\n";
-    ```
+// /repo/ch12/php8_fibers_blocked.php
+$start = microtime(TRUE);
+$callbacks = include __DIR__ . '/php8_fibers_include.php';
+foreach ($callbacks as $key => $exec) {
+    $info = match ($key) {
+        'read_url' => WAR_AND_PEACE,
+        'db_query' => 'IN',
+        'access_log' => __FILE__,
+        default => ''
+    };
+    $result = $exec($info);
+    echo "Executing $key" . strlen($result) . "\n";
+}
+echo "Elapsed Time:" . (microtime(TRUE) - $start) . "\n";
+```
 
 如果我们按原样运行程序，结果可预见地糟糕，就像我们在这里看到的一样：
 
@@ -803,48 +803,48 @@ Elapsed Time:6.0914640426636
 1.  首先，我们像之前一样包含回调，像这样：
 
 ```php
-    // /repo/ch12/php8_fibers_unblocked.php
-    $start = microtime(TRUE);
-    $callbacks = include __DIR__ 
-        . '/php8_fibers_include.php';
-    ```
+// /repo/ch12/php8_fibers_unblocked.php
+$start = microtime(TRUE);
+$callbacks = include __DIR__ 
+    . '/php8_fibers_include.php';
+```
 
 1.  接下来，我们创建一个 `Fiber` 实例来包装每个回调。然后使用 `start()` 启动回调，提供适当的信息：
 
 ```php
-    $fibers = [];
-    foreach ($callbacks as $key => $exec) {
-        $info = match ($key) {
-            'read_url' => WAR_AND_PEACE,
-            'db_query' => 'IN',
-            'access_log' => __FILE__,
-            default => ''
-        };
-        $fibers[$key] = new Fiber($exec);
-        $fibers[$key]->start($info);
-    }
-    ```
+$fibers = [];
+foreach ($callbacks as $key => $exec) {
+    $info = match ($key) {
+        'read_url' => WAR_AND_PEACE,
+        'db_query' => 'IN',
+        'access_log' => __FILE__,
+        default => ''
+    };
+    $fibers[$key] = new Fiber($exec);
+    $fibers[$key]->start($info);
+}
+```
 
 1.  然后我们设置一个循环，并检查每个回调是否已经完成。如果是，我们从 `getReturn()` 中输出结果并取消 fiber：
 
 ```php
-    $count  = count($fibers);
-    $names  = array_keys($fibers);
-    while ($count) {
-        $count = 0;
-        foreach ($names as $name) {
-            if ($fibers[$name]->isTerminated()) {
-               $result = $fibers[$name]->getReturn();
-                echo "Executing $name: \t" 
-                    . strlen($result) . "\n";
-                unset($names[$name]);
-            } else {
-                $count++;
-            }
-        }
-    }
-    echo "Elapsed Time:" . (microtime(TRUE) - $start) . "\n";
-    ```
+$count  = count($fibers);
+$names  = array_keys($fibers);
+while ($count) {
+    $count = 0;
+    foreach ($names as $name) {
+        if ($fibers[$name]->isTerminated()) {
+           $result = $fibers[$name]->getReturn();
+            echo "Executing $name: \t" 
+                . strlen($result) . "\n";
+            unset($names[$name]);
+        } else {
+            $count++;
+        }
+    }
+}
+echo "Elapsed Time:" . (microtime(TRUE) - $start) . "\n";
+```
 
 请注意，此示例仅用于说明。更有可能的是，您会使用现有的框架，如 ReactPHP 或 Amp，它们都已重写以利用 PHP 8.1 fibers。还要注意，即使多个 fibers 同时运行，您可以实现的最短运行时间也与最长运行任务所花费的时间成正比。现在让我们看看 fibers 对 ReactPHP 和 Swoole 的影响。
 
@@ -859,20 +859,20 @@ Elapsed Time:6.0914640426636
 1.  在两个命令 shell 中，切换到 `/repo/ch12` 目录，像这样：
 
 ```php
-    # cd /repo/ch12
-    ```
+# cd /repo/ch12
+```
 
 1.  在第一个命令 shell 中，使用内置的 PHP web 服务器运行标准的 HTTP 服务器，使用以下命令：
 
 ```php
-    # php -S localhost:9501 php8_chat_ajax.php
-    ```
+# php -S localhost:9501 php8_chat_ajax.php
+```
 
 1.  在第二个命令 shell 中，执行测试程序，如下所示：
 
 ```php
-    php php8_chat_test.php http://localhost:9501 1000 --no
-    ```
+php php8_chat_test.php http://localhost:9501 1000 --no
+```
 
 结果输出应该是这样的：
 
@@ -896,14 +896,14 @@ Elapsed Time: 1.687940120697
 1.  使用以下命令启动 ReactPHP 服务器：
 
 ```php
-    # php php8_chat_react.php
-    ```
+# php php8_chat_react.php
+```
 
 1.  在第二个命令行窗口中，执行测试程序，就像这样：
 
 ```php
-    php php8_chat_test.php http://localhost:9501 1000 --no
-    ```
+php php8_chat_test.php http://localhost:9501 1000 --no
+```
 
 输出应如下所示：
 

@@ -202,16 +202,16 @@ PHP 5.3 内置了 PDO 和 PDO_MYSQL 驱动程序。更多信息请访问[`www.ph
 1.  在 SQL 编辑器中，输入以下查询来创建新的 `Status` 表：
 
 ```php
-    CREATE TABLE `status` (
-    `id` bigint(20) NOT NULL AUTO_INCREMENT,
-    `name` varchar(50) NOT NULL,
-    `image` varchar(100) NOT NULL,
-    `status` varchar(500) NOT NULL,
-    `timestamp` int(11) unsigned NOT NULL,
-    PRIMARY KEY (`id`)
-    ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+CREATE TABLE `status` (
+`id` bigint(20) NOT NULL AUTO_INCREMENT,
+`name` varchar(50) NOT NULL,
+`image` varchar(100) NOT NULL,
+`status` varchar(500) NOT NULL,
+`timestamp` int(11) unsigned NOT NULL,
+PRIMARY KEY (`id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
-    ```
+```
 
 正如你所看到的，在 `status` 表中，我们有 `id`（每个条目都会自动增加）作为主键。我们有 `name` 字段，可以存储长达 `50` 个字符的用户名称。`image` 字段将存储长达 `100` 个字符的用户缩略图像。状态字段将存储最多 500 个字符的用户状态帖子，而 `timestamp` 字段将跟踪状态发布的时间。数据库引擎选择了 `MyISAM` 以提供更快的表条目。
 
@@ -282,17 +282,17 @@ INSERT INTO `status` VALUES('', 'M A Hossain Tonu', 'tonu.jpg', 'Hello this is m
 1.  现在，添加一些类常量和属性来保存数据库凭据，如下面的代码片段所示：
 
 ```php
-    class StatusPoster {
-    private $db = NULL;
-    const DB_SERVER = "localhost";
-    const DB_USER = "root";
-    const DB_PASSWORD = "root";
-    const DB_NAME = "status_poster";
-    public function __construct() {
-    }
-    }
+class StatusPoster {
+private $db = NULL;
+const DB_SERVER = "localhost";
+const DB_USER = "root";
+const DB_PASSWORD = "root";
+const DB_NAME = "status_poster";
+public function __construct() {
+}
+}
 
-    ```
+```
 
 您可以看到添加的类常量，其中包含数据库信息，如数据库服务器名称、用户名、密码和数据库名称。已添加了一个`private`类变量`$db`，用于在 PDO 对象中保存数据库连接。您可以根据自己的需求修改这些常量。
 
@@ -303,36 +303,36 @@ INSERT INTO `status` VALUES('', 'M A Hossain Tonu', 'tonu.jpg', 'Hello this is m
 1.  为了从`status`表中获取状态帖子，我们将在类中添加一个名为`getStatusPosts`的空方法。为此，输入`fnc`并按*Tab*以生成具有所选函数名称的空函数代码。这次输入所选的函数名称为`getStatusPosts`，并且不要放入参数`$param`变量。我们的类框架将类似于以下内容：
 
 ```php
-    class StatusPoster {
-    private $db = NULL;
-    const DB_SERVER = "localhost";
-    const DB_USER = "root";
-    const DB_PASSWORD = "root";
-    const DB_NAME = "status_poster";
-    public function __construct() {
-    }
-    public function getStatusPosts() {
-    }
-    }
+class StatusPoster {
+private $db = NULL;
+const DB_SERVER = "localhost";
+const DB_USER = "root";
+const DB_PASSWORD = "root";
+const DB_NAME = "status_poster";
+public function __construct() {
+}
+public function getStatusPosts() {
+}
+}
 
-    ```
+```
 
 我们已经准备好了类的框架，并且将在这些类方法中添加代码。现在，我们将在构造函数中创建数据库连接代码。
 
 1.  要使用 PDO 连接 MySQL，将以下行输入类构造函数中，使其看起来类似于以下代码片段：
 
 ```php
-    public function __construct() {
-    $dsn = 'mysql:dbname='.self::DB_NAME.';host='.self::DB_SERVER;
-    try {
-    $this->db = new PDO($dsn, self::DB_USER, self::DB_PASSWORD);
-    } catch (PDOException $e) {
-    throw new Exception('Connection failed: ' . $e->getMessage());
-    }
-    return $this->db;
-    }
+public function __construct() {
+$dsn = 'mysql:dbname='.self::DB_NAME.';host='.self::DB_SERVER;
+try {
+$this->db = new PDO($dsn, self::DB_USER, self::DB_PASSWORD);
+} catch (PDOException $e) {
+throw new Exception('Connection failed: ' . $e->getMessage());
+}
+return $this->db;
+}
 
-    ```
+```
 
 `public function __construct()`使用 PDO 连接到 MySQL 数据库-以 PDO 实例的形式存储在类的私有变量中。
 
@@ -341,34 +341,34 @@ INSERT INTO `status` VALUES('', 'M A Hossain Tonu', 'tonu.jpg', 'Hello this is m
 以下行创建了一个 PDO 实例，表示与请求的数据库的连接，并在成功时返回一个 PDO 对象：
 
 ```php
-    $this->db = new PDO($dsn, self::DB_USER, self::DB_PASSWORD);
+$this->db = new PDO($dsn, self::DB_USER, self::DB_PASSWORD);
 
-    ```
+```
 
 请注意，如果尝试连接到请求的数据库失败，它会抛出一个`PDOException`异常。
 
 1.  为了从表中选择状态帖子，我们将在`getStatusPosts`方法中使用自动完成代码编写一个`select`查询。正如我们在上一章中讨论的那样，SQL 代码自动完成从 SQL 关键字`SELECT`开始，通过按下*Ctrl+空格*。因此，我们将按照这些步骤进行，并在这个方法中编写以下查询代码：
 
 ```php
-    public function getStatusPosts() {
-    $statement = $this->db->prepare("SELECT name, image, status, timestamp FROM status ORDER BY timestamp DESC,id");
-    $statement->execute();
-    if ($statement->rowCount() > 0) {
-    return $statement->fetchAll();
-    }
-    return false;
-    }
+public function getStatusPosts() {
+$statement = $this->db->prepare("SELECT name, image, status, timestamp FROM status ORDER BY timestamp DESC,id");
+$statement->execute();
+if ($statement->rowCount() > 0) {
+return $statement->fetchAll();
+}
+return false;
+}
 
-    ```
+```
 
 通过这段代码，我们从表 status 中选择了列（`name, image, status`和`timestamp`），按时间戳降序排列。我们还按默认情况选择了 id 按升序排列。`prepare()`方法准备要由`PDOStatement::execute()`方法执行的 SQL 语句。在`execute()`方法之后，如果找到行，则它会获取并返回所有表条目。
 
 1.  现在，我们将在文件底部实例化这个类的对象，使用以下行：
 
 ```php
-    $status = new StatusPoster();
+$status = new StatusPoster();
 
-    ```
+```
 
 ## 刚才发生了什么？
 
@@ -407,92 +407,92 @@ HTML 用户界面将显示由`StatusPoster`类的`getStatusPosts`方法检索的
 1.  为了创建一个**级联样式表**，其中包含 CSS 类，右键单击项目中的`styles`文件夹，从**新级联样式表**对话框中选择**新建|级联样式表**，将 CSS 文件命名为`styles.css`，然后点击**完成**。删除已打开的 CSS 文件中的所有注释和代码块。在 CSS 文件中键入以下样式类：
 
 ```php
-    body {
-    font-family:Arial,Helvetica,sans-serif;
-    font-size:12px;
-    }
-    h1,input {
-    color:#fff;
-    background-color:#1A3C6C;
-    }
-    h1,input,textarea,.inputbox,.postStatus {
-    padding:5px;
-    }
-    input,textarea,ul li img,.inputbox {
-    border:1px solid #ccc;
-    }
-    ul li {
-    width:100%;
-    display:block;
-    border-bottom:1px solid #ccc;
-    padding:10px 0;
-    }
-    ul li img {
-    padding:2px;
-    }
-    .container {
-    width:60%;
-    float:none;
-    margin:auto;
-    }
-    .content {
-    padding-left:15px;
-    }
-    .content a {
-    font-weight:700;
-    color:#3B5998;
-    text-decoration:none;
-    }
-    .clearer {
-    clear:both;
-    }
-    .hidden {
-    display:none;
-    }
-    .left {
-    float:left;
-    }
-    .right {
-    float:right;
-    }
-    .localtime {
-    color:#999;
-    }
-    .inputbox {
-    height:70px;
-    margin:15px 0;
-    }
-    .inputbox textarea {
-    width:450px;
-    height:50px;
-    overflow:hidden;
-    }
-    .inputbox input {
-    margin-right:30px;
-    width:50px;
-    }
+body {
+font-family:Arial,Helvetica,sans-serif;
+font-size:12px;
+}
+h1,input {
+color:#fff;
+background-color:#1A3C6C;
+}
+h1,input,textarea,.inputbox,.postStatus {
+padding:5px;
+}
+input,textarea,ul li img,.inputbox {
+border:1px solid #ccc;
+}
+ul li {
+width:100%;
+display:block;
+border-bottom:1px solid #ccc;
+padding:10px 0;
+}
+ul li img {
+padding:2px;
+}
+.container {
+width:60%;
+float:none;
+margin:auto;
+}
+.content {
+padding-left:15px;
+}
+.content a {
+font-weight:700;
+color:#3B5998;
+text-decoration:none;
+}
+.clearer {
+clear:both;
+}
+.hidden {
+display:none;
+}
+.left {
+float:left;
+}
+.right {
+float:right;
+}
+.localtime {
+color:#999;
+}
+.inputbox {
+height:70px;
+margin:15px 0;
+}
+.inputbox textarea {
+width:450px;
+height:50px;
+overflow:hidden;
+}
+.inputbox input {
+margin-right:30px;
+width:50px;
+}
 
-    ```
+```
 
 我们将使用`container`类来在文档主体内的应用程序界面容器`<div>`上应用样式；`ul` li 将表示列出的项目，这些项目是具有父`ul`元素的状态`li`项目，以及其他 HTML 元素，如 h1、`img`和`textarea`，也使用 CSS 类进行样式设置。
 
 1.  在`index.php`文件的顶部添加以下 PHP 代码片段：
 
 ```php
-    <?php
-    define('BASE_URL', 'http://localhost/chapter3/');
-    ?>
+<?php
+define('BASE_URL', 'http://localhost/chapter3/');
+?>
 
-    ```
+```
 
 我们已经为 Web 应用程序定义了一个 PHP 常量来定义基本 URL。基本 URL 可用于为项目资产文件（CSS 或 JS 文件）提供绝对路径。您可以在[第三章]（ch03.html“第三章。使用 NetBeans 构建类似 Facebook 的状态发布者”）的位置放置您的项目目录名称。
 
 1.  现在，在`<title>`标签下的`index.php`文档标题中添加以下行，以包含 CSS 文件。
 
 ```php
-    <link href="<?=BASE_URL?>styles/styles.css" media="screen" rel="stylesheet" type="text/css" />
+<link href="<?=BASE_URL?>styles/styles.css" media="screen" rel="stylesheet" type="text/css" />
 
-    ```
+```
 
 有了这行，我们已将 CSS 文件嵌入到我们的 HTML 文档中。在这里，`BASE_URL`告诉我们`styles/styles.css`文件在项目目录下可用。因此，我们的界面元素将继承`styles.css`文件的样式。
 
@@ -531,70 +531,70 @@ float:left;
 1.  从谷歌内容交付网络（CDN）添加 jQuery 支持到我们的文档中，在`index.php`文档标题下的`<link>`标签之后添加以下行：
 
 ```php
-    <script src= "http://ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.min.js">
-    </script>
+<script src= "http://ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.min.js">
+</script>
 
-    ```
+```
 
 有了这行，我们就可以从 CDN 获取最新的 jQuery 版本。请注意，版本 1.7 表示最新可用版本，即 1.7.X，除非您已指定确切的数字，即 1.7.2 或更高版本。现在，我们的文档已启用 jQuery，并准备使用 jQuery 功能。
 
 1.  要创建基于 jQuery 的自定义 JS 库，请在`js`文件夹中添加一个新的 JavaScript 文件，并将其命名为`status.js`。将文件包含在文档头部，使得`<head>`标签看起来类似于以下代码片段：
 
 ```php
-    <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>Status updater</title>
-    <link href="<?=BASE_URL?>styles/styles.css" media="screen" rel="stylesheet" type="text/css" />
-    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.min.js"></script>
-    <script src="<?=BASE_URL?>js/status.js"></script>
-    </head>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Status updater</title>
+<link href="<?=BASE_URL?>styles/styles.css" media="screen" rel="stylesheet" type="text/css" />
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.min.js"></script>
+<script src="<?=BASE_URL?>js/status.js"></script>
+</head>
 
-    ```
+```
 
 1.  现在，在`status.js`文件中创建`Status` JS 库骨架，如下所示：
 
 ```php
-    $(document).ready(function ($)
-    {
-    var Status = {
-    };
-    });
+$(document).ready(function ($)
+{
+var Status = {
+};
+});
 
-    ```
+```
 
 您可以看到变量`Status`包含一个使用 JavaScript 对象文字（在大括号内封闭的键值对）的对象。
 
 ```php
-    var obj = { a : function(){ }, b : function(){ } }
+var obj = { a : function(){ }, b : function(){ } }
 
-    ```
+```
 
 请注意，库代码被包装在 jQuery `$(document).ready()`函数中。
 
 1.  让我们在`status`对象内编写一些实用的 JavaScript 方法，并键入以下`currentTime()`方法：
 
 ```php
-    currentTime: function (timestamp) {
-    if (typeof timestamp !== 'undefined' && timestamp !== '')
-    var currentTime = new Date(timestamp * 1000);
-    else
-    var currentTime = new Date();
-    var hours = currentTime.getHours();
-    var minutes = currentTime.getMinutes();
-    var timeStr = '';
-    if (minutes < 10) {
-    minutes = "0" + minutes
-    }
-    timeStr = ((hours > 12) ? (hours - 12) : hours) + ":" + minutes + ' ';
-    if (hours > 11) {
-    timeStr += "PM";
-    } else {
-    timeStr += "AM";
-    }
-    return timeStr;
-    },
+currentTime: function (timestamp) {
+if (typeof timestamp !== 'undefined' && timestamp !== '')
+var currentTime = new Date(timestamp * 1000);
+else
+var currentTime = new Date();
+var hours = currentTime.getHours();
+var minutes = currentTime.getMinutes();
+var timeStr = '';
+if (minutes < 10) {
+minutes = "0" + minutes
+}
+timeStr = ((hours > 12) ? (hours - 12) : hours) + ":" + minutes + ' ';
+if (hours > 11) {
+timeStr += "PM";
+} else {
+timeStr += "AM";
+}
+return timeStr;
+},
 
-    ```
+```
 
 `currentTime()`方法返回从 Unix 时间戳转换的本地时间。请记住，如果时间戳不存在，则返回当前本地时间。示例输出可能是上午 3:22 或下午 2:30。
 
@@ -603,48 +603,48 @@ float:left;
 1.  将`currentDate()`方法添加到`Status`对象中，如下所示：
 
 ```php
-    currentDate: function (timestamp) {
-    var m_names = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    if (typeof timestamp !== 'undefined' && timestamp !== '')
-    var d = new Date(timestamp * 1000);
-    else
-    var d = new Date();
-    var curr_date = d.getDate();
-    var curr_month = d.getMonth();
-    var curr_year = d.getFullYear();
-    var sup = "";
-    if (curr_date === 1 || curr_date === 21 || curr_date === 31)
-    {
-    sup = "st";
-    }
-    else if (curr_date === 2 || curr_date === 22)
-    {
-    sup = "nd";
-    }
-    else if (curr_date === 3 || curr_date === 23)
-    {
-    sup = "rd";
-    }
-    else
-    {
-    sup = "th";
-    }
-    return m_names[curr_month] + ' ' + curr_date + sup + ', ' + curr_year;
-    },
+currentDate: function (timestamp) {
+var m_names = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+if (typeof timestamp !== 'undefined' && timestamp !== '')
+var d = new Date(timestamp * 1000);
+else
+var d = new Date();
+var curr_date = d.getDate();
+var curr_month = d.getMonth();
+var curr_year = d.getFullYear();
+var sup = "";
+if (curr_date === 1 || curr_date === 21 || curr_date === 31)
+{
+sup = "st";
+}
+else if (curr_date === 2 || curr_date === 22)
+{
+sup = "nd";
+}
+else if (curr_date === 3 || curr_date === 23)
+{
+sup = "rd";
+}
+else
+{
+sup = "th";
+}
+return m_names[curr_month] + ' ' + curr_date + sup + ', ' + curr_year;
+},
 
-    ```
+```
 
 `currentDate()`方法返回转换后的本地日期。与`步骤 4`中的先前方法类似，它从 Date 对象中获取日期、月份和年份。
 
 1.  现在，添加`getLocalTimeStr()`方法如下：
 
 ```php
-    getLocalTimeStr: function (gmtTimestampInSec) {
-    return 'at ' + this.currentTime(gmtTimestampInSec)
-    + ' on ' + this.currentDate(gmtTimestampInSec);
-    }
+getLocalTimeStr: function (gmtTimestampInSec) {
+return 'at ' + this.currentTime(gmtTimestampInSec)
++ ' on ' + this.currentDate(gmtTimestampInSec);
+}
 
-    ```
+```
 
 上述方法返回连接的格式化时间和日期字符串。
 
@@ -663,54 +663,54 @@ jQuery 为我们提供了一个称为`ready`的文档对象上的特殊实用程
 1.  修改`index.php`文件，在`<body>`标记内，删除 PHP 标记，并将状态条目放在`<div>`容器标记和元素中，如下所示：
 
 ```php
-    <body>
-    <div id="container" class="container">
-    <h1>Status Poster</h1>
-    <ul>
-    </ul>
-    </div>
-    </body>
+<body>
+<div id="container" class="container">
+<h1>Status Poster</h1>
+<ul>
+</ul>
+</div>
+</body>
 
-    ```
+```
 
 从这段代码中，您可以看到我们的应用程序界面将位于 id 为 container 的`<div>`容器内，`<ul>`标记将保存内部`<li>`项的堆栈，其中包含用户的状态帖子，这些帖子将由一些 PHP 代码填充。
 
 1.  在`index.php`文件的`<!DOCTYPE html>`标记上方的顶部 PHP 代码片段中，键入以下行，以集成`StatusPoster`类，使代码片段看起来类似于以下内容：
 
 ```php
-    <?php
-    require_once 'StatusPoster.php';
-    $result = $status->getStatusPosts();
-    define('BASE_URL', 'http://localhost/chapter3/');
-    ?>
+<?php
+require_once 'StatusPoster.php';
+$result = $status->getStatusPosts();
+define('BASE_URL', 'http://localhost/chapter3/');
+?>
 
-    ```
+```
 
 从代码中，一次需要 PHP 类文件来集成类，并在我们的应用程序中使用其实例。在这一行，我们调用了`$status`对象的`getStatusPosts()`方法，以从数据库中获取所有状态条目，并将返回的结果数组存储到`$result`中。
 
 1.  为了显示状态流，我们将编写以下 PHP 代码，以在`<ul>`标记内循环遍历`$result`数组：
 
 ```php
-    <?php
-    if (is_array($result))
-    foreach ($result as $row) {
-    echo '
-    <li>
-    <a href="#">
-    <img class="left" src="images/user/' . $row['image'] . '" alt="picture">
-    </a>
-    <div class="content left">
-    <a href="#">' . $row['name'] . '</a>
-    <div class="status">' . $row['status'] . '</div>
-    <span class="localtime" data-timestamp="' . $row['timestamp'] . '"></span>
-    </div>
-    <div class="clearer"></div>
-    </li>
-    ';
-    }
-    ?>
+<?php
+if (is_array($result))
+foreach ($result as $row) {
+echo '
+<li>
+<a href="#">
+<img class="left" src="images/user/' . $row['image'] . '" alt="picture">
+</a>
+<div class="content left">
+<a href="#">' . $row['name'] . '</a>
+<div class="status">' . $row['status'] . '</div>
+<span class="localtime" data-timestamp="' . $row['timestamp'] . '"></span>
+</div>
+<div class="clearer"></div>
+</li>
+';
+}
+?>
 
-    ```
+```
 
 首先，对`$result`数组进行了正确类型的验证。我们循环遍历数组，将每个条目放入`$row`变量中。前面的服务器脚本为每个状态条目生成一个`<li>`项，每个`<li>`项包含一个用户图像、一个超链接名称、一个用户状态文本和一个 UNIX 时间戳元素。请注意，时间戳已经转储到具有类名`localtime`的`span`元素的`data-timestamp`属性中。为了更好地理解，状态列表的项目骨架如下图所示：
 
@@ -719,30 +719,30 @@ jQuery 为我们提供了一个称为`ready`的文档对象上的特殊实用程
 1.  现在，我们需要在 DOM 准备就绪时使用 jQuery 代码转换`data-timestamp`属性中的 PHP 转储时间戳。在`status.js`库的`Status`对象中添加以下方法：
 
 ```php
-    showLocalTime: function () {
-    var spans = $('span.localtime[data-timestamp]');
-    spans.each( function () {
-    var localTimeStr = Status.getLocalTimeStr( $(this).attr('data-timestamp') );
-    $(this).html(localTimeStr);
-    });
-    },
+showLocalTime: function () {
+var spans = $('span.localtime[data-timestamp]');
+spans.each( function () {
+var localTimeStr = Status.getLocalTimeStr( $(this).attr('data-timestamp') );
+$(this).html(localTimeStr);
+});
+},
 
-    ```
+```
 
 使用 jQuery 选择器的方法选择所有具有`data-timestamp`属性的 span 元素为`$('span.localtime[data-timestamp]');`。对于每个元素，它使用`$(this).attr('data-timestamp')`解析时间戳，并传递给`Status.getLocalTimeStr()`以获取本地时间字符串。最后，它将每个`span`元素的内部 HTML 设置为该本地时间字符串。
 
 1.  为了使`Status.showLocalTime()`立即与 DOM 一起工作，调用该方法，如下所示，在`ready()`方法的终止行之前：
 
 ```php
-    $(document).ready(function ($)
-    {
-    var Status = {
-    //whole library methods...
-    };
-    Status.showLocalTime();
-    });
+$(document).ready(function ($)
+{
+var Status = {
+//whole library methods...
+};
+Status.showLocalTime();
+});
 
-    ```
+```
 
 因此，用户将在每个帖子下显示其本地日期和时间。
 
@@ -803,15 +803,15 @@ PHP 脚本将`<li>`项转储到`<ul>`标记中，界面 JS 代码`Status.showLoc
 1.  为了添加状态发布框，我们将在`div#container`内添加以下 HTML 代码，位于`<ul>`标签之前：
 
 ```php
-    <div class="inputbox">
-    <form id="statusFrom" action="index.php" method="post" >
-    <textarea name="status" id="status_box">Write your status here</textarea>
-    <input class="right" type="submit" name="submit" id="submit" value="Share" />
-    <div id="postStatus" class="postStatus clearer hidden">loading</div>
-    </form>
-    </div>
+<div class="inputbox">
+<form id="statusFrom" action="index.php" method="post" >
+<textarea name="status" id="status_box">Write your status here</textarea>
+<input class="right" type="submit" name="submit" id="submit" value="Share" />
+<div id="postStatus" class="postStatus clearer hidden">loading</div>
+</form>
+</div>
 
-    ```
+```
 
 因此，`div.inputbox`将包含带有`share`或`submit`按钮的状态输入框。`div#postStatus`将显示发布提交进度信息状态，以传达状态是否成功发布。在 AJAX 发布进行中，我们将使用一些花哨的加载`.gif`图像。`ajaxload.gif`图像也保存在项目的`images`目录中。
 
@@ -865,72 +865,72 @@ AJAX 用于在浏览器和 Web 服务器之间频繁通信。这种著名的技�
 1.  在我们的`status.js`库中，输入以下`post()`方法，以逗号结尾，将其添加到`Status`库中：
 
 ```php
-    post: function () {
-    var myname = 'M A Hossain Tonu', myimage = 'images/user/tonu.jpg';
-    var loadingHtml = '<img src="images/ajaxload.gif" alt="loadin.." border="0" >';
-    var successMsg = 'Status Posted Successfully ...';
-    var statusTxt = $('#status_box').val(), postStatus = $('#postStatus');
-    },
+post: function () {
+var myname = 'M A Hossain Tonu', myimage = 'images/user/tonu.jpg';
+var loadingHtml = '<img src="images/ajaxload.gif" alt="loadin.." border="0" >';
+var successMsg = 'Status Posted Successfully ...';
+var statusTxt = $('#status_box').val(), postStatus = $('#postStatus');
+},
 
-    ```
+```
 
 在变量声明部分，`myname`和`myimage`变量包含了一个演示已登录用户的名称和个人资料图片 URL。`loadingHtml`包含用于显示加载 GIF 动画的 img 标签。此外，您可以看到`statusTxt`包含使用`$('#status_box').val()`获取的状态框值，`postStatus`缓存了`div#postStatus`元素。
 
 1.  现在，在`post()`方法中的变量声明部分之后添加以下行：
 
 ```php
-    if ((statusTxt.trim() !== '' && statusTxt !== 'Write your status here'
-    && statusTxt.length < 500) === false) return;
+if ((statusTxt.trim() !== '' && statusTxt !== 'Write your status here'
+&& statusTxt.length < 500) === false) return;
 
-    ```
+```
 
 此代码验证了`statusTxt`是否为空，是否包含默认输入消息，以及是否在 500 个字符的最大输入限制内。如果任何此类验证失败，则在执行后返回该方法。
 
 1.  为了在 AJAX 操作进行时显示动画加载，我们可以在上一行*(步骤 2)*之后添加以下行：
 
 ```php
-    postStatus.html(loadingHtml).fadeIn('slow');
+postStatus.html(loadingHtml).fadeIn('slow');
 
-    ```
+```
 
 它会在带有加载图像的 div 元素`#postStatus`中淡入。
 
 1.  现在，是时候在方法中添加 AJAX 功能了。在上一行*(步骤 3)*之后添加以下 jQuery 代码：
 
 ```php
-    $.ajax({
-    data: $('form').serialize(),
-    url: 'index.php',
-    type: 'POST',
-    dataType: 'json',
-    success: function (response) {
-    //ajax success callback codes
-    },
-    error: function () {}
-    });
+$.ajax({
+data: $('form').serialize(),
+url: 'index.php',
+type: 'POST',
+dataType: 'json',
+success: function (response) {
+//ajax success callback codes
+},
+error: function () {}
+});
 
-    ```
+```
 
 在这段代码中，您可以看到已添加了 AJAX 骨架，并且使用 jQuery `$.ajax()`方法传递了配置对象。配置对象是使用 JavaScript 对象字面量技术创建的。您可以看到这些键值对；例如，`data`包含使用`$('form').serialize()`序列化的表单值，`url`保存了数据要提交到的服务器 URL，`dataType`设置为 JSON，这样我们将在`success()`回调方法中传递一个 JSON 对象。查看默认的`success`和`error`回调方法；您可以看到一个变量`response`传递到`success`回调中，实际上是使用 AJAX 从服务器获取的 JSON 对象。
 
 1.  在成功的 AJAX 提交中，让我们在`success`回调方法中输入以下代码：
 
 ```php
-    if (response.success === true) {
-    postStatus.html('<strong>'+successMsg+'</strong>');
-    $('#status_box').val('');
-    var statusHtml = $('#statusTemplate').html();
-    statusHtml = statusHtml
-    .replace('#SRC', myimage)
-    .replace('#NAME', myname)
-    .replace('#STATUS', statusTxt)
-    .replace('#TIME', Status.getLocalTimeStr());
-    $('#container ul').prepend(statusHtml);
-    } else {
-    postStatus.html('<strong>' + response.error + '</strong>').fadeIn("slow");
-    }
+if (response.success === true) {
+postStatus.html('<strong>'+successMsg+'</strong>');
+$('#status_box').val('');
+var statusHtml = $('#statusTemplate').html();
+statusHtml = statusHtml
+.replace('#SRC', myimage)
+.replace('#NAME', myname)
+.replace('#STATUS', statusTxt)
+.replace('#TIME', Status.getLocalTimeStr());
+$('#container ul').prepend(statusHtml);
+} else {
+postStatus.html('<strong>' + response.error + '</strong>').fadeIn("slow");
+}
 
-    ```
+```
 
 由于`response`传入的是一个 JSON 对象，我们检查`response`对象的`response.success`属性，其中包含布尔值 true 或 false。如果`response.success`属性未设置为`true`，则在元素`div#postStatus`中显示来自 response.error 的错误消息。
 
@@ -939,12 +939,12 @@ AJAX 用于在浏览器和 Web 服务器之间频繁通信。这种著名的技�
 1.  为了使用事件触发`Status.post()`，我们将该方法与`Submit`（**分享**）按钮上的*click*事件绑定。在`status.js`库中的`$(document).ready()`方法终止之前（`Status.showLocalTime()`行之后）添加以下代码：
 
 ```php
-    $('#submit').click(function () {
-    Status.post();
-    return false;
-    });
+$('#submit').click(function () {
+Status.post();
+return false;
+});
 
-    ```
+```
 
 ## 刚刚发生了什么？
 

@@ -39,27 +39,27 @@
 1.  在`app/controllers`目录中，创建一个名为`UsersController.php`的文件，并输入以下代码：
 
 ```php
-    <?php
-    class  UsersController extends BaseController {
+<?php
+class  UsersController extends BaseController {
 
-      public function actionIndex()
-      {
-        return "This is a User Index page";
-      }
+  public function actionIndex()
+  {
+    return "This is a User Index page";
+  }
 
-      public function actionAbout()
-      {
-        return "This is a User About page";
-      }
-    }
-    ```
+  public function actionAbout()
+  {
+    return "This is a User About page";
+  }
+}
+```
 
 1.  然后，在`routes.php`文件中添加以下行：
 
 ```php
-    Route::get('users', 'UsersController@actionIndex');
-    Route::get('users/about', 'UsersController@actionAbout');
-    ```
+Route::get('users', 'UsersController@actionIndex');
+Route::get('users/about', 'UsersController@actionAbout');
+```
 
 1.  通过访问`http://your-server/users`和`http://your-server/users/about`来测试控制器，其中`your-server`是您的应用程序的 URL。
 
@@ -86,13 +86,13 @@
 1.  在`app/routes.php`文件中，添加以下路由：
 
 ```php
-    Route::get('hello/world', function()
-    {
-      $hello = 'Hello ';
-      $world = 'World!';
-      return $hello . $world;
-    });
-    ```
+Route::get('hello/world', function()
+{
+  $hello = 'Hello ';
+  $world = 'World!';
+  return $hello . $world;
+});
+```
 
 1.  打开浏览器，通过访问`http://your-server/hello/world`来测试路由，其中`your-server`是您的应用程序的 URL。
 
@@ -117,35 +117,35 @@ Laravel 中的路由被认为是 RESTful 的，这意味着它们响应不同的
 1.  在用户控制器中，用以下代码替换代码：
 
 ```php
-    <?php
-    class  UsersController extends BaseController {
+<?php
+class  UsersController extends BaseController {
 
-      public function getIndex()
-      {
-        $my_form = "<form method='post'>
-                          <input name='text' value='Testing'>
-                          <input type='submit'>
-                          </form>";
-        return $my_form;
+  public function getIndex()
+  {
+    $my_form = "<form method='post'>
+                      <input name='text' value='Testing'>
+                      <input type='submit'>
+                      </form>";
+    return $my_form;
 
-      }
-      public function postIndex()
-      {
-        dd(Input::all());
-      }
+  }
+  public function postIndex()
+  {
+    dd(Input::all());
+  }
 
-      public function getAbout()
-      {
-         return "This is a User About page";
-      }
-    }
-    ```
+  public function getAbout()
+  {
+     return "This is a User About page";
+  }
+}
+```
 
 1.  在`routes.php`中，添加到我们的控制器的路由：
 
 ```php
-    Route::controller('users', 'UsersController');
-    ```
+Route::controller('users', 'UsersController');
+```
 
 1.  在浏览器中，转到`http://your-server/users`（其中`your-server`是您的 Web 服务器的 URL），然后单击**提交**按钮。
 
@@ -172,21 +172,21 @@ RESTful 和非 RESTful 控制器的两个主要区别是将方法重命名为它
 1.  在我们的`routes.php`文件中，添加以下代码：
 
 ```php
-    Route::get('tvshow/{show?}/{year?}', function($show = null, $year = null)
-    {
-      if (!$show && !$year)
-      {
-        return 'You did not pick a show.';
-      }
-      elseif (!$year)
-      {
-          return 'You picked the show <strong>' . $show . '</strong>';
-      }
+Route::get('tvshow/{show?}/{year?}', function($show = null, $year = null)
+{
+  if (!$show && !$year)
+  {
+    return 'You did not pick a show.';
+  }
+  elseif (!$year)
+  {
+      return 'You picked the show <strong>' . $show . '</strong>';
+  }
 
-      return 'You picked the show <strong>' . $show .'</strong> from the year <em>' . $year . '</em>.';
-    })
-    ->where('year', '\d{4}');
-    ```
+  return 'You picked the show <strong>' . $show .'</strong> from the year <em>' . $year . '</em>.';
+})
+->where('year', '\d{4}');
+```
 
 1.  打开浏览器，并通过在地址栏中输入`http://your-server/tvshow/MASH/1981`（其中`your-server`是您服务器的 URL）来测试路由。
 
@@ -213,38 +213,38 @@ Laravel 的一个强大功能是添加过滤器，可以在请求发送到我们
 1.  在我们的`routes.php`文件中，添加一个只有管理员可以访问的路由，并附加过滤器：
 
 ```php
-    Route::get('admin-only', array('before' => 'checkAdmin', 'after' => 'logAdmin', function() 
-    {
-      return 'Hello there, admin!';
-    }));
-    ```
+Route::get('admin-only', array('before' => 'checkAdmin', 'after' => 'logAdmin', function() 
+{
+  return 'Hello there, admin!';
+}));
+```
 
 1.  在我们的`filters.php`文件中添加两个过滤器：
 
 ```php
-    Route::filter('checkAdmin', function()
-    {
-      if ('admin' !== Session::get('user_type')) 
-      {
-        return 'You are not an Admin. Go Away!';
-      }
-    });
+Route::filter('checkAdmin', function()
+{
+  if ('admin' !== Session::get('user_type')) 
+  {
+    return 'You are not an Admin. Go Away!';
+  }
+});
 
-    Route::filter('logAdmin', function()
-    {
-      Log::info('Admin logged in on ' . date('m/d/Y'));
-    });
-    ```
+Route::filter('logAdmin', function()
+{
+  Log::info('Admin logged in on ' . date('m/d/Y'));
+});
+```
 
 1.  创建一个可以设置管理员会话的路由：
 
 ```php
-    Route::get('set-admin', function()
-    {
-      Session::put('user_type', 'admin');
-      return Redirect::to('admin-only');
-    });
-    ```
+Route::get('set-admin', function()
+{
+  Session::put('user_type', 'admin');
+  return Redirect::to('admin-only');
+});
+```
 
 1.  通过转到`http://your-server/admin-only`（其中`your-server`是您服务器的 URL）来测试路由，并注意结果。然后，转到`set-admin`并查看这些结果。
 
@@ -281,40 +281,40 @@ Laravel 的一个强大功能是添加过滤器，可以在请求发送到我们
 1.  在我们的`app/filters.php`文件中，创建一个检查用户的过滤器：
 
 ```php
-    Route::filter('checkUser', function()
-    {
-      if ('user' !== Session::get('profile'))
-      {
-        return 'You are not Logged In. Go Away!';
-      }
-    });
-    ```
+Route::filter('checkUser', function()
+{
+  if ('user' !== Session::get('profile'))
+  {
+    return 'You are not Logged In. Go Away!';
+  }
+});
+```
 
 1.  在`app/routes.php`文件中，创建一个可以设置我们的个人资料会话的路由：
 
 ```php
-    Route::get('set-profile', function()
-    {
-      Session::set('profile', 'user');
-      return Redirect::to('profile/user');
-    });
-    ```
+Route::get('set-profile', function()
+{
+  Session::set('profile', 'user');
+  return Redirect::to('profile/user');
+});
+```
 
 1.  在`routes.php`中，创建我们的路由组：
 
 ```php
-    Route::group(array('before' => 'checkUser', 'prefix' => 'profile'), function()
+Route::group(array('before' => 'checkUser', 'prefix' => 'profile'), function()
+{
+    Route::get('user', function()
     {
-        Route::get('user', function()
-        {
-            return 'I am logged in! This is my user profile.';
-        });
-        Route::get('friends', function()
-        {
-          return 'This would be a list of my friends';
-        });
+        return 'I am logged in! This is my user profile.';
     });
-    ```
+    Route::get('friends', function()
+    {
+      return 'This would be a list of my friends';
+    });
+});
+```
 
 1.  在我们的浏览器中，然后我们去到`http://path/to/our/server/profile/user`，我们会得到一个错误。如果我们然后去到`http://path/to/our/server/set-profile`，它会重定向我们并显示正确的页面。
 
@@ -341,247 +341,247 @@ Laravel 的一个强大功能是添加过滤器，可以在请求发送到我们
 1.  打开命令行，转到 Laravel 安装的根目录，并使用以下命令为我们的表创建一个迁移：
 
 ```php
-    php artisan migrate:make create_shows_table
-    ```
+php artisan migrate:make create_shows_table
+```
 
 1.  在`app/database/migrations`目录中，找到类似`2012_12_01_222821_create_shows_table.php`的文件，并按照以下方式创建我们表的模式：
 
 ```php
-    <?php
+<?php
 
-    use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Migrations\Migration;
 
-    class CreateShowsTable extends Migration {
+class CreateShowsTable extends Migration {
 
-      /**
-       * Run the migrations.
-       *
-       * @return void
-       */
-      public function up()
-      {
-        Schema::create('shows', function($table)
-        {
-            $table->increments('id');
-            $table->string('name');
-            $table->integer('year');
-            $table->timestamps();
-        }); 
+  /**
+   * Run the migrations.
+   *
+   * @return void
+   */
+  public function up()
+  {
+    Schema::create('shows', function($table)
+    {
+        $table->increments('id');
+        $table->string('name');
+        $table->integer('year');
+        $table->timestamps();
+    }); 
 
-      }
+  }
 
-      /**
-       * Reverse the migrations.
-       *
-       * @return void
-       */
-      public function down()
-      {
-        Schema::drop('shows');
-      }
-    }
-    ```
+  /**
+   * Reverse the migrations.
+   *
+   * @return void
+   */
+  public function down()
+  {
+    Schema::drop('shows');
+  }
+}
+```
 
 1.  回到命令行，按照以下方式运行迁移：
 
 ```php
-    php artisan migrate
-    ```
+php artisan migrate
+```
 
 1.  创建另一个迁移以添加一些测试数据：
 
 ```php
-    php artisan migrate:make add_shows_data
-    ```
+php artisan migrate:make add_shows_data
+```
 
 1.  在`app/database/migrations`文件夹中，打开`add_shows_data`文件，并添加以下查询：
 
 ```php
-    <?php
+<?php
 
-    use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Migrations\Migration;
 
-    class AddShowsData extends Migration {
+class AddShowsData extends Migration {
 
-      /**
-       * Run the migrations.
-       *
-       * @return void
-       */
-      public function up()
-      {
-          $shows = array(
-                  array(
-                        'name' => 'Happy Days',
-                        'year' => 1981
-                  ),
-                  array(
-                        'name' => 'Seinfeld',
-                        'year' => 1998
-                  ),
-                  array(
-                       'name' => 'Arrested Development',
-                       'year' => 2006
-                  )
-          );
-          DB::table('shows')->insert($shows);
-      }
+  /**
+   * Run the migrations.
+   *
+   * @return void
+   */
+  public function up()
+  {
+      $shows = array(
+              array(
+                    'name' => 'Happy Days',
+                    'year' => 1981
+              ),
+              array(
+                    'name' => 'Seinfeld',
+                    'year' => 1998
+              ),
+              array(
+                   'name' => 'Arrested Development',
+                   'year' => 2006
+              )
+      );
+      DB::table('shows')->insert($shows);
+  }
 
-      /**
-       * Reverse the migrations.
-       *
-       * @return void
-       */
-      public function down()
-      {
-        DB::table('shows')->delete();
-      }
-    }
-    ```
+  /**
+   * Reverse the migrations.
+   *
+   * @return void
+   */
+  public function down()
+  {
+    DB::table('shows')->delete();
+  }
+}
+```
 
 1.  在命令行中，按照以下方式运行迁移：
 
 ```php
-    php artisan migrate
-    ```
+php artisan migrate
+```
 
 1.  在`app/models`目录中，创建一个名为`Show.php`的文件，并添加以下代码：
 
 ```php
-    <?php
-    class Show extends Eloquent {
-      protected $table = 'shows';
-    }
-    ```
+<?php
+class Show extends Eloquent {
+  protected $table = 'shows';
+}
+```
 
 1.  在`routes.php`中，创建一个返回所有 show 或单个 show 的 JSON 的路由：
 
 ```php
-    Route::get('show/{id?}', function($id = null)
-    {
-      if (!$id)
-      {
-        return Show::all();
-      }
-      if ($show = Show::find($id))
-      {
-        return $show;
-      }
-    });
-    ```
+Route::get('show/{id?}', function($id = null)
+{
+  if (!$id)
+  {
+    return Show::all();
+  }
+  if ($show = Show::find($id))
+  {
+    return $show;
+  }
+});
+```
 
 1.  创建一个将添加新 show 的路由如下：
 
 ```php
-    Route::post('show', function()
-    {
-      $show = new Show;
-      $show->name = Input::get('name');
-      $show->year = Input::get('year');
-      $show->save();
-      return $show;
-    });
-    ```
+Route::post('show', function()
+{
+  $show = new Show;
+  $show->name = Input::get('name');
+  $show->year = Input::get('year');
+  $show->save();
+  return $show;
+});
+```
 
 1.  创建一个将删除记录的路由：
 
 ```php
-    Route::delete('show/{id}', function($id)
-    {
-      if ($show = Show::find($id))
-      {
-        $show->delete();
-        return json_encode(array('message' => 'Record ' . $id. ' deleted.'));
-      }
-    });
-    ```
+Route::delete('show/{id}', function($id)
+{
+  if ($show = Show::find($id))
+  {
+    $show->delete();
+    return json_encode(array('message' => 'Record ' . $id. ' deleted.'));
+  }
+});
+```
 
 1.  创建一个更新记录的路由：
 
 ```php
-    Route::put('show/{id}', function($id)
-    {
-      if ($show = Show::find($id))
-      {
-           if (Input::get('name')) {
-               $show->name = Input::get('name');
-        }
-           if (Input::get('year')) {
-               $show->year = Input::get('year');
-           }
+Route::put('show/{id}', function($id)
+{
+  if ($show = Show::find($id))
+  {
+       if (Input::get('name')) {
+           $show->name = Input::get('name');
+    }
+       if (Input::get('year')) {
+           $show->year = Input::get('year');
+       }
 
-           $show->save();
-           return $show;
-     }
-    });
-    ```
+       $show->save();
+       return $show;
+ }
+});
+```
 
 1.  创建一个路由来保存我们的添加和编辑`show form`：
 
 ```php
-    Route::get('show-form/{id}', function($id = null)
-    {
-      $data = array();
+Route::get('show-form/{id}', function($id = null)
+{
+  $data = array();
 
-      if ($id) 
-      {
-           if (!$show = Show::find($id))
-           {
-              return 'No show with that ID';
-           }
+  if ($id) 
+  {
+       if (!$show = Show::find($id))
+       {
+          return 'No show with that ID';
+       }
 
-           $data = array(
-                 'id'     => $id,
-                 'method' => 'PUT',
-                 'name'   => $show->name,
-                 'year'   => $show->year
-            );
-      } 
-      else 
-      {
-           $data = array(
-                 'id'     => '',
-                 'method' => 'POST',
-                 'name'   => '',
-                 'year'   => ''
-           );
-      }
-      return View::make('show-form', $data);
-    });
-    ```
+       $data = array(
+             'id'     => $id,
+             'method' => 'PUT',
+             'name'   => $show->name,
+             'year'   => $show->year
+        );
+  } 
+  else 
+  {
+       $data = array(
+             'id'     => '',
+             'method' => 'POST',
+             'name'   => '',
+             'year'   => ''
+       );
+  }
+  return View::make('show-form', $data);
+});
+```
 
 1.  创建一个路由来显示一个列表，以便我们可以删除一个 show：
 
 ```php
-    Route::get('show-delete', function()
-    {
-      $shows = Show::all();
-      return View::make('show-delete')->with('shows',$shows);
-    });
-    ```
+Route::get('show-delete', function()
+{
+  $shows = Show::all();
+  return View::make('show-delete')->with('shows',$shows);
+});
+```
 
 1.  在我们的`app/views`文件夹中，创建一个名为`show-form.php`的文件，并添加以下代码：
 
 ```php
-    <?php echo Form::open(array('url' => 'show/' . $id, 'method' => $method)) ?>
-    <?php echo Form::label('name', 'Show Name: ') . Form::text('name', $name) ?>
-    <br>
-    <?php echo Form::label('year', 'Show Year: ') . Form::text('year', $year) ?>
-    <br>
-    <?php echo Form::submit() ?>
-    <?php echo Form::close() ?>
-    ```
+<?php echo Form::open(array('url' => 'show/' . $id, 'method' => $method)) ?>
+<?php echo Form::label('name', 'Show Name: ') . Form::text('name', $name) ?>
+<br>
+<?php echo Form::label('year', 'Show Year: ') . Form::text('year', $year) ?>
+<br>
+<?php echo Form::submit() ?>
+<?php echo Form::close() ?>
+```
 
 1.  然后，在`app/views`中，创建一个名为`show-delete.php`的文件，并添加以下代码：
 
 ```php
-    <?php foreach ($shows as $show): ?>
-      <?php echo Form::open(array('url' => 'show/' . $show->id, 'method' => 'DELETE')) ?>
-      <?php echo Form::label('name', 'Show Name: ') . $show->name ?>
-      <?php echo Form::submit('Delete') ?>
-      <?php echo Form::close() ?>
-    <?php endforeach; ?>
-    ```
+<?php foreach ($shows as $show): ?>
+  <?php echo Form::open(array('url' => 'show/' . $show->id, 'method' => 'DELETE')) ?>
+  <?php echo Form::label('name', 'Show Name: ') . $show->name ?>
+  <?php echo Form::submit('Delete') ?>
+  <?php echo Form::close() ?>
+<?php endforeach; ?>
+```
 
 1.  通过浏览器访问`show-form`和`show-delete`路由来测试它。
 
@@ -634,40 +634,40 @@ curl --data "name=Night+Court&year=1984" http://path/to/our/app/show
 1.  在我们的`routes.php`文件中，创建一个命名路由如下：
 
 ```php
-    Route::get('main-route', array('as' => 'named', function()
-    {
-      return 'Welcome to ' . URL::current();
-    }));
-    ```
+Route::get('main-route', array('as' => 'named', function()
+{
+  return 'Welcome to ' . URL::current();
+}));
+```
 
 1.  创建一个执行简单重定向到命名路由的路由：
 
 ```php
-    Route::get('redirect', function()
-    {
-      return Redirect::route('named');
-    });
-    ```
+Route::get('redirect', function()
+{
+  return Redirect::route('named');
+});
+```
 
 1.  创建一个显示链接到命名路由的路由：
 
 ```php
-    Route::get('link', function()
-    {
-      return '<a href="' . URL::route('named') . '">Link!</a>';
-    });
-    ```
+Route::get('link', function()
+{
+  return '<a href="' . URL::route('named') . '">Link!</a>';
+});
+```
 
 1.  在浏览器中，访问`http://your-server/redirect`和`http://your-server/link`（其中`your-server`是服务器的 URL），注意它们将我们发送到`main-route`路由。
 
 1.  现在，将`main-route`路由重命名为`new-route`：
 
 ```php
-    Route::get('new-route', array('as' => 'named', function()
-    {
-      return 'Welcome to ' . URL::current();
-    }));
-    ```
+Route::get('new-route', array('as' => 'named', function()
+{
+  return 'Welcome to ' . URL::current();
+}));
+```
 
 1.  在浏览器中，访问**redirect**和**link**路由，看看它们现在将我们发送到哪里。
 
@@ -694,126 +694,126 @@ curl --data "name=Night+Court&year=1984" http://path/to/our/app/show
 1.  打开 Apache 的`httpd.conf`文件，并添加一个虚拟主机，如下所示：
 
 ```php
-    <VirtualHost *:80>
-      ServerName example.com
-      ServerAlias *.example.com
-    </VirtualHost>
-    ```
+<VirtualHost *:80>
+  ServerName example.com
+  ServerAlias *.example.com
+</VirtualHost>
+```
 
 1.  在命令行中，转到我们的应用程序路由并为我们的`names`表创建一个迁移：
 
 ```php
-    php artisan migrate:make create_names_table
-    ```
+php artisan migrate:make create_names_table
+```
 
 1.  在`migrations`目录中，打开`create_names_table`文件并添加我们的模式：
 
 ```php
-    <?php
+<?php
 
-    use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Migrations\Migration;
 
-    class CreateNamesTable extends Migration {
+class CreateNamesTable extends Migration {
 
-      /**
-       * Run the migrations.
-       *
-       * @return void
-       */
-      public function up()
-      {
-           Schema::create('users', function($table)
-           {
-                $table->increments('id');
-                $table->string('name');
-                $table->string('full_name');
-                $table->timestamps();
-           });
-      }
+  /**
+   * Run the migrations.
+   *
+   * @return void
+   */
+  public function up()
+  {
+       Schema::create('users', function($table)
+       {
+            $table->increments('id');
+            $table->string('name');
+            $table->string('full_name');
+            $table->timestamps();
+       });
+  }
 
-      /**
-       * Reverse the migrations.
-       *
-       * @return void
-       */
-      public function down()
-      {
-        Schema::drop('name');
-      }
-    }
-    ```
+  /**
+   * Reverse the migrations.
+   *
+   * @return void
+   */
+  public function down()
+  {
+    Schema::drop('name');
+  }
+}
+```
 
 1.  回到命令行，创建另一个迁移以添加一些测试数据：
 
 ```php
-    php artisan migrate:make add_names_data
-    ```
+php artisan migrate:make add_names_data
+```
 
 1.  在`migrations`目录中打开`add_names_data`文件：
 
 ```php
-    <?php
+<?php
 
-    use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Migrations\Migration;
 
-    class AddNamesData extends Migration {
+class AddNamesData extends Migration {
 
-      /**
-       * Run the migrations.
-       *
-       * @return void
-       */
-      public function up()
-      {
-         $names = array(
-                    array(
-                          'name' => 'bob',
-                          'full_name' => 'Bob Smith'
-                          ),
-                            array(
-                                 'name' => 'carol',
-                                 'full_name' => 'Carol Smith'
-                               ),
-                              array(
-                                   'name' => 'ted',
-                                   'full_name' => 'Ted Jones'
-                               )
-                        );
-         DB::table('name')->insert($names);
-      }
+  /**
+   * Run the migrations.
+   *
+   * @return void
+   */
+  public function up()
+  {
+     $names = array(
+                array(
+                      'name' => 'bob',
+                      'full_name' => 'Bob Smith'
+                      ),
+                        array(
+                             'name' => 'carol',
+                             'full_name' => 'Carol Smith'
+                           ),
+                          array(
+                               'name' => 'ted',
+                               'full_name' => 'Ted Jones'
+                           )
+                    );
+     DB::table('name')->insert($names);
+  }
 
-      /**
-       * Reverse the migrations.
-       *
-       * @return void
-       */
-      public function down()
-      {
-          DB::table('name')->delete();
-      }
-    }
-    ```
+  /**
+   * Reverse the migrations.
+   *
+   * @return void
+   */
+  public function down()
+  {
+      DB::table('name')->delete();
+  }
+}
+```
 
 1.  在命令行中，运行迁移如下：
 
 ```php
-    php artisan migrate
-    ```
+php artisan migrate
+```
 
 1.  创建一个路由，根据子域从`names`表中获取信息：
 
 ```php
-    Route::get('/', function()
-    {
-      $url = parse_url(URL::all());
-      $host = explode('.', $url['host']);
-      $subdomain = $host[0];
+Route::get('/', function()
+{
+  $url = parse_url(URL::all());
+  $host = explode('.', $url['host']);
+  $subdomain = $host[0];
 
-      $name = DB::table('name')->where('name',$subdomain)->get();
+  $name = DB::table('name')->where('name',$subdomain)->get();
 
-      dd($name);
-    });
-    ```
+  dd($name);
+});
+```
 
 1.  在浏览器中，访问我们的域名，使用相关子域，例如`http://ted.example.com`。
 

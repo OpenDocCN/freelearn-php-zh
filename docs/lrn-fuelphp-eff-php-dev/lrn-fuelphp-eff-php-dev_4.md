@@ -39,26 +39,26 @@
 1.  现在，让我们在开发机器上创建项目，但首先您需要使用以下命令行导航到您的`home`文件夹：
 
 ```php
-    $ cd ~/
-    ```
+$ cd ~/
+```
 
 1.  然后，使用以下命令导航到`Sites`文件夹：
 
 ```php
-    $ cd ~/Sites
-    ```
+$ cd ~/Sites
+```
 
 1.  如果您没有`Sites`文件夹，让我们创建一个：
 
 ```php
-    $ mkdir ~/Sites
-    ```
+$ mkdir ~/Sites
+```
 
 1.  在您的 Sites 文件夹中，运行以下 Oil 命令：
 
 ```php
-    $ php oil create journal
-    ```
+$ php oil create journal
+```
 
 ### 注
 
@@ -729,90 +729,90 @@ Arr::get( $subnav, "index");
 以下是最终的示例：
 
 ```php
-    <!DOCTYPE html>
-    <!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
-    <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
-    <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
-    <!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
-        <head>
-            <meta charset="utf-8">
-            <meta http-equiv="X-UA-Compatible" echo Asset::css('bootstrap.min.css'); ?>
-    content="IE=edge,chrome=1">
-            <title><?php echo $title; ?></title>
-            <meta name="description" content="">
-            <meta name="viewport" content="width=device-width">
-            <?php
-            <style>
-                body {
-                    padding-top: 60px;
-                    padding-bottom: 40px;
-                }
-            </style>
-            <?php echo Asset::css('bootstrap-responsive.min.css'); ?>
-            <?php echo Asset::css('main.css'); ?>
-            <?php Asset::add_path('assets/js/vendor/', 'js'); ?>
-            <?php echo Asset::js('modernizr-2.6.2.min.js'); ?>
-        </head>
-        <body>
-            <!--[if lt IE 7]>
-                <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome  Frame</a> to improve your experience.</p>
-            <![endif]-->
-            <div class="navbar navbar-inverse navbar-fixed-top">
-                <div class="navbar-inner">
-                    <div class="container">
-                        <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
-                            <span class="icon-bar"></span>
-                            <span class="icon-bar"></span>
-                            <span class="icon-bar"></span>
-                        </a>
-                        <a class="brand" href="/">Journal</a>
-                        <div class="nav-collapse collapse">
-                            <ul class="nav">
-                              <li class="active"><a href="/">Home</a></li>
-                              <li><a href="/entry">Entries</a></li>
-                              <li><a href="/category">Categories</a></li>
-                            </ul>
-                        </div><!--/.nav-collapse -->
-                    </div>
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" echo Asset::css('bootstrap.min.css'); ?>
+content="IE=edge,chrome=1">
+        <title><?php echo $title; ?></title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+        <?php
+        <style>
+            body {
+                padding-top: 60px;
+                padding-bottom: 40px;
+            }
+        </style>
+        <?php echo Asset::css('bootstrap-responsive.min.css'); ?>
+        <?php echo Asset::css('main.css'); ?>
+        <?php Asset::add_path('assets/js/vendor/', 'js'); ?>
+        <?php echo Asset::js('modernizr-2.6.2.min.js'); ?>
+    </head>
+    <body>
+        <!--[if lt IE 7]>
+            <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome  Frame</a> to improve your experience.</p>
+        <![endif]-->
+        <div class="navbar navbar-inverse navbar-fixed-top">
+            <div class="navbar-inner">
+                <div class="container">
+                    <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </a>
+                    <a class="brand" href="/">Journal</a>
+                    <div class="nav-collapse collapse">
+                        <ul class="nav">
+                          <li class="active"><a href="/">Home</a></li>
+                          <li><a href="/entry">Entries</a></li>
+                          <li><a href="/category">Categories</a></li>
+                        </ul>
+                    </div><!--/.nav-collapse -->
                 </div>
             </div>
-            <div class="container">
-                <h1><?php echo $title; ?></h1>
-                <?php if (Session::get_flash('success')): ?>
-                    <div class="alert alert-success">
-                        <strong>Success</strong>
-                        <p>
-                        <?php echo implode('</p><p>', e((array) Session::get_flash('success'))); ?>
-                        </p>
-                    </div>
-                <?php endif; ?>
-                <?php if (Session::get_flash('error')): ?>
-                    <div class="alert alert-error">
-                        <strong>Error</strong>
-                        <p>
-                        <?php echo implode('</p><p>', e((array) Session::get_flash('error'))); ?>
-                        </p>
-                    </div>
-                <?php endif; ?>
-                <hr>
-                <div class="span12">
-                    <?php echo $content; ?>
+        </div>
+        <div class="container">
+            <h1><?php echo $title; ?></h1>
+            <?php if (Session::get_flash('success')): ?>
+                <div class="alert alert-success">
+                    <strong>Success</strong>
+                    <p>
+                    <?php echo implode('</p><p>', e((array) Session::get_flash('success'))); ?>
+                    </p>
                 </div>
+            <?php endif; ?>
+            <?php if (Session::get_flash('error')): ?>
+                <div class="alert alert-error">
+                    <strong>Error</strong>
+                    <p>
+                    <?php echo implode('</p><p>', e((array) Session::get_flash('error'))); ?>
+                    </p>
+                </div>
+            <?php endif; ?>
+            <hr>
+            <div class="span12">
+                <?php echo $content; ?>
+            </div>
 
-                <footer>
-                    <p>&copy; Journal <?php echo date( 'Y' ); ?></p>
-                </footer>
+            <footer>
+                <p>&copy; Journal <?php echo date( 'Y' ); ?></p>
+            </footer>
 
-            </div> <!-- /container -->
+        </div> <!-- /container -->
 
-            <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js"></script>
-            <script>window.jQuery || document.write('<script src="js/vendor/jquery-1.10.1.min.js"><\/script>')</script>
-            <?php echo Asset::js('bootstrap.min.js'); ?>
-            <?php echo Asset::js('plugins.js'); ?>
-            <?php echo Asset::js('main.js'); ?>
-        </body>
-    </html>
-    ```
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js"></script>
+        <script>window.jQuery || document.write('<script src="js/vendor/jquery-1.10.1.min.js"><\/script>')</script>
+        <?php echo Asset::js('bootstrap.min.js'); ?>
+        <?php echo Asset::js('plugins.js'); ?>
+        <?php echo Asset::js('main.js'); ?>
+    </body>
+</html>
+```
 
 ### 提示
 

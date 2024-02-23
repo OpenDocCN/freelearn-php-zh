@@ -138,29 +138,29 @@ http://localhost:8080/solr/collection1/select/?q=martin
 1.  使用以下代码创建一个 solarium 客户端：
 
 ```php
-    $client = new Solarium\Client($config);
-    ```
+$client = new Solarium\Client($config);
+```
 
 1.  使用以下代码创建更新查询的实例：
 
 ```php
-    $updateQuery = $client->createUpdate();
-    ```
+$updateQuery = $client->createUpdate();
+```
 
 1.  创建要添加的文档并向文档添加字段。
 
 ```php
-    $doc1 = $updateQuery->createDocument();
-    $doc1->id = 112233445;
-    $doc1->cat = 'book';
-    $doc1->name = 'A Feast For Crows';
-    $doc1->price = 8.99;
-    $doc1->inStock = 'true';
-    $doc1->author = 'George R.R. Martin';
-    $doc1->series_t = '"A Song of Ice and Fire"';
-    $doc1->sequence_i = 4;
-    $doc1->genre_s = 'fantasy';
-    ```
+$doc1 = $updateQuery->createDocument();
+$doc1->id = 112233445;
+$doc1->cat = 'book';
+$doc1->name = 'A Feast For Crows';
+$doc1->price = 8.99;
+$doc1->inStock = 'true';
+$doc1->author = 'George R.R. Martin';
+$doc1->series_t = '"A Song of Ice and Fire"';
+$doc1->sequence_i = 4;
+$doc1->genre_s = 'fantasy';
+```
 
 1.  同样，可以创建另一个文档`$doc2`。
 
@@ -171,29 +171,29 @@ http://localhost:8080/solr/collection1/select/?q=martin
 1.  将文档添加到更新查询中，然后使用`commit`命令：
 
 ```php
-    $updateQuery->addDocuments(array($doc1, $doc2));
-    $updateQuery->addCommit();
-    ```
+$updateQuery->addDocuments(array($doc1, $doc2));
+$updateQuery->addCommit();
+```
 
 1.  最后，执行以下查询：
 
 ```php
-    $result = $client->update($updateQuery);
-    ```
+$result = $client->update($updateQuery);
+```
 
 1.  让我们使用以下命令执行代码：
 
 ```php
-    php insertSolr.php
-    ```
+php insertSolr.php
+```
 
 执行代码后，搜索马丁得到了五个结果
 
 1.  要添加单个文档，我们可以使用以下代码行将`addDocument`函数调用更新查询实例：
 
 ```php
-    $updateQuery->addDocument($doc1);
-    ```
+$updateQuery->addDocument($doc1);
+```
 
 # 使用 PHP 更新 Solr 中的文档
 
@@ -202,37 +202,37 @@ http://localhost:8080/solr/collection1/select/?q=martin
 1.  首先检查我们的索引中是否有任何包含`smith`这个词的文档。
 
 ```php
-    http://localhost:8080/solr/collection1/select/?q=smith
-    ```
+http://localhost:8080/solr/collection1/select/?q=smith
+```
 
 1.  我们可以看到`numFound=0`，这意味着没有这样的文档。让我们在我们的索引中添加一本作者姓氏为`smith`的书。
 
 ```php
-    $updateQuery = $client->createUpdate();
-    $testdoc = $updateQuery->createDocument();
-    $testdoc->id = 123456789;
-    $testdoc->cat = 'book';
-    $testdoc->name = 'Test book';
-    $testdoc->price = 5.99;
-    $testdoc->author = 'Hello Smith';
-    $updateQuery->addDocument($testdoc);
-    $updateQuery->addCommit();
-    $client->update($updateQuery);
-    ```
+$updateQuery = $client->createUpdate();
+$testdoc = $updateQuery->createDocument();
+$testdoc->id = 123456789;
+$testdoc->cat = 'book';
+$testdoc->name = 'Test book';
+$testdoc->price = 5.99;
+$testdoc->author = 'Hello Smith';
+$updateQuery->addDocument($testdoc);
+$updateQuery->addCommit();
+$client->update($updateQuery);
+```
 
 1.  如果我们再次运行相同的选择查询，我们可以看到现在我们的索引中有一个作者名为`Smith`的文档。现在让我们将作者的名字更新为`Jack Smith`，价格标签更新为`7.59`：
 
 ```php
-    $testdoc = $updateQuery->createDocument();
-    $testdoc->id = 123456789;
-    $testdoc->cat = 'book';
-    $testdoc->name = 'Test book';
-    $testdoc->price = 7.59;
-    $testdoc->author = 'Jack Smith';
-    $updateQuery->addDocument($testdoc, true);
-    $updateQuery->addCommit();
-    $client->update($updateQuery);
-    ```
+$testdoc = $updateQuery->createDocument();
+$testdoc->id = 123456789;
+$testdoc->cat = 'book';
+$testdoc->name = 'Test book';
+$testdoc->price = 7.59;
+$testdoc->author = 'Jack Smith';
+$updateQuery->addDocument($testdoc, true);
+$updateQuery->addCommit();
+$client->update($updateQuery);
+```
 
 1.  再次运行相同的查询，我们可以看到现在在 Solr 的索引中作者姓名和价格已经更新。
 

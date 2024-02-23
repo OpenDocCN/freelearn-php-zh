@@ -39,31 +39,31 @@ echo 'Exception';
 +   `PDO::ATTR_CASE`。这个属性控制了`PDOStatement::fetch()`方法返回的列名的大小写。如果获取模式是`PDO::FETCH_ASSOC`或`PDO::FETCH_BOTH`（当行以包含按名称索引的列的数组返回时），这将非常有用。这个属性可以有以下三个值：`PDO::CASE_LOWER, PDO::CASE_NATURAL`和`PDO::CASE_UPPER`。根据这个值，列名将分别是小写、不改变、或大写，就像下面的代码片段一样：
 
 ```php
-    $conn->setAttribute(PDO::ATTR_CASE, PDO::CASE_UPPER);
-    $stmt = $conn->query("SELECT * FROM authors LIMIT 1");
-    $r = $stmt->fetch(PDO::FETCH_ASSOC);
-    $stmt->closeCursor();
-    var_dump($r);
+$conn->setAttribute(PDO::ATTR_CASE, PDO::CASE_UPPER);
+$stmt = $conn->query("SELECT * FROM authors LIMIT 1");
+$r = $stmt->fetch(PDO::FETCH_ASSOC);
+$stmt->closeCursor();
+var_dump($r);
 
-    ```
+```
 
 将会打印：
 
 ```php
-    array(4)
-    {
-    ["ID"]=>
-    string(1) "1"
-    ["FIRSTNAME"]=>
-    string(4) "Marc"
-    ["LASTNAME"]=>
-    string(7) "Delisle"
-    ["BIO"]=>
-    string(54) "Marc Delisle is a member of the MySQL Developers
-    Guild"
-    }
+array(4)
+{
+["ID"]=>
+string(1) "1"
+["FIRSTNAME"]=>
+string(4) "Marc"
+["LASTNAME"]=>
+string(7) "Delisle"
+["BIO"]=>
+string(54) "Marc Delisle is a member of the MySQL Developers
+Guild"
+}
 
-    ```
+```
 
 默认行为是不改变列名的大小写，即`PDO::CASE_NATURAL`。
 
@@ -72,42 +72,42 @@ echo 'Exception';
 你可以看到这个属性是如何工作的，下面是代码：
 
 ```php
-    $conn->setAttribute(PDO::ATTR_ORACLE_NULLS, PDO::NULL_TO_STRING);
-    $stmt = $conn->query("SELECT * FROM books WHERE coverImage IS
-    NULL LIMIT 1");
-    $r = $stmt->fetch(PDO::FETCH_ASSOC);
-    $stmt->closeCursor();
-    var_dump($r);
+$conn->setAttribute(PDO::ATTR_ORACLE_NULLS, PDO::NULL_TO_STRING);
+$stmt = $conn->query("SELECT * FROM books WHERE coverImage IS
+NULL LIMIT 1");
+$r = $stmt->fetch(PDO::FETCH_ASSOC);
+$stmt->closeCursor();
+var_dump($r);
 
-    ```
+```
 
 将会产生：
 
 ```php
-    array(9)
-    {
-    ["id"]=>
-    string(1) "2"
-    ["author"]=>
-    string(1) "2"
-    ["title"]=>
-    string(18) "ImageMagick Tricks"
-    ["isbn"]=>
-    string(10) "1904811868"
-    ["publisher"]=>
-    string(20) "Packt Publishing Ltd"
-    ["year"]=>
-    string(4) "2006"
-    ["summary"]=>
-    string(81) "Unleash the power of ImageMagick
-    with this fast,friendly tutorial and tips guide"
-    ["coverMime"]=>
-    string(0) ""
-    ["coverImage"]=>
-    string(0) ""
-    }
+array(9)
+{
+["id"]=>
+string(1) "2"
+["author"]=>
+string(1) "2"
+["title"]=>
+string(18) "ImageMagick Tricks"
+["isbn"]=>
+string(10) "1904811868"
+["publisher"]=>
+string(20) "Packt Publishing Ltd"
+["year"]=>
+string(4) "2006"
+["summary"]=>
+string(81) "Unleash the power of ImageMagick
+with this fast,friendly tutorial and tips guide"
+["coverMime"]=>
+string(0) ""
+["coverImage"]=>
+string(0) ""
+}
 
-    ```
+```
 
 正如你所看到的，高亮显示的字段被报告为字符串，而不是 NULL（如果我们没有设置`PDO::ATTR_ORACLE_NULLS`属性的话）。
 
@@ -122,19 +122,19 @@ echo 'Exception';
 还有特定于驱动程序的属性，我们在这里不会涉及。有关更多信息，请参阅[`www.php.net/pdo`](http://www.php.net/pdo)。但是，有一个值得我们关注的特定于驱动程序的属性：`PDO::ATTR_PERSISTENT`。您可以使用它来指定 MySQL 驱动程序应该使用持久连接，这样可以获得更好的性能（您可以将其视为`mysql_pconnect()`函数的对应物）。此属性应该在 PDO 构造函数中设置，而不是通过 PDO::setAttribute()调用：
 
 ```php
-    $conn = new PDO($connStr, $user, $pass,
-    array(PDO::ATTR_PERSISTENT => true);
+$conn = new PDO($connStr, $user, $pass,
+array(PDO::ATTR_PERSISTENT => true);
 
-    ```
+```
 
 上述三个属性是读/写属性，这意味着它们可以被读取和写入。还有只能通过`PDO::getAttribute()`方法获得的只读属性。这些属性可能返回字符串值（而不是在 PDO 类中定义的常量）。
 
 +   `PDO::ATTR_DRIVER_NAME:` 这将返回底层数据库驱动程序的名称：
 
 ```php
-    echo $conn->getAttribute(PDO::ATTR_DRIVER_NAME);
+echo $conn->getAttribute(PDO::ATTR_DRIVER_NAME);
 
-    ```
+```
 
 这将打印出 MySQL 或 SQLite，具体取决于您使用的驱动程序。
 

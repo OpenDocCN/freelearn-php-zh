@@ -25,71 +25,71 @@
 1.  代码本身放在大括号中，如下所示：
 
 ```php
-    function someName ($parameter)
-    { 
-      $result = 'INIT';
-      // one or more statements which do something
-      // to affect $result
-      $result .= ' and also ' . $parameter;
-      return $result; 
-    }
-    ```
+function someName ($parameter)
+{ 
+  $result = 'INIT';
+  // one or more statements which do something
+  // to affect $result
+  $result .= ' and also ' . $parameter;
+  return $result; 
+}
+```
 
 1.  您可以定义一个或多个**参数**。要使其中一个参数变为可选，只需分配一个默认值。如果不确定要分配什么默认值，请使用`NULL`：
 
 ```php
-    function someOtherName ($requiredParam, $optionalParam = NULL)
-      { 
-        $result = 0;
-        $result += $requiredParam;
-        $result += $optionalParam ?? 0;
-        return $result; 
-      }
-    ```
+function someOtherName ($requiredParam, $optionalParam = NULL)
+  { 
+    $result = 0;
+    $result += $requiredParam;
+    $result += $optionalParam ?? 0;
+    return $result; 
+  }
+```
 
 ### 注意
 
 您不能重新定义函数。唯一的例外是在不同的命名空间中定义重复的函数。这个定义会生成一个错误：
 
 ```php
-    function someTest()
-    {
-      return 'TEST';
-    }
-    function someTest($a)
-    {
-      return 'TEST:' . $a;
-    }
-    ```
+function someTest()
+{
+  return 'TEST';
+}
+function someTest($a)
+{
+  return 'TEST:' . $a;
+}
+```
 
 1.  如果不知道将向函数提供多少参数，或者想要允许无限数量的参数，请使用`...`后跟一个变量名。提供的所有参数将出现在变量中的数组中：
 
 ```php
-    function someInfinite(...$params)
-    {
-      // any params passed go into an array $params
-      return var_export($params, TRUE);
-    }
-    ```
+function someInfinite(...$params)
+{
+  // any params passed go into an array $params
+  return var_export($params, TRUE);
+}
+```
 
 1.  函数可以调用自身。这被称为**递归**。以下函数执行递归目录扫描：
 
 ```php
-    function someDirScan($dir)
-    {
-      // uses "static" to retain value of $list
-      static $list = array();
-      // get a list of files and directories for this path
-      $list = glob($dir . DIRECTORY_SEPARATOR . '*');
-      // loop through
-      foreach ($list as $item) {
-        if (is_dir($item)) {
-          $list = array_merge($list, someDirScan($item));
-        }
-      }
-      return $list;
+function someDirScan($dir)
+{
+  // uses "static" to retain value of $list
+  static $list = array();
+  // get a list of files and directories for this path
+  $list = glob($dir . DIRECTORY_SEPARATOR . '*');
+  // loop through
+  foreach ($list as $item) {
+    if (is_dir($item)) {
+      $list = array_merge($list, someDirScan($item));
     }
-    ```
+  }
+  return $list;
+}
+```
 
 ### 注意
 
@@ -102,37 +102,37 @@
 1.  我们在命名空间`Alpha`中定义了`someFunction()`。我们将其保存到一个单独的 PHP 文件`chap_03_developing_functions_namespace_alpha.php`中：
 
 ```php
-    <?php
-    namespace Alpha;
+<?php
+namespace Alpha;
 
-    function someFunction()
-    {
-      echo __NAMESPACE__ . ':' . __FUNCTION__ . PHP_EOL;
-    }
-    ```
+function someFunction()
+{
+  echo __NAMESPACE__ . ':' . __FUNCTION__ . PHP_EOL;
+}
+```
 
 1.  然后我们在命名空间`Beta`中定义了`someFunction()`。我们将其保存到一个单独的 PHP 文件`chap_03_developing_functions_namespace_beta.php`中：
 
 ```php
-    <?php
-    namespace Beta;
+<?php
+namespace Beta;
 
-    function someFunction()
-    {
-      echo __NAMESPACE__ . ':' . __FUNCTION__ . PHP_EOL;
-    }
-    ```
+function someFunction()
+{
+  echo __NAMESPACE__ . ':' . __FUNCTION__ . PHP_EOL;
+}
+```
 
 1.  然后我们可以通过在函数名前加上命名空间名称来调用`someFunction()`：
 
 ```php
-    include (__DIR__ . DIRECTORY_SEPARATOR 
-             . 'chap_03_developing_functions_namespace_alpha.php');
-    include (__DIR__ . DIRECTORY_SEPARATOR 
-             . 'chap_03_developing_functions_namespace_beta.php');
-          echo Alpha\someFunction();
-          echo Beta\someFunction();
-    ```
+include (__DIR__ . DIRECTORY_SEPARATOR 
+         . 'chap_03_developing_functions_namespace_alpha.php');
+include (__DIR__ . DIRECTORY_SEPARATOR 
+         . 'chap_03_developing_functions_namespace_beta.php');
+      echo Alpha\someFunction();
+      echo Beta\someFunction();
+```
 
 ### 提示
 
@@ -216,15 +216,15 @@ echo someInfinite(22.22, 'A', ['a' => 1, 'b' => 2]);
 1.  如果调用函数，并传递了错误的参数类型，将抛出`TypeError`。以下示例需要一个数组、一个`DateTime`的实例和一个匿名函数：
 
 ```php
-    function someTypeHint(Array $a, DateTime $t, Callable $c)
-    {
-      $message = '';
-      $message .= 'Array Count: ' . count($a) . PHP_EOL;
-      $message .= 'Date: ' . $t->format('Y-m-d') . PHP_EOL;
-      $message .= 'Callable Return: ' . $c() . PHP_EOL;
-      return $message;
-    }
-    ```
+function someTypeHint(Array $a, DateTime $t, Callable $c)
+{
+  $message = '';
+  $message .= 'Array Count: ' . count($a) . PHP_EOL;
+  $message .= 'Date: ' . $t->format('Y-m-d') . PHP_EOL;
+  $message .= 'Callable Return: ' . $c() . PHP_EOL;
+  return $message;
+}
+```
 
 ### 提示
 
@@ -233,31 +233,31 @@ echo someInfinite(22.22, 'A', ['a' => 1, 'b' => 2]);
 1.  在 PHP 7 中，假设适当的`declare()`指令已经被声明，**标量**（即整数、浮点数、布尔值和字符串）类型提示是允许的。另一个函数演示了如何实现这一点。在包含你希望使用标量类型提示的函数的代码库文件的顶部，在开头的 PHP 标记之后添加这个`declare()`指令：
 
 ```php
-    declare(strict_types=1);
-    ```
+declare(strict_types=1);
+```
 
 1.  现在你可以定义一个包含标量类型提示的函数：
 
 ```php
-    function someScalarHint(bool $b, int $i, float $f, string $s)
-    {
-      return sprintf("\n%20s : %5s\n%20s : %5d\n%20s " . 
-                     ": %5.2f\n%20s : %20s\n\n",
-                     'Boolean', ($b ? 'TRUE' : 'FALSE'),
-                     'Integer', $i,
-                     'Float',   $f,
-                     'String',  $s);
-    }
-    ```
+function someScalarHint(bool $b, int $i, float $f, string $s)
+{
+  return sprintf("\n%20s : %5s\n%20s : %5d\n%20s " . 
+                 ": %5.2f\n%20s : %20s\n\n",
+                 'Boolean', ($b ? 'TRUE' : 'FALSE'),
+                 'Integer', $i,
+                 'Float',   $f,
+                 'String',  $s);
+}
+```
 
 1.  在 PHP 7 中，假设已经声明了严格的类型提示，布尔类型提示与其他三种标量类型（即整数、浮点数和字符串）有些不同。你可以提供任何标量作为参数，不会抛出`TypeError`！然而，一旦传递到函数中，传入的值将自动转换为布尔数据类型。如果传递的数据类型不是标量（即数组或对象），将抛出`TypeError`。这是一个定义`boolean`数据类型的函数的例子。请注意，返回值将自动转换为`boolean`：
 
 ```php
-    function someBoolHint(bool $b)
-    {
-      return $b;
-    }
-    ```
+function someBoolHint(bool $b)
+{
+  return $b;
+}
+```
 
 ## 它是如何工作的...
 
@@ -366,11 +366,11 @@ PHP 7 允许您为函数的返回值指定数据类型。然而，与标量类�
 1.  这个例子向您展示了如何为函数返回值分配数据类型。要分配返回数据类型，首先像通常一样定义函数。在右括号后面，加一个空格，然后是数据类型和一个冒号：
 
 ```php
-    function returnsString(DateTime $date, $format) : string
-    {
-      return $date->format($format);
-    }
-    ```
+function returnsString(DateTime $date, $format) : string
+{
+  return $date->format($format);
+}
+```
 
 ### 注意
 
@@ -379,22 +379,22 @@ PHP 7.1 引入了一种称为**可空类型**的返回数据类型的变体。�
 1.  函数返回的任何东西，无论在函数内部的数据类型如何，都将被转换为声明的数据类型作为返回值。请注意，在这个例子中，将`$a`、`$b`和`$c`的值相加以产生一个单一的总和，然后返回。通常您会期望返回值是一个数字数据类型。然而，在这种情况下，返回数据类型被声明为`string`，这将覆盖 PHP 的类型转换过程：
 
 ```php
-    function convertsToString($a, $b, $c) : string
+function convertsToString($a, $b, $c) : string
 
-      return $a + $b + $c;
-    }
-    ```
+  return $a + $b + $c;
+}
+```
 
 1.  您还可以将类分配为返回数据类型。在这个例子中，我们将返回类型分配为 PHP `DateTime`扩展的一部分的`DateTime`：
 
 ```php
-    function makesDateTime($year, $month, $day) : DateTime
-    {
-      $date = new DateTime();
-      $date->setDate($year, $month, $day);
-      return $date;
-    }
-    ```
+function makesDateTime($year, $month, $day) : DateTime
+{
+  $date = new DateTime();
+  $date->setDate($year, $month, $day);
+  return $date;
+}
+```
 
 ### 注意
 
@@ -403,11 +403,11 @@ PHP 7.1 引入了一种称为**可空类型**的返回数据类型的变体。�
 1.  如果一个函数有一个返回数据类型，并且您在函数代码中返回了错误的数据类型，那么在运行时会抛出`TypeError`。这个函数分配了一个`DateTime`的返回类型，但返回了一个字符串。会抛出`TypeError`，但直到运行时，当 PHP 引擎检测到不一致时才会抛出：
 
 ```php
-    function wrongDateTime($year, $month, $day) : DateTime
-    {
-      return date($year . '-' . $month . '-' . $day);
-    }
-    ```
+function wrongDateTime($year, $month, $day) : DateTime
+{
+  return date($year . '-' . $month . '-' . $day);
+}
+```
 
 ### 注意
 
@@ -500,8 +500,8 @@ SPL 提供了丰富的通用和专门设计用于不同上下文的迭代器。�
 1.  我们首先检查`ArrayIterator`类。它非常容易使用。您只需要将数组作为参数提供给构造函数。之后，您可以使用所有基于 SPL 的迭代器标准的方法，例如`current()`，`next()`等。
 
 ```php
-    $iterator = new ArrayIterator($array);
-    ```
+$iterator = new ArrayIterator($array);
+```
 
 ### 注意
 
@@ -510,69 +510,69 @@ SPL 提供了丰富的通用和专门设计用于不同上下文的迭代器。�
 1.  作为迭代器的实际用途的一个例子，请查看这个例子。它接受一个迭代器并生成一系列 HTML`<ul>`和`<li>`标签：
 
 ```php
-    function htmlList($iterator)
-    {
-      $output = '<ul>';
-      while ($value = $iterator->current()) {
-        $output .= '<li>' . $value . '</li>';
-        $iterator->next();
-      }
-      $output .= '</ul>';
-      return $output;
-    }
-    ```
+function htmlList($iterator)
+{
+  $output = '<ul>';
+  while ($value = $iterator->current()) {
+    $output .= '<li>' . $value . '</li>';
+    $iterator->next();
+  }
+  $output .= '</ul>';
+  return $output;
+}
+```
 
 1.  或者，您可以简单地将`ArrayIterator`实例包装到一个简单的`foreach()`循环中：
 
 ```php
-    function htmlList($iterator)
-    {
-      $output = '<ul>';
-      foreach($iterator as $value) {
-        $output .= '<li>' . $value . '</li>';
-      }
-      $output .= '</ul>';
-      return $output;
-    }
-    ```
+function htmlList($iterator)
+{
+  $output = '<ul>';
+  foreach($iterator as $value) {
+    $output .= '<li>' . $value . '</li>';
+  }
+  $output .= '</ul>';
+  return $output;
+}
+```
 
 1.  `CallbackFilterIterator`是一种很好的方式，可以为您可能正在使用的任何现有迭代器增加价值。它允许您包装任何现有迭代器并筛选输出。在这个例子中，我们将定义`fetchCountryName()`，它遍历生成国家名称列表的数据库查询。首先，我们从使用第一章中定义的`Application\Database\Connection`类的查询中定义一个`ArrayIterator`实例，*建立基础*：
 
 ```php
-    function fetchCountryName($sql, $connection)
-    {
-      $iterator = new ArrayIterator();
-      $stmt = $connection->pdo->query($sql);
-      while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $iterator->append($row['name']);
-      }
-      return $iterator;
-    }
-    ```
+function fetchCountryName($sql, $connection)
+{
+  $iterator = new ArrayIterator();
+  $stmt = $connection->pdo->query($sql);
+  while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+    $iterator->append($row['name']);
+  }
+  return $iterator;
+}
+```
 
 1.  接下来，我们定义一个过滤方法`nameFilterIterator()`，它接受部分国家名称作为参数，以及`ArrayIterator`实例：
 
 ```php
-    function nameFilterIterator($innerIterator, $name)
-    {
-      if (!$name) return $innerIterator;
-      $name = trim($name);
-      $iterator = new CallbackFilterIterator($innerIterator, 
-        function($current, $key, $iterator) use ($name) {
-          $pattern = '/' . $name . '/i';
-          return (bool) preg_match($pattern, $current);
-        }
-      );
-      return $iterator;
+function nameFilterIterator($innerIterator, $name)
+{
+  if (!$name) return $innerIterator;
+  $name = trim($name);
+  $iterator = new CallbackFilterIterator($innerIterator, 
+    function($current, $key, $iterator) use ($name) {
+      $pattern = '/' . $name . '/i';
+      return (bool) preg_match($pattern, $current);
     }
-    ```
+  );
+  return $iterator;
+}
+```
 
 1.  `LimitIterator` 为您的应用程序添加了基本的分页功能。要使用此迭代器，您只需要提供父迭代器、偏移量和限制。`LimitIterator` 将只产生从偏移量开始的整个数据集的子集。以步骤 2 中提到的相同示例为例，我们将对来自数据库查询的结果进行分页。我们可以通过简单地将`fetchCountryName()`方法生成的迭代器包装在`LimitIterator`实例中来实现这一点：
 
 ```php
-    $pagination = new LimitIterator(fetchCountryName(
-    $sql, $connection), $offset, $limit);
-    ```
+$pagination = new LimitIterator(fetchCountryName(
+$sql, $connection), $offset, $limit);
+```
 
 ### 注意
 
@@ -581,60 +581,60 @@ SPL 提供了丰富的通用和专门设计用于不同上下文的迭代器。�
 1.  迭代器可以*堆叠*。在这个简单的例子中，`ArrayIterator`由`FilterIterator`处理，然后由`LimitIterator`限制。首先，我们设置一个`ArrayIterator`实例：
 
 ```php
-    $i = new ArrayIterator($a);
-    ```
+$i = new ArrayIterator($a);
+```
 
 1.  接下来，我们将`ArrayIterator`插入`FilterIterator`实例中。请注意，我们正在使用新的 PHP 7 匿名类特性。在这种情况下，匿名类扩展了`FilterIterator`并覆盖了`accept()`方法，只允许具有偶数 ASCII 代码的字母：
 
 ```php
-    $f = new class ($i) extends FilterIterator { 
-      public function accept()
-      {
-        $current = $this->current();
-        return !(ord($current) & 1);
-      }
-    };
-    ```
+$f = new class ($i) extends FilterIterator { 
+  public function accept()
+  {
+    $current = $this->current();
+    return !(ord($current) & 1);
+  }
+};
+```
 
 1.  最后，我们将`FilterIterator`实例作为参数提供给`LimitIterator`，并提供偏移量（在本例中为`2`）和限制（在本例中为`6`）：
 
 ```php
-    $l = new LimitIterator($f, 2, 6);
-    ```
+$l = new LimitIterator($f, 2, 6);
+```
 
 1.  然后，我们可以定义一个简单的函数来显示输出，并依次调用每个迭代器，以查看由`range('A', 'Z')`生成的简单数组的结果：
 
 ```php
-    function showElements($iterator)
-    {
-      foreach($iterator as $item)  echo $item . ' ';
-      echo PHP_EOL;
-    }
+function showElements($iterator)
+{
+  foreach($iterator as $item)  echo $item . ' ';
+  echo PHP_EOL;
+}
 
-    $a = range('A', 'Z');
-    $i = new ArrayIterator($a);
-    showElements($i);
-    ```
+$a = range('A', 'Z');
+$i = new ArrayIterator($a);
+showElements($i);
+```
 
 1.  这是一个变体，通过在`ArrayIterator`上堆叠`FilterIterator`来产生每隔一个字母：
 
 ```php
-    $f = new class ($i) extends FilterIterator {
-    public function accept()
-      {
-        $current = $this->current();
-        return !(ord($current) & 1);
-      }
-    };
-    showElements($f);
-    ```
+$f = new class ($i) extends FilterIterator {
+public function accept()
+  {
+    $current = $this->current();
+    return !(ord($current) & 1);
+  }
+};
+showElements($f);
+```
 
 1.  这里还有另一个变体，它只产生`F H J L N P`，这演示了一个消耗`FilterIterator`的`LimitIterator`，而`FilterIterator`又消耗`ArrayIterator`。这三个示例的输出如下：
 
 ```php
-    $l = new LimitIterator($f, 2, 6);
-    showElements($l);
-    ```
+$l = new LimitIterator($f, 2, 6);
+showElements($l);
+```
 
 ![如何做...](img/B05314_03_12.jpg)
 
@@ -643,31 +643,31 @@ SPL 提供了丰富的通用和专门设计用于不同上下文的迭代器。�
 1.  首先，我们需要定义一个方法，该方法使用先前提到的数据库连接类从数据库中提取所有列。与以前一样，我们返回一个由查询数据填充的`ArrayIterator`实例：
 
 ```php
-    function fetchAllAssoc($sql, $connection)
-    {
-      $iterator = new ArrayIterator();
-      $stmt = $connection->pdo->query($sql);
-      while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $iterator->append($row);
-      }
-      return $iterator;
-    }
-    ```
+function fetchAllAssoc($sql, $connection)
+{
+  $iterator = new ArrayIterator();
+  $stmt = $connection->pdo->query($sql);
+  while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+    $iterator->append($row);
+  }
+  return $iterator;
+}
+```
 
 1.  乍一看，人们可能会简单地将标准的`ArrayIterator`实例包装在`RecursiveArrayIterator`中。不幸的是，这种方法只执行**浅**迭代，并且不能给我们想要的：对从数据库查询返回的多维数组的所有元素进行迭代：
 
 ```php
-    $iterator = fetchAllAssoc($sql, $connection);
-    $shallow  = new RecursiveArrayIterator($iterator);
-    ```
+$iterator = fetchAllAssoc($sql, $connection);
+$shallow  = new RecursiveArrayIterator($iterator);
+```
 
 1.  虽然这返回一个迭代，其中每个项表示数据库查询的一行，但在这种情况下，我们希望提供一个迭代，该迭代将遍历查询返回的所有行的所有列。为了实现这一点，我们需要通过`RecursiveIteratorIterator`来展开大规模的操作。
 
 1.  蒙提·派森的粉丝将沉浸在这个类名的丰富讽刺之中，因为它让人回忆起*多余部门*。恰当地，这个类让我们的老朋友`RecursiveArrayIterator`类加班工作，并对数组的所有级别进行**深度**迭代：
 
 ```php
-    $deep     = new RecursiveIteratorIterator($shallow);
-    ```
+$deep     = new RecursiveIteratorIterator($shallow);
+```
 
 ## 工作原理...
 
@@ -790,18 +790,18 @@ try {
 1.  因为我们需要访问源数组、所需的过滤器、页码和每页项目数，所以我们将适当的参数包含到一个单独的`filteredResultsGenerator()`函数中。然后，我们根据页码和限制（即每页项目数）计算偏移量。接下来，我们循环遍历数组，应用过滤器，并在偏移量尚未达到时继续循环，或者在达到限制时中断：
 
 ```php
-    function filteredResultsGenerator(array $array, $filter, $limit = 10, $page = 0)
-      {
-        $max    = count($array);
-        $offset = $page * $limit;
-        foreach ($array as $key => $value) {
-          if (!stripos($value, $filter) !== FALSE) continue;
-          if (--$offset >= 0) continue;
-          if (--$limit <= 0) break; 
-          yield $value;
-        }
-      }
-    ```
+function filteredResultsGenerator(array $array, $filter, $limit = 10, $page = 0)
+  {
+    $max    = count($array);
+    $offset = $page * $limit;
+    foreach ($array as $key => $value) {
+      if (!stripos($value, $filter) !== FALSE) continue;
+      if (--$offset >= 0) continue;
+      if (--$limit <= 0) break; 
+      yield $value;
+    }
+  }
+```
 
 1.  您会注意到这个函数和其他函数之间的主要区别是`yield`关键字。这个关键字的作用是向 PHP 引擎发出信号，产生一个`Generator`实例并封装代码。
 

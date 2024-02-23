@@ -93,21 +93,21 @@ jQuery 是一个流行的开源 JavaScript 框架，允许我们在浏览器中�
 +   jQuery
 
 ```php
-    <script src="http://code.jQuery.com/jQuery-1.9.1.min.js"></script>
-    <script src="http://code.jQuery.com/jQuery-migrate-1.1.1.min.js"></script>
-    ```
+<script src="http://code.jQuery.com/jQuery-1.9.1.min.js"></script>
+<script src="http://code.jQuery.com/jQuery-migrate-1.1.1.min.js"></script>
+```
 
 +   谷歌
 
 ```php
-    <script src="//ajax.googleapis.com/ajax/libs/jQuery/2.0.0/jQuery.min.js"></script>
-    ```
+<script src="//ajax.googleapis.com/ajax/libs/jQuery/2.0.0/jQuery.min.js"></script>
+```
 
 +   微软
 
 ```php
-    <script src="http://ajax.aspnetcdn.com/ajax/jQuery/jQuery-1.9.0.js"></script>
-    ```
+<script src="http://ajax.aspnetcdn.com/ajax/jQuery/jQuery-1.9.0.js"></script>
+```
 
 我们将按照以下截图直接在我们的系统上下载和安装库：
 

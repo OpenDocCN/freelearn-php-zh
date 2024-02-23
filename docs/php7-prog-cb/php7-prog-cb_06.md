@@ -37,82 +37,82 @@
 1.  首先，我们定义一个`Application\Form\Generic`类。这也将作为专门的表单元素的基类：
 
 ```php
-    namespace Application\Form;
+namespace Application\Form;
 
-    class Generic
-    {
-      // some code ...
-    }
-    ```
+class Generic
+{
+  // some code ...
+}
+```
 
 1.  接下来，我们定义一些类常量，这些常量在表单元素生成中通常很有用。
 
 1.  前三个将成为与单个表单元素的主要组件相关联的键。然后我们定义支持的输入类型和默认值：
 
 ```php
-    const ROW = 'row';
-    const FORM = 'form';
-    const INPUT = 'input';
-    const LABEL = 'label';
-    const ERRORS = 'errors';
-    const TYPE_FORM = 'form';
-    const TYPE_TEXT = 'text';
-    const TYPE_EMAIL = 'email';
-    const TYPE_RADIO = 'radio';
-    const TYPE_SUBMIT = 'submit';
-    const TYPE_SELECT = 'select';
-    const TYPE_PASSWORD = 'password';
-    const TYPE_CHECKBOX = 'checkbox';
-    const DEFAULT_TYPE = self::TYPE_TEXT;
-    const DEFAULT_WRAPPER = 'div';
-    ```
+const ROW = 'row';
+const FORM = 'form';
+const INPUT = 'input';
+const LABEL = 'label';
+const ERRORS = 'errors';
+const TYPE_FORM = 'form';
+const TYPE_TEXT = 'text';
+const TYPE_EMAIL = 'email';
+const TYPE_RADIO = 'radio';
+const TYPE_SUBMIT = 'submit';
+const TYPE_SELECT = 'select';
+const TYPE_PASSWORD = 'password';
+const TYPE_CHECKBOX = 'checkbox';
+const DEFAULT_TYPE = self::TYPE_TEXT;
+const DEFAULT_WRAPPER = 'div';
+```
 
 1.  接下来，我们可以定义属性和设置它们的构造函数。
 
 1.  在这个例子中，我们需要两个属性`$name`和`$type`，因为没有这些属性我们无法有效地使用元素。其他构造函数参数是可选的。此外，为了基于另一个表单元素，我们包括一个规定，第二个参数`$type`可以替代地是`Application\Form\Generic`的实例，这样我们只需运行*getters*（稍后讨论）来填充属性：
 
 ```php
-    protected $name;
-    protected $type    = self::DEFAULT_TYPE;
-    protected $label   = '';
-    protected $errors  = array();
-    protected $wrappers;
-    protected $attributes;    // HTML form attributes
-    protected $pattern =  '<input type="%s" name="%s" %s>';
+protected $name;
+protected $type    = self::DEFAULT_TYPE;
+protected $label   = '';
+protected $errors  = array();
+protected $wrappers;
+protected $attributes;    // HTML form attributes
+protected $pattern =  '<input type="%s" name="%s" %s>';
 
-    public function __construct($name, 
-                    $type, 
-                    $label = '',
-                    array $wrappers = array(), 
-                    array $attributes = array(),
-                    array $errors = array())
-    {
-      $this->name = $name;
-      if ($type instanceof Generic) {
-          $this->type       = $type->getType();
-          $this->label      = $type->getLabelValue();
-          $this->errors     = $type->getErrorsArray();
-          $this->wrappers   = $type->getWrappers();
-          $this->attributes = $type->getAttributes();
+public function __construct($name, 
+                $type, 
+                $label = '',
+                array $wrappers = array(), 
+                array $attributes = array(),
+                array $errors = array())
+{
+  $this->name = $name;
+  if ($type instanceof Generic) {
+      $this->type       = $type->getType();
+      $this->label      = $type->getLabelValue();
+      $this->errors     = $type->getErrorsArray();
+      $this->wrappers   = $type->getWrappers();
+      $this->attributes = $type->getAttributes();
+  } else {
+      $this->type       = $type ?? self::DEFAULT_TYPE;
+      $this->label      = $label;
+      $this->errors     = $errors;
+      $this->attributes = $attributes;
+      if ($wrappers) {
+          $this->wrappers = $wrappers;
       } else {
-          $this->type       = $type ?? self::DEFAULT_TYPE;
-          $this->label      = $label;
-          $this->errors     = $errors;
-          $this->attributes = $attributes;
-          if ($wrappers) {
-              $this->wrappers = $wrappers;
-          } else {
-              $this->wrappers[self::INPUT]['type'] =
-                self::DEFAULT_WRAPPER;
-              $this->wrappers[self::LABEL]['type'] = 
-                self::DEFAULT_WRAPPER;
-              $this->wrappers[self::ERRORS]['type'] = 
-                self::DEFAULT_WRAPPER;
-        }
-      }
-      $this->attributes['id'] = $name;
+          $this->wrappers[self::INPUT]['type'] =
+            self::DEFAULT_WRAPPER;
+          $this->wrappers[self::LABEL]['type'] = 
+            self::DEFAULT_WRAPPER;
+          $this->wrappers[self::ERRORS]['type'] = 
+            self::DEFAULT_WRAPPER;
     }
-    ```
+  }
+  $this->attributes['id'] = $name;
+}
+```
 
 ### 注意
 
@@ -125,138 +125,138 @@
 1.  `getWrapperPattern()`方法可能如下所示：
 
 ```php
-    public function getWrapperPattern($type)
-    {
-      $pattern = '<' . $this->wrappers[$type]['type'];
-      foreach ($this->wrappers[$type] as $key => $value) {
-        if ($key != 'type') {
-          $pattern .= ' ' . $key . '="' . $value . '"';
-        }
-      }
-      $pattern .= '>%s</' . $this->wrappers[$type]['type'] . '>';
-      return $pattern;
+public function getWrapperPattern($type)
+{
+  $pattern = '<' . $this->wrappers[$type]['type'];
+  foreach ($this->wrappers[$type] as $key => $value) {
+    if ($key != 'type') {
+      $pattern .= ' ' . $key . '="' . $value . '"';
     }
-    ```
+  }
+  $pattern .= '>%s</' . $this->wrappers[$type]['type'] . '>';
+  return $pattern;
+}
+```
 
 1.  现在我们准备定义`getLabel()`方法。这个方法所需要做的就是使用`sprintf()`将标签插入包装器中：
 
 ```php
-    public function getLabel()
-    {
-      return sprintf($this->getWrapperPattern(self::LABEL), 
-                     $this->label);
-    }
-    ```
+public function getLabel()
+{
+  return sprintf($this->getWrapperPattern(self::LABEL), 
+                 $this->label);
+}
+```
 
 1.  为了生成核心的`input`标签，我们需要一种方法来组装属性。幸运的是，只要它们以关联数组的形式提供给构造函数，这是很容易实现的。在这种情况下，我们只需要定义一个`getAttribs()`方法，它产生由空格分隔的键值对的字符串。我们使用`trim()`来去除多余的空格并返回最终值。
 
 1.  如果元素包括`value`或`href`属性，出于安全原因，我们应该对值进行转义，假设它们是用户提供的（或可能是）（因此可疑）。因此，我们需要添加一个`if`语句来检查，然后使用`htmlspecialchars()`或`urlencode()`：
 
 ```php
-    public function getAttribs()
-    {
-      foreach ($this->attributes as $key => $value) {
-        $key = strtolower($key);
-        if ($value) {
-          if ($key == 'value') {
-            if (is_array($value)) {
-                foreach ($value as $k => $i) 
-                  $value[$k] = htmlspecialchars($i);
-            } else {
-                $value = htmlspecialchars($value);
-            }
-          } elseif ($key == 'href') {
-              $value = urlencode($value);
-          }
-          $attribs .= $key . '="' . $value . '" ';
+public function getAttribs()
+{
+  foreach ($this->attributes as $key => $value) {
+    $key = strtolower($key);
+    if ($value) {
+      if ($key == 'value') {
+        if (is_array($value)) {
+            foreach ($value as $k => $i) 
+              $value[$k] = htmlspecialchars($i);
         } else {
-            $attribs .= $key . ' ';
+            $value = htmlspecialchars($value);
         }
+      } elseif ($key == 'href') {
+          $value = urlencode($value);
       }
-      return trim($attribs);
+      $attribs .= $key . '="' . $value . '" ';
+    } else {
+        $attribs .= $key . ' ';
     }
-    ```
+  }
+  return trim($attribs);
+}
+```
 
 1.  对于核心输入标记，我们将逻辑分为两个独立的方法。主要方法`getInputOnly()`仅生成 HTML 输入标记。第二个方法`getInputWithWrapper()`生成包含在包装器中的输入。拆分的原因是在创建分支类时，例如生成单选按钮的类，我们将不需要包装器：
 
 ```php
-    public function getInputOnly()
-    {
-      return sprintf($this->pattern, $this->type, $this->name, 
-                     $this->getAttribs());
-    }
+public function getInputOnly()
+{
+  return sprintf($this->pattern, $this->type, $this->name, 
+                 $this->getAttribs());
+}
 
-    public function getInputWithWrapper()
-    {
-      return sprintf($this->getWrapperPattern(self::INPUT), 
-                     $this->getInputOnly());
-    }
-    ```
+public function getInputWithWrapper()
+{
+  return sprintf($this->getWrapperPattern(self::INPUT), 
+                 $this->getInputOnly());
+}
+```
 
 1.  现在我们定义一个显示元素验证错误的方法。我们假设错误将以数组的形式提供。如果没有错误，我们返回一个空字符串。否则，错误将呈现为`<ul><li>error 1</li><li>error 2</li></ul>`等等：
 
 ```php
-    public function getErrors()
-    {
-      if (!$this->errors || count($this->errors == 0)) return '';
-      $html = '';
-      $pattern = '<li>%s</li>';
-      $html .= '<ul>';
-      foreach ($this->errors as $error)
-      $html .= sprintf($pattern, $error);
-      $html .= '</ul>';
-      return sprintf($this->getWrapperPattern(self::ERRORS), $html);
-    }
-    ```
+public function getErrors()
+{
+  if (!$this->errors || count($this->errors == 0)) return '';
+  $html = '';
+  $pattern = '<li>%s</li>';
+  $html .= '<ul>';
+  foreach ($this->errors as $error)
+  $html .= sprintf($pattern, $error);
+  $html .= '</ul>';
+  return sprintf($this->getWrapperPattern(self::ERRORS), $html);
+}
+```
 
 1.  对于某些属性，我们可能需要更精细的控制属性的各个方面。例如，我们可能需要将一个错误添加到已经存在的错误数组中。此外，设置单个属性可能很有用：
 
 ```php
-    public function setSingleAttribute($key, $value)
-    {
-      $this->attributes[$key] = $value;
-    }
-    public function addSingleError($error)
-    {
-      $this->errors[] = $error;
-    }
-    ```
+public function setSingleAttribute($key, $value)
+{
+  $this->attributes[$key] = $value;
+}
+public function addSingleError($error)
+{
+  $this->errors[] = $error;
+}
+```
 
 1.  最后，我们定义获取器和设置器，允许我们检索或设置属性的值。例如，您可能已经注意到`$pattern`的默认值是`<input type="%s" name="%s" %s>`。对于某些标签（例如`select`和`form`标签），我们需要将此属性设置为不同的值：
 
 ```php
-    public function setPattern($pattern)
-    {
-      $this->pattern = $pattern;
-    }
-    public function setType($type)
-    {
-      $this->type = $type;
-    }
-    public function getType()
-    {
-      return $this->type;
-    }
-    public function addSingleError($error)
-    {
-      $this->errors[] = $error;
-    }
-    // define similar get and set methods
-    // for name, label, wrappers, errors and attributes
-    ```
+public function setPattern($pattern)
+{
+  $this->pattern = $pattern;
+}
+public function setType($type)
+{
+  $this->type = $type;
+}
+public function getType()
+{
+  return $this->type;
+}
+public function addSingleError($error)
+{
+  $this->errors[] = $error;
+}
+// define similar get and set methods
+// for name, label, wrappers, errors and attributes
+```
 
 1.  我们还需要添加一些方法，用于提供标签值（而不是 HTML）以及错误数组：
 
 ```php
-    public function getLabelValue()
-    {
-      return $this->label;
-    }
-    public function getErrorsArray()
-    {
-      return $this->errors;
-    }
-    ```
+public function getLabelValue()
+{
+  return $this->label;
+}
+public function getErrorsArray()
+{
+  return $this->errors;
+}
+```
 
 ## 工作原理...
 
@@ -350,80 +350,80 @@ $submit = new Generic('submit',
 1.  首先，创建一个新的`Application\Form\Element\Radio`类，它扩展了`Application\Form\Generic`：
 
 ```php
-    **namespace Application\Form\Element;**
-    **use Application\Form\Generic;**
-    **class Radio extends Generic**
-    **{**
-     **// code**
-    **}**
+**namespace Application\Form\Element;**
+**use Application\Form\Generic;**
+**class Radio extends Generic**
+**{**
+ **// code**
+**}**
 
-    ```
+```
 
 1.  接下来，定义与一组单选按钮的特殊需求相关的类常量和属性。
 
 1.  在这个示例中，我们需要一个`spacer`，它将放置在单选按钮和其标签之间。我们还需要决定是在实际按钮之前还是之后放置单选按钮标签，因此我们使用`$after`标志。如果我们需要一个默认值，或者如果我们重新显示现有的表单数据，我们需要一种指定选定键的方法。最后，我们需要一个选项数组，我们将从中填充按钮列表：
 
 ```php
-    const DEFAULT_AFTER = TRUE;
-    const DEFAULT_SPACER = '&nbps;';
-    const DEFAULT_OPTION_KEY = 0;
-    const DEFAULT_OPTION_VALUE = 'Choose';
+const DEFAULT_AFTER = TRUE;
+const DEFAULT_SPACER = '&nbps;';
+const DEFAULT_OPTION_KEY = 0;
+const DEFAULT_OPTION_VALUE = 'Choose';
 
-    protected $after = self::DEFAULT_AFTER;
-    protected $spacer = self::DEFAULT_SPACER;
-    protected $options = array();
-    protected $selectedKey = DEFAULT_OPTION_KEY;
-    ```
+protected $after = self::DEFAULT_AFTER;
+protected $spacer = self::DEFAULT_SPACER;
+protected $options = array();
+protected $selectedKey = DEFAULT_OPTION_KEY;
+```
 
 1.  鉴于我们正在扩展`Application\Form\Generic`，我们可以扩展`__construct()`方法，或者简单地定义一个可用于设置特定选项的方法。对于本示例，我们选择了后者。
 
 1.  为了确保属性`$this->options`被填充，第一个参数（$options）被定义为强制性的（没有默认值）。所有其他参数都是可选的。
 
 ```php
-    public function setOptions(array $options, 
-      $selectedKey = self::DEFAULT_OPTION_KEY, 
-      $spacer = self::DEFAULT_SPACER,
-      $after  = TRUE)
-    {
-      $this->after = $after;
-      $this->spacer = $spacer;
-      $this->options = $options;
-      $this->selectedKey = $selectedKey;
-    }  
-    ```
+public function setOptions(array $options, 
+  $selectedKey = self::DEFAULT_OPTION_KEY, 
+  $spacer = self::DEFAULT_SPACER,
+  $after  = TRUE)
+{
+  $this->after = $after;
+  $this->spacer = $spacer;
+  $this->options = $options;
+  $this->selectedKey = $selectedKey;
+}  
+```
 
 1.  最后，我们准备覆盖核心的`getInputOnly()`方法。
 
 1.  我们将`id`属性保存到一个独立的变量`$baseId`中，然后将其与`$count`组合，以便每个`id`属性都是唯一的。如果与选定键关联的选项已定义，则将其分配为值；否则，我们使用默认值：
 
 ```php
-    public function getInputOnly()
-    {
-      $count  = 1;
-      $baseId = $this->attributes['id'];
-    ```
+public function getInputOnly()
+{
+  $count  = 1;
+  $baseId = $this->attributes['id'];
+```
 
 1.  在`foreach()`循环中，我们检查键是否是所选的键。如果是，就为该单选按钮添加`checked`属性。然后，我们调用父类的`getInputOnly()`方法来返回每个按钮的 HTML。请注意，输入元素的`value`属性是选项数组键。按钮标签是选项数组元素值：
 
 ```php
-    foreach ($this->options as $key => $value) {
-      $this->attributes['id'] = $baseId . $count++;
-      $this->attributes['value'] = $key;
-      if ($key == $this->selectedKey) {
-          $this->attributes['checked'] = '';
-      } elseif (isset($this->attributes['checked'])) {
-                unset($this->attributes['checked']);
-      }
-      if ($this->after) {
-          $html = parent::getInputOnly() . $value;
-      } else {
-          $html = $value . parent::getInputOnly();
-      }
-      $output .= $this->spacer . $html;
-      }
-      return $output;
-    }
-    ```
+foreach ($this->options as $key => $value) {
+  $this->attributes['id'] = $baseId . $count++;
+  $this->attributes['value'] = $key;
+  if ($key == $this->selectedKey) {
+      $this->attributes['checked'] = '';
+  } elseif (isset($this->attributes['checked'])) {
+            unset($this->attributes['checked']);
+  }
+  if ($this->after) {
+      $html = parent::getInputOnly() . $value;
+  } else {
+      $html = $value . parent::getInputOnly();
+  }
+  $output .= $this->spacer . $html;
+  }
+  return $output;
+}
+```
 
 ## 它是如何工作的...
 
@@ -510,40 +510,40 @@ $submit = new Generic('submit',
 1.  我们之所以扩展`Generic`而不是`Radio`是因为元素的结构完全不同：
 
 ```php
-    namespace Application\Form\Element;
+namespace Application\Form\Element;
 
-    use Application\Form\Generic;
+use Application\Form\Generic;
 
-    class Select extends Generic
-    {
-      // code
-    }
-    ```
+class Select extends Generic
+{
+  // code
+}
+```
 
 1.  类常量和属性只需要稍微添加到`Application\Form\Generic`。与单选按钮或复选框不同，不需要考虑*间隔符*或所选文本的放置：
 
 ```php
-    const DEFAULT_OPTION_KEY = 0;
-    const DEFAULT_OPTION_VALUE = 'Choose';
+const DEFAULT_OPTION_KEY = 0;
+const DEFAULT_OPTION_VALUE = 'Choose';
 
-    protected $options;
-    protected $selectedKey = DEFAULT_OPTION_KEY;
-    ```
+protected $options;
+protected $selectedKey = DEFAULT_OPTION_KEY;
+```
 
 1.  现在我们将注意力转向设置选项。由于 HTML 选择元素可以选择单个或多个值，因此`$selectedKey`属性可以是字符串或数组。因此，我们不为此属性添加**类型提示**。然而，重要的是要确定是否已设置`multiple`属性。这可以通过从父类继承的`$this->attributes`属性获得。
 
 1.  如果已设置`multiple`属性，则将`name`属性构造为数组非常重要。因此，如果是这种情况，我们将在名称后附加`[]`：
 
 ```php
-    public function setOptions(array $options, $selectedKey = self::DEFAULT_OPTION_KEY)
-    {
-      $this->options = $options;
-      $this->selectedKey = $selectedKey;
-      if (isset($this->attributes['multiple'])) {
-        $this->name .= '[]';
-      } 
-    }
-    ```
+public function setOptions(array $options, $selectedKey = self::DEFAULT_OPTION_KEY)
+{
+  $this->options = $options;
+  $this->selectedKey = $selectedKey;
+  if (isset($this->attributes['multiple'])) {
+    $this->name .= '[]';
+  } 
+}
+```
 
 ### 注意
 
@@ -554,52 +554,52 @@ $submit = new Generic('submit',
 1.  我们用`<select name="%s" %s>`替换了`$pattern`的默认值。然后，我们循环遍历属性，将它们作为键值对添加到空格之间：
 
 ```php
-    protected function getSelect()
-    {
-      $this->pattern = '<select name="%s" %s> ' . PHP_EOL;
-      return sprintf($this->pattern, $this->name, 
-      $this->getAttribs());
-    }
-    ```
+protected function getSelect()
+{
+  $this->pattern = '<select name="%s" %s> ' . PHP_EOL;
+  return sprintf($this->pattern, $this->name, 
+  $this->getAttribs());
+}
+```
 
 1.  接下来，我们定义一个方法来获取与`select`标签关联的`option`标签。
 
 1.  正如您所记得的，`$this->options`数组中的*键*表示返回值，而数组的*值*部分表示将显示在屏幕上的文本。如果`$this->selectedKey`是数组形式，我们检查值是否在数组中。否则，我们假设`$this-> selectedKey`是一个字符串，我们只需确定它是否等于键。如果选定的键匹配，我们添加`selected`属性：
 
 ```php
-    protected function getOptions()
-    {
-      $output = '';
-      foreach ($this->options as $key => $value) {
-        if (is_array($this->selectedKey)) {
-            $selected = (in_array($key, $this->selectedKey)) 
-            ? ' selected' : '';
-        } else {
-            $selected = ($key == $this->selectedKey) 
-            ? ' selected' : '';
-        }
-            $output .= '<option value="' . $key . '"' 
-            . $selected  . '>' 
-            . $value 
-            . '</option>';
-      }
-      return $output;
+protected function getOptions()
+{
+  $output = '';
+  foreach ($this->options as $key => $value) {
+    if (is_array($this->selectedKey)) {
+        $selected = (in_array($key, $this->selectedKey)) 
+        ? ' selected' : '';
+    } else {
+        $selected = ($key == $this->selectedKey) 
+        ? ' selected' : '';
     }
-    ```
+        $output .= '<option value="' . $key . '"' 
+        . $selected  . '>' 
+        . $value 
+        . '</option>';
+  }
+  return $output;
+}
+```
 
 1.  最后，我们准备覆盖核心的`getInputOnly()`方法。
 
 1.  您会注意到，此方法的逻辑只需要捕获前面代码中描述的`getSelect()`和`getOptions()`方法的返回值。我们还需要添加闭合的`</select>`标签：
 
 ```php
-    public function getInputOnly()
-    {
-      $output = $this->getSelect();
-      $output .= $this->getOptions();
-      $output .= '</' . $this->getType() . '>'; 
-      return $output;
-    }
-    ```
+public function getInputOnly()
+{
+  $output = $this->getSelect();
+  $output .= $this->getOptions();
+  $output .= '</' . $this->getType() . '>'; 
+  return $output;
+}
+```
 
 ## 它是如何工作的...
 
@@ -678,18 +678,18 @@ $status2->setOptions($statusList, $checked2);
 1.  首先，让我们创建一个名为`Application\Form\Factory`的类来包含工厂代码。它只有一个属性`$elements`，带有一个 getter：
 
 ```php
-    namespace Application\Form;
+namespace Application\Form;
 
-    class Factory
-    {
-      protected $elements;
-      public function getElements()
-      {
-        return $this->elements;
-      }
-      // remaining code
-    }
-    ```
+class Factory
+{
+  protected $elements;
+  public function getElements()
+  {
+    return $this->elements;
+  }
+  // remaining code
+}
+```
 
 1.  在定义主要的表单生成方法之前，重要的是考虑我们计划接收的配置格式，以及表单生成将产生什么。在本示例中，我们假设生成将产生一个具有`$elements`属性的`Factory`实例。该属性将是`Application\Form\Generic`或`Application\Form\Element`类的数组。
 
@@ -698,141 +698,141 @@ $status2->setOptions($statusList, $checked2);
 1.  我们创建一个`Application\Form\Factory`的实例，然后开始循环遍历配置数组：
 
 ```php
-    public static function generate(array $config)
-    {
-      $form = new self();
-      foreach ($config as $key => $p) {
-    ```
+public static function generate(array $config)
+{
+  $form = new self();
+  foreach ($config as $key => $p) {
+```
 
 1.  接下来，我们检查`Application\Form\Generic`类构造函数中的可选参数：
 
 ```php
-      $p['errors'] = $p['errors'] ?? array();
-      $p['wrappers'] = $p['wrappers'] ?? array();
-      $p['attributes'] = $p['attributes'] ?? array();
-    ```
+  $p['errors'] = $p['errors'] ?? array();
+  $p['wrappers'] = $p['wrappers'] ?? array();
+  $p['attributes'] = $p['attributes'] ?? array();
+```
 
 1.  现在，所有构造函数参数都就位了，我们可以创建表单元素实例，然后将其存储在`$elements`中：
 
 ```php
-      $form->elements[$key] = new $p['class']
-      (
-        $key, 
-        $p['type'],
-        $p['label'],
-        $p['wrappers'],
-        $p['attributes'],
-        $p['errors']
-      );
-    ```
+  $form->elements[$key] = new $p['class']
+  (
+    $key, 
+    $p['type'],
+    $p['label'],
+    $p['wrappers'],
+    $p['attributes'],
+    $p['errors']
+  );
+```
 
 1.  接下来，我们将注意力转向选项。如果设置了`options`参数，我们使用`list()`将数组值提取到变量中。然后，我们使用`switch()`测试元素类型，并使用适当数量的参数运行`setOptions()`：
 
 ```php
-        if (isset($p['options'])) {
-          list($a,$b,$c,$d) = $p['options'];
-          switch ($p['type']) {
-            case Generic::TYPE_RADIO    :
-            case Generic::TYPE_CHECKBOX :
-              $form->elements[$key]->setOptions($a,$b,$c,$d);
-              break;
-            case Generic::TYPE_SELECT   :
-              $form->elements[$key]->setOptions($a,$b);
-              break;
-            default                     :
-              $form->elements[$key]->setOptions($a,$b);
-              break;
-          }
-        }
+    if (isset($p['options'])) {
+      list($a,$b,$c,$d) = $p['options'];
+      switch ($p['type']) {
+        case Generic::TYPE_RADIO    :
+        case Generic::TYPE_CHECKBOX :
+          $form->elements[$key]->setOptions($a,$b,$c,$d);
+          break;
+        case Generic::TYPE_SELECT   :
+          $form->elements[$key]->setOptions($a,$b);
+          break;
+        default                     :
+          $form->elements[$key]->setOptions($a,$b);
+          break;
       }
-    ```
+    }
+  }
+```
 
 1.  最后，我们返回表单对象并关闭方法：
 
 ```php
-      return $form;
-    } 
-    ```
+  return $form;
+} 
+```
 
 1.  理论上，在这一点上，我们可以通过简单地迭代元素数组并运行`render()`方法来在视图逻辑中轻松呈现表单。视图逻辑可能如下所示：
 
 ```php
-    <form name="status" method="get">
-      <table id="status" class="display" cellspacing="0" width="100%">
-        <?php foreach ($form->getElements() as $element) : ?>
-          <?php echo $element->render(); ?>
-        <?php endforeach; ?>
-      </table>
-    </form>
-    ```
+<form name="status" method="get">
+  <table id="status" class="display" cellspacing="0" width="100%">
+    <?php foreach ($form->getElements() as $element) : ?>
+      <?php echo $element->render(); ?>
+    <?php endforeach; ?>
+  </table>
+</form>
+```
 
 1.  最后，我们返回表单对象并关闭方法。
 
 1.  接下来，我们需要在`Application\Form\Element`下定义一个独立的`Form`类：
 
 ```php
-    namespace Application\Form\Element;
-    class Form extends Generic
-    {
-      public function getInputOnly()
-      {
-        $this->pattern = '<form name="%s" %s> ' . PHP_EOL;
-        return sprintf($this->pattern, $this->name, 
-                       $this->getAttribs());
-      }
-      public function closeTag()
-      {
-        return '</' . $this->type . '>';
-      }
-    }
-    ```
+namespace Application\Form\Element;
+class Form extends Generic
+{
+  public function getInputOnly()
+  {
+    $this->pattern = '<form name="%s" %s> ' . PHP_EOL;
+    return sprintf($this->pattern, $this->name, 
+                   $this->getAttribs());
+  }
+  public function closeTag()
+  {
+    return '</' . $this->type . '>';
+  }
+}
+```
 
 1.  返回到`Application\Form\Factory`类，现在我们需要定义一个简单的方法，返回一个`sprintf()`包装器模式，作为输入的信封。例如，如果包装器是带有属性`class="test"`的`div`，我们将产生这个模式：`<div class="test">%s</div>`。然后我们的内容将被`sprintf()`函数替换为`%s`：
 
 ```php
-    protected function getWrapperPattern($wrapper)
-    {
-      $type = $wrapper['type'];
-      unset($wrapper['type']);
-      $pattern = '<' . $type;
-      foreach ($wrapper as $key => $value) {
-        $pattern .= ' ' . $key . '="' . $value . '"';
-      }
-      $pattern .= '>%s</' . $type . '>';
-      return $pattern;
-    }
-    ```
+protected function getWrapperPattern($wrapper)
+{
+  $type = $wrapper['type'];
+  unset($wrapper['type']);
+  $pattern = '<' . $type;
+  foreach ($wrapper as $key => $value) {
+    $pattern .= ' ' . $key . '="' . $value . '"';
+  }
+  $pattern .= '>%s</' . $type . '>';
+  return $pattern;
+}
+```
 
 1.  最后，我们准备定义一个执行整体表单渲染的方法。我们为每个表单行获取包装器`sprintf()`模式。然后我们循环遍历元素，渲染每个元素，并将输出包装在行模式中。接下来，我们生成一个`Application\Form\Element\Form`实例。然后我们检索表单包装器`sprintf()`模式，并检查`form_tag_inside_wrapper`标志，该标志告诉我们是否需要将表单标签放在表单包装器内部还是外部：
 
 ```php
-    public static function render($form, $formConfig)
-    {
-      $rowPattern = $form->getWrapperPattern(
-      $formConfig['row_wrapper']);
-      $contents   = '';
-      foreach ($form->getElements() as $element) {
-        $contents .= sprintf($rowPattern, $element->render());
-      }
-      $formTag = new Form($formConfig['name'], 
-                      Generic::TYPE_FORM, 
-                      '', 
-                      array(), 
-                      $formConfig['attributes']); 
+public static function render($form, $formConfig)
+{
+  $rowPattern = $form->getWrapperPattern(
+  $formConfig['row_wrapper']);
+  $contents   = '';
+  foreach ($form->getElements() as $element) {
+    $contents .= sprintf($rowPattern, $element->render());
+  }
+  $formTag = new Form($formConfig['name'], 
+                  Generic::TYPE_FORM, 
+                  '', 
+                  array(), 
+                  $formConfig['attributes']); 
 
-      $formPattern = $form->getWrapperPattern(
-      $formConfig['form_wrapper']);
-      if (isset($formConfig['form_tag_inside_wrapper']) 
-          && !$formConfig['form_tag_inside_wrapper']) {
-            $formPattern = '%s' . $formPattern . '%s';
-            return sprintf($formPattern, $formTag->getInputOnly(), 
-            $contents, $formTag->closeTag());
-      } else {
-            return sprintf($formPattern, $formTag->getInputOnly() 
-            . $contents . $formTag->closeTag());
-      }
-    }
-    ```
+  $formPattern = $form->getWrapperPattern(
+  $formConfig['form_wrapper']);
+  if (isset($formConfig['form_tag_inside_wrapper']) 
+      && !$formConfig['form_tag_inside_wrapper']) {
+        $formPattern = '%s' . $formPattern . '%s';
+        return sprintf($formPattern, $formTag->getInputOnly(), 
+        $contents, $formTag->closeTag());
+  } else {
+        return sprintf($formPattern, $formTag->getInputOnly() 
+        . $contents . $formTag->closeTag());
+  }
+}
+```
 
 ## 它是如何工作...
 
@@ -931,334 +931,334 @@ $form = Factory::generate($config);
 1.  `Result`类的主要功能将是保存`$item`值，这将是过滤后的值或验证的布尔结果。另一个属性`$messages`将保存在过滤或验证操作期间填充的消息数组。在构造函数中，为`$messages`提供的值被制定为一个数组。您可能会注意到这两个属性都被定义为`public`。这是为了方便访问：
 
 ```php
-    namespace Application\Filter;
+namespace Application\Filter;
 
-    class Result
-    {
+class Result
+{
 
-      public $item;  // (mixed) filtered data | (bool) result of validation
-      public $messages = array();  // [(string) message, (string) message ]
+  public $item;  // (mixed) filtered data | (bool) result of validation
+  public $messages = array();  // [(string) message, (string) message ]
 
-      public function __construct($item, $messages)
-      {
-        $this->item = $item;
-        if (is_array($messages)) {
-            $this->messages = $messages;
-        } else {
-            $this->messages = [$messages];
-        }
-      }
-    ```
+  public function __construct($item, $messages)
+  {
+    $this->item = $item;
+    if (is_array($messages)) {
+        $this->messages = $messages;
+    } else {
+        $this->messages = [$messages];
+    }
+  }
+```
 
 1.  我们还定义了一种方法，允许我们将这个`Result`实例与另一个实例合并。这很重要，因为在某个时候，我们将通过一系列过滤器处理相同的值。在这种情况下，我们希望新过滤的值覆盖现有的值，但希望消息被合并：
 
 ```php
-    public function mergeResults(Result $result)
-    {
-      $this->item = $result->item;
-      $this->mergeMessages($result);
-    }
+public function mergeResults(Result $result)
+{
+  $this->item = $result->item;
+  $this->mergeMessages($result);
+}
 
-    public function mergeMessages(Result $result)
-    {
-      if (isset($result->messages) && is_array($result->messages)) {
-        $this->messages = array_merge($this->messages, $result->messages);
-      }
-    }
-    ```
+public function mergeMessages(Result $result)
+{
+  if (isset($result->messages) && is_array($result->messages)) {
+    $this->messages = array_merge($this->messages, $result->messages);
+  }
+}
+```
 
 1.  最后，为了完成这个类的方法，我们添加了一个合并验证结果的方法。这里需要考虑的重要问题是，*任何*值为`FALSE`，无论是在验证链上还是下来，都必须导致*整个*结果为`FALSE`：
 
 ```php
-    public function mergeValidationResults(Result $result)
-    {
-      if ($this->item === TRUE) {
-        $this->item = (bool) $result->item;
-      }
-      $this->mergeMessages($result);
-      }
+public function mergeValidationResults(Result $result)
+{
+  if ($this->item === TRUE) {
+    $this->item = (bool) $result->item;
+  }
+  $this->mergeMessages($result);
+  }
 
-    }
-    ```
+}
+```
 
 1.  接下来，为了确保回调产生兼容的结果，我们将定义一个`Application\Filter\CallbackInterface`接口。您会注意到我们正在利用 PHP 7 能够对返回值进行数据类型化，以确保我们得到一个`Result`实例作为返回值：
 
 ```php
-    namespace Application\Filter;
-    interface CallbackInterface
-    {
-      public function __invoke ($item, $params) : Result;
-    }
-    ```
+namespace Application\Filter;
+interface CallbackInterface
+{
+  public function __invoke ($item, $params) : Result;
+}
+```
 
 1.  每个回调应引用相同的消息集。因此，我们使用`Application\Filter\Messages`类定义了一系列静态属性。我们提供了设置所有消息或只设置一个消息的方法。`$messages`属性已经被设置为`public`以便更容易访问：
 
 ```php
-    namespace Application\Filter;
-    class Messages
-    {
-      const MESSAGE_UNKNOWN = 'Unknown';
-      public static $messages;
-      public static function setMessages(array $messages)
-      {
-        self::$messages = $messages;
-      }
-      public static function setMessage($key, $message)
-      {
-        self::$messages[$key] = $message;
-      }
-      public static function getMessage($key)
-      {
-        return self::$messages[$key] ?? self::MESSAGE_UNKNOWN;
-      }
-    }
-    ```
+namespace Application\Filter;
+class Messages
+{
+  const MESSAGE_UNKNOWN = 'Unknown';
+  public static $messages;
+  public static function setMessages(array $messages)
+  {
+    self::$messages = $messages;
+  }
+  public static function setMessage($key, $message)
+  {
+    self::$messages[$key] = $message;
+  }
+  public static function getMessage($key)
+  {
+    return self::$messages[$key] ?? self::MESSAGE_UNKNOWN;
+  }
+}
+```
 
 1.  现在，我们可以定义一个实现核心功能的`Application\Web\AbstractFilter`类。如前所述，这个类将相对*轻量级*，我们不需要担心特定的过滤器或验证器，因为它们将通过配置提供。我们使用`UnexpectedValueException`类，作为 PHP 7 **标准 PHP 库**（**SPL**）的一部分，以便在其中一个回调没有实现`CallbackInterface`时抛出一个描述性异常：
 
 ```php
-    namespace Application\Filter;
-    use UnexpectedValueException;
-    abstract class AbstractFilter
-    {
-      // code described in the next several bullets
-    ```
+namespace Application\Filter;
+use UnexpectedValueException;
+abstract class AbstractFilter
+{
+  // code described in the next several bullets
+```
 
 1.  首先，我们定义了一些有用的类常量，其中包含各种*管理*值。这里显示的最后四个控制要显示的消息格式，以及如何描述*缺失*数据：
 
 ```php
-    const BAD_CALLBACK = 'Must implement CallbackInterface';
-    const DEFAULT_SEPARATOR = '<br>' . PHP_EOL;
-    const MISSING_MESSAGE_KEY = 'item.missing';
-    const DEFAULT_MESSAGE_FORMAT = '%20s : %60s';
-    const DEFAULT_MISSING_MESSAGE = 'Item Missing';
-    ```
+const BAD_CALLBACK = 'Must implement CallbackInterface';
+const DEFAULT_SEPARATOR = '<br>' . PHP_EOL;
+const MISSING_MESSAGE_KEY = 'item.missing';
+const DEFAULT_MESSAGE_FORMAT = '%20s : %60s';
+const DEFAULT_MISSING_MESSAGE = 'Item Missing';
+```
 
 1.  接下来，我们定义了核心属性。`$separator`与过滤和验证消息一起使用。`$callbacks`表示执行过滤和验证的回调数组。`$assignments`将数据字段映射到过滤器和/或验证器。`$missingMessage`表示为属性，以便可以覆盖它（即用于多语言网站）。最后，`$results`是一个`Application\Filter\Result`对象数组，并由过滤或验证操作填充：
 
 ```php
-    protected $separator;    // used for message display
-    protected $callbacks;
-    protected $assignments;
-    protected $missingMessage;
-    protected $results = array();
-    ```
+protected $separator;    // used for message display
+protected $callbacks;
+protected $assignments;
+protected $missingMessage;
+protected $results = array();
+```
 
 1.  在这一点上，我们可以构建`__construct()`方法。它的主要功能是设置回调和赋值的数组。它还设置值或接受分隔符（用于消息显示）和*missing*消息的默认值：
 
 ```php
-    public function __construct(array $callbacks, array $assignments, 
-                                $separator = NULL, $message = NULL)
-    {
-      $this->setCallbacks($callbacks);
-      $this->setAssignments($assignments);
-      $this->setSeparator($separator ?? self::DEFAULT_SEPARATOR);
-      $this->setMissingMessage($message 
-                               ?? self::DEFAULT_MISSING_MESSAGE);
-    }
-    ```
+public function __construct(array $callbacks, array $assignments, 
+                            $separator = NULL, $message = NULL)
+{
+  $this->setCallbacks($callbacks);
+  $this->setAssignments($assignments);
+  $this->setSeparator($separator ?? self::DEFAULT_SEPARATOR);
+  $this->setMissingMessage($message 
+                           ?? self::DEFAULT_MISSING_MESSAGE);
+}
+```
 
 1.  接下来，我们定义了一系列方法，允许我们设置或移除回调。请注意，我们允许获取和设置单个回调。如果您有一组通用的回调，并且只需要修改一个回调，这将非常有用。您还会注意到`setOneCall()`检查回调是否实现了`CallbackInterface`。如果没有，将抛出`UnexpectedValueException`：
 
 ```php
-    public function getCallbacks()
-    {
-      return $this->callbacks;
-    }
+public function getCallbacks()
+{
+  return $this->callbacks;
+}
 
-    public function getOneCallback($key)
-    {
-      return $this->callbacks[$key] ?? NULL;
-    }
+public function getOneCallback($key)
+{
+  return $this->callbacks[$key] ?? NULL;
+}
 
-    public function setCallbacks(array $callbacks)
-    {
-      foreach ($callbacks as $key => $item) {
-        $this->setOneCallback($key, $item);
-      }
-    }
+public function setCallbacks(array $callbacks)
+{
+  foreach ($callbacks as $key => $item) {
+    $this->setOneCallback($key, $item);
+  }
+}
 
-    public function setOneCallback($key, $item)
-    {
-      if ($item instanceof CallbackInterface) {
-          $this->callbacks[$key] = $item;
-      } else {
-          throw new UnexpectedValueException(self::BAD_CALLBACK);
-      }
-    }
+public function setOneCallback($key, $item)
+{
+  if ($item instanceof CallbackInterface) {
+      $this->callbacks[$key] = $item;
+  } else {
+      throw new UnexpectedValueException(self::BAD_CALLBACK);
+  }
+}
 
-    public function removeOneCallback($key)
-    {
-      if (isset($this->callbacks[$key])) 
-      unset($this->callbacks[$key]);
-    }
-    ```
+public function removeOneCallback($key)
+{
+  if (isset($this->callbacks[$key])) 
+  unset($this->callbacks[$key]);
+}
+```
 
 1.  结果处理的方法非常简单。为了方便起见，我们添加了`getItemsAsArray()`，否则`getResults()`将返回一个`Result`对象数组：
 
 ```php
-    public function getResults()
-    {
-      return $this->results;
-    }
+public function getResults()
+{
+  return $this->results;
+}
 
-    public function getItemsAsArray()
-    {
-      $return = array();
-      if ($this->results) {
-        foreach ($this->results as $key => $item) 
-        $return[$key] = $item->item;
-      }
-      return $return;
-    }
-    ```
+public function getItemsAsArray()
+{
+  $return = array();
+  if ($this->results) {
+    foreach ($this->results as $key => $item) 
+    $return[$key] = $item->item;
+  }
+  return $return;
+}
+```
 
 1.  检索消息只是循环遍历`$this ->results`数组并提取`$messages`属性。为了方便起见，我们还添加了`getMessageString()`，其中包含一些格式选项。为了轻松生成消息数组，我们使用了 PHP 7 的`yield from`语法。这使得`getMessages()`成为一个**委托生成器**。消息数组成为一个**子生成器**：
 
 ```php
-    public function getMessages()
-    {
-      if ($this->results) {
-          foreach ($this->results as $key => $item) 
-          if ($item->messages) yield from $item->messages;
-      } else {
-          return array();
-      }
-    }
+public function getMessages()
+{
+  if ($this->results) {
+      foreach ($this->results as $key => $item) 
+      if ($item->messages) yield from $item->messages;
+  } else {
+      return array();
+  }
+}
 
-    public function getMessageString($width = 80, $format = NULL)
-    {
-      if (!$format)
-      $format = self::DEFAULT_MESSAGE_FORMAT . $this->separator;
-      $output = '';
-      if ($this->results) {
-        foreach ($this->results as $key => $value) {
-          if ($value->messages) {
-            foreach ($value->messages as $message) {
-              $output .= sprintf(
-                $format, $key, trim($message));
-            }
-          }
+public function getMessageString($width = 80, $format = NULL)
+{
+  if (!$format)
+  $format = self::DEFAULT_MESSAGE_FORMAT . $this->separator;
+  $output = '';
+  if ($this->results) {
+    foreach ($this->results as $key => $value) {
+      if ($value->messages) {
+        foreach ($value->messages as $message) {
+          $output .= sprintf(
+            $format, $key, trim($message));
         }
       }
-      return $output;
     }
-    ```
+  }
+  return $output;
+}
+```
 
 1.  最后，我们定义一组有用的 getter 和 setter：
 
 ```php
-      public function setMissingMessage($message)
-      {
-        $this->missingMessage = $message;
-      }
-      public function setSeparator($separator)
-      {
-        $this->separator = $separator;
-      }
-      public function getSeparator()
-      {
-        return $this->separator;
-      }
-      public function getAssignments()
-      {
-        return $this->assignments;
-      }
-      public function setAssignments(array $assignments)
-      {
-        $this->assignments = $assignments;
-      }
-      // closing bracket for class AbstractFilter
-    }
-    ```
+  public function setMissingMessage($message)
+  {
+    $this->missingMessage = $message;
+  }
+  public function setSeparator($separator)
+  {
+    $this->separator = $separator;
+  }
+  public function getSeparator()
+  {
+    return $this->separator;
+  }
+  public function getAssignments()
+  {
+    return $this->assignments;
+  }
+  public function setAssignments(array $assignments)
+  {
+    $this->assignments = $assignments;
+  }
+  // closing bracket for class AbstractFilter
+}
+```
 
 1.  过滤和验证，虽然经常一起执行，但同样经常分开执行。因此，我们为每个定义离散的类。我们将从`Application\Filter\Filter`开始。我们使这个类扩展`AbstractFilter`，以提供先前描述的核心功能：
 
 ```php
-    namespace Application\Filter;
-    class Filter extends AbstractFilter
-    {
-      // code
-    }
-    ```
+namespace Application\Filter;
+class Filter extends AbstractFilter
+{
+  // code
+}
+```
 
 1.  在这个类中，我们定义了一个核心的`process()`方法，它扫描数据数组并根据分配数组应用过滤器。如果对这个数据集没有分配过滤器，我们只需返回`NULL`：
 
 ```php
-    public function process(array $data)
-    {
-      if (!(isset($this->assignments) 
-          && count($this->assignments))) {
-            return NULL;
-      }
-    ```
+public function process(array $data)
+{
+  if (!(isset($this->assignments) 
+      && count($this->assignments))) {
+        return NULL;
+  }
+```
 
 1.  否则，我们将`$this->results`初始化为一个`Result`对象数组，其中`$item`属性是来自`$data`的原始值，`$messages`属性是一个空数组：
 
 ```php
-    foreach ($data as $key => $value) {
-      $this->results[$key] = new Result($value, array());
-    }
-    ```
+foreach ($data as $key => $value) {
+  $this->results[$key] = new Result($value, array());
+}
+```
 
 1.  然后，我们复制`$this->assignments`并检查是否有任何*全局*过滤器（由'`*`'键标识）。如果有，我们运行`processGlobal()`然后取消'`*`'键：
 
 ```php
-    $toDo = $this->assignments;
-    if (isset($toDo['*'])) {
-      $this->processGlobalAssignment($toDo['*'], $data);
-      unset($toDo['*']);
-    }
-    ```
+$toDo = $this->assignments;
+if (isset($toDo['*'])) {
+  $this->processGlobalAssignment($toDo['*'], $data);
+  unset($toDo['*']);
+}
+```
 
 1.  最后，我们循环遍历任何剩余的分配，调用`processAssignment()`：
 
 ```php
-    foreach ($toDo as $key => $assignment) {
-      $this->processAssignment($assignment, $key);
-    }
-    ```
+foreach ($toDo as $key => $assignment) {
+  $this->processAssignment($assignment, $key);
+}
+```
 
 1.  正如您所记得的，每个*assignment*都是针对数据字段的键，并表示该字段的回调数组。因此，在`processGlobalAssignment()`中，我们需要循环遍历回调数组。然而，在这种情况下，因为这些分配是*全局*的，我们还需要循环遍历*整个*数据集，并依次应用每个全局过滤器：
 
 ```php
-    protected function processGlobalAssignment($assignment, $data)
-    {
-      foreach ($assignment as $callback) {
-        if ($callback === NULL) continue;
-        foreach ($data as $k => $value) {
-          $result = $this->callbacks[$callback['key']]($this->results[$k]->item,
-          $callback['params']);
-          $this->results[$k]->mergeResults($result);
-        }
-      }
+protected function processGlobalAssignment($assignment, $data)
+{
+  foreach ($assignment as $callback) {
+    if ($callback === NULL) continue;
+    foreach ($data as $k => $value) {
+      $result = $this->callbacks[$callback['key']]($this->results[$k]->item,
+      $callback['params']);
+      $this->results[$k]->mergeResults($result);
     }
-    ```
+  }
+}
+```
 
 ### 注意
 
 棘手的部分是这行代码：
 
 ```php
-    $result = $this->callbacks[$callback['key']]($this ->results[$k]->item, $callback['params']);
-    ```
+$result = $this->callbacks[$callback['key']]($this ->results[$k]->item, $callback['params']);
+```
 
 记住，每个回调实际上是一个匿名类，定义了 PHP 魔术`__invoke()`方法。提供的参数是要过滤的实际数据项和参数数组。通过运行`$this->callbacks[$callback['key']]()`，我们实际上是在神奇地调用`__invoke()`。
 
 1.  当我们定义`processAssignment()`时，类似于`processGlobalAssignment()`的方式，我们需要执行分配给每个数据键的每个剩余回调：
 
 ```php
-      protected function processAssignment($assignment, $key)
-      {
-        foreach ($assignment as $callback) {
-          if ($callback === NULL) continue;
-          $result = $this->callbacks[$callback['key']]($this->results[$key]->item, 
-                                     $callback['params']);
-          $this->results[$key]->mergeResults($result);
-        }
-      }
-    }  // closing brace for Application\Filter\Filter
-    ```
+  protected function processAssignment($assignment, $key)
+  {
+    foreach ($assignment as $callback) {
+      if ($callback === NULL) continue;
+      $result = $this->callbacks[$callback['key']]($this->results[$key]->item, 
+                                 $callback['params']);
+      $this->results[$key]->mergeResults($result);
+    }
+  }
+}  // closing brace for Application\Filter\Filter
+```
 
 ### 注意
 
@@ -1447,109 +1447,109 @@ var_dump($filter->getItemsAsArray());
 1.  首先，我们定义一个验证回调的配置数组。与前面的示例一样，每个回调都应实现`Application\Filter\CallbackInterface`，并应返回`Application\Filter\Result`的实例。验证器将采用这种通用形式：
 
 ```php
-    use Application\Filter\ { Result, Messages, CallbackInterface };
-    $config = [
-      // validator callbacks
-      'validators' => [
-        'key' => new class () implements CallbackInterface 
-        {
-          public function __invoke($item, $params) : Result
-          {
-            // validation logic goes here
-            return new Result($valid, $error);
-          }
-        },
-        // etc.
-    ```
+use Application\Filter\ { Result, Messages, CallbackInterface };
+$config = [
+  // validator callbacks
+  'validators' => [
+    'key' => new class () implements CallbackInterface 
+    {
+      public function __invoke($item, $params) : Result
+      {
+        // validation logic goes here
+        return new Result($valid, $error);
+      }
+    },
+    // etc.
+```
 
 1.  接下来，我们定义了一个`Application\Filter\Validator`类，它循环遍历赋值数组，测试每个数据项是否符合其分配的验证器回调。我们使这个类扩展`AbstractFilter`，以提供先前描述的核心功能：
 
 ```php
-    namespace Application\Filter;
-    class Validator extends AbstractFilter
-    {
-      // code
-    }
-    ```
+namespace Application\Filter;
+class Validator extends AbstractFilter
+{
+  // code
+}
+```
 
 1.  在这个类中，我们定义了一个核心的`process()`方法，它扫描数据数组并根据赋值数组应用验证器。如果对于这个数据集没有分配验证器，我们只需返回`$valid`的当前状态（即`TRUE`）：
 
 ```php
-    public function process(array $data)
-    {
-      $valid = TRUE;
-      if (!(isset($this->assignments) 
-          && count($this->assignments))) {
-            return $valid;
-      }
-    ```
+public function process(array $data)
+{
+  $valid = TRUE;
+  if (!(isset($this->assignments) 
+      && count($this->assignments))) {
+        return $valid;
+  }
+```
 
 1.  否则，我们将`$this->results`初始化为一个`Result`对象数组，其中`$item`属性设置为`TRUE`，`$messages`属性为空数组：
 
 ```php
-    foreach ($data as $key => $value) {
-      $this->results[$key] = new Result(TRUE, array());
-    }
-    ```
+foreach ($data as $key => $value) {
+  $this->results[$key] = new Result(TRUE, array());
+}
+```
 
 1.  然后，我们复制`$this->assignments`并检查是否有*全局*过滤器（由'`*`'键标识）。如果有，我们运行`processGlobal()`，然后取消'`*`'键：
 
 ```php
-    $toDo = $this->assignments;
-    if (isset($toDo['*'])) {
-      $this->processGlobalAssignment($toDo['*'], $data);
-      unset($toDo['*']);
-    }
-    ```
+$toDo = $this->assignments;
+if (isset($toDo['*'])) {
+  $this->processGlobalAssignment($toDo['*'], $data);
+  unset($toDo['*']);
+}
+```
 
 1.  最后，我们循环遍历任何剩余的赋值，调用`processAssignment()`。这是一个理想的地方，用来检查赋值数组中是否缺少数据中存在的任何字段。请注意，如果任何验证回调返回`FALSE`，我们将`$valid`设置为`FALSE`：
 
 ```php
-    foreach ($toDo as $key => $assignment) {
-      if (!isset($data[$key])) {
-          $this->results[$key] = 
-          new Result(FALSE, $this->missingMessage);
-      } else {
-          $this->processAssignment(
-            $assignment, $key, $data[$key]);
-      }
-      if (!$this->results[$key]->item) $valid = FALSE;
-      }
-      return $valid;
-    }
-    ```
+foreach ($toDo as $key => $assignment) {
+  if (!isset($data[$key])) {
+      $this->results[$key] = 
+      new Result(FALSE, $this->missingMessage);
+  } else {
+      $this->processAssignment(
+        $assignment, $key, $data[$key]);
+  }
+  if (!$this->results[$key]->item) $valid = FALSE;
+  }
+  return $valid;
+}
+```
 
 1.  正如您所记得的，每个*赋值*都与数据字段相关联，并表示该字段的回调数组。因此，在`processGlobalAssignment()`中，我们需要循环遍历回调数组。然而，在这种情况下，因为这些赋值是*全局*的，我们还需要循环遍历*整个*数据集，并依次应用每个全局过滤器。
 
 1.  与等效的`Application\Filter\Fiter::processGlobalAssignment()`方法相比，我们需要调用`mergeValidationResults()`。原因是，如果`$result->item`的值已经是`FALSE`，我们需要确保它不会随后被`TRUE`的值覆盖。链中返回`FALSE`的任何验证器都必须覆盖任何其他验证结果：
 
 ```php
-    protected function processGlobalAssignment($assignment, $data)
-    {
-      foreach ($assignment as $callback) {
-        if ($callback === NULL) continue;
-        foreach ($data as $k => $value) {
-          $result = $this->callbacks[$callback['key']]
-          ($value, $callback['params']);
-          $this->results[$k]->mergeValidationResults($result);
-        }
-      }
+protected function processGlobalAssignment($assignment, $data)
+{
+  foreach ($assignment as $callback) {
+    if ($callback === NULL) continue;
+    foreach ($data as $k => $value) {
+      $result = $this->callbacks[$callback['key']]
+      ($value, $callback['params']);
+      $this->results[$k]->mergeValidationResults($result);
     }
-    ```
+  }
+}
+```
 
 1.  当我们定义`processAssignment()`时，类似于`processGlobalAssignment()`，我们需要执行分配给每个数据键的每个剩余回调，再次调用`mergeValidationResults()`：
 
 ```php
-    protected function processAssignment($assignment, $key, $value)
-    {
-      foreach ($assignment as $callback) {
-        if ($callback === NULL) continue;
-            $result = $this->callbacks[$callback['key']]
-           ($value, $callback['params']);
-            $this->results[$key]->mergeValidationResults($result);
-        }
-      }
-    ```
+protected function processAssignment($assignment, $key, $value)
+{
+  foreach ($assignment as $callback) {
+    if ($callback === NULL) continue;
+        $result = $this->callbacks[$callback['key']]
+       ($value, $callback['params']);
+        $this->results[$key]->mergeValidationResults($result);
+    }
+  }
+```
 
 ## 它是如何工作的...
 
@@ -1660,88 +1660,88 @@ var_dump($validator->getItemsAsArray());
 1.  现在，我们将注意力转向`Application\Form\Factory`类，并添加属性和 setter，允许我们附加`Application\Filter\Filter`和`Application\Filter\Validator`的实例。我们还需要定义`$data`，用于保留过滤和/或验证的数据：
 
 ```php
-    const DATA_NOT_FOUND = 'Data not found. Run setData()';
-    const FILTER_NOT_FOUND = 'Filter not found. Run setFilter()';
-    const VALIDATOR_NOT_FOUND = 'Validator not found. Run setValidator()';
+const DATA_NOT_FOUND = 'Data not found. Run setData()';
+const FILTER_NOT_FOUND = 'Filter not found. Run setFilter()';
+const VALIDATOR_NOT_FOUND = 'Validator not found. Run setValidator()';
 
-    protected $filter;
-    protected $validator;
-    protected $data;
+protected $filter;
+protected $validator;
+protected $data;
 
-    public function setFilter(Filter $filter)
-    {
-      $this->filter = $filter;
-    }
+public function setFilter(Filter $filter)
+{
+  $this->filter = $filter;
+}
 
-    public function setValidator(Validator $validator)
-    {
-      $this->validator = $validator;
-    }
+public function setValidator(Validator $validator)
+{
+  $this->validator = $validator;
+}
 
-    public function setData($data)
-    {
-      $this->data = $data;
-    }
-    ```
+public function setData($data)
+{
+  $this->data = $data;
+}
+```
 
 1.  接下来，我们定义一个`validate()`方法，该方法调用嵌入的`Application\Filter\Validator`实例的`process()`方法。我们检查`$data`和`$validator`是否存在。如果不存在，将抛出适当的异常，并提供哪个方法需要首先运行的说明：
 
 ```php
-    public function validate()
-    {
-      if (!$this->data)
-      throw new RuntimeException(self::DATA_NOT_FOUND);
+public function validate()
+{
+  if (!$this->data)
+  throw new RuntimeException(self::DATA_NOT_FOUND);
 
-      if (!$this->validator)
-      throw new RuntimeException(self::VALIDATOR_NOT_FOUND);
-    ```
+  if (!$this->validator)
+  throw new RuntimeException(self::VALIDATOR_NOT_FOUND);
+```
 
 1.  调用`process()`方法后，我们将验证结果消息与表单元素消息关联起来。请注意，`process()`方法返回一个布尔值，表示数据集的整体验证状态。当表单在验证失败后重新显示时，错误消息将出现在每个元素旁边：
 
 ```php
-    $valid = $this->validator->process($this->data);
+$valid = $this->validator->process($this->data);
 
-    foreach ($this->elements as $element) {
-      if (isset($this->validator->getResults()
-          [$element->getName()])) {
-            $element->setErrors($this->validator->getResults()
-            [$element->getName()]->messages);
-          }
-        }
-        return $valid;
+foreach ($this->elements as $element) {
+  if (isset($this->validator->getResults()
+      [$element->getName()])) {
+        $element->setErrors($this->validator->getResults()
+        [$element->getName()]->messages);
       }
-    ```
+    }
+    return $valid;
+  }
+```
 
 1.  类似地，我们定义了一个`filter()`方法，该方法调用嵌入的`Application\Filter\Filter`实例的`process()`方法。与步骤 3 中描述的`validate()`方法一样，我们需要检查`$data`和`$filter`的存在。如果缺少任一项，我们将抛出一个带有适当消息的`RuntimeException`：
 
 ```php
-    public function filter()
-    {
-      if (!$this->data)
-      throw new RuntimeException(self::DATA_NOT_FOUND);
+public function filter()
+{
+  if (!$this->data)
+  throw new RuntimeException(self::DATA_NOT_FOUND);
 
-      if (!$this->filter)
-      throw new RuntimeException(self::FILTER_NOT_FOUND);
-    ```
+  if (!$this->filter)
+  throw new RuntimeException(self::FILTER_NOT_FOUND);
+```
 
 1.  然后我们运行`process()`方法，该方法生成一个`Result`对象数组，其中`$item`属性表示过滤器链的最终结果。然后我们遍历结果，如果相应的`$element`键匹配，将`value`属性设置为过滤后的值。我们还添加了过滤过程中产生的任何消息。然后重新显示表单时，所有值属性都将显示过滤后的结果：
 
 ```php
-    $this->filter->process($this->data);
-    foreach ($this->filter->getResults() as $key => $result) {
-      if (isset($this->elements[$key])) {
-        $this->elements[$key]
-        ->setSingleAttribute('value', $result->item);
-        if (isset($result->messages) 
-            && count($result->messages)) {
-          foreach ($result->messages as $message) {
-            $this->elements[$key]->addSingleError($message);
-          }
-        }
-      }      
+$this->filter->process($this->data);
+foreach ($this->filter->getResults() as $key => $result) {
+  if (isset($this->elements[$key])) {
+    $this->elements[$key]
+    ->setSingleAttribute('value', $result->item);
+    if (isset($result->messages) 
+        && count($result->messages)) {
+      foreach ($result->messages as $message) {
+        $this->elements[$key]->addSingleError($message);
+      }
     }
-    }
-    ```
+  }      
+}
+}
+```
 
 ## 它是如何工作的...
 

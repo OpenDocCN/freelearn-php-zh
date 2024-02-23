@@ -834,22 +834,22 @@ echo '</books>';
 +   `Model`类应该扩展两个方法，`Model::createBook()`和`Model::createAuthor()`。这些方法应该接受与`Book::update()`和`Author::update()`相同的参数列表。两者都应该根据传递的参数插入一行到相关表中。可以使用以下代码完成这个操作：
 
 ```php
-    $conn = self::getConn();
-    $conn->beginTransaction();
-    try
-    {
-    $conn->query("INSERT INTO authors(bio) VALUES('')");
-    $aid = $conn->lastInsertId();
-    $author = self::getAuthor($aid);
-    $author->update($firstName, $lastName, $bio);
-    $conn->commit();
-    }
-    catch(Exception $e)
-    {
-    $conn->rollBack();
-    }
+$conn = self::getConn();
+$conn->beginTransaction();
+try
+{
+$conn->query("INSERT INTO authors(bio) VALUES('')");
+$aid = $conn->lastInsertId();
+$author = self::getAuthor($aid);
+$author->update($firstName, $lastName, $bio);
+$conn->commit();
+}
+catch(Exception $e)
+{
+$conn->rollBack();
+}
 
-    ```
+```
 
 +   这里的想法是将实体更新集中在一个地方，即`Author::update()`。我们在这里使用事务来确保，如果发生任何事情，空行不会存储在数据库中。
 

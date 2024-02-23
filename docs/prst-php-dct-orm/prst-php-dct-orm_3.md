@@ -120,51 +120,51 @@ class Comment
 1.  打开`src/Blog/Entity/`位置的`Post.php`文件，并从前一个代码片段中添加 use 语句：
 
 ```php
-      use Doctrine\ORM\Mapping\OneToMany;
-      use Doctrine\Common\Collections\ArrayCollection;
-    ```
+  use Doctrine\ORM\Mapping\OneToMany;
+  use Doctrine\Common\Collections\ArrayCollection;
+```
 
 1.  按照以下代码片段中所示添加`$comments`属性：
 
 ```php
-        /**
-         * @var Comment[]
-         *
-         * @OneToMany(targetEntity="Comment", mappedBy="post")
-         */
-        protected $comments;
-    ```
+    /**
+     * @var Comment[]
+     *
+     * @OneToMany(targetEntity="Comment", mappedBy="post")
+     */
+    protected $comments;
+```
 
 1.  将其初始化代码添加到构造函数中，如下一个代码片段所示：
 
 ```php
-        /**
-         * Initializes collections
-         */
-        public function __construct()
-        {
-            $this->comments = new ArrayCollection();
-        }
-    ```
+    /**
+     * Initializes collections
+     */
+    public function __construct()
+    {
+        $this->comments = new ArrayCollection();
+    }
+```
 
 1.  使用 Doctrine 命令行工具提供的实体生成器为我们刚刚添加到`Comment`和`Post`类的属性创建 getter 和 setter：
 
 ```php
-    **php vendor/bin/doctrine.php orm:generate:entities src/**
+**php vendor/bin/doctrine.php orm:generate:entities src/**
 
-    ```
+```
 
 1.  在生成的`addComment()`方法中，添加以下代码片段中的突出显示行以自动设置关联的拥有端：
 
 ```php
-        public function addComment(\Blog\Entity\Comment$comments)
-        {
-            $this->comments[] = $comments;
-            $comments->setPost($this);
+    public function addComment(\Blog\Entity\Comment$comments)
+    {
+        $this->comments[] = $comments;
+        $comments->setPost($this);
 
-            return $this;
-        }
-    ```
+        return $this;
+    }
+```
 
 `$comments`属性保存与`Post`实体相关联的评论集合。我们使用`@OneToMany`注释将此属性标记为关联的反向端，之前在`Comment`的`$post`属性中定义。我们已经解释了`targetEntity`属性。`mappedBy`属性是关联的反向端的`inversedBy`属性的等价物。它指示相关实体类的属性拥有关联的另一端。
 
@@ -452,69 +452,69 @@ exit;
 1.  在`src/Blog/Entity/`位置创建一个`Tag.php`文件，其中包含使用以下代码片段的实体类：
 
 ```php
-    <?php
+<?php
 
-    namespace Blog\Entity;
+namespace Blog\Entity;
 
-    use Doctrine\Common\Collections\ArrayCollection;
-    use Doctrine\ORM\Mapping\Entity;
-    use Doctrine\ORM\Mapping\Column;
-    use Doctrine\ORM\Mapping\Id;
-    use Doctrine\ORM\Mapping\ManyToMany;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\ORM\Mapping\Entity;
+use Doctrine\ORM\Mapping\Column;
+use Doctrine\ORM\Mapping\Id;
+use Doctrine\ORM\Mapping\ManyToMany;
+
+/**
+ * Tag entity
+ *
+ * @Entity
+ */
+class Tag
+{
+    /**
+     * @var string
+     *
+     * @Id
+     * @Column(type="string")
+     */
+    protected $name;
+    /**
+     * @var Post[]
+     *
+     * @ManyToMany(targetEntity="Post", mappedBy="tags")
+     */
+    protected $posts;
 
     /**
-     * Tag entity
-     *
-     * @Entity
+     * Initializes collection
      */
-    class Tag
+    public function __construct()
     {
-        /**
-         * @var string
-         *
-         * @Id
-         * @Column(type="string")
-         */
-        protected $name;
-        /**
-         * @var Post[]
-         *
-         * @ManyToMany(targetEntity="Post", mappedBy="tags")
-         */
-        protected $posts;
-
-        /**
-         * Initializes collection
-         */
-        public function __construct()
-        {
-            $this->posts = new ArrayCollection();
-        }
-
-        /**
-         * String representation
-         *
-         * @return string
-         */
-        public function __toString()
-        {
-            return $this->getName();
-        }
+        $this->posts = new ArrayCollection();
     }
-    ```
+
+    /**
+     * String representation
+     *
+     * @return string
+     */
+    public function __toString()
+    {
+        return $this->getName();
+    }
+}
+```
 
 1.  使用以下命令生成 getter 和 setter：
 
 ```php
-    **php vendor/bin/doctrine.php orm:generate:entities src/**
+**php vendor/bin/doctrine.php orm:generate:entities src/**
 
-    ```
+```
 
 1.  在`addPost()`方法中的`$this->posts[] = $posts;`之后添加以下代码行以设置关联的拥有端：
 
 ```php
-    $posts->addTag($this);
-    ```
+$posts->addTag($this);
+```
 
 `$name`属性是`Tag`实体的标识符。与`Post`和`Comment`实体不同，它的值不是由 DBMS 自动生成的；它是标签的名称。这就是为什么这里不使用`@GeneratedValue`注释。标签的名称必须是唯一的，并且必须由应用程序设置。
 
@@ -533,41 +533,41 @@ exit;
 1.  添加以下`use`语句：
 
 ```php
-    use Doctrine\ORM\Mapping\ManyToMany;
-    use Doctrine\ORM\Mapping\JoinTable;
-    use Doctrine\ORM\Mapping\JoinColumn;
-    ```
+use Doctrine\ORM\Mapping\ManyToMany;
+use Doctrine\ORM\Mapping\JoinTable;
+use Doctrine\ORM\Mapping\JoinColumn;
+```
 
 1.  使用以下代码片段添加`mapped`属性：
 
 ```php
-        /**
-         * @var Tag[]
-         *
-         * @ManyToMany(targetEntity="Tag", inversedBy="posts",fetch="EAGER", cascade={"persist"}, orphanRemoval=true)
-         * @JoinTable(
-         *      inverseJoinColumns={@JoinColumn(name="tag_name",referencedColumnName="name")}
-         * )
-         */
-        protected $tags;
-    ```
+    /**
+     * @var Tag[]
+     *
+     * @ManyToMany(targetEntity="Tag", inversedBy="posts",fetch="EAGER", cascade={"persist"}, orphanRemoval=true)
+     * @JoinTable(
+     *      inverseJoinColumns={@JoinColumn(name="tag_name",referencedColumnName="name")}
+     * )
+     */
+    protected $tags;
+```
 
 1.  按照以下代码片段中所示的方式在构造函数中初始化属性：
 
 ```php
-        public function __construct()
-        {
-            // …
-            $this->tags = new ArrayCollection();
-        }
-    ```
+    public function __construct()
+    {
+        // …
+        $this->tags = new ArrayCollection();
+    }
+```
 
 1.  要生成 getter 和 setter，可以使用以下命令：
 
 ```php
-    **php vendor/bin/doctrine.php orm:generate:entities src/**
+**php vendor/bin/doctrine.php orm:generate:entities src/**
 
-    ```
+```
 
 这里介绍了`@ManyToMany`注释的两个新属性，即`cascade`和`orphanRemoval`。
 
@@ -668,62 +668,62 @@ class LoadTagData implements FixtureInterface,DependentFixtureInterface
 1.  在文件顶部添加以下`use`语句：
 
 ```php
-    use Blog\Entity\Tag;
-    ```
+use Blog\Entity\Tag;
+```
 
 1.  找到以下代码片段：
 
 ```php
-        $post
-            ->setTitle($_POST['title'])
-            ->setBody($_POST['body'])
-        ;
-    ```
+    $post
+        ->setTitle($_POST['title'])
+        ->setBody($_POST['body'])
+    ;
+```
 
 1.  在`to extract`和管理提交的标签后添加此代码：
 
 ```php
-        $newTags = [];
-        foreach (explode(',', $_POST['tags']) as $tagName) {
-            $trimmedTagName = trim($tagName);
-            $tag = $entityManager->find('Blog\Entity\Tag',$trimmedTagName);
-            if (!$tag) {
-                $tag = new Tag();
-                $tag->setName($trimmedTagName);
-            }
-
-            $newTags[] = $tag;
+    $newTags = [];
+    foreach (explode(',', $_POST['tags']) as $tagName) {
+        $trimmedTagName = trim($tagName);
+        $tag = $entityManager->find('Blog\Entity\Tag',$trimmedTagName);
+        if (!$tag) {
+            $tag = new Tag();
+            $tag->setName($trimmedTagName);
         }
 
-        // Removes unused tags
-        foreach (array_diff($post->getTags()->toArray(),$newTags) as $tag) {
-            $post->removeTag($tag);
-        }
+        $newTags[] = $tag;
+    }
 
-        // Adds new tags
-        foreach (array_diff($newTags, $post->getTags()->toArray()) as $tag) {
-            $post->addTag($tag);
-        }
-    ```
+    // Removes unused tags
+    foreach (array_diff($post->getTags()->toArray(),$newTags) as $tag) {
+        $post->removeTag($tag);
+    }
+
+    // Adds new tags
+    foreach (array_diff($newTags, $post->getTags()->toArray()) as $tag) {
+        $post->addTag($tag);
+    }
+```
 
 1.  找到以下代码片段：
 
 ```php
-        <label>
-            Body
-            <textarea name="body" cols="20" rows="10"required><?=isset ($post) ? htmlspecialchars($post-
-            >getBody()) : ''?></textarea>
-        </label><br>
-    ```
+    <label>
+        Body
+        <textarea name="body" cols="20" rows="10"required><?=isset ($post) ? htmlspecialchars($post-
+        >getBody()) : ''?></textarea>
+    </label><br>
+```
 
 1.  在`to display`后添加以下表单部件以更新标签：
 
 ```php
-        <label>
-            Tags
-            <input type="text" name="tags" value="<?=isset($post) ? htmlspecialchars(implode(', ', $post->getTags()->toArray())) : ''?>" required>
-        </label><br>
-    ```
+    <label>
+        Tags
+        <input type="text" name="tags" value="<?=isset($post) ? htmlspecialchars(implode(', ', $post->getTags()->toArray())) : ''?>" required>
+    </label><br>
+```
 
 从提交的字符串中提取每个标签名称。从存储库中检索相应的`Tag`实体，如果找不到则创建。
 

@@ -405,71 +405,71 @@ while($r = $q->fetch())
 +   `PDO::FETCH_COLUMN`允许您指示`PDOStatement`对象返回每行的指定列。在这种情况下，`PDO::fetch()`将返回一个标量值。列从 0 开始编号。这在以下代码片段中发生：
 
 ```php
-    $q = $conn->query('SELECT * FROM authors ORDER BY lastName,
-    firstName');
-    $q->setFetchMode(PDO::FETCH_COLUMN, 1);
-    while($r = $q->fetch())
-    {
-    var_dump($r);
-    }
-    //would print:
-    string(7) "Cameron"
-    string(4) "Marc"
-    string(6) "Sohail"
+$q = $conn->query('SELECT * FROM authors ORDER BY lastName,
+firstName');
+$q->setFetchMode(PDO::FETCH_COLUMN, 1);
+while($r = $q->fetch())
+{
+var_dump($r);
+}
+//would print:
+string(7) "Cameron"
+string(4) "Marc"
+string(6) "Sohail"
 
-    ```
+```
 
 这揭示了对`$q->fetch()`的调用确实返回标量值（而不是数组）。请注意，索引为 1 的列应该是作者的姓，而不是他们的名，如果您只是查看作者列表页面。然而，我们的查询看起来像是`SELECT * FROM authors`，所以它也检索了作者的 ID，这些 ID 存储在第 0 列中。您应该意识到这一点，因为您可能会花费数小时来寻找这样一个逻辑错误的源头。
 
 +   `PDO::FETCH_INTO`可以用来修改对象的实例。让我们将上面的示例重写如下：
 
 ```php
-    $q = $conn->query('SELECT * FROM authors ORDER BY lastName,
-    firstName');
-    $r = new stdClass();
-    $q->setFetchMode(PDO::FETCH_INTO, $r);
-    while($q->fetch())
-    {
-    var_dump($r);
-    }
-    //would print something like:
-    object(stdClass)#3 (4)
-    {
-    ["id"]=>
-    string(1) "3"
-    ["firstName"]=>
-    string(7) "Cameron"
-    ["lastName"]=>
-    string(6) "Cooper"
-    ["bio"]=>
-    string(112) "J. Cameron Cooper has been playing around on the
-    web since there was not much of a web with which to play around"
-    }
-    object(stdClass)#3 (4)
-    {
-    ["id"]=>
-    string(1) "1"
-    ["firstName"]=>
-    string(4) "Marc"
-    ["lastName"]=>
-    string(7) "Delisle"
-    ["bio"]=>
-    string(54) "Marc Delisle is a member of the MySQL Developer Guide"
-    }
-    object(stdClass)#3 (4)
-    {
-    ["id"]=>
-    string(1) "2"
-    ["firstName"]=>
-    string(6) "Sohail"
-    ["lastName"]=>
-    string(6) "Salehi"
-    ["bio"]=>
-    string(101) "In recent years, Sohail has contributed to over 20
-    books, mainly in programming and computer graphics"
-    }
+$q = $conn->query('SELECT * FROM authors ORDER BY lastName,
+firstName');
+$r = new stdClass();
+$q->setFetchMode(PDO::FETCH_INTO, $r);
+while($q->fetch())
+{
+var_dump($r);
+}
+//would print something like:
+object(stdClass)#3 (4)
+{
+["id"]=>
+string(1) "3"
+["firstName"]=>
+string(7) "Cameron"
+["lastName"]=>
+string(6) "Cooper"
+["bio"]=>
+string(112) "J. Cameron Cooper has been playing around on the
+web since there was not much of a web with which to play around"
+}
+object(stdClass)#3 (4)
+{
+["id"]=>
+string(1) "1"
+["firstName"]=>
+string(4) "Marc"
+["lastName"]=>
+string(7) "Delisle"
+["bio"]=>
+string(54) "Marc Delisle is a member of the MySQL Developer Guide"
+}
+object(stdClass)#3 (4)
+{
+["id"]=>
+string(1) "2"
+["firstName"]=>
+string(6) "Sohail"
+["lastName"]=>
+string(6) "Salehi"
+["bio"]=>
+string(101) "In recent years, Sohail has contributed to over 20
+books, mainly in programming and computer graphics"
+}
 
-    ```
+```
 
 ### 注意
 
@@ -478,22 +478,22 @@ while($r = $q->fetch())
 +   `PDO::FETCH_CLASS`可以用来返回指定类的对象。对于每一行，将创建这个类的一个实例，并将结果集列的值命名和赋值给这些属性。请注意，该类不一定要声明这些属性，因为 PHP 允许在运行时创建对象属性。例如：
 
 ```php
-    $q = $conn->query('SELECT * FROM authors ORDER BY lastName,
-    firstName');
-    $q->setFetchMode(PDO::FETCH_CLASS, stdClass);
-    while($r = $q->fetch())
-    {
-    var_dump($r);
-    }
+$q = $conn->query('SELECT * FROM authors ORDER BY lastName,
+firstName');
+$q->setFetchMode(PDO::FETCH_CLASS, stdClass);
+while($r = $q->fetch())
+{
+var_dump($r);
+}
 
-    ```
+```
 
 这将打印类似于上一个示例的输出。此外，这种获取模式允许您通过将参数数组传递给它们的构造函数来创建实例：
 
 ```php
-    $q->setFetchMode(PDO::FETCH_CLASS, SomeClass, array(1, 2, 3));
+$q->setFetchMode(PDO::FETCH_CLASS, SomeClass, array(1, 2, 3));
 
-    ```
+```
 
 （这只有在`SomeClass`类已经被定义的情况下才会起作用。）
 
@@ -502,79 +502,79 @@ while($r = $q->fetch())
 描述所有这些获取模式可能看起来有些多余，但在某些情况下，它们每一个都是有用的。实际上，您可能已经注意到书籍列表有些不完整。它不包含作者的名字。我们将添加这个缺失的列，并且为了使我们的示例更加棘手，我们将使作者的名字可点击，并将其链接到作者的个人资料页面（我们将创建）。这个个人资料页面需要作者的 ID，以便我们可以在 URL 中传递它。它将显示我们关于作者的所有信息，以及他们所有书籍的列表。让我们从这个作者的个人资料页面开始：
 
 ```php
-    <?php
-    /**
-    * This page shows an author's profile
-    * PDO Library Management example application
-    * @author Dennis Popel
-    */
-    // Don't forget the include
-    include('common.inc.php');
-    // Get the author
-    $id = (int)$_REQUEST['id'];
-    $q = $conn->query("SELECT * FROM authors WHERE id=$id");
-    $author = $q->fetch(PDO::FETCH_ASSOC);
-    $q->closeCursor();
-    // Now see if the author is valid - if it's not,
-    // we have an invalid ID
-    if(!$author) {
-    showHeader('Error');
-    echo "Invalid Author ID supplied";
-    showFooter();
-    exit;
-    }
-    // Display the header - we have no error
-    showHeader("Author: $author[firstName] $author[lastName]");
-    // Now fetch all his books
-    $q = $conn->query("SELECT * FROM books WHERE author=$id ORDER BY title");
-    $q->setFetchMode(PDO::FETCH_ASSOC);
-    // now display everything
-    ?>
-    <h2>Author</h2>
-    <table width="60%" border="1" cellpadding="3">
-    <tr>
-    <td><b>First Name</b></td>
-    <td><?=htmlspecialchars($author['firstName'])?></td>
-    </tr>
-    <tr>
-    <td><b>Last Name</b></td>
-    <td><?=htmlspecialchars($author['lastName'])?></td>
-    </tr>
-    <tr>
-    <td><b>Bio</b></td>
-    <td><?=htmlspecialchars($author['bio'])?></td>
-    </tr>
-    </table>
-    <h2>Books</h2>
-    <table width="100%" border="1" cellpadding="3">
-    <tr style="font-weight: bold">
-    <td>Title</td>
-    <td>ISBN</td>
-    <td>Publisher</td>
-    <td>Year</td>
-    <td>Summary</td>
-    </tr>
-    <?php
-    // Now iterate over every book and display it
-    while($r = $q->fetch())
-    {
-    ?>
-    <tr>
-    <td><?=htmlspecialchars($r['title'])?></td>
-    <td><?=htmlspecialchars($r['isbn'])?></td>
-    <td><?=htmlspecialchars($r['publisher'])?></td>
-    <td><?=htmlspecialchars($r['year'])?></td>
-    <td><?=htmlspecialchars($r['summary'])?></td>
-    </tr>
-    <?php
-    }
-    ?>
-    </table>
-    <?php
-    // Display footer
-    showFooter();
+<?php
+/**
+* This page shows an author's profile
+* PDO Library Management example application
+* @author Dennis Popel
+*/
+// Don't forget the include
+include('common.inc.php');
+// Get the author
+$id = (int)$_REQUEST['id'];
+$q = $conn->query("SELECT * FROM authors WHERE id=$id");
+$author = $q->fetch(PDO::FETCH_ASSOC);
+$q->closeCursor();
+// Now see if the author is valid - if it's not,
+// we have an invalid ID
+if(!$author) {
+showHeader('Error');
+echo "Invalid Author ID supplied";
+showFooter();
+exit;
+}
+// Display the header - we have no error
+showHeader("Author: $author[firstName] $author[lastName]");
+// Now fetch all his books
+$q = $conn->query("SELECT * FROM books WHERE author=$id ORDER BY title");
+$q->setFetchMode(PDO::FETCH_ASSOC);
+// now display everything
+?>
+<h2>Author</h2>
+<table width="60%" border="1" cellpadding="3">
+<tr>
+<td><b>First Name</b></td>
+<td><?=htmlspecialchars($author['firstName'])?></td>
+</tr>
+<tr>
+<td><b>Last Name</b></td>
+<td><?=htmlspecialchars($author['lastName'])?></td>
+</tr>
+<tr>
+<td><b>Bio</b></td>
+<td><?=htmlspecialchars($author['bio'])?></td>
+</tr>
+</table>
+<h2>Books</h2>
+<table width="100%" border="1" cellpadding="3">
+<tr style="font-weight: bold">
+<td>Title</td>
+<td>ISBN</td>
+<td>Publisher</td>
+<td>Year</td>
+<td>Summary</td>
+</tr>
+<?php
+// Now iterate over every book and display it
+while($r = $q->fetch())
+{
+?>
+<tr>
+<td><?=htmlspecialchars($r['title'])?></td>
+<td><?=htmlspecialchars($r['isbn'])?></td>
+<td><?=htmlspecialchars($r['publisher'])?></td>
+<td><?=htmlspecialchars($r['year'])?></td>
+<td><?=htmlspecialchars($r['summary'])?></td>
+</tr>
+<?php
+}
+?>
+</table>
+<?php
+// Display footer
+showFooter();
 
-    ```
+```
 
 将此文件命名为`author.php`并将其保存到其他文件所在的目录中。
 

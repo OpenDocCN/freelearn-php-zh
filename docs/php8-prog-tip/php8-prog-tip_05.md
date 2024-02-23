@@ -183,10 +183,10 @@ FFI 扩展的另一个用例，除了快速原型设计之外，是允许 PHP �
 1.  首先，我们使用`FFI::arrayType()`来创建数组。作为参数，我们提供了一个`FFI::type()`方法和维度。然后我们使用`FFI::new()`来创建`FFI\Ctype`实例。代码如下所示：
 
 ```php
-    // /repo/ch04/php8_ffi_array.php
-    $type = FFI::arrayType(FFI::type("char"), [3, 3]);
-    $arr  = FFI::new($type);
-    ```
+// /repo/ch04/php8_ffi_array.php
+$type = FFI::arrayType(FFI::type("char"), [3, 3]);
+$arr  = FFI::new($type);
+```
 
 1.  或者，我们也可以将操作合并成一个单一的语句，如下所示：
 
@@ -195,45 +195,45 @@ FFI 扩展的另一个用例，除了快速原型设计之外，是允许 PHP �
 1.  然后我们初始化了三个提供测试数据的变量，如下面的代码片段所示。请注意，本地的 PHP`count()`函数适用于`FFI\CData`数组类型：
 
 ```php
-    $pos   = 0;
-    $val   = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    $y_max = count($arr);
-    ```
+$pos   = 0;
+$val   = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+$y_max = count($arr);
+```
 
 1.  现在我们可以用值填充它，就像用 PHP 数组一样，只是我们需要使用`cdata`属性来保留元素作为`FFI\CType`实例。代码如下所示：
 
 ```php
-    for ($y = 0; $y < $y_max; $y++) {
-        $x_max = count($arr[$y]);
-        for ($x = 0; $x < $x_max; $x++) {
-            $arr[$y][$x]->cdata = $val[$pos++];
-        }
-    }
-    var_dump($arr)
-    ```
+for ($y = 0; $y < $y_max; $y++) {
+    $x_max = count($arr[$y]);
+    for ($x = 0; $x < $x_max; $x++) {
+        $arr[$y][$x]->cdata = $val[$pos++];
+    }
+}
+var_dump($arr)
+```
 
 在前面的例子中，我们使用嵌套的`for()`循环来填充二维的 3 x 3 数组，用字母表的字母。如果我们现在执行一个简单的`var_dump()`，我们会得到以下结果：
 
 ```php
-    root@php8_tips_php8 [ /repo/ch04 ]# php 
-    php8_ffi_array.php 
-    object(FFI\CData:char[3][3])#2 (3) {
-      [0]=> object(FFI\CData:char[3])#3 (3) {
-        [0]=> string(1) "A"
-        [1]=> string(1) "B"
-        [2]=> string(1) "C"
-      }
-      [1]=> object(FFI\CData:char[3])#1 (3) {
-        [0]=> string(1) "D"
-        [1]=> string(1) "E"
-        [2]=> string(1) "F"
-      }
-      [2]=> object(FFI\CData:char[3])#4 (3) {
-        [0]=> string(1) "G"
-        [1]=> string(1) "H"
-        [2]=> string(1) "I"
-    }
-    ```
+root@php8_tips_php8 [ /repo/ch04 ]# php 
+php8_ffi_array.php 
+object(FFI\CData:char[3][3])#2 (3) {
+  [0]=> object(FFI\CData:char[3])#3 (3) {
+    [0]=> string(1) "A"
+    [1]=> string(1) "B"
+    [2]=> string(1) "C"
+  }
+  [1]=> object(FFI\CData:char[3])#1 (3) {
+    [0]=> string(1) "D"
+    [1]=> string(1) "E"
+    [2]=> string(1) "F"
+  }
+  [2]=> object(FFI\CData:char[3])#4 (3) {
+    [0]=> string(1) "G"
+    [1]=> string(1) "H"
+    [2]=> string(1) "I"
+}
+```
 
 从输出中要注意的第一件重要的事情是，索引都是整数。从输出中得到的第二个要点是，这显然不是一个本地的 PHP 数组。`var_dump()`告诉我们，每个数组元素都是一个`FFI\CData`实例。还要注意的是，C 语言字符串被视为数组。
 
@@ -268,36 +268,36 @@ FFI 扩展不会编译 C 代码。为了在 FFI 扩展中使用 C 函数，您�
 1.  第一个本地方法`srand()`用于初始化随机化序列。另一个本地 C 函数`rand()`调用序列中的下一个数字。`$key`变量保存了随机化的最终产品。`$size`表示要调用的随机数的数量。代码如下所示：
 
 ```php
-    // /repo/ch04/php8_ffi_cdef.php
-    $key  = '';
-    $size = 4;
-    ```
+// /repo/ch04/php8_ffi_cdef.php
+$key  = '';
+$size = 4;
+```
 
 1.  然后，我们通过调用`cdef()`并在字符串`$code`中标识本地 C 函数来创建`FFI`实例，该字符串取自`libc.so.6`本地 C 库，如下所示：
 
 ```php
-    $code = <<<EOT
-        void srand (unsigned int seed);
-        int rand (void);
-    EOT;
-    $ffi = FFI::cdef($code, 'libc.so.6');
-    ```
+$code = <<<EOT
+    void srand (unsigned int seed);
+    int rand (void);
+EOT;
+$ffi = FFI::cdef($code, 'libc.so.6');
+```
 
 1.  然后我们通过调用`srand()`来初始化随机化。然后，在循环中，我们调用`rand()`本地 C 库函数来生成一个随机数。我们使用`sprintf()`本地 PHP 函数将生成的整数转换为十六进制，然后将其附加到`$key`，并将其输出。代码如下所示：
 
 ```php
-    $ffi->srand(random_int(0, 999));
-    for ($x = 0; $x < $size; $x++)
-        $key .= sprintf('%x', $ffi->rand());
-    echo $key
-    ```
+$ffi->srand(random_int(0, 999));
+for ($x = 0; $x < $size; $x++)
+    $key .= sprintf('%x', $ffi->rand());
+echo $key
+```
 
 以下是前面代码片段的输出。请注意，生成的值可以用作随机密钥：
 
 ```php
-    root@php8_tips_php8 [ /repo/ch04 ]# php php8_ffi_cdef.php
-    23f306d51227432e7d8d921763b7eedf
-    ```
+root@php8_tips_php8 [ /repo/ch04 ]# php php8_ffi_cdef.php
+23f306d51227432e7d8d921763b7eedf
+```
 
 在输出中，您会看到一串连接的随机整数转换为十六进制的字符串。请注意，每次调用脚本时，结果值都会发生变化。
 
@@ -326,101 +326,101 @@ FFI 扩展中提供的两个比较函数在*表 4.2*中总结如下：
 1.  首先定义一组代表`FFI\CData`实例的四个变量，这些实例可以包含多达六个字符，并使用示例数据填充这些实例，如下所示：
 
 ```php
-    // /repo/ch04/php8_ffi_memcmp.php
-    $a = FFI::new("char[6]");
-    $b = FFI::new("char[6]");
-    $c = FFI::new("char[6]");
-    $d = FFI::new("char[6]");
-    ```
+// /repo/ch04/php8_ffi_memcmp.php
+$a = FFI::new("char[6]");
+$b = FFI::new("char[6]");
+$c = FFI::new("char[6]");
+$d = FFI::new("char[6]");
+```
 
 1.  请记住，C 语言将字符数据视为数组，因此即使使用`cdata`属性，我们也不能直接分配字符串。因此，我们需要定义一个匿名函数，用字母填充实例。我们使用以下代码来实现这一点：
 
 ```php
-    $populate = function ($cdata, $start, $offset, $num) {
-        for ($x = 0; $x < $num; $x++)
-            $cdata[$x + $offset] = chr($x + $offset + 
-                                       $start);
-        return $cdata;
-    };
-    ```
+$populate = function ($cdata, $start, $offset, $num) {
+    for ($x = 0; $x < $num; $x++)
+        $cdata[$x + $offset] = chr($x + $offset + 
+                                   $start);
+    return $cdata;
+};
+```
 
 1.  接下来，我们使用该函数将四个`FFI\CData`实例填充为不同的字母集，如下所示：
 
 ```php
-    $a = $populate($a, 65, 0, 6);
-    $b = $populate($b, 65, 0, 3);
-    $b = $populate($b, 85, 3, 3);
-    $c = $populate($c, 71, 0, 6);
-    $d = $populate($d, 71, 0, 6);
-    ```
+$a = $populate($a, 65, 0, 6);
+$b = $populate($b, 65, 0, 3);
+$b = $populate($b, 85, 3, 3);
+$c = $populate($c, 71, 0, 6);
+$d = $populate($d, 71, 0, 6);
+```
 
 1.  现在我们可以使用`FFI::string()`方法来显示到目前为止的内容，如下所示：
 
 ```php
-    $patt = "%2s : %6s\n";
-    printf($patt, '$a', FFI::string($a, 6));
-    printf($patt, '$b', FFI::string($b, 6));
-    printf($patt, '$c', FFI::string($c, 6));
-    printf($patt, '$d', FFI::string($d, 6));
-    ```
+$patt = "%2s : %6s\n";
+printf($patt, '$a', FFI::string($a, 6));
+printf($patt, '$b', FFI::string($b, 6));
+printf($patt, '$c', FFI::string($c, 6));
+printf($patt, '$d', FFI::string($d, 6));
+```
 
 1.  这是`printf()`语句的输出：
 
 ```php
-    $a : ABCDEF
-    $b : ABCXYZ
-    $c : GHIJKL
-    $d : GHIJKL
-    ```
+$a : ABCDEF
+$b : ABCXYZ
+$c : GHIJKL
+$d : GHIJKL
+```
 
 1.  从输出中可以看出，`$c`和`$d`的值是相同的。`$a`和`$b`的前三个字符相同，但最后三个字符不同。
 
 1.  此时，如果我们尝试使用太空船操作符（`<=>`）进行比较，结果将如下：
 
 ```php
-    PHP Fatal error:  Uncaught FFI\Exception: Comparison of incompatible C types
-    ```
+PHP Fatal error:  Uncaught FFI\Exception: Comparison of incompatible C types
+```
 
 1.  同样，尝试使用`strcmp()`，即使数据是字符类型，结果如下：
 
 ```php
-    PHP Warning:  strcmp() expects parameter 1 to be string, object given
-    ```
+PHP Warning:  strcmp() expects parameter 1 to be string, object given
+```
 
 1.  因此，我们唯一的选择是使用`FFI::memcmp()`。在这组比较中，注意第三个参数是`6`，表示 PHP 应该比较最多六个字符：
 
 ```php
-    $p = "%20s : %2d\n";
-    printf($p, 'memcmp($a, $b, 6)', FFI::memcmp($a, 
-            $b, 6));
-    printf($p, 'memcmp($c, $a, 6)', FFI::memcmp($c, 
-            $a, 6));
-    printf($p, 'memcmp($c, $d, 6)', FFI::memcmp($c, 
-            $d, 6));
-    ```
+$p = "%20s : %2d\n";
+printf($p, 'memcmp($a, $b, 6)', FFI::memcmp($a, 
+        $b, 6));
+printf($p, 'memcmp($c, $a, 6)', FFI::memcmp($c, 
+        $a, 6));
+printf($p, 'memcmp($c, $d, 6)', FFI::memcmp($c, 
+        $d, 6));
+```
 
 1.  如预期的那样，输出与在原生 PHP 字符串上使用太空船操作符的输出相同，如下所示：
 
 ```php
-       memcmp($a, $b, 6) : -1
-       memcmp($c, $a, 6) :  1
-       memcmp($c, $d, 6) :  0
-    ```
+   memcmp($a, $b, 6) : -1
+   memcmp($c, $a, 6) :  1
+   memcmp($c, $d, 6) :  0
+```
 
 1.  请注意，如果将比较限制为仅三个字符，会发生什么。这是添加到代码块中的另一个`FFI::memcmp()`比较，将第三个参数设置为`3`：
 
 ```php
-    echo "\nUsing FFI::memcmp() but not full length\n";
-    printf($p, 'memcmp($a, $b, 3)', FFI::memcmp($a, 
-            $b, 3));
-    ```
+echo "\nUsing FFI::memcmp() but not full length\n";
+printf($p, 'memcmp($a, $b, 3)', FFI::memcmp($a, 
+        $b, 3));
+```
 
 1.  从这里显示的输出中可以看出，通过将`memcmp()`限制为仅三个字符，`$a`和`$b`被视为相等，因为它们都以相同的三个字符`a`、`b`和`c`开头：
 
 ```php
-    Using FFI::memcmp() but not full length
-       memcmp($a, $b, 3) :  0
-    ```
+Using FFI::memcmp() but not full length
+   memcmp($a, $b, 3) :  0
+```
 
 从这个例子中最重要的是，您需要在要比较的字符数和要比较的数据性质之间找到平衡。比较的字符数越少，整体操作速度越快。然而，如果数据的性质可能导致错误的结果，您必须增加字符数，并在性能上稍微损失。
 
@@ -443,53 +443,53 @@ FFI 扩展中提供的两个比较函数在*表 4.2*中总结如下：
 1.  首先，我们定义一个`$char` C 字符串，并用字母表的前六个字母填充它，如下所示：
 
 ```php
-    // /repo/ch04/php8_ffi_typeof.php
-    $char = FFI::new("char[6]");
-    for ($x = 0; $x < 6; $x++)
-        $char[$x] = chr(65 + $x);
-    ```
+// /repo/ch04/php8_ffi_typeof.php
+$char = FFI::new("char[6]");
+for ($x = 0; $x < 6; $x++)
+    $char[$x] = chr(65 + $x);
+```
 
 1.  然后我们尝试使用`strlen()`来获取字符串的长度。在下面的代码片段中，请注意使用`$t::class`：这相当于`get_class($t)`。此用法仅适用于 PHP 8 及以上版本：
 
 ```php
-    try {
-        echo 'Length of $char is ' . strlen($char);
-    } catch (Throwable $t) {
-        echo $t::class . ':' . $t->getMessage();
-    }
-    ```
+try {
+    echo 'Length of $char is ' . strlen($char);
+} catch (Throwable $t) {
+    echo $t::class . ':' . $t->getMessage();
+}
+```
 
 1.  在 PHP 7.4 中的结果是一个`Warning`消息。然而，在 PHP 8 中，如果将除字符串以外的任何内容传递给`strlen()`，将抛出致命的`Error`消息。这是此时的 PHP 8 输出：
 
 ```php
-    TypeError:strlen(): Argument #1 ($str) must be of type string, FFI\CData given
-    ```
+TypeError:strlen(): Argument #1 ($str) must be of type string, FFI\CData given
+```
 
 1.  类似地，尝试使用`ctype_alnum()`，如下所示：
 
 ```php
-    echo '$char is ' .
-        ((ctype_alnum($char)) ? 'alpha' : 'non-alpha');
-    ```
+echo '$char is ' .
+    ((ctype_alnum($char)) ? 'alpha' : 'non-alpha');
+```
 
 1.  以下是在*步骤 4*中显示的`echo`命令的输出：
 
 ```php
-    $char is non-alpha
-    ```
+$char is non-alpha
+```
 
 1.  显然，我们无法使用原生 PHP 函数获取有关 FFI 数据的有用信息！然而，使用`FFI::typeof()`，如下所示，会返回更好的结果：
 
 ```php
-    $type = FFI::typeOf($char);
-    var_dump($type);
-    ```
+$type = FFI::typeOf($char);
+var_dump($type);
+```
 
 1.  这是`var_dump()`的输出：
 
 ```php
-    object(FFI\CType:char[6])#3 (0) {}
-    ```
+object(FFI\CType:char[6])#3 (0) {}
+```
 
 从最终输出中可以看出，我们现在有了有用的信息！现在让我们来看看另外两种 FFI 信息方法。
 
@@ -504,52 +504,52 @@ RAM 仍然是在程序运行周期内临时存储信息的最快方式。您计�
 1.  首先，我们创建一个`FFI`实例`$ffi`，在其中定义了两个标记为`Good`和`Bad`的 C 结构。请注意，在下面的代码片段中，这两个结构具有相同的属性；然而，这些属性的排列顺序不同。
 
 ```php
-    $struct = 'struct Bad { char c; double d; int i; }; '
-            . 'struct Good { double d; int i; char c; }; 
-              ';
-    $ffi = FFI::cdef($struct);
-    ```
+$struct = 'struct Bad { char c; double d; int i; }; '
+        . 'struct Good { double d; int i; char c; }; 
+          ';
+$ffi = FFI::cdef($struct);
+```
 
 1.  然后我们从`$ffi`中提取这两个结构，如下所示：
 
 ```php
-    $bad = $ffi->new("struct Bad");
-    $good = $ffi->new("struct Good");
-    var_dump($bad, $good);
-    ```
+$bad = $ffi->new("struct Bad");
+$good = $ffi->new("struct Good");
+var_dump($bad, $good);
+```
 
 1.  `var_dump()`输出如下所示：
 
 ```php
-    object(FFI\CData:struct Bad)#2 (3) {
-      ["c"]=> string(1) ""
-      ["d"]=> float(0)
-      ["i"]=> int(0)
-    }
-    object(FFI\CData:struct Good)#3 (3) {
-      ["d"]=> float(0)
-      ["i"]=> int(0)
-      ["c"]=> string(1) ""
-    }
-    ```
+object(FFI\CData:struct Bad)#2 (3) {
+  ["c"]=> string(1) ""
+  ["d"]=> float(0)
+  ["i"]=> int(0)
+}
+object(FFI\CData:struct Good)#3 (3) {
+  ["d"]=> float(0)
+  ["i"]=> int(0)
+  ["c"]=> string(1) ""
+}
+```
 
 1.  然后我们使用这两个信息方法来报告这两个数据结构，如下所示：
 
 ```php
-    echo "\nBad Alignment:\t" . FFI::alignof($bad);
-    echo "\nBad Size:\t" . FFI::sizeof($bad);
-    echo "\nGood Alignment:\t" . FFI::alignof($good);
-    echo "\nGood Size:\t" . FFI::sizeof($good);
-    ```
+echo "\nBad Alignment:\t" . FFI::alignof($bad);
+echo "\nBad Size:\t" . FFI::sizeof($bad);
+echo "\nGood Alignment:\t" . FFI::alignof($good);
+echo "\nGood Size:\t" . FFI::sizeof($good);
+```
 
 这个代码示例的最后四行输出如下所示：
 
 ```php
-    Bad Alignment:  8
-    Bad Size:       24
-    Good Alignment: 8
-    Good Size:      16
-    ```
+Bad Alignment:  8
+Bad Size:       24
+Good Alignment: 8
+Good Size:      16
+```
 
 从输出中可以看出，`FFI::alignof()`的返回告诉我们对齐块的宽度为 8 字节。然而，您还可以看到，`Bad`结构占用的字节数比`Good`结构所需的空间大 50%。由于这两个数据结构具有完全相同的属性，任何理智的开发人员都会选择`Good`结构。
 
@@ -588,73 +588,73 @@ PHP 开发人员经常通过**引用**给变量赋值。这允许一个变量的
 1.  首先，创建一个`FFI\CData`实例`$arr`，由六个字符的 C 字符串组成。请注意，在下面的代码片段中，使用了`FFI::memset()`，另一个基础设施方法，用**美国信息交换标准代码**（**ASCII**）码 65：字母`A`填充字符串：
 
 ```php
-    // /repo/ch04/php8_ffi_addr_free_memset_memcpy.php
-    $size = 6;
-    $arr  = FFI::new(FFI::type("char[$size]"));
-    FFI::memset($arr, 65, $size);
-    echo FFI::string($arr, $size);
-    ```
+// /repo/ch04/php8_ffi_addr_free_memset_memcpy.php
+$size = 6;
+$arr  = FFI::new(FFI::type("char[$size]"));
+FFI::memset($arr, 65, $size);
+echo FFI::string($arr, $size);
+```
 
 1.  使用`FFI::string()`方法的`echo`结果如下所示：
 
 ```php
-    AAAAAA
-    ```
+AAAAAA
+```
 
 1.  从输出中可以看到，出现了六个 ASCII 码 65（字母`A`）的实例。然后我们创建另一个`FFI\CData`实例`$arr2`，并使用`FFI::memcpy()`将一个实例中的六个字符复制到另一个实例中，如下所示：
 
 ```php
-    $arr2  = FFI::new(FFI::type("char[$size]"));
-    FFI::memcpy($arr2, $arr, $size);
-    echo FFI::string($arr2, $size);
-    ```
+$arr2  = FFI::new(FFI::type("char[$size]"));
+FFI::memcpy($arr2, $arr, $size);
+echo FFI::string($arr2, $size);
+```
 
 1.  毫不奇怪，输出与*步骤 2*中的输出完全相同，如下所示：
 
 ```php
-    AAAAAA
-    ```
+AAAAAA
+```
 
 1.  接下来，我们创建一个指向`$arr`的 C 指针。请注意，当指针被赋值时，它们会出现在本机 PHP `var_dump()`函数中作为数组元素。然后我们可以改变数组元素`0`的值，并使用`FFI::memset()`将其填充为字母`B`。代码如下所示：
 
 ```php
-    $ref = FFI::addr($arr);
-    FFI::memset($ref[0], 66, 6);
-    echo FFI::string($arr, $size);
-    var_dump($ref, $arr, $arr2);
-    ```
+$ref = FFI::addr($arr);
+FFI::memset($ref[0], 66, 6);
+echo FFI::string($arr, $size);
+var_dump($ref, $arr, $arr2);
+```
 
 1.  以下是*步骤 5*中剩余代码的输出：
 
 ```php
-    BBBBBB
-    object(FFI\CData:char(*)[6])#2 (1) {
-      [0]=>   object(FFI\CData:char[6])#4 (6) {
-        [0]=>  string(1) "B"
-        [1]=>  string(1) "B"
-        [2]=>  string(1) "B"
-        [3]=>  string(1) "B"
-        [4]=>  string(1) "B"
-        [5]=>  string(1) "B"
-      }
-    }
-    object(FFI\CData:char[6])#3 (6) {
-      [0]=>  string(1) "B"
-      [1]=>  string(1) "B"
-      [2]=>  string(1) "B"
-      [3]=>  string(1) "B"
-      [4]=>  string(1) "B"
-      [5]=>  string(1) "B"
-    }
-    object(FFI\CData:char[6])#4 (6) {
-      [0]=>  string(1) "A"
-      [1]=>  string(1) "A"
-      [2]=>  string(1) "A"
-      [3]=>  string(1) "A"
-      [4]=>  string(1) "A"
-      [5]=>  string(1) "A"
-    }
-    ```
+BBBBBB
+object(FFI\CData:char(*)[6])#2 (1) {
+  [0]=>   object(FFI\CData:char[6])#4 (6) {
+    [0]=>  string(1) "B"
+    [1]=>  string(1) "B"
+    [2]=>  string(1) "B"
+    [3]=>  string(1) "B"
+    [4]=>  string(1) "B"
+    [5]=>  string(1) "B"
+  }
+}
+object(FFI\CData:char[6])#3 (6) {
+  [0]=>  string(1) "B"
+  [1]=>  string(1) "B"
+  [2]=>  string(1) "B"
+  [3]=>  string(1) "B"
+  [4]=>  string(1) "B"
+  [5]=>  string(1) "B"
+}
+object(FFI\CData:char[6])#4 (6) {
+  [0]=>  string(1) "A"
+  [1]=>  string(1) "A"
+  [2]=>  string(1) "A"
+  [3]=>  string(1) "A"
+  [4]=>  string(1) "A"
+  [5]=>  string(1) "A"
+}
+```
 
 从输出中可以看到，我们首先有一个`BBBBBB`字符串。您可以看到指针的形式是一个 PHP 数组。原始的`FFI\CData`实例`$arr`现在已经改变为字母`B`。然而，前面的输出也清楚地显示了复制的`$arr2`不受对`$arr`或其`$ref[0]`指针所做的更改的影响。
 
@@ -691,63 +691,63 @@ FFI 扩展具有类似的功能，即`FFI::cast()`方法。正如您在本章中
 1.  在这个例子中，我们创建了一个`int`类型的`FFI\CData`实例`$int1`。我们使用它的`cdata`属性来赋值`123`，如下所示：
 
 ```php
-    // /repo/ch04/php8_ffi_cast.php
-    // not all lines are shown
-    $patt = "%2d : %16s\n";
-    $int1 = FFI::new("int");
-    $int1->cdata = 123;
-    $bool = FFI::cast(FFI::type("bool"), $int1);
-    printf($patt, __LINE__, (string) $int1->cdata);
-    printf($patt, __LINE__, (string) $bool->cdata);
-    ```
+// /repo/ch04/php8_ffi_cast.php
+// not all lines are shown
+$patt = "%2d : %16s\n";
+$int1 = FFI::new("int");
+$int1->cdata = 123;
+$bool = FFI::cast(FFI::type("bool"), $int1);
+printf($patt, __LINE__, (string) $int1->cdata);
+printf($patt, __LINE__, (string) $bool->cdata);
+```
 
 1.  正如您从这里显示的输出中看到的，将`123`的整数值强制转换为`bool`（布尔值），在输出中显示为`1`：
 
 ```php
-     8 :                  123
-     9 :                    1
-    ```
+ 8 :                  123
+ 9 :                    1
+```
 
 1.  接下来，我们创建了一个`int`类型的`FFI\CData`实例`$int2`，并赋值`123`。然后我们将其强制转换为`float`，再转回`int`，如下面的代码片段所示：
 
 ```php
-    $int2 = FFI::new("int");
-    $int2->cdata = 123;
-    $float1 = FFI::cast(FFI::type("float"), $int2);
-    $int3   = FFI::cast(FFI::type("int"), $float1);
-    printf($patt, __LINE__, (string) $int2->cdata);
-    printf($patt, __LINE__, (string) $float1->cdata);
-    printf($patt, __LINE__, (string) $int3->cdata);
-    ```
+$int2 = FFI::new("int");
+$int2->cdata = 123;
+$float1 = FFI::cast(FFI::type("float"), $int2);
+$int3   = FFI::cast(FFI::type("int"), $float1);
+printf($patt, __LINE__, (string) $int2->cdata);
+printf($patt, __LINE__, (string) $float1->cdata);
+printf($patt, __LINE__, (string) $int3->cdata);
+```
 
 1.  最后三行的输出非常令人满意。我们看到我们的原始值`123`被表示为`1.7235971111195E-43`。当强制转换回`int`时，我们的原始值被恢复。以下是最后三行的输出：
 
 ```php
-    15 :                 123
-    16 : 1.7235971111195E-43
-    17 :                 123
-    ```
+15 :                 123
+16 : 1.7235971111195E-43
+17 :                 123
+```
 
 1.  FFI 扩展与 C 语言一般一样，不允许所有类型进行转换。例如，在上一段代码中，我们尝试将类型为`float`的`FFI\CData`实例`$float2`强制转换为`char`类型，如下所示：
 
 ```php
-    try {
-        $float2 = FFI::new("float");
-        $float2->cdata = 22/7;
-        $char1   = FFI::cast(FFI::type("char[20]"), 
-            $float2);
-        printf($patt, __LINE__, (string) $float2->cdata);
-        printf($patt, __LINE__, (string) $char1->cdata);
-    } catch (Throwable $t) {
-        echo get_class($t) . ':' . $t->getMessage();
-    }
-    ```
+try {
+    $float2 = FFI::new("float");
+    $float2->cdata = 22/7;
+    $char1   = FFI::cast(FFI::type("char[20]"), 
+        $float2);
+    printf($patt, __LINE__, (string) $float2->cdata);
+    printf($patt, __LINE__, (string) $char1->cdata);
+} catch (Throwable $t) {
+    echo get_class($t) . ':' . $t->getMessage();
+}
+```
 
 1.  结果是灾难性的！正如您从这里显示的输出中看到的，抛出了一个`FFI\Exception`：
 
 ```php
-    FFI\Exception:attempt to cast to larger type
-    ```
+FFI\Exception:attempt to cast to larger type
+```
 
 在本节中，我们介绍了一系列 FFI 扩展方法，这些方法创建了 FFI 扩展对象实例，比较值，收集信息，并处理所创建的 C 数据基础设施。您了解到有一些 FFI 扩展方法在本机 PHP 语言中具有相同的功能。在下一节中，我们将回顾一个实际的例子，将一个 C 函数库整合到 PHP 脚本中，使用 FFI 扩展。
 
@@ -770,24 +770,24 @@ FFI 扩展具有类似的功能，即`FFI::cast()`方法。正如您在本章中
 1.  当然，第一步是将 C 代码编译为对象代码。以下是本例中使用的冒泡排序 C 代码：
 
 ```php
-    #include <stdio.h>
-    void bubble_sort(int [], int);
-    void bubble_sort(int list[], int n) {
-        int c, d, t, p;
-        for (c = 0 ; c < n - 1; c++) {
-            p = 0;
-            for (d = 0 ; d < n - c - 1; d++) {
-                if (list[d] > list[d+1]) {
-                    t = list[d];
-                    list[d] = list[d+1];
-                    list[d+1] = t;
-                    p++;
-                }
-            }
-            if (p == 0) break;
-        }
-    }
-    ```
+#include <stdio.h>
+void bubble_sort(int [], int);
+void bubble_sort(int list[], int n) {
+    int c, d, t, p;
+    for (c = 0 ; c < n - 1; c++) {
+        p = 0;
+        for (d = 0 ; d < n - c - 1; d++) {
+            if (list[d] > list[d+1]) {
+                t = list[d];
+                list[d] = list[d+1];
+                list[d+1] = t;
+                p++;
+            }
+        }
+        if (p == 0) break;
+    }
+}
+```
 
 1.  然后，我们使用 GNU C 编译器（包含在本课程使用的 Docker 镜像中）将 C 代码编译为对象代码，如下所示：
 
@@ -800,51 +800,51 @@ FFI 扩展具有类似的功能，即`FFI::cast()`方法。正如您在本章中
 1.  现在我们准备定义使用我们新共享库的 PHP 脚本。我们首先定义一个函数，该函数显示来自`FFI\CData`数组的输出，如下所示：
 
 ```php
-    // /repo/ch04/php8_ffi_using_func_from_lib.php
-    function show($label, $arr, $max) 
-    {
-        $output = $label . "\n";
-        for ($x = 0; $x < $max; $x++)
-            $output .= $arr[$x] . ',';
-        return substr($output, 0, -1) . "\n";
-    }
-    ```
+// /repo/ch04/php8_ffi_using_func_from_lib.php
+function show($label, $arr, $max) 
+{
+    $output = $label . "\n";
+    for ($x = 0; $x < $max; $x++)
+        $output .= $arr[$x] . ',';
+    return substr($output, 0, -1) . "\n";
+}
+```
 
 1.  接下来是关键部分：定义`FFI`实例。我们使用`FFI::cdef()`来完成这个任务，并提供两个参数。第一个参数是函数签名，第二个参数是我们新创建的共享库的路径。这两个参数都可以在以下代码片段中看到：
 
 ```php
-    $bubble = FFI::cdef(
-        "void bubble_sort(int [], int);",
-        "./libbubble.so");
-    ```
+$bubble = FFI::cdef(
+    "void bubble_sort(int [], int);",
+    "./libbubble.so");
+```
 
 1.  然后，我们创建了一个`FFI\CData`元素，作为一个包含 16 个随机整数的整数数组，使用`rand()`函数进行填充。代码如下所示：
 
 ```php
-    $max   = 16;
-    $arr_b = FFI::new('int[' . $max . ']');
-    for ($i = 0; $i < $max; $i++)
-        $arr_b[$i]->cdata = rand(0,9999);
-    ```
+$max   = 16;
+$arr_b = FFI::new('int[' . $max . ']');
+for ($i = 0; $i < $max; $i++)
+    $arr_b[$i]->cdata = rand(0,9999);
+```
 
 1.  最后，我们显示了排序之前数组的内容，执行了排序，并显示了排序后的内容。请注意，在以下代码片段中，我们使用`FFI`实例调用`bubble_sort()`来执行排序：
 
 ```php
-    echo show('Before Sort', $arr_b, $max);
-    $bubble->bubble_sort($arr_b, $max);
-    echo show('After Sort', $arr_b, $max);
-    ```
+echo show('Before Sort', $arr_b, $max);
+$bubble->bubble_sort($arr_b, $max);
+echo show('After Sort', $arr_b, $max);
+```
 
 1.  输出，正如您所期望的那样，在排序之前显示了一组随机整数。排序后，数值是有序的。以下是*步骤 7*中代码的输出：
 
 ```php
-    Before Sort
-    245,8405,8580,7586,9416,3524,8577,4713,
-    9591,1248,798,6656,9064,9846,2803,304
-    After Sort
-    245,304,798,1248,2803,3524,4713,6656,7586,
-    8405,8577,8580,9064,9416,9591,9846
-    ```
+Before Sort
+245,8405,8580,7586,9416,3524,8577,4713,
+9591,1248,798,6656,9064,9846,2803,304
+After Sort
+245,304,798,1248,2803,3524,4713,6656,7586,
+8405,8577,8580,9064,9416,9591,9846
+```
 
 既然您已经了解了如何使用 FFI 扩展将外部 C 库集成到 PHP 应用程序中，我们转向最后一个主题：PHP 回调。
 
@@ -875,28 +875,28 @@ FFI 扩展具有类似的功能，即`FFI::cast()`方法。正如您在本章中
 1.  首先，我们使用`FFI::cdef()`定义了一个`FFI`实例。第一个参数是`zend_write`的函数签名。代码如下所示：
 
 ```php
-    // /repo/ch04/php8_php_callbacks.php
-    $zend = FFI::cdef("
-        typedef int (*zend_write_func_t)(
-            const char *str,size_t str_length);
-        extern zend_write_func_t zend_write;
-    ");
-    ```
+// /repo/ch04/php8_php_callbacks.php
+$zend = FFI::cdef("
+    typedef int (*zend_write_func_t)(
+        const char *str,size_t str_length);
+    extern zend_write_func_t zend_write;
+");
+```
 
 1.  然后，我们添加了代码来确认未经修改的`echo`不会在末尾添加额外的换行符。您可以在这里看到代码：
 
 ```php
-    echo "Original echo command does not output LF:\n";
-    echo 'A','B','C';
-    echo 'Next line';
-    ```
+echo "Original echo command does not output LF:\n";
+echo 'A','B','C';
+echo 'Next line';
+```
 
 1.  毫不奇怪，输出产生了`ABCNext line`。输出中没有回车或换行符，如下所示：
 
 ```php
-    Original echo command does not output LF:
-    ABCNext line
-    ```
+Original echo command does not output LF:
+ABCNext line
+```
 
 1.  然后，我们将指向`zend_write`的指针克隆到`$orig_zend_write`变量中。如果我们不这样做，我们将无法使用原始函数！代码如下所示：
 
@@ -905,29 +905,29 @@ $orig_zend_write = clone $zend->zend_write;
 1.  接下来，我们以匿名函数的形式生成一个 PHP 回调，覆盖原始的`zend_write`函数。在函数中，我们调用原始的`zend_write`函数并在其输出中添加一个 LF，如下所示：
 
 ```php
-    $zend->zend_write = function($str, $len) {
-        global $orig_zend_write;
-        $ret = $orig_zend_write($str, $len);
-        $orig_zend_write("\n", 1);
-        return $ret;
-    };
-    ```
+$zend->zend_write = function($str, $len) {
+    global $orig_zend_write;
+    $ret = $orig_zend_write($str, $len);
+    $orig_zend_write("\n", 1);
+    return $ret;
+};
+```
 
 1.  剩下的代码重新运行了前面步骤中显示的`echo`命令，如下所示：
 
 ```php
-    echo 'Revised echo command adds LF:';
-    echo 'A','B','C';
-    ```
+echo 'Revised echo command adds LF:';
+echo 'A','B','C';
+```
 
 1.  以下输出演示了 PHP `echo` 命令现在在每个命令的末尾产生一个 LF：
 
 ```php
-    Revised echo command adds LF:
-    A
-    B
-    C
-    ```
+Revised echo command adds LF:
+A
+B
+C
+```
 
 还要注意的是，修改 PHP 库 C 语言`zend_write`函数会影响使用这个 C 语言函数的所有 PHP 本机函数。这包括`print()`，`printf()`（及其变体）等。
 

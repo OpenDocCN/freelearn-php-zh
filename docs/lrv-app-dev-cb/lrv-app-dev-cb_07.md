@@ -47,11 +47,11 @@ Laravel 最好的功能之一是它的模块化。大部分框架都是使用经
 1.  在我们应用程序的根目录中，打开`composer.json`文件，并在`require`部分中添加包，使其看起来像这样：
 
 ```php
-    "require": {
-           "laravel/framework": "4.0.*",
-           "way/generators": "1.0.*"
-    },
-    ```
+"require": {
+       "laravel/framework": "4.0.*",
+       "way/generators": "1.0.*"
+},
+```
 
 1.  返回到[`packagist.org`](http://packagist.org)，并按照以下截图中显示的方式搜索`imagine`：![如何操作...](img/2827OS_07_03.jpg)
 
@@ -60,24 +60,24 @@ Laravel 最好的功能之一是它的模块化。大部分框架都是使用经
 1.  返回到我们的`composer.json`文件，并更新`require`部分以包括`imagine`包。现在它应该类似于以下代码：
 
 ```php
-    "require": {
-          "laravel/framework": "4.0.*",
-          "way/generators": "1.0.*",
-          "imagine/imagine": "dev-master"
-    },
-    ```
+"require": {
+      "laravel/framework": "4.0.*",
+      "way/generators": "1.0.*",
+      "imagine/imagine": "dev-master"
+},
+```
 
 1.  打开命令行，在我们应用程序的根目录中，运行 Composer update 如下：
 
 ```php
-    php composer.phar update
-    ```
+php composer.phar update
+```
 
 1.  最后，我们将添加生成器服务提供者，因此打开`app/config/app.php`文件，并在 providers 数组中添加以下行：
 
 ```php
-    'Way\Generators\GeneratorsServiceProvider'
-    ```
+'Way\Generators\GeneratorsServiceProvider'
+```
 
 ## 它是如何工作的...
 
@@ -102,97 +102,97 @@ Laravel 最好的功能之一是它的模块化。大部分框架都是使用经
 1.  在我们应用程序的根目录中打开命令行，并使用生成器按如下方式为我们的城市创建一个脚手架：
 
 ```php
-    **php artisan generate:scaffold cities --fields="city:string"**
+**php artisan generate:scaffold cities --fields="city:string"**
 
-    ```
+```
 
 1.  在命令行中，按如下方式为我们的超级英雄创建一个脚手架：
 
 ```php
-    **php artisan generate:scaffold superheroes --fields="name:string, city_id:integer:unsigned"**
+**php artisan generate:scaffold superheroes --fields="name:string, city_id:integer:unsigned"**
 
-    ```
+```
 
 1.  在我们的项目中，查看`app/database/seeds`目录，并找到名为`CitiesTableSeeder.php`的文件。打开它，并按如下方式向`$cities`数组中添加一些数据：
 
 ```php
-    <?php
+<?php
 
-    class CitiesTableSeeder extends Seeder {
+class CitiesTableSeeder extends Seeder {
 
-      public function run()
-      {
-        DB::table('cities')->delete();
+  public function run()
+  {
+    DB::table('cities')->delete();
 
-        $cities = array(
-             array(
-                    'id'         => 1,
-                    'city'       => 'New York',
-                    'created_at' => date('Y-m-d g:i:s',time())
-                  ),
-             array(
-                    'id'         => 2,
-                    'city'       => 'Metropolis',
-                    'created_at' => date('Y-m-d g:i:s',time())
-                  ),
-             array(
-                    'id'         => 3,
-                    'city'       => 'Gotham',
-                    'created_at' => date('Y-m-d g:i:s',time())
-                  )
-        );
+    $cities = array(
+         array(
+                'id'         => 1,
+                'city'       => 'New York',
+                'created_at' => date('Y-m-d g:i:s',time())
+              ),
+         array(
+                'id'         => 2,
+                'city'       => 'Metropolis',
+                'created_at' => date('Y-m-d g:i:s',time())
+              ),
+         array(
+                'id'         => 3,
+                'city'       => 'Gotham',
+                'created_at' => date('Y-m-d g:i:s',time())
+              )
+    );
 
-        DB::table('cities')->insert($cities);
-      }
-    }
-    ```
+    DB::table('cities')->insert($cities);
+  }
+}
+```
 
 1.  在`app/database/seeds`目录中，打开`SuperheroesTableSeeder.php`并向其中添加一些数据：
 
 ```php
-    <?php
+<?php
 
-    class SuperheroesTableSeeder extends Seeder {
+class SuperheroesTableSeeder extends Seeder {
 
-      public function run()
-      {
-        DB::table('superheroes')->delete();
+  public function run()
+  {
+    DB::table('superheroes')->delete();
 
-          $superheroes = array(
-               array(
-                     'name'       => 'Spiderman',
-                     'city_id'    => 1,
-                     'created_at' => date('Y-m-d g:i:s', time())
-                     ),
-               array(
-                     'name'       => 'Superman',
-                     'city_id'    => 2,
-                     'created_at' => date('Y-m-d g:i:s', time())
-                     ),
-               array(
-                     'name'       => 'Batman',
-                     'city_id'    => 3,
-                     'created_at' => date('Y-m-d g:i:s', time())
-                     ),
-               array(
-                     'name'       => 'The Thing',
-                     'city_id'    => 1,
-                     'created_at' => date('Y-m-d g:i:s', time())
-                     )
-          );
+      $superheroes = array(
+           array(
+                 'name'       => 'Spiderman',
+                 'city_id'    => 1,
+                 'created_at' => date('Y-m-d g:i:s', time())
+                 ),
+           array(
+                 'name'       => 'Superman',
+                 'city_id'    => 2,
+                 'created_at' => date('Y-m-d g:i:s', time())
+                 ),
+           array(
+                 'name'       => 'Batman',
+                 'city_id'    => 3,
+                 'created_at' => date('Y-m-d g:i:s', time())
+                 ),
+           array(
+                 'name'       => 'The Thing',
+                 'city_id'    => 1,
+                 'created_at' => date('Y-m-d g:i:s', time())
+                 )
+      );
 
-        DB::table('superheroes')->insert($superheroes);
-      }
-    }
-    ```
+    DB::table('superheroes')->insert($superheroes);
+  }
+}
+```
 
 1.  在命令行中，运行迁移，然后按如下方式对数据库进行种子处理：
 
 ```php
-    php artisan migrate
-    **php artisan db:seed**
+php artisan migrate
+**php artisan db:seed**
 
-    ```
+```
 
 1.  打开一个网页浏览器，转到`http://{your-server}/cities`。我们将看到我们的数据如下截图所示：![操作步骤…](img/2827OS_07_05.jpg)
 
@@ -223,166 +223,166 @@ Laravel 最好的功能之一是它的模块化。大部分框架都是使用经
 1.  在`app/config`目录中，打开`workbench.php`文件并使用以下信息进行更新：
 
 ```php
-    <?php
+<?php
 
-    return array(
+return array(
 
-        'name' => 'Terry Matula',
+    'name' => 'Terry Matula',
 
-        'email' => 'terrymatula@gmail.com',
+    'email' => 'terrymatula@gmail.com',
 
-    );
-    ```
+);
+```
 
 1.  在命令行中，使用 artisan 来设置我们的包：
 
 ```php
-    **php artisan workbench matula/vimeolist --resources**
+**php artisan workbench matula/vimeolist --resources**
 
-    ```
+```
 
 1.  找到将保存我们源文件的目录，并创建一个名为`Vimeolist.php`的文件。在这个示例中，我们将文件放在`workbench/matula/vimeolist/src/Matula/Vimeolist/`中：
 
 ```php
-    <?php namespace Matula\Vimeolist;
+<?php namespace Matula\Vimeolist;
 
-    class Vimeolist
-    {
-      private $base_url = 'http://vimeo.com/api/v2/{username}/videos.json';
-      private $username;
+class Vimeolist
+{
+  private $base_url = 'http://vimeo.com/api/v2/{username}/videos.json';
+  private $username;
 
-      public function __construct($username = 'userscape') {
-          $this->setUser($username);
-          return $this;
-      }
+  public function __construct($username = 'userscape') {
+      $this->setUser($username);
+      return $this;
+  }
 
-      /**
-       * Set the username for our list
-       *
-       * @return void
-       */
-      public function setUser($username = NULL) {
-          $this->username = is_null($username) ? $this->username : urlencode($username);
-           return $this;
-      }
+  /**
+   * Set the username for our list
+   *
+   * @return void
+   */
+  public function setUser($username = NULL) {
+      $this->username = is_null($username) ? $this->username : urlencode($username);
+       return $this;
+  }
 
-      /**
-       * Set up the url and get the contents
-       *
-       * @return json
-       */
-      private function getFeed() {
-          $url  = str_replace('{username}', $this->username,$this->base_url);
-          $feed = file_get_contents($url);
-          return $feed;
-      }
+  /**
+   * Set up the url and get the contents
+   *
+   * @return json
+   */
+  private function getFeed() {
+      $url  = str_replace('{username}', $this->username,$this->base_url);
+      $feed = file_get_contents($url);
+      return $feed;
+  }
 
-      /**
-       * Turn the feed into an object
-       *
-       * @return object
-       */
-      public function parseFeed() {
-           $json = $this->getFeed();
-           $object = json_decode($json);
-           return $object;
-      }
+  /**
+   * Turn the feed into an object
+   *
+   * @return object
+   */
+  public function parseFeed() {
+       $json = $this->getFeed();
+       $object = json_decode($json);
+       return $object;
+  }
 
-      /**
-       * Get the list and format the return
-       *
-       * @return array
-       */
-      public function getList() {
-           $list = array();
-           $posts = $this->parseFeed();
-           foreach ($posts as $post) {
-                 $list[$post->id]['title']    = $post->title;
-                 $list[$post->id]['url']    = $post->url;
-                 $list[$post->id]['description'] = $post->description;
-                 $list[$post->id]['thumbnail'] = $post->thumbnail_small;
-           }
-           return $list;
-      }
-    }
-    ```
+  /**
+   * Get the list and format the return
+   *
+   * @return array
+   */
+  public function getList() {
+       $list = array();
+       $posts = $this->parseFeed();
+       foreach ($posts as $post) {
+             $list[$post->id]['title']    = $post->title;
+             $list[$post->id]['url']    = $post->url;
+             $list[$post->id]['description'] = $post->description;
+             $list[$post->id]['thumbnail'] = $post->thumbnail_small;
+       }
+       return $list;
+  }
+}
+```
 
 1.  在刚刚创建的文件所在的目录中，打开名为`VimeolistServiceProvider.php`的文件并更新它：
 
 ```php
-    <?php namespace Matula\Vimeolist;
+<?php namespace Matula\Vimeolist;
 
-    use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\ServiceProvider;
 
-    class VimeolistServiceProvider extends ServiceProvider {
+class VimeolistServiceProvider extends ServiceProvider {
 
-      /**
-       * Indicates if loading of the provider is deferred.
-       *
-       * @var bool
-       */
-      protected $defer = false;
+  /**
+   * Indicates if loading of the provider is deferred.
+   *
+   * @var bool
+   */
+  protected $defer = false;
 
-      /**
-       * Bootstrap the application events.
-       *
-       * @return void
-       */
-      public function boot()
-      {
-            $this->package('matula/vimeolist');
-      }
+  /**
+   * Bootstrap the application events.
+   *
+   * @return void
+   */
+  public function boot()
+  {
+        $this->package('matula/vimeolist');
+  }
 
-      /**
-       * Register the service provider.
-       *
-       * @return void
-       */
-      public function register()
-      {
-          $this->app['vimeolist'] = $this->app->share(function($app)
-                {
-                 return new Vimeolist;
-                });
-      }
+  /**
+   * Register the service provider.
+   *
+   * @return void
+   */
+  public function register()
+  {
+      $this->app['vimeolist'] = $this->app->share(function($app)
+            {
+             return new Vimeolist;
+            });
+  }
 
-      /**
-       * Get the services provided by the provider.
-       *
-       * @return array
-       */
-      public function provides()
-      {
-        return array('vimeolist');
-      }
-    }
-    ```
+  /**
+   * Get the services provided by the provider.
+   *
+   * @return array
+   */
+  public function provides()
+  {
+    return array('vimeolist');
+  }
+}
+```
 
 1.  在`app/config`目录中的`app.php`文件中，在`providers`数组中，添加我们的服务提供程序如下：
 
 ```php
-    'Matula\Vimeolist\VimeolistServiceProvider',
-    ```
+'Matula\Vimeolist\VimeolistServiceProvider',
+```
 
 1.  在命令行中，运行以下命令：
 
 ```php
-    **php composer.phar dump-autoload**
+**php composer.phar dump-autoload**
 
-    ```
+```
 
 1.  在`routes.php`中，添加一个显示数据的路由如下：
 
 ```php
-    Route::get('vimeo/{username?}', function($username = null) use ($app)
-    {
-      $vimeo = $app['vimeolist'];
-      if ($username) {
-          $vimeo->setUser($username);
-      }
-      dd($vimeo->getList());
-    });
-    ```
+Route::get('vimeo/{username?}', function($username = null) use ($app)
+{
+  $vimeo = $app['vimeolist'];
+  if ($username) {
+      $vimeo->setUser($username);
+  }
+  dd($vimeo->getList());
+});
+```
 
 ## 它是如何工作的…
 
@@ -415,20 +415,20 @@ Laravel 还可以选择为我们的包创建一个门面，因此我们可以使
 1.  在命令行中，移动到`workbench/matula/vimeolist`目录并设置我们的`git`仓库如下：
 
 ```php
-    git init
-    git add -A
-    git commit –m 'First Package commit'
-    ```
+git init
+git add -A
+git commit –m 'First Package commit'
+```
 
 1.  在[`github.com/new`](https://github.com/new)创建一个新的 GitHub 存储库，并将其命名为`vimeolist`。
 
 1.  将我们的包添加到 GitHub：
 
 ```php
-    git remote add origin git@github.com:{username}/vimeolist.git
-    **git push –u origin master**
+git remote add origin git@github.com:{username}/vimeolist.git
+**git push –u origin master**
 
-    ```
+```
 
 1.  前往[`packagist.org/login/`](https://packagist.org/login/)并使用您的 GitHub 帐户登录。
 
@@ -467,85 +467,85 @@ Laravel 还可以选择为我们的包创建一个门面，因此我们可以使
 1.  打开我们的主`composer.json`文件，并按以下方式更新`require`部分：
 
 ```php
-    "require": {
-           "laravel/framework": "4.0.*",
-           "wesleytodd/universal-forms": "dev-master"
-      },
-    ```
+"require": {
+       "laravel/framework": "4.0.*",
+       "wesleytodd/universal-forms": "dev-master"
+  },
+```
 
 1.  在`composer.json`中，在`require`部分下，添加我们要使用的存储库：
 
 ```php
-    "repositories": [
-         {
-             "type": "vcs",
-             "url": "https://github.com/wesleytodd/Universal-Forms-PHP"
-         }
-      ],
-    ```
+"repositories": [
+     {
+         "type": "vcs",
+         "url": "https://github.com/wesleytodd/Universal-Forms-PHP"
+     }
+  ],
+```
 
 1.  在命令行中，按以下方式更新 Composer：
 
 ```php
-    **php composer.phar update**
+**php composer.phar update**
 
-    ```
+```
 
 1.  打开`app/config/app.php`文件，并使用以下行更新`providers`数组：
 
 ```php
-    'Wesleytodd\UniversalForms\Drivers\Laravel\UniversalFormsServiceProvider',
-    ```
+'Wesleytodd\UniversalForms\Drivers\Laravel\UniversalFormsServiceProvider',
+```
 
 1.  在`routes.php`中，实例化该类，并在我们的路由上使用它，如下所示：
 
 ```php
-    $form_json = '{
-           "action" : "uform",
-           "method" : "POST",
-           "fields" : [
-                 {
-                   "name" : "name",
-                   "type" : "text",
-                   "label" : "Name",
-                   "rules" : ["required"]
-                 },
-                 {
-                   "name" : "email",
-                   "type" : "email",
-                   "label" : "Email",
-                   "value" : "myemail@example.com",
-                   "rules" : ["required", "email"]
-                  },
-                  {
-                    "name" : "message",
-                    "type" : "textarea",
-                    "label" : "Message",
-                    "rules" : ["required", "length[30,0]"]
-                  }
-           ]
-    }';
+$form_json = '{
+       "action" : "uform",
+       "method" : "POST",
+       "fields" : [
+             {
+               "name" : "name",
+               "type" : "text",
+               "label" : "Name",
+               "rules" : ["required"]
+             },
+             {
+               "name" : "email",
+               "type" : "email",
+               "label" : "Email",
+               "value" : "myemail@example.com",
+               "rules" : ["required", "email"]
+              },
+              {
+                "name" : "message",
+                "type" : "textarea",
+                "label" : "Message",
+                "rules" : ["required", "length[30,0]"]
+              }
+       ]
+}';
 
-    $uform = new Wesleytodd\UniversalForms\Drivers\Laravel\Form($form_json);
+$uform = new Wesleytodd\UniversalForms\Drivers\Laravel\Form($form_json);
 
-    Route::get('uform', function() use ($uform)
-    {
-      return $uform->render();
-    });
+Route::get('uform', function() use ($uform)
+{
+  return $uform->render();
+});
 
-    Route::post('uform', function() use ($uform)
-    {
-      // validate
-      $valid = $uform->valid(Input::all());
-      if ($valid) {
-           // Could also save to database
-           dd(Input::all());
-      } else {
-           // Could redirect back to form
-           dd($uform->getErrors());
-      }
-    });
-    ```
+Route::post('uform', function() use ($uform)
+{
+  // validate
+  $valid = $uform->valid(Input::all());
+  if ($valid) {
+       // Could also save to database
+       dd(Input::all());
+  } else {
+       // Could redirect back to form
+       dd($uform->getErrors());
+  }
+});
+```
 
 ## 它是如何工作的...
 
@@ -570,131 +570,131 @@ Laravel 的 artisan 命令行工具使许多任务变得容易完成。如果我
 1.  在命令行中，运行`artisan`命令来创建我们需要的文件：
 
 ```php
-    **php artisan command:make SkeletonCommand**
+**php artisan command:make SkeletonCommand**
 
-    ```
+```
 
 1.  在`app/commands`目录中，打开`SkeletonCommand.php`文件并按以下方式更新代码：
 
 ```php
-    <?php
+<?php
 
-    use Illuminate\Console\Command;
-    use Symfony\Component\Console\Input\InputOption;
-    use Symfony\Component\Console\Input\InputArgument;
-    use Illuminate\Filesystem\Filesystem as File;
+use Illuminate\Console\Command;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Input\InputArgument;
+use Illuminate\Filesystem\Filesystem as File;
 
-    class SkeletonCommand extends Command {
+class SkeletonCommand extends Command {
 
-      /**
-       * The console command name.
-       *
-       * @var string
-       */
-      protected $name = 'skeleton:make';
+  /**
+   * The console command name.
+   *
+   * @var string
+   */
+  protected $name = 'skeleton:make';
 
-      /**
-       * The console command description.
-       *
-       * @var string
-       */
-      protected $description = 'Creates an HTML5 skeleton view.';
+  /**
+   * The console command description.
+   *
+   * @var string
+   */
+  protected $description = 'Creates an HTML5 skeleton view.';
 
-       /**
-         * File system instance
-         *
-         * @var File
-         */
-        protected $file;
+   /**
+     * File system instance
+     *
+     * @var File
+     */
+    protected $file;
 
-      /**
-       * Create a new command instance.
-       *
-       * @return void
-       */
-      public function __construct()
-      {
-        parent::__construct();
-        $this->file = new File();
-      }
+  /**
+   * Create a new command instance.
+   *
+   * @return void
+   */
+  public function __construct()
+  {
+    parent::__construct();
+    $this->file = new File();
+  }
 
-      /**
-       * Execute the console command.
-       *
-       * @return void
-       */
-      public function fire()
-      {
-            $view = $this->argument('view');
-            $file_name = 'app/views/' . $view;
-            $ext = ($this->option('blade')) ? '.blade.php' :'.php';
-                $template = '<!DOCTYPE html>
-                <html>
-                <head>
-                   <meta charset=utf-8 />
-                   <title></title>
-                   <link rel="stylesheet" type="text/css"media="screen" href="css/style.css" />
-                    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js">
-                    </script>
-                      <!--[if IE]>
-                            <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
-                      <![endif]-->
-                </head>
-                <body>
-                </body>
-                </html>';
+  /**
+   * Execute the console command.
+   *
+   * @return void
+   */
+  public function fire()
+  {
+        $view = $this->argument('view');
+        $file_name = 'app/views/' . $view;
+        $ext = ($this->option('blade')) ? '.blade.php' :'.php';
+            $template = '<!DOCTYPE html>
+            <html>
+            <head>
+               <meta charset=utf-8 />
+               <title></title>
+               <link rel="stylesheet" type="text/css"media="screen" href="css/style.css" />
+                <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js">
+                </script>
+                  <!--[if IE]>
+                        <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+                  <![endif]-->
+            </head>
+            <body>
+            </body>
+            </html>';
 
-                if (!$this->file->exists($file_name)) {
-                   $this->info('HTML5 skeleton created!');
-                   return $this->file->put($file_name . $ext,$template) !== false;
-            } else {
-                 $this->info('HTML5 skeleton created!');
-                 return $this->file->put($file_name . '-' .time() . $ext, $template) !== false;
-            }
+            if (!$this->file->exists($file_name)) {
+               $this->info('HTML5 skeleton created!');
+               return $this->file->put($file_name . $ext,$template) !== false;
+        } else {
+             $this->info('HTML5 skeleton created!');
+             return $this->file->put($file_name . '-' .time() . $ext, $template) !== false;
+        }
 
-        $this->error('There was a problem creating yourHTML5 skeleton');
-           return false;
-      }
+    $this->error('There was a problem creating yourHTML5 skeleton');
+       return false;
+  }
 
-      /**
-       * Get the console command arguments.
-       *
-       * @return array
-       */
-      protected function getArguments()
-      {
-          return array(
-               array('view', InputArgument::REQUIRED, 'The name of the view.'),
-          );
-      }
+  /**
+   * Get the console command arguments.
+   *
+   * @return array
+   */
+  protected function getArguments()
+  {
+      return array(
+           array('view', InputArgument::REQUIRED, 'The name of the view.'),
+      );
+  }
 
-      /**
-       * Get the console command options.
-       *
-       * @return array
-       */
-      protected function getOptions()
-      {
-         return array(
-         array('blade', null, InputOption::VALUE_OPTIONAL, 'Use Blade templating?', false),
-         );
-      }
+  /**
+   * Get the console command options.
+   *
+   * @return array
+   */
+  protected function getOptions()
+  {
+     return array(
+     array('blade', null, InputOption::VALUE_OPTIONAL, 'Use Blade templating?', false),
+     );
+  }
 
-    } 
-    ```
+} 
+```
 
 1.  在`app/start`目录中，打开`artisan.php`文件并添加以下行：
 
 ```php
-    Artisan::add(new SkeletonCommand);
-    ```
+Artisan::add(new SkeletonCommand);
+```
 
 1.  在命令行中，测试新命令：
 
 ```php
-    **php artisan skeleton:make MyNewView --blade=true**
+**php artisan skeleton:make MyNewView --blade=true**
 
-    ```
+```
 
 ## 它是如何工作的...
 

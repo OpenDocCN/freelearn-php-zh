@@ -301,8 +301,8 @@ class MessageController extends Controller
 1.  再次打开 hello 视图，并在问候文本下面添加以下行：
 
 ```php
-    <h3><?php echo date("D M j G:i:s T Y"); ?></h3>
-    ```
+<h3><?php echo date("D M j G:i:s T Y"); ?></h3>
+```
 
 1.  保存和查看：`http://localhost/helloworld/index.php?r=message/hello`。
 
@@ -342,8 +342,8 @@ $this->render('hello',array('time'=>$theTime));
 1.  再次打开 HelloWorld 视图文件，并用以下内容替换我们之前添加的用于输出时间的行：
 
 ```php
-    <h3><?php echo $time; ?></h3>
-    ```
+<h3><?php echo $time; ?></h3>
+```
 
 1.  再次保存并查看结果：`http://localhost/helloworld/index.php?r=message/hello`
 

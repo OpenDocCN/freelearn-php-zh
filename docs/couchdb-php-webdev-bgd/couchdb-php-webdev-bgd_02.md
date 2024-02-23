@@ -90,16 +90,16 @@ CouchDB 是本书中我们将使用的数据库。在本节中，我们将使用
 1.  使用`apt-get`安装 CouchDB：
 
 ```php
-    **sudo apt-get install couchDB** 
+**sudo apt-get install couchDB** 
 
-    ```
+```
 
 1.  通过运行以下命令将 CouchDB 作为服务启动：
 
 ```php
-    **sudo /etc/init.d/couchdb start** 
+**sudo /etc/init.d/couchdb start** 
 
-    ```
+```
 
 是不是很容易？如果你使用的是其他 Linux 发行版，那么你可能需要研究如何安装所有必需的应用程序和工具。
 
@@ -136,16 +136,16 @@ CouchDB 是本书中我们将使用的数据库。在本节中，我们将使用
 1.  输入以下命令以允许 Finder 显示隐藏文件，准备好后按*Enter*：
 
 ```php
-    **defaults write com.apple.finder AppleShowAllFiles TRUE** 
+**defaults write com.apple.finder AppleShowAllFiles TRUE** 
 
-    ```
+```
 
 1.  为了看到文件，你需要重新启动`Finder`，输入以下命令，然后按*Enter*：
 
 ```php
-    **killall Finder** 
+**killall Finder** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -174,9 +174,9 @@ Apache 是一个开源的 Web 服务器，也是将在本书中编写的 PHP 代
 1.  运行以下命令启动 Apache：
 
 ```php
-    **sudo apachectl start** 
+**sudo apachectl start** 
 
-    ```
+```
 
 这就是在你的电脑上启动 Apache 所需的全部。如果 Apache 已经在运行，它不会让你启动它。尝试再次输入相同的语句；你的机器会提醒你它已经在运行了：
 
@@ -217,9 +217,9 @@ Apache 是一个开源的 Web 服务器，也是将在本书中编写的 PHP 代
 1.  运行以下命令以返回 PHP 的版本：
 
 ```php
-    **php -v** 
+**php -v** 
 
-    ```
+```
 
 1.  **Terminal**将以类似以下内容的方式做出响应：![行动时间-检查您的 PHP 版本](img/3586OS_02_015.jpg)
 
@@ -242,25 +242,25 @@ Apache 是一个开源的 Web 服务器，也是将在本书中编写的 PHP 代
 1.  查看文件，并找到以下行（它应该在第 116 行左右）：
 
 ```php
-    **#LoadModule php5_module libexec/apache2/libphp5.so** 
+**#LoadModule php5_module libexec/apache2/libphp5.so** 
 
-    ```
+```
 
 1.  删除`config`文件中位于此字符串前面的哈希（#）符号以取消此行的注释。您的配置文件可能已经取消了此注释。如果是这样，那么您无需更改任何内容。无论如何，最终结果应如下所示：
 
 ```php
-    **LoadModule php5_module libexec/apache2/libphp5.so** 
+**LoadModule php5_module libexec/apache2/libphp5.so** 
 
-    ```
+```
 
 1.  打开**Terminal**。
 
 1.  通过运行以下命令重新启动 Apache：
 
 ```php
-    **sudo apachectl restart** 
+**sudo apachectl restart** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -275,9 +275,9 @@ Apache 是一个开源的 Web 服务器，也是将在本书中编写的 PHP 代
 1.  创建一个包含以下代码的新文件：
 
 ```php
-    <?php phpinfo(); ?>
+<?php phpinfo(); ?>
 
-    ```
+```
 
 1.  将文件保存为`info.php`，并将该文件保存在以下位置：`/Library/WebServer/Documents/info.php`。
 
@@ -306,73 +306,73 @@ Apache 是一个开源的 Web 服务器，也是将在本书中编写的 PHP 代
 1.  浏览文件，并找到此行（应该是第 114 行）：
 
 ```php
-    **#LoadModule rewrite_module libexec/apache2/mod_rewrite.so** 
+**#LoadModule rewrite_module libexec/apache2/mod_rewrite.so** 
 
-    ```
+```
 
 1.  取消注释行，删除井号（#）符号。您的系统可能已经配置为启用`mod_rewrite`。无论如何，请确保它与以下代码匹配：
 
 ```php
-    **LoadModule rewrite_module libexec/apache2/mod_rewrite.so** 
+**LoadModule rewrite_module libexec/apache2/mod_rewrite.so** 
 
-    ```
+```
 
 1.  浏览文件，并找到此代码块（应该从第 178-183 行开始）：
 
 ```php
-    <Directory />
-    Options FollowSymLinks
-    AllowOverride None
-    Order deny,allow
-    Allow from all
-    </Directory>
+<Directory />
+Options FollowSymLinks
+AllowOverride None
+Order deny,allow
+Allow from all
+</Directory>
 
-    ```
+```
 
 1.  更改代码行，将`AllowOverride None`更改为`AllowOverride All`。结果部分应如下所示：
 
 ```php
-    <Directory />
-    Options FollowSymLinks
-    **AllowOverride All** 
-    Order deny,allow
-    Allow from all
-    </Directory>
+<Directory />
+Options FollowSymLinks
+**AllowOverride All** 
+Order deny,allow
+Allow from all
+</Directory>
 
-    ```
+```
 
 1.  继续滚动文件，直到找到这段代码（应该从第 210-215 行开始）：
 
 ```php
-    #
-    # AllowOverride controls what directives may be placed in #.htaccess files.
-    # It can be —All—, —None—, or any combination of the keywords:
-    # Options FileInfo AuthConfig Limit
-    #
-    AllowOverride None
+#
+# AllowOverride controls what directives may be placed in #.htaccess files.
+# It can be —All—, —None—, or any combination of the keywords:
+# Options FileInfo AuthConfig Limit
+#
+AllowOverride None
 
-    ```
+```
 
 1.  更改此代码行，将`AllowOverride None`更改为`AllowOverride All`。结果部分应如下所示：
 
 ```php
-    #
-    # AllowOverride controls what directives may be placed in #.htaccess files.
-    # It can be "All", "None", or any combination of the keywords:
-    # Options FileInfo AuthConfig Limit
-    #
-    AllowOverride All
+#
+# AllowOverride controls what directives may be placed in #.htaccess files.
+# It can be "All", "None", or any combination of the keywords:
+# Options FileInfo AuthConfig Limit
+#
+AllowOverride All
 
-    ```
+```
 
 1.  打开**Terminal**。
 
 1.  通过运行以下命令重新启动 Apache：
 
 ```php
-    **sudo apachectl restart** 
+**sudo apachectl restart** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -401,11 +401,11 @@ Apache 是一个开源的 Web 服务器，也是将在本书中编写的 PHP 代
 1.  在**终端**中输入以下命令，每行后按*Enter*：
 
 ```php
-    **sudo mkdir -p /usr/local
-    sudo chown -R $USER /usr/local
-    curl -Lf http://github.com/mxcl/homebrew/tarball/master | tar xz -- strip 1 -C/usr/local** 
+**sudo mkdir -p /usr/local
+sudo chown -R $USER /usr/local
+curl -Lf http://github.com/mxcl/homebrew/tarball/master | tar xz -- strip 1 -C/usr/local** 
 
-    ```
+```
 
 1.  **终端**将会显示一个进度条，告诉你安装过程进行得如何。安装完成后，你会收到一个成功的消息，然后你就可以再次控制**终端**了。
 
@@ -428,9 +428,9 @@ Apache 是一个开源的 Web 服务器，也是将在本书中编写的 PHP 代
 1.  运行以下命令：
 
 ```php
-    **brew install couchdb -v** 
+**brew install couchdb -v** 
 
-    ```
+```
 
 1.  接下来的几分钟，终端将会回复大量的文本。您将看到它获取每个依赖项，然后安装它。最后，您将收到一个成功的消息。
 
@@ -451,16 +451,16 @@ CouchDB 很容易管理。它作为一个服务运行，我们可以使用命令
 1.  运行以下命令：
 
 ```php
-    **couchdb -b** 
+**couchdb -b** 
 
-    ```
+```
 
 1.  **终端**将回复以下内容：
 
 ```php
-    **Apache CouchDB has started, time to relax.** 
+**Apache CouchDB has started, time to relax.** 
 
-    ```
+```
 
 太好了！现在我们已经将 CouchDB 作为后台进程启动，它将在后台处理请求，直到我们关闭它。
 
@@ -473,16 +473,16 @@ CouchDB 很容易管理。它作为一个服务运行，我们可以使用命令
 1.  运行以下语句创建一个将访问 CouchDB 的请求：
 
 ```php
-    **curl http://127.0.0.1:5984/** 
+**curl http://127.0.0.1:5984/** 
 
-    ```
+```
 
 1.  **终端**将回复以下内容：
 
 ```php
-    **{"couchdb":"Welcome","version":"1.0.2"}** 
+**{"couchdb":"Welcome","version":"1.0.2"}** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -497,23 +497,23 @@ CouchDB 很容易管理。它作为一个服务运行，我们可以使用命令
 1.  通过运行以下命令杀死 CouchDB 的后台进程：
 
 ```php
-    **couchdb -k** 
+**couchdb -k** 
 
-    ```
+```
 
 1.  如果 CouchDB 正在运行，它将返回以下文本：
 
 ```php
-    **Apache CouchDB has been killed.** 
+**Apache CouchDB has been killed.** 
 
-    ```
+```
 
 1.  让我们将 CouchDB 作为一个真正的后台进程运行，并确保每次启动计算机时都会运行它，通过运行以下语句：
 
 ```php
-    **launchctl load -w /usr/local/Cellar/couchdb/1.0.2/Library/LaunchDaemons/org.apache.couchdb.plist** 
+**launchctl load -w /usr/local/Cellar/couchdb/1.0.2/Library/LaunchDaemons/org.apache.couchdb.plist** 
 
-    ```
+```
 
 ### 注意
 
@@ -535,16 +535,16 @@ CouchDB 现在在后台运行，即使我们重新启动计算机，也不必担
 1.  运行以下命令：
 
 ```php
-    **curl http://127.0.0.1:5984/** 
+**curl http://127.0.0.1:5984/** 
 
-    ```
+```
 
 1.  **终端**将回复以下内容：
 
 ```php
-    **{"couchdb":"Welcome","version":"1.0.2"}** 
+**{"couchdb":"Welcome","version":"1.0.2"}** 
 
-    ```
+```
 
 # 安装版本控制
 
@@ -563,19 +563,19 @@ Git ([`git-scm.com/`](http://git-scm.com/))已经成为更受欢迎和广泛采�
 1.  运行以下命令使用 Homebrew 安装 Git：
 
 ```php
-    **brew install git** 
+**brew install git** 
 
-    ```
+```
 
 1.  **终端**将在短短几分钟内为您下载并安装 Git。然后，它将以成功消息回复您，告诉您 Git 已安装。
 
 1.  安装 Git 后，您需要配置它，以便在提交数据更改时知道您是谁。运行以下命令来标识自己，并确保在我放置`Your Name`和`your_email@domain.com`的地方填写您自己的信息：
 
 ```php
-    **git config global user.name "Your Name"
-    git config global user.email your_email@domain.com** 
+**git config global user.name "Your Name"
+git config global user.email your_email@domain.com** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 

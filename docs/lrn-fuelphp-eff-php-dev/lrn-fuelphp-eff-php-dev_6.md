@@ -77,17 +77,17 @@
 在`config.php`文件中的`'always_load'`数组中，您会注意到有一个模块部分：
 
 ```php
-    'always_load' => array(
-          'modules' => array('examplemodule'), 
-    ```
+'always_load' => array(
+      'modules' => array('examplemodule'), 
+```
 
 +   加载模块的另一种方法是仅在需要时自动加载它，在需要模块功能的类中。
 
 可以使用以下代码来完成：
 
 ```php
-    Module::load('examplemodule');
-    ```
+Module::load('examplemodule');
+```
 
 加载模块后，可以按以下方式调用模块中的函数：
 

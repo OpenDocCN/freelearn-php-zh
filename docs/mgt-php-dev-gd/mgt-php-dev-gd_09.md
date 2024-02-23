@@ -65,15 +65,15 @@ Magento 在其核心是一个**模型-视图-控制器**（**MVC**）框架。�
 1.  复制以下代码（文件位置是`app/code/local/Mdg/Hello/controllers/IndexController.php`）：
 
 ```php
-    <?php
-    class Mdg_Hello_IndexController extends Mage_Core_Controller_Front_Action
-    {
-         public function indexAction()
-      {
-         echo ‘Hello World this is the default action’;
-         }
-    }
-    ```
+<?php
+class Mdg_Hello_IndexController extends Mage_Core_Controller_Front_Action
+{
+     public function indexAction()
+  {
+     echo ‘Hello World this is the default action’;
+     }
+}
+```
 
 # 测试路由
 
@@ -92,20 +92,20 @@ Magento 在其核心是一个**模型-视图-控制器**（**MVC**）框架。�
 1.  复制以下代码（文件位置是`app/code/local/Mdg/Hello/controllers/IndexController.php`）：
 
 ```php
-    <?php 
-    class Mdg_Hello_IndexController extends Mage_Core_Controller_Front_Action
-    {
-         public function indexAction()
-      {
-         echo ‘Hello World this is the default action’;
-         }
+<?php 
+class Mdg_Hello_IndexController extends Mage_Core_Controller_Front_Action
+{
+     public function indexAction()
+  {
+     echo ‘Hello World this is the default action’;
+     }
 
-         public function developerAction()
-         {
-             echo ‘Hello Developer this is a custom controller action’;
-         }
-    }
-    ```
+     public function developerAction()
+     {
+         echo ‘Hello Developer this is a custom controller action’;
+     }
+}
+```
 
 最后，让我们测试一下，并通过转到`http://magento.localhost.com/hello/index/developer`来加载新的操作路由，如下截图所示：
 

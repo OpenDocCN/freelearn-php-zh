@@ -53,67 +53,67 @@
 1.  在`layout.php`文件中，在`master.css`之前添加一个链接到`bootstrap.min.css`和`bootstrap-responsive.min.css`：
 
 ```php
-    <head>
-    **<link href="<?php echo $this->make_route('/css/bootstrap.min.css') ?>" rel="stylesheet" type="text/css" />
-    <link href="<?php echo $this->make_route('/css/master.css') ?>" rel="stylesheet" type="text/css" />
-    <link href="<?php echo $this->make_route('/css/bootstrap-responsive.min.css') ?>" rel="stylesheet" type="text/css" />** 
-    </head>
+<head>
+**<link href="<?php echo $this->make_route('/css/bootstrap.min.css') ?>" rel="stylesheet" type="text/css" />
+<link href="<?php echo $this->make_route('/css/master.css') ?>" rel="stylesheet" type="text/css" />
+<link href="<?php echo $this->make_route('/css/bootstrap-responsive.min.css') ?>" rel="stylesheet" type="text/css" />** 
+</head>
 
-    ```
+```
 
 1.  接下来，让我们确保 Bootstrap 在较旧版本的 Internet Explorer 和移动浏览器中能够良好运行，通过添加以下一小段代码：
 
 ```php
-    <link href="<?php echo $this->make_route('/css/bootstrap- responsive.min.css') ?>" rel="stylesheet" type="text/css" />
-    **<!--[if lt IE 9]>
-    <script src="http://html5shim.googlecode.com/svn/trunk/html5.js">
-    </script>
-    <![endif]-->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">** 
-    </head>
+<link href="<?php echo $this->make_route('/css/bootstrap- responsive.min.css') ?>" rel="stylesheet" type="text/css" />
+**<!--[if lt IE 9]>
+<script src="http://html5shim.googlecode.com/svn/trunk/html5.js">
+</script>
+<![endif]-->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">** 
+</head>
 
-    ```
+```
 
 1.  通过以下内容替换`views/layout.php`文件的内容，为我们的应用程序创建一个干净简单的包装：
 
 ```php
-    <body>
-    **<div class="navbar navbar-fixed-top">
-    <div class="navbar-inner">
-    <div class="container">
-    <a class="btn btn-navbar" data-toggle="collapse" data- target=".nav-collapse">
-    <span class="icon-bar"></span>
-    <span class="icon-bar"></span>
-    <span class="icon-bar"></span>
-    </a>
-    <a class="brand" href="<?php echo $this->make_route('/') ?>">Verge</a>
-    <div class="nav-collapse">
-    <ul class="nav">
-    <li><a href="<?php echo $this->make_route('/') ?>">
-    Home
-    </a></li>
-    <li>
-    <a href="<?php echo $this->make_route('/signup') ?>">Signup</a>
-    </li>
-    </ul>
-    </div>
-    </div>
-    </div>
-    </div>
-    <div class="container">
-    <?php include($this->content); ?>
-    </div>** 
-    </body>
+<body>
+**<div class="navbar navbar-fixed-top">
+<div class="navbar-inner">
+<div class="container">
+<a class="btn btn-navbar" data-toggle="collapse" data- target=".nav-collapse">
+<span class="icon-bar"></span>
+<span class="icon-bar"></span>
+<span class="icon-bar"></span>
+</a>
+<a class="brand" href="<?php echo $this->make_route('/') ?>">Verge</a>
+<div class="nav-collapse">
+<ul class="nav">
+<li><a href="<?php echo $this->make_route('/') ?>">
+Home
+</a></li>
+<li>
+<a href="<?php echo $this->make_route('/signup') ?>">Signup</a>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="container">
+<?php include($this->content); ?>
+</div>** 
+</body>
 
-    ```
+```
 
 1.  删除`master.css`文件的内容，并用以下内容替换，对我们的布局进行一些小的调整：
 
 ```php
-    .page-header {margin-top: 50px;}
-    input {height: 20px;}
+.page-header {margin-top: 50px;}
+input {height: 20px;}
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -175,11 +175,11 @@ Signup Now
 1.  我们需要更新`index.php`并让它知道在哪里找到我们刚刚移动的注册视图：
 
 ```php
-    get('/signup', function($app) {
-    **$app->render('user/signup');** 
-    });
+get('/signup', function($app) {
+**$app->render('user/signup');** 
+});
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -284,26 +284,26 @@ CouchDB 已经有一个存储用户文档的机制，我们已经看到并使用
 1.  我们目前没有在任何项目中设置`_id`，但我们需要为我们的用户文档这样做。让我们打开`classes/base.php`，并添加`_id`，这样我们就有了在任何文档上设置`_id`的选项。
 
 ```php
-    <?php
-    abstract class Base {
-    **protected $_id;** 
-    protected $type;
+<?php
+abstract class Base {
+**protected $_id;** 
+protected $type;
 
-    ```
+```
 
 1.  我们需要将我们刚刚讨论的所有用户字段添加到`classes/user.php`文件中，以及一些其他字段。将以下代码添加到`classes/user.php`中，使其看起来如下：
 
 ```php
-    <?php
-    class User extends Base {
-    protected $name;
-    protected $email;
-    **protected $full_name;
-    protected $salt;
-    protected $password_sha;
-    protected $roles;** 
+<?php
+class User extends Base {
+protected $name;
+protected $email;
+**protected $full_name;
+protected $salt;
+protected $password_sha;
+protected $roles;** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -346,26 +346,26 @@ define('ADMIN_PASSWORD', 'test');**
 1.  用以下 HTML 代码替换`views/user/signup.php`页面的所有内容：
 
 ```php
-    <div class="page-header">
-    <h1>Signup</h1>
-    </div>
-    <div class="row">
-    <div class="span12">
-    <form class="form-vertical" action="<?php echo $this- >make_route('/signup') ?>" method="post">
-    <fieldset>
-    <label for="full_name">Full Name</label>
-    <input class="input-large" id="full_name" name="full_name" type="text" value="">
-    <label for="email">Email</label>
-    <input class="input-large" id="email" name="email" type="text" value="">
-    <div class="form-actions">
-    <button class="btn btn-primary">Sign Up!</button>
-    </div>
-    </fieldset>
-    </form>
-    </div>
-    </div>
+<div class="page-header">
+<h1>Signup</h1>
+</div>
+<div class="row">
+<div class="span12">
+<form class="form-vertical" action="<?php echo $this- >make_route('/signup') ?>" method="post">
+<fieldset>
+<label for="full_name">Full Name</label>
+<input class="input-large" id="full_name" name="full_name" type="text" value="">
+<label for="email">Email</label>
+<input class="input-large" id="email" name="email" type="text" value="">
+<div class="form-actions">
+<button class="btn btn-primary">Sign Up!</button>
+</div>
+</fieldset>
+</form>
+</div>
+</div>
 
-    ```
+```
 
 1.  刷新注册页面，您将看到我们的表单现在很棒！![更新界面](img/3586_06_015.jpg)
 
@@ -376,69 +376,69 @@ define('ADMIN_PASSWORD', 'test');**
 1.  在`bones.php`中引用`lib/bootstrap.php`。
 
 ```php
-    define('ROOT', __DIR__ . '/..');
-    **require_once ROOT . '/lib/bootstrap.php';** 
-    require_once ROOT . '/lib/sag/src/Sag.php';
+define('ROOT', __DIR__ . '/..');
+**require_once ROOT . '/lib/bootstrap.php';** 
+require_once ROOT . '/lib/sag/src/Sag.php';
 
-    ```
+```
 
 1.  打开`lib/bootstrap.php`，并创建一个基本类。
 
 ```php
-    <?php
-    class Bootstrap {
-    }
+<?php
+class Bootstrap {
+}
 
-    ```
+```
 
 1.  我们将创建一个名为`make_input`的函数，它将接受四个参数：`$id, $label, $type`和`$value`。
 
 ```php
-    <?php
-    class Bootstrap {
-    **public static function make_input($id, $label, $type, $value = '') {
-    echo '<label for="' . $id . '">' . $label . '</label> <input class="input-large" id="' . $id . '" name="' . $id . '" type="' . $type . '" value="' . $value . '">';
-    }** 
-    }
+<?php
+class Bootstrap {
+**public static function make_input($id, $label, $type, $value = '') {
+echo '<label for="' . $id . '">' . $label . '</label> <input class="input-large" id="' . $id . '" name="' . $id . '" type="' . $type . '" value="' . $value . '">';
+}** 
+}
 
-    ```
+```
 
 1.  返回到`views/user/signup.php`，并简化代码以使用新的`make_input`函数。
 
 ```php
-    <div class="page-header">
-    <h1>Signup</h1>
-    </div>
-    <div class="row">
-    <div class="span12">
-    <form action="<?php echo $this->make_route('/signup') ?>" method="post">
-    <fieldset>
-    **<?php Bootstrap::make_input('full_name', 'Full Name', 'text'); ?>
-    <?php Bootstrap::make_input('email', 'Email', 'text'); ?>** 
-    <div class="form-actions">
-    <button class="btn btn-primary">Sign Up!</button>
-    </div>
-    </fieldset>
-    </form>
-    </div>
-    </div>
+<div class="page-header">
+<h1>Signup</h1>
+</div>
+<div class="row">
+<div class="span12">
+<form action="<?php echo $this->make_route('/signup') ?>" method="post">
+<fieldset>
+**<?php Bootstrap::make_input('full_name', 'Full Name', 'text'); ?>
+<?php Bootstrap::make_input('email', 'Email', 'text'); ?>** 
+<div class="form-actions">
+<button class="btn btn-primary">Sign Up!</button>
+</div>
+</fieldset>
+</form>
+</div>
+</div>
 
-    ```
+```
 
 1.  现在我们有了`lib/bootstrap.php`来让我们的生活更轻松，让我们向用户询问另外两个字段：`username`和`password`。
 
 ```php
-    <fieldset>
-    <?php Bootstrap::make_input('full_name', 'Full Name', 'text'); ?>
-    <?php Bootstrap::make_input('email', 'Email', 'text'); ?>
-    **<?php Bootstrap::make_input('username', 'Username', 'text'); ?>
-    <?php Bootstrap::make_input('password', 'Password', 'password'); ?>** 
-    <div class="form-actions">
-    <button class="btn btn-primary">Sign Up!</button>
-    </div>
-    </fieldset>
+<fieldset>
+<?php Bootstrap::make_input('full_name', 'Full Name', 'text'); ?>
+<?php Bootstrap::make_input('email', 'Email', 'text'); ?>
+**<?php Bootstrap::make_input('username', 'Username', 'text'); ?>
+<?php Bootstrap::make_input('password', 'Password', 'password'); ?>** 
+<div class="form-actions">
+<button class="btn btn-primary">Sign Up!</button>
+</div>
+</fieldset>
 
-    ```
+```
 
 1.  刷新您的浏览器，您会看到一个大大改进的注册表单。如果它看起来不像下面的截图，请检查您的代码是否与我的匹配。![更新界面](img/3586_06_017.jpg)
 
@@ -455,75 +455,75 @@ define('ADMIN_PASSWORD', 'test');**
 1.  打开`index.php`，并开始收集简单字段：`full_name, email`和`roles`。`full_name`和`email`字段将直接来自表单提交，`roles`我们将设置为空数组，因为此用户没有特殊权限。
 
 ```php
-    post('/signup', function($app) {
-    $user = new User();
-    $user->full_name = $app->form('full_name');
-    $user->email = $app->form('email');
-    $user->roles = array();
+post('/signup', function($app) {
+$user = new User();
+$user->full_name = $app->form('full_name');
+$user->email = $app->form('email');
+$user->roles = array();
 
-    ```
+```
 
 1.  接下来，我们将捕获用户提交的用户名，但我们希望防止奇怪的字符或空格，因此我们将使用正则表达式将提交的用户名转换为不带任何特殊字符的小写字符串。最终结果将作为我们的`name`字段，也将作为 ID 的一部分。请记住，用户文档要求`_id`必须以`org.couchdb.user`开头，并以用户的`name`结尾。
 
 ```php
-    post('/signup', function($app) {
-    $user = new User();
-    $user->full_name = $app->form('full_name'); $user->email = $app->form('email');
-    $user->roles = array();
-    **$user->name = preg_replace('/[^a-z0-9-]/', '', strtolower($app- >form('username')));
-    $user->_id = 'org.couchdb.user:' . $user->name;** 
+post('/signup', function($app) {
+$user = new User();
+$user->full_name = $app->form('full_name'); $user->email = $app->form('email');
+$user->roles = array();
+**$user->name = preg_replace('/[^a-z0-9-]/', '', strtolower($app- >form('username')));
+$user->_id = 'org.couchdb.user:' . $user->name;** 
 
-    ```
+```
 
 1.  为了加密用户输入的明文密码值，我们将临时设置一个字符串作为`salt`的值。然后，我们将明文密码传递给 SHA-1 函数，并将其保存在`password_sha`中。我们将在接下来的几分钟内深入了解 SHA-1 的工作原理。
 
 ```php
-    post('/signup', function($app) {
-    $user = new User();
-    $user->full_name = $app->form('full_name'); $user->email = $app->form('email');
-    $user->roles = array();
-    $user->name = preg_replace('/[^a-z0-9-]/', '', strtolower($app- >form('username')));
-    $user->_id = 'org.couchdb.user:' . $user->name;
-    **$user->salt = 'secret_salt';
-    $user->password_sha = sha1($app->form('password') . $user- >salt);** 
+post('/signup', function($app) {
+$user = new User();
+$user->full_name = $app->form('full_name'); $user->email = $app->form('email');
+$user->roles = array();
+$user->name = preg_replace('/[^a-z0-9-]/', '', strtolower($app- >form('username')));
+$user->_id = 'org.couchdb.user:' . $user->name;
+**$user->salt = 'secret_salt';
+$user->password_sha = sha1($app->form('password') . $user- >salt);** 
 
-    ```
+```
 
 1.  为了保存用户文档，我们需要将数据库设置为`_users`，并以我们在 PHP 常量中设置的管理员用户身份登录。然后，我们将使用 Sag 将用户放入 CouchDB。
 
 ```php
-    post('/signup', function($app) {
-    $user = new User();
-    $user->full_name = $app->form('full_name'); $user->email = $app->form('email');
-    $user->roles = array();
-    $user->name = preg_replace('/[^a-z0-9-]/', '', strtolower($app- >form('username')));
-    $user->_id = 'org.couchdb.user:' . $user->name;
-    $user->salt = 'secret_salt';
-    $user->password_sha = sha1($app->form('password') . $user- >salt);
-    **$app->couch->setDatabase('_users');
-    $app->couch->login(ADMIN_USER, ADMIN_PASSWORD);
-    $app->couch->put($user->_id, $user->to_json());** 
+post('/signup', function($app) {
+$user = new User();
+$user->full_name = $app->form('full_name'); $user->email = $app->form('email');
+$user->roles = array();
+$user->name = preg_replace('/[^a-z0-9-]/', '', strtolower($app- >form('username')));
+$user->_id = 'org.couchdb.user:' . $user->name;
+$user->salt = 'secret_salt';
+$user->password_sha = sha1($app->form('password') . $user- >salt);
+**$app->couch->setDatabase('_users');
+$app->couch->login(ADMIN_USER, ADMIN_PASSWORD);
+$app->couch->put($user->_id, $user->to_json());** 
 
-    ```
+```
 
 1.  最后，让我们关闭用户注册功能并呈现主页。
 
 ```php
-    post('/signup', function($app) {
-    $user = new User();
-    $user->full_name = $app->form('full_name'); $user->email = $app->form('email');
-    $user->roles = array();
-    $user->name = preg_replace('/[^a-z0-9-]/', '', strtolower($app- >form('username')));
-    $user->_id = 'org.couchdb.user:' . $user->name;
-    $user->salt = 'secret_salt';
-    $user->password_sha = sha1($app->form('password') . $user- >salt);
-    $app->couch->setDatabase('_users');
-    $app->couch->login(ADMIN_USER, ADMIN_PASSWORD);
-    $app->couch->put($user->_id, $user->to_json());
-    **$app->render('home');** 
-    });
+post('/signup', function($app) {
+$user = new User();
+$user->full_name = $app->form('full_name'); $user->email = $app->form('email');
+$user->roles = array();
+$user->name = preg_replace('/[^a-z0-9-]/', '', strtolower($app- >form('username')));
+$user->_id = 'org.couchdb.user:' . $user->name;
+$user->salt = 'secret_salt';
+$user->password_sha = sha1($app->form('password') . $user- >salt);
+$app->couch->setDatabase('_users');
+$app->couch->login(ADMIN_USER, ADMIN_PASSWORD);
+$app->couch->put($user->_id, $user->to_json());
+**$app->render('home');** 
+});
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -591,41 +591,41 @@ $app->render('home');
 1.  打开`classes/user.php`，并创建一个用于注册的`public`函数。
 
 ```php
-    public function signup($username,$password) {
-    }
+public function signup($username,$password) {
+}
 
-    ```
+```
 
 1.  输入以下代码以匹配下面的代码。它几乎与我们在上一节输入的代码相同，只是不再引用`$user`，而是引用`$this`。您还会注意到`full_name`和`email`不在这个函数中；您马上就会看到它们。
 
 ```php
-    public function signup($username, $password) {
-    **$bones = new Bones();
-    $bones->couch->setDatabase('_users');
-    $bones->couch->login(ADMIN_USER, ADMIN_PASSWORD);
-    $this->roles = array();
-    $this->name = preg_replace('/[^a-z0-9-]/', '', strtolower($username));
-    $this->_id = 'org.couchdb.user:' . $this->name;
-    $this->salt = $bones->couch->generateIDs(1)->body->uuids[0];
-    $this->password_sha = sha1($password . $this->salt);
-    $bones->couch->put($this->_id, $this->to_json());
-    }** 
+public function signup($username, $password) {
+**$bones = new Bones();
+$bones->couch->setDatabase('_users');
+$bones->couch->login(ADMIN_USER, ADMIN_PASSWORD);
+$this->roles = array();
+$this->name = preg_replace('/[^a-z0-9-]/', '', strtolower($username));
+$this->_id = 'org.couchdb.user:' . $this->name;
+$this->salt = $bones->couch->generateIDs(1)->body->uuids[0];
+$this->password_sha = sha1($password . $this->salt);
+$bones->couch->put($this->_id, $this->to_json());
+}** 
 
-    ```
+```
 
 1.  打开`index.php`，清理注册路由，使其与以下代码匹配：
 
 ```php
-    post('/signup', function($app) {
-    $user = new User();
-    $user->full_name = $app->form('full_name');
-    $user->email = $app->form('email');
-    **$user->signup($app->form('username'), $app->form('password'));** 
-    $app->set('message', 'Thanks for Signing Up ' . $user->full_name . '!');
-    $app->render('home');
-    });
+post('/signup', function($app) {
+$user = new User();
+$user->full_name = $app->form('full_name');
+$user->email = $app->form('email');
+**$user->signup($app->form('username'), $app->form('password'));** 
+$app->set('message', 'Thanks for Signing Up ' . $user->full_name . '!');
+$app->render('home');
+});
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -656,33 +656,33 @@ $app->render('home');
 1.  运行以下命令询问 Apache 的`config`文件保存日志的位置：
 
 ```php
-    **grep ErrorLog /etc/apache2/httpd.conf** 
+**grep ErrorLog /etc/apache2/httpd.conf** 
 
-    ```
+```
 
 1.  终端会返回类似以下的内容：
 
 ```php
-    **# ErrorLog: The location of the error log file.
-    # If you do not specify an ErrorLog directive within a <VirtualHost>
-    ErrorLog "/private/var/log/apache2/error_log"** 
+**# ErrorLog: The location of the error log file.
+# If you do not specify an ErrorLog directive within a <VirtualHost>
+ErrorLog "/private/var/log/apache2/error_log"** 
 
-    ```
+```
 
 1.  通过运行以下命令检索日志的最后几行：
 
 ```php
-    **tail /private/var/log/apache2/error_log** 
+**tail /private/var/log/apache2/error_log** 
 
-    ```
+```
 
 1.  日志会显示很多东西，但最重要的消息是这个，它说 PHP`致命错误`。你的消息可能略有不同，但总体消息是一样的。
 
 ```php
-    **[Sun Sep 11 22:10:31 2011] [error] [client 127.0.0.1] PHP Fatal error: Uncaught exception 'SagCouchException' with message 'CouchDB Error: conflict (Document update conflict.)' in /Library/WebServer/Documents/verge/lib/sag/src/Sag.php:1126\nStack trace:\n#0 /Library/WebServer/Documents/verge/lib/sag/src/Sag.php(286): Sag->procPacket('PUT', '/_users/org.cou...', '{"name":"johndoe')\n#1 /Library/WebServer/Documents/verge/classes/user.php(30): Sag->put('org.couchdb.use...', '{"name":"johndoe')\n#2 /Library/WebServer/Documents/verge/index.php(20): User->signup('w')\n#3 /Library/WebServer/Documents/verge/lib/bones.php(91): {closure}(Object(Bones))\n#4 /Library/WebServer/Documents/verge/lib/bones.php(17): Bones::register('/signup', Object(Closure), 'POST')\n#5 /Library/WebServer/Documents/verge/index.php(24): post('/signup', Object(Closure))\n#6 {main}\n thrown in /Library/WebServer/Documents/verge/lib/sag/src/Sag.php on line 1126, referer: http://localhost/verge/signup
-    [Sun Sep 11 22:10:31 2011] [error] [client 127.0.0.1] PHP Fatal error: Uncaught exception 'SagCouchException' with message 'CouchDB Error: conflict (Document update conflict.)' in /Library/WebServer/Documents/verge/lib/sag/src/Sag.php:1126\nStack trace:\n#0 /Library/WebServer/Documents/verge/lib/sag/src/Sag.php(286): Sag->procPacket('PUT', '/_users/org.cou...', '{"name":"johndoe')\n#1 /Library/WebServer/Documents/verge/classes/user.php(30): Sag->put('org.couchdb.use...', '{"name":"johndoe')\n#2 /Library/WebServer/Documents/verge/index.php(20): User->signup('w')\n#3 /Library/WebServer/Documents/verge/lib/bones.php(91): {closure}(Object(Bones))\n#4 /Library/WebServer/Documents/verge/lib/bones.php(17): Bones::register('/signup', Object(Closure), 'POST')\n#5 /Library/WebServer/Documents/verge/index.php(24): post('/signup', Object(Closure))\n#6 {main}\n thrown in /Library/WebServer/Documents/verge/lib/sag/src/Sag.php on line 1126, referer: http://localhost/verge/signup** 
+**[Sun Sep 11 22:10:31 2011] [error] [client 127.0.0.1] PHP Fatal error: Uncaught exception 'SagCouchException' with message 'CouchDB Error: conflict (Document update conflict.)' in /Library/WebServer/Documents/verge/lib/sag/src/Sag.php:1126\nStack trace:\n#0 /Library/WebServer/Documents/verge/lib/sag/src/Sag.php(286): Sag->procPacket('PUT', '/_users/org.cou...', '{"name":"johndoe')\n#1 /Library/WebServer/Documents/verge/classes/user.php(30): Sag->put('org.couchdb.use...', '{"name":"johndoe')\n#2 /Library/WebServer/Documents/verge/index.php(20): User->signup('w')\n#3 /Library/WebServer/Documents/verge/lib/bones.php(91): {closure}(Object(Bones))\n#4 /Library/WebServer/Documents/verge/lib/bones.php(17): Bones::register('/signup', Object(Closure), 'POST')\n#5 /Library/WebServer/Documents/verge/index.php(24): post('/signup', Object(Closure))\n#6 {main}\n thrown in /Library/WebServer/Documents/verge/lib/sag/src/Sag.php on line 1126, referer: http://localhost/verge/signup
+[Sun Sep 11 22:10:31 2011] [error] [client 127.0.0.1] PHP Fatal error: Uncaught exception 'SagCouchException' with message 'CouchDB Error: conflict (Document update conflict.)' in /Library/WebServer/Documents/verge/lib/sag/src/Sag.php:1126\nStack trace:\n#0 /Library/WebServer/Documents/verge/lib/sag/src/Sag.php(286): Sag->procPacket('PUT', '/_users/org.cou...', '{"name":"johndoe')\n#1 /Library/WebServer/Documents/verge/classes/user.php(30): Sag->put('org.couchdb.use...', '{"name":"johndoe')\n#2 /Library/WebServer/Documents/verge/index.php(20): User->signup('w')\n#3 /Library/WebServer/Documents/verge/lib/bones.php(91): {closure}(Object(Bones))\n#4 /Library/WebServer/Documents/verge/lib/bones.php(17): Bones::register('/signup', Object(Closure), 'POST')\n#5 /Library/WebServer/Documents/verge/index.php(24): post('/signup', Object(Closure))\n#6 {main}\n thrown in /Library/WebServer/Documents/verge/lib/sag/src/Sag.php on line 1126, referer: http://localhost/verge/signup** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -712,17 +712,17 @@ $app->render('home');
 1.  通过运行以下命令检索日志的最后几行：
 
 ```php
-    **tail /usr/local/var/log/couchdb/couch.log** 
+**tail /usr/local/var/log/couchdb/couch.log** 
 
-    ```
+```
 
 1.  终端将返回类似以下内容：
 
 ```php
-    **[Mon, 12 Sep 2011 16:04:56 GMT] [info] [<0.879.0>] 127.0.0.1 - - 'GET' /_uuids?count=1 200
-    [Mon, 12 Sep 2011 16:04:56 GMT] [info] [<0.879.0>] 127.0.0.1 - - 'PUT' /_users/org.couchdb.user:johndoe 409** 
+**[Mon, 12 Sep 2011 16:04:56 GMT] [info] [<0.879.0>] 127.0.0.1 - - 'GET' /_uuids?count=1 200
+[Mon, 12 Sep 2011 16:04:56 GMT] [info] [<0.879.0>] 127.0.0.1 - - 'PUT' /_users/org.couchdb.user:johndoe 409** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -786,34 +786,34 @@ exit;
 1.  打开`lib/bones.php`并创建一个名为`display_alert()`的新函数。将调用此函数以查看`alert`变量是否设置。如果设置了`alert`变量，我们将回显一些 HTML 以在布局上显示警报框。
 
 ```php
-    public function display_alert($variable = 'error') {
-    if (isset($this->vars[$variable])) {
-    return "<div class='alert alert-" . $variable . "'><a class='close' data-dismiss='alert'>x</a>" . $this- >vars[$variable] . "</div>";
-    }
-    }
+public function display_alert($variable = 'error') {
+if (isset($this->vars[$variable])) {
+return "<div class='alert alert-" . $variable . "'><a class='close' data-dismiss='alert'>x</a>" . $this- >vars[$variable] . "</div>";
+}
+}
 
-    ```
+```
 
 1.  在`layout.php`中添加代码，就在容器`div`内部显示 Flash 调用`display_flash`函数。
 
 ```php
-    <div class="container">
-    **<?php echo $this->display_alert('error'); ?>
-    <?php echo $this->display_alert('success'); ?>** 
-    <?php include($this->content); ?>
-    </div>
+<div class="container">
+**<?php echo $this->display_alert('error'); ?>
+<?php echo $this->display_alert('success'); ?>** 
+<?php include($this->content); ?>
+</div>
 
-    ```
+```
 
 1.  现在我们已经添加了这些 Flash 消息，让我们回到`index.php`中的注册`POST`路由，并添加一个 Flash 消息，感谢用户注册。
 
 ```php
-    $user->signup($app->form('username'), $app->form('password'));
-    **$app->set('success', 'Thanks for Signing Up ' . $user->full_name . '!');** 
-    $app->render('home');
-    });
+$user->signup($app->form('username'), $app->form('password'));
+**$app->set('success', 'Thanks for Signing Up ' . $user->full_name . '!');** 
+$app->render('home');
+});
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -929,49 +929,49 @@ post('/login', function($app) {
 1.  创建一个名为`login`的`public`函数，我们可以将我们的明文`$password`作为参数传递。
 
 ```php
-    public function login($password) {
-    }
-    Create a new bones object and set the database to _users.
-    public function login($password) {
-    **$bones = new Bones();
-    $bones->couch->setDatabase('_users');** 
-    }
+public function login($password) {
+}
+Create a new bones object and set the database to _users.
+public function login($password) {
+**$bones = new Bones();
+$bones->couch->setDatabase('_users');** 
+}
 
-    ```
+```
 
 1.  为我们的登录代码创建一个`try...catch`语句。在`catch`块中，我们将捕获错误代码`401`。如果触发了错误代码，我们希望告诉用户他们的登录是不正确的。
 
 ```php
-    public function login($password) {
-    $bones = new Bones();
-    $bones->couch->setDatabase('_users');
-    **try {
-    }
-    catch(SagCouchException $e) {
-    if($e->getCode() == "401") {
-    $bones->set('error', ' Incorrect login credentials.');
-    $bones->render('user/login');
-    exit;
-    }
-    }** 
-    }
+public function login($password) {
+$bones = new Bones();
+$bones->couch->setDatabase('_users');
+**try {
+}
+catch(SagCouchException $e) {
+if($e->getCode() == "401") {
+$bones->set('error', ' Incorrect login credentials.');
+$bones->render('user/login');
+exit;
+}
+}** 
+}
 
-    ```
+```
 
 1.  添加代码来启动会话，然后通过 Sag 将用户名和密码传递到 CouchDB。当用户成功登录时，从 CouchDB 获取当前用户的用户名。
 
 ```php
-    public function login($password) {
-    $bones = new Bones();
-    $bones->couch->setDatabase('_users');
-    **try {
-    $bones->couch->login($this->name, $password, Sag::$AUTH_COOKIE);
-    session_start();
-    $_SESSION['username'] = $bones->couch->getSession()->body- >userCtx->name;
-    session_write_close();** 
-    }
+public function login($password) {
+$bones = new Bones();
+$bones->couch->setDatabase('_users');
+**try {
+$bones->couch->login($this->name, $password, Sag::$AUTH_COOKIE);
+session_start();
+$_SESSION['username'] = $bones->couch->getSession()->body- >userCtx->name;
+session_write_close();** 
+}
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -1012,33 +1012,33 @@ $app->render('home');**
 1.  打开`classes/user.php`，创建一个名为`logout`的`public static`函数。
 
 ```php
-    public static function logout() {
-    $bones = new Bones();
-    $bones->couch->login(null, null);
-    session_start();
-    session_destroy();
-    }
+public static function logout() {
+$bones = new Bones();
+$bones->couch->login(null, null);
+session_start();
+session_destroy();
+}
 
-    ```
+```
 
 1.  在`index.php`文件中添加一个路由，并调用`logout`函数。
 
 ```php
-    get('/logout', function($app) {
-    User::logout();
-    $app->redirect('/');
-    });
+get('/logout', function($app) {
+User::logout();
+$app->redirect('/');
+});
 
-    ```
+```
 
 1.  注意，我们在 Bones 内部调用了一个新功能`redirect`函数。为了使其工作，让我们在底部添加一个快速的新功能
 
 ```php
-    public function redirect($path = '/') {
-    header('Location: ' . $this->make_route($path));
-    }
+public function redirect($path = '/') {
+header('Location: ' . $this->make_route($path));
+}
 
-    ````
+````
 
 ## `刚刚发生了什么？`
 
@@ -1059,53 +1059,53 @@ $app->render('home');**
 1.  让我们在`classes/user.php`中添加一个名为`current_user`的函数，这样我们就可以从会话中检索当前用户的用户名。
 
 ```php
-    public static function current_user() {
-    session_start();
-    return $_SESSION['username'];
-    session_write_close();
-    }
+public static function current_user() {
+session_start();
+return $_SESSION['username'];
+session_write_close();
+}
 
-    ```
+```
 
 1.  在`classes/user.php`中添加一个名为`is_authenticated`的`public static`函数，以便我们可以查看用户是否已经认证。
 
 ```php
-    public static function is_authenticated() {
-    if (self::current_user()) {
-    return true;
-    } else {
-    return false;
-    }
-    }
+public static function is_authenticated() {
+if (self::current_user()) {
+return true;
+} else {
+return false;
+}
+}
 
-    ```
+```
 
 1.  既然我们的身份验证已经就绪，让我们来收紧`layout.php`中的导航，以便根据用户是否已登录来显示不同的导航项。
 
 ```php
-    <ul class="nav">
-    **<li><a href="<?php echo $this->make_route('/') ?>">Home</a></li>
-    <?php if (User::is_authenticated()) { ?>
-    <li>
-    <a href="<?php echo $this->make_route('/logout') ?>">
-    Logout
-    </a>
-    </li>
-    <?php } else { ?>
-    <li>
-    <a href="<?php echo $this->make_route('/signup') ?>">
-    Signup
-    </a>
-    </li>
-    <li>
-    <a href="<?php echo $this->make_route('/login') ?>">
-    Login
-    </a>
-    </li>
-    <?php } ?>** 
-    </ul>
+<ul class="nav">
+**<li><a href="<?php echo $this->make_route('/') ?>">Home</a></li>
+<?php if (User::is_authenticated()) { ?>
+<li>
+<a href="<?php echo $this->make_route('/logout') ?>">
+Logout
+</a>
+</li>
+<?php } else { ?>
+<li>
+<a href="<?php echo $this->make_route('/signup') ?>">
+Signup
+</a>
+</li>
+<li>
+<a href="<?php echo $this->make_route('/login') ?>">
+Login
+</a>
+</li>
+<?php } ?>** 
+</ul>
 
-    ```
+```
 
 ## 刚刚发生了什么？
 

@@ -166,9 +166,9 @@ MinGW 的网站是[`www.mingw.org/`](http://www.mingw.org/)。
 1.  然后，您需要提供主机名或 IP 地址，以及可选的端口。以下是您可以使用来运行本书提供的示例的示例：
 
 ```php
-    cd /path/to/recipes
-    php -S localhost:8080
-    ```
+cd /path/to/recipes
+php -S localhost:8080
+```
 
 您将在屏幕上看到类似以下内容的输出：
 
@@ -181,9 +181,9 @@ MinGW 的网站是[`www.mingw.org/`](http://www.mingw.org/)。
 以下是使用`-t`标志的示例：
 
 ```php
-    **php -S localhost:8080 -t source/chapter01**
+**php -S localhost:8080 -t source/chapter01**
 
-    ```
+```
 
 以下是输出的示例：
 
@@ -206,13 +206,13 @@ MinGW 的网站是[`www.mingw.org/`](http://www.mingw.org/)。
 1.  以下是创建数据库所需的 SQL 示例：
 
 ```php
-    CREATE DATABASE IF NOT EXISTS dbname DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
-    CREATE USER 'user'@'%' IDENTIFIED WITH mysql_native_password;
-    SET PASSWORD FOR 'user'@'%' = PASSWORD('userPassword');
-    GRANT ALL PRIVILEGES ON dbname.* to 'user'@'%';
-    GRANT ALL PRIVILEGES ON dbname.* to 'user'@'localhost';
-    FLUSH PRIVILEGES;
-    ```
+CREATE DATABASE IF NOT EXISTS dbname DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+CREATE USER 'user'@'%' IDENTIFIED WITH mysql_native_password;
+SET PASSWORD FOR 'user'@'%' = PASSWORD('userPassword');
+GRANT ALL PRIVILEGES ON dbname.* to 'user'@'%';
+GRANT ALL PRIVILEGES ON dbname.* to 'user'@'localhost';
+FLUSH PRIVILEGES;
+```
 
 1.  将示例值导入新数据库。导入文件`php7cookbook.sql`位于[`github.com/dbierer/php7cookbook/blob/master/php7cookbook.sql`](https://github.com/dbierer/php7cookbook/blob/master/php7cookbook.sql)。
 
@@ -246,15 +246,15 @@ PHP 自动加载的最低要求是定义一个全局的`__autoload()`函数。�
 1.  我们将介绍的第一种方法是简单地加载一个文件。我们使用`file_exists()`在运行`require_once()`之前进行检查。这样做的原因是，如果文件未找到，`require_once()`将生成一个无法使用 PHP 7 的新错误处理功能捕获的致命错误：
 
 ```php
-    protected static function loadFile($file)
-    {
-        if (file_exists($file)) {
-            require_once $file;
-            return TRUE;
-        }
-        return FALSE;
+protected static function loadFile($file)
+{
+    if (file_exists($file)) {
+        require_once $file;
+        return TRUE;
     }
-    ```
+    return FALSE;
+}
+```
 
 1.  然后我们可以在调用程序中测试`loadFile()`的返回值，并在无法加载文件时抛出`Exception`之前循环遍历备用目录列表。
 
@@ -265,67 +265,67 @@ PHP 自动加载的最低要求是定义一个全局的`__autoload()`函数。�
 1.  接下来，我们定义调用`loadFile()`并实际执行基于命名空间类名定位文件的逻辑的方法。该方法通过将 PHP 命名空间分隔符`\`转换为适合该服务器的目录分隔符并附加`.php`来派生文件名：
 
 ```php
-    public static function autoLoad($class)
-    {
-        $success = FALSE;
-        $fn = str_replace('\\', DIRECTORY_SEPARATOR, $class) 
-              . '.php';
-        foreach (self::$dirs as $start) {
-            $file = $start . DIRECTORY_SEPARATOR . $fn;
-            if (self::loadFile($file)) {
-                $success = TRUE;
-                break;
-            }
+public static function autoLoad($class)
+{
+    $success = FALSE;
+    $fn = str_replace('\\', DIRECTORY_SEPARATOR, $class) 
+          . '.php';
+    foreach (self::$dirs as $start) {
+        $file = $start . DIRECTORY_SEPARATOR . $fn;
+        if (self::loadFile($file)) {
+            $success = TRUE;
+            break;
         }
-        if (!$success) {
-            if (!self::loadFile(__DIR__ 
-                . DIRECTORY_SEPARATOR . $fn)) {
-                throw new \Exception(
-                    self::UNABLE_TO_LOAD . ' ' . $class);
-            }
-        }
-        return $success;
     }
-    ```
+    if (!$success) {
+        if (!self::loadFile(__DIR__ 
+            . DIRECTORY_SEPARATOR . $fn)) {
+            throw new \Exception(
+                self::UNABLE_TO_LOAD . ' ' . $class);
+        }
+    }
+    return $success;
+}
+```
 
 1.  接下来，该方法循环遍历我们称之为`self::$dirs`的目录数组，使用每个目录作为派生文件名的起点。如果不成功，作为最后的手段，该方法尝试从当前目录加载文件。如果甚至这样也不成功，就会抛出一个`Exception`。
 
 1.  接下来，我们需要一个可以将更多目录添加到我们要测试的目录列表中的方法。请注意，如果提供的值是一个数组，则使用`array_merge()`。否则，我们只需将目录字符串添加到`self::$dirs`数组中：
 
 ```php
-    public static function addDirs($dirs)
-    {
-        if (is_array($dirs)) {
-            self::$dirs = array_merge(self::$dirs, $dirs);
-        } else {
-            self::$dirs[] = $dirs;
-        }
-    }  
-    ```
+public static function addDirs($dirs)
+{
+    if (is_array($dirs)) {
+        self::$dirs = array_merge(self::$dirs, $dirs);
+    } else {
+        self::$dirs[] = $dirs;
+    }
+}  
+```
 
 1.  然后，我们来到最重要的部分；我们需要将我们的`autoload()`方法注册为**标准 PHP 库**（**SPL**）自动加载程序。这是使用`spl_autoload_register()`和`init()`方法来实现的：
 
 ```php
-    public static function init($dirs = array())
-    {
-        if ($dirs) {
-            self::addDirs($dirs);
-        }
-        if (self::$registered == 0) {
-            spl_autoload_register(__CLASS__ . '::autoload');
-            self::$registered++;
-        }
+public static function init($dirs = array())
+{
+    if ($dirs) {
+        self::addDirs($dirs);
     }
-    ```
+    if (self::$registered == 0) {
+        spl_autoload_register(__CLASS__ . '::autoload');
+        self::$registered++;
+    }
+}
+```
 
 1.  此时，我们可以定义`__construct()`，它调用`self::init($dirs)`。这使我们也可以创建`Loader`的实例（如果需要的话）。
 
 ```php
-    public function __construct($dirs = array())
-    {
-        self::init($dirs);
-    }
-    ```
+public function __construct($dirs = array())
+{
+    self::init($dirs);
+}
+```
 
 ## 它是如何工作的...
 
@@ -376,20 +376,20 @@ echo $fake->getTest();
 1.  首先，我们需要获取目标网站的内容。乍一看，似乎我们应该发出 cURL 请求，或者简单地使用`file_get_contents()`。这些方法的问题是，我们最终将不得不进行大量的字符串操作，很可能不得不大量使用可怕的正则表达式。为了避免所有这些，我们将简单地利用已经存在的 PHP 7 类`DOMDocument`。因此，我们创建一个`DOMDocument`实例，将其设置为**UTF-8**。我们不关心空格，并使用方便的`loadHTMLFile()`方法将网站的内容加载到对象中：
 
 ```php
-    public function getContent($url)
-    {
-        if (!$this->content) {
-            if (stripos($url, 'http') !== 0) {
-                $url = 'http://' . $url;
-            }
-            $this->content = new DOMDocument('1.0', 'utf-8');
-            $this->content->preserveWhiteSpace = FALSE;
-            // @ used to suppress warnings generated from // improperly configured web pages
-            @$this->content->loadHTMLFile($url);
+public function getContent($url)
+{
+    if (!$this->content) {
+        if (stripos($url, 'http') !== 0) {
+            $url = 'http://' . $url;
         }
-        return $this->content;
+        $this->content = new DOMDocument('1.0', 'utf-8');
+        $this->content->preserveWhiteSpace = FALSE;
+        // @ used to suppress warnings generated from // improperly configured web pages
+        @$this->content->loadHTMLFile($url);
     }
-    ```
+    return $this->content;
+}
+```
 
 ### 提示
 
@@ -398,50 +398,50 @@ echo $fake->getTest();
 1.  接下来，我们需要提取感兴趣的标签。我们使用`getElementsByTagName()`方法来实现这个目的。如果我们希望提取*所有*标签，我们可以提供`*`作为参数：
 
 ```php
-    public function getTags($url, $tag)
-    {
-        $count    = 0;
-        $result   = array();
-        $elements = $this->getContent($url)
-                         ->getElementsByTagName($tag);
-        foreach ($elements as $node) {
-            $result[$count]['value'] = trim(preg_replace('/\s+/', ' ', $node->nodeValue));
-            if ($node->hasAttributes()) {
-                foreach ($node->attributes as $name => $attr) 
-                {
-                    $result[$count]['attributes'][$name] = 
-                        $attr->value;
-                }
+public function getTags($url, $tag)
+{
+    $count    = 0;
+    $result   = array();
+    $elements = $this->getContent($url)
+                     ->getElementsByTagName($tag);
+    foreach ($elements as $node) {
+        $result[$count]['value'] = trim(preg_replace('/\s+/', ' ', $node->nodeValue));
+        if ($node->hasAttributes()) {
+            foreach ($node->attributes as $name => $attr) 
+            {
+                $result[$count]['attributes'][$name] = 
+                    $attr->value;
             }
-            $count++;
         }
-        return $result;
+        $count++;
     }
-    ```
+    return $result;
+}
+```
 
 1.  提取特定属性而不是标签可能也是有趣的。因此，我们为此定义另一个方法。在这种情况下，我们需要遍历所有标签并使用`getAttribute()`。您会注意到有一个用于 DNS 域的参数。我们添加了这个参数，以便在同一个域内保持扫描（例如，如果您正在构建一个网页树）：
 
 ```php
-    public function getAttribute($url, $attr, $domain = NULL)
-    {
-        $result   = array();
-        $elements = $this->getContent($url)
-                         ->getElementsByTagName('*');
-        foreach ($elements as $node) {
-            if ($node->hasAttribute($attr)) {
-                $value = $node->getAttribute($attr);
-                if ($domain) {
-                    if (stripos($value, $domain) !== FALSE) {
-                        $result[] = trim($value);
-                    }
-                } else {
+public function getAttribute($url, $attr, $domain = NULL)
+{
+    $result   = array();
+    $elements = $this->getContent($url)
+                     ->getElementsByTagName('*');
+    foreach ($elements as $node) {
+        if ($node->hasAttribute($attr)) {
+            $value = $node->getAttribute($attr);
+            if ($domain) {
+                if (stripos($value, $domain) !== FALSE) {
                     $result[] = trim($value);
                 }
+            } else {
+                $result[] = trim($value);
             }
         }
-        return $result;
     }
-    ```
+    return $result;
+}
+```
 
 ## 它是如何工作的...
 
@@ -486,27 +486,27 @@ var_dump($vac->getTags($url, $tag));
 1.  深层网络扫描仪的核心组件是一个基本的`Hoover`类，如前所述。本配方中介绍的基本过程是扫描目标网站并清理所有`HREF`属性。为此，我们定义了一个`Application\Web\Deep`类。我们添加一个表示 DNS 域的属性：
 
 ```php
-    namespace Application\Web;
-    class Deep
-    {
-        protected $domain;
-    ```
+namespace Application\Web;
+class Deep
+{
+    protected $domain;
+```
 
 1.  接下来，我们定义一个方法，将为扫描列表中表示的每个网站的标签进行清理。为了防止扫描器在整个**万维网**（**WWW**）上进行搜索，我们将扫描限制在目标域上。添加`yield from`的原因是因为我们需要产生`Hoover::getTags()`生成的整个数组。`yield from`语法允许我们将数组视为子生成器：
 
 ```php
-    public function scan($url, $tag)
-    {
-        $vac    = new Hoover();
-        $scan   = $vac->getAttribute($url, 'href', 
-           $this->getDomain($url));
-        $result = array();
-        foreach ($scan as $subSite) {
-            yield from $vac->getTags($subSite, $tag);
-        }
-        return count($scan);
+public function scan($url, $tag)
+{
+    $vac    = new Hoover();
+    $scan   = $vac->getAttribute($url, 'href', 
+       $this->getDomain($url));
+    $result = array();
+    foreach ($scan as $subSite) {
+        yield from $vac->getTags($subSite, $tag);
     }
-    ```
+    return count($scan);
+}
+```
 
 ### 注意
 
@@ -515,14 +515,14 @@ var_dump($vac->getTags($url, $tag));
 1.  为了保持在同一个域中，我们需要一个方法，将从 URL 中返回域。我们使用方便的`parse_url()`函数来实现这个目的：
 
 ```php
-    public function getDomain($url)
-    {
-        if (!$this->domain) {
-            $this->domain = parse_url($url, PHP_URL_HOST);
-        }
-        return $this->domain;
+public function getDomain($url)
+{
+    if (!$this->domain) {
+        $this->domain = parse_url($url, PHP_URL_HOST);
     }
-    ```
+    return $this->domain;
+}
+```
 
 ## 它是如何工作的...
 
@@ -591,128 +591,128 @@ foreach ($deep->scan($url, $tag) as $item) {
 1.  在一个新的类`Application\Parse\Convert`中，我们从一个`scan()`方法开始，该方法接受一个文件名作为参数。它检查文件是否存在。如果存在，它调用 PHP 的`file()`函数，该函数将文件加载到一个数组中，其中每个数组元素代表一行：
 
 ```php
-    public function scan($filename)
-    {
-        if (!file_exists($filename)) {
-            throw new Exception(
-                self::EXCEPTION_FILE_NOT_EXISTS);
-        }
-        $contents = file($filename);
-        echo 'Processing: ' . $filename . PHP_EOL;
+public function scan($filename)
+{
+    if (!file_exists($filename)) {
+        throw new Exception(
+            self::EXCEPTION_FILE_NOT_EXISTS);
+    }
+    $contents = file($filename);
+    echo 'Processing: ' . $filename . PHP_EOL;
 
-        $result = preg_replace_callback_array( [
-    ```
+    $result = preg_replace_callback_array( [
+```
 
 1.  接下来，我们开始传递一系列键/值对。键是一个正则表达式，它针对字符串进行处理。任何匹配项都会传递给回调函数，该回调函数表示为键/值对的值部分。我们检查已从 PHP 7 中删除的开放和关闭标签：
 
 ```php
-        // replace no-longer-supported opening tags
-        '!^\<\%(\n| )!' =>
-            function ($match) {
-                return '<?php' . $match[1];
-            },
+    // replace no-longer-supported opening tags
+    '!^\<\%(\n| )!' =>
+        function ($match) {
+            return '<?php' . $match[1];
+        },
 
-        // replace no-longer-supported opening tags
-        '!^\<\%=(\n| )!' =>
-            function ($match) {
-                return '<?php echo ' . $match[1];
-            },
+    // replace no-longer-supported opening tags
+    '!^\<\%=(\n| )!' =>
+        function ($match) {
+            return '<?php echo ' . $match[1];
+        },
 
-        // replace no-longer-supported closing tag
-        '!\%\>!' =>
-            function ($match) {
-                return '?>';
-            },
-    ```
+    // replace no-longer-supported closing tag
+    '!\%\>!' =>
+        function ($match) {
+            return '?>';
+        },
+```
 
 1.  接下来是一系列警告，当检测到某些操作并且在 PHP 5 与 PHP 7 中处理它们之间存在潜在的代码中断时。在所有这些情况下，代码都不会被重写。而是添加了一个带有`WARNING`单词的内联注释：
 
 ```php
-        // changes in how $$xxx interpretation is handled
-        '!(.*?)\$\$!' =>
-            function ($match) {
-                return '// WARNING: variable interpolation 
-                       . ' now occurs left-to-right' . PHP_EOL
-                       . '// see: http://php.net/manual/en/'
-                       . '// migration70.incompatible.php'
-                       . $match[0];
-            },
-
-        // changes in how the list() operator is handled
-        '!(.*?)list(\s*?)?\(!' =>
-            function ($match) {
-                return '// WARNING: changes have been made '
-                       . 'in list() operator handling.'
-                       . 'See: http://php.net/manual/en/'
-                       . 'migration70.incompatible.php'
-                       . $match[0];
-            },
-
-        // instances of \u{
-        '!(.*?)\\\u\{!' =>
-            function ($match) {
-            return '// WARNING: \\u{xxx} is now considered '
-                   . 'unicode escape syntax' . PHP_EOL
+    // changes in how $$xxx interpretation is handled
+    '!(.*?)\$\$!' =>
+        function ($match) {
+            return '// WARNING: variable interpolation 
+                   . ' now occurs left-to-right' . PHP_EOL
                    . '// see: http://php.net/manual/en/'
-                   . 'migration70.new-features.php'
-                   . '#migration70.new-features.unicode-'
-                   . 'codepoint-escape-syntax' . PHP_EOL
+                   . '// migration70.incompatible.php'
                    . $match[0];
         },
 
-        // relying upon set_error_handler()
-        '!(.*?)set_error_handler(\s*?)?.*\(!' =>
-            function ($match) {
-                return '// WARNING: might not '
-                       . 'catch all errors'
-                       . '// see: http://php.net/manual/en/'
-                       . '// language.errors.php7.php'
-                       . $match[0];
-            },
+    // changes in how the list() operator is handled
+    '!(.*?)list(\s*?)?\(!' =>
+        function ($match) {
+            return '// WARNING: changes have been made '
+                   . 'in list() operator handling.'
+                   . 'See: http://php.net/manual/en/'
+                   . 'migration70.incompatible.php'
+                   . $match[0];
+        },
 
-        // session_set_save_handler(xxx)
-        '!(.*?)session_set_save_handler(\s*?)?\((.*?)\)!' =>
-            function ($match) {
-                if (isset($match[3])) {
-                    return '// WARNING: a bug introduced in'
-                           . 'PHP 5.4 which '
-                           . 'affects the handler assigned by '
-                           . 'session_set_save_handler() and '
-                           . 'where ignore_user_abort() is TRUE 
-                           . 'has been fixed in PHP 7.'
-                           . 'This could potentially break '
-                           . 'your code under '
-                           . 'certain circumstances.' . PHP_EOL
-                           . 'See: http://php.net/manual/en/'
-                           . 'migration70.incompatible.php'
-                           . $match[0];
-                } else {
-                    return $match[0];
-                }
-            },
-    ```
+    // instances of \u{
+    '!(.*?)\\\u\{!' =>
+        function ($match) {
+        return '// WARNING: \\u{xxx} is now considered '
+               . 'unicode escape syntax' . PHP_EOL
+               . '// see: http://php.net/manual/en/'
+               . 'migration70.new-features.php'
+               . '#migration70.new-features.unicode-'
+               . 'codepoint-escape-syntax' . PHP_EOL
+               . $match[0];
+    },
+
+    // relying upon set_error_handler()
+    '!(.*?)set_error_handler(\s*?)?.*\(!' =>
+        function ($match) {
+            return '// WARNING: might not '
+                   . 'catch all errors'
+                   . '// see: http://php.net/manual/en/'
+                   . '// language.errors.php7.php'
+                   . $match[0];
+        },
+
+    // session_set_save_handler(xxx)
+    '!(.*?)session_set_save_handler(\s*?)?\((.*?)\)!' =>
+        function ($match) {
+            if (isset($match[3])) {
+                return '// WARNING: a bug introduced in'
+                       . 'PHP 5.4 which '
+                       . 'affects the handler assigned by '
+                       . 'session_set_save_handler() and '
+                       . 'where ignore_user_abort() is TRUE 
+                       . 'has been fixed in PHP 7.'
+                       . 'This could potentially break '
+                       . 'your code under '
+                       . 'certain circumstances.' . PHP_EOL
+                       . 'See: http://php.net/manual/en/'
+                       . 'migration70.incompatible.php'
+                       . $match[0];
+            } else {
+                return $match[0];
+            }
+        },
+```
 
 1.  任何尝试使用`<<`或`>>`与负操作符或超过 64 的操作都会被包裹在`try { xxx } catch() { xxx }`块中，寻找`ArithmeticError`的抛出：
 
 ```php
-        // wraps bit shift operations in try / catch
-        '!^(.*?)(\d+\s*(\<\<|\>\>)\s*-?\d+)(.*?)$!' =>
-            function ($match) {
-                return '// WARNING: negative and '
-                       . 'out-of-range bitwise '
-                       . 'shift operations will now 
-                       . 'throw an ArithmeticError' . PHP_EOL
-                       . 'See: http://php.net/manual/en/'
-                       . 'migration70.incompatible.php'
-                       . 'try {' . PHP_EOL
-                       . "\t" . $match[0] . PHP_EOL
-                       . '} catch (\\ArithmeticError $e) {'
-                       . "\t" . 'error_log("File:" 
-                       . $e->getFile() 
-                       . " Message:" . $e->getMessage());'
-                       . '}' . PHP_EOL;
-            },
-    ```
+    // wraps bit shift operations in try / catch
+    '!^(.*?)(\d+\s*(\<\<|\>\>)\s*-?\d+)(.*?)$!' =>
+        function ($match) {
+            return '// WARNING: negative and '
+                   . 'out-of-range bitwise '
+                   . 'shift operations will now 
+                   . 'throw an ArithmeticError' . PHP_EOL
+                   . 'See: http://php.net/manual/en/'
+                   . 'migration70.incompatible.php'
+                   . 'try {' . PHP_EOL
+                   . "\t" . $match[0] . PHP_EOL
+                   . '} catch (\\ArithmeticError $e) {'
+                   . "\t" . 'error_log("File:" 
+                   . $e->getFile() 
+                   . " Message:" . $e->getMessage());'
+                   . '}' . PHP_EOL;
+        },
+```
 
 ### 注意
 
@@ -721,66 +721,66 @@ PHP 7 已更改了错误处理方式。在某些情况下，错误被移动到�
 1.  接下来，转换器会重写任何使用`call_user_method*()`的用法，这在 PHP 7 中已被移除。这些将被替换为使用`call_user_func*()`的等效用法：
 
 ```php
-        // replaces "call_user_method()" with
-        // "call_user_func()"
-        '!call_user_method\((.*?),(.*?)(,.*?)\)(\b|;)!' =>
-            function ($match) {
-                $params = $match[3] ?? '';
-                return '// WARNING: call_user_method() has '
-                          . 'been removed from PHP 7' . PHP_EOL
-                          . 'call_user_func(['. trim($match[2]) . ',' 
-                          . trim($match[1]) . ']' . $params . ');';
-            },
+    // replaces "call_user_method()" with
+    // "call_user_func()"
+    '!call_user_method\((.*?),(.*?)(,.*?)\)(\b|;)!' =>
+        function ($match) {
+            $params = $match[3] ?? '';
+            return '// WARNING: call_user_method() has '
+                      . 'been removed from PHP 7' . PHP_EOL
+                      . 'call_user_func(['. trim($match[2]) . ',' 
+                      . trim($match[1]) . ']' . $params . ');';
+        },
 
-        // replaces "call_user_method_array()" 
-        // with "call_user_func_array()"
-        '!call_user_method_array\((.*?),(.*?),(.*?)\)(\b|;)!' =>
-            function ($match) {
-                return '// WARNING: call_user_method_array()'
-                       . 'has been removed from PHP 7'
-                       . PHP_EOL
-                       . 'call_user_func_array([' 
-                       . trim($match[2]) . ',' 
-                       . trim($match[1]) . '], ' 
-                       . $match[3] . ');';
-            },
-    ```
+    // replaces "call_user_method_array()" 
+    // with "call_user_func_array()"
+    '!call_user_method_array\((.*?),(.*?),(.*?)\)(\b|;)!' =>
+        function ($match) {
+            return '// WARNING: call_user_method_array()'
+                   . 'has been removed from PHP 7'
+                   . PHP_EOL
+                   . 'call_user_func_array([' 
+                   . trim($match[2]) . ',' 
+                   . trim($match[1]) . '], ' 
+                   . $match[3] . ');';
+        },
+```
 
 1.  最后，任何尝试使用带有`/e`修饰符的`preg_replace()`都会被重写为使用`preg_replace_callback()`：
 
 ```php
-         '!^(.*?)preg_replace.*?/e(.*?)$!' =>
-        function ($match) {
-            $last = strrchr($match[2], ',');
-            $arg2 = substr($match[2], 2, -1 * (strlen($last)));
-            $arg1 = substr($match[0], 
-                           strlen($match[1]) + 12, 
-                           -1 * (strlen($arg2) + strlen($last)));
-             $arg1 = trim($arg1, '(');
-             $arg1 = str_replace('/e', '/', $arg1);
-             $arg3 = '// WARNING: preg_replace() "/e" modifier 
-                       . 'has been removed from PHP 7'
-                       . PHP_EOL
-                       . $match[1]
-                       . 'preg_replace_callback('
-                       . $arg1
-                       . 'function ($m) { return ' 
-                       .    str_replace('$1','$m', $match[1]) 
-                       .      trim($arg2, '"\'') . '; }, '
-                       .      trim($last, ',');
-             return str_replace('$1', '$m', $arg3);
-        },
+     '!^(.*?)preg_replace.*?/e(.*?)$!' =>
+    function ($match) {
+        $last = strrchr($match[2], ',');
+        $arg2 = substr($match[2], 2, -1 * (strlen($last)));
+        $arg1 = substr($match[0], 
+                       strlen($match[1]) + 12, 
+                       -1 * (strlen($arg2) + strlen($last)));
+         $arg1 = trim($arg1, '(');
+         $arg1 = str_replace('/e', '/', $arg1);
+         $arg3 = '// WARNING: preg_replace() "/e" modifier 
+                   . 'has been removed from PHP 7'
+                   . PHP_EOL
+                   . $match[1]
+                   . 'preg_replace_callback('
+                   . $arg1
+                   . 'function ($m) { return ' 
+                   .    str_replace('$1','$m', $match[1]) 
+                   .      trim($arg2, '"\'') . '; }, '
+                   .      trim($last, ',');
+         return str_replace('$1', '$m', $arg3);
+    },
 
-            // end array
-            ],
+        // end array
+        ],
 
-            // this is the target of the transformations
-            $contents
-        );
-        // return the result as a string
-        return implode('', $result);
-    }
-    ```
+        // this is the target of the transformations
+        $contents
+    );
+    // return the result as a string
+    return implode('', $result);
+}
+```
 
 ## 工作原理...
 

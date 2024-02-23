@@ -73,16 +73,16 @@
 1.  运行以下命令，并替换两个用户名和一个密码的实例，这样 Cloudant 就知道你是谁以及你要使用的账户是什么：
 
 ```php
-    **curl -X PUT https://username:password@username.cloudant.com/_users** 
+**curl -X PUT https://username:password@username.cloudant.com/_users** 
 
-    ```
+```
 
 终端会通过返回成功消息来告诉你数据库已经创建：
 
 ```php
-    **{"ok":true}** 
+**{"ok":true}** 
 
-    ```
+```
 
 太棒了！你的`_users`数据库现在已经创建。记住，我们还需要另一个叫做`verge`的数据库来存储我们的所有数据。让我们接下来创建`verge`数据库。
 
@@ -101,16 +101,16 @@
 1.  你应该运行以下命令，并替换两个用户名实例和一个密码实例，这样 Cloudant 就会知道你是谁，以及你要使用的账户是什么：
 
 ```php
-    **curl -X PUT https://username:password@username.cloudant.com/verge** 
+**curl -X PUT https://username:password@username.cloudant.com/verge** 
 
-    ```
+```
 
 当你看到一个熟悉的成功消息时，终端应该已经让你放心一切都进行得很顺利，如下所示：
 
 ```php
-    **{"ok":true}** 
+**{"ok":true}** 
 
-    ```
+```
 
 ## 在 Cloudant 上使用 Futon
 
@@ -163,60 +163,60 @@
 1.  现在，让我们为名为`Configuration`的类创建脚手架。
 
 ```php
-    <?php
-    class Configuration {
-    }
+<?php
+class Configuration {
+}
 
-    ```
+```
 
 1.  让我们继续并创建一些描述性的配置变量。我们可以添加更多，但现在让我们只添加我们现在需要的。
 
 ```php
-    <?php
-    class Configuration {
-    **private $db_server = ';
-    private $db_port = '';
-    private $db_database = '';
-    private $db_admin_user = '';
-    private $db_admin_password = '';** 
-    }
+<?php
+class Configuration {
+**private $db_server = ';
+private $db_port = '';
+private $db_database = '';
+private $db_admin_user = '';
+private $db_admin_password = '';** 
+}
 
-    ```
+```
 
 1.  现在，复制你需要访问本地 CouchDB 实例的登录信息；我的看起来类似于以下内容：
 
 ```php
-    <?php
-    class Configuration {
-    **private $db_server = '127.0.0.1';
-    private $db_port = '5984';
-    private $db_database = 'verge';
-    private $db_admin_user = 'tim';
-    private $db_admin_password = 'test';** 
-    }
+<?php
+class Configuration {
+**private $db_server = '127.0.0.1';
+private $db_port = '5984';
+private $db_database = 'verge';
+private $db_admin_user = 'tim';
+private $db_admin_password = 'test';** 
+}
 
-    ```
+```
 
 1.  让我们使用一个特殊的`__get`函数来检查并查看是否设置了环境变量，并返回该值，而不是默认值。如果没有，它将只返回我们在这个类中定义的默认值。
 
 ```php
-    <?php
-    class Configuration {
-    private $db_server = '127.0.0.1';
-    private $db_port = '5984';
-    private $db_database = 'verge';
-    private $db_admin_user = 'tim';
-    private $db_admin_password = 'test';
-    **public function __get($property) {
-    if (getenv($property)) {
-    return getenv($property);
-    } else {
-    return $this->$property;
-    }
-    }** 
-    }
+<?php
+class Configuration {
+private $db_server = '127.0.0.1';
+private $db_port = '5984';
+private $db_database = 'verge';
+private $db_admin_user = 'tim';
+private $db_admin_password = 'test';
+**public function __get($property) {
+if (getenv($property)) {
+return getenv($property);
+} else {
+return $this->$property;
+}
+}** 
+}
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -231,74 +231,74 @@
 1.  打开`lib/bones.php`，并查看文件开头，告诉我们的库在哪里查找其他`lib`文件。我们需要在这里添加我们的配置类。
 
 ```php
-    require_once ROOT . '/lib/bootstrap.php';
-    require_once ROOT . '/lib/sag/src/Sag.php';
-    **require_once ROOT . '/lib/configuration.php';** 
+require_once ROOT . '/lib/bootstrap.php';
+require_once ROOT . '/lib/sag/src/Sag.php';
+**require_once ROOT . '/lib/configuration.php';** 
 
-    ```
+```
 
 1.  让我们确保在 Bones 的公共变量中定义`$config`，这样我们在其他文件中也可以使用它们。
 
 ```php
-    class Bones {
-    private static $instance;
-    public static $route_found = false;
-    public $route = '';
-    public $method = '';
-    public $content = '';
-    public $vars = array();
-    public $route_segments = array();
-    public $route_variables = array();
-    public $couch;
-    **public $config;** 
+class Bones {
+private static $instance;
+public static $route_found = false;
+public $route = '';
+public $method = '';
+public $content = '';
+public $vars = array();
+public $route_segments = array();
+public $route_variables = array();
+public $couch;
+**public $config;** 
 
-    ```
+```
 
 1.  让我们看一下文件中稍后的`__construct()`方法。在这个方法中（就在实例化 Sag 之前），让我们创建一个`Configuration`类的新实例。
 
 ```php
-    public function __construct() {
-    ...
-    **$this->config = new Configuration();** 
-    $this->couch = new Sag('127.0.0.1','5984');
-    $this->couch->setDatabase('verge');
-    }
+public function __construct() {
+...
+**$this->config = new Configuration();** 
+$this->couch = new Sag('127.0.0.1','5984');
+$this->couch->setDatabase('verge');
+}
 
-    ```
+```
 
 1.  现在我们的代码知道了配置类，我们只需要把变量放在正确的位置，就可以运行起来了。让我们告诉 Sag 如何使用配置类连接到 CouchDB。
 
 ```php
-    public function __construct() {
-    $this->route = $this->get_route();
-    $this->route_segments = explode('/', trim($this->route, '/'));
-    $this->method = $this->get_method();
-    $this->config = new Configuration();
-    **$this->couch = new Sag($this->config->db_server, $this->config->db_port);
-    $this->couch->setDatabase($this->config->db_database);** 
-    }
+public function __construct() {
+$this->route = $this->get_route();
+$this->route_segments = explode('/', trim($this->route, '/'));
+$this->method = $this->get_method();
+$this->config = new Configuration();
+**$this->couch = new Sag($this->config->db_server, $this->config->db_port);
+$this->couch->setDatabase($this->config->db_database);** 
+}
 
-    ```
+```
 
 1.  还有一些地方需要更新我们的代码，以便使用配置类。记住，我们在`classes/user.php`中有`admin`用户名和密码，用于创建和查找用户。让我们首先看一下`classes/user.php`中的注册函数，清理一下。一旦我们插入我们的配置类，该函数应该类似于以下内容：
 
 ```php
-    public function signup($password) {
-    $bones = new Bones();
-    $bones->couch->setDatabase('_users');
-    **$bones->couch->login($bones->config->db_admin_user, $bones->config->db_admin_password);** 
+public function signup($password) {
+$bones = new Bones();
+$bones->couch->setDatabase('_users');
+**$bones->couch->login($bones->config->db_admin_user, $bones->config->db_admin_password);** 
 
-    ```
+```
 
 1.  我们需要调整的最后一个地方是`classes/user.php`文件末尾的`get_by_username`函数，以使用`config`类。
 
 ```php
-    public static function get_by_username($username = null) {
-    $bones = new Bones();
-    **$bones->couch->login($bones->config->db_admin_user, $bones->config->db_admin_password);** 
-    $bones->couch->setDatabase('_users');
+public static function get_by_username($username = null) {
+$bones = new Bones();
+**$bones->couch->login($bones->config->db_admin_user, $bones->config->db_admin_password);** 
+$bones->couch->setDatabase('_users');
 
-    ```
+```
 
 1.  我们刚刚删除了`index.php`顶部定义的`ADMIN_USER`和`ADMIN_PASSWORD`的所有引用。我们不再需要这些变量，所以让我们切换到`index.php`，并从文件顶部删除`ADMIN_USER`和`ADMIN_PASSWORD`。
 
@@ -315,16 +315,16 @@
 1.  使用通配符添加项目中的任何剩余文件。
 
 ```php
-    **git add .** 
+**git add .** 
 
-    ```
+```
 
 1.  现在，让我们告诉 Git 我们做了什么。
 
 ```php
-    **git commit m 'Abstracted out environment specific variables into lib/configuration.php and preparing for launch of our site 1.0!'** 
+**git commit m 'Abstracted out environment specific variables into lib/configuration.php and preparing for launch of our site 1.0!'** 
 
-    ```
+```
 
 # 使用 PHP Fog 进行应用程序托管
 
@@ -399,9 +399,9 @@ PHP Fog 使用 SSH 密钥来识别和验证我们，就像 GitHub 一样。由�
 1.  运行以下命令，您的公钥将被复制到剪贴板。
 
 ```php
-    **pbcopy< ~/.ssh/id_rsa.pub** 
+**pbcopy< ~/.ssh/id_rsa.pub** 
 
-    ```
+```
 
 1.  将公钥复制到剪贴板后，只需点击文本框，粘贴值进去。
 
@@ -426,9 +426,9 @@ PHP Fog 使用 SSH 密钥来识别和验证我们，就像 GitHub 一样。由�
 1.  在**源代码**页面上，您将看到一个部分，上面写着**克隆您的 git 存储库**。我的里面有以下代码（您的应该类似）:
 
 ```php
-    **git clone git@git01.phpfog.com:timjuravich-verge.phpfogapp.com** 
+**git clone git@git01.phpfog.com:timjuravich-verge.phpfogapp.com** 
 
-    ```
+```
 
 1.  因为我们已经有一个现有的 Git 存储库，所以我们不需要克隆他们的，但是我们需要应用程序的 Git 存储库的位置来进行下一步配置。使用这个例子，存储库位置将是`git@git01.phpfog.com:timjuravich-verge.phpfogapp.com`。将其复制到剪贴板上。
 
@@ -441,16 +441,16 @@ PHP Fog 使用 SSH 密钥来识别和验证我们，就像 GitHub 一样。由�
 1.  将目录更改为您的`工作`文件夹。
 
 ```php
-    **cd /Library/WebServer/Documents/verge** 
+**cd /Library/WebServer/Documents/verge** 
 
-    ```
+```
 
 1.  现在，让我们将 PHP Fog 的存储库添加为一个名为`phpfog`的新远程存储库。
 
 ```php
-    **git remote add phpfog git@git01.phpfog.com:verge.phpfogapp.com** 
+**git remote add phpfog git@git01.phpfog.com:verge.phpfogapp.com** 
 
-    ```
+```
 
 1.  清除跑道，我们准备启动这个应用程序！
 
@@ -463,16 +463,16 @@ PHP Fog 使用 SSH 密钥来识别和验证我们，就像 GitHub 一样。由�
 1.  将目录更改为您的`working`文件夹。
 
 ```php
-    **cd /Library/WebServer/Documents/verge** 
+**cd /Library/WebServer/Documents/verge** 
 
-    ```
+```
 
 1.  我们希望忽略 PHP Fog 的 Git 存储库中的内容，因为我们已经构建了我们的应用程序。因此，这一次，我们将在调用的末尾添加`--force`。
 
 ```php
-    **git push origin master --force** 
+**git push origin master --force** 
 
-    ```
+```
 
 我希望这不会太令人失望，但恭喜，您的应用程序已经上线了！这是不是很简单？从现在开始，每当您对代码进行更改时，您只需要将其提交到 Git，输入命令`git push phpfog master`，并确保通过`git push origin master`将您的代码推送到 GitHub。
 

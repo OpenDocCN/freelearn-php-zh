@@ -23,26 +23,26 @@
 1.  我们将不得不创建一个 MySQL 数据库。为此，打开您的 MySQL 控制台（或 phpMyAdmin），并写下以下查询：
 
 ```php
-    **CREATE DATABASE urls**
+**CREATE DATABASE urls**
 
-    ```
+```
 
 1.  上一个命令将为我们生成一个名为 `urls` 的新的 MySQL 数据库。成功生成数据库后，我们将定义数据库凭据。要做到这一点，打开 `app/config` 下的 `database.php` 文件。在该文件中，您将看到返回多个包含数据库定义的数组。
 
 1.  `default` 键定义要使用的数据库驱动程序，每个数据库驱动程序键都保存各自的凭据。我们只需要填写我们将要使用的凭据。在我们的情况下，我确保默认键的值是 `mysql`。要设置连接凭据，我们将填写 `mysql` 键的值，其中包括我们的数据库名称、用户名和密码。在我们的情况下，由于我们有一个名为 `urls` 的 `database`，用户名为 `root`，没有密码，因此 `database.php` 文件中的 `mysql` 连接设置如下：
 
 ```php
-    'mysql' => array(
-      'driver' => 'mysql',
-      'host' => 'localhost',
-      'database' => 'database',
-      'username' => 'root',
-      'password' => '',
-      'charset' => 'utf8',
-      'collation' => 'utf8_unicode_ci',
-      'prefix' => '',
-    ),
-    ```
+'mysql' => array(
+  'driver' => 'mysql',
+  'host' => 'localhost',
+  'database' => 'database',
+  'username' => 'root',
+  'password' => '',
+  'charset' => 'utf8',
+  'collation' => 'utf8_unicode_ci',
+  'prefix' => '',
+),
+```
 
 ### 提示
 
@@ -51,9 +51,9 @@
 1.  现在，我们将使用 **Artisan CLI** 来创建迁移。Artisan 是专为 Laravel 制作的命令行界面。它提供了许多有用的命令来帮助我们开发。我们将使用以下 `migrate:make` 命令在 Artisan 上创建一个迁移：
 
 ```php
-    **php artisan migrate:make create_links_table --table=links --create**
+**php artisan migrate:make create_links_table --table=links --create**
 
-    ```
+```
 
 该命令有两部分：
 
@@ -68,40 +68,40 @@
 1.  如您所见，与 Laravel 3 不同，当您运行上一个命令时，它将同时创建迁移表和我们的迁移。您可以在 `app/database/migrations` 下访问迁移文件，其中包含以下代码：
 
 ```php
-    <?php
-    use Illuminate\Database\Schema\Blueprint;
-    use Illuminate\Database\Migrations\Migration;
-    class CreateLinksTable extends Migration {
-      /**
-      * Run the migrations.
-      *
-      * @return void
-      */
-      public function up()
-      {
-        Schema::create('links', function(Blueprint $table)
-        {
-          $table->increments('id');
-        });
-      }
-      /**
-      * Reverse the migrations.
-      *
-      * @return void
-      */
-      public function down()
-      {
-        Schema::drop('links');
-      }
-    }
-    ```
+<?php
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\Migrations\Migration;
+class CreateLinksTable extends Migration {
+  /**
+  * Run the migrations.
+  *
+  * @return void
+  */
+  public function up()
+  {
+    Schema::create('links', function(Blueprint $table)
+    {
+      $table->increments('id');
+    });
+  }
+  /**
+  * Reverse the migrations.
+  *
+  * @return void
+  */
+  public function down()
+  {
+    Schema::drop('links');
+  }
+}
+```
 
 1.  让我们检查示例迁移文件。有两个公共函数声明为 `up()` 和 `down()`。当您执行以下 `migrate` 命令时，将执行 `up()` 函数的内容：
 
 ```php
-    **php artsian migrate**
+**php artsian migrate**
 
-    ```
+```
 
 此命令将执行所有迁移并在我们的情况下创建 `links` 表。
 
@@ -112,55 +112,55 @@
 1.  我们还可以回滚到上一个迁移，就像它从未执行过一样。我们可以使用以下命令完成：
 
 ```php
-    **php artisan migrate:rollback**
+**php artisan migrate:rollback**
 
-    ```
+```
 
 1.  在某些情况下，我们可能还想回滚我们创建的所有迁移。这可以通过以下命令完成：
 
 ```php
-    **php artisan migrate:reset**
+**php artisan migrate:reset**
 
-    ```
+```
 
 1.  在开发阶段，我们可能会忘记添加/删除一些字段，甚至忘记创建一些表，我们可能希望回滚所有内容并重新迁移它们。这可以使用以下命令完成：
 
 ```php
-    **php artisan migrate:refresh**
+**php artisan migrate:refresh**
 
-    ```
+```
 
 1.  现在，让我们添加我们的字段。我们创建了两个额外的字段，称为`url`和`hash`。`url`字段将保存实际的 URL，而`hash`字段中的 URL 将被重定向到`hash`字段中的 URL 的缩短版本。迁移文件的最终内容如下所示：
 
 ```php
-    <?php
-    use Illuminate\Database\Migrations\Migration;
-    class CreateLinksTable extends Migration {
-      /**
-      * Run the migrations.
-      *
-      * @return void
-      */
-      public function up()
-      {
-        Schema::create('links', function(Blueprint $table)
-        {
-          $table->increments('id');
-          $table->text('url');
-          $table->string('hash',400);
-        });
-      }
-      /**
-      * Reverse the migrations.
-      *
-      * @return void
-      */
-      public function down()
-      {
-        Schema::drop('links');
-      }
-    }
-    ```
+<?php
+use Illuminate\Database\Migrations\Migration;
+class CreateLinksTable extends Migration {
+  /**
+  * Run the migrations.
+  *
+  * @return void
+  */
+  public function up()
+  {
+    Schema::create('links', function(Blueprint $table)
+    {
+      $table->increments('id');
+      $table->text('url');
+      $table->string('hash',400);
+    });
+  }
+  /**
+  * Reverse the migrations.
+  *
+  * @return void
+  */
+  public function down()
+  {
+    Schema::drop('links');
+  }
+}
+```
 
 # 创建我们的表单
 
@@ -169,53 +169,53 @@
 1.  将以下代码保存为`form.blade.php`，放在`app/views`下。文件的扩展名是`blade.php`，因为我们将受益于 Laravel 4 内置的模板引擎**Blade**。在表单中可能有一些您尚不理解的方法，但不要担心。我们将在本章中涵盖有关此表单的所有内容。
 
 ```php
-    <!DOCTYPE html>
-    <html lang="en">
-      <head>
-        <title>URL Shortener</title>
-        <link rel="stylesheet" href="/assets/css/styles.css" />
-      </head>
-      <body>
-        <div id="container">
-          <h2>Uber-Shortener</h2>
-          {{Form::open(array('url'=>'/','method'=>'post'))}}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>URL Shortener</title>
+    <link rel="stylesheet" href="/assets/css/styles.css" />
+  </head>
+  <body>
+    <div id="container">
+      <h2>Uber-Shortener</h2>
+      {{Form::open(array('url'=>'/','method'=>'post'))}}
 
-          {{Form::text('link',Input::old('link'),array('placeholder'=>'Insert your URL here and press enter!'))}}
-          {{Form::close()}}
-        </div>
-      </body>
-    </html>
-    ```
+      {{Form::text('link',Input::old('link'),array('placeholder'=>'Insert your URL here and press enter!'))}}
+      {{Form::close()}}
+    </div>
+  </body>
+</html>
+```
 
 1.  现在将以下代码保存为`styles.css`，放在`public/assets/css`下：
 
 ```php
-    div#container{padding-top:100px;
-      text-align:center;
-      width:75%;
-      margin:auto;
-      border-radius:4px}
-    div#container h2{font-family:Arial,sans-serif;
-      font-size:28px;
-      color:#555}
-    div#container h3{font-family:Arial,sans-serif;
-      font-size:28px}
-    div#container h3.error{color:#a00}
-    div#container h3.success{color:#0a0}
-    div#container input{display:block;
-      width:90%;
-      float:left;
-      font-size:24px;
-      border-radius:5px}
-    div#error,div#success{border-radius:3px;
-      display:block;
-      width:90%;
-      padding:10px}
-    div#error{background:#ff8080;
-      border:1px solid red}
-    div#success{background:#80ff80;
-      border:1px solid #0f0}
-    ```
+div#container{padding-top:100px;
+  text-align:center;
+  width:75%;
+  margin:auto;
+  border-radius:4px}
+div#container h2{font-family:Arial,sans-serif;
+  font-size:28px;
+  color:#555}
+div#container h3{font-family:Arial,sans-serif;
+  font-size:28px}
+div#container h3.error{color:#a00}
+div#container h3.success{color:#0a0}
+div#container input{display:block;
+  width:90%;
+  float:left;
+  font-size:24px;
+  border-radius:5px}
+div#error,div#success{border-radius:3px;
+  display:block;
+  width:90%;
+  padding:10px}
+div#error{background:#ff8080;
+  border:1px solid red}
+div#success{background:#80ff80;
+  border:1px solid #0f0}
+```
 
 这段代码将生成一个看起来像以下截图的表单：
 
@@ -375,33 +375,33 @@ if($validation->fails()) {
 1.  以下是我们代码的第一部分：
 
 ```php
-    // Now let's check if we already have the link in our database. If so, we get the first result
-    $link = Link::where('url','=',Input::get('link'))
-    ->first();
-    ```
+// Now let's check if we already have the link in our database. If so, we get the first result
+$link = Link::where('url','=',Input::get('link'))
+->first();
+```
 
 首先，我们使用**Fluent Query Builder**的`where()`方法检查 URL 是否已经存在于我们的数据库中，并通过`first()`方法获取第一个结果，并将其赋给`$link`变量。您可以轻松地使用 Fluent 查询方法和 Eloquent ORM。如果这让您感到困惑，不用担心，我们将在后面的章节中进一步介绍。
 
 1.  这是我们控制器方法代码的下一部分：
 
 ```php
-    //If we have the URL saved in our database already, we provide that information back to view.
-    if($link) {
-      return Redirect::to('/')
-      ->withInput()
-      ->with('link',$link->hash);
-    ```
+//If we have the URL saved in our database already, we provide that information back to view.
+if($link) {
+  return Redirect::to('/')
+  ->withInput()
+  ->with('link',$link->hash);
+```
 
 如果我们在数据库中保存了 URL，`$link`变量将保存从数据库中获取的链接信息的对象。因此，通过简单的`if()`子句，我们可以检查是否有结果。如果有结果返回，我们可以使用`$link->columnname`来访问它。
 
 在我们的情况下，如果查询有结果，我们将输入和链接重定向回表单。正如我们在这里使用的，`with()`方法也可以用两个参数而不是使用驼峰命名法——`withName('value')`与`with('name','value')`完全相同。因此，我们可以使用闪存数据名为链接`with('link',$link->hash)`来返回哈希码。为了显示这一点，我们可以将以下代码添加到我们的表单中：
 
 ```php
-    @if(Session::has('link'))
-    <h3 class="success">
-      {{Html::link(Session::get('link'),'Click here for your shortened URL')}}</h3>
-    @endif
-    ```
+@if(Session::has('link'))
+<h3 class="success">
+  {{Html::link(Session::get('link'),'Click here for your shortened URL')}}</h3>
+@endif
+```
 
 `Html`类帮助我们轻松编写 HTML 代码。`link()`方法需要以下两个参数：
 
@@ -414,25 +414,25 @@ if($validation->fails()) {
 1.  以下是我们代码的下一部分：
 
 ```php
-    //Else we create a new unique URL
-    } else {
-      //First we create a new unique Hash
-      do {
-        $newHash = Str::random(6);
-      } while(Link::where('hash','=',$newHash)->count() > 0);
-    ```
+//Else we create a new unique URL
+} else {
+  //First we create a new unique Hash
+  do {
+    $newHash = Str::random(6);
+  } while(Link::where('hash','=',$newHash)->count() > 0);
+```
 
 如果没有结果（变量的 else 子句），我们将使用`Str`类的`random()`方法创建一个六个字符长的字母数字随机字符串，并使用 PHP 自己的 do-while 语句每次检查它是否是唯一的字符串。对于真实世界的应用，您可以使用另一种方法来缩短，例如将 ID 列中的条目转换为 base_62 并将其用作哈希值。这样，URL 将更清晰，这总是一个更好的做法。
 
 1.  这是我们代码的下一部分：
 
 ```php
-    //Now we create a new database record
-    Link::create(array(
-      'url' => Input::get('link'),
-      'hash' => $newHash
-    ));
-    ```
+//Now we create a new database record
+Link::create(array(
+  'url' => Input::get('link'),
+  'hash' => $newHash
+));
+```
 
 一旦我们有了唯一的哈希，我们可以使用 Laravel 的 Eloquent ORM 的`create()`方法将链接和哈希值添加到数据库中。唯一的参数应该是一个二维数组，其中数组的键保存数据库列名，数组的值保存要插入为新行的值。
 
@@ -441,10 +441,10 @@ if($validation->fails()) {
 1.  这是我们代码的最后部分：
 
 ```php
-    //And then we return the new shortened URL info to our action return Redirect::to('/')
-    ->withInput()
-    ->with('link',$newHash);
-    ```
+//And then we return the new shortened URL info to our action return Redirect::to('/')
+->withInput()
+->with('link',$newHash);
+```
 
 现在，在输出中，我们被重定向到`oursite.dev/hashcode`。变量`$newHash`中存储了一个链接；我们需要捕获这个哈希码并查询我们的数据库，如果有记录，我们需要重定向到实际的 URL。
 
@@ -473,37 +473,37 @@ Route::get('{hash}',function($hash) {
 1.  在`Route`类中，我们首先进行搜索查询，就像在前面的部分中所做的那样，然后检查我们的数据库中是否有一个具有给定哈希的链接，并将其设置为名为`$link`的变量。
 
 ```php
-    //First we check if the hash is from an URL from our database
-    $link = Link::where('hash','=',$hash)
-    ->first();
-    ```
+//First we check if the hash is from an URL from our database
+$link = Link::where('hash','=',$hash)
+->first();
+```
 
 1.  如果有结果，我们将页面重定向到我们数据库的`url`列，该列包含用户应重定向到的链接。
 
 ```php
-    //If found, we redirect to the link
-    if($link) {
-      return Redirect::to($link->url);
-    }
-    ```
+//If found, we redirect to the link
+if($link) {
+  return Redirect::to($link->url);
+}
+```
 
 1.  如果没有结果，我们将使用`$message`变量将用户重定向回我们的索引页面，该变量保存了`Invalid Link`的值。
 
 ```php
-    //If not found, we redirect to index page with error message
-    } else {
-      return Redirect::to('/')
-      ->with('message','Invalid Link');
-    }
-    ```
+//If not found, we redirect to index page with error message
+} else {
+  return Redirect::to('/')
+  ->with('message','Invalid Link');
+}
+```
 
 要在表单中显示`Invalid Link`消息，请在`app/views`下的`form.blade.php`文件中添加以下代码。
 
 ```php
-    @if(Session::has('message'))
-    <h3 class="error">{{Session::get('message')}}</h3>
-    @endif
-    ```
+@if(Session::has('message'))
+<h3 class="error">{{Session::get('message')}}</h3>
+@endif
+```
 
 # 总结
 

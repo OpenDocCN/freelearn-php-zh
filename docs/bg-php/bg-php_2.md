@@ -160,39 +160,39 @@
 1.  在新文件中，创建您的`php`标签：
 
 ```php
-    <?php
-    ?>
-    ```
+<?php
+?>
+```
 
 1.  现在，我们将创建一个新变量，称为`$myinfo`，并用一个新数组初始化它：
 
 ```php
-    <?php
-    	$myinfo = array();
-    ?>
+<?php
+	$myinfo = array();
+?>
 
-    ```
+```
 
 1.  然后，我们将使用我们的`name`，`age`，`location`和`education level`填充新数组。
 
 1.  接下来，我们将打印我们的数据：
 
 ```php
-    <?php
-    	$myinfo = array("John", 25, "USA", "College");
-    	echo "My name is " . $myinfo[0] . "\n";
-    	echo "I am ". $myinfo[1] . " years old. \n";
-        echo "I live in " . $myinfo[2] . "\n";
-    	echo "My latest education level is " . $myinfo[3];
-    ?>
+<?php
+	$myinfo = array("John", 25, "USA", "College");
+	echo "My name is " . $myinfo[0] . "\n";
+	echo "I am ". $myinfo[1] . " years old. \n";
+    echo "I live in " . $myinfo[2] . "\n";
+	echo "My latest education level is " . $myinfo[3];
+?>
 
-    ```
+```
 
 1.  在终端中打开您的工作目录，并键入以下命令：
 
 ```php
-    php arrays.php
-    ```
+php arrays.php
+```
 
 您将获得如下输出所示的结果：
 
@@ -328,12 +328,12 @@ ksort($people);
 1.  创建一个名为`$user`的新变量，并用一个新数组进行初始化：
 
 ```php
-    <?php
-    	?>
-    <?php
-    	$user = array();
-    ?>
-    ```
+<?php
+	?>
+<?php
+	$user = array();
+?>
+```
 
 1.  用两个主要部分填充新数组：`info`和`hobbies`。在 info 数组中，存储`name`，`age`，`location`和`education level`，在`hobbies`数组中，我们将存储三个爱好。
 
@@ -342,15 +342,15 @@ ksort($people);
 有关完整的代码片段，请参考代码文件夹中的`Lesson 2.php`文件。
 
 ```php
-    <?php    $user = array(
-            "info" => array(
-                "name" => "john",
-                "age" => 27,
-    ...
-            )
-        );
-    ?>
-    ```
+<?php    $user = array(
+        "info" => array(
+            "name" => "john",
+            "age" => 27,
+...
+        )
+    );
+?>
+```
 
 1.  接下来我们将打印我们的数据：
 
@@ -359,29 +359,29 @@ ksort($people);
 有关完整的代码片段，请参考代码文件夹中的`Lesson 2.php`文件。
 
 ```php
-    <?php$user = array(
-            "info" => array(
-                "name" => "john",
-                "age" => 27,
-                "location" => "USA",
-    .....
-       echo "I live in " . $user["info"]['location'] . ".\n";
-       echo "My latest education level is " .   
-       $user['info']['education_level']. ".\n";
+<?php$user = array(
+        "info" => array(
+            "name" => "john",
+            "age" => 27,
+            "location" => "USA",
+.....
+   echo "I live in " . $user["info"]['location'] . ".\n";
+   echo "My latest education level is " .   
+   $user['info']['education_level']. ".\n";
 
-    echo "I enjoy " . $user["hobbies"][0] . ", "  . 
-    $user["hobbies"]
+echo "I enjoy " . $user["hobbies"][0] . ", "  . 
+$user["hobbies"]
 
-    [1] . ", " . $user["hobbies"][2].".\n";
+[1] . ", " . $user["hobbies"][2].".\n";
 
-    ?>
-    ```
+?>
+```
 
 1.  在终端中打开你的工作目录，并输入以下命令：
 
 ```php
-    php multidimensional.php
-    ```
+php multidimensional.php
+```
 
 你将得到一个基于我们在前面数组中提供的输入的结果。
 
@@ -430,36 +430,36 @@ ksort($people);
 1.  在新文件中，创建你的开启和关闭`php`标签：
 
 ```php
-    <?php
-    ?>
-    ```
+<?php
+?>
+```
 
 1.  现在，我们创建一个名为`$food`的新变量，并用一个新数组进行初始化：
 
 ```php
-    <?php
-    	$food = array();
-    ?>
-    ```
+<?php
+	$food = array();
+?>
+```
 
 1.  然后，我们用食物名称填充新数组：
 
 ```php
-    <?php    $food = array("turkey", "milk", "apples");
-    ?>
-    ```
+<?php    $food = array("turkey", "milk", "apples");
+?>
+```
 
 1.  接下来，我们循环遍历我们的数组并打印我们的数据：
 
 ```php
-    <?php
-    	$food = array("turkey", "milk", "apples");
+<?php
+	$food = array("turkey", "milk", "apples");
 
-               for($i = 0; $i < count($food); $i++){
-            echo $food[$i] . "\n";
-     }
-    ?>
-    ```
+           for($i = 0; $i < count($food); $i++){
+        echo $food[$i] . "\n";
+ }
+?>
+```
 
 ### 注意
 
@@ -468,8 +468,8 @@ count 函数返回数组中的元素数。
 在终端中打开你的工作目录，并输入以下命令：
 
 ```php
-    php forloops.php
-    ```
+php forloops.php
+```
 
 ## while 循环
 
@@ -513,37 +513,37 @@ while 循环非常简单，因为它只需要一个条件来运行。循环将�
 1.  在新文件中，创建你的开启和关闭`php`标签：
 
 ```php
-    <?php
-    ?>
-    ```
+<?php
+?>
+```
 
 1.  接下来，我们定义一个`counter`函数，并用数字 1 进行初始化：
 
 ```php
-    <?php
-    $count = 1;
-    ?>
-    ```
+<?php
+$count = 1;
+?>
+```
 
 1.  然后，我们可以创建一个`while`循环，它将输出当前计数，然后将`counter`增加 1：
 
 ```php
-    <?php
+<?php
 
-            $count = 1;
+        $count = 1;
 
-            while($count <= 30){
-                echo "Count " . $count . "\n";
-                $count++;
-            }
-    ?>
-    ```
+        while($count <= 30){
+            echo "Count " . $count . "\n";
+            $count++;
+        }
+?>
+```
 
 1.  在终端中打开你的工作目录，并输入以下命令：
 
 ```php
-    php while.php
-    ```
+php while.php
+```
 
 ## do-while 循环
 
@@ -588,22 +588,22 @@ do-while 循环的表示如下：
 1.  现在，我们将修改`while`函数以使其类似于以下代码：
 
 ```php
-    <?php
+<?php
 
-            $count = 1;
+        $count = 1;
 
-            do{
-                echo "Count " . $count . "\n";
-                $count++;
-            }while($count <= 30);
-    ?>
-    ```
+        do{
+            echo "Count " . $count . "\n";
+            $count++;
+        }while($count <= 30);
+?>
+```
 
 1.  在终端中打开您的工作目录，并输入以下命令：
 
 ```php
-    php dowhile.php
-    ```
+php dowhile.php
+```
 
 ## foreach 循环
 
@@ -683,36 +683,36 @@ do-while 循环的表示如下：
 1.  首先，您将定义一个多维数组，用于存储员工的姓名、职称和工资：
 
 ```php
-    <?php
+<?php
 
-    $employees = array(
-        array( 
-           "name" => "John Doe",
-            "title" => "Programmer",
-            "salary" => 60000
-    ....
-            "title" => "Manager",
-            "salary" => 132000
-        )
-    );
-    ?>
-    ```
+$employees = array(
+    array( 
+       "name" => "John Doe",
+        "title" => "Programmer",
+        "salary" => 60000
+....
+        "title" => "Manager",
+        "salary" => 132000
+    )
+);
+?>
+```
 
 1.  接下来，定义`foreach`循环，它将遍历`employee`数组：
 
 ```php
-    foreach($employees as $employee){
-    }
-    ```
+foreach($employees as $employee){
+}
+```
 
 1.  最后，添加一个`echo`语句，用于打印姓名、职称和计算出的月薪：
 
 ```php
-    foreach($employees as $employee){
-         echo $employee['name'] . "(" . $employee['title'] . ") annual salary is $" .  
-         $employee['salary'] . " and earns $" . ($employee['salary'] / 12) . "/mo. \n";
-           }
-    ```
+foreach($employees as $employee){
+     echo $employee['name'] . "(" . $employee['title'] . ") annual salary is $" .  
+     $employee['salary'] . " and earns $" . ($employee['salary'] / 12) . "/mo. \n";
+       }
+```
 
 计算器脚本现在已经完成。如果您需要添加额外的员工，只需添加一个带有员工信息的额外关联数组即可。
 

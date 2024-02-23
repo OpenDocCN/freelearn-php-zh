@@ -43,34 +43,34 @@ PHP，或者预处理超文本，是一种用于设计网页应用程序并使�
 1.  输入以下内容，并保存你的文档：
 
 ```php
-    <?php
+<?php
 
-    ?>
-    ```
+?>
+```
 
 1.  在**终端**中打开你的工作目录。
 
 1.  输入以下命令：
 
 ```php
-    php syntax.php
-    ```
+php syntax.php
+```
 
 ![使用 PHP 显示"Hello World"](img/1_01.jpg)
 
 1.  切换回你的文档并输入以下内容：
 
 ```php
-    <?php 
-         echo "Hello World";
-    ?>
-    ```
+<?php 
+     echo "Hello World";
+?>
+```
 
 1.  回到终端并输入以下内容：
 
 ```php
-    php syntax.php
-    ```
+php syntax.php
+```
 
 现在你应该在屏幕上看到字符串"Hello World"被打印出来。
 
@@ -112,17 +112,17 @@ PHP 是少数几种不需要在赋值之前声明数据类型的语言之一。
 1.  输入以下内容，并保存你的文档：
 
 ```php
-    <?php
-    	$name = "John Doe";
-    	$age = 25;
-    	$hourlyRate = 10.50;
-    	$hours = 40;
-    	echo $name . " is " . $age . " years old.\n";
-    	echo $name . " makes $" . $hourlyRate . " an hour. \n";
-    	echo $name . " worked " . $hours . " this week. \n";
-    ?>
+<?php
+	$name = "John Doe";
+	$age = 25;
+	$hourlyRate = 10.50;
+	$hours = 40;
+	echo $name . " is " . $age . " years old.\n";
+	echo $name . " makes $" . $hourlyRate . " an hour. \n";
+	echo $name . " worked " . $hours . " this week. \n";
+?>
 
-    ```
+```
 
 1.  在终端中打开你的工作目录。
 
@@ -133,10 +133,10 @@ PHP 是少数几种不需要在赋值之前声明数据类型的语言之一。
 将变量的值插入字符串的另一种方法是使用特殊的语法：
 
 ```php
-    <?php
-    echo "My name is ${$name}.";
-    ?>
-    ```
+<?php
+echo "My name is ${$name}.";
+?>
+```
 
 ## 运算符
 
@@ -196,50 +196,50 @@ PHP 是少数几种不需要在赋值之前声明数据类型的语言之一。
 1.  现在，我们将在文档中添加一个额外的变量，用于保存周数：
 
 ```php
-    $weeks = 52;
-    ```
+$weeks = 52;
+```
 
 1.  接下来，我们将使用乘法运算符来计算我们的周薪，并将其赋值给一个新变量：
 
 ```php
-    $weeklyPay = $hourlyRate * $hours;
-    ```
+$weeklyPay = $hourlyRate * $hours;
+```
 
 1.  现在，有了我们的周薪率，我们可以计算我们的工资：
 
 ```php
-    $salary = $weeks * $weeklyPay;
-    ```
+$salary = $weeks * $weeklyPay;
+```
 
 1.  我们的最后一步是显示我们的最终计算：
 
 ```php
-    echo $name . " will make $" . $salary . " this year.\n";
-    ```
+echo $name . " will make $" . $salary . " this year.\n";
+```
 
 您的最终文档应如下所示：
 
 ```php
-    <?php
-    $name = "John Doe";
-    $age = 25;
-    $hourlyRate = 10.50;
-    $hours = 40;
-    echo $name . " is " . $age . " years 01d.\n";
-    echo $name . " makes $" . $hourlyRate . " an hour. \n";
-    echo $name . " worked " . $hours . " this week.\n";
-    $weeks = 52;
-    $weeklypay = $hourlyRate * $hours;
-    $salary = $weeks * $weeklyPay;
-    echo $name . " will make $" . $salary . "this year";
-    ?>
-    ```
+<?php
+$name = "John Doe";
+$age = 25;
+$hourlyRate = 10.50;
+$hours = 40;
+echo $name . " is " . $age . " years 01d.\n";
+echo $name . " makes $" . $hourlyRate . " an hour. \n";
+echo $name . " worked " . $hours . " this week.\n";
+$weeks = 52;
+$weeklypay = $hourlyRate * $hours;
+$salary = $weeks * $weeklyPay;
+echo $name . " will make $" . $salary . "this year";
+?>
+```
 
 1.  接下来，我们将在我们的`终端`中打开我们的目录，并运行以下命令：
 
 ```php
-    php operators.php
-    ```
+php operators.php
+```
 
 1.  现在我们应该看到我们的数据被显示出来：![组合变量和运算符](img/1_03.jpg)
 
@@ -284,62 +284,62 @@ else{
 1.  我们将从添加我们的开放和关闭`php`标签开始：
 
 ```php
-    <?php
-    ?>
-    ```
+<?php
+?>
+```
 
 1.  然后，我们将创建一个新函数来保存我们的动物名称：
 
 ```php
-    <?php
-    $animal = "cat";
-    ?>
-    ```
+<?php
+$animal = "cat";
+?>
+```
 
 1.  现在，我们可以编写我们的第一个条件语句；在这里，我们要检查动物是否是猫，如果是，我们将向用户打印 meow：
 
 ```php
-    <?php
-    	$animal = "cat";
-    	if($animal == "cat"){
-    	echo "meow\n";
-    	}
-    ?>
-    ```
+<?php
+	$animal = "cat";
+	if($animal == "cat"){
+	echo "meow\n";
+	}
+?>
+```
 
 1.  保存文件并在终端中打开您的工作目录。
 
 1.  运行以下命令，查看结果：
 
 ```php
-    php conditionals.php
-    ```
+php conditionals.php
+```
 
 ![使用条件语句](img/1_05.jpg)
 
 1.  现在，我们将进一步扩展我们的条件语句，添加其他动物的声音，并将我们的动物更改为狮子：
 
 ```php
-    $animal = "lion";
-    if($animal == "cat"){
-    echo "meow\n";
+$animal = "lion";
+if($animal == "cat"){
+echo "meow\n";
 
-    }
-    else if ($anima == "dog"){
-    echo "woof\n";
-    }
+}
+else if ($anima == "dog"){
+echo "woof\n";
+}
 
-    else if($animal == "lion"){
-    echo "roar\n";
+else if($animal == "lion"){
+echo "roar\n";
 
-    }
+}
 
-    else {
-    echo "What does the fox say?\n";
-    }
+else {
+echo "What does the fox say?\n";
+}
 
-    ?>
-    ```
+?>
+```
 
 1.  现在，让我们再次保存并在终端中运行命令；您应该会得到以下结果：![使用条件语句](img/1_06.jpg)
 
@@ -358,41 +358,41 @@ else{
 1.  定义占位符变量：
 
 ```php
-    <?php
+<?php
 
-        $hourlyRate = 10.00;
-        $hoursWorked = 12;
-        $rateMultiplier = 1.5;
-        $commissionRate = 0.10;
-        $grossSales = 25.00;
-        $bonus = 0;
-    ```
+    $hourlyRate = 10.00;
+    $hoursWorked = 12;
+    $rateMultiplier = 1.5;
+    $commissionRate = 0.10;
+    $grossSales = 25.00;
+    $bonus = 0;
+```
 
 1.  我们的下一步将是定义我们的计算并将结果分配给它们各自的变量：
 
 ```php
-    $holidayRate = $hourlyRate * $rateMultiplier;
-        $holidayPay = $holidayRate * $hoursWorked;
-        $commission = $commissionRate * $grossSales;
-    $salary = $holidayPay + $commission;
-    ```
+$holidayRate = $hourlyRate * $rateMultiplier;
+    $holidayPay = $holidayRate * $hoursWorked;
+    $commission = $commissionRate * $grossSales;
+$salary = $holidayPay + $commission;
+```
 
 1.  接下来，我们需要检查总销售额变量，看看员工是否超过了 1000 美元，以获得奖金：
 
 ```php
-    if($grossSales >= 1000){
-            $bonus = 1000;
-    }
-    ```
+if($grossSales >= 1000){
+        $bonus = 1000;
+}
+```
 
 1.  现在我们有了默认费率和计算器，我们可以向用户显示结果：
 
 ```php
-    echo "Salary $" . $salary . "\n";
-        echo "Bonus +\$" . $commission . "\n";
-        echo "-------------------------------\n";
-        echo "Total  $" . ($salary + $commission) . "\n";
-    ```
+echo "Salary $" . $salary . "\n";
+    echo "Bonus +\$" . $commission . "\n";
+    echo "-------------------------------\n";
+    echo "Total  $" . ($salary + $commission) . "\n";
+```
 
 1.  现在，员工只需更改其小时工资和总销售额的值，并运行程序以获取其总工资金额。
 

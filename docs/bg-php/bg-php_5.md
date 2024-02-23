@@ -165,11 +165,11 @@ class Contact
 以下是如何使用各种访问修饰符的示例。在定义名为`$token`的属性时，您将看到`public`，`protected`和`private`属性的使用：
 
 ```php
-    public $token;
-    protected $token;
-    private $token;
+public $token;
+protected $token;
+private $token;
 
-    ```
+```
 
 ![访问修饰符](img/5_02.jpg)
 
@@ -338,78 +338,78 @@ PHP 视图中使用最少的 PHP；数据通常以数组或变量的形式传递
 1.  在`Contact.php`文件中，打开 PHP，并创建一个命名空间：
 
 ```php
-        <?php namespace App\Models;
-        ```
+<?php namespace App\Models;
+```
 
 1.  定义一个名为`Contact`的类：
 
 ```php
-        class Contact 
-        {
-        }
-        ```
+class Contact 
+{
+}
+```
 
 1.  在这个类中，定义一个名为`getContacts()`的公共方法；它应该返回一个名字数组：
 
 ```php
-        class Contact
-        {
-            public function getContacts()
-        {
-                return ['joe', 'bob', 'kerry', 'dave'];
-            }
-        }
-        ```
+class Contact
+{
+    public function getContacts()
+{
+        return ['joe', 'bob', 'kerry', 'dave'];
+    }
+}
+```
 
 1.  在 Controllers 目录中，创建一个名为`Contacts.php`的文件。
 
 1.  在`Contacts.php`文件中，打开 PHP，并添加一个`namespace`：
 
 ```php
-    <?php namespace App\Controllers;
-    ```
+<?php namespace App\Controllers;
+```
 
 1.  用`use`语句导入联系人模型：
 
 ```php
-    use App\Models\Contact;
-    ```
+use App\Models\Contact;
+```
 
 1.  在这种情况下，可以使用别名，写成如下形式（假设 Contact 的别名为`Name`）：
 
 ```php
-    Use App\Models\Contact as Name;
-    ```
+Use App\Models\Contact as Name;
+```
 
 定义一个名为 Contacts 的类：
 
 ```php
-    class Contacts 
-    {
-    }
-    ```
+class Contacts 
+{
+}
+```
 
 1.  创建一个名为`index()`的公共函数，在该方法中，创建一个名为`contacts`的局部变量，并创建`contact`类的一个新实例（这被称为类的实例化）：
 
 ```php
-    class Contacts 
+class Contacts 
+{
+    public function index()
     {
-        public function index()
-        {
-            $contact = new Contact();
-        }
+        $contact = new Contact();
     }
-    ```
+}
+```
 
 1.  使用赋值运算符创建一个名为`contacts`的局部变量，在前一步创建的`contacts`对象实例后调用`getContacts()`方法（这被称为箭头符号）：
 
 ```php
-    public function index()
-    {
-        $contact = new Contact();
-        $contacts = $contact->getContacts();
-    }
-    ```
+public function index()
+{
+    $contact = new Contact();
+    $contacts = $contact->getContacts();
+}
+```
 
 # 总结
 

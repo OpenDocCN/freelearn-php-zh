@@ -37,36 +37,36 @@
 1.  在您的终端或命令行中，导航到`myapp`的根目录。第一步是初始化 git 并下载我们的项目文件：
 
 ```php
-    **$ git init**
-    **$ git clone git@github.com:laravel/laravel.git**
+**$ git init**
+**$ git clone git@github.com:laravel/laravel.git**
 
-    ```
+```
 
 1.  由于我们只需要`public`目录，所以移动到`/laravel`并删除其他所有内容：
 
 ```php
-    **$ cd laravel**
-    **$ rm –r app bootstrap vendor**
+**$ cd laravel**
+**$ rm –r app bootstrap vendor**
 
-    ```
+```
 
 1.  然后，回到根目录，创建一个`framework`目录，并将 Laravel 添加为子模块：
 
 ```php
-    **$ cd ..**
-    **$ mkdir framework**
-    **$ cd framework**
-    **$ git init**
-    **$ git submodule add https://github.com/laravel/laravel.git**
+**$ cd ..**
+**$ mkdir framework**
+**$ cd framework**
+**$ git init**
+**$ git submodule add https://github.com/laravel/laravel.git**
 
-    ```
+```
 
 1.  现在我们需要运行 Composer 来安装框架：
 
 ```php
-    **php composer.phar install**
+**php composer.phar install**
 
-    ```
+```
 
 ### 提示
 
@@ -75,18 +75,18 @@
 1.  现在，打开`/laravel/public/index.php`并找到以下行：
 
 ```php
-    **require __DIR__.'/../bootstrap/autoload.php';**
-    **$app = require_once __DIR__.'/../bootstrap/start.php';**
+**require __DIR__.'/../bootstrap/autoload.php';**
+**$app = require_once __DIR__.'/../bootstrap/start.php';**
 
-    ```
+```
 
 1.  将前面的行改为：
 
 ```php
-    **require __DIR__.'/../../framework/laravel/bootstrap/autoload.php';**
-    **$app = require_once __DIR__.'/../../framework/laravel/bootstrap/start.php';**
+**require __DIR__.'/../../framework/laravel/bootstrap/autoload.php';**
+**$app = require_once __DIR__.'/../../framework/laravel/bootstrap/start.php';**
 
-    ```
+```
 
 ## 它是如何工作的...
 
@@ -119,20 +119,20 @@
 1.  转到`extra`目录，打开`httpd-vhosts.conf`文件，并添加以下代码：
 
 ```php
-    <VirtualHost *:80>
-        ServerAdmin {your@email.com}
-        DocumentRoot "C:/path/to/myapp/public"
-        ServerName myapp.dev
-        <Directory "C:/path/to/myapp/public">
-            Options Indexes FollowSymLinks
-            AllowOverride all
-            # onlineoffline tag - don't remove
-            Order Deny,Allow
-            Deny from all
-            Allow from 127.0.0.1
-        </Directory>
-    </VirtualHost>
-    ```
+<VirtualHost *:80>
+    ServerAdmin {your@email.com}
+    DocumentRoot "C:/path/to/myapp/public"
+    ServerName myapp.dev
+    <Directory "C:/path/to/myapp/public">
+        Options Indexes FollowSymLinks
+        AllowOverride all
+        # onlineoffline tag - don't remove
+        Order Deny,Allow
+        Deny from all
+        Allow from 127.0.0.1
+    </Directory>
+</VirtualHost>
+```
 
 1.  重新启动 Apache 服务。
 
@@ -167,11 +167,11 @@
 1.  在我们应用程序的根目录中，添加一个`.htaccess`文件并使用此代码：
 
 ```php
-    <IfModule mod_rewrite.c>
-        RewriteEngine On
-        RewriteRule ^(.*)$ public/$1 [L]
-    </IfModule>
-    ```
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+```
 
 1.  转到`http://{your-server}`并查看您的应用程序。
 
@@ -198,35 +198,35 @@
 1.  打开`/app/config/app.php`并更新这些行：
 
 ```php
-    'url' => 'http://localhost/,
-    'locale' => 'en',
-    'key' => 'Seriously-ChooseANewKey',
-    ```
+'url' => 'http://localhost/,
+'locale' => 'en',
+'key' => 'Seriously-ChooseANewKey',
+```
 
 1.  打开`app/config/database.php`并选择您首选的数据库：
 
 ```php
-    'default' => 'mysql',
-    'connections' => array(
-        'mysql' => array(
-            'driver'    => 'mysql',
-            'host'      => 'localhost',
-            'database'  => 'database',
-            'username'  => 'root',
-            'password'  => '',
-            'charset'   => 'utf8',
-            'collation' => 'utf8_unicode_ci',
-            'prefix'    => '',
-            ),
+'default' => 'mysql',
+'connections' => array(
+    'mysql' => array(
+        'driver'    => 'mysql',
+        'host'      => 'localhost',
+        'database'  => 'database',
+        'username'  => 'root',
+        'password'  => '',
+        'charset'   => 'utf8',
+        'collation' => 'utf8_unicode_ci',
+        'prefix'    => '',
         ),
-    ```
+    ),
+```
 
 1.  在命令行中，转到应用程序的根目录，并确保`storage`文件夹是可写的：
 
 ```php
-    **chmod –R 777 app/storage**
+**chmod –R 777 app/storage**
 
-    ```
+```
 
 ## 它是如何工作的...
 
@@ -324,38 +324,38 @@ Sublime Text 2 中的 Laravel 片段大大简化了编写常见代码，并且�
 1.  在`custom`目录中，创建一个名为`MyShapes.php`的文件，并添加以下简单代码：
 
 ```php
-    <?php
-    class MyShapes {
-        public function octagon() 
-        {
-            return 'I am an octagon';
-        }
+<?php
+class MyShapes {
+    public function octagon() 
+    {
+        return 'I am an octagon';
     }
-    ```
+}
+```
 
 1.  在`/app/start`目录中，打开`global.php`并更新`ClassLoader`，使其看起来像这样：
 
 ```php
-    ClassLoader::addDirectories(array(
+ClassLoader::addDirectories(array(
 
-        app_path().'/commands',
-        app_path().'/controllers',
-        app_path().'/models',
-        app_path().'/database/seeds',
-        app_path().'/custom',
+    app_path().'/commands',
+    app_path().'/controllers',
+    app_path().'/models',
+    app_path().'/database/seeds',
+    app_path().'/custom',
 
-    ));
-    ```
+));
+```
 
 1.  现在我们可以在应用程序的任何部分使用该类。例如，如果我们创建一个路由：
 
 ```php
-    Route::get('shape', function()
-    {
-        $shape = new MyShapes;
-        return $shape->octagon();
-    });
-    ```
+Route::get('shape', function()
+{
+    $shape = new MyShapes;
+    return $shape->octagon();
+});
+```
 
 ## 它是如何工作的...
 
@@ -386,50 +386,50 @@ Sublime Text 2 中的 Laravel 片段大大简化了编写常见代码，并且�
 1.  在`/app/custom/Custom/Shapes`目录中，创建一个名为`MyShapes.php`的文件，并添加以下代码：
 
 ```php
-    <?php namespace Custom\Shapes;
+<?php namespace Custom\Shapes;
 
-    class MyShapes {
-        public function triangle() 
-        {
-            return 'I am a triangle';
-        }
+class MyShapes {
+    public function triangle() 
+    {
+        return 'I am a triangle';
     }
-    ```
+}
+```
 
 1.  在应用程序的根目录中，打开`composer.json`文件并找到`autoload`部分。更新它使其看起来像这样：
 
 ```php
-    "autoload": {
-        "classmap": [
-        "app/commands",
-            "app/controllers",
-            "app/models",
-            "app/database/migrations",
-            "app/database/seeds",
-            "app/tests/TestCase.php",
-        ],
-        "psr-0": {
-            "Custom": "app/custom"
-        }
+"autoload": {
+    "classmap": [
+    "app/commands",
+        "app/controllers",
+        "app/models",
+        "app/database/migrations",
+        "app/database/seeds",
+        "app/tests/TestCase.php",
+    ],
+    "psr-0": {
+        "Custom": "app/custom"
     }
-    ```
+}
+```
 
 1.  在命令行中运行`composer`上的`dump-autoload`：
 
 ```php
-    **php composer.phar dump-autoload**
+**php composer.phar dump-autoload**
 
-    ```
+```
 
 1.  现在我们可以通过其命名空间调用该类。例如，如果我们创建一个路由：
 
 ```php
-    Route::get('shape', function()
-    {
-        $shape = new Custom\Shapes\MyShapes;
-        return $shape->triangle();
-    });
-    ```
+Route::get('shape', function()
+{
+    $shape = new Custom\Shapes\MyShapes;
+    return $shape->triangle();
+});
+```
 
 ## 它是如何工作的...
 

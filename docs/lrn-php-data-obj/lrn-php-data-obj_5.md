@@ -23,47 +23,47 @@
 +   在`books.php`中，我们有一个查询，它连接两个表以呈现书籍列表以及它们的作者：
 
 ```php
-    SELECT authors.id AS authorId, firstName, lastName, books.*
-    FROM authors, books WHERE author=authors.id ORDER BY title;
+SELECT authors.id AS authorId, firstName, lastName, books.*
+FROM authors, books WHERE author=authors.id ORDER BY title;
 
-    ```
+```
 
 要获取此查询返回的行数，我们应该将其重写为以下内容：
 
 ```php
-    SELECT COUNT(*) FROM authors, books WHERE author=authors.id;
+SELECT COUNT(*) FROM authors, books WHERE author=authors.id;
 
-    ```
+```
 
 请注意，这里不需要`ORDER BY`子句，因为顺序对行数并不重要。
 
 +   在`authors.php`中，我们只是按照他们的姓和名的顺序选择所有作者：
 
 ```php
-    SELECT * FROM authors ORDER BY lastName, firstName;
+SELECT * FROM authors ORDER BY lastName, firstName;
 
-    ```
+```
 
 这简单地重写为以下内容：
 
 ```php
-    SELECT COUNT(*) FROM authors;
+SELECT COUNT(*) FROM authors;
 
-    ```
+```
 
 +   另一个返回多行的查询在`author.php`中——它检索特定作者撰写的所有书籍：
 
 ```php
-    SELECT * FROM books WHERE author=$id ORDER BY title;
+SELECT * FROM books WHERE author=$id ORDER BY title;
 
-    ```
+```
 
 这翻译为以下内容：
 
 ```php
-    SELECT COUNT(*) FROM books WHERE author=$id;
+SELECT COUNT(*) FROM books WHERE author=$id;
 
-    ```
+```
 
 正如您所看到的，我们以类似的方式重写了所有这些查询——通过用`COUNT(*)`替换列的列表并修剪`ORDER BY`子句。有了这个想法，我们可以创建一个函数，它将接受一个包含要执行的 SQL 的字符串，并返回查询将返回的行数。这个函数将必须执行这些简单的转换：
 

@@ -396,13 +396,13 @@ PHP 是一种松散类型的编程语言，当您比较变量时，这种灵活�
 +   一旦我们知道我们的下一个版本号，我们将从主分支创建一个发布分支。下一个命令将向您展示如何获取最新的主分支并创建并推送一个新的发布分支：
 
 ```php
-     **git checkout master
-          git fetch
-          git pull origin master
-          git checkout -b release/v1.3.0
-          git push origin release/v1.3.0**
+ **git checkout master
+      git fetch
+      git pull origin master
+      git checkout -b release/v1.3.0
+      git push origin release/v1.3.0**
 
-    ```
+```
 
 +   在上述步骤之后，我们的存储库将拥有一个干净的发布分支，准备好使用。
 
@@ -411,12 +411,12 @@ PHP 是一种松散类型的编程语言，当您比较变量时，这种灵活�
 +   假设我们需要向项目添加一个新功能，因此我们需要从发布分支创建一个临时分支：
 
 ```php
-     **git checkout release/v1.3.0
-          git fetch
-          git pull origin release/v1.3.0
-          git checkout -b feature/my_new_feature**
+ **git checkout release/v1.3.0
+      git fetch
+      git pull origin release/v1.3.0
+      git checkout -b feature/my_new_feature**
 
-    ```
+```
 
 +   一旦我们有了`feature/my_new_feature`，我们可以将所有更改提交到这个新分支。一旦所有更改都已提交并准备就绪，我们可以将`feature/my_new_feature`与发布分支合并。
 

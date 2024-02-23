@@ -144,27 +144,27 @@ PHP Fatal error:  Uncaught TypeError: search(): Argument #1 ($needle) must be 
 1.  首先，我们定义一个函数，使用`strpos()`报告针值是否在 haystack 中找到。注意对布尔值`FALSE`进行严格类型检查：
 
 ```php
-    // php7_num_str_empty_needle.php
-    function test($haystack, $search) {
-        $pattern = '%15s | %15s | %10s' . "\n";
-        $result  = (strpos($haystack, $search) !== FALSE)
-                 ? 'FOUND' :  'NOT FOUND';
-        return sprintf($pattern,
-               var_export($search, TRUE),
-               var_export(strpos($haystack, $search), 
-                 TRUE),
-               $result);
-    };
-    ```
+// php7_num_str_empty_needle.php
+function test($haystack, $search) {
+    $pattern = '%15s | %15s | %10s' . "\n";
+    $result  = (strpos($haystack, $search) !== FALSE)
+             ? 'FOUND' :  'NOT FOUND';
+    return sprintf($pattern,
+           var_export($search, TRUE),
+           var_export(strpos($haystack, $search), 
+             TRUE),
+           $result);
+};
+```
 
 1.  然后我们将 haystack 定义为一个包含字母和数字的字符串。needle 参数以所有被视为空的值的数组形式提供：
 
 ```php
-    $haystack = 'Something Anything 0123456789';
-    $needles = ['', NULL, FALSE, 0];
-    foreach ($needles as $search) 
-        echo test($haystack, $search);
-    ```
+$haystack = 'Something Anything 0123456789';
+$needles = ['', NULL, FALSE, 0];
+foreach ($needles as $search) 
+    echo test($haystack, $search);
+```
 
 在 PHP 7 中的输出如下：
 
@@ -235,36 +235,36 @@ php php8_num_str_empty_needle.php
 1.  首先，我们定义一组参数，这些参数将被插入到一个模式`$patt`中：
 
 ```php
-    // /repo/ch06/php8_printf_vs_vprintf.php
-    $ord  = 'third';
-    $day  = 'Thursday';
-    $pos  = 'next';
-    $date = new DateTime("$ord $day of $pos month");
-    $patt = "The %s %s of %s month is: %s\n";
-    ```
+// /repo/ch06/php8_printf_vs_vprintf.php
+$ord  = 'third';
+$day  = 'Thursday';
+$pos  = 'next';
+$date = new DateTime("$ord $day of $pos month");
+$patt = "The %s %s of %s month is: %s\n";
+```
 
 1.  然后，我们使用一系列参数执行一个`printf()`语句：
 
 ```php
-    printf($patt, $ord, $day, $pos, 
-           $date->format('l, d M Y'));
-    ```
+printf($patt, $ord, $day, $pos, 
+       $date->format('l, d M Y'));
+```
 
 1.  然后，我们将参数定义为一个数组`$arr`，并使用`vprintf()`来产生相同的结果：
 
 ```php
-    $arr  = [$ord, $day, $pos, $date->format('l, d M 
-               Y')];vprintf($patt, $arr);
-    ```
+$arr  = [$ord, $day, $pos, $date->format('l, d M 
+           Y')];vprintf($patt, $arr);
+```
 
 以下是在 PHP 8 中运行程序的输出。在 PHP 7 中运行的输出相同（未显示）：
 
 ```php
-    root@php8_tips_php8 [ /repo/ch06 ]#
-    php php8_printf_vs_vprintf.php
-    The third Thursday of next month is: Thursday, 15 Apr 2021
-    The third Thursday of next month is: Thursday, 15 Apr 2021
-    ```
+root@php8_tips_php8 [ /repo/ch06 ]#
+php php8_printf_vs_vprintf.php
+The third Thursday of next month is: Thursday, 15 Apr 2021
+The third Thursday of next month is: Thursday, 15 Apr 2021
+```
 
 如您所见，两个函数的输出是相同的。唯一的使用区别是`vprintf()`以数组形式接受参数。
 
@@ -275,34 +275,34 @@ PHP 的早期版本允许开发人员在`v*printf()`系列函数中玩得*快速
 1.  首先，我们定义模式和源数组：
 
 ```php
-    // /repo/ch06/php7_vprintf_bc_break.php
-    $patt = "\t%s. %s. %s. %s. %s.";
-    $arr  = ['Person', 'Woman', 'Man', 'Camera', 'TV'];
-    ```
+// /repo/ch06/php7_vprintf_bc_break.php
+$patt = "\t%s. %s. %s. %s. %s.";
+$arr  = ['Person', 'Woman', 'Man', 'Camera', 'TV'];
+```
 
 1.  然后，我们定义一个测试数据数组，以测试`vsprintf()`接受哪些参数：
 
 ```php
-    $args = [
-        'Array' => $arr, 
-        'Int'   => 999,
-        'Bool'  => TRUE, 
-        'Obj'   => new ArrayObject($arr)
-    ];
-    ```
+$args = [
+    'Array' => $arr, 
+    'Int'   => 999,
+    'Bool'  => TRUE, 
+    'Obj'   => new ArrayObject($arr)
+];
+```
 
 1.  然后，我们定义一个`foreach()`循环，遍历测试数据并使用`vsprintf()`：
 
 ```php
-    foreach ($args as $key => $value) {
-        try {
-            echo $key . ': ' . vsprintf($patt, $value);
-        } catch (Throwable $t) {
-            echo $key . ': ' . get_class($t) 
-                 . ':' . $t->getMessage();
-        }
-    }
-    ```
+foreach ($args as $key => $value) {
+    try {
+        echo $key . ': ' . vsprintf($patt, $value);
+    } catch (Throwable $t) {
+        echo $key . ': ' . get_class($t) 
+             . ':' . $t->getMessage();
+    }
+}
+```
 
 以下是在 PHP 7 中运行的输出：
 
@@ -357,19 +357,19 @@ Obj: TypeError:vsprintf(): Argument #2 ($values) must be of type array, ArrayObj
 1.  首先，我们定义一个 haystack 和 needle。然后，我们运行 `strpos()` 来获取 needle 在 haystack 中的位置：
 
 ```php
-    // /repo/ch06/php8_null_length_arg.php
-    $str = 'The quick brown fox jumped over the fence';
-    $var = 'fox';
-    $pos = strpos($str, $var);
-    ```
+// /repo/ch06/php8_null_length_arg.php
+$str = 'The quick brown fox jumped over the fence';
+$var = 'fox';
+$pos = strpos($str, $var);
+```
 
 1.  接下来，我们提取子字符串，故意不定义长度参数：
 
 ```php
-    $res = substr($str, $pos, $len);
-    $fnd = ($res) ? '' : ' NOT';
-    echo "$var is$fnd found in the string\n";
-    ```
+$res = substr($str, $pos, $len);
+$fnd = ($res) ? '' : ' NOT';
+echo "$var is$fnd found in the string\n";
+```
 
 PHP 7 中的输出如下：
 
@@ -630,29 +630,29 @@ Age must be a number
 1.  首先，我们对一个变量`$zero`（值为零）和一个变量`$string`（值为 ABC）进行了非严格比较：
 
 ```php
-    $zero   = 0;
-    $string = 'ABC';
-    $result = ($zero == $string) ? 'is' : 'is not';
-    echo "The value $zero $result the same as $string\n"2
-    ```
+$zero   = 0;
+$string = 'ABC';
+$result = ($zero == $string) ? 'is' : 'is not';
+echo "The value $zero $result the same as $string\n"2
+```
 
 1.  以下非严格比较使用`in_array()`在`$array`数组中查找零值：
 
 ```php
-    $array  = [1 => 'A', 2 => 'B', 3 => 'C'];
-    $result = (in_array($zero, $array)) 
-            ? 'is in' : 'is not in';
-    echo "The value $zero $result\n" 
-         . var_export($array, TRUE)3
-    ```
+$array  = [1 => 'A', 2 => 'B', 3 => 'C'];
+$result = (in_array($zero, $array)) 
+        ? 'is in' : 'is not in';
+echo "The value $zero $result\n" 
+     . var_export($array, TRUE)3
+```
 
 1.  最后，我们对一个以数字开头的字符串`42abc88`和一个硬编码数字`42`进行了非严格比较：
 
 ```php
-    $mixed  = '42abc88';
-    $result = ($mixed == 42) ? 'is' : 'is not';
-    echo "\nThe value $mixed $result the same as 42\n";
-    ```
+$mixed  = '42abc88';
+$result = ($mixed == 42) ? 'is' : 'is not';
+echo "\nThe value $mixed $result the same as 42\n";
+```
 
 在 PHP 7 中运行的结果令人难以理解！以下是 PHP 7 的结果：
 
@@ -737,34 +737,34 @@ The value 42abc88 is not the same as 42
 1.  首先，我们定义样本非标量数据以在算术操作中进行测试：
 
 ```php
-    // /repo/ch06/php8_arith_non_scalar_ops.php
-    $fn  = __DIR__ . '/../sample_data/gettysburg.txt';
-    $fh  = fopen($fn, 'r');
-    $obj = new class() { public $val = 99; };
-    $arr = [1,2,3];
-    ```
+// /repo/ch06/php8_arith_non_scalar_ops.php
+$fn  = __DIR__ . '/../sample_data/gettysburg.txt';
+$fh  = fopen($fn, 'r');
+$obj = new class() { public $val = 99; };
+$arr = [1,2,3];
+```
 
 1.  然后，我们尝试将整数`99`添加到资源、对象，并对数组执行模数运算：
 
 ```php
-    echo "Adding 99 to a resource\n";
-    try { var_dump($fh + 99); }
-    catch (Error $e) { echo $e . "\n"; }
-    echo "\nAdding 99 to an object\n";
-    try { var_dump($obj + 99); }
-    catch (Error $e) { echo $e . "\n"; }
-    echo "\nPerforming array % 99\n";
-    try { var_dump($arr % 99); }
-    catch (Error $e) { echo $e . "\n"; }
-    ```
+echo "Adding 99 to a resource\n";
+try { var_dump($fh + 99); }
+catch (Error $e) { echo $e . "\n"; }
+echo "\nAdding 99 to an object\n";
+try { var_dump($obj + 99); }
+catch (Error $e) { echo $e . "\n"; }
+echo "\nPerforming array % 99\n";
+try { var_dump($arr % 99); }
+catch (Error $e) { echo $e . "\n"; }
+```
 
 1.  最后，我们将两个数组相加：
 
 ```php
-    echo "\nAdding two arrays\n";
-    try { var_dump($arr + [99]); }
-    catch (Error $e) { echo $e . "\n"; }
-    ```
+echo "\nAdding two arrays\n";
+try { var_dump($arr + [99]); }
+catch (Error $e) { echo $e . "\n"; }
+```
 
 当我们运行代码示例时，请注意 PHP 7 如何执行静默转换并允许操作继续进行：
 
@@ -919,25 +919,25 @@ php -r "echo '1' . '11' + 222;"
 1.  首先，我们定义一个要测试的区域设置数组。所选的区域设置使用不同的方式来表示数字的小数部分：
 
 ```php
-    // /repo/ch06/php8_locale_independent.php
-    $list = ['en_GB', 'fr_FR', 'de_DE'];
-    $patt = "%15s | %15s \n";
-    ```
+// /repo/ch06/php8_locale_independent.php
+$list = ['en_GB', 'fr_FR', 'de_DE'];
+$patt = "%15s | %15s \n";
+```
 
 1.  然后我们循环遍历区域设置，设置区域设置，并执行从浮点数到字符串的转换，然后再从字符串到浮点数的转换，同时在每一步打印结果：
 
 ```php
-    foreach ($list as $locale) {
-        setlocale(LC_ALL, $locale);
-        echo "Locale          : $locale\n";
-        $f = 123456.789;
-        echo "Original        : $f\n";
-        $s = (string) $f;
-        echo "Float to String : $s\n";
-        $r = (float) $s;
-        echo "String to Float : $r\n";
-    }
-    ```
+foreach ($list as $locale) {
+    setlocale(LC_ALL, $locale);
+    echo "Locale          : $locale\n";
+    $f = 123456.789;
+    echo "Original        : $f\n";
+    $s = (string) $f;
+    echo "Float to String : $s\n";
+    $r = (float) $s;
+    echo "String to Float : $r\n";
+}
+```
 
 如果我们在 PHP 7 中运行这个例子，请注意结果：
 
@@ -1010,57 +1010,57 @@ String to Float : 123456.789
 1.  首先，我们定义一个只有负整数作为索引的数组。我们使用`var_dump()`来显示这个数组：
 
 ```php
-    // /repo/ch06/php8_array_negative_index.php
-    $a = [-3 => 'CCC', -2 => 'BBB', -1 => 'AAA'];
-    var_dump($a);
-    ```
+// /repo/ch06/php8_array_negative_index.php
+$a = [-3 => 'CCC', -2 => 'BBB', -1 => 'AAA'];
+var_dump($a);
+```
 
 1.  然后我们定义第二个数组，并将第一个索引初始化为`-3`。然后我们添加额外的数组元素，但没有指定索引。这会导致自动索引发生：
 
 ```php
-    $b[-3] = 'CCC';
-    $b[] = 'BBB';
-    $b[] = 'AAA';
-    var_dump($b);
-    ```
+$b[-3] = 'CCC';
+$b[] = 'BBB';
+$b[] = 'AAA';
+var_dump($b);
+```
 
 1.  如果我们在 PHP 7 中运行程序，注意第一个数组被正确渲染。在 PHP 7 及更早版本中，只要直接分配，就可以有负数组索引。以下是输出：
 
 ```php
-    root@php8_tips_php7 [ /repo/ch06 ]# 
-    php php8_array_negative_index.php 
-    /repo/ch06/php8_array_negative_index.php:6:
-    array(3) {
-      [-3] =>  string(3) "CCC"
-      [-2] =>  string(3) "BBB"
-      [-1] =>  string(3) "AAA"
-    }
-    /repo/ch06/php8_array_negative_index.php:12:
-    array(3) {
-      [-3] =>  string(3) "CCC"
-      [0] =>  string(3) "BBB"
-      [1] =>  string(3) "AAA"
-    }
-    ```
+root@php8_tips_php7 [ /repo/ch06 ]# 
+php php8_array_negative_index.php 
+/repo/ch06/php8_array_negative_index.php:6:
+array(3) {
+  [-3] =>  string(3) "CCC"
+  [-2] =>  string(3) "BBB"
+  [-1] =>  string(3) "AAA"
+}
+/repo/ch06/php8_array_negative_index.php:12:
+array(3) {
+  [-3] =>  string(3) "CCC"
+  [0] =>  string(3) "BBB"
+  [1] =>  string(3) "AAA"
+}
+```
 
 1.  然而，正如你从第二个`var_dump()`输出中看到的，自动数组索引会跳过零，而不管先前的高值是多少。
 
 1.  另一方面，在 PHP 8 中，你可以看到输出是一致的。以下是 PHP 8 的输出：
 
 ```php
-    root@php8_tips_php8 [ /repo/ch06 ]# 
-    php php8_array_negative_index.php 
-    array(3) {
-      [-3]=>  string(3) "CCC"
-      [-2]=>  string(3) "BBB"
-      [-1]=>  string(3) "AAA"
-    }
-    array(3) {
-      [-3]=>  string(3) "CCC"
-      [-2]=>  string(3) "BBB"
-      [-1]=>  string(3) "AAA"
-    }
-    ```
+root@php8_tips_php8 [ /repo/ch06 ]# 
+php php8_array_negative_index.php 
+array(3) {
+  [-3]=>  string(3) "CCC"
+  [-2]=>  string(3) "BBB"
+  [-1]=>  string(3) "AAA"
+}
+array(3) {
+  [-3]=>  string(3) "CCC"
+  [-2]=>  string(3) "BBB"
+  [-1]=>  string(3) "AAA"
+}
+```
 
 1.  从输出中可以看出，数组索引是自动分配的，递增了`1`，使得两个数组相同。
 
@@ -1093,32 +1093,32 @@ String to Float : 123456.789
 1.  首先，我们定义一个回调函数数组，说明了已删除或非法使用花括号的情况：
 
 ```php
-    // /repo/ch06/php7_curly_brace_usage.php
-    $func = [
-        1 => function () {
-            $a = ['A' => 111, 'B' => 222, 'C' => 333];
-            echo 'WORKS: ' . $a{'C'} . "\n";},
-        2 => function () {
-            eval('$a = {"A","B","C"};');
-        },
-        3 => function () {
-            eval('$a = ["A","B"]; $a{} = "C";');
-        }
-    ];
-    ```
+// /repo/ch06/php7_curly_brace_usage.php
+$func = [
+    1 => function () {
+        $a = ['A' => 111, 'B' => 222, 'C' => 333];
+        echo 'WORKS: ' . $a{'C'} . "\n";},
+    2 => function () {
+        eval('$a = {"A","B","C"};');
+    },
+    3 => function () {
+        eval('$a = ["A","B"]; $a{} = "C";');
+    }
+];
+```
 
 1.  然后我们使用`try`/`catch`块循环遍历回调函数以捕获抛出的错误：
 
 ```php
-    foreach ($func as $example => $callback) {
-        try {
-            echo "\nTesting Example $example\n";
-            $callback();
-        } catch (Throwable $t) {
-            echo $t->getMessage() . "\n";
-        }
-    }
-    ```
+foreach ($func as $example => $callback) {
+    try {
+        echo "\nTesting Example $example\n";
+        $callback();
+    } catch (Throwable $t) {
+        echo $t->getMessage() . "\n";
+    }
+}
+```
 
 如果我们在 PHP 7 中运行这个例子，第一个回调函数可以工作。第二个和第三个会抛出`ParseError`：
 
@@ -1250,21 +1250,21 @@ php php8_disabled_funcs_redefine.php
 1.  首先，我们定义了代表不可用盐值和非法轮次数的变量：
 
 ```php
-    // /repo/ch06/php8_crypt_sha256.php
-    $password = 'password';
-    $salt     = str_repeat('+x=', CRYPT_SALT_LENGTH + 1);
-    $rounds   = 1;
-    ```
+// /repo/ch06/php8_crypt_sha256.php
+$password = 'password';
+$salt     = str_repeat('+x=', CRYPT_SALT_LENGTH + 1);
+$rounds   = 1;
+```
 
 1.  然后我们使用`crypt()`函数创建两个哈希。在第一种用法中，提供了一个无效的盐参数后，`$default`是结果。第二种用法中，`$sha256`提供了一个有效的盐值，但是一个无效的轮次数：
 
 ```php
-    $default  = crypt($password, $salt);
-    $sha256   = crypt($password, 
-        '$5$rounds=' . $rounds . '$' . $salt . '$');
-    echo "Default : $default\n";
-    echo "SHA-256 : $sha256\n";
-    ```
+$default  = crypt($password, $salt);
+$sha256   = crypt($password, 
+    '$5$rounds=' . $rounds . '$' . $salt . '$');
+echo "Default : $default\n";
+echo "SHA-256 : $sha256\n";
+```
 
 以下是在 PHP 7 中运行代码示例的输出：
 
@@ -1362,62 +1362,62 @@ array(3) {
 1.  我们使用`ini_set()`来导致`assert()`抛出一个异常。我们还定义了一个变量`$pi`：
 
 ```php
-    // /repo/ch06/php8_assert.php
-    ini_set('assert.exception', 1);
-    $pi = 22/7;
-    echo 'Value of 22/7: ' . $pi . "\n";
-    echo 'Value of M_PI: ' . M_PI . "\n";
-    ```
+// /repo/ch06/php8_assert.php
+ini_set('assert.exception', 1);
+$pi = 22/7;
+echo 'Value of 22/7: ' . $pi . "\n";
+echo 'Value of M_PI: ' . M_PI . "\n";
+```
 
 1.  然后我们尝试一个断言作为一个表达式，`$pi === M_PI`：
 
 ```php
-    try {
-        $line    = __LINE__ + 2;
-        $message = "Assertion expression failed ${line}\n";
-        $result  = assert($pi === M_PI, 
-            new AssertionError($message));
-        echo ($result) ? "Everything's OK\n"
-                       : "We have a problem\n";
-    } catch (Throwable $t) {
-        echo $t->getMessage() . "\n";
-    }
-    ```
+try {
+    $line    = __LINE__ + 2;
+    $message = "Assertion expression failed ${line}\n";
+    $result  = assert($pi === M_PI, 
+        new AssertionError($message));
+    echo ($result) ? "Everything's OK\n"
+                   : "We have a problem\n";
+} catch (Throwable $t) {
+    echo $t->getMessage() . "\n";
+}
+```
 
 1.  在最后的`try`/`catch`块中，我们尝试一个断言作为一个字符串：
 
 ```php
-    try {
-        $line    = __LINE__ + 2;
-        $message = "Assertion string failed ${line}\n";
-        $result  = assert('$pi === M_PI', 
-            new AssertionError($message));
-        echo ($result) ? "Everything's OK\n" 
-                       : "We have a problem\n";
-    } catch (Throwable $t) {
-        echo $t->getMessage() . "\n";
-    }
-    ```
+try {
+    $line    = __LINE__ + 2;
+    $message = "Assertion string failed ${line}\n";
+    $result  = assert('$pi === M_PI', 
+        new AssertionError($message));
+    echo ($result) ? "Everything's OK\n" 
+                   : "We have a problem\n";
+} catch (Throwable $t) {
+    echo $t->getMessage() . "\n";
+}
+```
 
 1.  当我们在 PHP 7 中运行程序时，一切都按预期工作：
 
 ```php
-    root@php8_tips_php7 [ /repo/ch06 ]# php php8_assert.php 
-    Value of 22/7: 3.1428571428571
-    Value of M_PI: 3.1415926535898
-    Assertion as expression failed on line 18
-    Assertion as a string failed on line 28
-    ```
+root@php8_tips_php7 [ /repo/ch06 ]# php php8_assert.php 
+Value of 22/7: 3.1428571428571
+Value of M_PI: 3.1415926535898
+Assertion as expression failed on line 18
+Assertion as a string failed on line 28
+```
 
 1.  `M_PI`的值来自数学扩展，比简单地将 22 除以 7 要准确得多！因此，两个断言都会引发异常。然而，在 PHP 8 中，输出显著不同：
 
 ```php
-    root@php8_tips_php8 [ /repo/ch06 ]# php php8_assert.php 
-    Value of 22/7: 3.1428571428571
-    Value of M_PI: 3.1415926535898
-    Assertion as expression failed on line 18
-    Everything's OK
-    ```
+root@php8_tips_php8 [ /repo/ch06 ]# php php8_assert.php 
+Value of 22/7: 3.1428571428571
+Value of M_PI: 3.1415926535898
+Assertion as expression failed on line 18
+Everything's OK
+```
 
 将字符串作为断言解释为表达式。因为字符串不为空，布尔结果为`TRUE`，返回了一个错误的结果。如果您的代码依赖于将字符串作为断言的结果，它注定会失败。然而，从 PHP 8 的输出中可以看出，作为表达式的断言在 PHP 8 中与 PHP 7 中的工作方式相同。
 

@@ -309,42 +309,42 @@ Continues ...
 1.  我们首先定义一个简单的函数，用于将两个数字相加，如下所示：
 
 ```php
-    // ch03/php8_array_unpack.php
-    function add($a, $b) { return $a + $b; }
-    ```
+// ch03/php8_array_unpack.php
+function add($a, $b) { return $a + $b; }
+```
 
 1.  为了说明，假设数据以数字对的形式存在数组中，每个数字对都要相加：
 
 ```php
-    $vals = [ [18,48], [72,99], [11,37] ];
-    ```
+$vals = [ [18,48], [72,99], [11,37] ];
+```
 
 1.  在循环中，我们使用可变操作符（`...`）来展开对`add()`函数的调用中的数组对，如下所示：
 
 ```php
-    foreach ($vals as $pair) {
-        echo 'The sum of ' . implode(' + ', $pair) . 
-             ' is ';
-        echo add(...$pair);
-    }
-    ```
+foreach ($vals as $pair) {
+    echo 'The sum of ' . implode(' + ', $pair) . 
+         ' is ';
+    echo add(...$pair);
+}
+```
 
 刚才展示的示例演示了开发人员如何使用可变操作符来强制展开。然而，许多 PHP 数组函数在内部执行展开操作。考虑以下示例：
 
 1.  首先，我们定义一个由字母组成的数组。如果我们输出`array_pop()`的返回值，我们会看到输出的是字母`Z`，如下面的代码片段所示：
 
 ```php
-    // ch03/php8_warn_array_unpack.php
-    $alpha = range('A','Z');
-    echo array_pop($alpha) . "\n";
-    ```
+// ch03/php8_warn_array_unpack.php
+$alpha = range('A','Z');
+echo array_pop($alpha) . "\n";
+```
 
 1.  我们可以使用`implode()`将数组展平为字符串来实现相同的结果，并使用字符串解引用来返回最后一个字母，如下面的代码片段所示：
 
 ```php
-    $alpha = implode('', range('A','Z'));
-    echo $alpha[-1];
-    ```
+$alpha = implode('', range('A','Z'));
+echo $alpha[-1];
+```
 
 1.  然而，如果我们尝试在字符串上使用`array_pop()`，就像这里所示，在 PHP 7 和早期版本中我们会得到一个`Warning`：
 
@@ -353,14 +353,14 @@ Continues ...
 1.  在 PHP 7.1 下运行时的输出如下：
 
 ```php
-    ZZPHP Warning:  array_pop() expects parameter 1 to be array, string given in /repo/ch03/php8_warn_array_unpack.php on line 14
-    ```
+ZZPHP Warning:  array_pop() expects parameter 1 to be array, string given in /repo/ch03/php8_warn_array_unpack.php on line 14
+```
 
 1.  以下是在相同的代码文件下在 PHP 8 下运行时的输出：
 
 ```php
-    ZZPHP Fatal error:  Uncaught TypeError: array_pop(): Argument #1 ($array) must be of type array, string given in /repo/ch03/php8_warn_array_unpack.php:14
-    ```
+ZZPHP Fatal error:  Uncaught TypeError: array_pop(): Argument #1 ($array) must be of type array, string given in /repo/ch03/php8_warn_array_unpack.php:14
+```
 
 正如我们已经提到的，这里是另一个例子，以前会导致`Warning`的情况现在在 PHP 8 中导致`TypeError`。然而，这两组输出也说明了，尽管你可以像操作数组一样对字符串进行解引用，但字符串不能以与数组相同的方式进行解包。
 

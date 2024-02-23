@@ -154,33 +154,33 @@ PHPDoc 标签是以`@`符号为前缀的单词，并且只有在它们是 DocBlo
 1.  在项目中添加一个名为`sample1.php`的 PHP 文件，并输入一个 PHP 函数，如下所示：
 
 ```php
-    function testFunc(DateTime $param1, $param2, string $param3 = NULL)
-    {
-    $number = 7;
-    return $number;
-    }
+function testFunc(DateTime $param1, $param2, string $param3 = NULL)
+{
+$number = 7;
+return $number;
+}
 
-    ```
+```
 
 在这个函数中，我们可以看到有三个参数传递到`testFunc`方法中-`$param1`作为`DateTime`，`$param2`没有类型提示，因为它可能具有混合类型的值，`$param3`是可选的，默认值为`NULL`。此外，在函数体内，函数包含一个整数类型变量，并且也返回该整数类型。
 
 1.  在`testFunc`函数之前的行中键入`/**`，然后按*Enter*。您会看到 NetBeans 解析函数并在函数之前根据 PHPDoc 标准生成文档，看起来类似于以下内容：
 
 ```php
-    **/**
-    *
-    * @param DateTime $param1
-    * @param type $param2
-    * @param string $param3
-    * @return int
-    */**
-    function testFunc(DateTime $param1, $param2, string $param3 = NULL)
-    {
-    $number = 7;
-    return $number;
-    }
+**/**
+*
+* @param DateTime $param1
+* @param type $param2
+* @param string $param3
+* @return int
+*/**
+function testFunc(DateTime $param1, $param2, string $param3 = NULL)
+{
+$number = 7;
+return $number;
+}
 
-    ```
+```
 
 在前面的代码片段中，我们可以看到 NetBeans 生成了文档，其中提到了参数和返回类型，列举如下：
 
@@ -193,29 +193,29 @@ PHPDoc 标签是以`@`符号为前缀的单词，并且只有在它们是 DocBlo
 1.  您可以在文档中为每个变量添加描述；在变量名旁边，只需加上一个前导空格的描述，如下所示：
 
 ```php
-    /**
-    *
-    * @param DateTime $param1 this is parameter1
-    * @param array $param2 this is parameter2
-    * @param string $param3 this is parameter3 which is optional
-    * @return int what is returned, goes here
-    */
+/**
+*
+* @param DateTime $param1 this is parameter1
+* @param array $param2 this is parameter2
+* @param string $param3 this is parameter3 which is optional
+* @return int what is returned, goes here
+*/
 
-    ```
+```
 
 1.  此外，您可能希望为文档添加一个简短的描述，看起来类似于以下内容：
 
 ```php
-    /**
-    * a short description goes here
-    *
-    * @param DateTime $param1 this is parameter1
-    * @param array $param2 this is parameter2
-    * @param string $param3 this is parameter3 which is optional
-    * @return int what is returned, goes here
-    */
+/**
+* a short description goes here
+*
+* @param DateTime $param1 this is parameter1
+* @param array $param2 this is parameter2
+* @param string $param3 this is parameter3 which is optional
+* @return int what is returned, goes here
+*/
 
-    ```
+```
 
 1.  现在，让我们看看这个 NetBeans 生成的文档是什么样子，当有人试图从项目中的任何地方调用这个`testFunc`时。尝试在任何地方输入函数名。比如，在项目内的`index.php`文件中开始输入函数名，你会看到 NetBeans 自动提示该函数名以及参数提示和文档，如下所示：![操作时间-记录 PHP 函数或方法](img/5801_05_01.jpg)
 
@@ -244,20 +244,20 @@ PHPDoc 标签是以`@`符号为前缀的单词，并且只有在它们是 DocBlo
 1.  使用您自己的方式更新 DocBlock，使其看起来类似于以下内容：
 
 ```php
-    **/**
-    * Short description of the Test Class
-    *
-    * Long multiline description of the Test Class goes here
-    *
-    * Note: any notes required
-    * @package Chapter5
-    * @author M A Hossain Tonu
-    * @version 1.0
-    * @copyright never
-    * @link http://mahtonu.wordpress.com
-    */**
+**/**
+* Short description of the Test Class
+*
+* Long multiline description of the Test Class goes here
+*
+* Note: any notes required
+* @package Chapter5
+* @author M A Hossain Tonu
+* @version 1.0
+* @copyright never
+* @link http://mahtonu.wordpress.com
+*/**
 
-    ```
+```
 
 1.  在上述文档中，您可以看到已为类添加了相应的标签，因此在尝试使用代码完成实例化类对象时，可以使用类信息，如下所示：![执行时间-记录 PHP 类和类变量](img/5801_05_05.jpg)
 
@@ -266,49 +266,49 @@ PHPDoc 标签是以`@`符号为前缀的单词，并且只有在它们是 DocBlo
 1.  现在，按照以下方式在`Test`类中输入一个名为`$variable`的类变量：
 
 ```php
-    public $variable;
+public $variable;
 
-    ```
+```
 
 1.  要添加类变量文档，请键入`/**`，并在声明它的行之前按*Enter*，以便文档看起来类似于以下内容：
 
 ```php
-    /**
-    *
-    * @var type
-    */
+/**
+*
+* @var type
+*/
 
-    ```
+```
 
 1.  在这里，您可以按照以下方式更新块：
 
 ```php
-    /**
-    * example of documenting a variable's type
-    * @var string
-    */
+/**
+* example of documenting a variable's type
+* @var string
+*/
 
-    ```
+```
 
 1.  为了在以后的部分查看类层次结构树，您可以在我们的项目中添加一个名为`TestChild`的子类，扩展`Test`类，看起来类似于以下内容：
 
 ```php
-    /**
-    * Short description of the TestChild Class
-    *
-    * Long multiline description of the TestChild Class goes here
-    *
-    * Note: any notes required
-    * @package Chapter5
-    * @author M A Hossain Tonu
-    * @version 1.0
-    * @copyright never
-    * @link http://mahtonu.wordpress.com
-    */
-    class TestChild extends Test {
-    }
+/**
+* Short description of the TestChild Class
+*
+* Long multiline description of the TestChild Class goes here
+*
+* Note: any notes required
+* @package Chapter5
+* @author M A Hossain Tonu
+* @version 1.0
+* @copyright never
+* @link http://mahtonu.wordpress.com
+*/
+class TestChild extends Test {
+}
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -325,27 +325,27 @@ PHPDoc 标签是以`@`符号为前缀的单词，并且只有在它们是 DocBlo
 1.  在`TestChild`PHP 类内或类的前面文档块中，我们可以使用`@todo`标签；在多行注释或 DocBlock 中，添加类似于以下内容的标签：
 
 ```php
-    /**
-    * @todo have to add class variable and functions
-    */
+/**
+* @todo have to add class variable and functions
+*/
 
-    ```
+```
 
 在上面的文档块中，我们可以看到任务已经被描述在标签旁，用空格分隔。此外，可以使用单行注释添加`@todo`标签，如下所示：
 
 ```php
-    //TODO need to add class variable and functions
+//TODO need to add class variable and functions
 
-    ```
+```
 
 1.  因此，`TestChild`类可能看起来类似于以下内容：
 
 ```php
-    class TestChild extends Test {
-    //TODO have to add class variable and functions
-    }
+class TestChild extends Test {
+//TODO have to add class variable and functions
+}
 
-    ```
+```
 
 1.  当我们在文件中添加任务时，任务应该在 NetBeans 的**任务**或**操作项**窗口中可见；按下*Ctrl* + *6*打开窗口，添加的任务应该在**任务**窗口中列出，如下截图所示：![执行时间-使用@todo 标签](img/5801_05_06.jpg)
 
@@ -378,10 +378,10 @@ ApiGen 是使用 PHPDoc 标准创建 API 文档的工具，并支持最新的 PH
 1.  从终端或命令提示符中运行以下命令安装 ApiGen：
 
 ```php
-    **pear config-set auto_discover 1
-    pear install pear.apigen.org/apigen**
+**pear config-set auto_discover 1
+pear install pear.apigen.org/apigen**
 
-    ```
+```
 
 `install`命令将自动下载并安装 ApiGen 以及其所有依赖项。如果您已经启用了 PEAR`auto_discover`，则跳过第一个命令。
 

@@ -152,16 +152,16 @@ Composer 和 Modman 是可用于安装的替代选项。有关每个选项的更
 1.  添加以下代码（文件位置为`app/code/local/Mdg/Giftregistry/etc/config.xml`）：
 
 ```php
-    …
-    <phpunit>
-            <suite>
-                <modules>
-                        <Mdg_Giftregistry/>
-                </modules>
-             </suite>
-    </phpunit>
-    …
-    ```
+…
+<phpunit>
+        <suite>
+            <modules>
+                    <Mdg_Giftregistry/>
+            </modules>
+         </suite>
+</phpunit>
+…
+```
 
 这个新的配置节点允许 PHPUnit 扩展识别扩展并运行匹配的测试。
 
@@ -298,51 +298,51 @@ Config/
 1.  创建一个名为`registryList.yaml`的新文件，并将以下代码粘贴到其中（文件位置为`app/code/local/Mdg/Giftregistry/Test/Model/fixtures/registryList.yaml`）：
 
 ```php
-      website: # Initialize websites
-        - website_id: 2
-          code: default
-          name: Test Website
-          default_group_id: 2
-      group: # Initializes store groups
-        - group_id: 2
-          website_id: 2
-          name: Test Store Group
-          default_store_id: 2
-          root_category_id: 2 # Default Category
-      store: # Initializes store views
-        - store_id: 2
-          website_id: 2
-          group_id: 2
-          code: default
-          name: Default Test Store
-          is_active: 1
-    eav:
-       customer_customer:
-         - entity_id: 1
-           entity_type_id: 3
-           website_id: 2
-           email: test@magentotest.com
-           group_id: 2
-           store_id: 2
-           is_active: 1
-       mdg_giftregistry_entity:
-         - entity_id: 1
-           customer_id: 1
-           type_id: 2
-           website_id: 2
-           event_date: 12/12/2012
-           event_country: Canada
-           event_location: Dundas Square
-           created_at: 21/12/2012
-         - entity_id: 2
-           customer_id: 1
-           type_id: 3
-           website_id: 2
-           event_date: 01/01/2013
-           event_country: Canada
-           event_location: Eaton Center
-           created_at: 21/12/2012
-    ```
+  website: # Initialize websites
+    - website_id: 2
+      code: default
+      name: Test Website
+      default_group_id: 2
+  group: # Initializes store groups
+    - group_id: 2
+      website_id: 2
+      name: Test Store Group
+      default_store_id: 2
+      root_category_id: 2 # Default Category
+  store: # Initializes store views
+    - store_id: 2
+      website_id: 2
+      group_id: 2
+      code: default
+      name: Default Test Store
+      is_active: 1
+eav:
+   customer_customer:
+     - entity_id: 1
+       entity_type_id: 3
+       website_id: 2
+       email: test@magentotest.com
+       group_id: 2
+       store_id: 2
+       is_active: 1
+   mdg_giftregistry_entity:
+     - entity_id: 1
+       customer_id: 1
+       type_id: 2
+       website_id: 2
+       event_date: 12/12/2012
+       event_country: Canada
+       event_location: Dundas Square
+       created_at: 21/12/2012
+     - entity_id: 2
+       customer_id: 1
+       type_id: 3
+       website_id: 2
+       event_date: 01/01/2013
+       event_country: Canada
+       event_location: Eaton Center
+       created_at: 21/12/2012
+```
 
 它可能看起来不像，但我们通过这个固定添加了很多信息。我们将创建以下固定数据：
 
@@ -371,23 +371,23 @@ Config/
 1.  添加以下基本代码（文件位置为`app/code/local/Mdg/Giftregistry/Test/Model/Registry.php`）：
 
 ```php
-    <?php
-    class Mdg_Giftregistry_Test_Model_Registry extends EcomDev_PHPUnit_Test_Case
+<?php
+class Mdg_Giftregistry_Test_Model_Registry extends EcomDev_PHPUnit_Test_Case
+{
+    /**
+     * Listing available registries
+     *
+     * @test
+     * @loadFixture
+     * @doNotIndexAll
+     * @dataProvider dataProvider
+     */
+    public function registryList()
     {
-        /**
-         * Listing available registries
-         *
-         * @test
-         * @loadFixture
-         * @doNotIndexAll
-         * @dataProvider dataProvider
-         */
-        public function registryList()
-        {
 
-        }
     }
-    ```
+}
+```
 
 我们刚刚创建了基本函数，但还没有添加任何逻辑。在这之前，让我们先看看什么构成了一个`Test`案例。
 
@@ -434,23 +434,23 @@ Config/
 1.  在`registryList()`函数内添加以下代码（文件位置为`app/code/local/Mdg/Giftregistry/Test/Model/Registry.php`）：
 
 ```php
-        /**
-         * Listing available registries
-         *
-         * @test
-         * @loadFixture
-         * @doNotIndexAll
-         * @dataProvider dataProvider
-         */
-        public function registryList()
-        {
-            $registryList = Mage::getModel('mdg_giftregistry/entity')->getCollection();
-            $this->assertEquals(
-                2,
-                $registryList->count()
-            );
-        }
-    ```
+    /**
+     * Listing available registries
+     *
+     * @test
+     * @loadFixture
+     * @doNotIndexAll
+     * @dataProvider dataProvider
+     */
+    public function registryList()
+    {
+        $registryList = Mage::getModel('mdg_giftregistry/entity')->getCollection();
+        $this->assertEquals(
+            2,
+            $registryList->count()
+        );
+    }
+```
 
 这是一个非常基本的测试；我们所做的就是加载一个注册表集合。在这种情况下，所有的注册表都是可用的，然后他们运行一个断言来检查集合计数是否匹配。
 
@@ -510,27 +510,27 @@ Config/
 1.  在`registryItemsList()`函数内添加以下代码（文件位置为`app/code/local/Mdg/Giftregistry/Test/Model/Registry.php`）：
 
 ```php
-        /**
-         * Listing available items for a specific registry
-         *
-         * @test
-         * @loadFixture
-         * @doNotIndexAll
-         * @dataProvider dataProvider
-         */
-        public function registryItemsList()
-        {
-            $customerId = 1;
-            $registry   = Mage::getModel('mdg_giftregistry/entity')
-    ->loadByCustomerId($customerId);
+    /**
+     * Listing available items for a specific registry
+     *
+     * @test
+     * @loadFixture
+     * @doNotIndexAll
+     * @dataProvider dataProvider
+     */
+    public function registryItemsList()
+    {
+        $customerId = 1;
+        $registry   = Mage::getModel('mdg_giftregistry/entity')
+->loadByCustomerId($customerId);
 
-            $registryItems = $registry->getItems();
-            $this->assertEquals(
-                3,
-                $registryItems->count()
-            );
-        }
-    ```
+        $registryItems = $registry->getItems();
+        $this->assertEquals(
+            3,
+            $registryItems->count()
+        );
+    }
+```
 
 我们还需要一个新的 fixture 来配合我们的新`Test`案例：
 
@@ -541,53 +541,53 @@ Config/
 1.  创建一个名为`registryItemsList.yaml`的新文件（文件位置为`app/code/local/Mdg/Giftregistry/Test/Model/fixtures/ registryItemsList.yaml`）：
 
 ```php
-      website: # Initialize websites
-        - website_id: 2
-          code: default
-          name: Test Website
-          default_group_id: 2
-      group: # Initializes store groups
-        - group_id: 2
-          website_id: 2
-          name: Test Store Group
-          default_store_id: 2
-          root_category_id: 2 # Default Category
-      store: # Initializes store views
-        - store_id: 2
-          website_id: 2
-          group_id: 2
-          code: default
-          name: Default Test Store
-          is_active: 1
-    eav:
-       customer_customer:
-         - entity_id: 1
-           entity_type_id: 3
-           website_id: 2
-           email: test@magentotest.com
-           group_id: 2
-           store_id: 2
-           is_active: 1
-       mdg_giftregistry_entity:
-         - entity_id: 1
-           customer_id: 1
-           type_id: 2
-           website_id: 2
-           event_date: 12/12/2012
-           event_country: Canada
-           event_location: Dundas Square
-           created_at: 21/12/2012
-       mdg_giftregistry_item:
-         - item_id: 1
-           registry_id: 1
-           product_id: 1
-         - item_id: 2
-           registry_id: 1
-           product_id: 2
-         - item_id: 3
-           registry_id: 1
-           product_id: 3 
-    ```
+  website: # Initialize websites
+    - website_id: 2
+      code: default
+      name: Test Website
+      default_group_id: 2
+  group: # Initializes store groups
+    - group_id: 2
+      website_id: 2
+      name: Test Store Group
+      default_store_id: 2
+      root_category_id: 2 # Default Category
+  store: # Initializes store views
+    - store_id: 2
+      website_id: 2
+      group_id: 2
+      code: default
+      name: Default Test Store
+      is_active: 1
+eav:
+   customer_customer:
+     - entity_id: 1
+       entity_type_id: 3
+       website_id: 2
+       email: test@magentotest.com
+       group_id: 2
+       store_id: 2
+       is_active: 1
+   mdg_giftregistry_entity:
+     - entity_id: 1
+       customer_id: 1
+       type_id: 2
+       website_id: 2
+       event_date: 12/12/2012
+       event_country: Canada
+       event_location: Dundas Square
+       created_at: 21/12/2012
+   mdg_giftregistry_item:
+     - item_id: 1
+       registry_id: 1
+       product_id: 1
+     - item_id: 2
+       registry_id: 1
+       product_id: 2
+     - item_id: 3
+       registry_id: 1
+       product_id: 3 
+```
 
 让我们运行我们的测试套件：
 
@@ -616,8 +616,8 @@ Tests: 2, Assertions: 2, Failures 0
 1.  创建一个名为`registryList.yaml`的新文件（文件位置为`app/code/local/Mdg/Giftregistry/Test/Model/expectations/registryList.yaml`）。
 
 ```php
-    count: 2
-    ```
+count: 2
+```
 
 是不是很容易？好吧，它是如此容易，以至于我们将再次为`registryItemsList`测试案例做同样的事情：
 
@@ -628,8 +628,8 @@ Tests: 2, Assertions: 2, Failures 0
 1.  在`expectations`文件夹中创建一个名为`registryItemsList.yaml`的新文件（文件位置为`app/code/local/Mdg/Giftregistry/Test/Model/expectations/registryItemsList.yaml`）：
 
 ```php
-    count: 3
-    ```
+count: 3
+```
 
 最后，我们需要做的最后一件事是更新我们的`Test`案例类以使用期望。确保更新文件具有以下代码（文件位置为`app/code/local/Mdg/Giftregistry/Test/Model/Registry.php`）：
 
@@ -722,10 +722,10 @@ class Mdg_Giftregistry_Test_Model_Registry extends EcomDev_PHPUnit_Test_Case
 1.  运行以下命令：
 
 ```php
-    **modgit init**
-    **modgit -e README.md clone mink https://github.com/jreinke/magento-mink.git**
+**modgit init**
+**modgit -e README.md clone mink https://github.com/jreinke/magento-mink.git**
 
-    ```
+```
 
 就是这样。Modgit 将负责直接从 GitHub 存储库安装文件。
 
@@ -742,73 +742,73 @@ class Mdg_Giftregistry_Test_Model_Registry extends EcomDev_PHPUnit_Test_Case
 1.  复制以下代码（文件位置为`app/code/local/Mdg/Giftregistry/Test/Mink/Registry.php`）：
 
 ```php
-    <?php
-    class Mdg_Giftregistry_Test_Mink_Registry extends JR_Mink_Test_Mink 
-    {   
-        public function testAddProductToRegistry()
-        {
-            $this->section('TEST ADD PRODUCT TO REGISTRY');
-            $this->setCurrentStore('default');
-            $this->setDriver('goutte');
-            $this->context();
+<?php
+class Mdg_Giftregistry_Test_Mink_Registry extends JR_Mink_Test_Mink 
+{   
+    public function testAddProductToRegistry()
+    {
+        $this->section('TEST ADD PRODUCT TO REGISTRY');
+        $this->setCurrentStore('default');
+        $this->setDriver('goutte');
+        $this->context();
 
-            // Go to homepage
-            $this->output($this->bold('Go To the Homepage'));
-            $url = Mage::getStoreConfig('web/unsecure/base_url');
-            $this->visit($url);
-            $category = $this->find('css', '#nav .nav-1-1 a');
-            if (!$category) {
-                return false;
-            }
+        // Go to homepage
+        $this->output($this->bold('Go To the Homepage'));
+        $url = Mage::getStoreConfig('web/unsecure/base_url');
+        $this->visit($url);
+        $category = $this->find('css', '#nav .nav-1-1 a');
+        if (!$category) {
+            return false;
+        }
 
-            // Go to the Login page
-            $loginUrl = $this->find('css', 'ul.links li.last a');
-            if ($loginUrl) {
-                $this->visit($loginUrl->getAttribute('href'));
-            }
+        // Go to the Login page
+        $loginUrl = $this->find('css', 'ul.links li.last a');
+        if ($loginUrl) {
+            $this->visit($loginUrl->getAttribute('href'));
+        }
 
-            $login = $this->find('css', '#email');
-            $pwd = $this->find('css', '#pass');
-            $submit = $this->find('css', '#send2');
+        $login = $this->find('css', '#email');
+        $pwd = $this->find('css', '#pass');
+        $submit = $this->find('css', '#send2');
 
-            if ($login && $pwd && $submit) {
-                $email = 'user@example.com';
-                $password = 'password';
-                $this->output(sprintf("Try to authenticate '%s' with password '%s'", $email, $password));
-                $login->setValue($email);
-                $pwd->setValue($password);
-                $submit->click();
-                $this->attempt(
-                    $this->find('css', 'div.welcome-msg'),
-                    'Customer successfully logged in',
-                    'Error authenticating customer'
-                );
-            }
+        if ($login && $pwd && $submit) {
+            $email = 'user@example.com';
+            $password = 'password';
+            $this->output(sprintf("Try to authenticate '%s' with password '%s'", $email, $password));
+            $login->setValue($email);
+            $pwd->setValue($password);
+            $submit->click();
+            $this->attempt(
+                $this->find('css', 'div.welcome-msg'),
+                'Customer successfully logged in',
+                'Error authenticating customer'
+            );
+        }
 
-            // Go to the category page
-            $this->output($this->bold('Go to the category list'));
-            $this->visit($category->getAttribute('href'));
-            $product = $this->find('css', '.category-products li.first a');
-            if (!$product) {
-                return false;
-            }
+        // Go to the category page
+        $this->output($this->bold('Go to the category list'));
+        $this->visit($category->getAttribute('href'));
+        $product = $this->find('css', '.category-products li.first a');
+        if (!$product) {
+            return false;
+        }
 
-            // Go to product view
-            $this->output($this->bold('Go to product view'));
-            $this->visit($product->getAttribute('href'));
-            $form = $this->find('css', '#product_registry_form');
-            if ($form) {
-                $addToCartUrl = $form->getAttribute('action');
-                $this->visit($addToCartUrl);
-                $this->attempt(
-                    $this->find('css', '#btn-add-giftregistry'),
-                    'Product added to gift registry successfully',
-                    'Error adding product to gift registry'
-                );
-            }
+        // Go to product view
+        $this->output($this->bold('Go to product view'));
+        $this->visit($product->getAttribute('href'));
+        $form = $this->find('css', '#product_registry_form');
+        if ($form) {
+            $addToCartUrl = $form->getAttribute('action');
+            $this->visit($addToCartUrl);
+            $this->attempt(
+                $this->find('css', '#btn-add-giftregistry'),
+                'Product added to gift registry successfully',
+                'Error adding product to gift registry'
+            );
         }
     }
-    ```
+}
+```
 
 仅仅乍一看，你就可以看出这个功能测试与我们之前构建的单元测试有很大不同，尽管看起来代码很多，但实际上很简单。之前的测试已经在代码块中完成了。让我们分解一下之前的测试在做什么：
 

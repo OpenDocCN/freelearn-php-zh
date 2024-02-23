@@ -103,39 +103,39 @@ Doctrine 实体存储库是表数据网关设计模式的一种实现。有关�
 1.  重新打开`Post.php`文件，位于`src/Blog/Entity/`位置，并在现有的`@Entity`注释中添加一个`repositoryClass`属性，就像下面的代码行一样：
 
 ```php
-    @Entity(repositoryClass="PostRepository")
-    ```
+@Entity(repositoryClass="PostRepository")
+```
 
 1.  Doctrine 命令行工具还提供了实体存储库生成器。输入以下命令来使用它：
 
 ```php
-    **php vendor/bin/doctrine.php orm:generate:repositories src/**
+**php vendor/bin/doctrine.php orm:generate:repositories src/**
 
-    ```
+```
 
 1.  打开这个新的空自定义存储库，我们刚刚在`src/Blog/Entity/`位置生成的`PostRepository.php`文件。添加以下方法来检索帖子和评论：
 
 ```php
-       /**
-         * Finds a post with its comments
-         *
-         * @param  int  $id
-         * @return Post
-         */
-        public function findWithComments($id)
-        {
-            return $this
-                ->createQueryBuilder('p')
-                ->addSelect('c')
-                ->leftJoin('p.comments', 'c')
-                ->where('p.id = :id')
-                ->orderBy('c.publicationDate', 'ASC')
-                ->setParameter('id', $id)
-                ->getQuery()
-                ->getOneOrNullResult()
-            ;
-        }
-    ```
+   /**
+     * Finds a post with its comments
+     *
+     * @param  int  $id
+     * @return Post
+     */
+    public function findWithComments($id)
+    {
+        return $this
+            ->createQueryBuilder('p')
+            ->addSelect('c')
+            ->leftJoin('p.comments', 'c')
+            ->where('p.id = :id')
+            ->orderBy('c.publicationDate', 'ASC')
+            ->setParameter('id', $id)
+            ->getQuery()
+            ->getOneOrNullResult()
+        ;
+    }
+```
 
 我们的自定义存储库扩展了 Doctrine 提供的默认实体存储库。前面章节中描述的标准方法仍然可用。
 
@@ -256,28 +256,28 @@ $post = $entityManager->getRepository('Blog\Entity\Post')->findWithComments($_GE
 1.  在我们的自定义`PostRepository`类（`src/Blog/Entity/PostRepository.php`）中添加另一个方法，使用以下代码：
 
 ```php
-        /**
-         * Finds posts having tags
-         *
-         * @param string[] $tagNames
-         * @return Post[]
-         */
-        public function findHavingTags(array $tagNames)
-        {
-            return $queryBuilder = $this
-                ->createQueryBuilder('p')
-                      ->addSelect('t')
-                ->join('p.tags', 't')
-                ->where('t.name IN (:tagNames)')
-                ->groupBy('p.id')
-                ->having('COUNT(t.name) >= :numberOfTags')
-                ->setParameter('tagNames', $tagNames)
-                ->setParameter('numberOfTags',count($tagNames))
-                ->getQuery()
-                ->getResult()
-            ;
-        }
-    ```
+    /**
+     * Finds posts having tags
+     *
+     * @param string[] $tagNames
+     * @return Post[]
+     */
+    public function findHavingTags(array $tagNames)
+    {
+        return $queryBuilder = $this
+            ->createQueryBuilder('p')
+                  ->addSelect('t')
+            ->join('p.tags', 't')
+            ->where('t.name IN (:tagNames)')
+            ->groupBy('p.id')
+            ->having('COUNT(t.name) >= :numberOfTags')
+            ->setParameter('tagNames', $tagNames)
+            ->setParameter('numberOfTags',count($tagNames))
+            ->getQuery()
+            ->getResult()
+        ;
+    }
+```
 
 这个方法有点复杂。它以标签名称数组的参数形式接受参数，并返回具有所有这些标签的帖子数组。
 
@@ -296,17 +296,17 @@ $post = $entityManager->getRepository('Blog\Entity\Post')->findWithComments($_GE
 1.  编辑`web/`中的`index.php`文件以使用我们的新方法。在这里，你会找到以下代码：
 
 ```php
-    /** @var $posts \Blog\Entity\Post[] Retrieve the list ofall blog posts */
-    $posts = $entityManager->getRepository('Blog\Entity\Post')->findAll();
-    ```
+/** @var $posts \Blog\Entity\Post[] Retrieve the list ofall blog posts */
+$posts = $entityManager->getRepository('Blog\Entity\Post')->findAll();
+```
 
 并用下一个代码片段替换前面的代码：
 
 ```php
-    $repository = $entityManager->getRepository('Blog\Entity\Post');
-    /** @var $posts \Blog\Entity\Post[] Retrieve the list ofall blog posts */
-    $posts = isset($_GET['tags']) ? $repository->findHavingTags($_GET['tags']) : $repository->findAll();
-    ```
+$repository = $entityManager->getRepository('Blog\Entity\Post');
+/** @var $posts \Blog\Entity\Post[] Retrieve the list ofall blog posts */
+$posts = isset($_GET['tags']) ? $repository->findHavingTags($_GET['tags']) : $repository->findAll();
+```
 
 现在，当 URL 中存在名为`tags`的`GET`参数时，它将用于过滤帖子。更好的是，如果传入了多个逗号分隔的标签，只会显示具有所有这些标签的帖子。
 
@@ -315,22 +315,22 @@ $post = $entityManager->getRepository('Blog\Entity\Post')->findWithComments($_GE
 1.  在同一个文件中，找到以下代码：
 
 ```php
-            <p>
-                <?=nl2br(htmlspecialchars($post->getBody()))?>
-            </p>
-    ```
+        <p>
+            <?=nl2br(htmlspecialchars($post->getBody()))?>
+        </p>
+```
 
 并按以下方式添加标签列表：
 
 ```php
-            <ul>
-            <?php foreach ($post->getTags() as $tag): ?>
-                <li>
-                    <a href="index.php?tags=<?=urlencode($tag)?>"><?=htmlspecialchars($tag)?></a>
-                </li>
-            <?php endforeach ?>
-            </ul>
-    ```
+        <ul>
+        <?php foreach ($post->getTags() as $tag): ?>
+            <li>
+                <a href="index.php?tags=<?=urlencode($tag)?>"><?=htmlspecialchars($tag)?></a>
+            </li>
+        <?php endforeach ?>
+        </ul>
+```
 
 显示带有指向标签页面的链接的智能标签列表。您可以复制此代码，然后将其粘贴到`web/`位置的`view-post.php`文件中；或者更好的是，*不要重复自己*：创建一个小的辅助函数来显示标签。
 

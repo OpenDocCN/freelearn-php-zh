@@ -57,21 +57,21 @@ XDebug 扩展默认包含在 XAMPP 捆绑包中。您只需从加载的`.ini`文
 1.  打开位于`D:\xampp\php\php.ini`的`php.ini`文件，并找到以下行：
 
 ```php
-    [XDebug]
-    ;zend_extension = "D:\xampp\php\ext\php_xdebug.dll"
+[XDebug]
+;zend_extension = "D:\xampp\php\ext\php_xdebug.dll"
 
-    ```
+```
 
 1.  找到并取消注释以下行，删除前导分号：
 
 ```php
-    zend_extension = "D:\xampp\php\ext\php_xdebug.dll"
-    xdebug.remote_enable = 1
-    xdebug.remote_handler = "dbgp"
-    xdebug.remote_host = "localhost"
-    xdebug.remote_port = 9000
+zend_extension = "D:\xampp\php\ext\php_xdebug.dll"
+xdebug.remote_enable = 1
+xdebug.remote_handler = "dbgp"
+xdebug.remote_host = "localhost"
+xdebug.remote_port = 9000
 
-    ```
+```
 
 1.  保存`php.ini`文件，并从 XAMPP 控制面板重新启动 Apache Web 服务器，以启用 XDebug 扩展。
 
@@ -100,37 +100,37 @@ XDebug 扩展默认包含在 XAMPP 捆绑包中。您只需从加载的`.ini`文
 1.  使用以下命令安装 XDebug：
 
 ```php
-    **sudo apt-get install php5-xdebug** 
+**sudo apt-get install php5-xdebug** 
 
-    ```
+```
 
 1.  使用内置编辑器`gedit`更新`xdebug.ini`。
 
 ```php
-    **sudo gedit /etc/php5/apache2/conf.d/xdebug.ini** 
+**sudo gedit /etc/php5/apache2/conf.d/xdebug.ini** 
 
-    ```
+```
 
 1.  更改`xdebug.ini`，使其如下所示：
 
 ```php
-    **zend_extension=/usr/lib/php5/20090626+lfs/xdebug.so
-    xdebug.remote_enable=1
-    xdebug.remote_handler=dbgp
-    xdebug.remote_mode=req
-    xdebug.remote_host=127.0.0.1
-    xdebug.remote_port=9000** 
+**zend_extension=/usr/lib/php5/20090626+lfs/xdebug.so
+xdebug.remote_enable=1
+xdebug.remote_handler=dbgp
+xdebug.remote_mode=req
+xdebug.remote_host=127.0.0.1
+xdebug.remote_port=9000** 
 
-    ```
+```
 
 请注意，这些配置的第一行可能在`xdebug.ini`中可用，并且您可能需要添加其余行。
 
 1.  重新启动 Apache。
 
 ```php
-    **sudo service apache2 restart** 
+**sudo service apache2 restart** 
 
-    ```
+```
 
 1.  刷新`phpinfo()`页面，找到安装的最新 XDebug 版本号。
 
@@ -213,22 +213,22 @@ XDebug 现在在您的 Mac OSX 上运行。MAMP Pro 用户可以轻松从 MAMP P
 1.  在`index.php`文件中输入以下代码：
 
 ```php
-    <?php
-    $fruits = array("Apple", "Banana", "Berry", "Watermelon");
-    $myfruit = "";
-    fruit_picker(); //first time call
-    echo "My fruit is : " . $myfruit . "<br />\n";
-    fruit_picker(); //second time call
-    echo "My fruit is now: " . $myfruit . "<br />\n";
-    fruit_picker(); //third time call
-    echo "My fruit is finally: " . $myfruit . "<br />\n";
-    function fruit_picker () {
-    Global $myfruit, $fruits;
-    $myfruit = $fruits[rand(0, 3)];
-    }
-    ?>
+<?php
+$fruits = array("Apple", "Banana", "Berry", "Watermelon");
+$myfruit = "";
+fruit_picker(); //first time call
+echo "My fruit is : " . $myfruit . "<br />\n";
+fruit_picker(); //second time call
+echo "My fruit is now: " . $myfruit . "<br />\n";
+fruit_picker(); //third time call
+echo "My fruit is finally: " . $myfruit . "<br />\n";
+function fruit_picker () {
+Global $myfruit, $fruits;
+$myfruit = $fruits[rand(0, 3)];
+}
+?>
 
-    ```
+```
 
 前面的代码包含：
 
@@ -273,13 +273,13 @@ XDebug 现在在您的 Mac OSX 上运行。MAMP Pro 用户可以轻松从 MAMP P
 1.  修改`fruit_picker()`函数如下：
 
 ```php
-    function fruit_picker() {
-    Global $myfruit, $fruits;
-    $old_fruit = $myfruit;
-    $myfruit = $fruits[rand(0, 3)];
-    }
+function fruit_picker() {
+Global $myfruit, $fruits;
+$old_fruit = $myfruit;
+$myfruit = $fruits[rand(0, 3)];
+}
 
-    ```
+```
 
 我们刚刚添加了一行`$old_fruit = $myfruit;`来保存`$myfruit`的先前值，以便我们可以在函数结束时比较`$old_fruit`中的先前选择和`$myfruit`中的新选择。我们实际上想要检查是否选择了相同的水果。
 
@@ -288,9 +288,9 @@ XDebug 现在在您的 Mac OSX 上运行。MAMP Pro 用户可以轻松从 MAMP P
 1.  输入以下表达式，然后单击**确定**。
 
 ```php
-    ($old_fruit == $myfruit)
+($old_fruit == $myfruit)
 
-    ```
+```
 
 我们将在`fruit_picker()`函数的闭括号（}）处观察此表达式结果。如果表达式在函数闭括号处产生（bool）1，那么我们将知道新选择的水果是否与旧的相同，或者再次选择了相同的水果。添加的监视表达式可以在**监视**和**变量**窗口中找到。
 
@@ -369,42 +369,42 @@ Running on: Windows NT....**
 1.  以管理员身份运行命令提示符，转到`pear.bat`文件所属的 PHP 安装目录（D:\xampp\php），并执行以下命令：
 
 ```php
-    **pear upgrade pear** 
+**pear upgrade pear** 
 
-    ```
+```
 
 这将升级现有的 PEAR 安装。在 Ubuntu 或 Mac OS X 系统中，运行以下命令：
 
 ```php
-    **sudo pear upgrade pear** 
+**sudo pear upgrade pear** 
 
-    ```
+```
 
 在 MAMP 的情况下，如果遇到错误 sudo: pear: command not found，则请参阅*配置 MAMP*部分的问题。
 
 1.  要安装最新的 PHPUnit，请输入以下两个命令：
 
 ```php
-    **pear config-set auto_discover 1
-    pear install pear.phpunit.de/PHPUnit** 
+**pear config-set auto_discover 1
+pear install pear.phpunit.de/PHPUnit** 
 
-    ```
+```
 
 它会自动发现下载频道并安装最新的 PHPUnit 以及可用的包。
 
 1.  要检查 PHPUnit 安装，请运行以下命令：
 
 ```php
-    **phpunit version** 
+**phpunit version** 
 
-    ```
+```
 
 您将看到类似以下的命令：
 
 ```php
-    **PHPUnit 3.6.10 by Sebastian Bergmann**.
+**PHPUnit 3.6.10 by Sebastian Bergmann**.
 
-    ```
+```
 
 1.  要列出 PHPUnit 的远程包，请运行以下命令：
 
@@ -494,37 +494,37 @@ Running on: Windows NT....**
 1.  创建一个名为`Calculator`的新项目，在项目中添加一个名为`Calculator`的 PHP 类（右键单击项目节点，然后选择**新建 | PHP 类**，然后插入类名），并为`Calculator`类输入以下代码：
 
 ```php
-    <?php
-    class Calculator {
-    public function add($a, $b) {
-    return $a + $b;
-    }
-    }
-    ?>
+<?php
+class Calculator {
+public function add($a, $b) {
+return $a + $b;
+}
+}
+?>
 
-    ```
+```
 
 您可以看到`add()`方法只是执行两个数字的加法并返回总和。我们将对这个方法进行单元测试，以查看它是否返回了正确的总和。
 
 1.  在下面的代码中添加一个带有`@assert`注释和一些示例输入和输出的注释块。请注意，以下示例中包含一个不正确的断言：
 
 ```php
-    <?php
-    class Calculator {
-    /**
-    * @assert (0, 0) == 0
-    * @assert (0, 1) == 1
-    * @assert (1, 0) == 1
-    * @assert (1, 1) == 2
-    * @assert (1, 2) == 4
-    */
-    public function add($a, $b) {
-    return $a + $b;
-    }
-    }
-    ?>
+<?php
+class Calculator {
+/**
+* @assert (0, 0) == 0
+* @assert (0, 1) == 1
+* @assert (1, 0) == 1
+* @assert (1, 1) == 2
+* @assert (1, 2) == 4
+*/
+public function add($a, $b) {
+return $a + $b;
+}
+}
+?>
 
-    ```
+```
 
 1.  在**项目**窗口中，右键单击`Calculator.php`节点，然后选择**工具 | 创建 PHPUnit 测试**。请注意，您可以使用**源文件**节点中的上下文菜单为项目中的所有文件创建测试。![行动时间-使用 PHPUnit 进行测试](img/5801_04_15.jpg)
 
@@ -561,25 +561,25 @@ NetBeans IDE 通过 PHPUnit 提供了代码覆盖功能。代码覆盖检查 PHP
 1.  打开`Calculator.php`，添加一个重复的`add`函数，并将其命名为`add2`。`Calculator`类现在看起来类似于以下内容：
 
 ```php
-    <?php
-    class Calculator {
-    /**
-    * @assert (0, 0) == 0
-    * @assert (0, 1) == 1
-    * @assert (1, 0) == 1
-    * @assert (1, 1) == 2
-    * @assert (1, 2) == 4
-    */
-    public function add($a, $b) {
-    return $a + $b;
-    }
-    public function add2($a, $b) {
-    return $a + $b;
-    }
-    }
-    ?>
+<?php
+class Calculator {
+/**
+* @assert (0, 0) == 0
+* @assert (0, 1) == 1
+* @assert (1, 0) == 1
+* @assert (1, 1) == 2
+* @assert (1, 2) == 4
+*/
+public function add($a, $b) {
+return $a + $b;
+}
+public function add2($a, $b) {
+return $a + $b;
+}
+}
+?>
 
-    ```
+```
 
 1.  右键单击项目节点。从**上下文**菜单中选择**代码覆盖|收集和显示代码覆盖**。默认情况下，也会选择**显示编辑器栏**。![行动时间-使用代码覆盖](img/5801_04_19.jpg)
 

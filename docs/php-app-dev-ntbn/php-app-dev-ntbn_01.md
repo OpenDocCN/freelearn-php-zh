@@ -239,9 +239,9 @@ XAMPP 不适用于生产环境，而仅适用于开发环境中的开发人员�
 1.  与单独安装每个项目不同，我们将在 Ubuntu 中使用一个包安装 LAMP 服务器，这相当简单，只需一个终端命令：
 
 ```php
-    **sudo apt-get install lamp-server^** 
+**sudo apt-get install lamp-server^** 
 
-    ```
+```
 
 `apt-get`命令是一个强大的命令行工具，用于处理 Ubuntu 的**高级软件包工具（APT）**，执行诸如安装新软件包、升级现有软件包、更新软件包列表索引，甚至升级整个 Ubuntu 系统等功能。
 
@@ -254,53 +254,53 @@ XAMPP 不适用于生产环境，而仅适用于开发环境中的开发人员�
 1.  Apache 和 MySQL 都应该在运行。但是，如果需要，您可以使用`service start`命令启动 Apache，如下所示：
 
 ```php
-    **sudo service apache2 start** 
+**sudo service apache2 start** 
 
-    ```
+```
 
 您可以使用以下命令停止 Apache：
 
 ```php
-    **sudo service apache2 stop** 
+**sudo service apache2 stop** 
 
-    ```
+```
 
 1.  现在，让我们检查 LAMP 安装。将浏览器指向`http://localhost/`，您将看到默认的 Apache 2 登录页面，如下图所示：![在 Ubuntu 桌面上安装 LAMP 的时间](img/5801_01_16.jpg)
 
 这意味着您的 Apache 2 Web 服务器正在运行。您仍然可以按以下方式检查这些服务状态：
 
 ```php
-    **sudo service apache2 status** 
+**sudo service apache2 status** 
 
-    ```
+```
 
 上一个命令将给您以下输出：
 
 ```php
-    **Apache is running. Process #** 
+**Apache is running. Process #** 
 
-    ```
+```
 
 1.  同样，要检查 MySQL 状态，只需运行以下命令：
 
 ```php
-    **sudo service mysql status** 
+**sudo service mysql status** 
 
-    ```
+```
 
 将显示以下输出：
 
 ```php
-    **mysql start/running. Process #** 
+**mysql start/running. Process #** 
 
-    ```
+```
 
 1.  要检查 PHP 安装，只需在`/var/www/`中创建一个名为`test.php`的文件，其中包含以下行：
 
 ```php
-    <?php phpinfo(); ?>
+<?php phpinfo(); ?>
 
-    ```
+```
 
 ### 注意
 
@@ -313,9 +313,9 @@ XAMPP 不适用于生产环境，而仅适用于开发环境中的开发人员�
 1.  虽然我们可以使用 NetBeans 来维护我们的数据库，但我们仍然需要使用基于 Web 的界面来维护 MySQL 数据库功能。为此，我们可以使用`phpMyAdmin`。
 
 ```php
-    **sudo apt-get install phpmyadmin** 
+**sudo apt-get install phpmyadmin** 
 
-    ```
+```
 
 使用此命令将安装`phpMyAdmin`，在安装过程中，您将收到一个蓝色窗口询问您要使用哪个服务器——`apache2`还是`lighttpd`。选择`apache2`，然后单击**OK**继续安装。请注意，在安装过程中，您可能会被要求配置`phpMyAdmin`以进行数据库配置、密码等。
 
@@ -324,23 +324,23 @@ XAMPP 不适用于生产环境，而仅适用于开发环境中的开发人员�
 1.  如果在`http://localhost/phpmyadmin/`收到`404`错误，则需要通过使用`gedit`（GNOME 桌面的官方文本编辑器）修改`/etc/apache2/apache2.conf`来手动设置`phpMyAdmin`在 Apache 下的配置：
 
 ```php
-    **sudo gedit /etc/apache2/apache2.conf** 
+**sudo gedit /etc/apache2/apache2.conf** 
 
-    ```
+```
 
 1.  `gedit`将以图形模式打开文件，并将以下行添加到`apache2.conf`的底部：
 
 ```php
-    **Include /etc/phpmyadmin/apache.conf** 
+**Include /etc/phpmyadmin/apache.conf** 
 
-    ```
+```
 
 1.  现在，重新启动 Apache 服务器以使更改生效：
 
 ```php
-    **sudo service apache2 restart** 
+**sudo service apache2 restart** 
 
-    ```
+```
 
 刷新您的浏览器，您现在将看到与上一个屏幕截图中相同的`phpMyAdmin`登录界面。
 
@@ -465,11 +465,11 @@ NetBeans 将用于开发应用程序的所有必要文件分组到一个项目�
 1.  为了测试项目，我们将在 PHP 标签之间放置一些代码。因此，让我们放置一个简单的`echo`，如下所示：
 
 ```php
-    <?php
-    echo "Hello World";
-    ?>
+<?php
+echo "Hello World";
+?>
 
-    ```
+```
 
 1.  保存文件，并将浏览器指向项目 URL，`http://localhost/chapter1/`。页面应该会输出类似于以下截图的内容：![执行操作的时间-创建 NetBeans PHP 项目](img/5801_01_28.jpg)
 

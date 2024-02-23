@@ -62,61 +62,61 @@ iPhone 的 Web 应用程序开发可以分为：
 1.  当我们已经有一个预先制作的图标时，为了避免双重效果，我们需要将`custom_icon.png`重命名为`apple-touch-icon-precomposed.png`，如下所示：
 
 ```php
-    <link rel="apple-touch-icon" href="/apple-touch-icon-precomposed.png"/>
+<link rel="apple-touch-icon" href="/apple-touch-icon-precomposed.png"/>
 
-    ```
+```
 
 1.  图标的默认大小是 57x57。要为不同的分辨率指定不同的图标，我们可以使用`sizes`属性：
 
 ```php
-    <link rel="apple-touch-icon" sizes="72x72" href="http:///custom_icon72x72.png" />
-    <link rel="apple-touch-icon" sizes="114x114" href="http:///custom_icon114x114.png" />
+<link rel="apple-touch-icon" sizes="72x72" href="http:///custom_icon72x72.png" />
+<link rel="apple-touch-icon" sizes="114x114" href="http:///custom_icon114x114.png" />
 
-    ```
+```
 
 1.  以下截图显示了本机 Skype 应用的启动或闪屏图像。启动图像将在启动应用程序时显示几秒钟。其尺寸必须为 320x460，可以这样指定：
 
 ```php
-    <link rel="apple-touch-startup-image" href="http:///startup.png" />
+<link rel="apple-touch-startup-image" href="http:///startup.png" />
 
-    ```
+```
 
 ![操作步骤...](img/3081_09_04.jpg)
 
 1.  我们可能还想隐藏 Safari 浏览器的控件，以获得本机应用的外观和感觉。我们将通过以下代码实现这一点，以隐藏地址栏：
 
 ```php
-    <meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
 
-    ```
+```
 
 1.  要更改状态栏的颜色，我们可以使用以下命令：
 
 ```php
-    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black" />
 
-    ```
+```
 
 1.  iPhone 的视口调整为 980 像素宽。因此，如果一个网页/ web 应用程序宽度为 980 像素，它将正确适应 iPhone。如果页面只有一个宽度为 200 像素的表格或图像，在 iPhone 上查看时，图像将偏向左上角。对于这种情况，我们有一个选项可以通过编程方式指定视口宽度，如下所示：
 
 ```php
-    <meta name="viewport" content="width = 200" />
+<meta name="viewport" content="width = 200" />
 
-    ```
+```
 
 1.  前面的代码将修复视口宽度，200 像素的图像将以全宽度显示。当同时针对 iPhone 和 iPad 时，最好使用设备常量`device-width`来指定宽度，如下所示：
 
 ```php
-    <meta name="viewport" content="width=device-width" />
+<meta name="viewport" content="width=device-width" />
 
-    ```
+```
 
 1.  要禁用用户缩放并设置视口，请使用：
 
 ```php
-    <meta name="viewport" content="user-scalable=no, width=device-width" />
+<meta name="viewport" content="user-scalable=no, width=device-width" />
 
-    ```
+```
 
 1.  使用适当的 HTML、CSS 和 JavaScript 使用调整界面/导航/元素的使用。
 
@@ -244,22 +244,22 @@ HTML5 是 HTML 标准的最新修订版，被现代 Web 浏览器采用。当苹
 在 HTML5 中，音频播放是浏览器功能的一部分。在此之前，通常依赖于 Flash 编写的音频播放器来播放.mp3 文件。原生 HTML5 音频的使用示例如下：
 
 ```php
-    <audio>
-    <source src="test.mp3" type="audio/mpeg" />
-    </audio>
+<audio>
+<source src="test.mp3" type="audio/mpeg" />
+</audio>
 
-    ```
+```
 
 1.  `video`元素
 
 视频元素被认为是 Flash 的“杀手”，并且获得了动力。以下是显示 YouTube 视频的 HTML5 代码：
 
 ```php
-    <video width="640" height="360" src="http://www.youtube.com/demo/protected.mp4" preload controls poster="thumbnail.png">
-    <p>Fallback content: This browser doesn't support HTML5 video</p>
-    </video>
+<video width="640" height="360" src="http://www.youtube.com/demo/protected.mp4" preload controls poster="thumbnail.png">
+<p>Fallback content: This browser doesn't support HTML5 video</p>
+</video>
 
-    ```
+```
 
 属性可以解释如下：
 
@@ -274,36 +274,36 @@ HTML5 是 HTML 标准的最新修订版，被现代 Web 浏览器采用。当苹
 **地理定位**是确定用户浏览器的物理位置的能力。在手持设备中，通过 GPS 可以实现地理定位，它可以提供设备的纬度和经度。对于一些 iPhone 应用程序，可能需要用户的物理位置来提供必要的功能。例如，对于一个显示周围优惠的应用程序，如果用户的位置可以自动识别，而不需要用户输入地址，那将非常有帮助。以下代码显示用户的纬度和经度：
 
 ```php
-    if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-    // success callback
-    function (position) {
-    alert('Latitude: ' + position.coords.latitude);
-    alert('Longitude: ' + position.coords.longitude);
-    },
-    // failure callback
-    function (error) {
-    switch (error.code) {
-    case error.TIMEOUT:
-    alert('Timeout');
-    break;
-    case error.POSITION_UNAVAILABLE:
-    alert('Position unavailable');
-    break;
-    case error.PERMISSION_DENIED:
-    alert('Permission denied');
-    break;
-    case error.UNKNOWN_ERROR:
-    alert('Unknown error');
-    break;
-    }
-    }
-    );
-    } else {
-    alert('Geolocation not supported in this browser');
-    }
+if (navigator.geolocation) {
+navigator.geolocation.getCurrentPosition(
+// success callback
+function (position) {
+alert('Latitude: ' + position.coords.latitude);
+alert('Longitude: ' + position.coords.longitude);
+},
+// failure callback
+function (error) {
+switch (error.code) {
+case error.TIMEOUT:
+alert('Timeout');
+break;
+case error.POSITION_UNAVAILABLE:
+alert('Position unavailable');
+break;
+case error.PERMISSION_DENIED:
+alert('Permission denied');
+break;
+case error.UNKNOWN_ERROR:
+alert('Unknown error');
+break;
+}
+}
+);
+} else {
+alert('Geolocation not supported in this browser');
+}
 
-    ```
+```
 
 在真正的 iPhone web 应用中，纬度和经度信息可以传递到服务器脚本以获取本地化数据。
 
@@ -324,31 +324,31 @@ HTML5 具有缓存清单功能，可以帮助开发人员缓存必要的文件�
 要指定要缓存的文件，我们有隐式和显式的语法。
 
 ```php
-    CACHE MANIFEST
-    # comment
-    /relative/path
-    http://example.com/absolute/path
+CACHE MANIFEST
+# comment
+/relative/path
+http://example.com/absolute/path
 
-    ```
+```
 
 +   使用显式语法与头部`CACHE, NETWORK`和`FALLBACK:`
 
 ```php
-    CACHE MANIFEST
-    CACHE:
-    # files that are to be cached
-    /relative/path/to-be-cached
-    http://example.com/absolute/path/to-be-cached
-    NETWORK:
-    # files that should not be cached
-    /relative/path/no-cache
-    http://example.com/absolute/path/no-cache
-    FALLBACK:
-    # file mapping of network failure.
-    # Here, the online file's alternative offline will be loaded.
-    /relative/path/no-cache /relative/path/to-be-cached
+CACHE MANIFEST
+CACHE:
+# files that are to be cached
+/relative/path/to-be-cached
+http://example.com/absolute/path/to-be-cached
+NETWORK:
+# files that should not be cached
+/relative/path/no-cache
+http://example.com/absolute/path/no-cache
+FALLBACK:
+# file mapping of network failure.
+# Here, the online file's alternative offline will be loaded.
+/relative/path/no-cache /relative/path/to-be-cached
 
-    ```
+```
 
 1.  Web 存储
 
@@ -361,21 +361,21 @@ HTML5 的另一个巧妙功能是能够在客户端机器上存储数据。与 c
 localStorage 和 sessionStorage 具有类似的语法来存储值；例如，在 localStorage 中设置、获取和删除键名为 Packt 的语法如下：
 
 ```php
-    localStorage.setItem('name', 'Packt'); // set name
-    var name = localStorage.getItem('name'); // get name
-    localStorage.removeItem('name'); // delete name
-    localStorage.clear(); // delete all local store (for the domain)
+localStorage.setItem('name', 'Packt'); // set name
+var name = localStorage.getItem('name'); // get name
+localStorage.removeItem('name'); // delete name
+localStorage.clear(); // delete all local store (for the domain)
 
-    ```
+```
 
 当键名没有任何空格时，我们也可以使用这种替代语法：
 
 ```php
-    localStorage.name = 'Packt'; // set name
-    var name = localStorage.name; // get name
-    delete localStorage.name; // delete name
+localStorage.name = 'Packt'; // set name
+var name = localStorage.name; // get name
+delete localStorage.name; // delete name
 
-    ```
+```
 
 ### 注意
 
@@ -386,13 +386,13 @@ localStorage 和 sessionStorage 具有类似的语法来存储值；例如，在
 通过 JavaScript API 访问客户端数据库并使用 SQL 命令是 HTML5 的另一个有用功能。新 API 提供了 openDatabase、transaction 和 executeSql 方法。以下是使用这些方法的示例调用：
 
 ```php
-    var db = openDatabase('dbName', '1.0', 'long dbname', 1048576);
-    db.transaction(function (tx) {
-    tx.executeSql('CREATE TABLE IF NOT EXISTS books (id unique, text)');
-    tx.executeSql('INSERT INTO books (id, text) VALUES (1, "Packt")');
-    });
+var db = openDatabase('dbName', '1.0', 'long dbname', 1048576);
+db.transaction(function (tx) {
+tx.executeSql('CREATE TABLE IF NOT EXISTS books (id unique, text)');
+tx.executeSql('INSERT INTO books (id, text) VALUES (1, "Packt")');
+});
 
-    ```
+```
 
 ### 它是如何工作的...
 
@@ -469,28 +469,28 @@ Nitobi 提供免费的网络服务，可以快速创建一个 PhoneGap 项目，
 这些步骤将创建一个默认的 PhoneGap 示例项目。基本上，示例中的代码需要一些注意：
 
 ```php
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no;" />
-    <!-- iPad/iPhone specific css below, add after your main css >
-    <link rel="stylesheet" media="only screen and (max-device-width: 1024px)" href="http://ipad.css" type="text/css" />
-    <link rel="stylesheet" media="only screen and (max-device-width: 480px)" href="http://iphone.css" type="text/css" />
-    -->
-    <script type="text/javascript" charset="utf-8" src="phonegap.js"></script>
-    <script type="text/javascript" charset="utf-8">
-    function onBodyLoad() {
-    document.addEventListener("deviceready",onDeviceReady,false);
-    }
-    /* When this function is called, PhoneGap has been initialized and is ready to roll */
-    function onDeviceReady() {
-    // do your thing!
-    navigator.notification.alert("PhoneGap is working")
-    }
-    </script>
-    <body onload="onBodyLoad()">
-    <h1>Hey, it's PhoneGap!</h1>
-    <p>Don't know how to get started? Check out <em><a href="http://github.com/phonegap/phonegap-start">PhoneGap Start</a></em>
-    </body>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no;" />
+<!-- iPad/iPhone specific css below, add after your main css >
+<link rel="stylesheet" media="only screen and (max-device-width: 1024px)" href="http://ipad.css" type="text/css" />
+<link rel="stylesheet" media="only screen and (max-device-width: 480px)" href="http://iphone.css" type="text/css" />
+-->
+<script type="text/javascript" charset="utf-8" src="phonegap.js"></script>
+<script type="text/javascript" charset="utf-8">
+function onBodyLoad() {
+document.addEventListener("deviceready",onDeviceReady,false);
+}
+/* When this function is called, PhoneGap has been initialized and is ready to roll */
+function onDeviceReady() {
+// do your thing!
+navigator.notification.alert("PhoneGap is working")
+}
+</script>
+<body onload="onBodyLoad()">
+<h1>Hey, it's PhoneGap!</h1>
+<p>Don't know how to get started? Check out <em><a href="http://github.com/phonegap/phonegap-start">PhoneGap Start</a></em>
+</body>
 
-    ```
+```
 
 在这里，我们可以清楚地注意到这些 PhoneGap 特定的功能在我们的 web 应用代码中不可用。因此，我们必须将这些逻辑合并到我们的 web 应用代码中。这里更容易的选择是：
 
@@ -515,69 +515,69 @@ Nitobi 提供免费的网络服务，可以快速创建一个 PhoneGap 项目，
 因此，让我们修改代码，以便具有本机的蜂鸣、振动和警报对话框。对于 Disc Calculator 应用程序，最终的代码将在`www`文件夹中如下所示：
 
 ```php
-    <!doctype html>
-    <html>
-    <head>
-    <meta charset="UTF-8" />
-    <title>Discount Calc</title>
-    <style type="text/css" media="screen">@import "./jqtouch/jqtouch.css";</style>
-    <style type="text/css" media="screen">@import "./themes/apple/theme.css";</style>
-    <script src="phonegap.js" type="text/javascript" charset="utf-8"></script>
-    <script src="./jqtouch/jquery-1.5.1.min.js" type="text/javascript" charset="utf-8"></script>
-    <script src="./jqtouch/jqtouch.js" type="application/x-javascript" charset="utf-8"></script>
-    <script type="text/javascript" charset="utf-8">
-    var jQT = new $.jQTouch({
-    statusBar: 'black'
-    });
-    function getDiscountPercentage(actual_price, discounted_price) {
-    var discount_percentage = 100 * (actual_price - discounted_price)/ actual_price;
-    return discount_percentage;
-    }
-    $(function() {
-    document.addEventListener('deviceready', function() {
-    navigator.notification.vibrate(2000); // vibrate 2 seconds
-    navigator.notification.alert('Ready!', '', 'DiscCalculator');
-    }, false);
-    $('#calc-input input').blur(function() {
-    $('#calc-result').html(getDiscountPercentage($('#actual-price').val(), $('#discounted-price').val()) + ' %');
-    navigator.notification.beep(1); // 1 time beep
-    });
-    });
-    </script>
-    </head>
-    <body>
-    <div id="jqt">
-    <div id="home">
-    <div class="toolbar">
-    <h1>Discount Calc</h1>
-    <a href="#info" class="button flip">About</a>
-    </div>
-    <div id="calc" class="form">
-    <form id="calc-input">
-    <ul class="rounded">
-    <li><input type="text" id="actual-price" name="actual-price" placeholder="Actual Price"></li>
-    <li><input type="text" id="discounted-price" name="discounted-price" placeholder="Discounted Price"></li>
-    </ul>
-    <h3>Discount Percentage</h3>
-    <div id="calc-result" class="info">
-    </div>
-    </form>
-    </div>
-    </div>
-    <div id="info">
-    <div class="toolbar">
-    <h1>About</h1>
-    <a href="#home" class="cancel">Cancel</a>
-    </div>
-    <div class="info">
-    Demo calculator to find discount percentage.
-    </div>
-    </div>
-    </div>
-    </body>
-    </html>
+<!doctype html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<title>Discount Calc</title>
+<style type="text/css" media="screen">@import "./jqtouch/jqtouch.css";</style>
+<style type="text/css" media="screen">@import "./themes/apple/theme.css";</style>
+<script src="phonegap.js" type="text/javascript" charset="utf-8"></script>
+<script src="./jqtouch/jquery-1.5.1.min.js" type="text/javascript" charset="utf-8"></script>
+<script src="./jqtouch/jqtouch.js" type="application/x-javascript" charset="utf-8"></script>
+<script type="text/javascript" charset="utf-8">
+var jQT = new $.jQTouch({
+statusBar: 'black'
+});
+function getDiscountPercentage(actual_price, discounted_price) {
+var discount_percentage = 100 * (actual_price - discounted_price)/ actual_price;
+return discount_percentage;
+}
+$(function() {
+document.addEventListener('deviceready', function() {
+navigator.notification.vibrate(2000); // vibrate 2 seconds
+navigator.notification.alert('Ready!', '', 'DiscCalculator');
+}, false);
+$('#calc-input input').blur(function() {
+$('#calc-result').html(getDiscountPercentage($('#actual-price').val(), $('#discounted-price').val()) + ' %');
+navigator.notification.beep(1); // 1 time beep
+});
+});
+</script>
+</head>
+<body>
+<div id="jqt">
+<div id="home">
+<div class="toolbar">
+<h1>Discount Calc</h1>
+<a href="#info" class="button flip">About</a>
+</div>
+<div id="calc" class="form">
+<form id="calc-input">
+<ul class="rounded">
+<li><input type="text" id="actual-price" name="actual-price" placeholder="Actual Price"></li>
+<li><input type="text" id="discounted-price" name="discounted-price" placeholder="Discounted Price"></li>
+</ul>
+<h3>Discount Percentage</h3>
+<div id="calc-result" class="info">
+</div>
+</form>
+</div>
+</div>
+<div id="info">
+<div class="toolbar">
+<h1>About</h1>
+<a href="#home" class="cancel">Cancel</a>
+</div>
+<div class="info">
+Demo calculator to find discount percentage.
+</div>
+</div>
+</div>
+</body>
+</html>
 
-    ```
+```
 
 1.  在 iPhone 模拟器中预览：
 

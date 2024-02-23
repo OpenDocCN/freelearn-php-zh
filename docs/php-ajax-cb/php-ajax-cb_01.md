@@ -185,47 +185,47 @@ $('.result').html(data);
 1.  现在我们已经准备好编码了。让我们从 HTML 部分开始。这部分将定义一个带有三个选项卡和一个手风琴的`navigation`元素。
 
 ```php
-    <body>
-    <div id="navigation">
-    <ul>
-    <li><a href="#tabs-1">Home</a></li>
-    <li><a href="#tabs-2">Our Books</a></li>
-    <li><a href="http://ajax/shop.html">Shop</a></li>
-    </ul>
-    <div id="tabs-1">
-    <p>Lorem ipsum dolor 1</p>
-    </div>
-    <div id="tabs-2">
-    <p>Lorem ipsum dolor 2</p>
-    </div>
-    </div>
-    </body>
+<body>
+<div id="navigation">
+<ul>
+<li><a href="#tabs-1">Home</a></li>
+<li><a href="#tabs-2">Our Books</a></li>
+<li><a href="http://ajax/shop.html">Shop</a></li>
+</ul>
+<div id="tabs-1">
+<p>Lorem ipsum dolor 1</p>
+</div>
+<div id="tabs-2">
+<p>Lorem ipsum dolor 2</p>
+</div>
+</div>
+</body>
 
-    ```
+```
 
 1.  当 HTML 准备好后，我们可以继续使用 CSS 和 JavaScript CSS 样式在`<head>`标签中，如下面的代码所示：
 
 ```php
-    <head>
-    <link href="css/ui-lightness/jquery-ui.custom.css"
-    rel="stylesheet" />
-    </head>
+<head>
+<link href="css/ui-lightness/jquery-ui.custom.css"
+rel="stylesheet" />
+</head>
 
-    ```
+```
 
 1.  在`<body>`标签关闭之前，我们将添加 JavaScript：
 
 ```php
-    <script src="js/jquery.min.js"></script>
-    <script src="js/jquery-ui.custom.min.js"></script>
-    <script>
-    $(document).ready(function(){
-    $('#navigation').tabs();
-    });
-    </script>
-    </body>
+<script src="js/jquery.min.js"></script>
+<script src="js/jquery-ui.custom.min.js"></script>
+<script>
+$(document).ready(function(){
+$('#navigation').tabs();
+});
+</script>
+</body>
 
-    ```
+```
 
 1.  我们的结果如下所示：![如何做...](img/3081_01_01.jpg)
 
@@ -296,46 +296,46 @@ jQuery UI 为我们提供了很多选项。我们可以只使用前面代码片�
 1.  首先，我们将包括像 CSS 和 Ext JS 库文件这样的强制性文件。
 
 ```php
-    <link rel="stylesheet" href="css/ext-all.css" />
-    <script src="js/ext-base.js"></script>
-    <script src="js/ext-all.js"></script>
+<link rel="stylesheet" href="css/ext-all.css" />
+<script src="js/ext-base.js"></script>
+<script src="js/ext-all.js"></script>
 
-    ```
+```
 
 1.  我们将继续使用`onReady`函数，它将运行我们的脚本：
 
 ```php
-    <script type="text/javascript">
-    Ext.onReady(function(){
-    var viewport = new Ext.Viewport({
-    layout:'border',
-    items:[{
-    region:'west',
-    id:'west-panel',
-    title:'West',
-    split:true,
-    width: 200,
-    layout:'accordion',
-    items: [{
-    html: 'Navigation content',
-    title:'Navigation'
-    },{
-    title:'Settings',
-    html: 'Settings content'
-    }]
-    },{
-    region:'center',
-    layout:'column',
-    autoLoad:{
-    url: 'ajax/center-content.html',
-    method:'GET'
-    }
-    }]
-    });
-    });
-    </script>
+<script type="text/javascript">
+Ext.onReady(function(){
+var viewport = new Ext.Viewport({
+layout:'border',
+items:[{
+region:'west',
+id:'west-panel',
+title:'West',
+split:true,
+width: 200,
+layout:'accordion',
+items: [{
+html: 'Navigation content',
+title:'Navigation'
+},{
+title:'Settings',
+html: 'Settings content'
+}]
+},{
+region:'center',
+layout:'column',
+autoLoad:{
+url: 'ajax/center-content.html',
+method:'GET'
+}
+}]
+});
+});
+</script>
 
-    ```
+```
 
 1.  我们的带有手风琴导航的布局已经准备好了：![如何做...](img/3081_01_02.jpg)
 
@@ -371,56 +371,56 @@ echo "No params provided";
 1.  让我们从 HTML 代码开始：
 
 ```php
-    <table>
-    <tr>
-    <th>Event</th>
-    <th>Key Code</th>
-    <th>Key String</th>
-    </tr>
-    <tr>
-    <td>onkeydown</td>
-    <td id="onkeydown_code">-</td>
-    <td id="onkeydown_string">-</td>
-    </tr>
-    <tr>
-    <td>onkeypress</td>
-    <td id="onkeypress_code">-</td>
-    <td id="onkeypress_string">-</td>
-    </tr>
-    </table>
+<table>
+<tr>
+<th>Event</th>
+<th>Key Code</th>
+<th>Key String</th>
+</tr>
+<tr>
+<td>onkeydown</td>
+<td id="onkeydown_code">-</td>
+<td id="onkeydown_string">-</td>
+</tr>
+<tr>
+<td>onkeypress</td>
+<td id="onkeypress_code">-</td>
+<td id="onkeypress_string">-</td>
+</tr>
+</table>
 
-    ```
+```
 
 1.  包括 MochiKit 框架：
 
 ```php
-    <script type="text/javascript" src="js/MochiKit/MochiKit.js"> </script>
+<script type="text/javascript" src="js/MochiKit/MochiKit.js"> </script>
 
-    ```
+```
 
 1.  定义 JavaScript 功能：
 
 ```php
-    <script>
-    connect(document, 'onkeydown',
-    function(e) {
-    var key = e.key();
-    replaceChildNodes('onkeydown_code', key.code);
-    replaceChildNodes('onkeydown_string', key.string);
-    doSimpleXMLHttpRequest("ajax/actions.php",
-    { action: "keydown", key: key.code});
-    });
-    connect(document, 'onkeypress',
-    function(e) {
-    var key = e.key();
-    replaceChildNodes('onkeypress_code', key.code);
-    replaceChildNodes('onkeypress_string', key.string);
-    doSimpleXMLHttpRequest("ajax/actions.php",
-    { action: "keypress", key: key.code});
-    });
-    </script>
+<script>
+connect(document, 'onkeydown',
+function(e) {
+var key = e.key();
+replaceChildNodes('onkeydown_code', key.code);
+replaceChildNodes('onkeydown_string', key.string);
+doSimpleXMLHttpRequest("ajax/actions.php",
+{ action: "keydown", key: key.code});
+});
+connect(document, 'onkeypress',
+function(e) {
+var key = e.key();
+replaceChildNodes('onkeypress_code', key.code);
+replaceChildNodes('onkeypress_string', key.string);
+doSimpleXMLHttpRequest("ajax/actions.php",
+{ action: "keypress", key: key.code});
+});
+</script>
 
-    ```
+```
 
 1.  我们的结果是：![How to do it...](img/3081_01_03.jpg)
 
@@ -462,69 +462,69 @@ Ajax 请求的登陆页面将是`ajax/content1.html:`
 1.  我们将在文档的`<head>`标签中包含来自`claro`主题（包含在`dojoToolKit`中）的样式：
 
 ```php
-    <link rel="stylesheet" type="text/css" href="http://js/dojoToolKit/dijit/themes/claro/claro.css" />
+<link rel="stylesheet" type="text/css" href="http://js/dojoToolKit/dijit/themes/claro/claro.css" />
 
-    ```
+```
 
 1.  我们将在我们的文档的主体中定义我们的 HTML 代码：
 
 ```php
-    <body class="claro">
-    <div>
-    <div dojoType="dijit.layout.TabContainer">
-    <div dojoType="dijit.layout.ContentPane"
-    title="Our first tab" selected="true">
-    <div id="showMe">
-    click here to see how it works
-    </div>
-    </div>
-    <div dojoType="dijit.layout.ContentPane"
-    title="Our second tab">
-    Lorem ipsum - the second
-    </div>
-    <div dojoType="dijit.layout.ContentPane"
-    title="Our last tab" closable="true">
-    Lorem ipsum - the last...
-    </div>
-    </div>
-    </div>
-    </body>
+<body class="claro">
+<div>
+<div dojoType="dijit.layout.TabContainer">
+<div dojoType="dijit.layout.ContentPane"
+title="Our first tab" selected="true">
+<div id="showMe">
+click here to see how it works
+</div>
+</div>
+<div dojoType="dijit.layout.ContentPane"
+title="Our second tab">
+Lorem ipsum - the second
+</div>
+<div dojoType="dijit.layout.ContentPane"
+title="Our last tab" closable="true">
+Lorem ipsum - the last...
+</div>
+</div>
+</div>
+</body>
 
-    ```
+```
 
 1.  当 HTML 和 CSS 准备就绪时，我们将包含所需的模块`DojoToolkit`：
 
 ```php
-    <script type="text/javascript"
-    src="js/dojoToolKit/dojo/dojo.js"
-    djConfig="parseOnLoad: true"></script>
-    <script type="text/javascript">
-    dojo.require("dijit.layout.TabContainer");
-    dojo.require("dijit.layout.ContentPane");
-    </script>
+<script type="text/javascript"
+src="js/dojoToolKit/dojo/dojo.js"
+djConfig="parseOnLoad: true"></script>
+<script type="text/javascript">
+dojo.require("dijit.layout.TabContainer");
+dojo.require("dijit.layout.ContentPane");
+</script>
 
-    ```
+```
 
 1.  添加 JavaScript 功能给我们带来了以下结果：
 
 ```php
-    <script type="text/javascript">
-    dojo.addOnLoad(function() {
-    if (document.pub) { document.pub(); }
-    dojo.query("#showMe").onclick(function(e) {
-    dojo.xhrGet({
-    url: "ajax/content1.html",
-    load: function(result) {
-    alert("The loaded content is: " + result);
-    }
-    });
-    var node = e.target;
-    node.innerHTML = "wow, that was easy!";
-    });
-    });
-    </script>
+<script type="text/javascript">
+dojo.addOnLoad(function() {
+if (document.pub) { document.pub(); }
+dojo.query("#showMe").onclick(function(e) {
+dojo.xhrGet({
+url: "ajax/content1.html",
+load: function(result) {
+alert("The loaded content is: " + result);
+}
+});
+var node = e.target;
+node.innerHTML = "wow, that was easy!";
+});
+});
+</script>
 
-    ```
+```
 
 1.  当上述代码片段准备好并保存后，我们的结果将是一个带有三个选项卡的简单选项卡导航。![如何做...](img/3081_01_04.jpg)
 
@@ -549,61 +549,61 @@ YUI 库可以在 Yahoo!的开发者网站([`developer.yahoo.com/yui/3`](http://d
 1.  我们必须首先在文档的`<head>`标签中包含 YUI 库以及我们图表的占位符的样式：
 
 ```php
-    <script type="text/javascript" src="js/yui-min.js"></script>
-    <style>
-    #mychart {
-    margin:10px;
-    width:90%; max-width: 800px; height:400px;
-    }
-    </style>
+<script type="text/javascript" src="js/yui-min.js"></script>
+<style>
+#mychart {
+margin:10px;
+width:90%; max-width: 800px; height:400px;
+}
+</style>
 
-    ```
+```
 
 1.  我们将把我们的 HTML 放在`<body>`标签中，以标记我们的图表将放置的位置：
 
 ```php
-    <div id="mychart"></div>
+<div id="mychart"></div>
 
-    ```
+```
 
 1.  我们的 JavaScript 如下：
 
 ```php
-    <script type="text/javascript">
-    (function() {
-    YUI().use('charts', function (Y){
-    //dataProvider source
-    var myDataValues = [
-    {date:"January" , windows:2000, mac:800, linux:200},
-    {date:"February", windows:3000, mac:1200, linux:300},
-    {date:"March" , windows:3500, mac:1900, linux:1400},
-    {date:"April" , windows:3000, mac:2800, linux:200},
-    {date:"May" , windows:1500, mac:3500, linux:700},
-    {date:"June" , windows:2000, mac:3000, linux:250}
-    ];
-    //Define our axes for the chart.
-    var myAxes = {
-    financials:{
-    keys:["windows", "mac", "linux"],
-    position:"right", type:"numeric"
-    },
-    dateRange:{
-    keys:["date"],
-    position:"bottom",type:"category"
-    }
-    };
-    //instantiate the chart
-    var myChart = new Y.Chart({
-    type:"column", categoryKey:"date",
-    dataProvider:myDataValues, axes:myAxes,
-    horizontalGridlines: true,
-    verticalGridlines: true,
-    render:"#mychart"
-    });
-    });
-    })();</script>
+<script type="text/javascript">
+(function() {
+YUI().use('charts', function (Y){
+//dataProvider source
+var myDataValues = [
+{date:"January" , windows:2000, mac:800, linux:200},
+{date:"February", windows:3000, mac:1200, linux:300},
+{date:"March" , windows:3500, mac:1900, linux:1400},
+{date:"April" , windows:3000, mac:2800, linux:200},
+{date:"May" , windows:1500, mac:3500, linux:700},
+{date:"June" , windows:2000, mac:3000, linux:250}
+];
+//Define our axes for the chart.
+var myAxes = {
+financials:{
+keys:["windows", "mac", "linux"],
+position:"right", type:"numeric"
+},
+dateRange:{
+keys:["date"],
+position:"bottom",type:"category"
+}
+};
+//instantiate the chart
+var myChart = new Y.Chart({
+type:"column", categoryKey:"date",
+dataProvider:myDataValues, axes:myAxes,
+horizontalGridlines: true,
+verticalGridlines: true,
+render:"#mychart"
+});
+});
+})();</script>
 
-    ```
+```
 
 1.  保存并打开我们的 HTML 文档后的结果如下：![如何做...](img/3081_01_05.jpg)
 
@@ -687,117 +687,117 @@ index.html
 1.  我们将从基本的 HTML 布局和内容开始。这部分已经包括了一个链接到我们的 CSS，来自 jQuery UI 库。我们可以将其保存为`index.html:`
 
 ```php
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-    <title>Ajax using jQuery</title>
-    <link href="css/ui-lightness/jquery-ui.custom.css"
-    rel="stylesheet" />
-    </head>
-    <body>
-    <div class="demo">
-    <div id="tabs">
-    <ul>
-    <li><a href="#tabs-1">Home</a></li>
-    <li><a href="http://ajax/content1.html">Books</a></li>
-    <li><a href="http://ajax/content2.html">FAQ</a></li>
-    <li><a href="http://ajax/content3-broken.php">
-    Contact(broken) </a>
-    </li>
-    </ul>
-    <div id="tabs-1">
-    This content is preloaded.
-    </div>
-    </div>
-    </div>
-    </body>
-    </html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Ajax using jQuery</title>
+<link href="css/ui-lightness/jquery-ui.custom.css"
+rel="stylesheet" />
+</head>
+<body>
+<div class="demo">
+<div id="tabs">
+<ul>
+<li><a href="#tabs-1">Home</a></li>
+<li><a href="http://ajax/content1.html">Books</a></li>
+<li><a href="http://ajax/content2.html">FAQ</a></li>
+<li><a href="http://ajax/content3-broken.php">
+Contact(broken) </a>
+</li>
+</ul>
+<div id="tabs-1">
+This content is preloaded.
+</div>
+</div>
+</div>
+</body>
+</html>
 
-    ```
+```
 
 1.  现在我们将添加 JavaScript 库及其功能：
 
 ```php
-    <script src="js/jquery-1.4.4.js"></script>
-    <script src="js/ui/jquery-ui.min.js"></script>
-    <script>
-    $(function() {
-    $("#tabs").tabs({
-    ajaxOptions: {
-    success: function(){
-    $("#slider").slider({
-    range: true,
-    min: 1,
-    max: 10,
-    values: [1,10],
-    slide: function( event, ui ) {
-    $("#amount").val(ui.values[0] + " to " +
-    ui.values[1]);
-    },
-    change: function(event, ui) {
-    var start = ui.values[0];
-    var end = ui.values[1];
-    $('#result').html('');
-    for(var i = start; i <= end; i++){
-    var $item = $('<h3></h3>');
-    $item
-    .load('ajax/items.html #item-'+i);
-    .appendTo($('#result'));
-    } }
-    });
-    },
-    error: function(xhr, status, index, anchor) {
-    $(anchor.hash).html(
-    "Couldn't load this tab. We'll try to fix
-    this as soon as possible. " +
-    "If this wouldn't be a demo." );
-    }
-    }
-    });
-    });
-    </script>
+<script src="js/jquery-1.4.4.js"></script>
+<script src="js/ui/jquery-ui.min.js"></script>
+<script>
+$(function() {
+$("#tabs").tabs({
+ajaxOptions: {
+success: function(){
+$("#slider").slider({
+range: true,
+min: 1,
+max: 10,
+values: [1,10],
+slide: function( event, ui ) {
+$("#amount").val(ui.values[0] + " to " +
+ui.values[1]);
+},
+change: function(event, ui) {
+var start = ui.values[0];
+var end = ui.values[1];
+$('#result').html('');
+for(var i = start; i <= end; i++){
+var $item = $('<h3></h3>');
+$item
+.load('ajax/items.html #item-'+i);
+.appendTo($('#result'));
+} }
+});
+},
+error: function(xhr, status, index, anchor) {
+$(anchor.hash).html(
+"Couldn't load this tab. We'll try to fix
+this as soon as possible. " +
+"If this wouldn't be a demo." );
+}
+}
+});
+});
+</script>
 
-    ```
+```
 
 1.  我们的`index.html`页面已经准备好了，我们可以创建要通过 Ajax 在我们的页面中加载的文件。
 
 第一页将是 ajax/content1.html。此页面将包含一个具有额外功能的滑块，稍后将进行描述。
 
 ```php
-    <h2>Slider</h2>
-    <p>
-    <label for="amount">Displaying items:</label>
-    <input type="text" id="amount" style="border:0;
-    color:#f6931f; font-weight:bold;" value="none" />
-    </p>
-    <div id="slider"></div>
-    <div id="result"></div>
+<h2>Slider</h2>
+<p>
+<label for="amount">Displaying items:</label>
+<input type="text" id="amount" style="border:0;
+color:#f6931f; font-weight:bold;" value="none" />
+</p>
+<div id="slider"></div>
+<div id="result"></div>
 
-    ```
+```
 
 1.  第二页将是`ajax/content2.html:`
 
 ```php
-    <p><strong>This tab was loaded using ajax.</strong></p>
-    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean nec turpis justo, et facilisis ligula.</p>
+<p><strong>This tab was loaded using ajax.</strong></p>
+<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean nec turpis justo, et facilisis ligula.</p>
 
-    ```
+```
 
 我们 Ajax 文件夹中的最后一个文件将是 items.html：
 
 ```php
-    <div id="item-1">Item 1</div>
-    <div id="item-2">Item 2</div>
-    <div id="item-3">Item 3</div>
-    <div id="item-4">Item 4</div>
-    <div id="item-5">Item 5</div>
-    <div id="item-6">Item 6</div>
-    <div id="item-7">Item 7</div>
-    <div id="item-8">Item 8</div>
-    <div id="item-9">Item 9</div>
-    <div id="item-10">Item 10</div>
+<div id="item-1">Item 1</div>
+<div id="item-2">Item 2</div>
+<div id="item-3">Item 3</div>
+<div id="item-4">Item 4</div>
+<div id="item-5">Item 5</div>
+<div id="item-6">Item 6</div>
+<div id="item-7">Item 7</div>
+<div id="item-8">Item 8</div>
+<div id="item-9">Item 9</div>
+<div id="item-10">Item 10</div>
 
-    ```
+```
 
 1.  现在，如下面的屏幕截图所示，我们有一个具有四个选项卡的多功能页面。其中三个通过 Ajax 加载，其中一个包含一个滑块。这个滑块有额外的功能，每次更改都会加载选定数量的商品。![如何做...](img/3081_01_06.jpg)
 
@@ -848,131 +848,131 @@ echo 'New Item was added successfuly.';
 1.  我们将像通常一样从 HTML 布局开始，包括 MooTools 库：
 
 ```php
-    <!doctype html>
-    <html>
-    <head>
-    <title>Ajax Using MooTools</title>
-    </head>
-    <body>
-    <div id="items">
-    <div class="item">
-    <span>Shirt 1</span>
-    </div>
-    <div class="item">
-    <span>Shirt 2</span>
-    </div>
-    <div class="item">
-    <span>Shirt 3</span>
-    </div>
-    <div class="item">
-    <span>Shirt 4</span>
-    </div>
-    <div class="item">
-    <span>Shirt 5</span>
-    </div>
-    <div class="item">
-    <span>Shirt 6</span>
-    </div>
-    </div>
-    <div id="cart">
-    <div class="info">Drag Items Here</div>
-    </div>
-    <h3 id="result"></h3>
-    <script src="js/mootools-core-1.3-full.js"></script>
-    <script src="js/mootools-more-1.3-full.js"></script>
-    <script src="js/mootools-art-0.87.js"></script>
-    </body>
-    </html>
+<!doctype html>
+<html>
+<head>
+<title>Ajax Using MooTools</title>
+</head>
+<body>
+<div id="items">
+<div class="item">
+<span>Shirt 1</span>
+</div>
+<div class="item">
+<span>Shirt 2</span>
+</div>
+<div class="item">
+<span>Shirt 3</span>
+</div>
+<div class="item">
+<span>Shirt 4</span>
+</div>
+<div class="item">
+<span>Shirt 5</span>
+</div>
+<div class="item">
+<span>Shirt 6</span>
+</div>
+</div>
+<div id="cart">
+<div class="info">Drag Items Here</div>
+</div>
+<h3 id="result"></h3>
+<script src="js/mootools-core-1.3-full.js"></script>
+<script src="js/mootools-more-1.3-full.js"></script>
+<script src="js/mootools-art-0.87.js"></script>
+</body>
+</html>
 
-    ```
+```
 
 1.  在这项任务中，我们必须提供自己的 CSS 样式：
 
 ```php
-    <style>
-    #items {
-    float: left; border: 1px solid #F9F9F9; width: 525px;
-    }
-    item {
-    background-color: #DDD;
-    float: left;
-    height: 100px;
-    margin: 10px;
-    width: 100px;
-    position: relative;
-    }
-    item span {
-    bottom: 0;
-    left: 0;
-    position: absolute;
-    width: 100%;
-    }
-    #cart {
-    border: 1px solid #F9F9F9;
-    float: right;
-    padding-bottom: 50px;
-    width: 195px;
-    }
-    #cart .info {
-    text-align: center;
-    }
-    #cart .item {
-    background-color: green;
-    border-width: 1px;
-    cursor: default;
-    height: 85px;
-    margin: 5px;
-    width: 85px;
-    }
-    </style>
+<style>
+#items {
+float: left; border: 1px solid #F9F9F9; width: 525px;
+}
+item {
+background-color: #DDD;
+float: left;
+height: 100px;
+margin: 10px;
+width: 100px;
+position: relative;
+}
+item span {
+bottom: 0;
+left: 0;
+position: absolute;
+width: 100%;
+}
+#cart {
+border: 1px solid #F9F9F9;
+float: right;
+padding-bottom: 50px;
+width: 195px;
+}
+#cart .info {
+text-align: center;
+}
+#cart .item {
+background-color: green;
+border-width: 1px;
+cursor: default;
+height: 85px;
+margin: 5px;
+width: 85px;
+}
+</style>
 
-    ```
+```
 
 1.  当我们的 UI 外观符合我们的期望时，我们可以开始 JavaScript：
 
 ```php
-    <script>
-    window.addEvent('domready', function(){
-    $('.item').addEvent('mousedown', function(event){
-    event.stop();
-    var shirt = this;
-    var clone = shirt.clone()
-    .setStyles(shirt.getCoordinates())
-    .setStyles({
-    opacity: 0.6,
-    position: 'absolute'
-    })
-    .inject(document.body);
-    var drag = new Drag.Move(clone, {
-    droppables: $('cart'),
-    onDrop: function(dragging, cart){
-    dragging.destroy();
-    new Request.HTML({
-    url: 'ajax/addItem.php',
-    onRequest: function(){
-    $('result').set('text', 'loading...');
-    console.log('loading...');
-    },
-    onComplete: function(response){
-    $('result').empty().adopt(response);
-    console.log(response);
-    }a
-    }).post('type=shirt');
-    if (cart != null){
-    shirt.clone().inject(cart);
-    cart.highlight('#7389AE', '#FFF');
-    }
-    },
-    onCancel: function(dragging){
-    dragging.destroy();
-    }
-    });
-    drag.start(event);
-    });
-    });
-    </script>
+<script>
+window.addEvent('domready', function(){
+$('.item').addEvent('mousedown', function(event){
+event.stop();
+var shirt = this;
+var clone = shirt.clone()
+.setStyles(shirt.getCoordinates())
+.setStyles({
+opacity: 0.6,
+position: 'absolute'
+})
+.inject(document.body);
+var drag = new Drag.Move(clone, {
+droppables: $('cart'),
+onDrop: function(dragging, cart){
+dragging.destroy();
+new Request.HTML({
+url: 'ajax/addItem.php',
+onRequest: function(){
+$('result').set('text', 'loading...');
+console.log('loading...');
+},
+onComplete: function(response){
+$('result').empty().adopt(response);
+console.log(response);
+}a
+}).post('type=shirt');
+if (cart != null){
+shirt.clone().inject(cart);
+cart.highlight('#7389AE', '#FFF');
+}
+},
+onCancel: function(dragging){
+dragging.destroy();
+}
+});
+drag.start(event);
+});
+});
+</script>
 
-    ```
+```
 
 1.  一旦我们保存了我们的代码，我们的购物车就准备好了。结果如下:![如何做...](img/3081_01_07.jpg)
 
@@ -1051,71 +1051,71 @@ alert(author.company); // "Skype"
 1.  首先，让我们创建我们的虚拟`.php`文件，`login.php:`
 
 ```php
-    <?php
-    if($_POST['username']==$_POST['password']){
-    echo 'proceed';
-    }
-    ?>
+<?php
+if($_POST['username']==$_POST['password']){
+echo 'proceed';
+}
+?>
 
-    ```
+```
 
 然后，我们可以继续进行 HTML 布局。
 
 ```php
-    <!DOCTYPE html>
-    <html>
-    <head>
-    </head>
-    <body>
-    <form id="loginForm">
-    <label for="username">Username: </label>
-    <input type="text" id="username" name="username" />
-    <br />
-    <label for="password">Password:</label>
-    <input type="password" id="password" name="password"/>
-    <br /><br />
-    <input type="submit" value="Sign In" id="submit" />
-    </form>
-    </body>
-    </html>
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body>
+<form id="loginForm">
+<label for="username">Username: </label>
+<input type="text" id="username" name="username" />
+<br />
+<label for="password">Password:</label>
+<input type="password" id="password" name="password"/>
+<br /><br />
+<input type="submit" value="Sign In" id="submit" />
+</form>
+</body>
+</html>
 
-    ```
+```
 
 1.  当 HTML 设置好后，我们将定义我们的 JavaScript：
 
 ```php
-    <script src="js/prototype.js"></script>
-    <script>
-    $('submit').observe('click', login);
-    function login(e) {
-    Event.stop(e);
-    var url = "ajax/login.php";
-    new Ajax.Request(url, {
-    method: 'post',
-    parameters: {
-    username: document.getElementById('username').value,
-    password: document.getElementById('password').value
-    },
-    onSuccess: process,
-    onFailure: function() {
-    alert("There was an error with the connection");
-    }
-    });
-    }
-    function process(transport) {
-    var response = transport.responseText;
-    if(response == 'proceed'){
-    $('loginForm').hide();
-    var my_div = document.createElement('div');
-    my_div.appendChild(document.createTextNode("You are logged in!"));
-    document.body.appendChild(my_div);
-    }
-    else
-    alert("Sorry, your username and password don't match.");
-    }
-    </script>
+<script src="js/prototype.js"></script>
+<script>
+$('submit').observe('click', login);
+function login(e) {
+Event.stop(e);
+var url = "ajax/login.php";
+new Ajax.Request(url, {
+method: 'post',
+parameters: {
+username: document.getElementById('username').value,
+password: document.getElementById('password').value
+},
+onSuccess: process,
+onFailure: function() {
+alert("There was an error with the connection");
+}
+});
+}
+function process(transport) {
+var response = transport.responseText;
+if(response == 'proceed'){
+$('loginForm').hide();
+var my_div = document.createElement('div');
+my_div.appendChild(document.createTextNode("You are logged in!"));
+document.body.appendChild(my_div);
+}
+else
+alert("Sorry, your username and password don't match.");
+}
+</script>
 
-    ```
+```
 
 ### 它是如何工作的...
 
@@ -1130,28 +1130,28 @@ alert(author.company); // "Skype"
 Ajax.Updater 是`Ajax.Request`对象的扩展，它执行 Ajax 请求并根据响应文本更新容器：
 
 ```php
-    <div id="container">Send the request</div>
-    <script>
-    $('submit').observe('click', login);
-    function login(){
-    new Ajax.Updater(
-    'saladContainer', 'login.php', { method: 'post' }
-    );
-    })
-    </script>
+<div id="container">Send the request</div>
+<script>
+$('submit').observe('click', login);
+function login(){
+new Ajax.Updater(
+'saladContainer', 'login.php', { method: 'post' }
+);
+})
+</script>
 
-    ```
+```
 
 +   **Ajax.PeriodicalUpdater:**
 
 在我们需要定期更新内容的情况下，我们可以使用周期性更新器：
 
 ```php
-    new Ajax.PeriodicalUpdater('items', '/items', {
-    method: 'get', frequency: 3, decay: 2
-    });
+new Ajax.PeriodicalUpdater('items', '/items', {
+method: 'get', frequency: 3, decay: 2
+});
 
-    ```
+```
 
 频率表示更新内容的周期性（以秒为单位）。在上面的代码片段中，我们的内容将每 3 秒更新一次。
 
@@ -1160,21 +1160,21 @@ Ajax.Updater 是`Ajax.Request`对象的扩展，它执行 Ajax 请求并根据�
 `Ajax.Responders`表示全局监听器的存储库，用于监视页面上的所有 Ajax 活动：
 
 ```php
-    Ajax.Responders.register(responder)
-    Ajax.Responders.unregister(responder)
+Ajax.Responders.register(responder)
+Ajax.Responders.unregister(responder)
 
-    ```
+```
 
 使用 responders，我们可以轻松跟踪页面上有多少个 Ajax 请求是活动的。
 
 ```php
-    Ajax.Responders.register({
-    onCreate: function() {
-    Ajax.activeRequestCount++;
-    },
-    onComplete: function() {
-    Ajax.activeRequestCount--;
-    }
-    });
+Ajax.Responders.register({
+onCreate: function() {
+Ajax.activeRequestCount++;
+},
+onComplete: function() {
+Ajax.activeRequestCount--;
+}
+});
 
-    ```
+```

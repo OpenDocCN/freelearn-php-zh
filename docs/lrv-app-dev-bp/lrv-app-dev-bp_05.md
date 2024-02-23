@@ -99,9 +99,9 @@ Class Feeds Extends Eloquent{
 1.  首先，打开终端并输入以下命令：
 
 ```php
-    **php artisan controller:make FeedsController**
+**php artisan controller:make FeedsController**
 
-    ```
+```
 
 这个命令将为您在`app/controllers`文件夹中生成一个`FeedsController.php`文件，并带有一些空白方法。
 
@@ -112,10 +112,10 @@ Class Feeds Extends Eloquent{
 1.  现在，打开`app/routes.php`并添加以下行：
 
 ```php
-    **//We defined a RESTful controller and all its via route directly**
-    **Route::controller('feeds', 'FeedsController');**
+**//We defined a RESTful controller and all its via route directly**
+**Route::controller('feeds', 'FeedsController');**
 
-    ```
+```
 
 我们可以使用一行代码定义控制器上声明的所有操作，而不是逐个定义所有操作。如果您的方法名称可以直接用作 get 或 post 操作，使用`controller()`方法可以节省大量时间。第一个参数设置控制器的 URI，第二个参数定义`controllers`文件夹中将被访问和定义的类。
 
@@ -126,44 +126,44 @@ Class Feeds Extends Eloquent{
 1.  现在，让我们创建表单的方法。将以下代码添加到您的控制器文件中：
 
 ```php
-      //The method to show the form to add a new feed
-      public function getCreate() {
-        //We load a view directly and return it to be served
-        return View::make('create_feed');
-          }
-    ```
+  //The method to show the form to add a new feed
+  public function getCreate() {
+    //We load a view directly and return it to be served
+    return View::make('create_feed');
+      }
+```
 
 这里的过程非常简单；我们将方法命名为`getCreate()`，因为我们希望我们的`create`方法是 RESTful 的。我们只是加载了一个视图文件，我们将在下一步直接生成它。
 
 1.  现在让我们创建我们的视图文件。将此文件保存为`create_feed.blade.php`，放在`app/views/`下：
 
 ```php
-    <!doctype html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <title>Save a new ATOM Feed to Database</title>
-    </head>
-    <body>
-      <h1>Save a new ATOM Feed to Database</h1>
-      @if(Session::has('message'))
-        <h2>{{Session::get('message')}}</h2>
-      @endif
-        {{Form::open(array('url' => 'feeds/create', 'method' => 'post'))}}
-        <h3>Feed Category</h3>
-      {{Form::select('category',array('News'=>'News','Sports'=>'Sports','Technology'=>'Technology'),Input::old('category'))}}
-      <h3>Title</h3>
-        {{Form::text('title',Input::old('title'))}}
-        <h3>Feed URL</h3>
-        {{Form::text('feed',Input::old('feed'))}}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Save a new ATOM Feed to Database</title>
+</head>
+<body>
+  <h1>Save a new ATOM Feed to Database</h1>
+  @if(Session::has('message'))
+    <h2>{{Session::get('message')}}</h2>
+  @endif
+    {{Form::open(array('url' => 'feeds/create', 'method' => 'post'))}}
+    <h3>Feed Category</h3>
+  {{Form::select('category',array('News'=>'News','Sports'=>'Sports','Technology'=>'Technology'),Input::old('category'))}}
+  <h3>Title</h3>
+    {{Form::text('title',Input::old('title'))}}
+    <h3>Feed URL</h3>
+    {{Form::text('feed',Input::old('feed'))}}
 
-        <h3>Show on Site?</h3>
-    {{Form::select('active',array('1'=>'Yes','2'=>'No'),Input::old('active'))}}
-        {{Form::submit('Save!',array('style'=>'margin:20px 100% 0 0'))}}
-        {{Form::close()}}
-    </body>
-    </html>
-    ```
+    <h3>Show on Site?</h3>
+{{Form::select('active',array('1'=>'Yes','2'=>'No'),Input::old('active'))}}
+    {{Form::submit('Save!',array('style'=>'margin:20px 100% 0 0'))}}
+    {{Form::close()}}
+</body>
+</html>
+```
 
 上述代码将生成一个简单的表单，如下所示：
 
@@ -176,14 +176,14 @@ Class Feeds Extends Eloquent{
 1.  首先，我们需要定义表单验证规则。我们更喜欢将验证规则添加到相关模型中，这样规则就可以重复使用，这可以防止代码变得臃肿。为此，在本章前面生成的`feeds.php`中的`app/models/`（我们生成的模型）中，类定义的最后一个`}`之前添加以下代码：
 
 ```php
-    //Validation rules
-    public static $form_rules = array(
-      'feed'    => 'required|url|active_url',
-      'title'  => 'required'
-      'active'  => 'required|between:0,1',
-      'category'  => 'required| in:News,Sports,Technology'
-    );
-    ```
+//Validation rules
+public static $form_rules = array(
+  'feed'    => 'required|url|active_url',
+  'title'  => 'required'
+  'active'  => 'required|between:0,1',
+  'category'  => 'required| in:News,Sports,Technology'
+);
+```
 
 我们将变量设置为`public`，这样它可以在模型文件之外使用，并将其设置为`static`，这样我们可以直接访问这个变量。
 
@@ -200,39 +200,39 @@ Class Feeds Extends Eloquent{
 1.  现在我们需要一个控制器的 post 方法来处理表单。在最后一个`}`之前，将以下方法添加到`app/controllers/FeedsController.php`中：
 
 ```php
-    //Processing the form
-    public function postCreate(){
+//Processing the form
+public function postCreate(){
 
-    //Let's first run the validation with all provided input
-      $validation = Validator::make(Input::all(),Feeds::$form_rules);
-      //If the validation passes, we add the values to the database and return to the form 
-      if($validation->passes()) {
-        //We try to insert a new row with Eloquent
-        $create = Feeds::create(array(
-          'feed'    => Input::get('feed'),
-          'title'  => Input::get('title'),
-          'active'  => Input::get('active'),
-          'category'  => Input::get('category')
-        ));
+//Let's first run the validation with all provided input
+  $validation = Validator::make(Input::all(),Feeds::$form_rules);
+  //If the validation passes, we add the values to the database and return to the form 
+  if($validation->passes()) {
+    //We try to insert a new row with Eloquent
+    $create = Feeds::create(array(
+      'feed'    => Input::get('feed'),
+      'title'  => Input::get('title'),
+      'active'  => Input::get('active'),
+      'category'  => Input::get('category')
+    ));
 
-        //We return to the form with success or error message due to state of the 
-        if($create) {
-          return Redirect::to('feeds/create')
-            ->with('message','The feed added to the database successfully!');
-        } else {
-          return Redirect::to('feeds/create')
-            ->withInput()
-            ->with('message','The feed could not be added, please try again later!');
-        }
-      } else {
-        //If the validation does not pass, we return to the form with first error message as flash data
-        return Redirect::to('feeds/create')
-            ->withInput()
-            ->with('message',$validation->errors()->first());
-
-      }
+    //We return to the form with success or error message due to state of the 
+    if($create) {
+      return Redirect::to('feeds/create')
+        ->with('message','The feed added to the database successfully!');
+    } else {
+      return Redirect::to('feeds/create')
+        ->withInput()
+        ->with('message','The feed could not be added, please try again later!');
     }
-    ```
+  } else {
+    //If the validation does not pass, we return to the form with first error message as flash data
+    return Redirect::to('feeds/create')
+        ->withInput()
+        ->with('message',$validation->errors()->first());
+
+  }
+}
+```
 
 让我们逐一深入代码。首先，我们进行了表单验证，并从我们通过`Feeds::$form_rules`生成的模型中调用了我们的验证规则。
 
@@ -255,41 +255,41 @@ Laravel 有许多内置的方法，使我们的生活更轻松。但是，就像
 1.  现在在`app/lib/Support`下创建一个名为`Str.php`的新文件，你刚刚创建的：
 
 ```php
-    <?php namespace app\lib\Support;
-    class Str extends \Illuminate\Support\Str {
-        //Our shiny extended codes will come here
-      }
-    ```
+<?php namespace app\lib\Support;
+class Str extends \Illuminate\Support\Str {
+    //Our shiny extended codes will come here
+  }
+```
 
 我们给它命名空间，这样我们就可以轻松地访问它。你可以直接使用`Str::trim()`，而不是像`\app\lib\Support\Str::trim()`那样使用它（你可以）。其余的代码解释了如何扩展库。我们提供了从`Illuminate`路径开始的类名，以直接访问`Str`类。
 
 1.  现在打开位于`app/config/`下的`app.php`文件；注释掉以下行：
 
 ```php
-    'Str'             => 'Illuminate\Support\Str',
-    ```
+'Str'             => 'Illuminate\Support\Str',
+```
 
 1.  现在，添加以下行：
 
 ```php
-    'Str'             => 'app\lib\Support\Str',
-    ```
+'Str'             => 'app\lib\Support\Str',
+```
 
 这样，我们用我们的类替换了自动加载的`Str`类，而我们的类已经扩展了原始类。
 
 1.  现在为了在 autoruns 上进行标识，打开你的`composer.json`文件，并将这些行添加到 autoload 的`classmap`对象中：
 
 ```php
-    "app/lib",
-    "app/lib/Support"
-    ```
+"app/lib",
+"app/lib/Support"
+```
 
 1.  最后，在终端中运行以下命令：
 
 ```php
-    **php composer.phar dump-autoload**
+**php composer.phar dump-autoload**
 
-    ```
+```
 
 这将寻找依赖项并重新编译常见类。如果一切顺利，你现在将拥有一个扩展的`Str`类。
 
@@ -304,159 +304,159 @@ Laravel 有许多内置的方法，使我们的生活更轻松。但是，就像
 1.  首先，我们需要一个方法来解析外部 Atom 反馈。打开位于`app/lib/Support/`下的`Str.php`文件，并将此方法添加到类中：
 
 ```php
-    public static function parse_feed($url) {
-        //First, we get our well-formatted external feed
-        $feed = simplexml_load_file($url);
-        //if cannot be found, or a parse/syntax error occurs, we return a blank array
-        if(!count($feed)) {
-          return array();
-        } else {
-          //If found, we return the newest five <item>s in the <channel>
-          $out = array();
-          $items = $feed->channel->item;
-          for($i=0;$i<5;$i++) {
-            $out[] = $items[$i];
-          }
-          //and we return the output
-          return $out;
-        }
+public static function parse_feed($url) {
+    //First, we get our well-formatted external feed
+    $feed = simplexml_load_file($url);
+    //if cannot be found, or a parse/syntax error occurs, we return a blank array
+    if(!count($feed)) {
+      return array();
+    } else {
+      //If found, we return the newest five <item>s in the <channel>
+      $out = array();
+      $items = $feed->channel->item;
+      for($i=0;$i<5;$i++) {
+        $out[] = $items[$i];
       }
-    ```
+      //and we return the output
+      return $out;
+    }
+  }
+```
 
 首先，我们使用 SimpleXML 的内置方法`simplexml_load_file()`在方法中加载 XML 反馈。如果没有找到结果或者反馈包含错误，我们就返回一个空数组。在 SimpleXML 中，所有对象及其子对象都与 XML 标签完全一样。所以如果有一个`<channel>`标签，就会有一个名为`channel`的对象，如果在`<channel>`内有`<item>`标签，那么在每个`channel`对象下面就会有一个名为`item`的对象。所以如果你想访问通道内的第一项，你可以这样访问：`$xml->channel->item[0]`。
 
 1.  现在我们需要一个视图来显示内容。首先打开`app`下的`routes.php`，并删除默认存在的`get`路由：
 
 ```php
-    Route::get('/', array('as'=>'index', 'uses' =>'FeedsController@getIndex'));
-    ```
+Route::get('/', array('as'=>'index', 'uses' =>'FeedsController@getIndex'));
+```
 
 1.  现在打开`FeedsController.php`，位于`app/controller/`下，并粘贴以下代码：
 
 ```php
-    public function getIndex(){
-      //First we get all the records that are active category by category:
-        $news_raw   = Feeds::whereActive(1)->whereCategory('News')->get();
-        $sports_raw  = Feeds::whereActive(1)->whereCategory('Sports')->get();
-        $technology_raw = Feeds::whereActive(1)->whereCategory('Technology')->get();
+public function getIndex(){
+  //First we get all the records that are active category by category:
+    $news_raw   = Feeds::whereActive(1)->whereCategory('News')->get();
+    $sports_raw  = Feeds::whereActive(1)->whereCategory('Sports')->get();
+    $technology_raw = Feeds::whereActive(1)->whereCategory('Technology')->get();
 
-      //Now we load our view file and send variables to the view
-      return View::make('index')
-        ->with('news',$news_raw)
-        ->with('sports',$sports_raw)
-        ->with('technology',$technology_raw);
-      }
-    ```
+  //Now we load our view file and send variables to the view
+  return View::make('index')
+    ->with('news',$news_raw)
+    ->with('sports',$sports_raw)
+    ->with('technology',$technology_raw);
+  }
+```
 
 在控制器中，我们逐个获取反馈的 URL，然后加载一个视图，并将它们逐个设置为每个类别的单独变量。
 
 1.  现在我们需要循环每个反馈类别并显示其内容。将以下代码保存在名为`index.blade.php`的文件中，放在`app/views/`下：
 
 ```php
-    <!doctype html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <title>Your awesome news aggregation site</title>
-        <style type="text/css">
-        body { font-family: Tahoma, Arial, sans-serif; }
-        h1, h2, h3, strong { color: #666; }
-        blockquote{ background: #bbb; border-radius: 3px; }
-        li { border: 2px solid #ccc; border-radius: 5px; list-style-type: none; margin-bottom: 10px }
-        a { color: #1B9BE0; }
-        </style>
-    </head>
-    <body>
-       <h1>Your awesome news aggregation site</h1>
-       <h2>Latest News</h2>
-        @if(count($news))
-            {{--We loop all news feed items --}}
-            @foreach($news as $each)
-                <h3>News from {{$each->title}}:</h3>
-                <ul>
-                {{-- for each feed item, we get and parse its feed elements --}}
-                <?php $feeds = Str::parse_feed($each->feed); ?>
-                @if(count($feeds))
-                    {{-- In a loop, we show all feed elements one by one --}}
-                    @foreach($feeds as $eachfeed)
-                        <li>
-                            <strong>{{$eachfeed->title}}</strong><br />
-                            <blockquote>{{Str::limit(strip_tags($eachfeed->description),250)}}</blockquote>
-                            <strong>Date: {{$eachfeed->pubDate}}</strong><br />
-                            <strong>Source: {{HTML::link($eachfeed->link,Str::limit($eachfeed->link,35))}}</strong>
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Your awesome news aggregation site</title>
+    <style type="text/css">
+    body { font-family: Tahoma, Arial, sans-serif; }
+    h1, h2, h3, strong { color: #666; }
+    blockquote{ background: #bbb; border-radius: 3px; }
+    li { border: 2px solid #ccc; border-radius: 5px; list-style-type: none; margin-bottom: 10px }
+    a { color: #1B9BE0; }
+    </style>
+</head>
+<body>
+   <h1>Your awesome news aggregation site</h1>
+   <h2>Latest News</h2>
+    @if(count($news))
+        {{--We loop all news feed items --}}
+        @foreach($news as $each)
+            <h3>News from {{$each->title}}:</h3>
+            <ul>
+            {{-- for each feed item, we get and parse its feed elements --}}
+            <?php $feeds = Str::parse_feed($each->feed); ?>
+            @if(count($feeds))
+                {{-- In a loop, we show all feed elements one by one --}}
+                @foreach($feeds as $eachfeed)
+                    <li>
+                        <strong>{{$eachfeed->title}}</strong><br />
+                        <blockquote>{{Str::limit(strip_tags($eachfeed->description),250)}}</blockquote>
+                        <strong>Date: {{$eachfeed->pubDate}}</strong><br />
+                        <strong>Source: {{HTML::link($eachfeed->link,Str::limit($eachfeed->link,35))}}</strong>
 
-                        </li>
-                    @endforeach
-                @else
-                    <li>No news found for {{$each->title}}.</li>
-                @endif
-                </ul>
-            @endforeach
-        @else
-            <p>No News found :(</p>
-        @endif
+                    </li>
+                @endforeach
+            @else
+                <li>No news found for {{$each->title}}.</li>
+            @endif
+            </ul>
+        @endforeach
+    @else
+        <p>No News found :(</p>
+    @endif
 
-        <hr />
+    <hr />
 
-        <h2>Latest Sports News</h2>
-        @if(count($sports))
-            {{--We loop all news feed items --}}
-            @foreach($sports as $each)
-                <h3>Sports News from {{$each->title}}:</h3>
-                <ul>
-                {{-- for each feed item, we get and parse its feed elements --}}
-                <?php $feeds = Str::parse_feed($each->feed); ?>
-                @if(count($feeds))
-                    {{-- In a loop, we show all feed elements one by one --}}
-                    @foreach($feeds as $eachfeed)
-                        <li>
-                            <strong>{{$eachfeed->title}}</strong><br />
-                            <blockquote>{{Str::limit(strip_tags($eachfeed->description),250)}}</blockquote>
-                            <strong>Date: {{$eachfeed->pubDate}}</strong><br />
-                            <strong>Source: {{HTML::link($eachfeed->link,Str::limit($eachfeed->link,35))}}</strong>
-                        </li>
-                    @endforeach
-                @else
-                    <li>No Sports News found for {{$each->title}}.</li>
-                @endif
-                </ul>
-            @endforeach
-        @else
-            <p>No Sports News found :(</p>
-        @endif
+    <h2>Latest Sports News</h2>
+    @if(count($sports))
+        {{--We loop all news feed items --}}
+        @foreach($sports as $each)
+            <h3>Sports News from {{$each->title}}:</h3>
+            <ul>
+            {{-- for each feed item, we get and parse its feed elements --}}
+            <?php $feeds = Str::parse_feed($each->feed); ?>
+            @if(count($feeds))
+                {{-- In a loop, we show all feed elements one by one --}}
+                @foreach($feeds as $eachfeed)
+                    <li>
+                        <strong>{{$eachfeed->title}}</strong><br />
+                        <blockquote>{{Str::limit(strip_tags($eachfeed->description),250)}}</blockquote>
+                        <strong>Date: {{$eachfeed->pubDate}}</strong><br />
+                        <strong>Source: {{HTML::link($eachfeed->link,Str::limit($eachfeed->link,35))}}</strong>
+                    </li>
+                @endforeach
+            @else
+                <li>No Sports News found for {{$each->title}}.</li>
+            @endif
+            </ul>
+        @endforeach
+    @else
+        <p>No Sports News found :(</p>
+    @endif
 
-        <hr />
+    <hr />
 
-        <h2>Latest Technology News</h2>
-        @if(count($technology))
-           {{--We loop all news feed items --}}
-            @foreach($technology as $each)
-                <h3>Technology News from {{$each->title}}:</h3>
-                <ul>
-                {{-- for each feed item, we get and parse its feed elements --}}
-                <?php $feeds = Str::parse_feed($each->feed); ?>
-                @if(count($feeds))
-                    {{-- In a loop, we show all feed elements one by one --}}
-                    @foreach($feeds as $eachfeed)
-                        <li>
-                            <strong>{{$eachfeed->title}}</strong><br />
-                            <blockquote>{{Str::limit(strip_tags($eachfeed->description),250)}}</blockquote>
-                            <strong>Date: {{$eachfeed->pubDate}}</strong><br />
-                            <strong>Source: {{HTML::link($eachfeed->link,Str::limit($eachfeed->link,35))}}</strong>
-                        </li>
-                    @endforeach
-                @else
-                    <li>No Technology News found for {{$each->title}}.</li>
-                @endif
-                </ul>
-            @endforeach
-        @else
-            <p>No Technology News found :(</p>
-        @endif
+    <h2>Latest Technology News</h2>
+    @if(count($technology))
+       {{--We loop all news feed items --}}
+        @foreach($technology as $each)
+            <h3>Technology News from {{$each->title}}:</h3>
+            <ul>
+            {{-- for each feed item, we get and parse its feed elements --}}
+            <?php $feeds = Str::parse_feed($each->feed); ?>
+            @if(count($feeds))
+                {{-- In a loop, we show all feed elements one by one --}}
+                @foreach($feeds as $eachfeed)
+                    <li>
+                        <strong>{{$eachfeed->title}}</strong><br />
+                        <blockquote>{{Str::limit(strip_tags($eachfeed->description),250)}}</blockquote>
+                        <strong>Date: {{$eachfeed->pubDate}}</strong><br />
+                        <strong>Source: {{HTML::link($eachfeed->link,Str::limit($eachfeed->link,35))}}</strong>
+                    </li>
+                @endforeach
+            @else
+                <li>No Technology News found for {{$each->title}}.</li>
+            @endif
+            </ul>
+        @endforeach
+    @else
+        <p>No Technology News found :(</p>
+    @endif
 
-    </body>
-    </html>
-    ```
+</body>
+</html>
+```
 
 1.  我们为每个类别写了相同的代码三次。此外，在`head`标签之间进行了一些样式处理，以便页面对最终用户看起来更漂亮。
 

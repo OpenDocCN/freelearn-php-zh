@@ -31,24 +31,24 @@
 1.  在应用程序的根目录中，将以下行添加到`composer.json`文件中：
 
 ```php
-      "require-dev": {
-      "phpunit/phpunit": "3.7.*"
-      },
-    ```
+  "require-dev": {
+  "phpunit/phpunit": "3.7.*"
+  },
+```
 
 1.  打开命令行窗口，导航到根目录，并使用以下行在 Composer 工具上运行更新：
 
 ```php
-     **php composer update**
+ **php composer update**
 
-    ```
+```
 
 1.  安装后，在命令行窗口中使用以下命令快速测试：
 
 ```php
-     **vendor/bin/phpunit**
+ **vendor/bin/phpunit**
 
-    ```
+```
 
 ## 它是如何工作的...
 
@@ -71,45 +71,45 @@
 1.  在`app/tests`目录中，创建一个名为`MyAppTest.php`的文件，并添加以下代码：
 
 ```php
-      <?php
-    class MyAppTest extends TestCase {
+  <?php
+class MyAppTest extends TestCase {
 
-      /**
-       * Testing the MyApp route
-       *
-       * @return void
-       */
-      public function testMyAppRoute()
-    {
-      $response = $this->call('GET', 'myapp');
-      $this->assertResponseOk();
-      $this->assertEquals('This is my app', $response >getContent());
-    }
-    }
-    ```
+  /**
+   * Testing the MyApp route
+   *
+   * @return void
+   */
+  public function testMyAppRoute()
+{
+  $response = $this->call('GET', 'myapp');
+  $this->assertResponseOk();
+  $this->assertEquals('This is my app', $response >getContent());
+}
+}
+```
 
 1.  在命令行窗口中运行测试，我们应该在输入以下命令时得到失败的测试：
 
 ```php
-     **vendor/bin/phpunit**
+ **vendor/bin/phpunit**
 
-    ```
+```
 
 1.  在我们的`routes.php`文件中，添加以下代码的新路由：
 
 ```php
-      Route::get('myapp', function()
-    {
-      return 'This is my app';
-    });
-    ```
+  Route::get('myapp', function()
+{
+  return 'This is my app';
+});
+```
 
 1.  再次运行测试以获得通过的单元测试
 
 ```php
-     **vendor/bin/phpunit**
+ **vendor/bin/phpunit**
 
-    ```
+```
 
 ## 它是如何工作的...
 
@@ -138,103 +138,103 @@
 1.  打开我们的`composer.json`文件，并确保包含以下代码：
 
 ```php
-      "require-dev": 
-    {
-      "phpunit/phpunit": "3.7.*",
-      "mockery/mockery": "dev-master"
-    },
-    ```
+  "require-dev": 
+{
+  "phpunit/phpunit": "3.7.*",
+  "mockery/mockery": "dev-master"
+},
+```
 
 1.  打开命令行终端，并使用以下命令运行 Composer 更新：
 
 ```php
-     **php composer.phar update**
+ **php composer.phar update**
 
-    ```
+```
 
 1.  更新后，在`app/controllers`目录中，使用以下代码创建`ShipsController.php`文件：
 
 ```php
-    <?php
+<?php
 
-    class ShipsController extends BaseController {
+class ShipsController extends BaseController {
 
-      protected $ships; 
-      public function __construct(Spaceship $ships) 
-    {
-      $this->ships = $ships;
-    }
+  protected $ships; 
+  public function __construct(Spaceship $ships) 
+{
+  $this->ships = $ships;
+}
 
-      public function showShipName()
-    {
-      $ship = $this->ships->first();
-      return $ship->name;
-    }
-    }
-    ```
+  public function showShipName()
+{
+  $ship = $this->ships->first();
+  return $ship->name;
+}
+}
+```
 
 1.  在`routes.php`文件中，使用以下命令添加一个路由到这个控制器：
 
 ```php
-     **Route::get('ship', 'ShipsController@showShipName');**
+ **Route::get('ship', 'ShipsController@showShipName');**
 
-    ```
+```
 
 1.  在`app/tests`目录中，使用以下代码创建一个名为`SpaceshipTest.php`的文件：
 
 ```php
-    <?php
+<?php
 
-    class SpaceshipTest extends TestCase {
+class SpaceshipTest extends TestCase {
 
-      public function testFirstShip ()
-    {
-      $this->call('GET', 'ship');
-      $this->assertResponseOk();
-    }
-    }
-    ```
+  public function testFirstShip ()
+{
+  $this->call('GET', 'ship');
+  $this->assertResponseOk();
+}
+}
+```
 
 1.  回到命令行窗口，使用以下命令运行我们的测试：
 
 ```php
-     **vendor/bin/phpunit**
+ **vendor/bin/phpunit**
 
-    ```
+```
 
 1.  此时，我们将得到一个显示以下消息的失败测试：
 
 ```php
-    **ReflectionException: Class Spaceship does not exist**
+**ReflectionException: Class Spaceship does not exist**
 
-    ```
+```
 
 1.  由于`Spaceship`类将是我们的模型，我们将使用 Mockery 来模拟它。使用以下代码更新`SpaceshipTest`类：
 
 ```php
-    <?php
+<?php
 
-    class SpaceshipTest extends TestCase {
+class SpaceshipTest extends TestCase {
 
-      public function testFirstShip()
-    {
-      $ship = new stdClass();
-      $ship->name = 'Enterprise';
+  public function testFirstShip()
+{
+  $ship = new stdClass();
+  $ship->name = 'Enterprise';
 
-      $mock = Mockery::mock('Spaceship');
-      $mock->shouldReceive('first')->once()->andReturn($ship);
+  $mock = Mockery::mock('Spaceship');
+  $mock->shouldReceive('first')->once()->andReturn($ship);
 
-      $this->app->instance('Spaceship', $mock);
-      $this->call('GET', 'ship');
-      $this->assertResponseOk();
-    }
+  $this->app->instance('Spaceship', $mock);
+  $this->call('GET', 'ship');
+  $this->assertResponseOk();
+}
 
-       public function tearDown()
-    {
-      Mockery::close();
-    }
-    }
-    ```
+   public function tearDown()
+{
+  Mockery::close();
+}
+}
+```
 
 1.  现在，回到命令行窗口，再次运行测试，它应该通过。
 
@@ -269,65 +269,65 @@
 1.  打开`composer.json`文件，并将以下行添加到我们的`require-dev`部分：
 
 ```php
-      "codeception/codeception": "dev-master",
-    ```
+  "codeception/codeception": "dev-master",
+```
 
 1.  打开命令行窗口，并使用以下命令更新应用程序：
 
 ```php
-     **php composer.phar update**
+ **php composer.phar update**
 
-    ```
+```
 
 1.  安装完成后，我们需要在终端中运行`bootstrap`命令，如下所示：
 
 ```php
-     **vendor/bin/codecept bootstrap app**
+ **vendor/bin/codecept bootstrap app**
 
-    ```
+```
 
 1.  在`app/tests/acceptance`目录中，使用以下代码创建一个名为`AviatorCept.php`的文件：
 
 ```php
-    <?php
+<?php
 
-    $I = new WebGuy($scenario);
-    $I->wantTo('Make sure all the blueprints are shown');
-    $I->amOnPage('/');
-    $I->see('All The Blueprints');
-    ```
+$I = new WebGuy($scenario);
+$I->wantTo('Make sure all the blueprints are shown');
+$I->amOnPage('/');
+$I->see('All The Blueprints');
+```
 
 1.  在我们的主`routes.php`文件中，使用以下代码更新默认路由：
 
 ```php
-    Route::get('/', function()
-    {
-    return 'Way of the future';
-    });
-    ```
+Route::get('/', function()
+{
+return 'Way of the future';
+});
+```
 
 1.  打开命令行窗口，并使用以下命令运行验收测试：
 
 ```php
-     **vendor/bin/codecept run –c app**
+ **vendor/bin/codecept run –c app**
 
-    ```
+```
 
 1.  此时，我们应该看到它失败了。为了使其通过，再次更新默认路由，输入以下代码：
 
 ```php
-    Route::get('/', function()
-    {
-    return 'All The Blueprints';
-    });
-    ```
+Route::get('/', function()
+{
+return 'All The Blueprints';
+});
+```
 
 1.  在命令行窗口中，使用以下命令再次运行测试：
 
 ```php
-     **vendor/bin/codecept run –c app**
+ **vendor/bin/codecept run –c app**
 
-    ```
+```
 
 1.  这次应该通过。
 
@@ -360,176 +360,176 @@ Codeception 是一个非常强大的测试套件，有许多不同的选项。�
 1.  打开命令行窗口，并使用`artisan`命令按照以下代码创建我们的迁移：
 
 ```php
-     **php artisan migrate::make create_spaceships_table –create –table="spaceships"**
+ **php artisan migrate::make create_spaceships_table –create –table="spaceships"**
 
-    ```
+```
 
 1.  在`app/database/migrations`文件夹中，打开以日期开头并以`create_spaceships_table.php`结尾的文件，将其用于我们的数据库表
 
 ```php
-    <?php
+<?php
 
-      use Illuminate\Database\Schema\Blueprint;
-      use Illuminate\Database\Migrations\Migration;
+  use Illuminate\Database\Schema\Blueprint;
+  use Illuminate\Database\Migrations\Migration;
 
-    class CreateSpaceshipsTable extends Migration {
+class CreateSpaceshipsTable extends Migration {
 
-      /**
-      * Run the migrations.
-      *
-      * @return void
-      */
-    public function up()
-    {
-      Schema::create('spaceships', function(Blueprint $table)
-    {
-      $table->increments('id');
-      $table->string('name');
-      $table->string('movie');
-      $table->timestamps();
-    });
-    }
+  /**
+  * Run the migrations.
+  *
+  * @return void
+  */
+public function up()
+{
+  Schema::create('spaceships', function(Blueprint $table)
+{
+  $table->increments('id');
+  $table->string('name');
+  $table->string('movie');
+  $table->timestamps();
+});
+}
 
-      /**
-      * Reverse the migrations.
-      *
-      * @return void
-      */
-    public function down()
-    {
-      Schema::drop('spaceships');
-    }
+  /**
+  * Reverse the migrations.
+  *
+  * @return void
+  */
+public function down()
+{
+  Schema::drop('spaceships');
+}
 
-    }
-    ```
+}
+```
 
 1.  在`app/database/seeds`文件夹中，创建一个名为`SpaceshipSeeder.php`的文件，如下所示：
 
 ```php
-    <?php
+<?php
 
-    class SpaceshipSeeder extends Seeder {
+class SpaceshipSeeder extends Seeder {
 
-      /**
-      * Run the database seeds.
-      *
-      * @return void
-      */
-      public function run()
-    {
-      DB::table('spaceships')->delete();
+  /**
+  * Run the database seeds.
+  *
+  * @return void
+  */
+  public function run()
+{
+  DB::table('spaceships')->delete();
 
-      $ships = array(
-      array(
-      'name'   => 'Enterprise',
-      'movie'  => 'Star Trek'
-    ),
-      array(
-      'name'   => 'Millenium Falcon',
-      'movie'  => 'Star Wars'
-    ),
-      array(
-      'name'   => 'Serenity',
-      'movie'  => 'Firefly'
-    ),
-    );
+  $ships = array(
+  array(
+  'name'   => 'Enterprise',
+  'movie'  => 'Star Trek'
+),
+  array(
+  'name'   => 'Millenium Falcon',
+  'movie'  => 'Star Wars'
+),
+  array(
+  'name'   => 'Serenity',
+  'movie'  => 'Firefly'
+),
+);
 
-      DB::table('spaceships')->insert($ships);
-    }
-    }
-    ```
+  DB::table('spaceships')->insert($ships);
+}
+}
+```
 
 1.  在同一个目录中，打开`DatabaseSeeder.php`文件，并确保`run()`方法看起来像以下代码片段：
 
 ```php
-    public function run()
-    {
-      Eloquent::unguard();
-      $this->call('SpaceshipSeeder');
-    }
-    ```
+public function run()
+{
+  Eloquent::unguard();
+  $this->call('SpaceshipSeeder');
+}
+```
 
 1.  回到命令行窗口，使用以下代码安装迁移并运行 seeder：
 
 ```php
-     **php artisan migrate**
-     **php artisan db:seed**
+ **php artisan migrate**
+ **php artisan db:seed**
 
-    ```
+```
 
 1.  在`app/models`目录中，创建一个名为`Spaceship.php`的文件，如下代码所示：
 
 ```php
-    <?php
+<?php
 
-    class Spaceship extends Eloquent{
+class Spaceship extends Eloquent{
 
-      protected $table = 'spaceships';
-    }
-    ```
+  protected $table = 'spaceships';
+}
+```
 
 1.  在`app/controllers`目录中，创建一个名为`ShipsController.php`的文件
 
 ```php
-    <?php
+<?php
 
-    class ShipsController extends BaseController {
+class ShipsController extends BaseController {
 
-      protected $ships; 
+  protected $ships; 
 
-      public function __construct(Spaceship $ships) 
-      {
-      $this->ships = $ships;
-    }
+  public function __construct(Spaceship $ships) 
+  {
+  $this->ships = $ships;
+}
 
-      public function showShipName()
-    {
-      $ships = $this->ships->all();
-      Log::info('Ships loaded: ' . print_r($ships, TRUE));
-      return View::make('ships')->with('ships', $ships);
-    }
-    }
-    ```
+  public function showShipName()
+{
+  $ships = $this->ships->all();
+  Log::info('Ships loaded: ' . print_r($ships, TRUE));
+  return View::make('ships')->with('ships', $ships);
+}
+}
+```
 
 1.  在`routes.php`文件中，注册路由如下命令所示：
 
 ```php
-     **Route::get('ship', 'ShipsController@showShipName');**
+ **Route::get('ship', 'ShipsController@showShipName');**
 
-    ```
+```
 
 1.  在`app/views`目录中，创建一个名为`ships.blade.php`的视图，如下代码所示：
 
 ```php
-      @foreach ($ships as $s)
-      {{ $s->name }} <hr>
-      @endforeach
-    ```
+  @foreach ($ships as $s)
+  {{ $s->name }} <hr>
+  @endforeach
+```
 
 1.  此时，如果我们转到`http://{your-dev-url}/public/ship`，我们将看到船只列表。接下来，我们需要打开`composer.json`文件，并在`require-dev`部分中添加以下行：
 
 ```php
-      "loic-sharma/profiler": "dev-master"
-    ```
+  "loic-sharma/profiler": "dev-master"
+```
 
 1.  然后在命令行窗口中，使用以下命令更新 Composer：
 
 ```php
-     **php composer.phar update**
+ **php composer.phar update**
 
-    ```
+```
 
 1.  在所有东西都下载完成后，在`app/config`文件夹中，打开`app.php`文件。在`providers`数组中，在代码的末尾添加以下行：
 
 ```php
-      'Profiler\ProfilerServiceProvider',
-    ```
+  'Profiler\ProfilerServiceProvider',
+```
 
 1.  在同一个文件中，在`aliases`数组中，添加以下行：
 
 ```php
-      'Profiler' => 'Profiler\Facades\Profiler',
-    ```
+  'Profiler' => 'Profiler\Facades\Profiler',
+```
 
 1.  在这个文件的顶部，确保`debug`设置为 true，然后在浏览器中返回`http://{your-dev-url}/public/ship`。`profiler`将显示在浏览器窗口底部。
 

@@ -284,16 +284,16 @@ apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys \ 58118
 1.  将`GRUB_CMDLINE_LINUX`设置如下：
 
 ```php
-            GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1"
+        GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1"
 
-    ```
+```
 
 1.  更新 grub：
 
 ```php
-     **update-grub**
+ **update-grub**
 
-    ```
+```
 
 1.  重新启动系统。
 

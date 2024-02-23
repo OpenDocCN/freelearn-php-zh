@@ -29,19 +29,19 @@ Solr 安装中附带的演示模式和配置已经配置了拼写检查。让我
 1.  在`spellcheck`组件内部有多个拼写检查器。这是 Solr 附带的`default`拼写检查器：
 
 ```php
-    <lst name="spellchecker">
-    <str name="name">default</str>
-    <str name="field">text</str>
-    <str name="classname">solr.DirectSolrSpellChecker</str>
-    <float name="accuracy">0.5</float>
-    <int name="maxEdits">2</int>
-    <int name="minPrefix">1</int>
-    <int name="maxInspections">5</int>
-    <int name="minQueryLength">4</int>
-    <float name="maxQueryFrequency">0.01</float>
-    <float name="thresholdTokenFrequency">.01</float>
-    </lst>
-    ```
+<lst name="spellchecker">
+<str name="name">default</str>
+<str name="field">text</str>
+<str name="classname">solr.DirectSolrSpellChecker</str>
+<float name="accuracy">0.5</float>
+<int name="maxEdits">2</int>
+<int name="minPrefix">1</int>
+<int name="maxInspections">5</int>
+<int name="minQueryLength">4</int>
+<float name="maxQueryFrequency">0.01</float>
+<float name="thresholdTokenFrequency">.01</float>
+</lst>
+```
 
 1.  上面的代码块显示了拼写检查中使用的各种变量。让我们来看看拼写检查配置中的重要变量，并了解它们的含义：
 
@@ -72,11 +72,11 @@ Solr 安装中附带的演示模式和配置已经配置了拼写检查。让我
 +   基于文件的拼写检查器：此实现使用一个平面文件在 Solr 中构建拼写检查索引。由于没有可用的频率信息，使用此组件创建的索引不能用于提取基于频率的信息，例如阈值或最受欢迎的建议。文件的格式是每行一个单词，例如：
 
 ```php
-    Java
-    PHP
-    MySQL
-    Solr
-    ```
+Java
+PHP
+MySQL
+Solr
+```
 
 索引需要使用`spellcheck.build=true`参数在我们的 Solr URL 中构建。除了`spellcheckIndexDir`位置来构建和存储索引外，`FileBasedSpellChecker`组件还需要`sourceLocation`变量来指定拼写文件的位置。
 
@@ -91,34 +91,34 @@ Solr 安装中附带的演示模式和配置已经配置了拼写检查。让我
 1.  更改`schema.xml`文件的内容。创建一个新的字段，拼写检查将在该字段上进行，并使用以下代码将`name`和`author`字段复制到新字段中：
 
 ```php
-    <field name="spellfld" type="text_general" indexed="true" stored="false" multiValued="true"/>
-    <copyField source="name" dest="spellfld"/>
-    <copyField source="author" dest="spellfld"/>
-    ```
+<field name="spellfld" type="text_general" indexed="true" stored="false" multiValued="true"/>
+<copyField source="name" dest="spellfld"/>
+<copyField source="author" dest="spellfld"/>
+```
 
 1.  在`solrconfig.xml`中更改默认拼写检查器的拼写检查字段为我们刚刚创建的新字段。默认的拼写检查器使用 Solr 提供的拼写检查器`DirectSolrSpellChecker`实现。
 
 ```php
-    <lst name="spellchecker">
-    <str name="name">default</str>
-    <str name="field">spellfld</str>
-    ```
+<lst name="spellchecker">
+<str name="name">default</str>
+<str name="field">spellfld</str>
+```
 
 1.  默认情况下，Solr 配置中的`/select`请求处理程序没有拼写检查设置和结果。因此，让我们在名为`/select`的`requestHandler`中添加这些变量。在这里，我们指定要使用的拼写检查词典为**default**，这是我们之前配置的，并将拼写检查组件添加为输出的一部分。
 
 ```php
-    <requestHandler name="/select" class="solr.SearchHandler">
-    <lst name="defaults">
-    .....  
-    <!-- spell check settings -->
-    <str name="spellcheck.dictionary">default</str>
-    <str name="spellcheck">on</str>
-    </lst>
+<requestHandler name="/select" class="solr.SearchHandler">
+<lst name="defaults">
+.....  
+<!-- spell check settings -->
+<str name="spellcheck.dictionary">default</str>
+<str name="spellcheck">on</str>
+</lst>
 
-    <arr name="last-components">
-    <str>spellcheck</str>
-    </arr>
-    ```
+<arr name="last-components">
+<str>spellcheck</str>
+</arr>
+```
 
 1.  现在重新启动 Solr，并在`exampledocs`文件夹中重新索引`books.csv`文件，以及在第五章中提供的`books.csv`文件，*使用 PHP 和 Solr 突出显示结果*。我们需要重新索引我们的书籍的原因是因为我们已经改变了我们的模式。每当模式更改并添加新字段时，需要重新索引文档以在新字段中填充数据。有关在 Solr 中索引这些 CSV 文件，请参阅第二章中的*向 Solr 索引添加示例文档*部分。
 
@@ -127,53 +127,53 @@ Solr 安装中附带的演示模式和配置已经配置了拼写检查。让我
 1.  首先使用以下代码从选择查询中获取拼写检查组件：
 
 ```php
-    $spellChk = $query->getSpellcheck();
-    $spellChk->setCount(10);
-    $spellChk->setCollate(true);
-    $spellChk->setExtendedResults(true);
-    $spellChk->setCollateExtendedResults(true);
-    ```
+$spellChk = $query->getSpellcheck();
+$spellChk->setCount(10);
+$spellChk->setCollate(true);
+$spellChk->setExtendedResults(true);
+$spellChk->setCollateExtendedResults(true);
+```
 
 1.  我们已经通过`setCount()`函数设置了要返回的建议数量。通过将`setCollate()`设置为`true`，我们告诉 Solr 建议原始查询字符串，并用最佳建议替换原始拼写错误的单词。`setExtendedResults()`和`setCollateExtendedResults()`函数告诉 Solr 提供有关建议和返回的整理的附加信息。如果需要，可以用于分析。
 
 1.  执行查询后，我们需要从查询结果集中获取拼写检查组件，并用它获取建议和整理。我们使用`getCorrectlySpelled()`函数来检查查询是否拼写正确。
 
 ```php
-    $resultset = $client->select($query);
-    $spellChkResult = $resultset->getSpellcheck();
-    if ($spellChkResult->getCorrectlySpelled()) {
-    echo 'yes';
-    }else{
-    echo 'no';
-    }
-    ```
+$resultset = $client->select($query);
+$spellChkResult = $resultset->getSpellcheck();
+if ($spellChkResult->getCorrectlySpelled()) {
+echo 'yes';
+}else{
+echo 'no';
+}
+```
 
 1.  接下来，我们循环遍历拼写检查结果，并针对查询中的每个术语获取建议和相关详细信息，例如建议的数量、原始术语的频率以及建议的单词及其出现频率。
 
 ```php
-    foreach($spellChkResult as $suggestion) {
-    echo 'NumFound: '.$suggestion->getNumFound().'<br/>';
-    echo 'OriginalFrequency: '.$suggestion->getOriginalFrequency().'<br/>';    
-    foreach ($suggestion->getWords() as $word) {
-    echo 'Frequency: '.$word['freq'].'<br/>';
-    echo 'Word: '.$word['word'].'<br/>';
-    }
-    }
-    ```
+foreach($spellChkResult as $suggestion) {
+echo 'NumFound: '.$suggestion->getNumFound().'<br/>';
+echo 'OriginalFrequency: '.$suggestion->getOriginalFrequency().'<br/>';    
+foreach ($suggestion->getWords() as $word) {
+echo 'Frequency: '.$word['freq'].'<br/>';
+echo 'Word: '.$word['word'].'<br/>';
+}
+}
+```
 
 1.  同样，我们获取整理并循环遍历它以获取更正后的查询和命中。我们还可以获取查询中每个术语的更正详细信息。
 
 ```php
-    $collations = $spellChkResult->getCollations();
-    echo '<h1>Collations</h1>';
-    foreach($collations as $collation) {
-    echo 'Query: '.$collation->getQuery().'<br/>';
-    echo 'Hits: '.$collation->getHits().'<br/>';
-    foreach($collation->getCorrections() as $input => $correction) {
-    echo $input . ' => ' . $correction .'<br/>';
-    }
-    }
-    ```
+$collations = $spellChkResult->getCollations();
+echo '<h1>Collations</h1>';
+foreach($collations as $collation) {
+echo 'Query: '.$collation->getQuery().'<br/>';
+echo 'Hits: '.$collation->getHits().'<br/>';
+foreach($collation->getCorrections() as $input => $correction) {
+echo $input . ' => ' . $correction .'<br/>';
+}
+}
+```
 
 # 使用 PHP 和 Solr 实现自动完成功能
 

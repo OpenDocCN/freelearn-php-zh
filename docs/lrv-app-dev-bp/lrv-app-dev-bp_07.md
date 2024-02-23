@@ -101,8 +101,8 @@ Class Subscribers Extends Eloquent{
 1.  首先，打开你的终端，输入以下命令：
 
 ```php
-    php artisan controller:make SubscribersController
-    ```
+php artisan controller:make SubscribersController
+```
 
 这个命令将为你在`app/controllers`目录中生成一个`SubscribersController.php`文件，并在其中添加一些空方法。
 
@@ -113,9 +113,9 @@ Class Subscribers Extends Eloquent{
 1.  现在，打开`app/routes.php`并添加以下代码：
 
 ```php
-    //We define a RESTful controller and all its via route//directly
-    Route::controller('subscribers', 'SubscribersController');
-    ```
+//We define a RESTful controller and all its via route//directly
+Route::controller('subscribers', 'SubscribersController');
+```
 
 我们可以使用`controller()`方法一次性定义控制器上声明的所有操作，而不是逐个定义所有操作。如果你的方法名可以直接用作`get`或`post`操作，使用`controller()`方法可以节省大量时间。第一个参数设置控制器的**URI**（统一资源标识符），第二个参数定义了控制器文件夹中将要访问和定义的类。
 
@@ -126,78 +126,78 @@ Class Subscribers Extends Eloquent{
 1.  现在，让我们创建表单的控制器。删除自动生成的类中的所有方法，并在你的控制器文件中添加以下代码：
 
 ```php
-    //The method to show the form to add a new feed
-    public function getIndex() {
-      //We load a view directly and return it to be served
-      return View::make('subscribe_form');
-    }
-    ```
+//The method to show the form to add a new feed
+public function getIndex() {
+  //We load a view directly and return it to be served
+  return View::make('subscribe_form');
+}
+```
 
 首先，我们定义了这个过程。这里很简单；我们将方法命名为`getCreate()`，因为我们希望我们的`Create`方法是 RESTful 的。我们简单地加载了一个视图文件，我们将在下一步直接生成。
 
 1.  现在让我们创建我们的视图文件。在这个例子中，我使用了 jQuery 的 Ajax POST 技术。将这个文件保存为`subscribe_form.blade.php`，放在`app/views/`下：
 
 ```php
-    <!doctype html>
-    <!doctype html>
-    <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <title>Subscribe to Newsletter</title>
-        <style>
-          /*Some Little Minor CSS to tidy up the form*/
-          body{margin:0;font-family:Arial,Tahoma,sans-serif;text-align:center;padding-top:60px;color:#666;font-size:24px}
-          input{font-size:18px}
-          input[type=text]{width:300px}
-          div.content{padding-top:24px;font-weight:700;font-size:24px}
-          .success{color:#0b0}
-          .error{color:#b00}
-        </style>
-      </head>
-      <body>
+<!doctype html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Subscribe to Newsletter</title>
+    <style>
+      /*Some Little Minor CSS to tidy up the form*/
+      body{margin:0;font-family:Arial,Tahoma,sans-serif;text-align:center;padding-top:60px;color:#666;font-size:24px}
+      input{font-size:18px}
+      input[type=text]{width:300px}
+      div.content{padding-top:24px;font-weight:700;font-size:24px}
+      .success{color:#0b0}
+      .error{color:#b00}
+    </style>
+  </head>
+  <body>
 
-        {{-- Form Starts Here --}}
-        {{Form::open(array('url'=> URL::to('subscribers/submit'),'method' => 'post'))}}
-        <p>Simple Newsletter Subscription</p>
-        {{Form::text('email',null,array('placeholder'=>'Type your E-mail address here'))}}
-        {{Form::submit('Submit!')}}
+    {{-- Form Starts Here --}}
+    {{Form::open(array('url'=> URL::to('subscribers/submit'),'method' => 'post'))}}
+    <p>Simple Newsletter Subscription</p>
+    {{Form::text('email',null,array('placeholder'=>'Type your E-mail address here'))}}
+    {{Form::submit('Submit!')}}
 
-        {{Form::close()}}
-        {{-- Form Ends Here --}}
+    {{Form::close()}}
+    {{-- Form Ends Here --}}
 
-        {{-- This div will show the ajax response --}}
-        <div class="content"></div>
-        {{-- Because it'll be sent over AJAX, We add thejQuery source --}}
-        {{ HTML::script('http://code.jquery.com/jquery-1.8.3.min.js') }}
-        <script type="text/javascript">
-          //Even though it's on footer, I just like to make//sure that DOM is ready
-          $(function(){
-            //We hide de the result div on start
-            $('div.content').hide();
-            //This part is more jQuery Related. In short, we //make an Ajax post request and get the response//back from server
-            $('input[type="submit"]').click(function(e){
-              e.preventDefault();
-              $.post('/subscribers/submit', {
-                email: $('input[name="email"]').val()
-              }, function($data){
-                if($data=='1') {
-                  $('div.content').hide().removeClass('success error').addClass('success').html('You\'ve successfully subscribed to ournewsletter').fadeIn('fast');
-                } else {
-                  //This part echos our form validation errors
-                  $('div.content').hide().removeClass('success error').addClass('error').html('There has been an error occurred:<br /><br />'+$data).fadeIn('fast');
-                }
-              });
-            });
-            //We prevented to submit by pressing enter or anyother way
-            $('form').submit(function(e){
-              e.preventDefault();
-              $('input[type="submit"]').click();
-            });
+    {{-- This div will show the ajax response --}}
+    <div class="content"></div>
+    {{-- Because it'll be sent over AJAX, We add thejQuery source --}}
+    {{ HTML::script('http://code.jquery.com/jquery-1.8.3.min.js') }}
+    <script type="text/javascript">
+      //Even though it's on footer, I just like to make//sure that DOM is ready
+      $(function(){
+        //We hide de the result div on start
+        $('div.content').hide();
+        //This part is more jQuery Related. In short, we //make an Ajax post request and get the response//back from server
+        $('input[type="submit"]').click(function(e){
+          e.preventDefault();
+          $.post('/subscribers/submit', {
+            email: $('input[name="email"]').val()
+          }, function($data){
+            if($data=='1') {
+              $('div.content').hide().removeClass('success error').addClass('success').html('You\'ve successfully subscribed to ournewsletter').fadeIn('fast');
+            } else {
+              //This part echos our form validation errors
+              $('div.content').hide().removeClass('success error').addClass('error').html('There has been an error occurred:<br /><br />'+$data).fadeIn('fast');
+            }
           });
-        </script>
-      </body>
-    </html>
-    ```
+        });
+        //We prevented to submit by pressing enter or anyother way
+        $('form').submit(function(e){
+          e.preventDefault();
+          $('input[type="submit"]').click();
+        });
+      });
+    </script>
+  </body>
+</html>
+```
 
 上述代码将生成一个简单的表单，如下截图所示：
 
@@ -260,18 +260,18 @@ Laravel 4 中的队列是该框架提供的最好的功能之一。想象一下�
 1.  首先，我们需要一个队列驱动程序。这可以是**Amazon SQS**、**Beanstalkd**或**Iron IO**。我选择了 Iron IO，因为它目前是唯一支持 push 队列的队列驱动程序。然后我们需要从 packagist 获取包。将`"iron-io/iron_mq": "dev-master"`添加到`composer.json`的`require`键中。它应该看起来像以下代码：
 
 ```php
-    "require": {
-         "laravel/framework": "4.0.*",
-         "iron-io/iron_mq": "dev-master"
-    },
-    ```
+"require": {
+     "laravel/framework": "4.0.*",
+     "iron-io/iron_mq": "dev-master"
+},
+```
 
 1.  现在，你应该运行以下命令来更新/下载新的包：
 
 ```php
-    **php composer.phar update**
+**php composer.phar update**
 
-    ```
+```
 
 1.  我们需要一个来自 Laravel 官方支持的队列服务的账户。在这个例子中，我将使用免费的**Iron.io**服务。
 
@@ -288,17 +288,17 @@ Laravel 4 中的队列是该框架提供的最好的功能之一。想象一下�
 1.  现在，打开你的终端并输入以下命令：
 
 ```php
-    **php artisan queue:subscribe laravel
-      http://your-site-url/queue/push**
+**php artisan queue:subscribe laravel
+  http://your-site-url/queue/push**
 
-    ```
+```
 
 1.  如果一切顺利，你将得到以下输出：
 
 ```php
-    **Queue subscriber added: http://your-site-url/queue/push**
+**Queue subscriber added: http://your-site-url/queue/push**
 
-    ```
+```
 
 1.  现在，当你在 Iron.io 项目页面上检查队列标签时，你会看到一个由 Laravel 生成的新的`push`队列。因为它是一个 push 队列，当队列到达时间时，队列会调用我们。
 
@@ -309,71 +309,71 @@ Laravel 4 中的队列是该框架提供的最好的功能之一。想象一下�
 将以下代码添加到`app`文件夹中的`routes.php`文件中：
 
 ```php
-               //This code will trigger the push request
-               Route::get('queue/process',function(){
-                 Queue::push('SendEmail');
-                 return 'Queue Processed Successfully!';
-               });
-        ```
+       //This code will trigger the push request
+       Route::get('queue/process',function(){
+         Queue::push('SendEmail');
+         return 'Queue Processed Successfully!';
+       });
+```
 
 这段代码将向一个名为`SendEmail`的类发出`push`请求，我们将在后续步骤中创建该类。
 
 1.  现在我们需要一个监听器来管理队列。将以下代码添加到`app`文件夹中的`routes.php`文件中：
 
 ```php
-        //When the push driver sends us back, we will have to
-          //marshal and process the queue.
-        Route::post('queue/push',function(){
-          return Queue::marshal();
-        });
-        ```
+//When the push driver sends us back, we will have to
+  //marshal and process the queue.
+Route::post('queue/push',function(){
+  return Queue::marshal();
+});
+```
 
 这段代码将从我们的队列驱动程序获取`push`请求，然后将其放入队列并运行。
 
 我们需要一个类来启动队列并发送电子邮件，但首先我们需要一个电子邮件模板。将代码保存为`test.blade.php`，并保存在`app/views/emails/`目录中：
 
 ```php
-               <!DOCTYPE html>
-               <html lang="en-US">
-                 <head>
-                   <meta charset="utf-8">
-                 </head>
-                 <body>
-                   <h2>Welcome to our newsletter</h2>
-                   <div>Hello {{$email}}, this is our test message fromour Awesome Laravel queue system.</div>
-                 /body>
-               </html>
-        ```
+       <!DOCTYPE html>
+       <html lang="en-US">
+         <head>
+           <meta charset="utf-8">
+         </head>
+         <body>
+           <h2>Welcome to our newsletter</h2>
+           <div>Hello {{$email}}, this is our test message fromour Awesome Laravel queue system.</div>
+         /body>
+       </html>
+```
 
 这是一个简单的电子邮件模板，将包装我们的电子邮件。
 
 1.  现在我们需要一个类来启动队列并发送电子邮件。将这些类文件直接保存到`app`文件夹中的`routes.php`文件中：
 
 ```php
-               //When the queue is pushed and waiting to be marshalled, we should assign a Class to make the job done 
-               Class SendEmail {
+       //When the queue is pushed and waiting to be marshalled, we should assign a Class to make the job done 
+       Class SendEmail {
 
-                 public function fire($job,$data) {
+         public function fire($job,$data) {
 
-                   //We first get the all data from our subscribers//database
-                   $subscribers = Subscribers::all(); 
+           //We first get the all data from our subscribers//database
+           $subscribers = Subscribers::all(); 
 
-                   foreach ($subscribers as $each) {
+           foreach ($subscribers as $each) {
 
-                     //Now we send an email to each subscriber
-                     Mail::send('emails.test',array('email'=>$each->email), function($message){
+             //Now we send an email to each subscriber
+             Mail::send('emails.test',array('email'=>$each->email), function($message){
 
-                       $message->from('us@oursite.com', 'Our Name');
+               $message->from('us@oursite.com', 'Our Name');
 
-                       $message->to($each->email);
+               $message->to($each->email);
 
-                     });
-                   }
+             });
+           }
 
-                   $job->delete();
-                 }
-               }
-        ```
+           $job->delete();
+         }
+       }
+```
 
 我们在前面的代码中编写的`SendEmail`类将覆盖我们将分配的队列作业。`fire()`方法是 Laravel 自己的方法，用于处理队列事件。因此，当队列被管理时，`fire()`方法内的代码将运行。我们还可以在调用`Queue::push()`方法时将参数作为第二个参数传递给`job`。
 

@@ -37,20 +37,20 @@
 1.  首先，您需要了解将出现在`$_POST`中的数据。而且，也许更重要的是，您需要了解表单数据将被存储的数据库表所施加的限制。例如，看一下`prospects`表的数据库结构：
 
 ```php
-    COLUMN          TYPE              NULL   DEFAULT
-    first_name      varchar(128)      No     None     NULL
-    last_name       varchar(128)      No     None     NULL
-    address         varchar(256)      Yes    None     NULL
-    city            varchar(64)       Yes    None     NULL
-    state_province  varchar(32)       Yes    None     NULL
-    postal_code     char(16)          No     None     NULL
-    phone           varchar(16)       No     None     NULL
-    country         char(2)           No     None     NULL
-    email           varchar(250)      No     None     NULL
-    status          char(8)           Yes    None     NULL
-    budget          decimal(10,2)     Yes    None     NULL
-    last_updated    datetime          Yes    None     NULL
-    ```
+COLUMN          TYPE              NULL   DEFAULT
+first_name      varchar(128)      No     None     NULL
+last_name       varchar(128)      No     None     NULL
+address         varchar(256)      Yes    None     NULL
+city            varchar(64)       Yes    None     NULL
+state_province  varchar(32)       Yes    None     NULL
+postal_code     char(16)          No     None     NULL
+phone           varchar(16)       No     None     NULL
+country         char(2)           No     None     NULL
+email           varchar(250)      No     None     NULL
+status          char(8)           Yes    None     NULL
+budget          decimal(10,2)     Yes    None     NULL
+last_updated    datetime          Yes    None     NULL
+```
 
 1.  完成对要发布和存储的数据的分析后，可以确定要发生的过滤类型，以及哪些 PHP 函数将用于此目的。
 
@@ -59,40 +59,40 @@
 1.  现在，我们可以将所需的 PHP 函数集合成一个回调函数的单一数组。以下是一个基于表单数据过滤需求的示例，最终将存储在`prospects`表中：
 
 ```php
-    $filter = [
-      'trim' => function ($item) { return trim($item); },
-      'float' => function ($item) { return (float) $item; },
-      'upper' => function ($item) { return strtoupper($item); },
-      'email' => function ($item) { 
-         return filter_var($item, FILTER_SANITIZE_EMAIL); },
-      'alpha' => function ($item) { 
-         return preg_replace('/[^A-Za-z]/', '', $item); },
-      'alnum' => function ($item) { 
-         return preg_replace('/[⁰-9A-Za-z ]/', '', $item); },
-      'length' => function ($item, $length) { 
-         return substr($item, 0, $length); },
-      'stripTags' => function ($item) { return strip_tags($item); },
-    ];
-    ```
+$filter = [
+  'trim' => function ($item) { return trim($item); },
+  'float' => function ($item) { return (float) $item; },
+  'upper' => function ($item) { return strtoupper($item); },
+  'email' => function ($item) { 
+     return filter_var($item, FILTER_SANITIZE_EMAIL); },
+  'alpha' => function ($item) { 
+     return preg_replace('/[^A-Za-z]/', '', $item); },
+  'alnum' => function ($item) { 
+     return preg_replace('/[⁰-9A-Za-z ]/', '', $item); },
+  'length' => function ($item, $length) { 
+     return substr($item, 0, $length); },
+  'stripTags' => function ($item) { return strip_tags($item); },
+];
+```
 
 1.  接下来，我们定义一个与`$_POST`中预期的字段名称匹配的数组。在此数组中，我们指定`$filter`数组中的键，以及任何参数。请注意第一个键`*`。我们将使用它作为应用于所有字段的通配符：
 
 ```php
-    $assignments = [
-      '*'             => ['trim' => NULL, 'stripTags' => NULL],
-      'first_name'    => ['length' => 32, 'alnum' => NULL],
-      'last_name'     => ['length' => 32, 'alnum' => NULL],
-      'address'       => ['length' => 64, 'alnum' => NULL],
-      'city'          => ['length' => 32],
-      'state_province'=> ['length' => 20],
-      'postal_code'   => ['length' => 12, 'alnum' => NULL],
-      'phone'         => ['length' => 12],
-      'country'       => ['length' => 2, 'alpha' => NULL, 
-                          'upper' => NULL],
-      'email'         => ['length' => 128, 'email' => NULL],
-      'budget'        => ['float' => NULL],
-    ];
-    ```
+$assignments = [
+  '*'             => ['trim' => NULL, 'stripTags' => NULL],
+  'first_name'    => ['length' => 32, 'alnum' => NULL],
+  'last_name'     => ['length' => 32, 'alnum' => NULL],
+  'address'       => ['length' => 64, 'alnum' => NULL],
+  'city'          => ['length' => 32],
+  'state_province'=> ['length' => 20],
+  'postal_code'   => ['length' => 12, 'alnum' => NULL],
+  'phone'         => ['length' => 12],
+  'country'       => ['length' => 2, 'alpha' => NULL, 
+                      'upper' => NULL],
+  'email'         => ['length' => 128, 'email' => NULL],
+  'budget'        => ['float' => NULL],
+];
+```
 
 1.  然后，我们循环遍历数据集（即来自`$_POST`）并依次应用回调。我们首先运行分配给通配符（`*`）键的所有回调。
 
@@ -103,15 +103,15 @@
 1.  接下来，我们运行分配给特定数据字段的所有回调。完成后，`$data`中的所有值都将被过滤：
 
 ```php
-    foreach ($data as $field => $item) {
-      foreach ($assignments['*'] as $key => $option) {
-        $item = $filter$key;
-      }
-      foreach ($assignments[$field] as $key => $option) {
-        $item = $filter$key;
-      }
-    }
-    ```
+foreach ($data as $field => $item) {
+  foreach ($assignments['*'] as $key => $option) {
+    $item = $filter$key;
+  }
+  foreach ($assignments[$field] as $key => $option) {
+    $item = $filter$key;
+  }
+}
+```
 
 ## 工作原理...
 
@@ -185,39 +185,39 @@ foreach ($testData as $data) {
 1.  对于本示例，我们将再次专注于`prospects`表。 现在，我们可以将一组所需的 PHP 函数集合到一个回调函数的数组中。 以下是基于表单数据的验证需求的示例，这些数据最终将存储在`prospects`表中：
 
 ```php
-    $validator = [
-      'email' => [
-        'callback' => function ($item) { 
-          return filter_var($item, FILTER_VALIDATE_EMAIL); },
-        'message'  => 'Invalid email address'],
-      'alpha' => [
-        'callback' => function ($item) { 
-          return ctype_alpha(str_replace(' ', '', $item)); },
-        'message'  => 'Data contains non-alpha characters'],
-      'alnum' => [
-        'callback' => function ($item) { 
-          return ctype_alnum(str_replace(' ', '', $item)); },
-        'message'  => 'Data contains characters which are '
-           . 'not letters or numbers'],
-      'digits' => [
-        'callback' => function ($item) { 
-          return preg_match('/[⁰-9.]/', $item); },
-        'message'  => 'Data contains characters which '
-          . 'are not numbers'],
-      'length' => [
-        'callback' => function ($item, $length) { 
-          return strlen($item) <= $length; },
-        'message'  => 'Item has too many characters'],
-      'upper' => [
-        'callback' => function ($item) { 
-          return $item == strtoupper($item); },
-        'message'  => 'Item is not upper case'],
-      'phone' => [
-        'callback' => function ($item) { 
-          return preg_match('/[⁰-9() -+]/', $item); },
-        'message'  => 'Item is not a valid phone number'],
-    ];
-    ```
+$validator = [
+  'email' => [
+    'callback' => function ($item) { 
+      return filter_var($item, FILTER_VALIDATE_EMAIL); },
+    'message'  => 'Invalid email address'],
+  'alpha' => [
+    'callback' => function ($item) { 
+      return ctype_alpha(str_replace(' ', '', $item)); },
+    'message'  => 'Data contains non-alpha characters'],
+  'alnum' => [
+    'callback' => function ($item) { 
+      return ctype_alnum(str_replace(' ', '', $item)); },
+    'message'  => 'Data contains characters which are '
+       . 'not letters or numbers'],
+  'digits' => [
+    'callback' => function ($item) { 
+      return preg_match('/[⁰-9.]/', $item); },
+    'message'  => 'Data contains characters which '
+      . 'are not numbers'],
+  'length' => [
+    'callback' => function ($item, $length) { 
+      return strlen($item) <= $length; },
+    'message'  => 'Item has too many characters'],
+  'upper' => [
+    'callback' => function ($item) { 
+      return $item == strtoupper($item); },
+    'message'  => 'Item is not upper case'],
+  'phone' => [
+    'callback' => function ($item) { 
+      return preg_match('/[⁰-9() -+]/', $item); },
+    'message'  => 'Item is not a valid phone number'],
+];
+```
 
 ### 注意
 
@@ -226,36 +226,36 @@ foreach ($testData as $data) {
 1.  接下来，我们定义一个分配数组，与`$_POST`中预期的字段名称匹配。 在此数组中，我们指定`$validator`数组中的键，以及任何参数：
 
 ```php
-    $assignments = [
-      'first_name'    => ['length' => 32, 'alpha' => NULL],
-      'last_name'     => ['length' => 32, 'alpha' => NULL],
-      'address'       => ['length' => 64, 'alnum' => NULL],
-      'city'          => ['length' => 32, 'alnum' => NULL],
-      'state_province'=> ['length' => 20, 'alpha' => NULL],
-      'postal_code'   => ['length' => 12, 'alnum' => NULL],
-      'phone'         => ['length' => 12, 'phone' => NULL],
-      'country'       => ['length' => 2, 'alpha' => NULL, 
-                          'upper' => NULL],
-      'email'         => ['length' => 128, 'email' => NULL],
-      'budget'        => ['digits' => NULL],
-    ];
-    ```
+$assignments = [
+  'first_name'    => ['length' => 32, 'alpha' => NULL],
+  'last_name'     => ['length' => 32, 'alpha' => NULL],
+  'address'       => ['length' => 64, 'alnum' => NULL],
+  'city'          => ['length' => 32, 'alnum' => NULL],
+  'state_province'=> ['length' => 20, 'alpha' => NULL],
+  'postal_code'   => ['length' => 12, 'alnum' => NULL],
+  'phone'         => ['length' => 12, 'phone' => NULL],
+  'country'       => ['length' => 2, 'alpha' => NULL, 
+                      'upper' => NULL],
+  'email'         => ['length' => 128, 'email' => NULL],
+  'budget'        => ['digits' => NULL],
+];
+```
 
 1.  然后，我们使用嵌套的`foreach()`循环逐个字段地遍历数据块。 对于每个字段，我们循环遍历分配给该字段的回调函数：
 
 ```php
-    foreach ($data as $field => $item) {
-      echo 'Processing: ' . $field . PHP_EOL;
-      foreach ($assignments[$field] as $key => $option) {
-        if ($validator[$key]'callback') {
-            $message = 'OK';
-        } else {
-            $message = $validator[$key]['message'];
-        }
-        printf('%8s : %s' . PHP_EOL, $key, $message);
-      }
+foreach ($data as $field => $item) {
+  echo 'Processing: ' . $field . PHP_EOL;
+  foreach ($assignments[$field] as $key => $option) {
+    if ($validator[$key]'callback') {
+        $message = 'OK';
+    } else {
+        $message = $validator[$key]['message'];
     }
-    ```
+    printf('%8s : %s' . PHP_EOL, $key, $message);
+  }
+}
+```
 
 ### 提示
 
@@ -280,54 +280,54 @@ PHP 会话机制非常简单。一旦使用`session_start()`或`php.ini session.
 1.  首先，重要的是要认识到将会话作为唯一的身份验证手段可能是危险的。想象一下，当有效用户登录到您的网站时，您在`$_SESSION`中设置了一个`loggedIn`标志：
 
 ```php
-    session_start();
-    $loggedIn = $_SESSION['isLoggedIn'] ?? FALSE;
-    if (isset($_POST['login'])) {
-      if ($_POST['username'] == // username lookup
-          && $_POST['password'] == // password lookup) {
-          $loggedIn = TRUE;
-          $_SESSION['isLoggedIn'] = TRUE;
-      }
-    }
-    ```
+session_start();
+$loggedIn = $_SESSION['isLoggedIn'] ?? FALSE;
+if (isset($_POST['login'])) {
+  if ($_POST['username'] == // username lookup
+      && $_POST['password'] == // password lookup) {
+      $loggedIn = TRUE;
+      $_SESSION['isLoggedIn'] = TRUE;
+  }
+}
+```
 
 1.  在您的程序逻辑中，如果`$_SESSION['isLoggedIn']`设置为`TRUE`，则允许用户查看敏感信息：
 
 ```php
-    <br>Secret Info
-    <br><?php if ($loggedIn) echo // secret information; ?>
-    ```
+<br>Secret Info
+<br><?php if ($loggedIn) echo // secret information; ?>
+```
 
 1.  如果攻击者能够获取会话标识符，例如，通过成功执行的**跨站脚本**（**XSS**）攻击，他/她只需要将`PHPSESSID` cookie 的值设置为非法获取的值，他们现在被您的应用程序视为有效用户。
 
 1.  缩小`PHPSESSID`有效时间窗口的一种快速简单方法是使用`session_regenerate_id()`。这个非常简单的命令生成一个新的会话标识符，使旧的会话标识符无效，保持会话数据完整，并对性能影响很小。此命令只能在会话开始后执行：
 
 ```php
-    session_start();
-    session_regenerate_id();
-    ```
+session_start();
+session_regenerate_id();
+```
 
 1.  另一个经常被忽视的技术是确保网站访问者有注销选项。然而，重要的是不仅使用`session_destroy()`销毁会话，还要取消`$_SESSION`数据并使会话 cookie 过期：
 
 ```php
-    session_unset();
-    session_destroy();
-    setcookie('PHPSESSID', 0, time() - 3600);
-    ```
+session_unset();
+session_destroy();
+setcookie('PHPSESSID', 0, time() - 3600);
+```
 
 1.  另一种可以用来防止会话劫持的简单技术是开发网站访问者的指纹。实现这种技术的一种方法是收集与会话标识符不同的网站访问者的唯一信息。这些信息包括用户代理（即浏览器）、接受的语言和远程 IP 地址。您可以从这些信息中派生出一个简单的哈希，并将哈希存储在服务器上的一个单独文件中。下次用户访问网站时，如果您已经确定他们基于会话信息已登录，那么您可以通过匹配指纹进行二次验证：
 
 ```php
-    $remotePrint = md5($_SERVER['REMOTE_ADDR'] 
-                       . $_SERVER['HTTP_USER_AGENT'] 
-                       . $_SERVER['HTTP_ACCEPT_LANGUAGE']);
-    $printsMatch = file_exists(THUMB_PRINT_DIR . $remotePrint);
-    if ($loggedIn && !$printsMatch) {
-        $info = 'SESSION INVALID!!!';
-        error_log('Session Invalid: ' . date('Y-m-d H:i:s'), 0);
-        // take appropriate action
-    }
-    ```
+$remotePrint = md5($_SERVER['REMOTE_ADDR'] 
+                   . $_SERVER['HTTP_USER_AGENT'] 
+                   . $_SERVER['HTTP_ACCEPT_LANGUAGE']);
+$printsMatch = file_exists(THUMB_PRINT_DIR . $remotePrint);
+if ($loggedIn && !$printsMatch) {
+    $info = 'SESSION INVALID!!!';
+    error_log('Session Invalid: ' . date('Y-m-d H:i:s'), 0);
+    // take appropriate action
+}
+```
 
 ### 注意
 
@@ -474,96 +474,96 @@ if (isset($_POST['login'])) {
 1.  首先，为了演示问题，我们创建一个模拟受感染页面的网页，该页面生成一个请求以将条目发布到数据库。为此示例，我们将文件命名为`chap_12_form_csrf_test_unprotected.html`：
 
 ```php
-    <!DOCTYPE html>
-      <body onload="load()">
-      <form action="/chap_12_form_unprotected.php" 
-        method="post" id="csrf_test" name="csrf_test">
-        <input name="name" type="hidden" value="No Goodnick" />
-        <input name="email" type="hidden" value="malicious@owasp.org" />
-        <input name="comments" type="hidden" 
-           value="Form is vulnerable to CSRF attacks!" />
-        <input name="process" type="hidden" value="1" />
-      </form>
-      <script>
-        function load() { document.forms['csrf_test'].submit(); }
-      </script>
-    </body>
-    </html>
-    ```
+<!DOCTYPE html>
+  <body onload="load()">
+  <form action="/chap_12_form_unprotected.php" 
+    method="post" id="csrf_test" name="csrf_test">
+    <input name="name" type="hidden" value="No Goodnick" />
+    <input name="email" type="hidden" value="malicious@owasp.org" />
+    <input name="comments" type="hidden" 
+       value="Form is vulnerable to CSRF attacks!" />
+    <input name="process" type="hidden" value="1" />
+  </form>
+  <script>
+    function load() { document.forms['csrf_test'].submit(); }
+  </script>
+</body>
+</html>
+```
 
 1.  接下来，我们创建一个名为`chap_12_form_unprotected.php`的脚本，用于响应表单提交。与本书中的其他调用程序一样，我们设置自动加载并使用第五章中介绍的`Application\Database\Connection`类，*与数据库交互*。
 
 ```php
-    <?php
-    define('DB_CONFIG_FILE', '/../config/db.config.php');
-    require __DIR__ . '/../Application/Autoload/Loader.php';
-    Application\Autoload\Loader::init(__DIR__ . '/..');
-    use Application\Database\Connection;
-    $conn = new Connection(include __DIR__ . DB_CONFIG_FILE);
-    ```
+<?php
+define('DB_CONFIG_FILE', '/../config/db.config.php');
+require __DIR__ . '/../Application/Autoload/Loader.php';
+Application\Autoload\Loader::init(__DIR__ . '/..');
+use Application\Database\Connection;
+$conn = new Connection(include __DIR__ . DB_CONFIG_FILE);
+```
 
 1.  然后我们检查处理按钮是否已被按下，并实施一个过滤机制，如本章中*过滤$_POST 数据*食谱中所述。这是为了证明 CSRF 攻击很容易绕过过滤器：
 
 ```php
-    if ($_POST['process']) {
-        $filter = [
-          'trim' => function ($item) { return trim($item); },
-          'email' => function ($item) { 
-            return filter_var($item, FILTER_SANITIZE_EMAIL); },
-          'length' => function ($item, $length) { 
-            return substr($item, 0, $length); },
-          'stripTags' => function ($item) { 
-          return strip_tags($item); },
-      ];
+if ($_POST['process']) {
+    $filter = [
+      'trim' => function ($item) { return trim($item); },
+      'email' => function ($item) { 
+        return filter_var($item, FILTER_SANITIZE_EMAIL); },
+      'length' => function ($item, $length) { 
+        return substr($item, 0, $length); },
+      'stripTags' => function ($item) { 
+      return strip_tags($item); },
+  ];
 
-      $assignments = [
-        '*'         => ['trim' => NULL, 'stripTags' => NULL],
-        'email'   => ['length' => 249, 'email' => NULL],
-        'name'    => ['length' => 128],
-        'comments'=> ['length' => 249],
-      ];
+  $assignments = [
+    '*'         => ['trim' => NULL, 'stripTags' => NULL],
+    'email'   => ['length' => 249, 'email' => NULL],
+    'name'    => ['length' => 128],
+    'comments'=> ['length' => 249],
+  ];
 
-      $data = $_POST;
-      foreach ($data as $field => $item) {
-        foreach ($assignments['*'] as $key => $option) {
-          $item = $filter$key;
-        }
-        if (isset($assignments[$field])) {
-          foreach ($assignments[$field] as $key => $option) {
-            $item = $filter$key;
-          }
-          $filteredData[$field] = $item;
-        }
+  $data = $_POST;
+  foreach ($data as $field => $item) {
+    foreach ($assignments['*'] as $key => $option) {
+      $item = $filter$key;
+    }
+    if (isset($assignments[$field])) {
+      foreach ($assignments[$field] as $key => $option) {
+        $item = $filter$key;
       }
-    ```
+      $filteredData[$field] = $item;
+    }
+  }
+```
 
 1.  最后，我们使用预处理语句将过滤后的数据插入数据库。然后重定向到另一个名为`chap_12_form_view_results.php`的脚本，该脚本简单地转储`visitors`表的内容：
 
 ```php
-    try {
-        $filteredData['visit_date'] = date('Y-m-d H:i:s');
-        $sql = 'INSERT INTO visitors '
-            . ' (email,name,comments,visit_date) '
-            . 'VALUES (:email,:name,:comments,:visit_date)';
-        $insertStmt = $conn->pdo->prepare($sql);
-        $insertStmt->execute($filteredData);
-    } catch (PDOException $e) {
-        echo $e->getMessage();
-    }
-    }
-    header('Location: /chap_12_form_view_results.php');
-    exit;
-    ```
+try {
+    $filteredData['visit_date'] = date('Y-m-d H:i:s');
+    $sql = 'INSERT INTO visitors '
+        . ' (email,name,comments,visit_date) '
+        . 'VALUES (:email,:name,:comments,:visit_date)';
+    $insertStmt = $conn->pdo->prepare($sql);
+    $insertStmt->execute($filteredData);
+} catch (PDOException $e) {
+    echo $e->getMessage();
+}
+}
+header('Location: /chap_12_form_view_results.php');
+exit;
+```
 
 1.  当然，结果是，尽管进行了过滤并使用了预处理语句，攻击仍然被允许。
 
 1.  实际上，实现表单保护令牌非常容易！首先，您需要生成令牌并将其存储在会话中。我们利用新的`random_bytes()` PHP 7 函数来生成一个真正随机的令牌，这个令牌对于攻击者来说将是困难的，如果不是不可能的匹配：
 
 ```php
-    session_start();
-    $token = urlencode(base64_encode((random_bytes(32))));
-    $_SESSION['token'] = $token;
-    ```
+session_start();
+$token = urlencode(base64_encode((random_bytes(32))));
+$_SESSION['token'] = $token;
+```
 
 ### 注意
 
@@ -572,24 +572,24 @@ if (isset($_POST['login'])) {
 1.  当我们呈现表单时，我们将令牌呈现为隐藏字段：
 
 ```php
-    <input type="hidden" name="token" value="<?= $token ?>" />
-    ```
+<input type="hidden" name="token" value="<?= $token ?>" />
+```
 
 1.  然后，我们复制并修改先前提到的`chap_12_form_unprotected.php`脚本，添加逻辑来首先检查会话中存储的令牌是否匹配。请注意，我们取消当前令牌以使其对将来的使用无效。我们将新脚本命名为`chap_12_form_protected_with_token.php`：
 
 ```php
-    if ($_POST['process']) {
-        $sessToken = $_SESSION['token'] ?? 1;
-        $postToken = $_POST['token'] ?? 2;
-        unset($_SESSION['token']);
-        if ($sessToken != $postToken) {
-            $_SESSION['message'] = 'ERROR: token mismatch';
-        } else {
-            $_SESSION['message'] = 'SUCCESS: form processed';
-            // continue with form processing
-        }
+if ($_POST['process']) {
+    $sessToken = $_SESSION['token'] ?? 1;
+    $postToken = $_POST['token'] ?? 2;
+    unset($_SESSION['token']);
+    if ($sessToken != $postToken) {
+        $_SESSION['message'] = 'ERROR: token mismatch';
+    } else {
+        $_SESSION['message'] = 'SUCCESS: form processed';
+        // continue with form processing
     }
-    ```
+}
+```
 
 ## 它是如何工作的...
 
@@ -704,32 +704,32 @@ $_SESSION['token'] = $token;
 1.  首先，我们定义一个`Application\Security\PassGen`类，该类将包含生成密码所需的方法。我们还定义了一些类常量和属性，这些常量和属性将作为流程的一部分使用：
 
 ```php
-    namespace Application\Security;
-    class PassGen
-    {
-      const SOURCE_SUFFIX = 'src';
-      const SPECIAL_CHARS = 
-        '\`¬|!"£$%^&*()_-+={}[]:@~;\'#<>?,./|\\';
-      protected $algorithm;
-      protected $sourceList;
-      protected $word;
-      protected $list;
-    ```
+namespace Application\Security;
+class PassGen
+{
+  const SOURCE_SUFFIX = 'src';
+  const SPECIAL_CHARS = 
+    '\`¬|!"£$%^&*()_-+={}[]:@~;\'#<>?,./|\\';
+  protected $algorithm;
+  protected $sourceList;
+  protected $word;
+  protected $list;
+```
 
 1.  然后我们定义将用于生成密码的低级方法。正如名称所示，`digits()`生成随机数字，`special()`从`SPECIAL_CHARS`类常量中生成一个字符：
 
 ```php
-    public function digits($max = 999)
-    {
-      return random_int(1, $max);
-    }
+public function digits($max = 999)
+{
+  return random_int(1, $max);
+}
 
-    public function special()
-    {
-      $maxSpecial = strlen(self::SPECIAL_CHARS) - 1;
-      return self::SPECIAL_CHARS[random_int(0, $maxSpecial)];
-    }
-    ```
+public function special()
+{
+  $maxSpecial = strlen(self::SPECIAL_CHARS) - 1;
+  return self::SPECIAL_CHARS[random_int(0, $maxSpecial)];
+}
+```
 
 ### 注意
 
@@ -738,120 +738,120 @@ $_SESSION['token'] = $token;
 1.  现在是棘手的部分：生成一个难以猜测的单词。这就是`$wordSource`构造函数参数发挥作用的地方。它是一个网站数组，我们的单词库将从中派生。因此，我们需要一个方法，该方法将从指定的来源中提取一个唯一的单词列表，并将结果存储在文件中。我们将`$wordSource`数组作为参数接受，并循环遍历每个 URL。我们使用`md5()`生成网站名称的哈希值，然后将其构建成文件名。然后将新生成的文件名存储在`$sourceList`中：
 
 ```php
-    public function processSource(
-    $wordSource, $minWordLength, $cacheDir)
-    {
-      foreach ($wordSource as $html) {
-        $hashKey = md5($html);
-        $sourceFile = $cacheDir . '/' . $hashKey . '.' 
-        . self::SOURCE_SUFFIX;
-        $this->sourceList[] = $sourceFile;
-    ```
+public function processSource(
+$wordSource, $minWordLength, $cacheDir)
+{
+  foreach ($wordSource as $html) {
+    $hashKey = md5($html);
+    $sourceFile = $cacheDir . '/' . $hashKey . '.' 
+    . self::SOURCE_SUFFIX;
+    $this->sourceList[] = $sourceFile;
+```
 
 1.  如果文件不存在或为空字节，我们处理内容。如果来源是 HTML，我们只接受`<body>`标签内的内容。然后我们使用`str_word_count()`从字符串中提取单词列表，同时使用`strip_tags()`去除任何标记：
 
 ```php
-    if (!file_exists($sourceFile) || filesize($sourceFile) == 0) {
-        echo 'Processing: ' . $html . PHP_EOL;
-        $contents = file_get_contents($html);
-        if (preg_match('/<body>(.*)<\/body>/i', 
-            $contents, $matches)) {
-            $contents = $matches[1];
-        }
-        $list = str_word_count(strip_tags($contents), 1);
-    ```
+if (!file_exists($sourceFile) || filesize($sourceFile) == 0) {
+    echo 'Processing: ' . $html . PHP_EOL;
+    $contents = file_get_contents($html);
+    if (preg_match('/<body>(.*)<\/body>/i', 
+        $contents, $matches)) {
+        $contents = $matches[1];
+    }
+    $list = str_word_count(strip_tags($contents), 1);
+```
 
 1.  然后我们删除任何太短的单词，并使用`array_unique()`去除重复项。最终结果存储在文件中：
 
 ```php
-         foreach ($list as $key => $value) {
-           if (strlen($value) < $minWordLength) {
-             $list[$key] = 'xxxxxx';
-           } else {
-             $list[$key] = trim($value);
-           }
-         }
-         $list = array_unique($list);
-         file_put_contents($sourceFile, implode("\n",$list));
+     foreach ($list as $key => $value) {
+       if (strlen($value) < $minWordLength) {
+         $list[$key] = 'xxxxxx';
+       } else {
+         $list[$key] = trim($value);
        }
-      }
-      return TRUE;
-    }
-    ```
+     }
+     $list = array_unique($list);
+     file_put_contents($sourceFile, implode("\n",$list));
+   }
+  }
+  return TRUE;
+}
+```
 
 1.  接下来，我们定义一个*翻转*单词中随机字母为大写的方法：
 
 ```php
-    public function flipUpper($word)
-    {
-      $maxLen   = strlen($word);
-      $numFlips = random_int(1, $maxLen - 1);
-      $flipped  = strtolower($word);
-      for ($x = 0; $x < $numFlips; $x++) {
-           $pos = random_int(0, $maxLen - 1);
-           $word[$pos] = strtoupper($word[$pos]);
-      }
-      return $word;
-    }
-    ```
+public function flipUpper($word)
+{
+  $maxLen   = strlen($word);
+  $numFlips = random_int(1, $maxLen - 1);
+  $flipped  = strtolower($word);
+  for ($x = 0; $x < $numFlips; $x++) {
+       $pos = random_int(0, $maxLen - 1);
+       $word[$pos] = strtoupper($word[$pos]);
+  }
+  return $word;
+}
+```
 
 1.  最后，我们准备定义一个从我们的来源选择单词的方法。我们随机选择一个单词来源，并使用`file()`函数从适当的缓存文件中读取：
 
 ```php
-    public function word()
-    {
-      $wsKey    = random_int(0, count($this->sourceList) - 1);
-      $list     = file($this->sourceList[$wsKey]);
-      $maxList  = count($list) - 1;
-      $key      = random_int(0, $maxList);
-      $word     = $list[$key];
-      return $this->flipUpper($word);
-    }
-    ```
+public function word()
+{
+  $wsKey    = random_int(0, count($this->sourceList) - 1);
+  $list     = file($this->sourceList[$wsKey]);
+  $maxList  = count($list) - 1;
+  $key      = random_int(0, $maxList);
+  $word     = $list[$key];
+  return $this->flipUpper($word);
+}
+```
 
 1.  为了不总是生成相同模式的密码，我们定义了一个方法，允许我们将密码的各个组件放置在最终密码字符串的不同位置。算法被定义为此类中可用的方法调用数组。例如，一个`['word', 'digits', 'word', 'special']`的算法最终可能看起来像`hElLo123aUTo!`：
 
 ```php
-    public function initAlgorithm()
-    {
-      $this->algorithm = [
-        ['word', 'digits', 'word', 'special'],
-        ['digits', 'word', 'special', 'word'],
-        ['word', 'word', 'special', 'digits'],
-        ['special', 'word', 'special', 'digits'],
-        ['word', 'special', 'digits', 'word', 'special'],
-        ['special', 'word', 'special', 'digits', 
-        'special', 'word', 'special'],
-      ];
-    }
-    ```
+public function initAlgorithm()
+{
+  $this->algorithm = [
+    ['word', 'digits', 'word', 'special'],
+    ['digits', 'word', 'special', 'word'],
+    ['word', 'word', 'special', 'digits'],
+    ['special', 'word', 'special', 'digits'],
+    ['word', 'special', 'digits', 'word', 'special'],
+    ['special', 'word', 'special', 'digits', 
+    'special', 'word', 'special'],
+  ];
+}
+```
 
 1.  构造函数接受单词来源数组、最小单词长度和缓存目录的位置。然后处理源文件并初始化算法：
 
 ```php
-    public function __construct(
-      array $wordSource, $minWordLength, $cacheDir)
-    {
-      $this->processSource($wordSource, $minWordLength, $cacheDir);
-      $this->initAlgorithm();
-    }
-    ```
+public function __construct(
+  array $wordSource, $minWordLength, $cacheDir)
+{
+  $this->processSource($wordSource, $minWordLength, $cacheDir);
+  $this->initAlgorithm();
+}
+```
 
 1.  最后，我们能够定义实际生成密码的方法。它只需要随机选择一个算法，然后循环调用适当的方法：
 
 ```php
-    public function generate()
-    {
-      $pwd = '';
-      $key = random_int(0, count($this->algorithm) - 1);
-      foreach ($this->algorithm[$key] as $method) {
-        $pwd .= $this->$method();
-      }
-      return str_replace("\n", '', $pwd);
-    }
+public function generate()
+{
+  $pwd = '';
+  $key = random_int(0, count($this->algorithm) - 1);
+  foreach ($this->algorithm[$key] as $method) {
+    $pwd .= $this->$method();
+  }
+  return str_replace("\n", '', $pwd);
+}
 
-    }
-    ```
+}
+```
 
 ## 工作原理...
 
@@ -909,96 +909,96 @@ echo $passGen->generate();
 1.  在这个例子中，我们将从文本方法开始，然后再使用图像方法。无论哪种情况，我们首先需要定义一个生成要呈现的短语（并由网页访问者解码）的类。为此，我们定义一个`Application\Captcha\Phrase`类。我们还定义了在短语生成过程中使用的属性和类常量：
 
 ```php
-    namespace Application\Captcha;
-    class Phrase
-    {
-      const DEFAULT_LENGTH   = 5;
-      const DEFAULT_NUMBERS  = '0123456789';
-      const DEFAULT_UPPER    = 'ABCDEFGHJKLMNOPQRSTUVWXYZ';
-      const DEFAULT_LOWER    = 'abcdefghijklmnopqrstuvwxyz';
-      const DEFAULT_SPECIAL  = 
-        '¬\`|!"£$%^&*()_-+={}[]:;@\'~#<,>.?/|\\';
-      const DEFAULT_SUPPRESS = ['O','l'];
+namespace Application\Captcha;
+class Phrase
+{
+  const DEFAULT_LENGTH   = 5;
+  const DEFAULT_NUMBERS  = '0123456789';
+  const DEFAULT_UPPER    = 'ABCDEFGHJKLMNOPQRSTUVWXYZ';
+  const DEFAULT_LOWER    = 'abcdefghijklmnopqrstuvwxyz';
+  const DEFAULT_SPECIAL  = 
+    '¬\`|!"£$%^&*()_-+={}[]:;@\'~#<,>.?/|\\';
+  const DEFAULT_SUPPRESS = ['O','l'];
 
-      protected $phrase;
-      protected $includeNumbers;
-      protected $includeUpper;
-      protected $includeLower;
-      protected $includeSpecial;
-      protected $otherChars;
-      protected $suppressChars;
-      protected $string;
-      protected $length;
-    ```
+  protected $phrase;
+  protected $includeNumbers;
+  protected $includeUpper;
+  protected $includeLower;
+  protected $includeSpecial;
+  protected $otherChars;
+  protected $suppressChars;
+  protected $string;
+  protected $length;
+```
 
 1.  构造函数如您所期望的那样，接受各种属性的值，分配默认值，以便可以创建一个实例而无需指定任何参数。`$include*`标志用于表示将在生成短语的基本字符串中存在哪些字符集。例如，如果您只希望有数字，则`$includeUpper`和`$includeLower`都将设置为`FALSE`。`$otherChars`提供了额外的灵活性。最后，`$suppressChars`表示将从基本字符串中删除的字符数组。默认情况下，删除大写字母`O`和小写字母`l`：
 
 ```php
-    public function __construct(
-      $length = NULL,
-      $includeNumbers = TRUE,
-      $includeUpper= TRUE,
-      $includeLower= TRUE,
-      $includeSpecial = FALSE,
-      $otherChars = NULL,
-      array $suppressChars = NULL)
-      {
-        $this->length = $length ?? self::DEFAULT_LENGTH;
-        $this->includeNumbers = $includeNumbers;
-        $this->includeUpper = $includeUpper;
-        $this->includeLower = $includeLower;
-        $this->includeSpecial = $includeSpecial;
-        $this->otherChars = $otherChars;
-        $this->suppressChars = $suppressChars 
-          ?? self::DEFAULT_SUPPRESS;
-        $this->phrase = $this->generatePhrase();
-      }
-    ```
+public function __construct(
+  $length = NULL,
+  $includeNumbers = TRUE,
+  $includeUpper= TRUE,
+  $includeLower= TRUE,
+  $includeSpecial = FALSE,
+  $otherChars = NULL,
+  array $suppressChars = NULL)
+  {
+    $this->length = $length ?? self::DEFAULT_LENGTH;
+    $this->includeNumbers = $includeNumbers;
+    $this->includeUpper = $includeUpper;
+    $this->includeLower = $includeLower;
+    $this->includeSpecial = $includeSpecial;
+    $this->otherChars = $otherChars;
+    $this->suppressChars = $suppressChars 
+      ?? self::DEFAULT_SUPPRESS;
+    $this->phrase = $this->generatePhrase();
+  }
+```
 
 1.  然后，我们定义一系列的 getter 和 setter，每个属性都有一个。请注意，为了节省空间，我们只显示前两个。
 
 ```php
-    public function getString()
-    {
-      return $this->string;
-    }
+public function getString()
+{
+  return $this->string;
+}
 
-    public function setString($string)
-    {
-      $this->string = $string;
-    }
+public function setString($string)
+{
+  $this->string = $string;
+}
 
-    // other getters and setters not shown
-    ```
+// other getters and setters not shown
+```
 
 1.  接下来，我们需要定义一个初始化基本字符串的方法。这由一系列简单的 if 语句组成，检查各种`$include*`标志并根据需要附加到基本字符串。最后，我们使用`str_replace()`来删除`$suppressChars`中表示的字符：
 
 ```php
-    public function initString()
-    {
-      $string = '';
-      if ($this->includeNumbers) {
-          $string .= self::DEFAULT_NUMBERS;
-      }
-      if ($this->includeUpper) {
-          $string .= self::DEFAULT_UPPER;
-      }
-      if ($this->includeLower) {
-          $string .= self::DEFAULT_LOWER;
-      }
-      if ($this->includeSpecial) {
-          $string .= self::DEFAULT_SPECIAL;
-      }
-      if ($this->otherChars) {
-          $string .= $this->otherChars;
-      }
-      if ($this->suppressChars) {
-          $string = str_replace(
-            $this->suppressChars, '', $string);
-      }
-      return $string;
-    }
-    ```
+public function initString()
+{
+  $string = '';
+  if ($this->includeNumbers) {
+      $string .= self::DEFAULT_NUMBERS;
+  }
+  if ($this->includeUpper) {
+      $string .= self::DEFAULT_UPPER;
+  }
+  if ($this->includeLower) {
+      $string .= self::DEFAULT_LOWER;
+  }
+  if ($this->includeSpecial) {
+      $string .= self::DEFAULT_SPECIAL;
+  }
+  if ($this->otherChars) {
+      $string .= $this->otherChars;
+  }
+  if ($this->suppressChars) {
+      $string = str_replace(
+        $this->suppressChars, '', $string);
+  }
+  return $string;
+}
+```
 
 ### 提示
 
@@ -1009,157 +1009,52 @@ echo $passGen->generate();
 1.  现在我们准备定义生成随机短语的核心方法，这是验证码呈现给网站访问者的。我们设置一个简单的`for()`循环，并使用新的 PHP 7 `random_int()`函数在基本字符串中跳转：
 
 ```php
-    public function generatePhrase()
-    {
-      $phrase = '';
-      $this->string = $this->initString();
-      $max = strlen($this->string) - 1;
-      for ($x = 0; $x < $this->length; $x++) {
-        $phrase .= substr(
-          $this->string, random_int(0, $max), 1);
-      }
-      return $phrase;
-    }
-    }
-    ```
+public function generatePhrase()
+{
+  $phrase = '';
+  $this->string = $this->initString();
+  $max = strlen($this->string) - 1;
+  for ($x = 0; $x < $this->length; $x++) {
+    $phrase .= substr(
+      $this->string, random_int(0, $max), 1);
+  }
+  return $phrase;
+}
+}
+```
 
 1.  现在我们将注意力从短语转移到将生成文本验证码的类上。为此，我们首先定义一个接口，以便将来可以创建额外的验证码类，所有这些类都使用`Application\Captcha\Phrase`。请注意，`getImage()`将返回文本、文本艺术或实际图像，具体取决于我们决定使用哪个类：
 
 ```php
-    namespace Application\Captcha;
-    interface CaptchaInterface
-    {
-      public function getLabel();
-      public function getImage();
-      public function getPhrase();
-    }
-    ```
+namespace Application\Captcha;
+interface CaptchaInterface
+{
+  public function getLabel();
+  public function getImage();
+  public function getPhrase();
+}
+```
 
 1.  对于文本验证码，我们定义了一个`Application\Captcha\Reverse`类。这个名字的原因是这个类不仅产生文本，而且是反向的文本。`__construct()`方法构建了一个`Phrase`的实例。请注意，`getImage()`以反向返回短语：
 
 ```php
-    namespace Application\Captcha;
-    class Reverse implements CaptchaInterface
-    {
-      const DEFAULT_LABEL = 'Type this in reverse';
-      const DEFAULT_LENGTH = 6;
-      protected $phrase;
-      public function __construct(
-        $label  = self::DEFAULT_LABEL,
-        $length = self:: DEFAULT_LENGTH,
-        $includeNumbers = TRUE,
-        $includeUpper   = TRUE,
-        $includeLower   = TRUE,
-        $includeSpecial = FALSE,
-        $otherChars     = NULL,
-        array $suppressChars = NULL)
-      {
-        $this->label  = $label;
-        $this->phrase = new Phrase(
-          $length, 
-          $includeNumbers, 
-          $includeUpper,
-          $includeLower, 
-          $includeSpecial, 
-          $otherChars, 
-          $suppressChars);
-        }
-
-      public function getLabel()
-      {
-        return $this->label;
-      }
-
-      public function getImage()
-      {
-        return strrev($this->phrase->getPhrase());
-      }
-
-      public function getPhrase()
-      {
-        return $this->phrase->getPhrase();
-      }
-
-    }
-    ```
-
-### 生成图像验证码
-
-1.  正如你可以想象的那样，图像方法要复杂得多。短语生成过程是相同的。主要区别在于，我们不仅需要在图形上印刷短语，还需要以不同的方式扭曲每个字母，并引入随机点的噪音。
-
-1.  我们定义了一个实现`CaptchaInterface`的`Application\Captcha\Image`类。该类的常量和属性不仅包括短语生成所需的内容，还包括图像生成所需的内容：
-
-```php
-    namespace Application\Captcha;
-    use DirectoryIterator;
-    class Image implements CaptchaInterface
-    {
-
-      const DEFAULT_WIDTH = 200;
-      const DEFAULT_HEIGHT = 50;
-      const DEFAULT_LABEL = 'Enter this phrase';
-      const DEFAULT_BG_COLOR = [255,255,255];
-      const DEFAULT_URL = '/captcha';
-      const IMAGE_PREFIX = 'CAPTCHA_';
-      const IMAGE_SUFFIX = '.jpg';
-      const IMAGE_EXP_TIME = 300;    // seconds
-      const ERROR_REQUIRES_GD = 'Requires the GD extension + '
-        .  ' the JPEG library';
-      const ERROR_IMAGE = 'Unable to generate image';
-
-      protected $phrase;
-      protected $imageFn;
-      protected $label;
-      protected $imageWidth;
-      protected $imageHeight;
-      protected $imageRGB;
-      protected $imageDir;
-      protected $imageUrl;
-    ```
-
-1.  构造函数需要接受前面步骤中描述的短语生成所需的所有参数。此外，我们还需要接受图像生成所需的参数。两个必需参数是`$imageDir`和`$imageUrl`。第一个是图形将被写入的位置。第二个是基本 URL，之后我们将附加生成的文件名。如果我们想提供 TrueType 字体，可以提供`$imageFont`，这将产生更安全的验证码。否则，我们只能使用默认字体，引用一部著名电影中的一句台词，*不是一道美丽的风景*：
-
-```php
-    public function __construct(
-      $imageDir,
-      $imageUrl,
-      $imageFont = NULL,
-      $label = NULL,
-      $length = NULL,
-      $includeNumbers = TRUE,
-      $includeUpper= TRUE,
-      $includeLower= TRUE,
-      $includeSpecial = FALSE,
-      $otherChars = NULL,
-      array $suppressChars = NULL,
-      $imageWidth = NULL,
-      $imageHeight = NULL,
-      array $imageRGB = NULL
-    )
-    {
-    ```
-
-1.  接下来，在构造函数中，我们检查`imagecreatetruecolor`函数是否存在。如果返回`FALSE`，我们知道 GD 扩展不可用。否则，我们将参数分配给属性，生成短语，删除旧图像，并写出验证码图形：
-
-```php
-    if (!function_exists('imagecreatetruecolor')) {
-        throw new \Exception(self::ERROR_REQUIRES_GD);
-    }
-    $this->imageDir   = $imageDir;
-    $this->imageUrl   = $imageUrl;
-    $this->imageFont  = $imageFont;
-    $this->label      = $label ?? self::DEFAULT_LABEL;
-    $this->imageRGB   = $imageRGB ?? self::DEFAULT_BG_COLOR;
-    $this->imageWidth = $imageWidth ?? self::DEFAULT_WIDTH;
-    $this->imageHeight= $imageHeight ?? self::DEFAULT_HEIGHT;
-    if (substr($imageUrl, -1, 1) == '/') {
-        $imageUrl = substr($imageUrl, 0, -1);
-    }
-    $this->imageUrl = $imageUrl;
-    if (substr($imageDir, -1, 1) == DIRECTORY_SEPARATOR) {
-        $imageDir = substr($imageDir, 0, -1);
-    }
-
+namespace Application\Captcha;
+class Reverse implements CaptchaInterface
+{
+  const DEFAULT_LABEL = 'Type this in reverse';
+  const DEFAULT_LENGTH = 6;
+  protected $phrase;
+  public function __construct(
+    $label  = self::DEFAULT_LABEL,
+    $length = self:: DEFAULT_LENGTH,
+    $includeNumbers = TRUE,
+    $includeUpper   = TRUE,
+    $includeLower   = TRUE,
+    $includeSpecial = FALSE,
+    $otherChars     = NULL,
+    array $suppressChars = NULL)
+  {
+    $this->label  = $label;
     $this->phrase = new Phrase(
       $length, 
       $includeNumbers, 
@@ -1168,136 +1063,241 @@ echo $passGen->generate();
       $includeSpecial, 
       $otherChars, 
       $suppressChars);
-    $this->removeOldImages();
-    $this->generateJpg();
     }
-    ```
+
+  public function getLabel()
+  {
+    return $this->label;
+  }
+
+  public function getImage()
+  {
+    return strrev($this->phrase->getPhrase());
+  }
+
+  public function getPhrase()
+  {
+    return $this->phrase->getPhrase();
+  }
+
+}
+```
+
+### 生成图像验证码
+
+1.  正如你可以想象的那样，图像方法要复杂得多。短语生成过程是相同的。主要区别在于，我们不仅需要在图形上印刷短语，还需要以不同的方式扭曲每个字母，并引入随机点的噪音。
+
+1.  我们定义了一个实现`CaptchaInterface`的`Application\Captcha\Image`类。该类的常量和属性不仅包括短语生成所需的内容，还包括图像生成所需的内容：
+
+```php
+namespace Application\Captcha;
+use DirectoryIterator;
+class Image implements CaptchaInterface
+{
+
+  const DEFAULT_WIDTH = 200;
+  const DEFAULT_HEIGHT = 50;
+  const DEFAULT_LABEL = 'Enter this phrase';
+  const DEFAULT_BG_COLOR = [255,255,255];
+  const DEFAULT_URL = '/captcha';
+  const IMAGE_PREFIX = 'CAPTCHA_';
+  const IMAGE_SUFFIX = '.jpg';
+  const IMAGE_EXP_TIME = 300;    // seconds
+  const ERROR_REQUIRES_GD = 'Requires the GD extension + '
+    .  ' the JPEG library';
+  const ERROR_IMAGE = 'Unable to generate image';
+
+  protected $phrase;
+  protected $imageFn;
+  protected $label;
+  protected $imageWidth;
+  protected $imageHeight;
+  protected $imageRGB;
+  protected $imageDir;
+  protected $imageUrl;
+```
+
+1.  构造函数需要接受前面步骤中描述的短语生成所需的所有参数。此外，我们还需要接受图像生成所需的参数。两个必需参数是`$imageDir`和`$imageUrl`。第一个是图形将被写入的位置。第二个是基本 URL，之后我们将附加生成的文件名。如果我们想提供 TrueType 字体，可以提供`$imageFont`，这将产生更安全的验证码。否则，我们只能使用默认字体，引用一部著名电影中的一句台词，*不是一道美丽的风景*：
+
+```php
+public function __construct(
+  $imageDir,
+  $imageUrl,
+  $imageFont = NULL,
+  $label = NULL,
+  $length = NULL,
+  $includeNumbers = TRUE,
+  $includeUpper= TRUE,
+  $includeLower= TRUE,
+  $includeSpecial = FALSE,
+  $otherChars = NULL,
+  array $suppressChars = NULL,
+  $imageWidth = NULL,
+  $imageHeight = NULL,
+  array $imageRGB = NULL
+)
+{
+```
+
+1.  接下来，在构造函数中，我们检查`imagecreatetruecolor`函数是否存在。如果返回`FALSE`，我们知道 GD 扩展不可用。否则，我们将参数分配给属性，生成短语，删除旧图像，并写出验证码图形：
+
+```php
+if (!function_exists('imagecreatetruecolor')) {
+    throw new \Exception(self::ERROR_REQUIRES_GD);
+}
+$this->imageDir   = $imageDir;
+$this->imageUrl   = $imageUrl;
+$this->imageFont  = $imageFont;
+$this->label      = $label ?? self::DEFAULT_LABEL;
+$this->imageRGB   = $imageRGB ?? self::DEFAULT_BG_COLOR;
+$this->imageWidth = $imageWidth ?? self::DEFAULT_WIDTH;
+$this->imageHeight= $imageHeight ?? self::DEFAULT_HEIGHT;
+if (substr($imageUrl, -1, 1) == '/') {
+    $imageUrl = substr($imageUrl, 0, -1);
+}
+$this->imageUrl = $imageUrl;
+if (substr($imageDir, -1, 1) == DIRECTORY_SEPARATOR) {
+    $imageDir = substr($imageDir, 0, -1);
+}
+
+$this->phrase = new Phrase(
+  $length, 
+  $includeNumbers, 
+  $includeUpper,
+  $includeLower, 
+  $includeSpecial, 
+  $otherChars, 
+  $suppressChars);
+$this->removeOldImages();
+$this->generateJpg();
+}
+```
 
 1.  删除旧图像的过程非常重要；否则我们最终会得到一个充满过期验证码图像的目录！我们使用`DirectoryIterator`类来扫描指定目录并检查访问时间。我们将旧图像文件定义为当前时间减去`IMAGE_EXP_TIME`指定值的文件：
 
 ```php
-    public function removeOldImages()
-    {
-      $old = time() - self::IMAGE_EXP_TIME;
-      foreach (new DirectoryIterator($this->imageDir) 
-               as $fileInfo) {
-        if($fileInfo->isDot()) continue;
-        if ($fileInfo->getATime() < $old) {
-          unlink($this->imageDir . DIRECTORY_SEPARATOR 
-                 . $fileInfo->getFilename());
-        }
-      }
+public function removeOldImages()
+{
+  $old = time() - self::IMAGE_EXP_TIME;
+  foreach (new DirectoryIterator($this->imageDir) 
+           as $fileInfo) {
+    if($fileInfo->isDot()) continue;
+    if ($fileInfo->getATime() < $old) {
+      unlink($this->imageDir . DIRECTORY_SEPARATOR 
+             . $fileInfo->getFilename());
     }
-    ```
+  }
+}
+```
 
 1.  现在我们准备转向主要内容。首先，我们将`$imageRGB`数组分成`$red`、`$green`和`$blue`。我们使用核心的`imagecreatetruecolor()`函数生成指定宽度和高度的基本图形。我们使用 RGB 值对背景进行着色：
 
 ```php
-    public function generateJpg()
-    {
-      try {
-          list($red,$green,$blue) = $this->imageRGB;
-          $im = imagecreatetruecolor(
-            $this->imageWidth, $this->imageHeight);
-          $black = imagecolorallocate($im, 0, 0, 0);
-          $imageBgColor = imagecolorallocate(
-            $im, $red, $green, $blue);
-          imagefilledrectangle($im, 0, 0, $this->imageWidth, 
-            $this->imageHeight, $imageBgColor);
-    ```
+public function generateJpg()
+{
+  try {
+      list($red,$green,$blue) = $this->imageRGB;
+      $im = imagecreatetruecolor(
+        $this->imageWidth, $this->imageHeight);
+      $black = imagecolorallocate($im, 0, 0, 0);
+      $imageBgColor = imagecolorallocate(
+        $im, $red, $green, $blue);
+      imagefilledrectangle($im, 0, 0, $this->imageWidth, 
+        $this->imageHeight, $imageBgColor);
+```
 
 1.  接下来，我们根据图像宽度和高度定义*x*和*y*边距。然后，我们初始化要用于将短语写入图形的变量。然后我们循环多次，次数与短语的长度相匹配：
 
 ```php
-    $xMargin = (int) ($this->imageWidth * .1 + .5);
-    $yMargin = (int) ($this->imageHeight * .3 + .5);
-    $phrase = $this->getPhrase();
-    $max = strlen($phrase);
-    $count = 0;
-    $x = $xMargin;
-    $size = 5;
-    for ($i = 0; $i < $max; $i++) {
-    ```
+$xMargin = (int) ($this->imageWidth * .1 + .5);
+$yMargin = (int) ($this->imageHeight * .3 + .5);
+$phrase = $this->getPhrase();
+$max = strlen($phrase);
+$count = 0;
+$x = $xMargin;
+$size = 5;
+for ($i = 0; $i < $max; $i++) {
+```
 
 1.  如果指定了`$imageFont`，我们可以使用不同的大小和角度写入每个字符。我们还需要根据大小调整*x*轴（即水平）的值：
 
 ```php
-    if ($this->imageFont) {
-        $size = rand(12, 32);
-        $angle = rand(0, 30);
-        $y = rand($yMargin + $size, $this->imageHeight);
-        imagettftext($im, $size, $angle, $x, $y, $black, 
-          $this->imageFont, $phrase[$i]);
-        $x += (int) ($size  + rand(0,5));
-    ```
+if ($this->imageFont) {
+    $size = rand(12, 32);
+    $angle = rand(0, 30);
+    $y = rand($yMargin + $size, $this->imageHeight);
+    imagettftext($im, $size, $angle, $x, $y, $black, 
+      $this->imageFont, $phrase[$i]);
+    $x += (int) ($size  + rand(0,5));
+```
 
 1.  否则，我们将被默认字体所困扰。我们使用最大尺寸的`5`，因为较小的尺寸是不可读的。我们通过交替使用`imagechar()`（正常写入图像）和`imagecharup()`（侧向写入）来提供低级别的扭曲：
 
 ```php
+} else {
+    $y = rand(0, ($this->imageHeight - $yMargin));
+    if ($count++ & 1) {
+        imagechar($im, 5, $x, $y, $phrase[$i], $black);
     } else {
-        $y = rand(0, ($this->imageHeight - $yMargin));
-        if ($count++ & 1) {
-            imagechar($im, 5, $x, $y, $phrase[$i], $black);
-        } else {
-            imagecharup($im, 5, $x, $y, $phrase[$i], $black);
-        }
-        $x += (int) ($size * 1.2);
-      }
-    } // end for ($i = 0; $i < $max; $i++)
-    ```
+        imagecharup($im, 5, $x, $y, $phrase[$i], $black);
+    }
+    $x += (int) ($size * 1.2);
+  }
+} // end for ($i = 0; $i < $max; $i++)
+```
 
 1.  接下来，我们需要添加随机点的噪音。这是必要的，以使图像对自动化系统更难以检测。建议您也添加代码来绘制一些线条：
 
 ```php
-    $numDots = rand(10, 999);
-    for ($i = 0; $i < $numDots; $i++) {
-      imagesetpixel($im, rand(0, $this->imageWidth), 
-        rand(0, $this->imageHeight), $black);
-    }
-    ```
+$numDots = rand(10, 999);
+for ($i = 0; $i < $numDots; $i++) {
+  imagesetpixel($im, rand(0, $this->imageWidth), 
+    rand(0, $this->imageHeight), $black);
+}
+```
 
 1.  然后，我们使用我们的老朋友`md5()`创建一个随机图像文件名，其中日期和从`0`到`9999`的随机数作为参数。请注意，我们可以安全地使用`md5()`，因为我们并不试图隐藏任何秘密信息；我们只是想快速生成一个唯一的文件名。我们也清除图像对象以节省内存：
 
 ```php
-    $this->imageFn = self::IMAGE_PREFIX 
-    . md5(date('YmdHis') . rand(0,9999)) 
-    . self::IMAGE_SUFFIX;
-    imagejpeg($im, $this->imageDir . DIRECTORY_SEPARATOR 
-    . $this->imageFn);
-    imagedestroy($im);
-    ```
+$this->imageFn = self::IMAGE_PREFIX 
+. md5(date('YmdHis') . rand(0,9999)) 
+. self::IMAGE_SUFFIX;
+imagejpeg($im, $this->imageDir . DIRECTORY_SEPARATOR 
+. $this->imageFn);
+imagedestroy($im);
+```
 
 1.  整个结构都在一个`try/catch`块中。如果发生错误或异常，我们会记录消息并采取适当的措施：
 
 ```php
-    } catch (\Throwable $e) {
-        error_log(__METHOD__ . ':' . $e->getMessage());
-        throw new \Exception(self::ERROR_IMAGE);
-    }
-    }
-    ```
+} catch (\Throwable $e) {
+    error_log(__METHOD__ . ':' . $e->getMessage());
+    throw new \Exception(self::ERROR_IMAGE);
+}
+}
+```
 
 1.  最后，我们定义接口所需的方法。请注意，`getImage()`返回一个 HTML `<img>`标签，然后可以立即显示：
 
 ```php
-    public function getLabel()
-    {
-      return $this->label;
-    }
+public function getLabel()
+{
+  return $this->label;
+}
 
-    public function getImage()
-    {
-      return sprintf('<img src="%s/%s" />', 
-        $this->imageUrl, $this->imageFn);
-    }
+public function getImage()
+{
+  return sprintf('<img src="%s/%s" />', 
+    $this->imageUrl, $this->imageFn);
+}
 
-    public function getPhrase()
-    {
-      return $this->phrase->getPhrase();
-    }
+public function getPhrase()
+{
+  return $this->phrase->getPhrase();
+}
 
-    }
-    ```
+}
+```
 
 ## 它是如何工作的...
 
@@ -1520,8 +1520,8 @@ if (!empty($_POST['login'])) {
 1.  提供的**IV**的字节数取决于所选择的密码方法。为了获得最佳结果，使用`random_bytes()`（PHP 7 中的新功能），它返回真正的**CSPRNG**字节序列。IV 的长度差别很大。首先尝试大小为 16。如果生成了*警告*，将显示应为该算法提供的正确字节数，因此请相应调整大小：
 
 ```php
-    $iv  = random_bytes(16);
-    ```
+$iv  = random_bytes(16);
+```
 
 1.  要执行加密，使用`openssl_encrypt()`。以下是应该传递的参数：
 
@@ -1536,17 +1536,17 @@ if (!empty($_POST['login'])) {
 1.  举个例子，假设你想选择 AES 密码方法，密钥大小为 256，并且选择 XTS 模式。以下是用于加密的代码：
 
 ```php
-    $plainText = 'Super Secret Credentials';
-    $key = random_bytes(16);
-    $method = 'aes-256-xts';
-    $cipherText = openssl_encrypt($plainText, $method, $key, 0, $iv);
-    ```
+$plainText = 'Super Secret Credentials';
+$key = random_bytes(16);
+$method = 'aes-256-xts';
+$cipherText = openssl_encrypt($plainText, $method, $key, 0, $iv);
+```
 
 1.  要解密，使用相同的`$key`和`$iv`值，以及`openssl_decrypt()`函数：
 
 ```php
-    $plainText = openssl_decrypt($cipherText, $method, $key, 0, $iv);
-    ```
+$plainText = openssl_decrypt($cipherText, $method, $key, 0, $iv);
+```
 
 ## 工作原理...
 

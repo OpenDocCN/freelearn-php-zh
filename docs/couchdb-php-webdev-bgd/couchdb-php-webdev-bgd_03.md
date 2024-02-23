@@ -134,16 +134,16 @@ CouchDB 采用了面向文档的数据库管理系统，提供了一组没有模
 1.  在**终端**中运行以下命令：
 
 ```php
-    **curl -X GET http://localhost:5984/_all_dbs** 
+**curl -X GET http://localhost:5984/_all_dbs** 
 
-    ```
+```
 
 1.  **终端**将会返回以下内容：
 
 ```php
-    **["_users"]** 
+**["_users"]** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -156,69 +156,69 @@ CouchDB 采用了面向文档的数据库管理系统，提供了一组没有模
 1.  通过在**终端**中运行以下命令创建一个新的数据库：
 
 ```php
-    **curl -X PUT http://localhost:5984/test-db** 
+**curl -X PUT http://localhost:5984/test-db** 
 
-    ```
+```
 
 1.  **终端**将会返回以下内容：
 
 ```php
-    **{"ok":true}** 
+**{"ok":true}** 
 
-    ```
+```
 
 1.  尝试使用**终端**中的以下命令创建另一个同名数据库：
 
 ```php
-    **curl -X PUT http://localhost:5984/test-db** 
+**curl -X PUT http://localhost:5984/test-db** 
 
-    ```
+```
 
 1.  **终端**将会返回以下内容：
 
 ```php
-    **{"error":"file_exists","reason":"The database could not be created, the file already exists."}** 
+**{"error":"file_exists","reason":"The database could not be created, the file already exists."}** 
 
-    ```
+```
 
 1.  好吧，那没用。所以让我们尝试通过在**终端**中运行以下命令创建一个不同名称的数据库：
 
 ```php
-    **curl -X PUT http://localhost:5984/another-db** 
+**curl -X PUT http://localhost:5984/another-db** 
 
-    ```
+```
 
 1.  **终端**将会返回以下内容：
 
 ```php
-    **{"ok":true}** 
+**{"ok":true}** 
 
-    ```
+```
 
 1.  让我们快速检查`test-db`数据库的详细信息，并查看更多关于它的详细信息。为此，请在**终端**中运行以下命令：
 
 ```php
-    **curl -X GET http://localhost:5984/test-db** 
+**curl -X GET http://localhost:5984/test-db** 
 
-    ```
+```
 
 1.  **终端**将会返回类似于以下内容（我重新格式化了我的内容以便阅读）：
 
 ```php
-    **{
-    "committed_update_seq": 1,
-    "compact_running": false,
-    "db_name": "test-db",
-    "disk_format_version": 5,
-    "disk_size": 4182,
-    "doc_count": 0,
-    "doc_del_count": 0,
-    "instance_start_time": "1308863484343052",
-    "purge_seq": 0,
-    "update_seq": 1
-    }** 
+**{
+"committed_update_seq": 1,
+"compact_running": false,
+"db_name": "test-db",
+"disk_format_version": 5,
+"disk_size": 4182,
+"doc_count": 0,
+"doc_del_count": 0,
+"instance_start_time": "1308863484343052",
+"purge_seq": 0,
+"update_seq": 1
+}** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -239,16 +239,16 @@ CouchDB 采用了面向文档的数据库管理系统，提供了一组没有模
 1.  通过在**终端**中运行以下命令删除`another-db`：
 
 ```php
-    **curl -X DELETE http://localhost:5984/another-db** 
+**curl -X DELETE http://localhost:5984/another-db** 
 
-    ```
+```
 
 1.  **终端**将会回复以下内容：
 
 ```php
-    **{"ok":true}** 
+**{"ok":true}** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -261,36 +261,36 @@ CouchDB 采用了面向文档的数据库管理系统，提供了一组没有模
 1.  通过在**终端**中运行以下命令在`test-db`数据库中创建一个文档：
 
 ```php
-    **curl -X POST -H "Content-Type:application/json" -d '{"type": "customer", "name":"Tim Juravich", "location":"Seattle, WA"}' http://localhost:5984/test-db** 
+**curl -X POST -H "Content-Type:application/json" -d '{"type": "customer", "name":"Tim Juravich", "location":"Seattle, WA"}' http://localhost:5984/test-db** 
 
-    ```
+```
 
 1.  **终端**将会回复类似以下的内容：
 
 ```php
-    **{"ok":true,"id":"39b1fe3cdcc7e7006694df91fb002082","rev":"1-8cf37e845c61cc239f0e98f8b7f56311"}** 
+**{"ok":true,"id":"39b1fe3cdcc7e7006694df91fb002082","rev":"1-8cf37e845c61cc239f0e98f8b7f56311"}** 
 
-    ```
+```
 
 1.  让我们从 CouchDB 中检索新创建的文档。首先复制你在**终端**最后一次响应中收到的 ID 到你的剪贴板；我的是`39b1fe3cdcc7e7006694df91fb002082`，但你的可能不同。然后在**终端**中运行这个命令，将你的 ID 粘贴到 URL 的末尾：
 
 ```php
-    **curl -X GET http://localhost:5984/test-db/41198fc6e20d867525a8faeb7a000015 | python -mjson.tool** 
+**curl -X GET http://localhost:5984/test-db/41198fc6e20d867525a8faeb7a000015 | python -mjson.tool** 
 
-    ```
+```
 
 1.  **终端**将会回复类似以下的内容：
 
 ```php
-    **{
-    "_id": "41198fc6e20d867525a8faeb7a000015",
-    "_rev": "1-4cee6ca6966fcf1f8ea7980ba3b1805e",
-    "location": "Seattle, WA",
-    "name": "Tim Juravich",
-    "type:": "customer"
-    }** 
+**{
+"_id": "41198fc6e20d867525a8faeb7a000015",
+"_rev": "1-4cee6ca6966fcf1f8ea7980ba3b1805e",
+"location": "Seattle, WA",
+"name": "Tim Juravich",
+"type:": "customer"
+}** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -393,10 +393,10 @@ CouchDB 自带一个名为 Futon 的内置基于 Web 的管理控制台。Futon 
 1.  打开 Futon 到**概述**，并查看右下角。您会看到文字说：
 
 ```php
-    **Welcome to Admin Party!
-    Everyone is admin. Fix this.** 
+**Welcome to Admin Party!
+Everyone is admin. Fix this.** 
 
-    ```
+```
 
 1.  点击**修复此问题**链接。
 
@@ -417,24 +417,24 @@ CouchDB 自带一个名为 Futon 的内置基于 Web 的管理控制台。Futon 
 1.  运行以下命令，将`your_username`替换为您刚刚创建的服务器管理员的用户名。
 
 ```php
-    **curl localhost:5984/_users/org.couchdb.user:your_username | python -mjson.tool** 
+**curl localhost:5984/_users/org.couchdb.user:your_username | python -mjson.tool** 
 
-    ```
+```
 
 1.  **终端**将会回复类似于：
 
 ```php
-    **{
-    "_id": "org.couchdb.user:your_username",
-    "_rev": "1-b9af54a7cdc392c2c298591f0dcd81f3",
-    "name": "your_username",
-    "password_sha": "3bc7d6d86da6lfed6d4d82e1e4d1c3ca587aecc8",
-    "roles": [],
-    "salt": "9812acc4866acdec35c903f0cc072c1d",
-    "type": "user"
-    }** 
+**{
+"_id": "org.couchdb.user:your_username",
+"_rev": "1-b9af54a7cdc392c2c298591f0dcd81f3",
+"name": "your_username",
+"password_sha": "3bc7d6d86da6lfed6d4d82e1e4d1c3ca587aecc8",
+"roles": [],
+"salt": "9812acc4866acdec35c903f0cc072c1d",
+"type": "user"
+}** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -465,16 +465,16 @@ CouchDB 自带一个名为 Futon 的内置基于 Web 的管理控制台。Futon 
 1.  通过运行以下命令再次尝试读取用户文档。再次用服务管理员的用户名替换`your_username`：
 
 ```php
-    **curl localhost:5984/_users/org.couchdb.user:your_username** 
+**curl localhost:5984/_users/org.couchdb.user:your_username** 
 
-    ```
+```
 
 1.  **终端**将会返回以下内容：
 
 ```php
-    **{"error":"unauthorized","reason":"You are not authorized to access this db."}** 
+**{"error":"unauthorized","reason":"You are not authorized to access this db."}** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -495,24 +495,24 @@ CouchDB 自带一个名为 Futon 的内置基于 Web 的管理控制台。Futon 
 1.  通过运行以下命令查看在`_users`数据库中保存的所有文档。用您的管理员用户名和密码替换`username`和`password`。
 
 ```php
-    **curl username:password@localhost:5984/_users/_all_docs** 
+**curl username:password@localhost:5984/_users/_all_docs** 
 
-    ```
+```
 
 1.  **终端**将会返回您在添加认证之前看到的相同数据。
 
 ```php
-    **{
-    "_id": "org.couchdb.user:your_username",
-    "_rev": "1-b9af54a7cdc392c2c298591f0dcd81f3",
-    "name": "your_username",
-    "password_sha": "3bc7d6d86da6lfed6d4d82e1e4d1c3ca587aecc8",
-    "roles": [],
-    "salt": "9812acc4866acdec35c903f0cc072c1d",
-    "type": "user"
-    }** 
+**{
+"_id": "org.couchdb.user:your_username",
+"_rev": "1-b9af54a7cdc392c2c298591f0dcd81f3",
+"name": "your_username",
+"password_sha": "3bc7d6d86da6lfed6d4d82e1e4d1c3ca587aecc8",
+"roles": [],
+"salt": "9812acc4866acdec35c903f0cc072c1d",
+"type": "user"
+}** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 

@@ -77,23 +77,23 @@ Git 需要在每个开发项目的根目录中初始化，以便跟踪所有项�
 1.  输入以下命令以更改目录到我们的工作目录：
 
 ```php
-    **cd /Library/Webserver/Documents/verge/** 
+**cd /Library/Webserver/Documents/verge/** 
 
-    ```
+```
 
 1.  输入以下命令以初始化我们的 Git 目录：
 
 ```php
-    **git init** 
+**git init** 
 
-    ```
+```
 
 1.  Git 将回应以下内容：
 
 ```php
-    **Initialized empty Git repository in /Library/WebServer/Documents/verge/.git/** 
+**Initialized empty Git repository in /Library/WebServer/Documents/verge/.git/** 
 
-    ```
+```
 
 1.  保持您的**终端**窗口打开，以便在本章中与 Git 进行交互。
 
@@ -112,18 +112,18 @@ Git 需要在每个开发项目的根目录中初始化，以便跟踪所有项�
 1.  在工作目录中创建`index.php`，并添加以下文本：
 
 ```php
-    <?php echo 'Welcome to Verge'; ?>
+<?php echo 'Welcome to Verge'; ?>
 
-    ```
+```
 
 1.  打开您的浏览器，转到网址：`http://localhost/verge/`。
 
 1.  `index.php`文件将显示以下文字：
 
 ```php
-    **Welcome to Verge** 
+**Welcome to Verge** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -142,23 +142,23 @@ Git 需要在每个开发项目的根目录中初始化，以便跟踪所有项�
 1.  将以下代码添加到文件中：
 
 ```php
-    <IfModule mod_rewrite.c>
-    RewriteEngine On
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^(.*)$ index.php?request=$1 [QSA,L]
-    </IfModule>
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php?request=$1 [QSA,L]
+</IfModule>
 
-    ```
+```
 
 1.  在工作目录中打开`index.php`文件。
 
 1.  更改`index.php`中的代码以匹配以下内容：
 
 ```php
-    <?php echo $_GET['request']; ?>
+<?php echo $_GET['request']; ?>
 
-    ```
+```
 
 1.  打开浏览器，转到`http://localhost/verge/test/abc`，然后转到`http://localhost/verge/test/123`。注意页面会以你在根 URL 末尾输入的相同值回应你。![执行操作-创建.htaccess 文件](img/3586_04_007.jpg)
 
@@ -218,10 +218,10 @@ echo "Sign Up!";
 1.  将以下代码添加到我们工作目录中的`index.php`文件中，以便我们可以与新创建的`bones.php`文件进行通信：
 
 ```php
-    <?php
-    include 'lib/bones.php';
+<?php
+include 'lib/bones.php';
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -456,23 +456,23 @@ echo "Signup!";
 1.  输入以下命令以更改目录到我们的工作目录：
 
 ```php
-    **cd /Library/Webserver/Documents/verge/** 
+**cd /Library/Webserver/Documents/verge/** 
 
-    ```
+```
 
 1.  通过输入以下命令将我们在此目录中创建的所有文件添加进来：
 
 ```php
-    **git add .** 
+**git add .** 
 
-    ```
+```
 
 1.  给 Git 一个描述，说明自上次提交以来我们做了什么：
 
 ```php
-    **git commit am 'Created bones.php and added simple support for routing'** 
+**git commit am 'Created bones.php and added simple support for routing'** 
 
-    ```
+```
 
 # 处理布局和视图
 
@@ -508,27 +508,27 @@ function get($route, $callback) {
 1.  让我们定义一个名为`$vars`的`public`数组，它将允许我们从`index.php`中的路由中存储变量，并且定义一个名为`$content`的字符串，它将存储视图的路径，这些视图将加载到我们的布局中。我们将首先在`lib/bones.php`类中添加两个变量：
 
 ```php
-    class Bones {
-    public $route = '';
-    **public $content = '';
-    public $vars = array();** 
-    public function __construct() {
-    ...
-    }
+class Bones {
+public $route = '';
+**public $content = '';
+public $vars = array();** 
+public function __construct() {
+...
+}
 
-    ```
+```
 
 1.  为了能够从`index.php`文件中设置变量，我们将创建一个简单的名为`set`的函数，它将允许我们传递一个索引和一个变量的值，并将其保存到当前的`Bones`实例中。让我们在`lib/bones.php`中的`get_route()`函数之后创建一个名为`set`的函数。
 
 ```php
-    protected function get_route() {
-    ...
-    }
-    **public function set($index, $value) {
-    $this->vars[$index] = $value;
-    }** 
+protected function get_route() {
+...
+}
+**public function set($index, $value) {
+$this->vars[$index] = $value;
+}** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -571,14 +571,14 @@ include(ROOT. '/views/' . $layout . '.php');
 1.  在新创建的`views/layout.php`中添加以下代码：
 
 ```php
-    <html>
-    <body>
-    <h1>Verge</h1>
-    <?php include($this->content); ?>
-    </body>
-    </html>
+<html>
+<body>
+<h1>Verge</h1>
+<?php include($this->content); ?>
+</body>
+</html>
 
-    ```
+```
 
 ## 刚才发生了什么？
 
@@ -616,17 +616,17 @@ get('/signup', function($app) {
 1.  通过编写以下代码将以下代码添加到`views/home.php`文件中：
 
 ```php
-    Home Page <br /><br />
-    <?php echo $message; ?>
+Home Page <br /><br />
+<?php echo $message; ?>
 
-    ```
+```
 
 1.  将以下代码添加到`views/signup.php`文件中：
 
 ```php
-    Signup Now!
+Signup Now!
 
-    ```
+```
 
 ## 刚才发生了什么？
 
@@ -643,23 +643,23 @@ get('/signup', function($app) {
 1.  输入以下命令以更改目录到我们的工作目录：
 
 ```php
-    **cd /Library/Webserver/Documents/verge/** 
+**cd /Library/Webserver/Documents/verge/** 
 
-    ```
+```
 
 1.  通过输入以下命令，将我们在该目录中创建的所有文件都添加进去：
 
 ```php
-    **git add .** 
+**git add .** 
 
-    ```
+```
 
 1.  给 Git 一个描述，说明我们自上次提交以来做了什么：
 
 ```php
-    **git commit am 'Added support for views and layouts'** 
+**git commit am 'Added support for views and layouts'** 
 
-    ```
+```
 
 # 添加对其他 HTTP 方法的支持
 
@@ -672,41 +672,41 @@ get('/signup', function($app) {
 1.  让我们在我们的`Bones`类中添加一个变量`$method`，在我们的`$route`变量之后。这个变量将存储每个请求上执行的`HTTP`方法：
 
 ```php
-    class Bones {
-    private static $instance;
-    public static $route_found = false;
-    public $route = '';
-    **public $method = '';** 
-    public $content = '';
+class Bones {
+private static $instance;
+public static $route_found = false;
+public $route = '';
+**public $method = '';** 
+public $content = '';
 
-    ```
+```
 
 1.  为了让我们在每个请求中获取方法，我们需要在我们的`__construct()`函数中添加一行代码，名为`get_route()`，并将结果的值保存在我们的实例变量`$method`中。这意味着当`Bones`在每个请求中被创建时，它也将检索方法并将其保存到我们的`Bones`实例中，以便我们以后可以使用它。通过添加以下代码来实现这一点：
 
 ```php
-    public function __construct() {
-    $this->route = $this->get_route();
-    **$this->method = $this->get_method();** 
-    }
+public function __construct() {
+$this->route = $this->get_route();
+**$this->method = $this->get_method();** 
+}
 
-    ```
+```
 
 1.  让我们创建一个名为`get_method()`的函数，这样我们的`__construct()`函数就可以调用它。让我们在我们的`get_route()`方法之后添加它：
 
 ```php
-    protected function get_route() {
-    parse_str($_SERVER['QUERY_STRING'], $route);
-    if ($route) {
-    return '/' . $route['request'];
-    } else {
-    return '/';
-    }
-    }
-    protected function get_method() {
-    **return isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'GET';
-    }** 
+protected function get_route() {
+parse_str($_SERVER['QUERY_STRING'], $route);
+if ($route) {
+return '/' . $route['request'];
+} else {
+return '/';
+}
+}
+protected function get_method() {
+**return isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'GET';
+}** 
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -721,25 +721,25 @@ get('/signup', function($app) {
 1.  在`lib/bones.php`的`register`函数中添加`$method`，以便我们可以将一个方法传递到函数中：
 
 ```php
-    **public static function register($route, $callback, $method) {** 
-    $bones = static::get_instance();
+**public static function register($route, $callback, $method) {** 
+$bones = static::get_instance();
 
-    ```
+```
 
 1.  现在，我们需要更新我们在注册函数中的简单路由匹配，以检查传递的路由`$method`是否与我们的实例变量`$bones->method`匹配，这是实际发生在服务器上的方法：
 
 ```php
-    public static function register($route, $callback, $method) {
-    $bones = static::get_instance();
-    **if ($route == $bones->route && !static:: $route_found && $bones->method == $method) {** 
-    static::$route_found = true;
-    echo $callback($bones);
-    } else {
-    return false;
-    }
-    }
+public static function register($route, $callback, $method) {
+$bones = static::get_instance();
+**if ($route == $bones->route && !static:: $route_found && $bones->method == $method) {** 
+static::$route_found = true;
+echo $callback($bones);
+} else {
+return false;
+}
+}
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -789,25 +789,25 @@ Bones::register($route, $callback, 'DELETE');
 1.  添加一个名为`form`的函数，如下所示：
 
 ```php
-    public function form($key) {
-    return $_POST[$key];
-    }
+public function form($key) {
+return $_POST[$key];
+}
 
-    ```
+```
 
 1.  添加一个名为`make_route`的函数。这个函数将允许我们的`Bones`实例创建干净的链接，以便我们可以链接到应用程序中的其他资源：
 
 ```php
-    public function make_route($path = '') {
-    $url = explode("/", $_SERVER['PHP_SELF']);
-    if ($url[1] == "index.php") {
-    return $path;
-    } else {
-    return '/' . $url[1] . $path;
-    }
-    }
+public function make_route($path = '') {
+$url = explode("/", $_SERVER['PHP_SELF']);
+if ($url[1] == "index.php") {
+return $path;
+} else {
+return '/' . $url[1] . $path;
+}
+}
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -867,23 +867,23 @@ $app->render('home');
 1.  输入以下命令以更改目录到我们的工作目录：
 
 ```php
-    **cd /Library/Webserver/Documents/verge/** 
+**cd /Library/Webserver/Documents/verge/** 
 
-    ```
+```
 
 1.  通过输入以下命令来添加我们在此目录中创建的所有文件：
 
 ```php
-    **git add .** 
+**git add .** 
 
-    ```
+```
 
 1.  给 Git 描述我们自上次提交以来所做的工作：
 
 ```php
-    **git commit -am 'Added support for all HTTP methods'** 
+**git commit -am 'Added support for all HTTP methods'** 
 
-    ```
+```
 
 # 添加对复杂路由的支持
 
@@ -1124,23 +1124,23 @@ $app->render('home');
 1.  输入以下命令以更改目录到我们的工作目录：
 
 ```php
-    **cd /Library/Webserver/Documents/verge/** 
+**cd /Library/Webserver/Documents/verge/** 
 
-    ```
+```
 
 1.  通过输入以下命令，将我们在这个目录中创建的所有文件都添加进去：
 
 ```php
-    **git add .** 
+**git add .** 
 
-    ```
+```
 
 1.  给 Git 一个描述，说明我们自上次提交以来做了什么：
 
 ```php
-    **git commit am 'Refactored route matching to handle more complex URLs and allow for route variables'** 
+**git commit am 'Refactored route matching to handle more complex URLs and allow for route variables'** 
 
-    ```
+```
 
 # 添加对公共文件的支持
 
@@ -1155,18 +1155,18 @@ $app->render('home');
 1.  添加以下突出显示的代码：
 
 ```php
-    <IfModule mod_rewrite.c>
-    RewriteEngine On
-    **RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^css/([^/]+) public/css/$1 [L]
-    RewriteRule ^js/([^/]+) public/js/$1 [L]** 
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^(.*)$ index.php?request=$1 [QSA,L]
-    </IfModule>
+<IfModule mod_rewrite.c>
+RewriteEngine On
+**RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^css/([^/]+) public/css/$1 [L]
+RewriteRule ^js/([^/]+) public/js/$1 [L]** 
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php?request=$1 [QSA,L]
+</IfModule>
 
-    ```
+```
 
 ## 刚才发生了什么？
 
@@ -1181,25 +1181,25 @@ $app->render('home');
 1.  打开`views/layout.php`。这个文件目前驱动着我们项目中所有页面的布局。我们只需要添加代码来包含我们的样式表：
 
 ```php
-    <html>
-    **<head>
-    <link href="<?php echo $this->make_route('/css/master.css') ?>" rel="stylesheet" type="text/css" />
-    </head>** 
-    <body>
-    <?php include($this->view_content); ?>
-    </body>
-    </html>
+<html>
+**<head>
+<link href="<?php echo $this->make_route('/css/master.css') ?>" rel="stylesheet" type="text/css" />
+</head>** 
+<body>
+<?php include($this->view_content); ?>
+</body>
+</html>
 
-    ```
+```
 
 1.  创建一个名为`master.css`的新文件，并将其放在我们工作目录的`public/css`文件夹中。
 
 1.  在`public/css/master.css`中添加一小段代码，以显示不同颜色的背景，这样我们就可以测试所有这些是否有效。
 
 ```php
-    body {background:#e4e4e4;}
+body {background:#e4e4e4;}
 
-    ```
+```
 
 ## 刚才发生了什么？
 
@@ -1222,23 +1222,23 @@ $app->render('home');
 1.  通过键入以下命令，将目录更改为我们的工作目录：
 
 ```php
-    **cd /Library/Webserver/Documents/verge/** 
+**cd /Library/Webserver/Documents/verge/** 
 
-    ```
+```
 
 1.  通过键入以下命令，将我们在此目录中创建的所有文件添加进来：
 
 ```php
-    **git add .** 
+**git add .** 
 
-    ```
+```
 
 1.  给 Git 一个描述，说明自上次提交以来我们所做的工作：
 
 ```php
-    **git commit am 'Added clean routes for public files, created a master.css file, linked to master.css in layout.php'** 
+**git commit am 'Added clean routes for public files, created a master.css file, linked to master.css in layout.php'** 
 
-    ```
+```
 
 # 将您的代码发布到 GitHub
 
@@ -1283,23 +1283,23 @@ $app->render('home');
 1.  键入以下命令以更改目录到我们的工作目录：
 
 ```php
-    **cd /Library/WebServer/Documents/verge/** 
+**cd /Library/WebServer/Documents/verge/** 
 
-    ```
+```
 
 1.  通过输入以下命令并将**用户名**替换为您的 GitHub 用户名，将 GitHub 添加为您的远程存储库：
 
 ```php
-    **git remote add origin git@github.com:username/verge.git** 
+**git remote add origin git@github.com:username/verge.git** 
 
-    ```
+```
 
 1.  将您的本地存储库推送到 GitHub。
 
 ```php
-    **git push -u origin master** 
+**git push -u origin master** 
 
-    ```
+```
 
 1.  Git 将返回一大堆文本，并在完成时停止。
 
@@ -1318,16 +1318,16 @@ $app->render('home');
 1.  使用以下命令将目录更改为我们的工作目录：
 
 ```php
-    **cd /Library/WebServer/Documents** 
+**cd /Library/WebServer/Documents** 
 
-    ```
+```
 
 1.  通过键入以下命令，将存储库克隆到您的本地计算机：
 
 ```php
-    **git clone git@github.com:timjuravich/bones.git** 
+**git clone git@github.com:timjuravich/bones.git** 
 
-    ```
+```
 
 1.  Git 将从 GitHub 获取所有文件，并将它们移动到您的本地计算机。
 

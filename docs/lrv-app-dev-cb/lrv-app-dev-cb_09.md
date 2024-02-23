@@ -39,119 +39,119 @@
 1.  在`app/config`目录中，打开`app.php`文件，并确保`key`为空
 
 ```php
-      'key' => '',
-    ```
+  'key' => '',
+```
 
 1.  在命令行中，转到应用程序的根目录，并使用以下命令生成一个新的密钥：
 
 ```php
-      php artisan key:generate
-    ```
+  php artisan key:generate
+```
 
 1.  使用以下命令在数据库中创建一个表来保存我们的敏感信息：
 
 ```php
-    CREATE TABLE accounts(
-      id int(11) unsigned NOT NULL AUTO_INCREMENT,
-        business varchar(255) DEFAULT NULL,
-        total_revenue varchar(255) DEFAULT NULL,
-        projected_revenue varchar(255) DEFAULT NULL,
-        PRIMARY KEY (id)) 
-        ENGINE=InnoDB DEFAULT CHARSET=utf8;
+CREATE TABLE accounts(
+  id int(11) unsigned NOT NULL AUTO_INCREMENT,
+    business varchar(255) DEFAULT NULL,
+    total_revenue varchar(255) DEFAULT NULL,
+    projected_revenue varchar(255) DEFAULT NULL,
+    PRIMARY KEY (id)) 
+    ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-    ```
+```
 
 1.  在我们的`app/models`目录中，通过输入以下代码创建一个名为`Account.php`的文件：
 
 ```php
-    <?php
+<?php
 
-    class Account extends Eloquent {
-      protected $table = 'accounts';
-      public $timestamps = false;
-      public function setBusinessAttribute($business) {$this->attributes['business'] = Crypt::encrypt($business);
-    }
+class Account extends Eloquent {
+  protected $table = 'accounts';
+  public $timestamps = false;
+  public function setBusinessAttribute($business) {$this->attributes['business'] = Crypt::encrypt($business);
+}
 
-    public function setTotalrevenueAttribute($total_revenue)
-      {$this->attributes['total_revenue'] = Crypt::encrypt($total_revenue);
-    }
+public function setTotalrevenueAttribute($total_revenue)
+  {$this->attributes['total_revenue'] = Crypt::encrypt($total_revenue);
+}
 
-      public functionsetProjectedrevenueAttribute($projected_revenue)
-    {
-      $this->attributes['projected_revenue'] = Crypt::encrypt($projected_revenue);
-    }
+  public functionsetProjectedrevenueAttribute($projected_revenue)
+{
+  $this->attributes['projected_revenue'] = Crypt::encrypt($projected_revenue);
+}
 
-    public function getBusinessAttribute()
-    {
-      return Crypt::decrypt($this->attributes['business'])
-    }
+public function getBusinessAttribute()
+{
+  return Crypt::decrypt($this->attributes['business'])
+}
 
-    public function getTotalrevenueAttribute()
-    {
-      return number_format(Crypt::decrypt($this>attributes['total_revenue'])) ;
-    }
+public function getTotalrevenueAttribute()
+{
+  return number_format(Crypt::decrypt($this>attributes['total_revenue'])) ;
+}
 
-    public function getProjectedrevenueAttribute()
-    {
-      return number_format(Crypt::decrypt($this>attributes['projected_revenue']));
-    }
-    }
-    ```
+public function getProjectedrevenueAttribute()
+{
+  return number_format(Crypt::decrypt($this>attributes['projected_revenue']));
+}
+}
+```
 
 1.  在我们的`routes.php`文件中，通过添加以下代码创建查看和提交信息的路由：
 
 ```php
-    Route::get('accounts', function()
-    {
-      $accounts = Account::all();
-      return View::make('accounts')->with('accounts', $accounts);
-    });
+Route::get('accounts', function()
+{
+  $accounts = Account::all();
+  return View::make('accounts')->with('accounts', $accounts);
+});
 
-    Route::post('accounts', function()
-    {
-      $account = new Account();
-      $account->business = Input::get('business');
-      $account->total_revenue = Input::get('total_revenue');
-      $account->projected_revenue = Input::get('projected_revenue');
-      $account->save();
-      return Redirect::to('accounts');
-    });
-    ```
+Route::post('accounts', function()
+{
+  $account = new Account();
+  $account->business = Input::get('business');
+  $account->total_revenue = Input::get('total_revenue');
+  $account->projected_revenue = Input::get('projected_revenue');
+  $account->save();
+  return Redirect::to('accounts');
+});
+```
 
 1.  在我们的`views`目录中，创建一个名为`accounts.php`的文件
 
 ```php
-      <form action="accounts" method="post">
-      <label for="business">Business:</label><br>
-      <input name="business"><br><br>
-      <label for="total_revenue">Total Revenue ($):</label><br>
-      <input name="total_revenue"><br><br>
-      <label for="projected_revenue">Projected Revenue($):</label><br>
-      <input name="projected_revenue"><br><br>
-      <input type="submit">
-      </form>
-      <hr>
-      <?php if ($accounts): ?>
-      <table border="1">
-      <thead>
-      <tr>
-      <th>Business</th>
-      <th>Total Revenue</th>
-      <th>Projected Revenue</th>
-      </tr>
-      </thead>
-      <tbody>
-      <?php foreach ($accounts as $account): ?>
-      <tr>
-      <td><?= $account->business ?></td>
-      <td>$<?= $account->total_revenue ?></td>
-      <td>$<?= $account->projected_revenue ?></td>
-      </tr>
-      <?php endforeach; ?>
-      </tbody>
-      </table>
-      <?php endif; ?>
-    ```
+  <form action="accounts" method="post">
+  <label for="business">Business:</label><br>
+  <input name="business"><br><br>
+  <label for="total_revenue">Total Revenue ($):</label><br>
+  <input name="total_revenue"><br><br>
+  <label for="projected_revenue">Projected Revenue($):</label><br>
+  <input name="projected_revenue"><br><br>
+  <input type="submit">
+  </form>
+  <hr>
+  <?php if ($accounts): ?>
+  <table border="1">
+  <thead>
+  <tr>
+  <th>Business</th>
+  <th>Total Revenue</th>
+  <th>Projected Revenue</th>
+  </tr>
+  </thead>
+  <tbody>
+  <?php foreach ($accounts as $account): ?>
+  <tr>
+  <td><?= $account->business ?></td>
+  <td>$<?= $account->total_revenue ?></td>
+  <td>$<?= $account->projected_revenue ?></td>
+  </tr>
+  <?php endforeach; ?>
+  </tbody>
+  </table>
+  <?php endif; ?>
+```
 
 ## 工作原理…
 
@@ -182,106 +182,106 @@
 1.  使用以下命令设置数据库表：
 
 ```php
-    CREATE TABLE register (
-      id int(10) unsigned NOT NULL AUTO_INCREMENT,
-      username varchar(255) DEFAULT NULL,
-      email char(60) DEFAULT NULL,
-      password char(60) DEFAULT NULL,
-      PRIMARY KEY (id)
-      ) ENGINE=InnoDB AUTO_INCREMENT=1
+CREATE TABLE register (
+  id int(10) unsigned NOT NULL AUTO_INCREMENT,
+  username varchar(255) DEFAULT NULL,
+  email char(60) DEFAULT NULL,
+  password char(60) DEFAULT NULL,
+  PRIMARY KEY (id)
+  ) ENGINE=InnoDB AUTO_INCREMENT=1
 
-    ```
+```
 
 1.  在`views`目录中，使用以下代码创建一个名为`register.php`的文件：
 
 ```php
-      <!doctype html>
-      <html lang="en">
-      <head>
-      <meta charset="utf-8">
-      <title>Register</title>
-      </head>
-      <body>
-      <p>
-      <h3>Register</h3>
-      <form method="post" action="register">
-      <label>User Name</label>
-      <input name="username"><br>
-      <label>Email</label>
-      <input name="email"><br>
-      <label>Password</label>
-      <input name="password"><br>
-      <input type="submit">
-      </form>
-      </p>
-      <p style="border-top:1px solid #555">
-      <h3>Login</h3>
-      <form method="post" action="login">
-      <label>User Name</label>
-      <input name="username"><br>
-      <label>Email</label>
-      <input name="email"><br>
-      <label>Password</label>
-      <input name="password"><br>
-      <input type="submit">
-      </form>
-      </p>
-      <hr>
-      <table border='1'>
-      <?php if ($users): ?>
-      <tr>
-      <th>User Name</th>
-      <th>Email</th>
-      <th>Password</th>
-      </tr>
-      <?php foreach ($users as $user): ?>
-      <tr>
-      <td><?= $user->username ?></td>
-      <td><?= $user->email ?></td>
-      <td><?= $user->password ?></td>
-      </tr>
-      <?php endforeach; ?>
-      <?php endif; ?>
-      </table>
-      </body>
-      </html>
-    ```
+  <!doctype html>
+  <html lang="en">
+  <head>
+  <meta charset="utf-8">
+  <title>Register</title>
+  </head>
+  <body>
+  <p>
+  <h3>Register</h3>
+  <form method="post" action="register">
+  <label>User Name</label>
+  <input name="username"><br>
+  <label>Email</label>
+  <input name="email"><br>
+  <label>Password</label>
+  <input name="password"><br>
+  <input type="submit">
+  </form>
+  </p>
+  <p style="border-top:1px solid #555">
+  <h3>Login</h3>
+  <form method="post" action="login">
+  <label>User Name</label>
+  <input name="username"><br>
+  <label>Email</label>
+  <input name="email"><br>
+  <label>Password</label>
+  <input name="password"><br>
+  <input type="submit">
+  </form>
+  </p>
+  <hr>
+  <table border='1'>
+  <?php if ($users): ?>
+  <tr>
+  <th>User Name</th>
+  <th>Email</th>
+  <th>Password</th>
+  </tr>
+  <?php foreach ($users as $user): ?>
+  <tr>
+  <td><?= $user->username ?></td>
+  <td><?= $user->email ?></td>
+  <td><?= $user->password ?></td>
+  </tr>
+  <?php endforeach; ?>
+  <?php endif; ?>
+  </table>
+  </body>
+  </html>
+```
 
 1.  在我们的`routes.php`文件中，通过添加以下代码创建我们的路由：
 
 ```php
-    Route::get('register', function()
-    {
-      $users = DB::table('register')->get();
-      return View::make('register')->with('users', $users);
-    });
+Route::get('register', function()
+{
+  $users = DB::table('register')->get();
+  return View::make('register')->with('users', $users);
+});
 
-    Route::post('register', function()
-    {
-      $data = array(
-        'username' => Input::get('username'),
-        'email' => Hash::make(Input::get('email')),
-        'password' => Hash::make(Input::get('password')));
+Route::post('register', function()
+{
+  $data = array(
+    'username' => Input::get('username'),
+    'email' => Hash::make(Input::get('email')),
+    'password' => Hash::make(Input::get('password')));
 
-      DB::table('register')->insert($data);
+  DB::table('register')->insert($data);
 
-      return Redirect::to('register');
-    });
+  return Redirect::to('register');
+});
 
-    Route::post('login', function()
-    {
-      $user = DB::table('register')->where('username', '=',
-        Input::get('username'))->first();
-      if (!is_null($user) and Hash::check(Input::get('email'),
-        $user->email) and Hash::check(Input::get('password'),
-        $user->password)) {
-        echo "Log in successful";
-      } else {
-      echo "Not able to login";
-    }
-    });
+Route::post('login', function()
+{
+  $user = DB::table('register')->where('username', '=',
+    Input::get('username'))->first();
+  if (!is_null($user) and Hash::check(Input::get('email'),
+    $user->email) and Hash::check(Input::get('password'),
+    $user->password)) {
+    echo "Log in successful";
+  } else {
+  echo "Not able to login";
+}
+});
 
-    ```
+```
 
 ## 它是如何工作的...
 
@@ -316,66 +316,66 @@
 1.  在`routes.php`文件中，通过以下代码创建用于保存和处理表单的路由：
 
 ```php
-    Route::get('cross-site', function()
-    {
-      return View::make('cross-site');
-    });
+Route::get('cross-site', function()
+{
+  return View::make('cross-site');
+});
 
-    Route::post('cross-site', array('before' => 'csrf',function()
-    {
-      echo 'Token: ' . Session::token() . '<br>';
-      dd(Input::all());
-    }));
-    ```
+Route::post('cross-site', array('before' => 'csrf',function()
+{
+  echo 'Token: ' . Session::token() . '<br>';
+  dd(Input::all());
+}));
+```
 
 1.  在`filters.php`文件中，确保`csrf`令牌的`filter`存在，如下所示：
 
 ```php
-    Route::filter('csrf', function()
-    {
-      if (Session::token() != Input::get('_token'))
-    {
-      throw new Illuminate\Session\TokenMismatchException;
-    }
-    });
-    ```
+Route::filter('csrf', function()
+{
+  if (Session::token() != Input::get('_token'))
+{
+  throw new Illuminate\Session\TokenMismatchException;
+}
+});
+```
 
 1.  在我们的`views`目录中，创建一个名为`cross-site.php`的文件，并按以下代码添加两个测试表单：
 
 ```php
-      <!doctype html>
-      <html lang="en">
-      <head>
-      <meta charset="utf-8">
-      <title>CSRF Login</title>
-      </head>
-      <body>
-      <p>
-      <h3>CSRF Login</h3>
-      <?= Form::open(array('url' => 'cross-site', 'method' =>'post')) ?>
-      <?= Form::token() ?>
-      <?= Form::label('email', 'Email') ?>
-      <?= Form::text('email') ?>
-      <?= Form::label('password', 'Password') ?>
-      <?= Form::password('password') ?>
-      <?= Form::submit('Submit') ?>
-      <?= Form::close() ?>
-      </p>
-      <hr>
-      <p>
-      <h3>CSRF Fake Login</h3>
-      <?= Form::open(array('url' => 'cross-site', 'method' =>'post')) ?>
-      <?= Form::hidden('_token', 'smurftacular') ?>
-      <?= Form::label('email', 'Email') ?>
-      <?= Form::text('email') ?>
-      <?= Form::label('password', 'Password') ?>
-      <?= Form::password('password') ?>
-      <?= Form::submit('Submit') ?>
-      <?= Form::close() ?>
-      </p>
-      </body>
-      </html>
-    ```
+  <!doctype html>
+  <html lang="en">
+  <head>
+  <meta charset="utf-8">
+  <title>CSRF Login</title>
+  </head>
+  <body>
+  <p>
+  <h3>CSRF Login</h3>
+  <?= Form::open(array('url' => 'cross-site', 'method' =>'post')) ?>
+  <?= Form::token() ?>
+  <?= Form::label('email', 'Email') ?>
+  <?= Form::text('email') ?>
+  <?= Form::label('password', 'Password') ?>
+  <?= Form::password('password') ?>
+  <?= Form::submit('Submit') ?>
+  <?= Form::close() ?>
+  </p>
+  <hr>
+  <p>
+  <h3>CSRF Fake Login</h3>
+  <?= Form::open(array('url' => 'cross-site', 'method' =>'post')) ?>
+  <?= Form::hidden('_token', 'smurftacular') ?>
+  <?= Form::label('email', 'Email') ?>
+  <?= Form::text('email') ?>
+  <?= Form::label('password', 'Password') ?>
+  <?= Form::password('password') ?>
+  <?= Form::submit('Submit') ?>
+  <?= Form::close() ?>
+  </p>
+  </body>
+  </html>
+```
 
 1.  在浏览器中，转到`http://{your-server}/cross-site`（其中`{your-server}`是我们正在使用的服务器的名称），然后提交每个表单以查看结果。
 
@@ -404,67 +404,67 @@
 1.  在`views`目录中，创建一个名为`valid.php`的文件，使用以下代码来保存我们的表单：
 
 ```php
-      <!doctype html>
-      <html lang="en">
-      <head>
-      <meta charset="utf-8">
-      <title>Custom Validation</title>
-      </head>
-      <body>
-      <p>
-      <?php if ($errors): ?>
-      <?php echo $errors->first('email') ?>
-      <?php echo $errors->first('captain') ?>
-      <?php endif; ?>
-      </p>
-      <p>
-      <h3>Custom Validation</h3>
-      <?= Form::open(array('url' => 'valid', 'method' => 'post'))?>
-      <?= Form::label('email', 'Email') ?>
-      <?= Form::text('email') ?><br><br>
-      <?= Form::label('captain', 'Your favorite captains (choosethree)') ?><br>
-      <?= 'Pike: ' . Form::checkbox('captain[]', 'Pike') ?><br>
-      <?= 'Kirk: ' . Form::checkbox('captain[]', 'Kirk') ?><br>
-      <?= 'Picard: ' . Form::checkbox('captain[]', 'Picard')?><br>
-      <?= 'Sisko: ' . Form::checkbox('captain[]', 'Sisko') ?><br>
-      <?= 'Janeway: ' . Form::checkbox('captain[]', 'Janeway')?><br>
-      <?= 'Archer: ' . Form::checkbox('captain[]', 'Archer')?><br>
-      <?= 'Crunch: ' . Form::checkbox('captain[]', 'Crunch')?><br>
-      <?= Form::submit('Submit') ?>
-      <?= Form::close() ?>
-      </p>
-      </body>
-      </html>
-    ```
+  <!doctype html>
+  <html lang="en">
+  <head>
+  <meta charset="utf-8">
+  <title>Custom Validation</title>
+  </head>
+  <body>
+  <p>
+  <?php if ($errors): ?>
+  <?php echo $errors->first('email') ?>
+  <?php echo $errors->first('captain') ?>
+  <?php endif; ?>
+  </p>
+  <p>
+  <h3>Custom Validation</h3>
+  <?= Form::open(array('url' => 'valid', 'method' => 'post'))?>
+  <?= Form::label('email', 'Email') ?>
+  <?= Form::text('email') ?><br><br>
+  <?= Form::label('captain', 'Your favorite captains (choosethree)') ?><br>
+  <?= 'Pike: ' . Form::checkbox('captain[]', 'Pike') ?><br>
+  <?= 'Kirk: ' . Form::checkbox('captain[]', 'Kirk') ?><br>
+  <?= 'Picard: ' . Form::checkbox('captain[]', 'Picard')?><br>
+  <?= 'Sisko: ' . Form::checkbox('captain[]', 'Sisko') ?><br>
+  <?= 'Janeway: ' . Form::checkbox('captain[]', 'Janeway')?><br>
+  <?= 'Archer: ' . Form::checkbox('captain[]', 'Archer')?><br>
+  <?= 'Crunch: ' . Form::checkbox('captain[]', 'Crunch')?><br>
+  <?= Form::submit('Submit') ?>
+  <?= Form::close() ?>
+  </p>
+  </body>
+  </html>
+```
 
 1.  在`routes.php`文件中，使用以下代码创建我们的路由：
 
 ```php
-    Route::get('valid', function()
-    {
-      return View::make('valid');
-    });
-    Route::post('valid', function()
-    {
-      $rules = array('email' => 'required|email','captain' => 'required|check_three');
-      $messages = array('check_three' => 'Thou shalt choose three captains. Nomore. No less. Three shalt be the number thou shaltchoose, and the number of the choosing shall bethree.',);
-      $validation = Validator::make(Input::all(), $rules,$messages);
-      if ($validation->fails())
-      {
-      return Redirect::to('valid')->withErrors($validation);
-    }
-      echo "Form is valid!";
-    });
-    ```
+Route::get('valid', function()
+{
+  return View::make('valid');
+});
+Route::post('valid', function()
+{
+  $rules = array('email' => 'required|email','captain' => 'required|check_three');
+  $messages = array('check_three' => 'Thou shalt choose three captains. Nomore. No less. Three shalt be the number thou shaltchoose, and the number of the choosing shall bethree.',);
+  $validation = Validator::make(Input::all(), $rules,$messages);
+  if ($validation->fails())
+  {
+  return Redirect::to('valid')->withErrors($validation);
+}
+  echo "Form is valid!";
+});
+```
 
 1.  同样在`routes.php`文件中，按照以下代码创建我们的自定义验证：
 
 ```php
-      Validator::extend('check_three', function($attribute,$value, $parameters)
-    {
-      return count($value) == 3;
-    });
-    ```
+  Validator::extend('check_three', function($attribute,$value, $parameters)
+{
+  return count($value) == 3;
+});
+```
 
 ## 它是如何工作的...
 
@@ -493,137 +493,137 @@
 1.  在我们的数据库中，使用以下 SQL 代码创建一个表并添加一些数据：
 
 ```php
-    CREATE TABLE items (
-        id int(10) unsigned NOT NULL AUTO_INCREMENT,
-        name varchar(255) DEFAULT NULL,
-        description text,
-        price int(11) DEFAULT NULL,
-        PRIMARY KEY (id)
-        ) ENGINE=InnoDB;
+CREATE TABLE items (
+    id int(10) unsigned NOT NULL AUTO_INCREMENT,
+    name varchar(255) DEFAULT NULL,
+    description text,
+    price int(11) DEFAULT NULL,
+    PRIMARY KEY (id)
+    ) ENGINE=InnoDB;
 
-      INSERT INTO items VALUES ('1', 'Lamp', 'This is a Lamp.','14');
-      INSERT INTO items VALUES ('2', 'Desk', 'This is a Desk.','75');
-      INSERT INTO items VALUES ('3', 'Chair', 'This is a
-        Chair.', '22');
-      INSERT INTO items VALUES ('4', 'Sofa', 'This is a
-        Sofa/Couch.', '144');
-      INSERT INTO items VALUES ('5', 'TV', 'This is a
-        Television.', '89');
+  INSERT INTO items VALUES ('1', 'Lamp', 'This is a Lamp.','14');
+  INSERT INTO items VALUES ('2', 'Desk', 'This is a Desk.','75');
+  INSERT INTO items VALUES ('3', 'Chair', 'This is a
+    Chair.', '22');
+  INSERT INTO items VALUES ('4', 'Sofa', 'This is a
+    Sofa/Couch.', '144');
+  INSERT INTO items VALUES ('5', 'TV', 'This is a
+    Television.', '89');
 
-    ```
+```
 
 1.  在`routes.php`文件中，使用以下代码为我们的购物车创建路由：
 
 ```php
-    Route::get('items', function() 
-    {
-      $items = DB::table('items')->get();
-      return View::make('items')->with('items', $items)>nest('cart', 'cart', array('cart_items' =>Session::get('cart')));
-    });
+Route::get('items', function() 
+{
+  $items = DB::table('items')->get();
+  return View::make('items')->with('items', $items)>nest('cart', 'cart', array('cart_items' =>Session::get('cart')));
+});
 
-    Route::get('item-detail/{id}', function($id)
-    {
-      $item = DB::table('items')->find($id);
-      return View::make('item-detail')->with('item', $item)>nest('cart', 'cart', array('cart_items' =>Session::get('cart')));
-    });
+Route::get('item-detail/{id}', function($id)
+{
+  $item = DB::table('items')->find($id);
+  return View::make('item-detail')->with('item', $item)>nest('cart', 'cart', array('cart_items' =>Session::get('cart')));
+});
 
-    Route::get('add-item/{id}', function($id)
-    {
-      $item = DB::table('items')->find($id);
-      $cart = Session::get('cart');
-      $cart[uniqid()] = array ('id' => $item->id, 'name' => $item >name, 'price' => $item->price);
-      Session::put('cart', $cart);
-      return Redirect::to('items');
-    });
+Route::get('add-item/{id}', function($id)
+{
+  $item = DB::table('items')->find($id);
+  $cart = Session::get('cart');
+  $cart[uniqid()] = array ('id' => $item->id, 'name' => $item >name, 'price' => $item->price);
+  Session::put('cart', $cart);
+  return Redirect::to('items');
+});
 
-    Route::get('remove-item/{key}', function($key)
-    {
-      $cart = Session::get('cart');
-      unset($cart[$key]);
-      Session::put('cart', $cart);
-      return Redirect::to('items');
-    });
+Route::get('remove-item/{key}', function($key)
+{
+  $cart = Session::get('cart');
+  unset($cart[$key]);
+  Session::put('cart', $cart);
+  return Redirect::to('items');
+});
 
-    Route::get('empty-cart', function()
-    {
-      Session::forget('cart');
-      return Redirect::to('items');
-    });
-    ```
+Route::get('empty-cart', function()
+{
+  Session::forget('cart');
+  return Redirect::to('items');
+});
+```
 
 1.  在`views`目录中，使用以下代码创建一个名为`items.php`的文件：
 
 ```php
-      <!doctype html>
-      <html lang="en">
-      <head>
-      <meta charset="utf-8">
-      <title>Item List</title>
-      </head>
-      <body>
-      <div>
-      <?php foreach ($items as $item): ?>
-      <p>
-      <a href="item-detail/<?= $item->id ?>">
-      <?= $item->name ?>
-      </a> --
-      <a href="add-item/<?= $item->id ?>">Add to Cart</a>
-      </p>
-      <?php endforeach; ?>
-      </div>
-      <?php $cart_session = Session::get('cart') ?>
-      <?php if ($cart_session): ?>
-      <?= $cart ?>
-      <?php endif; ?>
-      </body>
-      </html>
-    ```
+  <!doctype html>
+  <html lang="en">
+  <head>
+  <meta charset="utf-8">
+  <title>Item List</title>
+  </head>
+  <body>
+  <div>
+  <?php foreach ($items as $item): ?>
+  <p>
+  <a href="item-detail/<?= $item->id ?>">
+  <?= $item->name ?>
+  </a> --
+  <a href="add-item/<?= $item->id ?>">Add to Cart</a>
+  </p>
+  <?php endforeach; ?>
+  </div>
+  <?php $cart_session = Session::get('cart') ?>
+  <?php if ($cart_session): ?>
+  <?= $cart ?>
+  <?php endif; ?>
+  </body>
+  </html>
+```
 
 1.  在`views`目录中，按照给定的代码创建一个名为`item-detail.php`的文件：
 
 ```php
-      <!doctype html>
-      <html lang="en">
-      <head>
-      <meta charset="utf-8">
-      <title>Item: <?= $item->name ?></title>
-      </head>
-      <body>
-      <div>
-      <h2><?= $item->name ?></h2>
-      <p>Price: <?= $item->price ?></p>
-      <p>Description: <?= $item->description ?></p>
-      <p>
-      <a href="../add-item/<?= $item->id ?>">Add to Cart</a>
-      </p>
-      <p><a href="../items">Item list</a></p>
-      </div>
-      <? if (Session::has('cart')): ?>
-      <?= $cart ?>
-      <? endif; ?>
-      </body>
-      </html>
-    ```
+  <!doctype html>
+  <html lang="en">
+  <head>
+  <meta charset="utf-8">
+  <title>Item: <?= $item->name ?></title>
+  </head>
+  <body>
+  <div>
+  <h2><?= $item->name ?></h2>
+  <p>Price: <?= $item->price ?></p>
+  <p>Description: <?= $item->description ?></p>
+  <p>
+  <a href="../add-item/<?= $item->id ?>">Add to Cart</a>
+  </p>
+  <p><a href="../items">Item list</a></p>
+  </div>
+  <? if (Session::has('cart')): ?>
+  <?= $cart ?>
+  <? endif; ?>
+  </body>
+  </html>
+```
 
 1.  在`views`目录中，创建一个名为`cart.php`的文件，使用以下代码：
 
 ```php
-      <div class="cart" style="border: 1px solid #555">
-      <?php if ($cart_items): ?>
-      <?php $price = 0 ?>
-      <ul>
-      <?php foreach ($cart_items as $cart_item_key =>$cart_item_value): ?>
-      <?php $price += $cart_item_value['price']?>
-      <li>
-      <?= $cart_item_value['name'] ?>: 
-      <?= $cart_item_value['price'] ?> (<a href="remove-item/<?= $cart_item_key ?>">remove</a>)
-      </li>
-      <?php endforeach; ?>
-      </ul>
-      <p><strong>Total: </strong> <?= $price ?></p>
-      <?php endif; ?>
-      </div>
-    ```
+  <div class="cart" style="border: 1px solid #555">
+  <?php if ($cart_items): ?>
+  <?php $price = 0 ?>
+  <ul>
+  <?php foreach ($cart_items as $cart_item_key =>$cart_item_value): ?>
+  <?php $price += $cart_item_value['price']?>
+  <li>
+  <?= $cart_item_value['name'] ?>: 
+  <?= $cart_item_value['price'] ?> (<a href="remove-item/<?= $cart_item_key ?>">remove</a>)
+  </li>
+  <?php endforeach; ?>
+  </ul>
+  <p><strong>Total: </strong> <?= $price ?></p>
+  <?php endif; ?>
+  </div>
+```
 
 1.  现在，我们可以在浏览器中输入`http://{your-server}/items`来查看来自我们数据库的项目列表，链接到它们的详细页面，并有一个选项将它们添加到购物车。添加到购物车后，它们将显示在页面底部。
 
@@ -660,51 +660,51 @@ Redis 是一种流行的键/值数据存储，速度相当快。Laravel 包括�
 1.  在我们的`routes.php`文件中，按照以下代码创建路由：
 
 ```php
-    Route::get('redis-login', function()
-    {
-      return View::make('redis-login');
-    });
+Route::get('redis-login', function()
+{
+  return View::make('redis-login');
+});
 
-    Route::post('redis-login', function()
-    {
-      $redis = Redis::connection();
-      $redis->hset('user', 'name', Input::get('name'));
-      $redis->hset('user', 'email', Input::get('email'));
-      return Redirect::to('redis-view');
-    });
+Route::post('redis-login', function()
+{
+  $redis = Redis::connection();
+  $redis->hset('user', 'name', Input::get('name'));
+  $redis->hset('user', 'email', Input::get('email'));
+  return Redirect::to('redis-view');
+});
 
-    Route::get('redis-view', function()
-    {
-      $redis = Redis::connection();
-      $name = $redis->hget('user', 'name');
-      $email = $redis->hget('user', 'email');
-      echo 'Hello ' . $name . '. Your email is ' . $email;
-    });
-    ```
+Route::get('redis-view', function()
+{
+  $redis = Redis::connection();
+  $name = $redis->hget('user', 'name');
+  $email = $redis->hget('user', 'email');
+  echo 'Hello ' . $name . '. Your email is ' . $email;
+});
+```
 
 1.  在`views`目录中，创建一个名为`redis-login.php`的文件，其中包含以下代码：
 
 ```php
-      <!doctype html>
-      <html lang="en">
-      <head>
-      <meta charset="utf-8">
-      <title>Redis Login</title>
-      </head>
-      <body>
-      <p>
-      <h3>Redis Login</h3>
-      <?= Form::open(array('url' => 'redis-login', 'method' =>'post')) ?>
-      <?= Form::label('name', 'Your Name') ?>
-      <?= Form::text('name') ?>
-      <?= Form::label('email', 'Email') ?>
-      <?= Form::text('email') ?>
-      <?= Form::submit('Submit') ?>
-      <?= Form::close() ?>
-      </p>
-      </body>
-      </html>
-    ```
+  <!doctype html>
+  <html lang="en">
+  <head>
+  <meta charset="utf-8">
+  <title>Redis Login</title>
+  </head>
+  <body>
+  <p>
+  <h3>Redis Login</h3>
+  <?= Form::open(array('url' => 'redis-login', 'method' =>'post')) ?>
+  <?= Form::label('name', 'Your Name') ?>
+  <?= Form::text('name') ?>
+  <?= Form::label('email', 'Email') ?>
+  <?= Form::text('email') ?>
+  <?= Form::submit('Submit') ?>
+  <?= Form::close() ?>
+  </p>
+  </body>
+  </html>
+```
 
 1.  现在，我们可以打开浏览器，转到`http://{your-server}/redis-login`，并填写表单。提交后，我们将显示来自 Redis 的信息。
 
@@ -731,81 +731,81 @@ Redis 是一种流行的键/值数据存储，速度相当快。Laravel 包括�
 1.  在`views`文件夹中，创建一个名为`session-one.php`的文件，其中包含以下代码：
 
 ```php
-      <!DOCTYPE html>
-      <html>
-      <head>
-      <title>Laravel Sessions and Cookies</title>
-      <meta charset="utf-8">
-      </head>
-      <body>
-      <h2>Laravel Sessions and Cookies</h2>
-      <?= Form::open() ?>
-      <?= Form::label('email', 'Email address: ') ?>
-      <?= Form::text('email') ?>
-      <br>
-      <?= Form::label('name', 'Name: ') ?>
-      <?= Form::text('name') ?>
-      <br>
-      <?= Form::label('city', 'City: ') ?>
-      <?= Form::text('city') ?>
-      <br>
-      <?= Form::submit('Go!') ?>
-      <?= Form::close() ?>
-      </body>
-      </html>
-    ```
+  <!DOCTYPE html>
+  <html>
+  <head>
+  <title>Laravel Sessions and Cookies</title>
+  <meta charset="utf-8">
+  </head>
+  <body>
+  <h2>Laravel Sessions and Cookies</h2>
+  <?= Form::open() ?>
+  <?= Form::label('email', 'Email address: ') ?>
+  <?= Form::text('email') ?>
+  <br>
+  <?= Form::label('name', 'Name: ') ?>
+  <?= Form::text('name') ?>
+  <br>
+  <?= Form::label('city', 'City: ') ?>
+  <?= Form::text('city') ?>
+  <br>
+  <?= Form::submit('Go!') ?>
+  <?= Form::close() ?>
+  </body>
+  </html>
+```
 
 1.  在`routes.php`文件中，按照以下代码创建我们的路由：
 
 ```php
-    Route::get('session-one', function()
-    {
-      return View::make('session-one');
-    });
+Route::get('session-one', function()
+{
+  return View::make('session-one');
+});
 
-    Route::post('session-one', function()
-    {
-      Session::put('email', Input::get('email'));
-      Session::flash('name', Input::get('name'));
-      $cookie = Cookie::make('city', Input::get('city'), 30);
-      return Redirect::to('session-two')->withCookie($cookie);
-    });
+Route::post('session-one', function()
+{
+  Session::put('email', Input::get('email'));
+  Session::flash('name', Input::get('name'));
+  $cookie = Cookie::make('city', Input::get('city'), 30);
+  return Redirect::to('session-two')->withCookie($cookie);
+});
 
-    Route::get('session-two', function()
-    {
-      $return = 'Your email, from a Session, is 'Session::get('email') . '. <br>';
-      $return .= 'You name, from flash Session, is 'Session::get('name') . '. <br>';
-      $return .= 'You city, from a cookie, is ' .Cookie::get('city') . '.<br>';
-      $return .= '<a href="session-three">Next page</a>';
-      echo  $return;
-    });
+Route::get('session-two', function()
+{
+  $return = 'Your email, from a Session, is 'Session::get('email') . '. <br>';
+  $return .= 'You name, from flash Session, is 'Session::get('name') . '. <br>';
+  $return .= 'You city, from a cookie, is ' .Cookie::get('city') . '.<br>';
+  $return .= '<a href="session-three">Next page</a>';
+  echo  $return;
+});
 
-    Route::get('session-three', function()
-    {
-      $return = '';
+Route::get('session-three', function()
+{
+  $return = '';
 
-      if (Session::has('email')) {
-      $return .= 'Your email, from a Session, is ' . Session::get('email') . '. <br>';
-    } else {
-    $return .= 'Email session is not set.<br>';
-    }
+  if (Session::has('email')) {
+  $return .= 'Your email, from a Session, is ' . Session::get('email') . '. <br>';
+} else {
+$return .= 'Email session is not set.<br>';
+}
 
-    if (Session::has('name')) {
-      $return .= 'Your name, from a flash Session, is ' . Session::get('name') . '. <br>';
-    } else {
-    $return .= 'Name session is not set.<br>';
-    }
+if (Session::has('name')) {
+  $return .= 'Your name, from a flash Session, is ' . Session::get('name') . '. <br>';
+} else {
+$return .= 'Name session is not set.<br>';
+}
 
-    if (Cookie::has('city')) {
-      $return .= 'Your city, from a cookie, is ' . Cookie::get('city') . '. <br>';
-    } else {
-      $return .= 'City cookie is not set.<br>';
-    }
-      Session::forget('email');
-      $return .= '<a href="session-three">Reload</a>';
-      echo $return;
-    });
-    ```
+if (Cookie::has('city')) {
+  $return .= 'Your city, from a cookie, is ' . Cookie::get('city') . '. <br>';
+} else {
+  $return .= 'City cookie is not set.<br>';
+}
+  Session::forget('email');
+  $return .= '<a href="session-three">Reload</a>';
+  echo $return;
+});
+```
 
 ## 工作原理...
 
@@ -834,110 +834,110 @@ Redis 是一种流行的键/值数据存储，速度相当快。Laravel 包括�
 1.  在我们的数据库中，创建一个表来保存 API 密钥，如下面的代码所示：
 
 ```php
-    CREATE TABLE api (
-    id int(10) unsigned NOT NULL AUTO_INCREMENT,
-     name varchar(255) DEFAULT NULL,
-     api_key varchar(255) DEFAULT NULL,
-     status tinyint(1) DEFAULT NULL,
-     PRIMARY KEY (id)
-     ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-    ```
+CREATE TABLE api (
+id int(10) unsigned NOT NULL AUTO_INCREMENT,
+ name varchar(255) DEFAULT NULL,
+ api_key varchar(255) DEFAULT NULL,
+ status tinyint(1) DEFAULT NULL,
+ PRIMARY KEY (id)
+ ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+```
 
 1.  在数据库中，创建一个表以访问一些示例数据，如下面的代码所示：
 
 ```php
-    CREATE TABLE shows (id int(10) unsigned NOT NULL AUTO_INCREMENT,name varchar(200) NOT NULL,year int(11) NOT NULL,created_at datetime NOT NULL,updated_at datetime NOT NULL,PRIMARY KEY (id)) ENGINE=InnoDB CHARSET=utf8;
+CREATE TABLE shows (id int(10) unsigned NOT NULL AUTO_INCREMENT,name varchar(200) NOT NULL,year int(11) NOT NULL,created_at datetime NOT NULL,updated_at datetime NOT NULL,PRIMARY KEY (id)) ENGINE=InnoDB CHARSET=utf8;
 
-      INSERT INTO shows VALUES ('1', 'Happy Days', '1979','2013-01-01 00:00:00', '2013-01-01 00:00:00');
-      INSERT INTO shows VALUES ('2', 'Seinfeld', '1999', '2013-01-01 00:00:00', '2013-01-01 00:00:00');
-      INSERT INTO shows VALUES ('3', 'Arrested Development', '2006', '2013-01-01 00:00:00', '2013-01-01 00:00:00');
-      INSERT INTO shows VALUES ('4', 'Friends', '1997','2013-01-01 00:00:00', '2013-01-01 00:00:00');
-    ```
+  INSERT INTO shows VALUES ('1', 'Happy Days', '1979','2013-01-01 00:00:00', '2013-01-01 00:00:00');
+  INSERT INTO shows VALUES ('2', 'Seinfeld', '1999', '2013-01-01 00:00:00', '2013-01-01 00:00:00');
+  INSERT INTO shows VALUES ('3', 'Arrested Development', '2006', '2013-01-01 00:00:00', '2013-01-01 00:00:00');
+  INSERT INTO shows VALUES ('4', 'Friends', '1997','2013-01-01 00:00:00', '2013-01-01 00:00:00');
+```
 
 1.  在`models`目录中，创建一个名为`Api.php`的文件
 
 ```php
-      <?php
+  <?php
 
-    class Api extends Eloquent {
+class Api extends Eloquent {
 
-      public $table = 'api';
-      public $timestamps = FALSE;
-    }
-    ```
+  public $table = 'api';
+  public $timestamps = FALSE;
+}
+```
 
 1.  在`models`目录中，创建一个名为`Show.php`的文件
 
 ```php
-      <?php
-    class Show extends Eloquent {
-    }
-    ```
+  <?php
+class Show extends Eloquent {
+}
+```
 
 1.  在`views`目录中，创建一个名为`api-key.php`的文件
 
 ```php
-      <!DOCTYPE html>
-      <html>
-      <head>
-      <title>Create an API key</title>
-      <meta charset="utf-8">
-      </head>
-      <body>
-      <h2>Create an API key</h2>
-      <?php echo Form::open() ?>
-      <?php echo Form::label('name', 'Your Name: ') ?>
-      <?php echo Form::text('name') ?>
-      <br>
-      <?php echo Form::submit('Go!') ?>
-      <?php echo Form::close() ?>
-      </body>
-      </html>
-    ```
+  <!DOCTYPE html>
+  <html>
+  <head>
+  <title>Create an API key</title>
+  <meta charset="utf-8">
+  </head>
+  <body>
+  <h2>Create an API key</h2>
+  <?php echo Form::open() ?>
+  <?php echo Form::label('name', 'Your Name: ') ?>
+  <?php echo Form::text('name') ?>
+  <br>
+  <?php echo Form::submit('Go!') ?>
+  <?php echo Form::close() ?>
+  </body>
+  </html>
+```
 
 1.  在`routes.php`文件中，创建路由以允许`api-key`注册
 
 ```php
-    Route::get('api-key', function() {
-      return View::make('api-key');
-    });
+Route::get('api-key', function() {
+  return View::make('api-key');
+});
 
-    Route::post('api-key', function() {
-      $api = new Api();
-      $api->name = Input::get('name');
-      $api->api_key = Str::random(16);
-      $api->status = 1;
-      $api->save();
-      echo 'Your key is: ' . $api->api_key;
-    });
-    ```
+Route::post('api-key', function() {
+  $api = new Api();
+  $api->name = Input::get('name');
+  $api->api_key = Str::random(16);
+  $api->status = 1;
+  $api->save();
+  echo 'Your key is: ' . $api->api_key;
+});
+```
 
 1.  在`routes.php`中，通过以下代码创建访问`api`的路由：
 
 ```php
-    Route::get('api/{api_key}/shows', function($api_key)
-    {
-      $client = Api::where('api_key', '=', $api_key)->where('status', '=', 1)->first();
-      if ($client) {
-      return Show::all();
-      } else {
-      return Response::json('Not Authorized', 401);
-      }
-    });
-    Route::get('api/{api_key}/show/{show_id}', function($api_key, $show_id)
-    {
-      $client = Api::where('api_key', '=', $api_key)->where('status', '=', 1)->first();
-      if ($client) {
-      if ($show = Show::find($show_id)) {
-      return $show;
-      } else {
-      return Response::json('No Results', 204);
-      }
-      } else {
-      return Response::json('Not Authorized', 401);
-      }
-    });
-    ```
+Route::get('api/{api_key}/shows', function($api_key)
+{
+  $client = Api::where('api_key', '=', $api_key)->where('status', '=', 1)->first();
+  if ($client) {
+  return Show::all();
+  } else {
+  return Response::json('Not Authorized', 401);
+  }
+});
+Route::get('api/{api_key}/show/{show_id}', function($api_key, $show_id)
+{
+  $client = Api::where('api_key', '=', $api_key)->where('status', '=', 1)->first();
+  if ($client) {
+  if ($show = Show::find($show_id)) {
+  return $show;
+  } else {
+  return Response::json('No Results', 204);
+  }
+  } else {
+  return Response::json('Not Authorized', 401);
+  }
+});
+```
 
 1.  要测试它，在浏览器中，转到`http://{your-server}/api-key`（其中`{your-server}`是开发服务器的名称），并填写表单。在下一页中，复制生成的密钥。然后，转到`http://{your-server}/api/{your-copied-key}/shows`，应该以`json`格式显示节目列表。
 

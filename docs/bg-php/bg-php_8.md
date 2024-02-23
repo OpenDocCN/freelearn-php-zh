@@ -109,29 +109,29 @@ CRUD 是所有应用程序的核心，功能从那里扩展。
 1.  在数据库中，我们需要一个`contacts`表（如果您在之前的章节中有一个，请删除它）：
 
 ```php
-    CREATE TABLE `contacts` (
-      `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-      `name` varchar(255) DEFAULT NULL,
-      `email` varchar(255) DEFAULT NULL,
-      `tel` varchar(255) DEFAULT NULL,
-      PRIMARY KEY (`id`)
-    ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8;
-    ```
+CREATE TABLE `contacts` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) DEFAULT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `tel` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8;
+```
 
 1.  `contacts`表存储每个联系人的唯一`ID`，联系人的姓名，电子邮件地址和电话号码。
 
 1.  接下来，我们需要一个`comments`表：
 
 ```php
-    CREATE TABLE `comments` (
-      `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-      `contact_id` int(11) DEFAULT NULL,
-      `user_id` int(11) DEFAULT NULL,
-      `body` text,
-      `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-      PRIMARY KEY (`id`)
-    ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8;
-    ```
+CREATE TABLE `comments` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `contact_id` int(11) DEFAULT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `body` text,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8;
+```
 
 评论必须具有`contact_id`和`user_id`字段。这些是外键，用于将评论链接回联系人和发布评论的用户。
 
@@ -142,59 +142,59 @@ CRUD 是所有应用程序的核心，功能从那里扩展。
 1.  打开`app/views/layouts/nav.php`并添加一个指向`/contacts`的联系人菜单项：
 
 ```php
-    <nav class="navbar navbar-default">
-        <div class="container-fluid">
-    …….
-        </div><!--/.container-fluid -->
-    </nav>
-    ```
+<nav class="navbar navbar-default">
+    <div class="container-fluid">
+…….
+    </div><!--/.container-fluid -->
+</nav>
+```
 
 1.  打开`app/Models/Contacts.php`。
 
 1.  删除这段代码：
 
 ```php
-    public function getContacts()
-    {
-        return $this->db->select('* FROM contacts');
-    }
-    ```
+public function getContacts()
+{
+    return $this->db->select('* FROM contacts');
+}
+```
 
 然后，用这个替换它：
 
 ```php
-    public function get_contacts()
-    {
-        return $this->db->select('* from contacts order by name');
-    }
-    ```
+public function get_contacts()
+{
+    return $this->db->select('* from contacts order by name');
+}
+```
 
 1.  接下来，我们需要一个加载单个联系人的方法，其中`ID`属于联系人：
 
 ```php
-    public function get_contact($id)
-    {
-        $data = $this->db->select('* from contacts where id = :id', [':id' => $id]);
-        return (isset($data[0]) ? $data[0] : null);
-    }
-    ```
+public function get_contact($id)
+{
+    $data = $this->db->select('* from contacts where id = :id', [':id' => $id]);
+    return (isset($data[0]) ? $data[0] : null);
+}
+```
 
 1.  我们还需要`insert`，`update`和`delete`方法：
 
 ```php
-    public function insert($data)
-    {
-        $this->db->insert('contacts', $data);
-    }
-    public function update($data, $where)
-    {
-        $this->db->update('contacts', $data, $where);
-    }
-    public function delete($where)
-    {
-        $this->db->delete('contacts', $where);
-    }
-    ```
+public function insert($data)
+{
+    $this->db->insert('contacts', $data);
+}
+public function update($data, $where)
+{
+    $this->db->update('contacts', $data, $where);
+}
+public function delete($where)
+{
+    $this->db->delete('contacts', $where);
+}
+```
 
 完整的模型如下：
 
@@ -203,56 +203,56 @@ CRUD 是所有应用程序的核心，功能从那里扩展。
 有关完整的代码片段，请参考代码文件夹中的`Lesson 8.php`文件。
 
 ```php
-    <?php
-    namespace App\Models;
+<?php
+namespace App\Models;
 
-    use System\BaseModel;
+use System\BaseModel;
 
-    class Contact extends BaseModel
-    ……
-        }
+class Contact extends BaseModel
+……
     }
-    ```
+}
+```
 
 1.  接下来，打开`app/Controllers/Contacts.php`。
 
 1.  导入`Session`和 URL 助手：
 
 ```php
-    Use App\Helpers\Session;
-    Use App\Helpers\Url;
-    ```
+Use App\Helpers\Session;
+Use App\Helpers\Url;
+```
 
 1.  替换以下代码：
 
 ```php
-    public function index()
-    {
-      $contacts = new Contact();
-        $records = $contacts->getContacts();
-        return $this->view->render('contacts/index', compact('records'));
-    }
-    ```
+public function index()
+{
+  $contacts = new Contact();
+    $records = $contacts->getContacts();
+    return $this->view->render('contacts/index', compact('records'));
+}
+```
 
 用这个：
 
 ```php
-    protected $contact;
-    public function __construct()
-    {
-        parent::__construct();
-        if (! Session::get('logged_in')) {
-            Url::redirect('/admin/login');
-        }
-        $this->contact = new Contact();
+protected $contact;
+public function __construct()
+{
+    parent::__construct();
+    if (! Session::get('logged_in')) {
+        Url::redirect('/admin/login');
     }
-    public function index()
-    {
-        $contacts = $this->contact->get_contacts();
-        $title = 'Contacts';
-        return $this->view->render('admin/contacts/index', compact('contacts', 'title'));
-    }
-    ```
+    $this->contact = new Contact();
+}
+public function index()
+{
+    $contacts = $this->contact->get_contacts();
+    $title = 'Contacts';
+    return $this->view->render('admin/contacts/index', compact('contacts', 'title'));
+}
+```
 
 ### 注意
 
@@ -267,14 +267,14 @@ CRUD 是所有应用程序的核心，功能从那里扩展。
 有关完整的代码片段，请参考代码文件夹中的`Lesson 8.php`文件。
 
 ```php
-    public function add()
-    {
-    ……
-        Session::set('success', 'Contact deleted');
+public function add()
+{
+……
+    Session::set('success', 'Contact deleted');
 
-        Url::redirect('/contacts');
-    }
-    ```
+    Url::redirect('/contacts');
+}
+```
 
 1.  接下来，我们需要为这些方法创建视图。在`app/views/admin`文件夹内创建一个`contacts`文件夹，并创建这些视图：
 
@@ -283,16 +283,16 @@ CRUD 是所有应用程序的核心，功能从那里扩展。
 有关完整的代码片段，请参考代码文件夹中的`Lesson 8.php`文件。
 
 ```php
-    index.php
+index.php
 
-    <?php
-    include(APPDIR.'views/layouts/header.php');
-    include(APPDIR.'views/layouts/nav.php');
-    …….
-    </form>
+<?php
+include(APPDIR.'views/layouts/header.php');
+include(APPDIR.'views/layouts/nav.php');
+…….
+</form>
 
-    <?php include(APPDIR.'views/layouts/footer.php');?>
-    ```
+<?php include(APPDIR.'views/layouts/footer.php');?>
+```
 
 ## 活动：执行我们的应用程序
 
@@ -305,8 +305,8 @@ CRUD 是所有应用程序的核心，功能从那里扩展。
 1.  为了显示这个，打开你的应用程序：
 
 ```php
-    php – S localhost:8000 –t webroot
-    ```
+php – S localhost:8000 –t webroot
+```
 
 1.  加载`http://localhost:8000/contacts`。
 
@@ -377,22 +377,22 @@ Friday 15th December 2017
 1.  设置页面标题并加载视图：
 
 ```php
-    public function view($id)
-    {
-        if (! is_numeric($id)) {
-            Url::redirect('/contacts');
-        }
-
-        $contact = $this->contact->get_contact($id);
-
-        if ($contact == null) {
-            Url::redirect('/404');
-        }
-
-        $title = 'View Contact';
-        $this->view->render('admin/contacts/view', compact('contact', 'title'));
+public function view($id)
+{
+    if (! is_numeric($id)) {
+        Url::redirect('/contacts');
     }
-    ```
+
+    $contact = $this->contact->get_contact($id);
+
+    if ($contact == null) {
+        Url::redirect('/404');
+    }
+
+    $title = 'View Contact';
+    $this->view->render('admin/contacts/view', compact('contact', 'title'));
+}
+```
 
 1.  在`app/views/admin/contacts`中创建`view.php`。
 
@@ -403,27 +403,27 @@ Friday 15th December 2017
 有关完整的代码片段，请参考代码文件夹中的`Lesson 8.php`文件。
 
 ```php
-    <?php
-    include(APPDIR.'views/layouts/header.php');
-    include(APPDIR.'views/layouts/nav.php');
-    include(APPDIR.'views/layouts/errors.php');
-    ……
-    </div>
+<?php
+include(APPDIR.'views/layouts/header.php');
+include(APPDIR.'views/layouts/nav.php');
+include(APPDIR.'views/layouts/errors.php');
+……
+</div>
 
-    <?php include(APPDIR.'views/layouts/footer.php');?>
-    ```
+<?php include(APPDIR.'views/layouts/footer.php');?>
+```
 
 1.  现在，要开始处理评论，首先我们需要一个表单来输入评论并提交它。在表格之后但在页脚布局之前，创建一个名为`Comments`的标题，并创建一个带有单个文本区域的表单。给文本区域一个名为 body 的名称：
 
 ```php
-    <h1>Comments</h1>
-    <form method="post">
-        <div class="control-group">
-            <textarea class="form-control" name="body"></textarea>
-        </div>
-        <p><button type="submit" class="btn btn-success" name="submit"><i class="fa fa-check"></i> Add Comment</button></p>
-    </form>
-    ```
+<h1>Comments</h1>
+<form method="post">
+    <div class="control-group">
+        <textarea class="form-control" name="body"></textarea>
+    </div>
+    <p><button type="submit" class="btn btn-success" name="submit"><i class="fa fa-check"></i> Add Comment</button></p>
+</form>
+```
 
 当提交这个表单时，`view`方法需要处理请求。
 
@@ -432,27 +432,27 @@ Friday 15th December 2017
 1.  在`app/Models`中，创建一个名为`Comment.php`的新模型。目前，它将有一个名为`insert($data)`的方法，当调用时将在评论表中创建一条新记录：
 
 ```php
-    <?php
-    namespace App\Models;
+<?php
+namespace App\Models;
 
-    use System\BaseModel;
+use System\BaseModel;
 
-    class Comment extends BaseModel
+class Comment extends BaseModel
+{
+    public function insert($data)
     {
-        public function insert($data)
-        {
-            $this->db->insert('comments', $data);
-        }
+        $this->db->insert('comments', $data);
     }
-    ```
+}
+```
 
 1.  现在，转到你的`Contacts`控制器。
 
 1.  在文件顶部导入新的`Comment`模型：
 
 ```php
-    use App\Models\Comment;
-    ```
+use App\Models\Comment;
+```
 
 1.  在`view($id)`方法中，创建一个 Comment 模型的新实例。
 
@@ -465,20 +465,20 @@ Friday 15th December 2017
 1.  将`$data`传递给`insert($data)`方法以创建评论，然后设置消息并重定向回联系人的查看页面：
 
 ```php
-    $comment = new Comment();
-            if (isset($_POST['submit'])) {
-                $body  = (isset($_POST['body']) ? $_POST['body'] : null);
-                if ($comment !='') {
-                    $data = [
-                        'body' => $body,
-                        'contact_id' => $id,
-                        'user_id' => Session::get('user_id')
-                    ];
-                    $comment->insert($data);
-                    Session::set('success', 'Comment created');
-                    Url::redirect("/contacts/view/$id");
-                }
-    ```
+$comment = new Comment();
+        if (isset($_POST['submit'])) {
+            $body  = (isset($_POST['body']) ? $_POST['body'] : null);
+            if ($comment !='') {
+                $data = [
+                    'body' => $body,
+                    'contact_id' => $id,
+                    'user_id' => Session::get('user_id')
+                ];
+                $comment->insert($data);
+                Session::set('success', 'Comment created');
+                Url::redirect("/contacts/view/$id");
+            }
+```
 
 ## 活动：加载应用程序
 
@@ -489,8 +489,8 @@ Friday 15th December 2017
 1.  加载应用程序：
 
 ```php
-    php –S localhost:8000 –t webroot load http://localhost:8000/contacts
-    ```
+php –S localhost:8000 –t webroot load http://localhost:8000/contacts
+```
 
 1.  您是否注意到每个联系人都有编辑和删除按钮，但没有办法查看联系人？让我们解决这个问题。
 
@@ -499,8 +499,8 @@ Friday 15th December 2017
 1.  在编辑链接上方添加一个新链接。在这种情况下，我给按钮一个不同的类`btn-info`，使按钮变蓝，这样它就不同于编辑按钮：
 
 ```php
-    <a href="/contacts/view/<?=$row->id;?>" class="btn btn-xs btn-info">View</a>
-    ```
+<a href="/contacts/view/<?=$row->id;?>" class="btn btn-xs btn-info">View</a>
+```
 
 1.  在浏览器中保存并重新加载页面，您将看到查看按钮。单击查看按钮，您将看到一个显示联系人和输入评论的表单的查看页面。
 
@@ -527,35 +527,35 @@ Friday 15th December 2017
 1.  我们希望加载所有评论，其中评论的`user_id`列与用户的 ID 列匹配，并且`contact_id`与提供的`$id`匹配：
 
 ```php
-    public function get_comments($id)
-    {
-        return $this->db->select('
-            comments.body,
-            comments.created_at,
-            users.username
-        from
-            comments,
-            users
-        where
-            comments.user_id = users.id
-            and contact_id = :id'
-        , [':id' => $id]);
-    }
-    ```
+public function get_comments($id)
+{
+    return $this->db->select('
+        comments.body,
+        comments.created_at,
+        users.username
+    from
+        comments,
+        users
+    where
+        comments.user_id = users.id
+        and contact_id = :id'
+    , [':id' => $id]);
+}
+```
 
 1.  保存此模型并转到`Contacts`控制器的`view`方法。
 
 1.  表单处理完毕后，调用我们刚刚创建的`get_comments($id)`方法：
 
 ```php
-    $comments = $comment->get_comments($id);
-    ```
+$comments = $comment->get_comments($id);
+```
 
 1.  这将加载评论；下一步是将评论添加到紧凑功能中：
 
 ```php
-    $this->view->render('admin/contacts/view', compact('contact', 'comments', 'title'));
-    ```
+$this->view->render('admin/contacts/view', compact('contact', 'comments', 'title'));
+```
 
 完整的方法如下：
 
@@ -564,30 +564,30 @@ Friday 15th December 2017
 有关完整的代码片段，请参阅代码文件夹中的`Lesson 8.php`文件。
 
 ```php
-    public function view($id)
-    {
-        if (! is_numeric($id)) {
-            Url::redirect('/contacts');
-    …….
-        $comments = $comment->get_comments($id);
+public function view($id)
+{
+    if (! is_numeric($id)) {
+        Url::redirect('/contacts');
+…….
+    $comments = $comment->get_comments($id);
 
-        $title = 'View Contact';
-        $this->view->render('admin/contacts/view', compact('contact', 'comments', 'title'));
-    }
-    ```
+    $title = 'View Contact';
+    $this->view->render('admin/contacts/view', compact('contact', 'comments', 'title'));
+}
+```
 
 1.  最后一步是显示评论。打开`app/views/admin/contacts/view.php`。
 
 1.  在表单之后添加：
 
 ```php
-    <?php foreach($comments as $row) { ?>
-        <div class="well">
-             <p><?=htmlentities($row->body);?></p>
-             <p>By <?=$row->username;?> at <?=date('jS M Y H:i:s', strtotime($row->created_at));?></p>
-        </div>
-    <?php } ?>
-    ```
+<?php foreach($comments as $row) { ?>
+    <div class="well">
+         <p><?=htmlentities($row->body);?></p>
+         <p>By <?=$row->username;?> at <?=date('jS M Y H:i:s', strtotime($row->created_at));?></p>
+    </div>
+<?php } ?>
+```
 
 这将循环遍历评论。每次循环都会创建一个新的带有一些样式的`div`。在 div 内部，它打印出评论。在下一行，用户名被显示。由于我们在评论模型中设置的连接，用户名仅可用。
 

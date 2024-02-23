@@ -499,56 +499,56 @@ Sum: 33
 1.  在这个例子中，假设我们正在使用 `RecursiveDirectoryIterator` 类与 `RecursiveIteratorIterator` 类结合扫描目录结构。起始代码可能如下所示：
 
 ```php
-    // /repo/ch02/php7_nested_ternary.php
-    $path = realpath(__DIR__ . '/..');
-    $searchPath = '/ch';
-    $searchExt  = 'php';
-    $dirIter    = new RecursiveDirectoryIterator($path);
-    $itIter     = new RecursiveIteratorIterator($dirIter);
-    ```
+// /repo/ch02/php7_nested_ternary.php
+$path = realpath(__DIR__ . '/..');
+$searchPath = '/ch';
+$searchExt  = 'php';
+$dirIter    = new RecursiveDirectoryIterator($path);
+$itIter     = new RecursiveIteratorIterator($dirIter);
+```
 
 1.  然后我们定义一个函数，匹配包含`$searchPath`搜索路径并以`$searchExt`扩展名结尾的文件，如下所示：
 
 ```php
-    function find_using_if($iter, $searchPath, $searchExt) {
-        $matching  = [];
-        $non_match = [];
-        $discard   = [];
-        foreach ($iter as $name => $obj) {
-            if (!$obj->isFile()) {
-                $discard[] = $name;
-            } elseif (!strpos($name, $searchPath)) {
-                $discard[] = $name;
-            } elseif ($obj->getExtension() !== $searchExt) {
-                $non_match[] = $name;
-            } else {
-                $matching[] = $name;
-            }
-        }
-        show($matching, $non_match);
-    }
-    ```
+function find_using_if($iter, $searchPath, $searchExt) {
+    $matching  = [];
+    $non_match = [];
+    $discard   = [];
+    foreach ($iter as $name => $obj) {
+        if (!$obj->isFile()) {
+            $discard[] = $name;
+        } elseif (!strpos($name, $searchPath)) {
+            $discard[] = $name;
+        } elseif ($obj->getExtension() !== $searchExt) {
+            $non_match[] = $name;
+        } else {
+            $matching[] = $name;
+        }
+    }
+    show($matching, $non_match);
+}
+```
 
 1.  然而，一些开发人员可能会诱惑重构此函数，而不是使用`if / elseif / else`，而是使用嵌套三元运算符。以下是在前一步骤中使用的相同代码可能的样子：
 
 ```php
-    function find_using_tern($iter, $searchPath, 
-            $searchExt){
-        $matching  = [];
-        $non_match = [];
-        $discard   = [];
-        foreach ($iter as $name => $obj) {
-            $match = !$obj->isFile()
-                ? $discard[] = $name
-                : !strpos($name, $searchPath)
-                    ? $discard[] = $name
-                    : $obj->getExtension() !== $searchExt
-                        ? $non_match[] = $name
-                        : $matching[] = $name;
-        }
-        show($matching, $non_match);
-    }
-    ```
+function find_using_tern($iter, $searchPath, 
+        $searchExt){
+    $matching  = [];
+    $non_match = [];
+    $discard   = [];
+    foreach ($iter as $name => $obj) {
+        $match = !$obj->isFile()
+            ? $discard[] = $name
+            : !strpos($name, $searchPath)
+                ? $discard[] = $name
+                : $obj->getExtension() !== $searchExt
+                    ? $non_match[] = $name
+                    : $matching[] = $name;
+    }
+    show($matching, $non_match);
+}
+```
 
 两个函数的输出在 PHP 7 中产生相同的结果，如下截图所示：
 
@@ -634,92 +634,92 @@ $old = function ($today) use ($format) {
 1.  首先，我们定义一个生成由字母、数字和特殊字符随机选择组成的字符串的函数。请注意在以下代码片段中，使用了新的 PHP 8 `match`表达式结合箭头函数（高亮显示）：
 
 ```php
-    // /repo/ch02/php8_arrow_func_3.php
-    function genKey(int $size) {
-        $alpha1  = range('A','Z');
-        $alpha2  = range('a','z');
-        $special = '!@#$%^&*()_+,./[]{}|=-';
-        $len     = strlen($special) - 1;
-        $numeric = range(0, 9);
-        $text    = '';
-        for ($x = 0; $x < $size; $x++) {
-            $algo = rand(1,4);
-            $func = match ($algo) {
-                1 => fn() => $alpha1[array_rand($alpha1)],
-                2 => fn() => $alpha2[array_rand($alpha2)]
-                3 => fn() => $special[rand(0,$len)],
-                4 => fn() => 
-                           $numeric[array_rand($numeric)],
-                default => fn() => ' '
-            };
-            $text .= $func();            
-        }
-        return $text;
-    }
-    ```
+// /repo/ch02/php8_arrow_func_3.php
+function genKey(int $size) {
+    $alpha1  = range('A','Z');
+    $alpha2  = range('a','z');
+    $special = '!@#$%^&*()_+,./[]{}|=-';
+    $len     = strlen($special) - 1;
+    $numeric = range(0, 9);
+    $text    = '';
+    for ($x = 0; $x < $size; $x++) {
+        $algo = rand(1,4);
+        $func = match ($algo) {
+            1 => fn() => $alpha1[array_rand($alpha1)],
+            2 => fn() => $alpha2[array_rand($alpha2)]
+            3 => fn() => $special[rand(0,$len)],
+            4 => fn() => 
+                       $numeric[array_rand($numeric)],
+            default => fn() => ' '
+        };
+        $text .= $func();            
+    }
+    return $text;
+}
+```
 
 1.  然后，我们定义一个`textCaptcha()`函数来生成文本 CAPTCHA。我们首先定义代表算法和颜色的两个数组。然后对它们进行*洗牌*以进一步随机化。我们还定义**超文本标记语言**（**HTML**）`<span>`元素来产生大写和小写字符，如下面的代码片段所示：
 
 ```php
-    function textCaptcha(string $text) {
-        $algos = ['upper','lower','bold',
-                  'italics','large','small'];
-        $color = ['#EAA8A8','#B0F6B0','#F5F596',
-                  '#E5E5E5','white','white'];
-        $lgSpan = '<span style="font-size:32pt;">';
-        $smSpan = '<span style="font-size:8pt;">';
-        shuffle($algos);
-        shuffle($color);
-    ```
+function textCaptcha(string $text) {
+    $algos = ['upper','lower','bold',
+              'italics','large','small'];
+    $color = ['#EAA8A8','#B0F6B0','#F5F596',
+              '#E5E5E5','white','white'];
+    $lgSpan = '<span style="font-size:32pt;">';
+    $smSpan = '<span style="font-size:8pt;">';
+    shuffle($algos);
+    shuffle($color);
+```
 
 1.  接下来，我们定义一系列`InfiniteIterator`实例。这是一个有用的**标准 PHP 库**（**SPL**）类，允许您继续调用`next()`，而无需检查您是否已经到达迭代的末尾。这个迭代器类的作用是自动将指针移回数组的顶部，允许您无限迭代。代码可以在以下片段中看到：
 
 ```php
-        $bkgTmp = new ArrayIterator($color);
-        $bkgIter = new InfiniteIterator($bkgTmp);
-        $algoTmp = new ArrayIterator($algos);
-        $algoIter = new InfiniteIterator($algoTmp);
-        $len = strlen($text);
-    ```
+    $bkgTmp = new ArrayIterator($color);
+    $bkgIter = new InfiniteIterator($bkgTmp);
+    $algoTmp = new ArrayIterator($algos);
+    $algoIter = new InfiniteIterator($algoTmp);
+    $len = strlen($text);
+```
 
 1.  然后，我们逐个字符构建文本 CAPTCHA，应用适当的算法和背景颜色，如下所示：
 
 ```php
-        $captcha = '';
-        for ($x = 0; $x < $len; $x++) {
-            $char = $text[$x];
-            $bkg  = $bkgIter->current();
-            $algo = $algoIter->current();
-            $func = match ($algo) {
-                'upper'   => fn() => strtoupper($char),
-                'lower'   => fn() => strtolower($char),
-                'bold'    => fn() => "<b>$char</b>",
-                'italics' => fn() => "<i>$char</i>",
-                'large'   => fn() => $lgSpan 
-                             . $char . '</span>',
-                'small'   => fn() => $smSpan 
-                             . $char . '</span>',
-                default   => fn() => $char
-            };
-            $captcha .= '<span style="background-color:' 
-                . $bkg . ';">' 
-                . $func() . '</span>';
-            $algoIter->next();
-            $bkgIter->next();
-        }
-        return $captcha;
-    }
-    ```
+    $captcha = '';
+    for ($x = 0; $x < $len; $x++) {
+        $char = $text[$x];
+        $bkg  = $bkgIter->current();
+        $algo = $algoIter->current();
+        $func = match ($algo) {
+            'upper'   => fn() => strtoupper($char),
+            'lower'   => fn() => strtolower($char),
+            'bold'    => fn() => "<b>$char</b>",
+            'italics' => fn() => "<i>$char</i>",
+            'large'   => fn() => $lgSpan 
+                         . $char . '</span>',
+            'small'   => fn() => $smSpan 
+                         . $char . '</span>',
+            default   => fn() => $char
+        };
+        $captcha .= '<span style="background-color:' 
+            . $bkg . ';">' 
+            . $func() . '</span>';
+        $algoIter->next();
+        $bkgIter->next();
+    }
+    return $captcha;
+}
+```
 
 再次注意混合使用`match`和`arrow`函数以实现期望的结果。
 
 脚本的其余部分只是调用这两个函数，如下所示：
 
 ```php
-    $text = genKey(8);
-    echo "Original: $text<br />\n";
-    echo 'Captcha : ' . textCaptcha($text) . "\n";
-    ```
+$text = genKey(8);
+echo "Original: $text<br />\n";
+echo 'Captcha : ' . textCaptcha($text) . "\n";
+```
 
 以下是从浏览器中`/repo/ch02/php8_arrow_func_3.php`输出的样子：
 
@@ -1014,34 +1014,34 @@ array(5) {
 1.  在这个示例中，我们首先构建了一个大约有 600 万条目的大数组：
 
 ```php
-    // /repo/ch02/php8_array_slice.php
-    ini_set('memory_limit', '1G');
-    $start = microtime(TRUE);
-    $arr   = [];
-    $alpha = range('A', 'Z');
-    $beta  = $alpha;
-    $loops = 10000;     // size of outer array
-    $iters = 500;       // total iterations
-    $drip  = 10;        // output every $drip times
-    $cols  = 4;
-    for ($x = 0; $x < $loops; $x++)
-        foreach ($alpha as $left)
-            foreach ($beta as $right)
-                $arr[] = $left . $right . rand(111,999);
-    ```
+// /repo/ch02/php8_array_slice.php
+ini_set('memory_limit', '1G');
+$start = microtime(TRUE);
+$arr   = [];
+$alpha = range('A', 'Z');
+$beta  = $alpha;
+$loops = 10000;     // size of outer array
+$iters = 500;       // total iterations
+$drip  = 10;        // output every $drip times
+$cols  = 4;
+for ($x = 0; $x < $loops; $x++)
+    foreach ($alpha as $left)
+        foreach ($beta as $right)
+            $arr[] = $left . $right . rand(111,999);
+```
 
 1.  接下来，我们遍历数组，取大于 `999,999` 的随机偏移量。这会迫使 `array_slice()` 艰苦工作，并显示出 PHP 7 和 8 之间的显著性能差异，如下面的代码片段所示：
 
 ```php
-    $max = count($arr);
-    for ($x = 0; $x < $iters; $x++ ) {
-        $offset = rand(999999, $max);
-        $slice  = array_slice($arr, $offset, 4);
-        // not all display logic is shown
-    }
-    $time = (microtime(TRUE) - $start);
-    echo "\nElapsed Time: $time seconds\n";
-    ```
+$max = count($arr);
+for ($x = 0; $x < $iters; $x++ ) {
+    $offset = rand(999999, $max);
+    $slice  = array_slice($arr, $offset, 4);
+    // not all display logic is shown
+}
+$time = (microtime(TRUE) - $start);
+echo "\nElapsed Time: $time seconds\n";
+```
 
 在 PHP 7 下运行代码时的输出如下：
 
@@ -1262,26 +1262,26 @@ function NAME (int $actionCode, ...$params)
 1.  我们首先在`/repo/ch02/includes/`目录中定义一个`auth_callback.php`包含文件。在`include`文件中，我们首先定义在回调中使用的常量，如下面的代码片段所示：
 
 ```php
-    // /repo/ch02/includes/auth_callback.php
-    define('DB_FILE', '/tmp/sqlite.db');
-    define('PATTERN', '%-8s | %4s | %-28s | %-15s');
-    define('DEFAULT_TABLE', 'Unknown');
-    define('DEFAULT_USER', 'guest');
-    define('ACL' , [
-        'admin' => [
-            'users' => [SQLite3::READ, SQLite3::SELECT,
-                SQLite3::INSERT, SQLite3::UPDATE,
-                SQLite3::DELETE],
-            'geonames' => [SQLite3::READ, SQLite3::SELECT,
-                SQLite3::INSERT, SQLite3::UPDATE, 
-                SQLite3::DELETE],
-        ],
-        'guest' => [
-            'geonames' => [SQLite3::READ, 
-                           SQLite3::SELECT],
-        ],
-    ]);
-    ```
+// /repo/ch02/includes/auth_callback.php
+define('DB_FILE', '/tmp/sqlite.db');
+define('PATTERN', '%-8s | %4s | %-28s | %-15s');
+define('DEFAULT_TABLE', 'Unknown');
+define('DEFAULT_USER', 'guest');
+define('ACL' , [
+    'admin' => [
+        'users' => [SQLite3::READ, SQLite3::SELECT,
+            SQLite3::INSERT, SQLite3::UPDATE,
+            SQLite3::DELETE],
+        'geonames' => [SQLite3::READ, SQLite3::SELECT,
+            SQLite3::INSERT, SQLite3::UPDATE, 
+            SQLite3::DELETE],
+    ],
+    'guest' => [
+        'geonames' => [SQLite3::READ, 
+                       SQLite3::SELECT],
+    ],
+]);
+```
 
 **访问控制列表**（**ACL**）的工作方式是，主要外键是用户（例如`admin`或`guest`）；次要键是表（例如`users`或`geonames`）；值是允许该用户和表的`SQLite3`操作代码的数组。
 
@@ -1290,12 +1290,12 @@ function NAME (int $actionCode, ...$params)
 1.  接下来，我们定义实际的授权回调函数。函数中我们需要做的第一件事是将默认返回值设置为`SQLite3::DENY`。我们还检查操作代码是否为`SQLite3::SELECT`，如果是，则简单地返回`OK`。当首次处理`SELECT`语句并且不提供有关表或列的任何信息时，将发出此操作代码。代码可以在以下片段中看到：
 
 ```php
-    function auth_callback(int $code, ...$args) {
-        $status = SQLite3::DENY;
-        $table  = DEFAULT_TABLE;
-        if ($code === SQLite3::SELECT) {
-            $status = SQLite3::OK;
-    ```
+function auth_callback(int $code, ...$args) {
+    $status = SQLite3::DENY;
+    $table  = DEFAULT_TABLE;
+    if ($code === SQLite3::SELECT) {
+        $status = SQLite3::OK;
+```
 
 1.  如果操作代码不是`SQLite3::SELECT`，我们需要首先确定涉及哪个表，然后才能决定允许还是拒绝该操作。表名作为提供给我们回调的第二个参数报告。
 
@@ -1304,108 +1304,108 @@ function NAME (int $actionCode, ...$params)
 代码显示在以下片段中：
 
 ```php
-        } else {
-            if (!empty($args[0])) {
-                $table = $args[0];
-            } elseif (!empty($_SESSION['table'])) {
-                $table = $_SESSION['table'];
-            }
-    ```
+    } else {
+        if (!empty($args[0])) {
+            $table = $args[0];
+        } elseif (!empty($_SESSION['table'])) {
+            $table = $_SESSION['table'];
+        }
+```
 
 1.  同样地，我们从会话中检索用户名，如下所示：
 
 ```php
-            $user  = $_SESSION['user'] ?? DEFAULT_USER;
-    ```
+        $user  = $_SESSION['user'] ?? DEFAULT_USER;
+```
 
 1.  接下来，我们检查用户是否在 ACL 中定义，然后检查表是否为该用户分配了权限。如果给定的操作代码在与用户和表组合关联的数组中，返回`SQLite3::OK`。
 
 代码显示在以下片段中：
 
 ```php
-        if (!empty(ACL[$user])) {
-            if (!empty(ACL[$user][$table])) {
-                if (in_array($code, ACL[$user][$table])) {
-                    $status = SQLite3::OK;
-                }
-            }
-        }
-    ```
+    if (!empty(ACL[$user])) {
+        if (!empty(ACL[$user][$table])) {
+            if (in_array($code, ACL[$user][$table])) {
+                $status = SQLite3::OK;
+            }
+        }
+    }
+```
 
 1.  然后我们将表名存储在会话中并返回状态代码，如下面的代码片段所示：
 
 ```php
-      } // end of "if ($code === SQLite3::SELECT)"
-      $_SESSION['table'] = $table;
-      return $status;
-    } // end of function definition
-    ```
+  } // end of "if ($code === SQLite3::SELECT)"
+  $_SESSION['table'] = $table;
+  return $status;
+} // end of function definition
+```
 
 现在我们转向调用程序。
 
 1.  在包含定义授权回调的 PHP 文件之后，我们通过接受命令行参数、**统一资源定位符**（**URL**）参数或简单地分配`admin`来模拟获取用户名，如下面的代码片段所示：
 
 ```php
-    // /repo/ch02/php8_sqlite_auth_admin.php
-    include __DIR__ . '/includes/auth_callback.php';
-    // Here we simulate the user acquisition:
-    session_start();
-    $_SESSION['user'] = 
-        $argv[1] ?? $_GET['usr'] ?? DEFAULT_USER;
-    ```
+// /repo/ch02/php8_sqlite_auth_admin.php
+include __DIR__ . '/includes/auth_callback.php';
+// Here we simulate the user acquisition:
+session_start();
+$_SESSION['user'] = 
+    $argv[1] ?? $_GET['usr'] ?? DEFAULT_USER;
+```
 
 1.  接下来，我们创建两个数组并使用`shuffle()`使它们的顺序随机。我们从随机数组中构建用户名、电子邮件和 ID 值，如下面的代码片段所示：
 
 ```php
-    $name = ['jclayton','mpaulovich','nrousseau',
-             'jporter'];
-    $email = ['unlikelysource.com',
-              'lfphpcloud.net','phptraining.net'];
-    shuffle($name);
-    shuffle($email);
-    $user_name = $name[0];
-    $user_email = $name[0] . '@' . $email[0];
-    $id = md5($user_email . rand(0,999999));
-    ```
+$name = ['jclayton','mpaulovich','nrousseau',
+         'jporter'];
+$email = ['unlikelysource.com',
+          'lfphpcloud.net','phptraining.net'];
+shuffle($name);
+shuffle($email);
+$user_name = $name[0];
+$user_email = $name[0] . '@' . $email[0];
+$id = md5($user_email . rand(0,999999));
+```
 
 1.  然后，我们创建`SQLite3`实例并分配授权回调，如下所示：
 
 ```php
-    $sqlite = new SQLite3(DB_FILE);
-    $sqlite->setAuthorizer('auth_callback');
-    ```
+$sqlite = new SQLite3(DB_FILE);
+$sqlite->setAuthorizer('auth_callback');
+```
 
 1.  现在 SQL `INSERT`语句已经定义并发送到 SQLite 进行准备。请注意，这是调用授权回调的时候。
 
 代码显示在以下片段中：
 
 ```php
-    $sql = 'INSERT INTO users '
-         . 'VALUES (:id, :name, :email, :pwd);';
-    $stmt = $sqlite->prepare($sql);
-    ```
+$sql = 'INSERT INTO users '
+     . 'VALUES (:id, :name, :email, :pwd);';
+$stmt = $sqlite->prepare($sql);
+```
 
 1.  如果授权回调拒绝操作，则语句对象为`NULL`，因此最好使用`if()`语句来测试其存在。如果是这样，我们然后继续绑定值并执行语句，如下面的代码片段所示：
 
 ```php
-    if ($stmt) {
-        $stmt->bindValue(':id', $id);
-        $stmt->bindValue(':name', $user_name);
-        $stmt->bindValue(':email', $user_email);
-        $stmt->bindValue(':pwd', 'password');
-        $result = $stmt->execute();
-    ```
+if ($stmt) {
+    $stmt->bindValue(':id', $id);
+    $stmt->bindValue(':name', $user_name);
+    $stmt->bindValue(':email', $user_email);
+    $stmt->bindValue(':pwd', 'password');
+    $result = $stmt->execute();
+```
 
 1.  为了确认结果，我们定义了一个 SQL `SELECT`语句，以显示`users`表的内容，如下所示：
 
 ```php
-        $sql = 'SELECT * FROM users';
-        $result = $sqlite->query($sql);
-        while ($row = $result->fetchArray(SQLITE3_ASSOC))
-            printf("%-10s : %-  10s\n",
-                $row['user_name'], $row['user_email']);
-    }
-    ```
+    $sql = 'SELECT * FROM users';
+    $result = $sqlite->query($sql);
+    while ($row = $result->fetchArray(SQLITE3_ASSOC))
+        printf("%-10s : %-  10s\n",
+            $row['user_name'], $row['user_email']);
+}
+```
 
 重要提示
 

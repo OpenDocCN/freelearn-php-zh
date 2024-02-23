@@ -654,63 +654,63 @@ Varnish 还提供了负载平衡和健康检查等功能。此外，Varnish 不�
 1.  首先将 Varnish 存储库添加到`sources.list`文件中。在文件中加入以下行：
 
 ```php
-        deb https://repo.varnish-cache.org/debian/ Jessie varnish-4.1
-    ```
+    deb https://repo.varnish-cache.org/debian/ Jessie varnish-4.1
+```
 
 1.  之后，输入以下命令以更新存储库：
 
 ```php
-    **sudo apt-get update**
+**sudo apt-get update**
 
-    ```
+```
 
 1.  现在，输入以下命令：
 
 ```php
-    **sudo apt-get install varnish**
+**sudo apt-get install varnish**
 
-    ```
+```
 
 1.  这将下载并安装 Varnish。现在，首先要做的是配置 Varnish 以侦听端口 80，并使您的 Web 服务器侦听另一个端口，例如 8080。我们将在这里使用 NGINX 进行配置。
 
 1.  现在，打开 Varnish 配置文件位置`/etc/default/varnish`，并进行更改，使其看起来类似于以下代码：
 
 ```php
-        DAEMON_OPS="-a :80 \
-          -T localhost:6082 \ 
-          -f /etc/varnish/default.vcl \
-          -S /etc/varnish/secret \
-          -s malloc,256m"
-    ```
+    DAEMON_OPS="-a :80 \
+      -T localhost:6082 \ 
+      -f /etc/varnish/default.vcl \
+      -S /etc/varnish/secret \
+      -s malloc,256m"
+```
 
 1.  保存文件并在终端中输入以下命令重新启动 Varnish：
 
 ```php
-    **sudo service varnish restart**
+**sudo service varnish restart**
 
-    ```
+```
 
 1.  现在我们的 Varnish 在端口`80`上运行。让 NGINX 在端口`8080`上运行。编辑应用程序的 NGINX `vhost`文件，并将侦听端口从`80`更改为`8080`，如下所示：
 
 ```php
-        listen 8080;
-    ```
+    listen 8080;
+```
 
 1.  现在，在终端中输入以下命令重新启动 NGINX：
 
 ```php
-    **sudo service nginx restart**
+**sudo service nginx restart**
 
-    ```
+```
 
 1.  下一步是配置 Varnish VCL 文件并添加一个将与我们的后端通信的后端，端口为`8080`。编辑位于`/etc/varnish/default.vcl`的 Varnish VCL 文件，如下所示：
 
 ```php
-        backend default {
-          .host = "127.0.0.1";
-          .port = "8080";
-        }
-    ```
+    backend default {
+      .host = "127.0.0.1";
+      .port = "8080";
+    }
+```
 
 在上述配置中，我们的后端主机位于 Varnish 运行的同一台服务器上，因此我们输入了本地 IP。在这种情况下，我们也可以输入 localhost。但是，如果我们的后端在远程主机或另一台服务器上运行，则应输入该服务器的 IP。
 
@@ -780,25 +780,25 @@ Varnish 也可以用作负载均衡器，但这并不是一个好主意，因为
 1.  首先，在终端中发出以下命令更新系统缓存：
 
 ```php
-    **sudo apt-get update**
+**sudo apt-get update**
 
-    ```
+```
 
 1.  接下来，在终端中输入以下命令安装 HAProxy：
 
 ```php
-    **sudo apt-get install haproxy**
+**sudo apt-get install haproxy**
 
-    ```
+```
 
 这将在系统上安装 HAProxy。
 
 1.  现在，在终端中发出以下命令确认 HAProxy 安装：
 
 ```php
-    **haproxy -v**
+**haproxy -v**
 
-    ```
+```
 
 ![HAProxy 安装](img/B05225_03_10.jpg)
 

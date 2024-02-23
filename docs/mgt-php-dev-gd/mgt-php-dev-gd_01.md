@@ -351,23 +351,23 @@ i. 用记事本打开`C:\system32\drivers\etc\hosts`
 ii. 在文件末尾添加以下行：
 
 ```php
-    192.168.36.1 magento.localhost.com
-    ```
+192.168.36.1 magento.localhost.com
+```
 
 +   Unix/Linux/OSX
 
 i. 使用`nano`打开`/etc/hosts`：
 
 ```php
-    **$ sudo nano /etc/hosts**
+**$ sudo nano /etc/hosts**
 
-    ```
+```
 
 ii. 在文件末尾添加以下行：
 
 ```php
-    192.168.36.1 magento.localhost.com
-    ```
+192.168.36.1 magento.localhost.com
+```
 
 ### 提示
 

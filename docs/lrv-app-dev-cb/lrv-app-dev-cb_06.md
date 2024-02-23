@@ -47,51 +47,51 @@
 1.  打开`home.php`并在 HTML 中添加以下代码：
 
 ```php
-    <!doctype html>
-    <html lang="en">
-        <head>
-            <meta charset="utf-8">
-            <title>Home Page</title>
-        </head>
-        <body>
-          <h1>Welcome to the Home page!</h1>
-          <p>
-            <a href="second">Go to Second Page</a>
-          </p>
-        </body>
-    </html>
-    ```
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Home Page</title>
+    </head>
+    <body>
+      <h1>Welcome to the Home page!</h1>
+      <p>
+        <a href="second">Go to Second Page</a>
+      </p>
+    </body>
+</html>
+```
 
 1.  打开`second.php`文件并在 HTML 中添加以下代码：
 
 ```php
-    <!doctype html>
-    <html lang="en">
-        <head>
-            <meta charset="utf-8">
-            <title>Second Page</title>
-        </head>
-        <body>
-          <h1>Welcome to the Second Page</h1>
-          <p>
-            <a href="home">Go to Home Page</a>
-          </p>
-        </body>
-    </html>
-    ```
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Second Page</title>
+    </head>
+    <body>
+      <h1>Welcome to the Second Page</h1>
+      <p>
+        <a href="home">Go to Home Page</a>
+      </p>
+    </body>
+</html>
+```
 
 1.  在我们的`app/routes.php`文件中，添加将返回这些视图的路由：
 
 ```php
-    Route::get('home', function()
-    {
-      return View::make('myviews.home');
-    });
-    Route::get('second', function()
-    {
-      return View::make('myviews.second');
-    });
-    ```
+Route::get('home', function()
+{
+  return View::make('myviews.home');
+});
+Route::get('second', function()
+{
+  return View::make('myviews.second');
+});
+```
 
 1.  通过转到`http://{your-server}/home`（其中`your-server`是我们的 URL）并单击链接来测试视图。
 
@@ -116,58 +116,58 @@ Laravel 中的所有视图都保存在`app/views`目录中。我们首先创建�
 1.  打开`routes.php`并将我们的主页和第二个路由替换为包含以下数据：
 
 ```php
-    Route::get('home', function()
-    {
-      $page_title = 'My Home Page Title';
-      return View::make('myviews.home')->with('title',$page_title);
-    });
-    Route::get('second', function()
-    {
-      $view = View::make('myviews.second');
-      $view->my_name = 'John Doe';
-      $view->my_city = 'Austin';
-      return $view;
-    });
-    ```
+Route::get('home', function()
+{
+  $page_title = 'My Home Page Title';
+  return View::make('myviews.home')->with('title',$page_title);
+});
+Route::get('second', function()
+{
+  $view = View::make('myviews.second');
+  $view->my_name = 'John Doe';
+  $view->my_city = 'Austin';
+  return $view;
+});
+```
 
 1.  在`view/myviews`目录中，打开`home.php`并用以下代码替换代码：
 
 ```php
-    <!doctype html>
-    <html lang="en">
-        <head>
-            <meta charset="utf-8">
-            <title>Home Page : <?= $title ?></title>
-        </head>
-        <body>
-            <h1>Welcome to the Home page!</h1>
-            <h2><?= $title ?></h2>
-          <p>
-            <a href="second">Go to Second Page</a>
-          </p>
-        </body>
-    </html>
-    ```
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Home Page : <?= $title ?></title>
+    </head>
+    <body>
+        <h1>Welcome to the Home page!</h1>
+        <h2><?= $title ?></h2>
+      <p>
+        <a href="second">Go to Second Page</a>
+      </p>
+    </body>
+</html>
+```
 
 1.  在`views/myviews`目录中，打开`second.php`文件，并用以下代码替换代码：
 
 ```php
-    <!doctype html>
-    <html lang="en">
-        <head>
-            <meta charset="utf-8">
-            <title>Second Page</title>
-        </head>
-        <body>
-          <h1>Welcome to the Second Page</h1>
-            <p> You are <?= $my_name ?>, from <?= $my_city ?>
-            </p>
-          <p>
-            <a href="home">Go to Home Page</a>
-          </p>
-        </body>
-    </html>
-    ```
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Second Page</title>
+    </head>
+    <body>
+      <h1>Welcome to the Second Page</h1>
+        <p> You are <?= $my_name ?>, from <?= $my_city ?>
+        </p>
+      <p>
+        <a href="home">Go to Home Page</a>
+      </p>
+    </body>
+</html>
+```
 
 1.  通过转到`http://{your-server}/home`（其中`your-server`是我们的 URL）来测试视图，然后单击链接。
 
@@ -205,69 +205,69 @@ return $view;
 1.  在`common`目录中，创建一个名为`header.php`的文件，并将以下代码添加到其中：
 
 ```php
-    <!doctype html>
-    <html lang="en">
-        <head>
-            <meta charset="utf-8">
-            <title>My Website</title>
-        </head>
-        <body>
-    ```
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>My Website</title>
+    </head>
+    <body>
+```
 
 1.  在`common`目录中，创建一个名为`footer.php`的文件，并将以下代码添加到其中：
 
 ```php
-    <footer>&copy; 2013 MyCompany</footer>  
-      </body>
-    </html>
-    ```
+<footer>&copy; 2013 MyCompany</footer>  
+  </body>
+</html>
+```
 
 1.  在`common`目录中，创建一个名为`userinfo.php`的文件，并添加以下代码：
 
 ```php
-    <p>You are <?= $my_name ?>, from <?= $my_city ?></p>
-    ```
+<p>You are <?= $my_name ?>, from <?= $my_city ?></p>
+```
 
 1.  在`routes.php`文件中，更新主页和第二个路由，包括以下嵌套视图：
 
 ```php
-    Route::get('home', function()
-    {
-      return View::make('myviews.home')
-          ->nest('header', 'common.header')
-          ->nest('footer', 'common.footer');
-    });
-    Route::get('second', function()
-    {
-      $view = View::make('myviews.second');
-      $view->nest('header', 'common.header')->nest('footer','common.footer');
-      $view->nest('userinfo', 'common.userinfo', array('my_name' => 'John Doe', 'my_city' => 'Austin'));
-      return $view;
-    });
-    ```
+Route::get('home', function()
+{
+  return View::make('myviews.home')
+      ->nest('header', 'common.header')
+      ->nest('footer', 'common.footer');
+});
+Route::get('second', function()
+{
+  $view = View::make('myviews.second');
+  $view->nest('header', 'common.header')->nest('footer','common.footer');
+  $view->nest('userinfo', 'common.userinfo', array('my_name' => 'John Doe', 'my_city' => 'Austin'));
+  return $view;
+});
+```
 
 1.  在`views/myviews`目录中，打开`home.php`文件，并添加以下代码：
 
 ```php
-    <?= $header ?>
-        <h1>Welcome to the Home page!</h1>
-        <p>
-          <a href="second">Go to Second Page</a>
-        </p>
-    <?= $footer ?>
-    ```
+<?= $header ?>
+    <h1>Welcome to the Home page!</h1>
+    <p>
+      <a href="second">Go to Second Page</a>
+    </p>
+<?= $footer ?>
+```
 
 1.  在`views/myviews`目录中，打开`second.php`文件，并添加以下代码：
 
 ```php
-    <?= $header ?>
-    <h1>Welcome to the Second Page</h1>
-      <?= $userinfo ?>
-    <p>
-        <a href="home">Go to Home Page</a>
-    </p>
-    <?= $footer ?>
-    ```
+<?= $header ?>
+<h1>Welcome to the Second Page</h1>
+  <?= $userinfo ?>
+<p>
+    <a href="home">Go to Home Page</a>
+</p>
+<?= $footer ?>
+```
 
 1.  通过转到`http://{your-server}/home`（其中`your-server`是我们的 URL），然后点击链接来测试视图。
 
@@ -302,78 +302,78 @@ return $view;
 1.  打开`composer.json`文件，并将`asset`包添加到`require`部分，使其看起来类似于以下内容：
 
 ```php
-    "require": {
-          "laravel/framework": "4.0.*",
-          "teepluss/asset": "dev-master"
-      },
-    ```
+"require": {
+      "laravel/framework": "4.0.*",
+      "teepluss/asset": "dev-master"
+  },
+```
 
 1.  在命令行中，运行 composer update 来下载包，如下所示：
 
 ```php
-    **php composer.phar update**
+**php composer.phar update**
 
-    ```
+```
 
 1.  打开`app/config/app.php`文件，并在提供者数组的末尾添加`ServiceProvider`，如下所示：
 
 ```php
-    'Teepluss\Asset\AssetServiceProvider',
-    ```
+'Teepluss\Asset\AssetServiceProvider',
+```
 
 1.  在相同的文件中，在`aliases`数组中，添加包的别名，如下所示：
 
 ```php
-    'Asset' => 'Teepluss\Asset\Facades\Asset'
-    ```
+'Asset' => 'Teepluss\Asset\Facades\Asset'
+```
 
 1.  在`app/filters.php`文件中，添加一个自定义过滤器来处理我们的资产，如下所示：
 
 ```php
-    Route::filter('assets', function()
-    {
-      Asset::add('jqueryui', 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.2/jquery-ui.min.js', 'jquery');
-      Asset::add('jquery', 'http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js');
-      Asset::add('bootstrap', 'http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/css/bootstrap-combined.min.css');
-    });
+Route::filter('assets', function()
+{
+  Asset::add('jqueryui', 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.2/jquery-ui.min.js', 'jquery');
+  Asset::add('jquery', 'http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js');
+  Asset::add('bootstrap', 'http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/css/bootstrap-combined.min.css');
+});
 
-    Update the home and second routes to use the filter
-    Route::get('home', array('before' => 'assets', function()
-    {
-      return View::make('myviews.home')
-          ->nest('header', 'common.header')
-          ->nest('footer', 'common.footer');
-    }));
-    Route::get('second', array('before' => 'assets', function()
-    {
-      $view = View::make('myviews.second');
-      $view->nest('header', 'common.header')->nest('footer', 'common.footer');
-      $view->nest('userinfo', 'common.userinfo', array('my_name' => 'John Doe', 'my_city' => 'Austin'));
-      return $view;
-    }));
-    ```
+Update the home and second routes to use the filter
+Route::get('home', array('before' => 'assets', function()
+{
+  return View::make('myviews.home')
+      ->nest('header', 'common.header')
+      ->nest('footer', 'common.footer');
+}));
+Route::get('second', array('before' => 'assets', function()
+{
+  $view = View::make('myviews.second');
+  $view->nest('header', 'common.header')->nest('footer', 'common.footer');
+  $view->nest('userinfo', 'common.userinfo', array('my_name' => 'John Doe', 'my_city' => 'Austin'));
+  return $view;
+}));
+```
 
 1.  在`views/common`目录中，打开`header.php`文件，并按照以下代码使用：
 
 ```php
-    <!doctype html>
-    <html lang="en">
-        <head>
-            <meta charset="utf-8">
-            <title>My Website</title>
-            <?= Asset::styles() ?>
-        </head>
-        <body>
-    ```
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>My Website</title>
+        <?= Asset::styles() ?>
+    </head>
+    <body>
+```
 
 1.  在`views/common`目录中，打开`footer.php`文件，并使用以下代码：
 
 ```php
-    <footer>&copy; 2013 MyCompany</footer> 
-    <?= Asset::scripts() ?>
-      </body>
-    </html>
-    ```
+<footer>&copy; 2013 MyCompany</footer> 
+<?= Asset::scripts() ?>
+  </body>
+</html>
+```
 
 1.  通过转到`http://{your-server}/home`（其中`your-server`是我们的 URL），点击链接并查看页面源代码来测试视图，以查看包含的资产。
 
@@ -406,73 +406,73 @@ PHP 有许多可用的模板库，Laravel 的 Blade 是其中之一。这个食�
 1.  在`routes.php`文件中，创建新的路由，如下所示：
 
 ```php
-    Route::get('blade-home', function()
-    {
-      return View::make('blade.home');
-    });
-    Route::get('blade-second', function()
-    {
-      return View::make('blade.second');
-    });
-    ```
+Route::get('blade-home', function()
+{
+  return View::make('blade.home');
+});
+Route::get('blade-second', function()
+{
+  return View::make('blade.second');
+});
+```
 
 1.  在`views`目录中，创建一个名为`layout`的新文件夹。
 
 1.  在`views/layout`目录中，创建一个名为`index.blade.php`的文件，并将以下代码添加到其中：
 
 ```php
-    <!doctype html>
-    <html lang="en">
-        <head>
-            <meta charset="utf-8">
-            <title>My Site</title>
-        </head>
-        <body>
-        <h1>
-        @section('page_title')
-          Welcome to 
-        @show
-        </h1>
-        @yield('content')
-        </body>
-    </html>
-    ```
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>My Site</title>
+    </head>
+    <body>
+    <h1>
+    @section('page_title')
+      Welcome to 
+    @show
+    </h1>
+    @yield('content')
+    </body>
+</html>
+```
 
 1.  在`views`目录中，创建一个名为`blade`的文件夹。
 
 1.  在`views/blade`目录中，创建一个名为`home.blade.php`的文件，并将以下代码添加到其中：
 
 ```php
-    @extends('layout.index')
+@extends('layout.index')
 
-    @section('page_title')
-      @parent
-        Our Blade Home
-    @endsection
+@section('page_title')
+  @parent
+    Our Blade Home
+@endsection
 
-    @section('content')
-      <p>
-        Go to {{ HTML::link('blade-second', 'the Second Page.') }}
-      </p>
-    @endsection
-    ```
+@section('content')
+  <p>
+    Go to {{ HTML::link('blade-second', 'the Second Page.') }}
+  </p>
+@endsection
+```
 
 1.  在`views/blade`目录中，创建一个名为`second.blade.php`的文件，并将以下代码添加到其中：
 
 ```php
-    @extends('layout.index')
+@extends('layout.index')
 
-    @section('page_title')
-      @parent
-        Our Second Blade Page
-    @endsection
+@section('page_title')
+  @parent
+    Our Second Blade Page
+@endsection
 
-    @section('content')
-      <p>
-        Go to {{ HTML::link('blade-home', 'the Home Page.')}}
-      </p>
-    @endsection
-    ```
+@section('content')
+  <p>
+    Go to {{ HTML::link('blade-home', 'the Home Page.')}}
+  </p>
+@endsection
+```
 
 1.  通过转到`http://{your-server}/blade-home`（其中`your-server`是我们的 URL），然后单击链接，查看页面源代码，以查看包含的 Blade 布局。
 
@@ -501,76 +501,76 @@ Laravel 的 Blade 模板可能很好，但有时我们需要另一个 PHP 模板
 1.  打开`composer.json`文件，并在`require`部分添加以下行：
 
 ```php
-    "rcrowe/twigbridge": "0.4.*"
-    ```
+"rcrowe/twigbridge": "0.4.*"
+```
 
 1.  在命令行中，更新 composer 以安装包：
 
 ```php
-    **php composer.phar update**
+**php composer.phar update**
 
-    ```
+```
 
 1.  打开`app/config/app.php`文件，并在`providers`数组中添加 Twig ServiceProvider，如下所示：
 
 ```php
-    'TwigBridge\TwigServiceProvider'
-    ```
+'TwigBridge\TwigServiceProvider'
+```
 
 1.  在命令行中，运行以下命令来创建我们的配置文件：
 
 ```php
-    **php artisan config:publish rcrowe/twigbridge**
+**php artisan config:publish rcrowe/twigbridge**
 
-    ```
+```
 
 1.  在`routes.php`中，创建一个路由如下：
 
 ```php
-    Route::get('twigview', function()
-    {
-      $link = HTML::link('http://laravel.com', 'the Laravel site.');
-      return View::make('twig')->with('link', $link);
-    **});**
+Route::get('twigview', function()
+{
+  $link = HTML::link('http://laravel.com', 'the Laravel site.');
+  return View::make('twig')->with('link', $link);
+**});**
 
-    ```
+```
 
 1.  在`views`目录中，创建一个名为`twiglayout.twig`的文件，并将以下代码添加到其中：
 
 ```php
-    <!doctype html>
-    <html lang="en">
-        <head>
-            <meta charset="utf-8">
-            <title>My Site</title>
-        </head>
-        <body>
-        <h1>
-            {% block page_title %}
-                Welcome to
-            {% endblock %}
-        </h1>
-        {% block content %}{% endblock %}
-        </body>
-    </html>
-    ```
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>My Site</title>
+    </head>
+    <body>
+    <h1>
+        {% block page_title %}
+            Welcome to
+        {% endblock %}
+    </h1>
+    {% block content %}{% endblock %}
+    </body>
+</html>
+```
 
 1.  在`views`目录中，创建一个名为`twig.twig`的文件，并将以下代码添加到其中：
 
 ```php
-    {% extends "twiglayout.twig" %}
+{% extends "twiglayout.twig" %}
 
-    {% block page_title %}
-    	{{ parent() }}
-    	My Twig Page
-    {% endblock %}
+{% block page_title %}
+	{{ parent() }}
+	My Twig Page
+{% endblock %}
 
-    {% block content %}
-        <p>
-    		Go to {{ link|raw }}
-    	</p>
-    {% endblock %}
-    ```
+{% block content %}
+    <p>
+		Go to {{ link|raw }}
+	</p>
+{% endblock %}
+```
 
 1.  通过转到`http://your-server/twigview`（其中`your-server`是我们的 URL）来测试视图，并查看页面源代码以查看包含的 twig 布局。
 
@@ -601,77 +601,77 @@ Laravel 的 Blade 模板可能很好，但有时我们需要另一个 PHP 模板
 1.  打开`routes.php`文件，并按以下方式更新`blade-home`和`blade-second`路由：
 
 ```php
-    Route::get('blade-home', function()
-    {
-      $movies = array(
-        array('name' => 'Star Wars', 'year' => '1977', 'slug'=> 'star-wars'),
-        array('name' => 'The Matrix', 'year' => '1999', 'slug' => 'matrix'),
-        array('name' => 'Die Hard', 'year' => '1988', 'slug'=> 'die-hard'),
-        array('name' => 'Clerks', 'year' => '1994', 'slug' => 'clerks')
-      );
-      return View::make('blade.home')->with('movies', $movies);
-    });
-    Route::get('blade-second/(:any)', function($slug)
-    {
-      $movies = array(
-        'star-wars' => array('name' => 'Star Wars', 'year' => '1977', 'genre' => 'Sci-Fi'),
-        'matrix' => array('name' => 'The Matrix', 'year' => '1999', 'genre' => 'Sci-Fi'),
-        'die-hard' => array('name' => 'Die Hard', 'year' => '1988', 'genre' => 'Action'),
-        'clerks' => array('name' => 'Clerks', 'year' => '1994', 'genre' => 'Comedy')
-      );
-      return View::make('blade.second')->with('movie', $movies[$slug]);
-    });
-    ```
+Route::get('blade-home', function()
+{
+  $movies = array(
+    array('name' => 'Star Wars', 'year' => '1977', 'slug'=> 'star-wars'),
+    array('name' => 'The Matrix', 'year' => '1999', 'slug' => 'matrix'),
+    array('name' => 'Die Hard', 'year' => '1988', 'slug'=> 'die-hard'),
+    array('name' => 'Clerks', 'year' => '1994', 'slug' => 'clerks')
+  );
+  return View::make('blade.home')->with('movies', $movies);
+});
+Route::get('blade-second/(:any)', function($slug)
+{
+  $movies = array(
+    'star-wars' => array('name' => 'Star Wars', 'year' => '1977', 'genre' => 'Sci-Fi'),
+    'matrix' => array('name' => 'The Matrix', 'year' => '1999', 'genre' => 'Sci-Fi'),
+    'die-hard' => array('name' => 'Die Hard', 'year' => '1988', 'genre' => 'Action'),
+    'clerks' => array('name' => 'Clerks', 'year' => '1994', 'genre' => 'Comedy')
+  );
+  return View::make('blade.second')->with('movie', $movies[$slug]);
+});
+```
 
 1.  在`views/blade`目录中，使用以下代码更新`home.blade.php`文件：
 
 ```php
-    @extends('layout.index')
+@extends('layout.index')
 
-    @section('page_title')
-      @parent
-        Our List of Movies
-    @endsection
+@section('page_title')
+  @parent
+    Our List of Movies
+@endsection
 
-    @section('content')
-      <ul>
-        @foreach ($movies as $movie)
-          <li>{{ HTML::link('blade-second/' . $movie['slug'],$movie['name']) }} ( {{ $movie['year'] }} )</li>
-              @if ($movie['name'] == 'Die Hard')
-                     <ul>
-                       <li>Main character: John McClane</li>
-                     </ul>
-              @endif
-        @endforeach
-      </ul>
-    @endsection
-    ```
+@section('content')
+  <ul>
+    @foreach ($movies as $movie)
+      <li>{{ HTML::link('blade-second/' . $movie['slug'],$movie['name']) }} ( {{ $movie['year'] }} )</li>
+          @if ($movie['name'] == 'Die Hard')
+                 <ul>
+                   <li>Main character: John McClane</li>
+                 </ul>
+          @endif
+    @endforeach
+  </ul>
+@endsection
+```
 
 1.  在`views/blade`目录中，使用以下代码更新`second.blade.php`文件：
 
 ```php
-    @extends('layout.index')
+@extends('layout.index')
 
-    @section('page_title')
-      @parent
-         Our {{ $movie['name'] }} Page
-    @endsection
+@section('page_title')
+  @parent
+     Our {{ $movie['name'] }} Page
+@endsection
 
-    @section('content')
-      @include('blade.info')
-      <p>
-        Go to {{ HTML::link('blade-home', 'the Home Page.') }}
-      </p>
-    @endsection
-    ```
+@section('content')
+  @include('blade.info')
+  <p>
+    Go to {{ HTML::link('blade-home', 'the Home Page.') }}
+  </p>
+@endsection
+```
 
 1.  在`views/blade`目录中，创建一个名为`info.blade.php`的新文件，并将以下代码添加到其中：
 
 ```php
-    <h1>{{ $movie['name'] }}</h1>
-    <p>Year: {{ $movie['year'] }}</p>
-    <p>Genre: {{ $movie['genre'] }}</p>
-    ```
+<h1>{{ $movie['name'] }}</h1>
+<p>Year: {{ $movie['year'] }}</p>
+<p>Genre: {{ $movie['genre'] }}</p>
+```
 
 1.  通过转到`http://{your-server}/blade-home`（其中`your-server`是我们的 URL）来测试视图，并单击链接以查看视图的工作。
 
@@ -702,106 +702,106 @@ Laravel 的 Blade 模板可能很好，但有时我们需要另一个 PHP 模板
 1.  在`en`目录中，创建一个名为`localized.php`的文件，并添加以下代码：
 
 ```php
-    <?php
+<?php
 
-    return array(
-      'greeting' => 'Good morning :name',
-      'meetyou' => 'Nice to meet you!',
-      'goodbye' => 'Goodbye, see you tomorrow.',
-    );
-    ```
+return array(
+  'greeting' => 'Good morning :name',
+  'meetyou' => 'Nice to meet you!',
+  'goodbye' => 'Goodbye, see you tomorrow.',
+);
+```
 
 1.  在`es`目录中，创建一个名为`localized.php`的文件，并添加以下代码：
 
 ```php
-    <?php
+<?php
 
-    return array(
-      'greeting' => 'Buenos días :name',
-      'meetyou' => 'Mucho gusto!',
-      'goodbye' => 'Adiós, hasta mañana.',
-    );
-    ```
+return array(
+  'greeting' => 'Buenos días :name',
+  'meetyou' => 'Mucho gusto!',
+  'goodbye' => 'Adiós, hasta mañana.',
+);
+```
 
 1.  在`de`目录中，创建一个名为`localized.php`的文件，并添加以下代码：
 
 ```php
-    <?php
+<?php
 
-    return array(
-      'greeting' => 'Guten morgen :name',
-      'meetyou' => 'Es freut mich!',
-      'goodbye' => 'Tag. Bis bald.',
-    );
-    ```
+return array(
+  'greeting' => 'Guten morgen :name',
+  'meetyou' => 'Es freut mich!',
+  'goodbye' => 'Tag. Bis bald.',
+);
+```
 
 1.  在我们的`routes.php`文件中，创建四个路由如下：
 
 ```php
-    Route::get('choose', function()
-    {
-      return View::make('language.choose');
-    });
-    Route::post('choose', function()
-    {
-      Session::put('lang', Input::get('language'));
-      return Redirect::to('localized');
-    });
-    Route::get('localized', function()
-    {
-      $lang = Session::get('lang', function() { return 'en';});
-      App::setLocale($lang);
-      return View::make('language.localized');
-    });
-    Route::get('localized-german', function()
-    {
-      App::setLocale('de');
-      return View::make('language.localized-german');
-    });
-    ```
+Route::get('choose', function()
+{
+  return View::make('language.choose');
+});
+Route::post('choose', function()
+{
+  Session::put('lang', Input::get('language'));
+  return Redirect::to('localized');
+});
+Route::get('localized', function()
+{
+  $lang = Session::get('lang', function() { return 'en';});
+  App::setLocale($lang);
+  return View::make('language.localized');
+});
+Route::get('localized-german', function()
+{
+  App::setLocale('de');
+  return View::make('language.localized-german');
+});
+```
 
 1.  在`views`目录中，创建一个名为`language`的文件夹。
 
 1.  在`views/language`中，创建名为`choose.php`的文件，并添加以下代码：
 
 ```php
-    <h2>Choose a Language:</h2>
-    <?= Form::open() ?>
-    <?= Form::select('language', array('en' => 'English', 'es' => 'Spanish')) ?>
-    <?= Form::submit() ?>
-    <?= Form::close() ?>
-    ```
+<h2>Choose a Language:</h2>
+<?= Form::open() ?>
+<?= Form::select('language', array('en' => 'English', 'es' => 'Spanish')) ?>
+<?= Form::submit() ?>
+<?= Form::close() ?>
+```
 
 1.  在`views/language`目录中，创建一个名为`localized.php`的文件，并添加以下代码：
 
 ```php
-    <h2>
-      <?= Lang::get('localized.greeting', array('name' => 'Lindsay Weir')) ?>
-    </h2>
-    <p>
-      <?= Lang::get('localized.meetyou') ?>
-    </p>
-    <p>
-      <?= Lang::get('localized.goodbye') ?>
-    </p>
-    <p>
-      <?= HTML::link('localized-german', 'Page 2') ?>
-    </p>
-    ```
+<h2>
+  <?= Lang::get('localized.greeting', array('name' => 'Lindsay Weir')) ?>
+</h2>
+<p>
+  <?= Lang::get('localized.meetyou') ?>
+</p>
+<p>
+  <?= Lang::get('localized.goodbye') ?>
+</p>
+<p>
+  <?= HTML::link('localized-german', 'Page 2') ?>
+</p>
+```
 
 1.  在`views/language`目录中，创建一个名为`localized-german.php`的文件，并添加以下代码：
 
 ```php
-    <h2>
-      <?= Lang::get('localized.greeting', array('name' =>'Lindsay Weir')) ?>
-    </h2>
-    <p>
-      <?= Lang::get('localized.meetyou') ?>
-    </p>
-    <p>
-      <?= Lang::get('localized.goodbye') ?>
-    </p>
-    ```
+<h2>
+  <?= Lang::get('localized.greeting', array('name' =>'Lindsay Weir')) ?>
+</h2>
+<p>
+  <?= Lang::get('localized.meetyou') ?>
+</p>
+<p>
+  <?= Lang::get('localized.goodbye') ?>
+</p>
+```
 
 1.  在浏览器中，转到`http://{your-server}/choose`（其中`your-server`是我们的 URL），提交表单，并测试本地化。
 
@@ -832,112 +832,112 @@ Laravel 的 Blade 模板可能很好，但有时我们需要另一个 PHP 模板
 1.  在`routes.php`文件中，创建三个路由如下：
 
 ```php
-    Route::get('menu-one', function()
-    {
-      return View::make('menu-layout')
-          ->nest('menu', 'menu-menu')
-          ->nest('content', 'menu-one');
-    });
-    Route::get('menu-two', function()
-    {
-      return View::make('menu-layout')
-          ->nest('menu', 'menu-menu')
-          ->nest('content', 'menu-two');
-    });
-    Route::get('menu-three', function()
-    {
-      return View::make('menu-layout')
-          ->nest('menu', 'menu-menu')
-          ->nest('content', 'menu-three');
-    });
-    ```
+Route::get('menu-one', function()
+{
+  return View::make('menu-layout')
+      ->nest('menu', 'menu-menu')
+      ->nest('content', 'menu-one');
+});
+Route::get('menu-two', function()
+{
+  return View::make('menu-layout')
+      ->nest('menu', 'menu-menu')
+      ->nest('content', 'menu-two');
+});
+Route::get('menu-three', function()
+{
+  return View::make('menu-layout')
+      ->nest('menu', 'menu-menu')
+      ->nest('content', 'menu-three');
+});
+```
 
 1.  在视图目录中，创建一个名为`menu-layout.php`的文件，并添加以下代码：
 
 ```php
-    <!doctype html>
-    <html lang="en">
-        <head>
-            <meta charset="utf-8">
-            <title>Menu Example</title>
-            <style>
-                #container {
-                  width: 1024px; 
-                  margin: 0 auto; 
-                  border-left: 2px solid #ddd;
-                  border-right: 2px solid #ddd;
-                  padding: 20px;
-                }
-                #menu { padding: 0 }
-                #menu li {
-                   display: inline-block;
-                   border: 1px solid #ddf;
-                   border-radius: 6px;
-                   margin-right: 12px;
-                   padding: 4px 12px;
-                }
-                #menu li a {
-                   text-decoration: none;
-                   color: #069;
-                }
-                #menu li a:hover { text-decoration: underline}
-                #menu li.active { background: #069 }
-                #menu li.active a { color: #fff }
-            </style>
-        </head>
-        <body>
-          <div id="container">
-              <?= $menu ?>
-              <?= $content ?>
-          </div>
-        </body>
-    </html>
-    ```
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Menu Example</title>
+        <style>
+            #container {
+              width: 1024px; 
+              margin: 0 auto; 
+              border-left: 2px solid #ddd;
+              border-right: 2px solid #ddd;
+              padding: 20px;
+            }
+            #menu { padding: 0 }
+            #menu li {
+               display: inline-block;
+               border: 1px solid #ddf;
+               border-radius: 6px;
+               margin-right: 12px;
+               padding: 4px 12px;
+            }
+            #menu li a {
+               text-decoration: none;
+               color: #069;
+            }
+            #menu li a:hover { text-decoration: underline}
+            #menu li.active { background: #069 }
+            #menu li.active a { color: #fff }
+        </style>
+    </head>
+    <body>
+      <div id="container">
+          <?= $menu ?>
+          <?= $content ?>
+      </div>
+    </body>
+</html>
+```
 
 1.  在`views`目录中，创建一个名为`menu-menu.php`的文件，并添加以下代码：
 
 ```php
-    <ul id="menu">
-      <li class="<?= Request::segment(1) == 'menu-one' ?'active' : '' ?>">
-        <?= HTML::link('menu-one', 'Page One') ?>
-      </li>
-      <li class="<?= Request::segment(1) == 'menu-two' ? 'active' : '' ?>">
-          <?= HTML::link('menu-two', 'Page Two') ?>
-      </li>
-      <li class="<?= Request::segment(1) == 'menu-three' ?'active' : '' ?>">
-          <?= HTML::link('menu-three', 'Page Three') ?>
-      </li>
-    </ul>
-    ```
+<ul id="menu">
+  <li class="<?= Request::segment(1) == 'menu-one' ?'active' : '' ?>">
+    <?= HTML::link('menu-one', 'Page One') ?>
+  </li>
+  <li class="<?= Request::segment(1) == 'menu-two' ? 'active' : '' ?>">
+      <?= HTML::link('menu-two', 'Page Two') ?>
+  </li>
+  <li class="<?= Request::segment(1) == 'menu-three' ?'active' : '' ?>">
+      <?= HTML::link('menu-three', 'Page Three') ?>
+  </li>
+</ul>
+```
 
 1.  在`views`目录中，创建三个视图文件，分别命名为`menu-one.php`，`menu-two.php`和`menu-three.php`。
 
 1.  对于`menu-one.php`，使用以下代码：
 
 ```php
-    <h2>Page One</h2>
-    <p>
-      Lorem ipsum dolor sit amet.
-    </p>
-    ```
+<h2>Page One</h2>
+<p>
+  Lorem ipsum dolor sit amet.
+</p>
+```
 
 1.  对于`menu-two.php`，使用以下代码：
 
 ```php
-    <h2>Page Two</h2>
-    <p>
-      Suspendisse eu porta turpis
-    </p>
-    ```
+<h2>Page Two</h2>
+<p>
+  Suspendisse eu porta turpis
+</p>
+```
 
 1.  对于`menu-three.php`，使用以下代码：
 
 ```php
-    <h2>Page Three</h2>
-    <p>
-      Nullam varius ultrices varius.
-    </p>
-    ```
+<h2>Page Three</h2>
+<p>
+  Nullam varius ultrices varius.
+</p>
+```
 
 1.  在浏览器中，转到`http://{your-server}/menu-one`（其中`your-server`是我们的 URL），并通过菜单链接进行点击。
 
@@ -966,66 +966,66 @@ Bootstrap CSS 框架最近变得非常流行。这个示例将展示我们如何
 1.  在`routes.php`文件中，创建一个新的路由，如下所示：
 
 ```php
-    Route::any('boot', function()
-    {
-      Asset::add('jquery', 'http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js');
-      Asset::add('bootstrap-js', 'http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/js/bootstrap.min.js', 'jquery');
-      Asset::add('bootstrap-css', 'http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/css/bootstrap-combined.min.css');
-      $superheroes = array('Batman', 'Superman', 'Wolverine','Deadpool', 'Iron Man');
-      return View::make('boot')->with('superheroes',$superheroes);
-    });
-    ```
+Route::any('boot', function()
+{
+  Asset::add('jquery', 'http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js');
+  Asset::add('bootstrap-js', 'http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/js/bootstrap.min.js', 'jquery');
+  Asset::add('bootstrap-css', 'http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/css/bootstrap-combined.min.css');
+  $superheroes = array('Batman', 'Superman', 'Wolverine','Deadpool', 'Iron Man');
+  return View::make('boot')->with('superheroes',$superheroes);
+});
+```
 
 1.  在`views`目录中，创建一个名为`boot.php`的文件，并向其中添加以下代码：
 
 ```php
-    <!doctype html>
-    <html lang="en">
-      <head>
-        <meta charset="utf-8">
-        <title>My Bootstrap Page</title>
-        <?= Asset::styles() ?>
-      </head>
-      <body>
-        <div class="container">
-          <h1>Using Bootstrap with Laravel</h1>
-          <ul class="nav nav-tabs">
-            <li class="active"><a href="#welcome" data-toggle="tab">Welcome</a></li>
-            <li><a href="#about" data-toggle="tab">About Us</a></li>
-            <li><a href="#contact" data-toggle="tab">Contact</a></li>
-          </ul>
-            <div class="tab-content">
-              <div class="tab-pane active" id="welcome">
-                <h4>Welcome to our site</h4>
-                <p>Here's a list of Superheroes:</p>
-                <ul>
-                  <?php foreach($superheroes as $hero): ?>
-                    <li class="badge badge-info"><?= $hero ?></li>
-                  <?php endforeach; ?>
-                </ul>
-            </div>
-              <div class="tab-pane" id="about">
-                <h4>About Us</h4>
-                  <p>Cras at dui eros. Ut imperdiet pellentesque mi faucibus dapibus.Phasellus vitae lacus at massa viverra condimentum quis quis augue. Etiam pharetra erat id sem pretium egestas. Suspendisse mollis, dolor a sagittis hendrerit, urna velit commodo dui, id adipiscing magna magna ac ligula. Nunc in ligula nunc.</p>
-              </div>
-              <div class="tab-pane" id="contact">
-                <h3>Contact Form</h3>
-                  <?= Form::open('boot', 'POST') ?>
-                    <?= Form::label('name', 'Your Name') ?>
-                    <?= Form::text('name') ?>
-                    <?= Form::label('email', 'Your Email') ?>
-                    <?= Form::text('email') ?>
-                    <br>
-                    <?= Form::button('Send', array('class' =>'btn btn-primary')) ?>
-
-                    <?= Form::close() ?>
-              </div>
-           </div>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>My Bootstrap Page</title>
+    <?= Asset::styles() ?>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Using Bootstrap with Laravel</h1>
+      <ul class="nav nav-tabs">
+        <li class="active"><a href="#welcome" data-toggle="tab">Welcome</a></li>
+        <li><a href="#about" data-toggle="tab">About Us</a></li>
+        <li><a href="#contact" data-toggle="tab">Contact</a></li>
+      </ul>
+        <div class="tab-content">
+          <div class="tab-pane active" id="welcome">
+            <h4>Welcome to our site</h4>
+            <p>Here's a list of Superheroes:</p>
+            <ul>
+              <?php foreach($superheroes as $hero): ?>
+                <li class="badge badge-info"><?= $hero ?></li>
+              <?php endforeach; ?>
+            </ul>
         </div>
-        <?= Asset::scripts() ?>
-      </body>
-    </html>
-    ```
+          <div class="tab-pane" id="about">
+            <h4>About Us</h4>
+              <p>Cras at dui eros. Ut imperdiet pellentesque mi faucibus dapibus.Phasellus vitae lacus at massa viverra condimentum quis quis augue. Etiam pharetra erat id sem pretium egestas. Suspendisse mollis, dolor a sagittis hendrerit, urna velit commodo dui, id adipiscing magna magna ac ligula. Nunc in ligula nunc.</p>
+          </div>
+          <div class="tab-pane" id="contact">
+            <h3>Contact Form</h3>
+              <?= Form::open('boot', 'POST') ?>
+                <?= Form::label('name', 'Your Name') ?>
+                <?= Form::text('name') ?>
+                <?= Form::label('email', 'Your Email') ?>
+                <?= Form::text('email') ?>
+                <br>
+                <?= Form::button('Send', array('class' =>'btn btn-primary')) ?>
+
+                <?= Form::close() ?>
+          </div>
+       </div>
+    </div>
+    <?= Asset::scripts() ?>
+  </body>
+</html>
+```
 
 1.  在浏览器中，转到`http://your-server/boot`（其中`your-server`是我们的 URL），并单击选项卡。
 
@@ -1058,79 +1058,79 @@ Bootstrap CSS 框架最近变得非常流行。这个示例将展示我们如何
 1.  在`routes.php`文件中，添加一个名为`view`的文件，并向其中添加以下代码：
 
 ```php
-    View::name('menu-layout', 'layout');
-    ```
+View::name('menu-layout', 'layout');
+```
 
 1.  在`routes.php`中，添加一个视图组件，如下所示：
 
 ```php
-    View::composer('menu-layout', function($view)
-    {
-      Asset::add('bootstrap-css', 'http://netdna.bootstrapcdn.com/twitter-bootstrap/2.2.2/css/bootstrap-combined.min.css');
-        $view->nest('menu', 'menu-menu');
-        $view->with('page_title', 'View Composer Title');
-    });
-    ```
+View::composer('menu-layout', function($view)
+{
+  Asset::add('bootstrap-css', 'http://netdna.bootstrapcdn.com/twitter-bootstrap/2.2.2/css/bootstrap-combined.min.css');
+    $view->nest('menu', 'menu-menu');
+    $view->with('page_title', 'View Composer Title');
+});
+```
 
 1.  在`routes.php`中，更新菜单路由如下：
 
 ```php
-    Route::get('menu-one', function()
-    {
-      return View::of('layout')->nest('content', 'menu-one');
-    });
-    Route::get('menu-two', function()
-    {
-      return View::of('layout')->nest('content', 'menu-two');
-    });
-    Route::get('menu-three', function()
-    {
-      return View::of('layout')->nest('content', 'menu-three');
-    });
-    ```
+Route::get('menu-one', function()
+{
+  return View::of('layout')->nest('content', 'menu-one');
+});
+Route::get('menu-two', function()
+{
+  return View::of('layout')->nest('content', 'menu-two');
+});
+Route::get('menu-three', function()
+{
+  return View::of('layout')->nest('content', 'menu-three');
+});
+```
 
 1.  在`views`目录中，使用以下代码更新`menu-layout.php`文件：
 
 ```php
-    <!doctype html>
-    <html lang="en">
-        <head>
-            <meta charset="utf-8">
-            <title><?= $page_title ?></title>
-            <?= Asset::styles() ?>
-            <style>
-              #container {
-                width: 1024px; 
-                margin: 0 auto; 
-                border-left: 2px solid #ddd;
-                border-right: 2px solid #ddd;
-                padding: 20px;
-              }
-              #menu { padding: 0 }
-              #menu li {
-                display: inline-block;
-                border: 1px solid #ddf;
-                border-radius: 6px;
-                margin-right: 12px;
-                padding: 4px 12px;
-              }
-              #menu li a {
-                text-decoration: none;
-                color: #069;
-              }
-              #menu li a:hover { text-decoration: underline }
-              #menu li.active { background: #069 }
-              #menu li.active a { color: #fff }
-            </style>
-        </head>
-        <body>
-          <div id="container">
-            <?= $menu ?>
-            <?= $content ?>
-          </div>
-        </body>
-    </html>
-    ```
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title><?= $page_title ?></title>
+        <?= Asset::styles() ?>
+        <style>
+          #container {
+            width: 1024px; 
+            margin: 0 auto; 
+            border-left: 2px solid #ddd;
+            border-right: 2px solid #ddd;
+            padding: 20px;
+          }
+          #menu { padding: 0 }
+          #menu li {
+            display: inline-block;
+            border: 1px solid #ddf;
+            border-radius: 6px;
+            margin-right: 12px;
+            padding: 4px 12px;
+          }
+          #menu li a {
+            text-decoration: none;
+            color: #069;
+          }
+          #menu li a:hover { text-decoration: underline }
+          #menu li.active { background: #069 }
+          #menu li.active a { color: #fff }
+        </style>
+    </head>
+    <body>
+      <div id="container">
+        <?= $menu ?>
+        <?= $content ?>
+      </div>
+    </body>
+</html>
+```
 
 1.  在浏览器中，转到`http://{your-server}/menu-one`（其中`your-server`是我们的 URL），并单击菜单链接。
 

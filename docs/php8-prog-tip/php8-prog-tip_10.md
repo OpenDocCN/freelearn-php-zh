@@ -69,39 +69,39 @@ PHP 核心团队偶尔会对基于 GitHub 的 PHP 存储库进行统计分析。
 1.  在此代码示例中，我们首先打开到包含来自 GeoNames（[`geonames.org`](https://geonames.org)）项目的城市数据的数据文件的连接，如下所示：
 
 ```php
-    // /repo/ch08/php7_each.php
-    $data_src = __DIR__ 
-        . '/../sample_data/cities15000_min.txt';
-    $fh       = fopen($data_src, 'r');
-    $pattern  = "%30s : %20s\n";
-    $target   = 10000000;
-    $data     = [];
-    ```
+// /repo/ch08/php7_each.php
+$data_src = __DIR__ 
+    . '/../sample_data/cities15000_min.txt';
+$fh       = fopen($data_src, 'r');
+$pattern  = "%30s : %20s\n";
+$target   = 10000000;
+$data     = [];
+```
 
 1.  然后，我们使用`fgetcsv（）`函数将数据行拉入`$line`，并将纬度和经度信息打包到`$data`数组中。请注意在以下代码片段中，我们过滤掉人口少于`$target`（在本例中少于 1000 万）的城市的数据行：
 
 ```php
-    while ($line = fgetcsv($fh, '', "\t")) {
-        $popNum = $line[14] ?? 0;
-        if ($popNum > $target) {
-            $city = $line[1]  ?? 'Unknown';
-            $data[$city] = $line[4]. ',' . $line[5];
-        }
-    }
-    ```
+while ($line = fgetcsv($fh, '', "\t")) {
+    $popNum = $line[14] ?? 0;
+    if ($popNum > $target) {
+        $city = $line[1]  ?? 'Unknown';
+        $data[$city] = $line[4]. ',' . $line[5];
+    }
+}
+```
 
 1.  然后，我们关闭文件句柄并按城市名称对数组进行排序。为了呈现输出，我们使用`each（）`遍历数组，生成键/值对，其中城市是键，纬度和经度是值。代码如下所示：
 
 ```php
-    fclose($fh);
-    ksort($data);
-    printf($pattern, 'City', 'Latitude/Longitude');
-    printf($pattern, '----', '--------------------');
-    while ([$city, $latLon] = each($data)) {
-        $city = str_pad($city, 30, ' ', STR_PAD_LEFT);
-        printf($pattern, $city, $latLon);
-    }
-    ```
+fclose($fh);
+ksort($data);
+printf($pattern, 'City', 'Latitude/Longitude');
+printf($pattern, '----', '--------------------');
+while ([$city, $latLon] = each($data)) {
+    $city = str_pad($city, 30, ' ', STR_PAD_LEFT);
+    printf($pattern, $city, $latLon);
+}
+```
 
 以下是在 PHP 7 中的输出：
 
@@ -131,40 +131,40 @@ root@php8_tips_php7 [ /repo/ch08 ]# php php7_each.php
 1.  我们不使用`fopen（）`，而是创建一个`SplFileObject`实例。您还会注意到在以下代码片段中，我们不是创建一个数组，而是创建一个`ArrayIterator`实例来保存最终数据：
 
 ```php
-    // /repo/ch08/php8_each_replacements.php
-    $data_src = __DIR__ 
-        . '/../sample_data/cities15000_min.txt';
-    $fh       = new SplFileObject($data_src, 'r');
-    $pattern  = "%30s : %20s\n";
-    $target   = 10000000;
-    $data     = new ArrayIterator();
-    ```
+// /repo/ch08/php8_each_replacements.php
+$data_src = __DIR__ 
+    . '/../sample_data/cities15000_min.txt';
+$fh       = new SplFileObject($data_src, 'r');
+$pattern  = "%30s : %20s\n";
+$target   = 10000000;
+$data     = new ArrayIterator();
+```
 
 1.  然后，我们使用`fgetcsv（）`方法循环遍历数据文件以检索一行，并使用`offsetSet（）`追加到迭代中，如下所示：
 
 ```php
-    while ($line = $fh->fgetcsv("\t")) {
-        $popNum = $line[14] ?? 0;
-        if ($popNum > $target) {
-            $city = $line[1]  ?? 'Unknown';
-            $data->offsetSet($city, $line[4]. ',' .             $line[5]);
-        }
-    }
-    ```
+while ($line = $fh->fgetcsv("\t")) {
+    $popNum = $line[14] ?? 0;
+    if ($popNum > $target) {
+        $city = $line[1]  ?? 'Unknown';
+        $data->offsetSet($city, $line[4]. ',' .             $line[5]);
+    }
+}
+```
 
 1.  最后，我们按键排序，倒回到顶部，并在迭代仍具有更多值时循环。我们使用`key（）`和`current（）`方法检索键/值对，如下所示：
 
 ```php
-    $data->ksort();
-    $data->rewind();
-    printf($pattern, 'City', 'Latitude/Longitude');
-    printf($pattern, '----', '--------------------');
-    while ($data->valid()) {
-        $city = str_pad($data->key(), 30, ' ', STR_PAD_LEFT);
-        printf($pattern, $city, $data->current());
-        $data->next();
-    }
-    ```
+$data->ksort();
+$data->rewind();
+printf($pattern, 'City', 'Latitude/Longitude');
+printf($pattern, '----', '--------------------');
+while ($data->valid()) {
+    $city = str_pad($data->key(), 30, ' ', STR_PAD_LEFT);
+    printf($pattern, $city, $data->current());
+    $data->next();
+}
+```
 
 这个代码示例实际上可以在任何版本的 PHP 中工作，从 PHP 5.1 到 PHP 8 都可以！输出与前面的 PHP 7 输出完全相同，这里不再重复。
 
@@ -185,58 +185,58 @@ root@php8_tips_php7 [ /repo/ch08 ]# php php7_each.php
 1.  我们首先记录以微秒为单位的开始时间。稍后，我们将使用此值来确定性能。以下是您需要的代码：
 
 ```php
-    // /repo/ch08/php7_create_function.php
-    $start = microtime(TRUE);
-    ```
+// /repo/ch08/php7_create_function.php
+$start = microtime(TRUE);
+```
 
 1.  接下来，使用`create_function（）`定义一个回调函数，将每行开头的 IP 地址重新组织为确切三位数的统一段。我们需要这样做才能执行正确的排序（稍后定义）。`create_function（）`的第一个参数是表示参数的字符串。第二个参数是要执行的实际代码。代码如下所示：
 
 ```php
-    $normalize = create_function(
-        '&$line, $key',
-        '$split = strpos($line, " ");'
-        . '$ip = trim(substr($line, 0, $split));'
-        . '$remainder = substr($line, $split);'
-        . '$tmp = explode(".", $ip);'
-        . 'if (count($tmp) === 4)'
-        . '    $ip = vsprintf("%03d.%03d.%03d.%03d", $tmp);'
-        . '$line = $ip . $remainder;'
-    );
-    ```
+$normalize = create_function(
+    '&$line, $key',
+    '$split = strpos($line, " ");'
+    . '$ip = trim(substr($line, 0, $split));'
+    . '$remainder = substr($line, $split);'
+    . '$tmp = explode(".", $ip);'
+    . 'if (count($tmp) === 4)'
+    . '    $ip = vsprintf("%03d.%03d.%03d.%03d", $tmp);'
+    . '$line = $ip . $remainder;'
+);
+```
 
 请注意大量使用字符串。这种笨拙的语法很容易导致语法或逻辑错误，因为大多数代码编辑器不会解释嵌入字符串中的命令。
 
 1.  接下来，我们定义一个用于`usort()`的排序回调，如下所示：
 
 ```php
-    $sort_by_ip = create_function(
-        '$line1, $line2',
-        'return $line1 <=> $line2;' );
-    ```
+$sort_by_ip = create_function(
+    '$line1, $line2',
+    'return $line1 <=> $line2;' );
+```
 
 1.  然后，我们使用`file()`函数将访问日志的内容提取到一个数组中。我们还将`$sorted`移动到一个文件中，以保存排序后的访问日志条目。代码如下所示：
 
 ```php
-    $orig   = __DIR__ . '/../sample_data/access.log';
-    $log    = file($orig);
-    $sorted = new SplFileObject(__DIR__ 
-        . '/access_sorted_by_ip.log', 'w');
-    ```
+$orig   = __DIR__ . '/../sample_data/access.log';
+$log    = file($orig);
+$sorted = new SplFileObject(__DIR__ 
+    . '/access_sorted_by_ip.log', 'w');
+```
 
 1.  然后，我们能够使用`array_walk()`规范化 IP 地址，并使用`usort()`进行排序，如下所示：
 
 ```php
-    array_walk($log, $normalize);
-    usort($log, $sort_by_ip);
-    ```
+array_walk($log, $normalize);
+usort($log, $sort_by_ip);
+```
 
 1.  最后，我们将排序后的条目写入备用日志文件，并显示开始和结束之间的时间差，如下所示：
 
 ```php
-    foreach ($log as $line) $sorted->fwrite($line);
-    $time = microtime(TRUE) - $start;
-    echo "Time Diff: $time\n";
-    ```
+foreach ($log as $line) $sorted->fwrite($line);
+$time = microtime(TRUE) - $start;
+echo "Time Diff: $time\n";
+```
 
 我们没有展示完整的备用访问日志，因为它太长而无法包含在书中。相反，这里是从列表中间提取出的十几行，以便让您了解输出的情况：
 
@@ -265,31 +265,31 @@ root@php8_tips_php7 [ /repo/ch08 ]# php php7_each.php
 1.  同样，我们首先记录开始时间，就像刚才描述的 PHP 7 代码示例一样。以下是您需要完成此操作的代码：
 
 ```php
-    // /repo/ch08/php8_create_function.php
-    $start = microtime(TRUE);
-    ```
+// /repo/ch08/php8_create_function.php
+$start = microtime(TRUE);
+```
 
 1.  接下来，我们定义一个回调函数，将 IP 地址规范化为四个三位数的块。我们使用与前一个示例完全相同的逻辑；但是，这次我们以匿名函数的形式定义命令。这利用了代码编辑器的帮助，并且每一行都被代码编辑器视为实际的 PHP 命令。代码如下所示：
 
 ```php
-    $normalize = function (&$line, $key) {
-        $split = strpos($line, ' ');
-        $ip = trim(substr($line, 0, $split));
-        $remainder = substr($line, $split);
-        $tmp = explode(".", $ip);
-        if (count($tmp) === 4)
-            $ip = vsprintf("%03d.%03d.%03d.%03d", $tmp);
-        $line = $ip . $remainder;
-    };
-    ```
+$normalize = function (&$line, $key) {
+    $split = strpos($line, ' ');
+    $ip = trim(substr($line, 0, $split));
+    $remainder = substr($line, $split);
+    $tmp = explode(".", $ip);
+    if (count($tmp) === 4)
+        $ip = vsprintf("%03d.%03d.%03d.%03d", $tmp);
+    $line = $ip . $remainder;
+};
+```
 
 因为匿名函数中的每一行都被视为定义普通 PHP 函数一样，所以你不太可能出现拼写错误或语法错误。
 
 1.  以类似的方式，我们以箭头函数的形式定义了排序回调，如下所示：
 
 ```php
-    $sort_by_ip = fn ($line1, $line2) => $line1 <=> $line2;
-    ```
+$sort_by_ip = fn ($line1, $line2) => $line1 <=> $line2;
+```
 
 代码示例的其余部分与前面描述的完全相同，这里不再展示。同样，输出也完全相同。性能时间也大致相同。
 
@@ -304,20 +304,20 @@ root@php8_tips_php7 [ /repo/ch08 ]# php php7_each.php
 1.  首先，我们将一个金额分配给`$amt`变量。然后，我们将货币区域设置为`en_US`（美国），并使用`money_format()`输出该值。我们使用`%n`格式代码进行国家格式化，然后是`%i`代码进行国际渲染。在后一种情况下，显示**国际标准化组织**（**ISO**）货币代码（**美元**，或**USD**）。代码如下所示：
 
 ```php
-    // /repo/ch08/php7_money_format.php
-    $amt = 1234567.89;
-    setlocale(LC_MONETARY, 'en_US');
-    echo "Natl: " . money_format('%n', $amt) . "\n";
-    echo "Intl: " . money_format('%i', $amt) . "\n";
-    ```
+// /repo/ch08/php7_money_format.php
+$amt = 1234567.89;
+setlocale(LC_MONETARY, 'en_US');
+echo "Natl: " . money_format('%n', $amt) . "\n";
+echo "Intl: " . money_format('%i', $amt) . "\n";
+```
 
 1.  然后，我们将货币区域设置为`de_DE`（德国），并以国家和国际格式输出相同的金额，如下所示：
 
 ```php
-    setlocale(LC_MONETARY, 'de_DE');
-    echo "Natl: " . money_format('%n', $amt) . "\n";
-    echo "Intl: " . money_format('%i', $amt) . "\n";
-    ```
+setlocale(LC_MONETARY, 'de_DE');
+echo "Natl: " . money_format('%n', $amt) . "\n";
+echo "Intl: " . money_format('%i', $amt) . "\n";
+```
 
 以下是在 PHP 7.1 中的输出：
 
@@ -336,29 +336,29 @@ Intl: 1.234.567,89 EUR
 1.  首先，我们将金额分配给`$amt`，并创建一个`NumberFormatter`实例。在创建这个实例时，我们提供了指示区域设置和数字类型（在本例中是货币）的参数。然后我们使用`formatCurrency()`方法来产生这个金额的国家表示，如下面的代码片段所示：
 
 ```php
-    // /repo/ch08/php8_number_formatter_fmt_curr.php
-    $amt = 1234567.89;
-    $fmt = new NumberFormatter('en_US',
-        NumberFormatter::CURRENCY );
-    echo "Natl: " . $fmt->formatCurrency($amt, 'USD') . "\n";
-    ```
+// /repo/ch08/php8_number_formatter_fmt_curr.php
+$amt = 1234567.89;
+$fmt = new NumberFormatter('en_US',
+    NumberFormatter::CURRENCY );
+echo "Natl: " . $fmt->formatCurrency($amt, 'USD') . "\n";
+```
 
 1.  为了生成 ISO 货币代码——在本例中是`USD`——我们需要使用`setSymbol()`方法。否则，默认情况下会产生`$`货币符号，而不是`USD`的 ISO 代码。然后我们使用`format()`方法来呈现输出。请注意以下代码片段中`USD`后面的空格。这是为了防止 ISO 代码在输出时与数字相连！：
 
 ```php
-    $fmt->setSymbol(NumberFormatter::CURRENCY_SYMBOL,'USD ');
-    echo "Intl: " . $fmt->format($amt) . "\n";
-    ```
+$fmt->setSymbol(NumberFormatter::CURRENCY_SYMBOL,'USD ');
+echo "Intl: " . $fmt->format($amt) . "\n";
+```
 
 1.  然后我们使用`de_DE`区域设置格式化相同的金额，如下所示：
 
 ```php
-    $fmt = new NumberFormatter( 'de_DE',
-        NumberFormatter::CURRENCY );
-    echo "Natl: " . $fmt->formatCurrency($amt, 'EUR') . "\n";
-    $fmt->setSymbol(NumberFormatter::CURRENCY_SYMBOL, 'EUR');
-    echo "Intl: " . $fmt->format($amt) . "\n";
-    ```
+$fmt = new NumberFormatter( 'de_DE',
+    NumberFormatter::CURRENCY );
+echo "Natl: " . $fmt->formatCurrency($amt, 'EUR') . "\n";
+$fmt->setSymbol(NumberFormatter::CURRENCY_SYMBOL, 'EUR');
+echo "Intl: " . $fmt->format($amt) . "\n";
+```
 
 以下是 PHP 8 的输出：
 
@@ -414,56 +414,56 @@ unset($obj);
 1.  首先，我们定义一个类和一个公共`$class`属性，如下所示：
 
 ```php
-    // /repo/src/Services/HashGen.php
-    namespace Services;
-    use Closure;
-    class HashGen {
-        public $class = 'HashGen: ';
-    ```
+// /repo/src/Services/HashGen.php
+namespace Services;
+use Closure;
+class HashGen {
+    public $class = 'HashGen: ';
+```
 
 1.  然后我们定义一个方法，产生三种不同的回调之一，每种回调都设计为产生不同类型的哈希，如下所示：
 
 ```php
-        public function makeHash(string $type) {
-            $method = 'hashTo' . ucfirst($type);
-            if (method_exists($this, $method))
-                return Closure::fromCallable(
-                    [$this, $method]);
-            else
-                return Closure::fromCallable(
-                    [$this, 'doNothing']);
-            }
-        }
-    ```
+    public function makeHash(string $type) {
+        $method = 'hashTo' . ucfirst($type);
+        if (method_exists($this, $method))
+            return Closure::fromCallable(
+                [$this, $method]);
+        else
+            return Closure::fromCallable(
+                [$this, 'doNothing']);
+        }
+    }
+```
 
 1.  接下来，我们定义三种不同的方法，每种方法产生不同形式的哈希（未显示）：`hashToMd5()`，`hashToSha256()`和`doNothing()`。
 
 1.  为了使用这个类，首先设计一个调用程序，包括类文件并创建一个实例，如下所示：
 
 ```php
-    // /repo/ch08/php7_closure_from_callable.php
-    require __DIR__ . '/../src/Services/HashGen.php';
-    use Services\HashGen;
-    $hashGen = new HashGen();
-    ```
+// /repo/ch08/php7_closure_from_callable.php
+require __DIR__ . '/../src/Services/HashGen.php';
+use Services\HashGen;
+$hashGen = new HashGen();
+```
 
 1.  然后执行回调，然后使用`var_dump()`查看有关`Closure`实例的信息，如下面的代码片段所示：
 
 ```php
-    $doMd5 = $hashGen->makeHash('md5');
-    $text  = 'The quick brown fox jumped over the fence';
-    echo $doMd5($text) . "\n";
-    var_dump($doMd5);
-    ```
+$doMd5 = $hashGen->makeHash('md5');
+$text  = 'The quick brown fox jumped over the fence';
+echo $doMd5($text) . "\n";
+var_dump($doMd5);
+```
 
 1.  为了结束这个示例，我们创建并绑定一个匿名类到`Closure`实例，如下面的代码片段所示。理论上，如果匿名类真正绑定到`$this`，输出显示应该以`Anonymous`开头：
 
 ```php
-    $temp = new class() { public $class = 'Anonymous: '; };
-    $doMd5->bindTo($temp);
-    echo $doMd5($text) . "\n";
-    var_dump($doMd5);
-    ```
+$temp = new class() { public $class = 'Anonymous: '; };
+$doMd5->bindTo($temp);
+echo $doMd5($text) . "\n";
+var_dump($doMd5);
+```
 
 以下是在 PHP 8 中运行此代码示例的输出：
 
@@ -776,56 +776,56 @@ function pg_errormessage(
 1.  接下来，从 PostgreSQL 交互式终端，发出以下一组命令来创建和填充一个示例数据库表：
 
 ```php
-    CREATE DATABASE php8_tips;
-    \c php8_tips;
-    \i /repo/sample_data/pgsql_users_create.sql
-    ```
+CREATE DATABASE php8_tips;
+\c php8_tips;
+\i /repo/sample_data/pgsql_users_create.sql
+```
 
 1.  这里是整个命令链的重播：
 
 ```php
-    root@php8_tips_php8 [ /repo/ch08 ]# su postgres
-    bash-4.3$ psql
-    psql (10.2)
-    Type "help" for help.
-    postgres=# CREATE DATABASE php8_tips;
-    CREATE DATABASE
-    postgres=# \c php8_tips;
-    You are now connected to database "php8_tips" 
-        as user "postgres".
-    php8_tips=# \i /repo/sample_data/pgsql_users_create.sql
-    CREATE TABLE
-    INSERT 0 4
-    CREATE ROLE
-    GRANT
-    php8_tips=# \q
-    bash-4.3$ exit
-    exit
-    root@php8_tips_php8 [ /repo/ch08 ]# 
-    ```
+root@php8_tips_php8 [ /repo/ch08 ]# su postgres
+bash-4.3$ psql
+psql (10.2)
+Type "help" for help.
+postgres=# CREATE DATABASE php8_tips;
+CREATE DATABASE
+postgres=# \c php8_tips;
+You are now connected to database "php8_tips" 
+    as user "postgres".
+php8_tips=# \i /repo/sample_data/pgsql_users_create.sql
+CREATE TABLE
+INSERT 0 4
+CREATE ROLE
+GRANT
+php8_tips=# \q
+bash-4.3$ exit
+exit
+root@php8_tips_php8 [ /repo/ch08 ]# 
+```
 
 1.  我们现在定义一个简短的代码示例来说明刚才讨论的弃用概念。请注意，在以下代码示例中，我们为一个不存在的用户创建了一个**结构化查询语言**（**SQL**）语句：
 
 ```php
-    // /repo/ch08/php8_pgsql_changes.php
-    $usr = 'php8';
-    $pwd = 'password';
-    $dsn = 'host=localhost port=5432 dbname=php8_tips '
-          . ' user=php8 password=password';
-    $db  = pg_connect($dsn);
-    $sql = "SELECT * FROM users WHERE user_name='joe'";
-    $stmt = pg_query($db, $sql);
-    echo pg_errormessage();
-    $result = pg_fetch_all($stmt);
-    var_dump($result);
-    ```
+// /repo/ch08/php8_pgsql_changes.php
+$usr = 'php8';
+$pwd = 'password';
+$dsn = 'host=localhost port=5432 dbname=php8_tips '
+      . ' user=php8 password=password';
+$db  = pg_connect($dsn);
+$sql = "SELECT * FROM users WHERE user_name='joe'";
+$stmt = pg_query($db, $sql);
+echo pg_errormessage();
+$result = pg_fetch_all($stmt);
+var_dump($result);
+```
 
 1.  以下是前面代码示例的输出：
 
 ```php
-    root@php8_tips_php8 [ /repo/ch08 ]# php php8_pgsql_changes.php Deprecated: Function pg_errormessage() is deprecated in /repo/ch08/php8_pgsql_changes.php on line 22
-    array(0) {}
-    ```
+root@php8_tips_php8 [ /repo/ch08 ]# php php8_pgsql_changes.php Deprecated: Function pg_errormessage() is deprecated in /repo/ch08/php8_pgsql_changes.php on line 22
+array(0) {}
+```
 
 从输出中需要注意的两个主要事项是`pg_errormessage()`已弃用，并且当查询未返回结果时，不再返回`FALSE`布尔值，而是返回一个空数组。不要忘记使用此命令停止 PostgreSQL 数据库：
 
@@ -894,29 +894,29 @@ Array (
 1.  首先，我们定义一个自定义错误处理程序，如下所示：
 
 ```php
-    // /repo/ch08/php7_error_handler.php
-    function handler($errno, $errstr, $errfile, 
-        $errline, $errcontext = NULL) {
-        echo "Number : $errno\n";
-        echo "String : $errstr\n";
-        echo "File   : $errfile\n";
-        echo "Line   : $errline\n";
-        if (!empty($errcontext))
-            echo "Context: \n" 
-                . var_export($errcontext, TRUE);
-        exit;
-    }
-    ```
+// /repo/ch08/php7_error_handler.php
+function handler($errno, $errstr, $errfile, 
+    $errline, $errcontext = NULL) {
+    echo "Number : $errno\n";
+    echo "String : $errstr\n";
+    echo "File   : $errfile\n";
+    echo "Line   : $errline\n";
+    if (!empty($errcontext))
+        echo "Context: \n" 
+            . var_export($errcontext, TRUE);
+    exit;
+}
+```
 
 1.  然后，我们定义一个触发错误、设置错误处理程序并调用函数的函数，如下所示：
 
 ```php
-    function level1($a, $b, $c) {
-        trigger_error("This is an error", E_USER_ERROR);
-    }
-    set_error_handler('handler');
-    echo level1(TRUE, 222, 'C');
-    ```
+function level1($a, $b, $c) {
+    trigger_error("This is an error", E_USER_ERROR);
+}
+set_error_handler('handler');
+echo level1(TRUE, 222, 'C');
+```
 
 以下是在 PHP 7 中运行的输出：
 

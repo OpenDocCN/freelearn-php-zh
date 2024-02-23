@@ -50,108 +50,108 @@ echo json_encode($result);
 1.  让我们从基本的 HTML 结构开始。我们将定义一个带有三个输入框和一个文本区域的表单。当然，它是放在`<body>`中的：
 
 ```php
-    <body>
-    <h1>Validating form using Ajax</h1>
-    <form class="simpleValidation">
-    <div class="fieldRow">
-    <label>Title *</label>
-    <input type="text" id="title" name="title"
-    class="required" />
-    </div>
-    <div class="fieldRow">
-    <label>Url</label>
-    <input type="text" id="url" name="url"
-    value="http://" />
-    </div>
-    <div class="fieldRow">
-    <label>Labels</label>
-    <input type="text" id="labels" name="labels" />
-    </div>
-    <div class="fieldRow">
-    <label>Text *</label>
-    <textarea id="textarea" class="required"></textarea>
-    </div>
-    <div class="fieldRow">
-    <input type="submit" id="formSubmitter" value="Submit" disabled="disabled" />
-    </div>
-    </form>
-    </body>
+<body>
+<h1>Validating form using Ajax</h1>
+<form class="simpleValidation">
+<div class="fieldRow">
+<label>Title *</label>
+<input type="text" id="title" name="title"
+class="required" />
+</div>
+<div class="fieldRow">
+<label>Url</label>
+<input type="text" id="url" name="url"
+value="http://" />
+</div>
+<div class="fieldRow">
+<label>Labels</label>
+<input type="text" id="labels" name="labels" />
+</div>
+<div class="fieldRow">
+<label>Text *</label>
+<textarea id="textarea" class="required"></textarea>
+</div>
+<div class="fieldRow">
+<input type="submit" id="formSubmitter" value="Submit" disabled="disabled" />
+</div>
+</form>
+</body>
 
-    ```
+```
 
 1.  为了对有效输入进行视觉确认，我们将定义 CSS 样式：
 
 ```php
-    <style>
-    label{ width:70px; float:left; }
-    form{ width:320px; }
-    input, textarea{ width:200px;
-    border:1px solid black; float:right; padding:5px; }
-    input[type=submit] { cursor:pointer;
-    background-color:green; color:#FFF; }
-    input[disabled=disabled], input[disabled] {
-    background-color:#d1d1d1; }
-    fieldRow { margin:10px 10px; overflow:hidden; }
-    failed { border: 1px solid red; }
-    </style>
+<style>
+label{ width:70px; float:left; }
+form{ width:320px; }
+input, textarea{ width:200px;
+border:1px solid black; float:right; padding:5px; }
+input[type=submit] { cursor:pointer;
+background-color:green; color:#FFF; }
+input[disabled=disabled], input[disabled] {
+background-color:#d1d1d1; }
+fieldRow { margin:10px 10px; overflow:hidden; }
+failed { border: 1px solid red; }
+</style>
 
-    ```
+```
 
 1.  现在，是时候包括 jQuery 及其功能了：
 
 ```php
-    <script src="js/jquery-1.4.4.js"></script>
-    <script>
-    var ajaxValidation = function(object){
-    var $this = $(object);
-    var param = $this.attr('name');
-    var value = $this.val();
-    $.get("ajax/inputValidation.php",
-    {'param':param, 'value':value }, function(data) {
-    if(data.status=="OK") validateRequiredInputs();
-    else
-    $this.addClass('failed');
-    },"json");
-    }
-    var validateRequiredInputs = function (){
-    var numberOfMissingInputs = 0;
-    $('.required').each(function(index){
-    var $item = $(this);
-    var itemValue = $item.val();
-    if(itemValue.length) {
-    $item.removeClass('failed');
-    } else {
-    $item.addClass('failed');
-    numberOfMissingInputs++;
-    }
-    });
-    var $submitButton = $('#formSubmitter');
-    if(numberOfMissingInputs > 0){
-    $submitButton.attr("disabled", true);
-    } else {
-    $submitButton.removeAttr('disabled');
-    }
-    }
-    </script>
+<script src="js/jquery-1.4.4.js"></script>
+<script>
+var ajaxValidation = function(object){
+var $this = $(object);
+var param = $this.attr('name');
+var value = $this.val();
+$.get("ajax/inputValidation.php",
+{'param':param, 'value':value }, function(data) {
+if(data.status=="OK") validateRequiredInputs();
+else
+$this.addClass('failed');
+},"json");
+}
+var validateRequiredInputs = function (){
+var numberOfMissingInputs = 0;
+$('.required').each(function(index){
+var $item = $(this);
+var itemValue = $item.val();
+if(itemValue.length) {
+$item.removeClass('failed');
+} else {
+$item.addClass('failed');
+numberOfMissingInputs++;
+}
+});
+var $submitButton = $('#formSubmitter');
+if(numberOfMissingInputs > 0){
+$submitButton.attr("disabled", true);
+} else {
+$submitButton.removeAttr('disabled');
+}
+}
+</script>
 
-    ```
+```
 
 1.  我们还将初始化文档`ready`函数：
 
 ```php
-    <script>
-    $(document).ready(function(){
-    var timerId = 0;
-    $('.required').keyup(function() {
-    clearTimeout (timerId);
-    timerId = setTimeout(function(){
-    ajaxValidation($(this));
-    }, 200);
-    });
-    });
-    </script>
+<script>
+$(document).ready(function(){
+var timerId = 0;
+$('.required').keyup(function() {
+clearTimeout (timerId);
+timerId = setTimeout(function(){
+ajaxValidation($(this));
+}, 200);
+});
+});
+</script>
 
-    ```
+```
 
 1.  当一切准备就绪时，我们的结果如下：![如何做...](img/3081_02_01.jpg)
 
@@ -214,84 +214,84 @@ echo $result;
 1.  和往常一样，我们将从 HTML 开始。我们将用一个输入框和一个未排序的列表`datalistPlaceHolder`来定义表单：
 
 ```php
-    <h1>Dynamic Dropdown</h1>
-    autosuggest controlcreating<form class="simpleValidation">
-    <div class="fieldRow">
-    <label>Skype name:</label>
-    <div class="ajaxDropdownPlaceHolder">
-    <input type="text" id="name" name="name"
-    class="ajaxDropdown" autocomplete="OFF" />
-    <ul class="datalistPlaceHolder"></ul>
-    </div>
-    </div>
-    </form>
+<h1>Dynamic Dropdown</h1>
+autosuggest controlcreating<form class="simpleValidation">
+<div class="fieldRow">
+<label>Skype name:</label>
+<div class="ajaxDropdownPlaceHolder">
+<input type="text" id="name" name="name"
+class="ajaxDropdown" autocomplete="OFF" />
+<ul class="datalistPlaceHolder"></ul>
+</div>
+</div>
+</form>
 
-    ```
+```
 
 1.  当 HTML 准备好后，我们将使用 CSS 进行调整：
 
 ```php
-    <style>
-    label { width:80px; float:left; padding:4px; }
-    form { width:320px; }
-    input, textarea {
-    width:200px; border:1px solid black;
-    border-radius: 5px; float:right; padding:5px;
-    }
-    input[type=submit] { cursor:pointer;
-    background-color:green; color:#FFF; }
-    input[disabled=disabled] { background-color:#d1d1d1; }
-    .fieldRow { margin:10px 10px; overflow:hidden; }
-    .validationFailed { border: 1px solid red; }
-    .validationPassed { border: 1px solid green; }
-    .datalistPlaceHolder {
-    width:200px; border:1px solid black;
-    border-radius: 5px;
-    float:right; padding:5px; display:none;
-    }
-    ul.datalistPlaceHolder li { list-style: none;
-    cursor:pointer; padding:4px; }
-    ul.datalistPlaceHolder li:hover { color:#FFF;
-    background-color:#000; }
-    </style>
+<style>
+label { width:80px; float:left; padding:4px; }
+form { width:320px; }
+input, textarea {
+width:200px; border:1px solid black;
+border-radius: 5px; float:right; padding:5px;
+}
+input[type=submit] { cursor:pointer;
+background-color:green; color:#FFF; }
+input[disabled=disabled] { background-color:#d1d1d1; }
+.fieldRow { margin:10px 10px; overflow:hidden; }
+.validationFailed { border: 1px solid red; }
+.validationPassed { border: 1px solid green; }
+.datalistPlaceHolder {
+width:200px; border:1px solid black;
+border-radius: 5px;
+float:right; padding:5px; display:none;
+}
+ul.datalistPlaceHolder li { list-style: none;
+cursor:pointer; padding:4px; }
+ul.datalistPlaceHolder li:hover { color:#FFF;
+background-color:#000; }
+</style>
 
-    ```
+```
 
 1.  现在真正的乐趣开始了。我们将包括 jQuery 库并定义我们的 keyup 事件：
 
 ```php
-    <script src="js/jquery-1.4.4.js"></script>
-    autosuggest controlcreating<script>
-    var timerId;
-    var ajaxDropdownInit = function(){
-    $('.ajaxDropdown').keyup(function() {
-    var string = $(this).val();
-    clearTimeout (timerId);
-    timerId = setTimeout(function(){
-    $.get("ajax/dropDownList.php",
-    {'string':string}, function(data) {
-    if(data)
-    $('.datalistPlaceHolder').show().html(data);
-    else
-    $('.datalistPlaceHolder').hide();
-    });
-    }, 500 );
-    });
-    }
-    </script>
+<script src="js/jquery-1.4.4.js"></script>
+autosuggest controlcreating<script>
+var timerId;
+var ajaxDropdownInit = function(){
+$('.ajaxDropdown').keyup(function() {
+var string = $(this).val();
+clearTimeout (timerId);
+timerId = setTimeout(function(){
+$.get("ajax/dropDownList.php",
+{'string':string}, function(data) {
+if(data)
+$('.datalistPlaceHolder').show().html(data);
+else
+$('.datalistPlaceHolder').hide();
+});
+}, 500 );
+});
+}
+</script>
 
-    ```
+```
 
 1.  当一切准备就绪时，我们将在文档`ready`函数中调用`ajaxDropdownInit`函数：
 
 ```php
-    <script>
-    $(document).ready(function(){
-    ajaxDropdownInit();
-    });
-    </script>
+<script>
+$(document).ready(function(){
+ajaxDropdownInit();
+});
+</script>
 
-    ```
+```
 
 1.  我们的自动建议控件已经准备好了。以下截图显示了输出：![如何做...](img/3081_02_02.jpg)
 
@@ -358,86 +358,86 @@ echo "STEP 1"; // Same for 2 and 3
 1.  我们首先定义 HTML 内容：
 
 ```php
-    <div class="wizard">
-    <ul class="wizardNavigation">
-    <li class="active first" id="step1">Step 1</li>
-    <li id="step2">Step 2</li>
-    <li id="step3" class="last">Step 3</li>
-    </ul>
-    <div class="wizardBody">STEP 1</div>
-    <div class="wizardActionButtons">
-    <a href="javascript:submitThePage('back');" class="back"
-    style="display:none;">Back</a>
-    <a href="http:// class="finish" style="display:none;"> Finish</a>
-    <a href="javascript:submitThePage('next');"
-    class="next">Next</a>
-    </div>
-    </div>
+<div class="wizard">
+<ul class="wizardNavigation">
+<li class="active first" id="step1">Step 1</li>
+<li id="step2">Step 2</li>
+<li id="step3" class="last">Step 3</li>
+</ul>
+<div class="wizardBody">STEP 1</div>
+<div class="wizardActionButtons">
+<a href="javascript:submitThePage('back');" class="back"
+style="display:none;">Back</a>
+<a href="http:// class="finish" style="display:none;"> Finish</a>
+<a href="javascript:submitThePage('next');"
+class="next">Next</a>
+</div>
+</div>
 
-    ```
+```
 
 1.  接下来，我们将在 HTML 中包含 CSS 样式如下：
 
 ```php
-    <style>
-    .wizard { width:300px; overflow:hidden;
-    border:1px solid black; }
-    .wizardNavigation { overflow:hidden;
-    border-bottom:1px solid #D2D2D2; }
-    .wizardNavigation li { float:left; list-style:none;
-    padding:10px; cursor:default; color:#D2D2D2; }
-    .wizardNavigation li.active { color:#000; }
-    .wizardBody { clear:both; padding:20px; }
-    .wizardActionButtons { padding:10px;
-    border-top:1px solid #D2D2D2; }
-    .wizardActionButtons .back { float:left; cursor:pointer; }
-    .wizardActionButtons .next,
-    .wizardActionButtons .finish { float:right; cursor:pointer; }
-    .wizard .disabled { color:#D2D2D2; }
-    </style>
+<style>
+.wizard { width:300px; overflow:hidden;
+border:1px solid black; }
+.wizardNavigation { overflow:hidden;
+border-bottom:1px solid #D2D2D2; }
+.wizardNavigation li { float:left; list-style:none;
+padding:10px; cursor:default; color:#D2D2D2; }
+.wizardNavigation li.active { color:#000; }
+.wizardBody { clear:both; padding:20px; }
+.wizardActionButtons { padding:10px;
+border-top:1px solid #D2D2D2; }
+.wizardActionButtons .back { float:left; cursor:pointer; }
+.wizardActionButtons .next,
+.wizardActionButtons .finish { float:right; cursor:pointer; }
+.wizard .disabled { color:#D2D2D2; }
+</style>
 
-    ```
+```
 
 1.  接下来，我们将在关闭`</body>`标签之前放置 JavaScript：
 
 ```php
-    <script>
-    var submitThePage = function (buttonDirection){
-    var $currentTab = $('.wizardNavigation li.active');
-    if(buttonDirection == 'next')
-    var $actionTab = $currentTab.next('li');
-    else
-    var $actionTab = $currentTab.prev('li');
-    var target = "ajax/"+ $actionTab.attr('id') +".php";
-    $.get(target, {'param':'test'},
-    function(data) {
-    if(data){
-    if($actionTab){
-    $currentTab.removeClass('active');
-    $actionTab.addClass('active');
-    }
-    displayFinishButton($actionTab.hasClass('last'));
-    displayNextButton(!$actionTab.hasClass('last'));
-    displayBackButton(!$actionTab.hasClass('first'));
-    $('.wizardBody').html(data);
-    }
-    });
-    }
-    var displayBackButton = function(enabled){
-    enabled == true ?
-    $('.back').show() : $('.back').hide();
-    }
-    var displayNextButton = function(enabled){
-    enabled == true ?
-    $('.next').show() : $('.next').hide();
-    }
-    var displayFinishButton = function(enabled){
-    enabled == true ?
-    $('.finish').show() : $('.finish').hide();
-    }
-    </script>
+<script>
+var submitThePage = function (buttonDirection){
+var $currentTab = $('.wizardNavigation li.active');
+if(buttonDirection == 'next')
+var $actionTab = $currentTab.next('li');
+else
+var $actionTab = $currentTab.prev('li');
+var target = "ajax/"+ $actionTab.attr('id') +".php";
+$.get(target, {'param':'test'},
+function(data) {
+if(data){
+if($actionTab){
+$currentTab.removeClass('active');
+$actionTab.addClass('active');
+}
+displayFinishButton($actionTab.hasClass('last'));
+displayNextButton(!$actionTab.hasClass('last'));
+displayBackButton(!$actionTab.hasClass('first'));
+$('.wizardBody').html(data);
+}
+});
+}
+var displayBackButton = function(enabled){
+enabled == true ?
+$('.back').show() : $('.back').hide();
+}
+var displayNextButton = function(enabled){
+enabled == true ?
+$('.next').show() : $('.next').hide();
+}
+var displayFinishButton = function(enabled){
+enabled == true ?
+$('.finish').show() : $('.finish').hide();
+}
+</script>
 
-    ```
+```
 
 1.  结果如下：![如何做...](img/3081_02_03.jpg)
 
@@ -479,78 +479,78 @@ $ sudo chmod 777 'uploads/'
 1.  `ajaxUpload.html`将如下所示：
 
 ```php
-    <script>
-    function submitForm(upload_field){
-    upload_field.form.submit();
-    upload_field.disabled = true;
-    return true;
-    }
-    </script>
+<script>
+function submitForm(upload_field){
+upload_field.form.submit();
+upload_field.disabled = true;
+return true;
+}
+</script>
 
-    ```
+```
 
 1.  我们的 HTML 主体如下：
 
 ```php
-    <h1>Uploading File Using Ajax</h1>
-    <form action="ajax/uploadFileSingle.php" target="uploadIframe"
-    method="post" enctype="multipart/form-data">
-    <div class="fieldRow">
-    <label>Select the file: </label>
-    <input type="file" name="file" id="file"
-    onChange="submitForm(this)" />
-    </div>
-    </form>
-    <iframe id="uploadIframe" name="uploadIframe"></iframe>
-    <div id="placeHolder"></div>
+<h1>Uploading File Using Ajax</h1>
+<form action="ajax/uploadFileSingle.php" target="uploadIframe"
+method="post" enctype="multipart/form-data">
+<div class="fieldRow">
+<label>Select the file: </label>
+<input type="file" name="file" id="file"
+onChange="submitForm(this)" />
+</div>
+</form>
+<iframe id="uploadIframe" name="uploadIframe"></iframe>
+<div id="placeHolder"></div>
 
-    ```
+```
 
 ajax/uploadFile.php 的内容如下：
 
 ```php
-    <head>
-    <script src="../js/jquery-1.4.4.js"></script>
-    </head>
-    <body>
-    <?php
-    $upload_dir = "../uploads";
-    $result["status"] = "200";
-    $result["message"]= "Error!";
-    if(isset($_FILES['file'])){
-    echo "Uploading file... <br />";
-    if ($_FILES['file']['error'] == UPLOAD_ERR_OK) {
-    $filename = $_FILES['file']['name'];
-    move_uploaded_file($_FILES['file']['tmp_name'],
-    $upload_dir.'/'.$filename);
-    $result["status"] = "100";
-    $result["message"]=
-    "File was uploaded successfully!";
-    } elseif ($_FILES['file']['error'] ==
-    UPLOAD_ERR_INI_SIZE) {
-    $result["status"] = "200";
-    $result["message"]= "The file is too big!";
-    } else {
-    $result["status"] = "500";
-    $result["message"]= "Unknown error!";
-    }
-    }
-    ?>
-    </body>
+<head>
+<script src="../js/jquery-1.4.4.js"></script>
+</head>
+<body>
+<?php
+$upload_dir = "../uploads";
+$result["status"] = "200";
+$result["message"]= "Error!";
+if(isset($_FILES['file'])){
+echo "Uploading file... <br />";
+if ($_FILES['file']['error'] == UPLOAD_ERR_OK) {
+$filename = $_FILES['file']['name'];
+move_uploaded_file($_FILES['file']['tmp_name'],
+$upload_dir.'/'.$filename);
+$result["status"] = "100";
+$result["message"]=
+"File was uploaded successfully!";
+} elseif ($_FILES['file']['error'] ==
+UPLOAD_ERR_INI_SIZE) {
+$result["status"] = "200";
+$result["message"]= "The file is too big!";
+} else {
+$result["status"] = "500";
+$result["message"]= "Unknown error!";
+}
+}
+?>
+</body>
 
-    ```
+```
 
 1.  在`$(document).ready`上初始化结果消息：
 
 ```php
-    <script>
-    $(document).ready(function(){
-    $('#placeHolder', window.parent.document)
-    .html('<?php echo htmlspecialchars($result["message"]); ?>');
-    });
-    </script>
+<script>
+$(document).ready(function(){
+$('#placeHolder', window.parent.document)
+.html('<?php echo htmlspecialchars($result["message"]); ?>');
+});
+</script>
 
-    ```
+```
 
 1.  结果如下：![如何做...](img/3081_02_04.jpg)
 
@@ -582,106 +582,106 @@ ajax/uploadFile.php 的内容如下：
 1.  让我们从 HTML 开始：
 
 ```php
-    <div id="swfupload-control">
-    <p>Upload files.</p>
-    <input type="button" id="button" value="Upload" />
-    <p id="queuestatus"></p>
-    <ol id="log"></ol>
-    </div>
+<div id="swfupload-control">
+<p>Upload files.</p>
+<input type="button" id="button" value="Upload" />
+<p id="queuestatus"></p>
+<ol id="log"></ol>
+</div>
 
-    ```
+```
 
 1.  接下来，我们定义 CSS：
 
 ```php
-    <style>
-    #swfupload-control p { margin:10px 5px; }
-    #log li { list-style:none; margin:2px; padding:10px;
-    font-size:12px; color:#333; background:#fff;
-    position:relative; border:1px solid black;
-    border-radius: 5px;}
-    #log li .progressbar { height:5px; background:#fff; }
-    #log li .progress { background:#999; width:0%; height:5px; }
-    #log li p { margin:0; line-height:18px; }
-    #log li.success { border:1px solid #339933;
-    background:#ccf9b9;}
-    </style>
+<style>
+#swfupload-control p { margin:10px 5px; }
+#log li { list-style:none; margin:2px; padding:10px;
+font-size:12px; color:#333; background:#fff;
+position:relative; border:1px solid black;
+border-radius: 5px;}
+#log li .progressbar { height:5px; background:#fff; }
+#log li .progress { background:#999; width:0%; height:5px; }
+#log li p { margin:0; line-height:18px; }
+#log li.success { border:1px solid #339933;
+background:#ccf9b9;}
+</style>
 
-    ```
+```
 
 1.  现在，我们将包括 jQuery、`SWFUpload`和 SWFUpload jQuery 库：
 
 ```php
-    <script src="js/jquery-1.4.4.js"></script>
-    <script src="js/swfupload/swfupload.js"></script>
-    <script src="js/jquery.swfupload.js"></script>
+<script src="js/jquery-1.4.4.js"></script>
+<script src="js/swfupload/swfupload.js"></script>
+<script src="js/jquery.swfupload.js"></script>
 
-    ```
+```
 
 1.  接下来，我们将定义`SWFUpload`对象和绑定事件，如下所示：
 
 ```php
-    <script>
-    $(function(){
-    $('#swfupload-control').swfupload({
-    upload_url: "upload-file.php",
-    file_post_name: 'uploadfile',
-    flash_url : "js/swfupload/swfupload.swf",
-    button_image_url :
-    'js/swfupload/wdp_buttons_upload_114x29.png',
-    button_width : 114,
-    button_height : 29,
-    button_placeholder : $('#button')[0],
-    debug: false
-    })
-    .bind('fileQueued', function(event, file){
-    var listitem='<li id="'+file.id+'" >'+
-    file.name+' ('+Math.round(file.size/1024)+' KB)
-    <span class="progressvalue" ></span>'+
-    '<div class="progressbar" >
-    <div class="progress" ></div></div>'+
-    '<p class="status" >Pending</p>'+'</li>';
-    $('#log').append(listitem);
-    $(this).swfupload('startUpload');
-    })
-    .bind('uploadStart', function(event, file){
-    $('#log li#'+file.id)
-    .find('p.status').text('Uploading...');
-    $('#log li#'+file.id)
-    .find('span.progressvalue').text('0%');
-    })
-    .bind('uploadProgress', function(event, file, bytesLoaded){
-    var percentage=Math.round((bytesLoaded/file.size)*100);
-    $('#log li#'+file.id)
-    .find('div.progress').css('width', percentage+'%');
-    $('#log li#'+file.id)
-    .find('span.progressvalue').text(percentage+'%');
-    })
-    .bind('uploadSuccess', function(event, file, serverData){
-    var item=$('#log li#'+file.id);
-    item.find('div.progress').css('width', '100%');
-    item.find('span.progressvalue').text('100%');
-    item.addClass('success').find('p.status')
-    .html('File was uploaded successfully.');
-    })
-    .bind('uploadComplete', function(event, file){
-    $(this).swfupload('startUpload');
-    })
-    });
-    </script>
+<script>
+$(function(){
+$('#swfupload-control').swfupload({
+upload_url: "upload-file.php",
+file_post_name: 'uploadfile',
+flash_url : "js/swfupload/swfupload.swf",
+button_image_url :
+'js/swfupload/wdp_buttons_upload_114x29.png',
+button_width : 114,
+button_height : 29,
+button_placeholder : $('#button')[0],
+debug: false
+})
+.bind('fileQueued', function(event, file){
+var listitem='<li id="'+file.id+'" >'+
+file.name+' ('+Math.round(file.size/1024)+' KB)
+<span class="progressvalue" ></span>'+
+'<div class="progressbar" >
+<div class="progress" ></div></div>'+
+'<p class="status" >Pending</p>'+'</li>';
+$('#log').append(listitem);
+$(this).swfupload('startUpload');
+})
+.bind('uploadStart', function(event, file){
+$('#log li#'+file.id)
+.find('p.status').text('Uploading...');
+$('#log li#'+file.id)
+.find('span.progressvalue').text('0%');
+})
+.bind('uploadProgress', function(event, file, bytesLoaded){
+var percentage=Math.round((bytesLoaded/file.size)*100);
+$('#log li#'+file.id)
+.find('div.progress').css('width', percentage+'%');
+$('#log li#'+file.id)
+.find('span.progressvalue').text(percentage+'%');
+})
+.bind('uploadSuccess', function(event, file, serverData){
+var item=$('#log li#'+file.id);
+item.find('div.progress').css('width', '100%');
+item.find('span.progressvalue').text('100%');
+item.addClass('success').find('p.status')
+.html('File was uploaded successfully.');
+})
+.bind('uploadComplete', function(event, file){
+$(this).swfupload('startUpload');
+})
+});
+</script>
 
-    ```
+```
 
 1.  用于上传文件的 PHP 如下：
 
 ```php
-    <?php
-    $uploaddir = './uploads/';
-    $file = $uploaddir . basename($_FILES['uploadfile']['name']);
-    if (move_uploaded_file($_FILES['uploadfile']['tmp_name'], $file)) { echo "success"; } else { echo "error"; }
-    ?>
+<?php
+$uploaddir = './uploads/';
+$file = $uploaddir . basename($_FILES['uploadfile']['name']);
+if (move_uploaded_file($_FILES['uploadfile']['tmp_name'], $file)) { echo "success"; } else { echo "error"; }
+?>
 
-    ```
+```
 
 1.  我们的结果如下：![如何做...](img/3081_02_05.jpg)
 
@@ -740,103 +740,103 @@ echo json_encode($result);
 1.  我们准备开始 HTML 部分：
 
 ```php
-    <body>
-    five star rating systemcreating, steps<h1>Creating Five Stars Rating System</h1>
-    <div class="fieldRow">
-    <label>Book 123A</label>
-    <ul id="book-123a" class="ratingStars">
-    <li></li>
-    <li class="active"></li>
-    <li></li>
-    <li></li>
-    <li></li>
-    </ul>
-    </div>
-    <div class="fieldRow">
-    <label>Book 123B</label>
-    <ul id="book-123b" class="ratingStars">
-    <li class="active"></li>
-    <li></li>
-    <li></li>
-    <li></li>
-    <li></li>
-    </ul>
-    </div>
-    <div class="fieldRow">
-    <label>Book 123C</label>
-    <ul id="book-123c" class="ratingStars">
-    <li></li>
-    <li></li>
-    <li></li>
-    <li></li>
-    <li class="active"></li>
-    </ul>
-    </div>
-    <div id="placeHolder"></div>
-    </body>
+<body>
+five star rating systemcreating, steps<h1>Creating Five Stars Rating System</h1>
+<div class="fieldRow">
+<label>Book 123A</label>
+<ul id="book-123a" class="ratingStars">
+<li></li>
+<li class="active"></li>
+<li></li>
+<li></li>
+<li></li>
+</ul>
+</div>
+<div class="fieldRow">
+<label>Book 123B</label>
+<ul id="book-123b" class="ratingStars">
+<li class="active"></li>
+<li></li>
+<li></li>
+<li></li>
+<li></li>
+</ul>
+</div>
+<div class="fieldRow">
+<label>Book 123C</label>
+<ul id="book-123c" class="ratingStars">
+<li></li>
+<li></li>
+<li></li>
+<li></li>
+<li class="active"></li>
+</ul>
+</div>
+<div id="placeHolder"></div>
+</body>
 
-    ```
+```
 
 1.  让我们包括 jQuery 库并定义 JavaScript 功能：
 
 ```php
-    <script src="js/jquery-1.4.4.js"></script>
-    <script>
-    $(document).ready(function(){
-    $('ul.ratingStars li.active').prevAll().addClass('active');
-    $('ul.ratingStars li').each(function(){
-    var $item = $(this);
-    var $itemContainer = $item.parents('ul.ratingStars');
-    var containerID = $itemContainer.attr('id');
-    var $itemsAll = $itemContainer.find('li');
-    $item.mouseover(function(){
-    $itemsAll.addClass('default');
-    $item.prevAll().addClass('highlighted');
-    })
-    .mouseout(function(){
-    $itemsAll
-    .removeClass('default')
-    .removeClass('highlighted');
-    });
-    .bind('click', function(){
-    var itemIndex = $itemsAll.index(this);
-    $.post('ajax/saveRating.php',
-    {'itemID':containerID, 'itemValue': itemIndex},
-    function(data) {
-    if(data && data.status == "100"){
-    $item
-    .addClass('active')
-    .removeClass('highlighted');
-    $item.nextAll().removeClass('active');
-    $item.prevAll().addClass('active');
-    } else {
-    alert('Error!');
-    }
-    }, "json");
-    });
-    });
-    });
-    </script>
+<script src="js/jquery-1.4.4.js"></script>
+<script>
+$(document).ready(function(){
+$('ul.ratingStars li.active').prevAll().addClass('active');
+$('ul.ratingStars li').each(function(){
+var $item = $(this);
+var $itemContainer = $item.parents('ul.ratingStars');
+var containerID = $itemContainer.attr('id');
+var $itemsAll = $itemContainer.find('li');
+$item.mouseover(function(){
+$itemsAll.addClass('default');
+$item.prevAll().addClass('highlighted');
+})
+.mouseout(function(){
+$itemsAll
+.removeClass('default')
+.removeClass('highlighted');
+});
+.bind('click', function(){
+var itemIndex = $itemsAll.index(this);
+$.post('ajax/saveRating.php',
+{'itemID':containerID, 'itemValue': itemIndex},
+function(data) {
+if(data && data.status == "100"){
+$item
+.addClass('active')
+.removeClass('highlighted');
+$item.nextAll().removeClass('active');
+$item.prevAll().addClass('active');
+} else {
+alert('Error!');
+}
+}, "json");
+});
+});
+});
+</script>
 
-    ```
+```
 
 1.  CSS 是这项任务中的关键部分之一：
 
 ```php
-    <style>
-    five star rating systemcreating, stepslabel, ul { float:left; }
-    .fieldRow { clear:both; margin:5px 0px; overflow:hidden; }
-    ul.ratingStars { list-style:none; margin:0px 0px;
-    overflow:hidden; }
-    ul.ratingStars li { float:left; width:16px; height:16px;
-    background:url('icons/star.gif') no-repeat left top;
-    cursor:pointer; }
-    ul.ratingStars li.active { background-position: 0px -32px; }
-    ul.ratingStars li.default { background-position: 0px 0px; }
-    ul.ratingStars li.highlighted,
-    ul.ratingStars li:hover { background-position: 0px -16px; }
+<style>
+five star rating systemcreating, stepslabel, ul { float:left; }
+.fieldRow { clear:both; margin:5px 0px; overflow:hidden; }
+ul.ratingStars { list-style:none; margin:0px 0px;
+overflow:hidden; }
+ul.ratingStars li { float:left; width:16px; height:16px;
+background:url('icons/star.gif') no-repeat left top;
+cursor:pointer; }
+ul.ratingStars li.active { background-position: 0px -32px; }
+ul.ratingStars li.default { background-position: 0px 0px; }
+ul.ratingStars li.highlighted,
+ul.ratingStars li:hover { background-position: 0px -16px; }
 
-    ```
+```
 
 1.  我们的结果如下：![如何做...](img/3081_02_07.jpg)
 
@@ -878,157 +878,157 @@ echo json_encode($result);
 1.  让我们从 HTML 开始：
 
 ```php
-    <body>
-    <form id="contactForm" action="#" method="post">
-    <h1>PHP Ajax Contact Form</h1>
-    <div class="fieldRow">
-    <label for="name">Your Name:</label>
-    <input type="text" name="name" id="name"
-    class="required" />
-    </div>
-    <div class="fieldRow">
-    <label for="email">Your e-mail:</label>
-    <input type="text" name="email" id="email"
-    class="required email" />
-    </div>
-    <div class="fieldRow">
-    <label for="url">Website:</label>
-    <input type="text" name="url" id="url"
-    class="url" />
-    </div>
-    <div class="fieldRow">
-    <label for="phone">Mobile Phone:</label>
-    <input type="text" name="phone" id="phone"
-    class="phone"/>
-    </div>
-    <div class="fieldRow">
-    <label for="message">Your Message:</label>
-    <textarea name="message" id="message"
-    class="required"></textarea>
-    </div>
-    <div class="fieldRow buttons">
-    <input type="reset" value="Clear" />
-    <input type="submit" value="Send" />
-    </div>
-    </form>
-    </body>
+<body>
+<form id="contactForm" action="#" method="post">
+<h1>PHP Ajax Contact Form</h1>
+<div class="fieldRow">
+<label for="name">Your Name:</label>
+<input type="text" name="name" id="name"
+class="required" />
+</div>
+<div class="fieldRow">
+<label for="email">Your e-mail:</label>
+<input type="text" name="email" id="email"
+class="required email" />
+</div>
+<div class="fieldRow">
+<label for="url">Website:</label>
+<input type="text" name="url" id="url"
+class="url" />
+</div>
+<div class="fieldRow">
+<label for="phone">Mobile Phone:</label>
+<input type="text" name="phone" id="phone"
+class="phone"/>
+</div>
+<div class="fieldRow">
+<label for="message">Your Message:</label>
+<textarea name="message" id="message"
+class="required"></textarea>
+</div>
+<div class="fieldRow buttons">
+<input type="reset" value="Clear" />
+<input type="submit" value="Send" />
+</div>
+</form>
+</body>
 
-    ```
+```
 
 1.  现在，我们可以定义样式：
 
 ```php
-    <style>
-    form{ width:450px; }
-    label { float:left; width:100px; padding:5px; }
-    .fieldRow { overflow:hidden; margin:20px 10px; }
-    .buttons { text-align:center; }
-    input[type=text], textarea{ width:200px; border:1px solid black; border-radius: 5px; padding:5px; }
-    input.required, textarea.required{ border:1px solid orange; }
-    .failed input.required, .failed textarea.required{ border:1px solid red; }
-    .failed { color:red; }
-    </style>
+<style>
+form{ width:450px; }
+label { float:left; width:100px; padding:5px; }
+.fieldRow { overflow:hidden; margin:20px 10px; }
+.buttons { text-align:center; }
+input[type=text], textarea{ width:200px; border:1px solid black; border-radius: 5px; padding:5px; }
+input.required, textarea.required{ border:1px solid orange; }
+.failed input.required, .failed textarea.required{ border:1px solid red; }
+.failed { color:red; }
+</style>
 
-    ```
+```
 
 1.  主要的 PHP 验证如下：
 
 ```php
-    "status" => "50500",
-    "message" => "Error: No parameters provided."
-    );
-    if(isset($_POST["param"])){
-    $param = $_POST["param"];
-    $value = $_POST["value"];
-    switch($param){
-    default:
-    $result["status"] = "10100";
-    $result["message"] = "OK";
-    break;
-    case 'email':
-    if(filter_var($value, FILTER_VALIDATE_EMAIL)){
-    $result["status"] = "10100";
-    $result["message"] = "E-mail is valid!";
-    } else {
-    $result["status"] = "50502";
-    $result["message"] = "Error: E-mail is not
-    valid.";
-    }
-    break;
-    case 'url':
-    if(filter_var($value, FILTER_VALIDATE_URL)){
-    $result["status"] = "10100";
-    $result["message"] = "URL is valid!";
-    } else {
-    $result["status"] = "50502";
-    $result["message"] = "Error: URL is not valid.";
-    }
-    break;
-    case 'phone':
-    if(preg_match('/^\+?[0-9]+$/', $value)){
-    $result["status"] = "10100";
-    $result["message"] = "Phone is valid!";
-    } else {
-    $result["status"] = "50502";
-    $result["message"] = "Error: Phone number is not
-    valid.";
-    }
-    break;
-    }
-    }
-    echo json_encode($result);
-    ?>
+"status" => "50500",
+"message" => "Error: No parameters provided."
+);
+if(isset($_POST["param"])){
+$param = $_POST["param"];
+$value = $_POST["value"];
+switch($param){
+default:
+$result["status"] = "10100";
+$result["message"] = "OK";
+break;
+case 'email':
+if(filter_var($value, FILTER_VALIDATE_EMAIL)){
+$result["status"] = "10100";
+$result["message"] = "E-mail is valid!";
+} else {
+$result["status"] = "50502";
+$result["message"] = "Error: E-mail is not
+valid.";
+}
+break;
+case 'url':
+if(filter_var($value, FILTER_VALIDATE_URL)){
+$result["status"] = "10100";
+$result["message"] = "URL is valid!";
+} else {
+$result["status"] = "50502";
+$result["message"] = "Error: URL is not valid.";
+}
+break;
+case 'phone':
+if(preg_match('/^\+?[0-9]+$/', $value)){
+$result["status"] = "10100";
+$result["message"] = "Phone is valid!";
+} else {
+$result["status"] = "50502";
+$result["message"] = "Error: Phone number is not
+valid.";
+}
+break;
+}
+}
+echo json_encode($result);
+?>
 
-    ```
+```
 
 1.  具有 Ajax 调用的 JavaScript 功能如下：
 
 ```php
-    <script src="js/jquery-1.4.4.js"></script>
-    <script>
-    $(document).ready(function(){
-    $('#contactForm').submit(function(e){
-    var $form = $(this);
-    $.ajaxSetup({async:false});
-    $('.required').each(function(){
-    var $this = $(this);
-    var value = $this.val();
-    if(value.length == 0)
-    $this.parents('.fieldRow').addClass('failed');
-    else
-    $this.parents('.fieldRow').removeClass('failed');
-    });
-    $('.email').each(function(){
-    var $this = $(this);
-    var value = $this.val();
-    $.post("validators/main.php",
-    {'param':'email', 'value':value },
-    function(data) {
-    if(data.status==10100)
-    $this
-    .parents('.fieldRow').removeClass('failed');
-    else
-    $this.parents('.fieldRow').addClass('failed');
-    }, "json");
-    });
-    $('.url').each(function(){
-    ...
-    $.post("validators/main.php",
-    {'param':'url', 'value':value }, function(data) {
-    ...
-    });
-    $('.phone').each(function(){
-    ...
-    $.post("validators/main.php",
-    {'param':'phone', 'value':value }, function(data) {
-    ...
-    });
-    return !$('.failed').length;
-    });
-    });
-    </script>
+<script src="js/jquery-1.4.4.js"></script>
+<script>
+$(document).ready(function(){
+$('#contactForm').submit(function(e){
+var $form = $(this);
+$.ajaxSetup({async:false});
+$('.required').each(function(){
+var $this = $(this);
+var value = $this.val();
+if(value.length == 0)
+$this.parents('.fieldRow').addClass('failed');
+else
+$this.parents('.fieldRow').removeClass('failed');
+});
+$('.email').each(function(){
+var $this = $(this);
+var value = $this.val();
+$.post("validators/main.php",
+{'param':'email', 'value':value },
+function(data) {
+if(data.status==10100)
+$this
+.parents('.fieldRow').removeClass('failed');
+else
+$this.parents('.fieldRow').addClass('failed');
+}, "json");
+});
+$('.url').each(function(){
+...
+$.post("validators/main.php",
+{'param':'url', 'value':value }, function(data) {
+...
+});
+$('.phone').each(function(){
+...
+$.post("validators/main.php",
+{'param':'phone', 'value':value }, function(data) {
+...
+});
+return !$('.failed').length;
+});
+});
+</script>
 
-    ```
+```
 
 1.  结果如下：![如何做...](img/3081_02_08.jpg)
 
@@ -1097,91 +1097,91 @@ json/requests.json:
 1.  作为基本 HTML，我们可以使用这个包含表格和工具栏的源代码。这个工具栏将包括我们项目的选择功能。
 
 ```php
-    <div class="tableContainer">
-    <div class="tableToolbar">
-    Select
-    <a href="#" class="selectAll">All</a>,
-    <a href="#" class="selectNone">None</a>,
-    <a href="#" class="selectInverse">Inverse</a>
-    </div>
-    <table>
-    <thead></thead>
-    <tbody></tbody>
-    </table>
-    </div>
+<div class="tableContainer">
+<div class="tableToolbar">
+Select
+<a href="#" class="selectAll">All</a>,
+<a href="#" class="selectNone">None</a>,
+<a href="#" class="selectInverse">Inverse</a>
+</div>
+<table>
+<thead></thead>
+<tbody></tbody>
+</table>
+</div>
 
-    ```
+```
 
 1.  现在，我们可以为我们的 HTML 设置样式：
 
 ```php
-    <style>
-    .tableContainer { width:900px; }
-    .tableToolbar { background-color:#EEFFEE; height:20px;
-    padding:5px; }
-    table { border-collapse: collapse; width:100%; }
-    table th { background-color:#AAFFAA; padding:4px; }
-    table tr td { padding:4px; }
-    table tr.odd td { background-color:#E3E3E3; }
-    .floatr { float:right; }
-    .textAlignR { text-align: right; }
-    </style>
+<style>
+.tableContainer { width:900px; }
+.tableToolbar { background-color:#EEFFEE; height:20px;
+padding:5px; }
+table { border-collapse: collapse; width:100%; }
+table th { background-color:#AAFFAA; padding:4px; }
+table tr td { padding:4px; }
+table tr.odd td { background-color:#E3E3E3; }
+.floatr { float:right; }
+.textAlignR { text-align: right; }
+</style>
 
-    ```
+```
 
 1.  当 HTML 和 CSS 准备好后，我们可以开始使用 JavaScript：
 
 ```php
-    <script src="js/jquery-1.4.4.js"></script>
-    <script>
-    $(document).ready(function(){
-    $.getJSON('json/requests.json', function(data) {
-    buildHeader(data);
-    buildBody(data);
-    });
-    });
-    var buildHeader = function(data){
-    var keys = [];
-    var $headRow = $('<tr />');
-    for(var key in data[0]){
-    if(key=="id")
-    var $cell = $('<th />');
-    else
-    var $cell = $('<th>'+key+'</th>');
-    $cell.appendTo($headRow);
-    }
-    $headRow.appendTo($('.tableContainer table thead'));
-    }
-    var buildBody = function(data){
-    for(var i = 0; i < data.length; i++){
-    var dataRow = data[i];
-    var $tableRow = $('<tr />');
-    for(var key in dataRow){
-    var $cell = $('<td />');
-    switch(key){
-    default:
-    $cell.html(dataRow[key]);
-    break;
-    case 'id':
-    var $checkbox = $('<input type="checkbox"
-    name="select['+dataRow[key]+']" />');
-    $checkbox.appendTo($cell);
-    break;
-    case 'date':
-    $cell.html(dataRow[key]);
-    $cell.addClass('textAlignR');
-    break;
-    }
-    $cell.appendTo($tableRow);
-    }
-    if(i % 2 == 0)
-    $tableRow.addClass('odd');
-    $tableRow.appendTo($('.tableContainer table tbody'));
-    }
-    }
-    </script>
+<script src="js/jquery-1.4.4.js"></script>
+<script>
+$(document).ready(function(){
+$.getJSON('json/requests.json', function(data) {
+buildHeader(data);
+buildBody(data);
+});
+});
+var buildHeader = function(data){
+var keys = [];
+var $headRow = $('<tr />');
+for(var key in data[0]){
+if(key=="id")
+var $cell = $('<th />');
+else
+var $cell = $('<th>'+key+'</th>');
+$cell.appendTo($headRow);
+}
+$headRow.appendTo($('.tableContainer table thead'));
+}
+var buildBody = function(data){
+for(var i = 0; i < data.length; i++){
+var dataRow = data[i];
+var $tableRow = $('<tr />');
+for(var key in dataRow){
+var $cell = $('<td />');
+switch(key){
+default:
+$cell.html(dataRow[key]);
+break;
+case 'id':
+var $checkbox = $('<input type="checkbox"
+name="select['+dataRow[key]+']" />');
+$checkbox.appendTo($cell);
+break;
+case 'date':
+$cell.html(dataRow[key]);
+$cell.addClass('textAlignR');
+break;
+}
+$cell.appendTo($tableRow);
+}
+if(i % 2 == 0)
+$tableRow.addClass('odd');
+$tableRow.appendTo($('.tableContainer table tbody'));
+}
+}
+</script>
 
-    ```
+```
 
 1.  结果如下：![如何做...](img/3081_02_09.jpg)
 
@@ -1225,153 +1225,153 @@ $row.addClass('highlighted');
 1.  我们将从包含页面容器、显示联系人第一页的联系人网格和联系人分页的 HTML 开始：
 
 ```php
-    <div id="pageContainer">
-    <div id="contactGrid">
-    <div class="contact">
-    <img src="images/avatar.png" alt="avatar" />
-    <h2>Milan Sedliak</h2>
-    <p>Prague, Czech Republic</p>
-    </div>
-    <!-- // add more contacts -->
-    <div class="contact">
-    <img src="images/avatar.png" alt="avatar" />
-    <h2>Milan Sedliak (home)</h2>
-    <p>Malacky, Slovakia</p>
-    </div>
-    </div>
-    <ul id="contactPagination">
-    <li><a href="#previous" id="previous">Previous</a></l
-    <li><a href="#1" id="1">1</a></li>
-    <li><a href="#2" id="2">2</a></li>
-    <li><a href="#3" id="3">3</a></li>
-    <li><a href="#4" id="4">4</a></li>
-    <li><a href="#5" id="5" class="active">5</a></li>
-    <li><a href="#6" id="6">6</a></li>
-    <li><a href="#7" id="7">7</a></li>
-    <li><a href="#next" id="next">Next</a></li>
-    </ul>
-    </div>
+<div id="pageContainer">
+<div id="contactGrid">
+<div class="contact">
+<img src="images/avatar.png" alt="avatar" />
+<h2>Milan Sedliak</h2>
+<p>Prague, Czech Republic</p>
+</div>
+<!-- // add more contacts -->
+<div class="contact">
+<img src="images/avatar.png" alt="avatar" />
+<h2>Milan Sedliak (home)</h2>
+<p>Malacky, Slovakia</p>
+</div>
+</div>
+<ul id="contactPagination">
+<li><a href="#previous" id="previous">Previous</a></l
+<li><a href="#1" id="1">1</a></li>
+<li><a href="#2" id="2">2</a></li>
+<li><a href="#3" id="3">3</a></li>
+<li><a href="#4" id="4">4</a></li>
+<li><a href="#5" id="5" class="active">5</a></li>
+<li><a href="#6" id="6">6</a></li>
+<li><a href="#7" id="7">7</a></li>
+<li><a href="#next" id="next">Next</a></li>
+</ul>
+</div>
 
-    ```
+```
 
 1.  所需的 CSS 如下：
 
 ```php
-    <style>
-    #pageContainer { width: 410px; margin:0px auto; }
-    #contactGrid { width: 410px; margin:10px auto;
-    overflow:hidden; position:relative; }
-    #contactGrid .contact { float:left; width:200px;
-    margin:10px 0px; }
-    .contact img { float:left; margin-right:5px;
-    margin-bottom:10px; }
-    .contact h2 { font-size:14px; }
-    .contact p { font-size: 12px; }
-    #contactPagination { clear:both; margin-left:50px; }
-    #contactPagination li { float:left; list-style:none; }
-    #contactPagination li a { padding:5px; margin:5px;
-    border:1px solid blue; text-decoration:none; }
-    #contactPagination li:hover a { color:orange;
-    border:1px solid orange; }
-    #contactPagination li a.active { color:black;
-    border:1px solid black; }
-    </style>
+<style>
+#pageContainer { width: 410px; margin:0px auto; }
+#contactGrid { width: 410px; margin:10px auto;
+overflow:hidden; position:relative; }
+#contactGrid .contact { float:left; width:200px;
+margin:10px 0px; }
+.contact img { float:left; margin-right:5px;
+margin-bottom:10px; }
+.contact h2 { font-size:14px; }
+.contact p { font-size: 12px; }
+#contactPagination { clear:both; margin-left:50px; }
+#contactPagination li { float:left; list-style:none; }
+#contactPagination li a { padding:5px; margin:5px;
+border:1px solid blue; text-decoration:none; }
+#contactPagination li:hover a { color:orange;
+border:1px solid orange; }
+#contactPagination li a.active { color:black;
+border:1px solid black; }
+</style>
 
-    ```
+```
 
 1.  分页的 JavaScript 功能如下：
 
 ```php
-    <script src="js/jquery-1.4.4.js"></script>
-    <script>
-    $(document).ready(function(){
-    paginationInit();
-    });
-    var paginationInit = function(){
-    $('#contactPagination li a').bind('click', function(e){
-    e.preventDefault();
-    var $this = $(this);
-    var target = $this.attr('id');
-    var $currentItem = $('#contactPagination a.active')
-    .parents('li');
-    var $contactGrid = $('#contactGrid');
-    switch(target){
-    default:
-    $('#contactPagination a').removeClass('active');
-    $this.addClass('active');
-    var page = target;
-    $.get('contacts.php',
-    {'page': page}, function(data) {
-    $contactGrid.html(data);
-    });
-    break;
-    case 'next':
-    var $nextItem = $currentItem.next('li');
-    $('#contactPagination a').removeClass('active');
-    var $pageToActive = $nextItem.find('a')
-    .addClass('active');
-    var page = $pageToActive.attr('id');
-    $.get('contacts.php',
-    {'page': page}, function(data) {
-    $contactGrid.html(data);
-    });
-    break;
-    case 'previous':
-    var $previousItem = $currentItem.prev('li');
-    $('#contactPagination a').removeClass('active');
-    var $pageToActive = $previousItem.find('a')
-    .addClass('active');
-    var page = $pageToActive.attr('id');
-    $.get('contacts.php',
-    {'page': page}, function(data) {
-    $contactGrid.html(data);
-    });
-    break;
-    }
-    hidePreviousNextButtons();
-    });
-    }
-    var hidePreviousNextButtons = function(){
-    var $currentItem = $('#contactPagination a.active');
-    var currentItemID = $currentItem.attr('id');
-    var $nextButton = $('#contactPagination #next');
-    var $previousButton = $('#contactPagination #previous');
-    var lastItemID = $nextButton.parents('li').prev('li')
-    .find('a').attr('id');
-    var firstItemID = $previousButton.parents('li').next('li')
-    .find('a').attr('id');
-    currentItemID == lastItemID ?
-    $nextButton.hide() : $nextButton.show();
-    currentItemID == firstItemID ?
-    $previousButton.hide() : $previousButton.show();
-    }
-    </script>
+<script src="js/jquery-1.4.4.js"></script>
+<script>
+$(document).ready(function(){
+paginationInit();
+});
+var paginationInit = function(){
+$('#contactPagination li a').bind('click', function(e){
+e.preventDefault();
+var $this = $(this);
+var target = $this.attr('id');
+var $currentItem = $('#contactPagination a.active')
+.parents('li');
+var $contactGrid = $('#contactGrid');
+switch(target){
+default:
+$('#contactPagination a').removeClass('active');
+$this.addClass('active');
+var page = target;
+$.get('contacts.php',
+{'page': page}, function(data) {
+$contactGrid.html(data);
+});
+break;
+case 'next':
+var $nextItem = $currentItem.next('li');
+$('#contactPagination a').removeClass('active');
+var $pageToActive = $nextItem.find('a')
+.addClass('active');
+var page = $pageToActive.attr('id');
+$.get('contacts.php',
+{'page': page}, function(data) {
+$contactGrid.html(data);
+});
+break;
+case 'previous':
+var $previousItem = $currentItem.prev('li');
+$('#contactPagination a').removeClass('active');
+var $pageToActive = $previousItem.find('a')
+.addClass('active');
+var page = $pageToActive.attr('id');
+$.get('contacts.php',
+{'page': page}, function(data) {
+$contactGrid.html(data);
+});
+break;
+}
+hidePreviousNextButtons();
+});
+}
+var hidePreviousNextButtons = function(){
+var $currentItem = $('#contactPagination a.active');
+var currentItemID = $currentItem.attr('id');
+var $nextButton = $('#contactPagination #next');
+var $previousButton = $('#contactPagination #previous');
+var lastItemID = $nextButton.parents('li').prev('li')
+.find('a').attr('id');
+var firstItemID = $previousButton.parents('li').next('li')
+.find('a').attr('id');
+currentItemID == lastItemID ?
+$nextButton.hide() : $nextButton.show();
+currentItemID == firstItemID ?
+$previousButton.hide() : $previousButton.show();
+}
+</script>
 
-    ```
+```
 
 1.  要检索所需的页面，我们将定义`contact.php:`
 
 ```php
-    <?php
-    if (isset($_GET["page"])) { $page = (int)$_GET["page"]; } else { $page = 1; };
-    $start_from = ($page-1) * 20;
-    $sql = "SELECT * FROM contacts ORDER BY name ASC LIMIT $start_from, 20";
-    $result = mysql_query ($sql,$connection);
-    ?>
-    <?php
-    $result="";
-    while ($row = mysql_fetch_assoc($result)) {
-    $avatar = htmlspecialchars($row["avatar"]); $fullName = htmlspecialchars($row["fullName"]);
-    $address = htmlspecialchars($row["address"]);
-    $result .= sprintf('
-    <div class="contact">
-    <img src="%s" alt="avatar" />
-    <h2>%s</h2>
-    <p>%s</p>
-    </div>',$avatar,$fullName,$address);
-    };
+<?php
+if (isset($_GET["page"])) { $page = (int)$_GET["page"]; } else { $page = 1; };
+$start_from = ($page-1) * 20;
+$sql = "SELECT * FROM contacts ORDER BY name ASC LIMIT $start_from, 20";
+$result = mysql_query ($sql,$connection);
+?>
+<?php
+$result="";
+while ($row = mysql_fetch_assoc($result)) {
+$avatar = htmlspecialchars($row["avatar"]); $fullName = htmlspecialchars($row["fullName"]);
+$address = htmlspecialchars($row["address"]);
+$result .= sprintf('
+<div class="contact">
+<img src="%s" alt="avatar" />
+<h2>%s</h2>
+<p>%s</p>
+</div>',$avatar,$fullName,$address);
+};
 
-    ```
+```
 
 1.  结果如下：![如何做...](img/3081_02_10.jpg)
 

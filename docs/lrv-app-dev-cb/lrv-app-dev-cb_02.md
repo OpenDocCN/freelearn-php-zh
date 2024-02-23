@@ -45,29 +45,29 @@
 1.  在`routes.php`中，创建一个路由来加载视图：
 
 ```php
-    Route::get(userform, function()
-    {
-        return View::make('userform');
-    });
-    ```
+Route::get(userform, function()
+{
+    return View::make('userform');
+});
+```
 
 1.  在`userform.php`视图中，使用以下代码创建一个表单：
 
 ```php
-    <h1>User Info</h1>
-    <?= Form::open() ?>
-    <?= Form::label('username', 'Username') ?>
-    <?= Form::text('username') ?>
-    <br>
-    <?= Form::label('password', 'Password') ?>
-    <?= Form::password('password') ?>
-    <br>
-    <?= Form::label('color', 'Favorite Color') ?>
-    <?= Form::select('color', array('red' => 'red', 'green' =>'green', 'blue' => 'blue')) ?>
-    <br>
-    <?= Form::submit('Send it!') ?>
-    <?= Form::close() ?>
-    ```
+<h1>User Info</h1>
+<?= Form::open() ?>
+<?= Form::label('username', 'Username') ?>
+<?= Form::text('username') ?>
+<br>
+<?= Form::label('password', 'Password') ?>
+<?= Form::password('password') ?>
+<br>
+<?= Form::label('color', 'Favorite Color') ?>
+<?= Form::select('color', array('red' => 'red', 'green' =>'green', 'blue' => 'blue')) ?>
+<br>
+<?= Form::submit('Send it!') ?>
+<?= Form::close() ?>
+```
 
 通过转到`http://{your-server}/userform`（其中`{your-server}`是您的服务器的名称）在 Web 页面中查看您的表单。
 
@@ -106,26 +106,26 @@
 1.  创建一个路由来处理表单中的 POST 数据：
 
 ```php
-    Route::post('userform', function()
-    {
-        // Process the data here
-        return Redirect::to('userresults')-
-            >withInput(Input::only('username', 'color'));
-    });
+Route::post('userform', function()
+{
+    // Process the data here
+    return Redirect::to('userresults')-
+        >withInput(Input::only('username', 'color'));
+});
 
-    ```
+```
 
 1.  创建一个重定向到的路由，并显示数据：
 
 ```php
-    Route::get('userresults', function()
-    {
-        return 'Your username is: ' . Input::old('username')
-            . '<br>Your favorite color is: '
-            . Input::old('color');
-    });
+Route::get('userresults', function()
+{
+    return 'Your username is: ' . Input::old('username')
+        . '<br>Your favorite color is: '
+        . Input::old('color');
+});
 
-    ```
+```
 
 ## 工作原理...
 
@@ -164,75 +164,75 @@ Route::post('userform', function()
 1.  创建一个路由来保存表单：
 
 ```php
-    Route::get('userform', function()
-    {
-        return View::make('userform');
-    });
-    ```
+Route::get('userform', function()
+{
+    return View::make('userform');
+});
+```
 
 1.  创建一个名为`userform.php`的视图并添加一个表单：
 
 ```php
-    <h1>User Info</h1>
-    <?php $messages =  $errors->all('<pstyle="color:red">:message</p>') ?>
-    <?php
-    foreach ($messages as $msg)
-    {
-        echo $msg;
-    }
-    ?>
-    <?= Form::open() ?>
-    <?= Form::label('email', 'Email') ?>
-    <?= Form::text('email', Input::old('email')) ?>
-    <br>
-    <?= Form::label('username', 'Username') ?>
-    <?= Form::text('username', Input::old('username')) ?>
-    <br>
-    <?= Form::label('password', 'Password') ?>
-    <?= Form::password('password') ?>
-    <br>
-    <?= Form::label('password_confirm', 'Retype your Password')?>
-    <?= Form::password('password_confirm') ?>
-    <br>
-    <?= Form::label('color', 'Favorite Color') ?>
-    <?= Form::select('color', array('red' => 'red', 'green' =>'green', 'blue' => 'blue'), Input::old('color')) ?>
-    <br>
-    <?= Form::submit('Send it!') ?>
-    <?php echo Form::close() ?>
-    ```
+<h1>User Info</h1>
+<?php $messages =  $errors->all('<pstyle="color:red">:message</p>') ?>
+<?php
+foreach ($messages as $msg)
+{
+    echo $msg;
+}
+?>
+<?= Form::open() ?>
+<?= Form::label('email', 'Email') ?>
+<?= Form::text('email', Input::old('email')) ?>
+<br>
+<?= Form::label('username', 'Username') ?>
+<?= Form::text('username', Input::old('username')) ?>
+<br>
+<?= Form::label('password', 'Password') ?>
+<?= Form::password('password') ?>
+<br>
+<?= Form::label('password_confirm', 'Retype your Password')?>
+<?= Form::password('password_confirm') ?>
+<br>
+<?= Form::label('color', 'Favorite Color') ?>
+<?= Form::select('color', array('red' => 'red', 'green' =>'green', 'blue' => 'blue'), Input::old('color')) ?>
+<br>
+<?= Form::submit('Send it!') ?>
+<?php echo Form::close() ?>
+```
 
 1.  创建一个处理我们的`POST`数据并验证它的路由：
 
 ```php
-    Route::post('userform', function()
+Route::post('userform', function()
+{
+    $rules = array(
+        'email' => 'required|email|different:username',
+        'username' => 'required|min:6',
+        'password' => 'required|same:password_confirm'
+    );
+    $validation = Validator::make(Input::all(), $rules);
+
+    if ($validation->fails())
     {
-        $rules = array(
-            'email' => 'required|email|different:username',
-            'username' => 'required|min:6',
-            'password' => 'required|same:password_confirm'
-        );
-        $validation = Validator::make(Input::all(), $rules);
+        return Redirect::to('userform')-
+            >withErrors($validation)->withInput();
+    }
 
-        if ($validation->fails())
-        {
-            return Redirect::to('userform')-
-                >withErrors($validation)->withInput();
-        }
+    return Redirect::to('userresults')->withInput();
 
-        return Redirect::to('userresults')->withInput();
+});
 
-    });
-
-    ```
+```
 
 1.  创建一个路由来处理成功的表单提交：
 
 ```php
-    Route::get('userresults', function()
-    {
-        return dd(Input::old());
-    });
-    ```
+Route::get('userresults', function()
+{
+    return dd(Input::old());
+});
+```
 
 ## 它是如何工作的...
 
@@ -267,42 +267,42 @@ Route::post('userform', function()
 1.  在我们的`routes.php`文件中创建一个路由来保存表单：
 
 ```php
-    Route::get('fileform', function()
-    {
-        return View::make('fileform');
-    });
-    ```
+Route::get('fileform', function()
+{
+    return View::make('fileform');
+});
+```
 
 1.  在我们的`app/views`目录中创建`fileform.php`视图：
 
 ```php
-    <h1>File Upload</h1>
-    <?= Form::open(array('files' => TRUE)) ?>
-    <?= Form::label('myfile', 'My File') ?>
-    <br>
-    <?= Form::file('myfile') ?>
-    <br>
-    <?= Form::submit('Send it!') ?>
-    <?= Form::close() ?>
-    ```
+<h1>File Upload</h1>
+<?= Form::open(array('files' => TRUE)) ?>
+<?= Form::label('myfile', 'My File') ?>
+<br>
+<?= Form::file('myfile') ?>
+<br>
+<?= Form::submit('Send it!') ?>
+<?= Form::close() ?>
+```
 
 1.  创建一个路由来上传和保存文件：
 
 ```php
-    Route::post('fileform', function()
+Route::post('fileform', function()
+{
+    $file = Input::file('myfile');
+    $ext = $file->guessExtension();
+    if ($file->move('files', 'newfilename.' . $ext))
     {
-        $file = Input::file('myfile');
-        $ext = $file->guessExtension();
-        if ($file->move('files', 'newfilename.' . $ext))
-        {
-            return 'Success';
-        }
-        else
-        {
-            return 'Error';
-        }
-    });
-    ```
+        return 'Success';
+    }
+    else
+    {
+        return 'Error';
+    }
+});
+```
 
 ## 它是如何工作的...
 
@@ -335,60 +335,60 @@ Route::post('userform', function()
 1.  在我们的`routes.php`文件中为表单创建一个路由：
 
 ```php
-    Route::get('fileform', function()
-    {
-        return View::make('fileform');
-    });
-    ```
+Route::get('fileform', function()
+{
+    return View::make('fileform');
+});
+```
 
 1.  创建表单视图：
 
 ```php
-    <h1>File Upload</h1>
-    <?php $messages =  $errors->all('<p style="color:red">:message</p>') ?>
-    <?php
-    foreach ($messages as $msg)
-    {
-        echo $msg;
-    }
-    ?>
-    <?= Form::open(array('files' => TRUE)) ?>
-    <?= Form::label('myfile', 'My File (Word or Text doc)') ?>
-    <br>
-    <?= Form::file('myfile') ?>
-    <br>
-    <?= Form::submit('Send it!') ?>
-    <?= Form::close() ?>
-    ```
+<h1>File Upload</h1>
+<?php $messages =  $errors->all('<p style="color:red">:message</p>') ?>
+<?php
+foreach ($messages as $msg)
+{
+    echo $msg;
+}
+?>
+<?= Form::open(array('files' => TRUE)) ?>
+<?= Form::label('myfile', 'My File (Word or Text doc)') ?>
+<br>
+<?= Form::file('myfile') ?>
+<br>
+<?= Form::submit('Send it!') ?>
+<?= Form::close() ?>
+```
 
 1.  创建一个路由来验证和处理我们的文件：
 
 ```php
-    Route::post('fileform', function()
-    {
-        $rules = array(
-            'myfile' => 'mimes:doc,docx,pdf,txt|max:1000'
-        );
-        $validation = Validator::make(Input::all(), $rules);
+Route::post('fileform', function()
+{
+    $rules = array(
+        'myfile' => 'mimes:doc,docx,pdf,txt|max:1000'
+    );
+    $validation = Validator::make(Input::all(), $rules);
 
-        if ($validation->fails())
+    if ($validation->fails())
+    {
+return Redirect::to('fileform')->withErrors($validation)->withInput();
+    }
+    else
+    {
+        $file = Input::file('myfile');
+        if ($file->move('files', $file->getClientOriginalName()))
         {
-    return Redirect::to('fileform')->withErrors($validation)->withInput();
+            return "Success";
         }
-        else
+        else 
         {
-            $file = Input::file('myfile');
-            if ($file->move('files', $file->getClientOriginalName()))
-            {
-                return "Success";
-            }
-            else 
-            {
-                return "Error";
-            }
+            return "Error";
         }
-    });
-    ```
+    }
+});
+```
 
 ## 它是如何工作的...
 
@@ -427,81 +427,81 @@ Route::post('userform', function()
 1.  在`routes.php`中创建一个路由来保存表单：
 
 ```php
-    Route::get('myform', function()
-    {
-        return View::make('myform');
-    });
-    ```
+Route::get('myform', function()
+{
+    return View::make('myform');
+});
+```
 
 1.  创建一个名为`myform.php`的视图并添加一个表单：
 
 ```php
-    <h1>User Info</h1>
-    <?php $messages =  $errors->all
-        ('<p style="color:red">:message</p>') ?>
-    <?php
-    foreach ($messages as $msg) 
-    {
-        echo $msg;
-    }
-    ?>
-    <?= Form::open() ?>
-    <?= Form::label('email', 'Email') ?>
-    <?= Form::text('email', Input::old('email')) ?>
-    <br>
-    <?= Form::label('username', 'Username') ?>
-    <?= Form::text('username', Input::old('username')) ?>
-    <br>
-    <?= Form::label('password', 'Password') ?>
-    <?= Form::password('password') ?>
-    <br>
-    <?= Form::submit('Send it!') ?>
-    <?= Form::close() ?>
-    ```
+<h1>User Info</h1>
+<?php $messages =  $errors->all
+    ('<p style="color:red">:message</p>') ?>
+<?php
+foreach ($messages as $msg) 
+{
+    echo $msg;
+}
+?>
+<?= Form::open() ?>
+<?= Form::label('email', 'Email') ?>
+<?= Form::text('email', Input::old('email')) ?>
+<br>
+<?= Form::label('username', 'Username') ?>
+<?= Form::text('username', Input::old('username')) ?>
+<br>
+<?= Form::label('password', 'Password') ?>
+<?= Form::password('password') ?>
+<br>
+<?= Form::submit('Send it!') ?>
+<?= Form::close() ?>
+```
 
 1.  创建一个路由来处理我们的 POST 数据并验证它：
 
 ```php
-    Route::post('myform', array('before' => 'csrf', function()
+Route::post('myform', array('before' => 'csrf', function()
+{
+    $rules = array(
+        'email'    => 'required|email|min:6',
+        'username' => 'required|min:6',
+        'password' => 'required'
+    );
+
+    $messages = array(
+        'min' => 'Way too short! The :attribute must be atleast :min characters in length.',
+        'username.required' => 'We really, really need aUsername.'
+    );
+
+    $validation = Validator::make(Input::all(), $rules,$messages);
+
+    if ($validation->fails())
     {
-        $rules = array(
-            'email'    => 'required|email|min:6',
-            'username' => 'required|min:6',
-            'password' => 'required'
-        );
+        return Redirect::to('myform')->withErrors($validation)->withInput();
+    }
 
-        $messages = array(
-            'min' => 'Way too short! The :attribute must be atleast :min characters in length.',
-            'username.required' => 'We really, really need aUsername.'
-        );
-
-        $validation = Validator::make(Input::all(), $rules,$messages);
-
-        if ($validation->fails())
-        {
-            return Redirect::to('myform')->withErrors($validation)->withInput();
-        }
-
-        return Redirect::to('myresults')->withInput();
-    }));
-    ```
+    return Redirect::to('myresults')->withInput();
+}));
+```
 
 1.  打开文件`app/lang/en/validation.php`，其中`en`是应用程序的默认语言。在我们的情况下，我们使用的是英语。在文件底部，更新`attributes`数组如下：
 
 ```php
-    'attributes' => array(
-        'password' => 'Super Secret Password (shhhh!)'
-    ),
-    ```
+'attributes' => array(
+    'password' => 'Super Secret Password (shhhh!)'
+),
+```
 
 1.  创建一个路由来处理成功的表单提交：
 
 ```php
-    Route::get('myresults', function()
-    {
-        return dd(Input::old());
-    });
-    ```
+Route::get('myresults', function()
+{
+    return dd(Input::old());
+});
+```
 
 ## 它是如何工作的...
 
@@ -538,79 +538,79 @@ Route::post('userform', function()
 1.  在`routes.php`中创建一个路由来保存我们的表单：
 
 ```php
-    Route::get('myform', function()
-    {
-        return View::make('myapp');
-    });
-    ```
+Route::get('myform', function()
+{
+    return View::make('myapp');
+});
+```
 
 1.  在我们的`app/view`目录中创建一个名为`myform.php`的视图，并添加表单：
 
 ```php
-    <h1>User Info</h1>
-    <?php $messages =  $errors->all('<p style ="color:red">:message</p>') ?>
-    <?php
-    foreach ($messages as $msg)
-    {
-        echo $msg;
-    }
-    ?>
-    <?= Form::open() ?>
-    <?= Form::label('email', 'Email') ?>
-    <?= Form::text('email', Input::old('email')) ?>
-    <br>
-    <?= Form::label('username', 'Username') ?>
-    <?= Form::text('username', Input::old('username')) ?>
-    <br>
-    <?= Form::label('password', 'Password') ?>
-    <?= Form::password('password') ?>
-    <?= Form::text('no_email', '', array('style' =>'display:none')) ?>
-    <br>
-    <?= Form::submit('Send it!') ?>
-    <?= Form::close() ?>
-    ```
+<h1>User Info</h1>
+<?php $messages =  $errors->all('<p style ="color:red">:message</p>') ?>
+<?php
+foreach ($messages as $msg)
+{
+    echo $msg;
+}
+?>
+<?= Form::open() ?>
+<?= Form::label('email', 'Email') ?>
+<?= Form::text('email', Input::old('email')) ?>
+<br>
+<?= Form::label('username', 'Username') ?>
+<?= Form::text('username', Input::old('username')) ?>
+<br>
+<?= Form::label('password', 'Password') ?>
+<?= Form::password('password') ?>
+<?= Form::text('no_email', '', array('style' =>'display:none')) ?>
+<br>
+<?= Form::submit('Send it!') ?>
+<?= Form::close() ?>
+```
 
 1.  在我们的`routes.php`文件中创建一个路由来处理`post`数据，并对其进行验证：
 
 ```php
-    Route::post('myform', array('before' => 'csrf', function()
+Route::post('myform', array('before' => 'csrf', function()
+{
+    $rules = array(
+        'email'    => 'required|email',
+        'password' => 'required',
+        'no_email' => 'honey_pot'
+    );
+    $messages = array(
+        'honey_pot' => 'Nothing should be in this field.'
+    );
+    $validation = Validator::make(Input::all(), $rules,$messages);
+
+    if ($validation->fails())
     {
-        $rules = array(
-            'email'    => 'required|email',
-            'password' => 'required',
-            'no_email' => 'honey_pot'
-        );
-        $messages = array(
-            'honey_pot' => 'Nothing should be in this field.'
-        );
-        $validation = Validator::make(Input::all(), $rules,$messages);
+        return Redirect::to('myform')->withErrors($validation)->withInput();
+    }
 
-        if ($validation->fails())
-        {
-            return Redirect::to('myform')->withErrors($validation)->withInput();
-        }
-
-        return Redirect::to('myresults')->withInput();
-    }));
-    ```
+    return Redirect::to('myresults')->withInput();
+}));
+```
 
 1.  在我们的`routes.php`文件中，创建一个自定义验证：
 
 ```php
-    Validator::extend('honey_pot', function($attribute, $value,$parameters)
-    {
-        return $value == '';
-    });
-    ```
+Validator::extend('honey_pot', function($attribute, $value,$parameters)
+{
+    return $value == '';
+});
+```
 
 1.  创建一个简单的路由用于成功页面：
 
 ```php
-    Route::get('myresults', function()
-    {
-        return dd(Input::old());
-    });
-    ```
+Route::get('myresults', function()
+{
+    return dd(Input::old());
+});
+```
 
 ## 它是如何工作的...
 
@@ -643,82 +643,82 @@ Route::post('userform', function()
 1.  在我们的`routes.php`文件中创建一个路由来保存带有`redactor`字段的表单：
 
 ```php
-    Route::get('redactor', function() 
-    {
-        return View::make('redactor');
-    });
-    ```
+Route::get('redactor', function() 
+{
+    return View::make('redactor');
+});
+```
 
 1.  在我们的`app/views`目录中创建一个名为`redactor.php`的视图：
 
 ```php
-    <!DOCTYPE html>
-    <html>
-        <head>
-            <title>Laravel and Redactor</title>
-            <meta charset="utf-8">
-            <link rel="stylesheet" href="css/redactor.css" />
-            <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-            <script src="js/redactor.min.js"></script>
-        </head>
-        <body>
-            <?= Form::open() ?>
-            <?= Form::label('mytext', 'My Text') ?>
-            <br>
-            <?= Form::textarea('mytext', '', array('id' =>'mytext')) ?>
-            <br>
-            <?= Form::submit('Send it!') ?>
-            <?= Form::close() ?>
-            <script type="text/javascript">
-                $(function() {
-                    $('#mytext').redactor({
-                        imageUpload: 'redactorupload'
-                    });
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Laravel and Redactor</title>
+        <meta charset="utf-8">
+        <link rel="stylesheet" href="css/redactor.css" />
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+        <script src="js/redactor.min.js"></script>
+    </head>
+    <body>
+        <?= Form::open() ?>
+        <?= Form::label('mytext', 'My Text') ?>
+        <br>
+        <?= Form::textarea('mytext', '', array('id' =>'mytext')) ?>
+        <br>
+        <?= Form::submit('Send it!') ?>
+        <?= Form::close() ?>
+        <script type="text/javascript">
+            $(function() {
+                $('#mytext').redactor({
+                    imageUpload: 'redactorupload'
                 });
-            </script>
-        </body>
-    </html>
-    ```
+            });
+        </script>
+    </body>
+</html>
+```
 
 1.  创建一个处理图片上传的路由：
 
 ```php
-    Route::post('redactorupload', function()
+Route::post('redactorupload', function()
+{
+    $rules = array(
+        'file' => 'image|max:10000'
+    );
+    $validation = Validator::make(Input::all(), $rules);
+    $file = Input::file('file');
+    if ($validation->fails())
     {
-        $rules = array(
-            'file' => 'image|max:10000'
-        );
-        $validation = Validator::make(Input::all(), $rules);
-        $file = Input::file('file');
-        if ($validation->fails())
+        return FALSE;
+    }
+    else
+    {
+        if ($file->move('files', $file->
+            getClientOriginalName()))
         {
-            return FALSE;
+            return Response::json(array('filelink' =>
+               'files/' . $file->getClientOriginalName()));
         }
         else
         {
-            if ($file->move('files', $file->
-                getClientOriginalName()))
-            {
-                return Response::json(array('filelink' =>
-                   'files/' . $file->getClientOriginalName()));
-            }
-            else
-            {
-                return FALSE;
-            }
+            return FALSE;
         }
-    });
+    }
+});
 
-    ```
+```
 
 1.  创建另一个路由来显示我们的表单输入后。
 
 ```php
-    Route::post('redactor', function() 
-    {
-        return dd(Input::all());
-    });
-    ```
+Route::post('redactor', function() 
+{
+    return dd(Input::all());
+});
+```
 
 ## 它是如何工作的...
 
@@ -755,127 +755,127 @@ Route::post('userform', function()
 1.  让我们在我们的`routes.php`文件中创建一个路由来保存我们的表单：
 
 ```php
-    Route::get('imageform', function()
-    {
-        return View::make('imageform');
-    });
-    ```
+Route::get('imageform', function()
+{
+    return View::make('imageform');
+});
+```
 
 1.  在`app/views`中创建用于上传图像的表单，文件名为`imageform.php`：
 
 ```php
-    <h1>Laravel and Jcrop</h1>
-    <?= Form::open(array('files' => true)) ?>
-    <?= Form::label('image', 'My Image') ?>
-    <br>
-    <?= Form::file('image') ?>
-    <br>
-    <?= Form::submit('Upload!') ?>
-    <?= Form::close() ?>
-    ```
+<h1>Laravel and Jcrop</h1>
+<?= Form::open(array('files' => true)) ?>
+<?= Form::label('image', 'My Image') ?>
+<br>
+<?= Form::file('image') ?>
+<br>
+<?= Form::submit('Upload!') ?>
+<?= Form::close() ?>
+```
 
 1.  创建一个路由来处理图像上传和验证：
 
 ```php
-    Route::post('imageform', function()
+Route::post('imageform', function()
+{
+    $rules = array(
+        'image' => 'required|mimes:jpeg,jpg|max:10000'
+    );
+
+    $validation = Validator::make(Input::all(), $rules);
+
+    if ($validation->fails())
     {
-        $rules = array(
-            'image' => 'required|mimes:jpeg,jpg|max:10000'
-        );
-
-        $validation = Validator::make(Input::all(), $rules);
-
-        if ($validation->fails())
+        return Redirect::to('imageform')->withErrors($validation);
+    }
+    else
+    {
+        $file = Input::file('image');
+        $file_name = $file->getClientOriginalName();
+        if ($file->move('images', $file_name))
         {
-            return Redirect::to('imageform')->withErrors($validation);
+            return Redirect::to('jcrop')->with('image',$file_name);
         }
         else
         {
-            $file = Input::file('image');
-            $file_name = $file->getClientOriginalName();
-            if ($file->move('images', $file_name))
-            {
-                return Redirect::to('jcrop')->with('image',$file_name);
-            }
-            else
-            {
-                return "Error uploading file";
-            }
+            return "Error uploading file";
         }
-    });
-    ```
+    }
+});
+```
 
 1.  为我们的 Jcrop 表单创建一个路由：
 
 ```php
-    Route::get('jcrop', function()
-    {
-        return View::make('jcrop')->with('image', 'images/'. Session::get('image'));
-    });
-    ```
+Route::get('jcrop', function()
+{
+    return View::make('jcrop')->with('image', 'images/'. Session::get('image'));
+});
+```
 
 1.  在我们的`app/views`目录中创建一个表单，我们可以在其中裁剪图像，文件名为`jcrop.php`：
 
 ```php
-    <html>
-        <head>
-            <title>Laravel and Jcrop</title>
-            <meta charset="utf-8">
-            <link rel="stylesheet" href="css/jquery.Jcrop.min.css" />
-            <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-            <script src="js/jquery.Jcrop.min.js"></script>
-        </head>
-        <body>
-            <h2>Image Cropping with Laravel and Jcrop</h2>
-            <img src="<?php echo $image ?>" id="cropimage">
+<html>
+    <head>
+        <title>Laravel and Jcrop</title>
+        <meta charset="utf-8">
+        <link rel="stylesheet" href="css/jquery.Jcrop.min.css" />
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+        <script src="js/jquery.Jcrop.min.js"></script>
+    </head>
+    <body>
+        <h2>Image Cropping with Laravel and Jcrop</h2>
+        <img src="<?php echo $image ?>" id="cropimage">
 
-            <?= Form::open() ?>
-            <?= Form::hidden('image', $image) ?>
-            <?= Form::hidden('x', '', array('id' => 'x')) ?>
-            <?= Form::hidden('y', '', array('id' => 'y')) ?>
-            <?= Form::hidden('w', '', array('id' => 'w')) ?>
-            <?= Form::hidden('h', '', array('id' => 'h')) ?>
-            <?= Form::submit('Crop it!') ?>
-            <?= Form::close() ?>
+        <?= Form::open() ?>
+        <?= Form::hidden('image', $image) ?>
+        <?= Form::hidden('x', '', array('id' => 'x')) ?>
+        <?= Form::hidden('y', '', array('id' => 'y')) ?>
+        <?= Form::hidden('w', '', array('id' => 'w')) ?>
+        <?= Form::hidden('h', '', array('id' => 'h')) ?>
+        <?= Form::submit('Crop it!') ?>
+        <?= Form::close() ?>
 
-            <script type="text/javascript">
-                $(function() {
-                    $('#cropimage').Jcrop({
-                        onSelect: updateCoords
-                    });
+        <script type="text/javascript">
+            $(function() {
+                $('#cropimage').Jcrop({
+                    onSelect: updateCoords
                 });
-                function updateCoords(c) {
-                    $('#x').val(c.x);
-                    $('#y').val(c.y);
-                    $('#w').val(c.w);
-                    $('#h').val(c.h);
-                };
-            </script>
-        </body>
-    </html>
-    ```
+            });
+            function updateCoords(c) {
+                $('#x').val(c.x);
+                $('#y').val(c.y);
+                $('#w').val(c.w);
+                $('#h').val(c.h);
+            };
+        </script>
+    </body>
+</html>
+```
 
 1.  创建一个处理图像并显示图像的路由：
 
 ```php
-    Route::post('jcrop', function()
-    {
-        $quality = 90;
+Route::post('jcrop', function()
+{
+    $quality = 90;
 
-        $src  = Input::get('image');
-        $img  = imagecreatefromjpeg($src);
-        $dest = ImageCreateTrueColor(Input::get('w'),
-            Input::get('h'));
+    $src  = Input::get('image');
+    $img  = imagecreatefromjpeg($src);
+    $dest = ImageCreateTrueColor(Input::get('w'),
+        Input::get('h'));
 
-        imagecopyresampled($dest, $img, 0, 0, Input::get('x'),
-            Input::get('y'), Input::get('w'), Input::get('h'),
-            Input::get('w'), Input::get('h'));
-        imagejpeg($dest, $src, $quality);
+    imagecopyresampled($dest, $img, 0, 0, Input::get('x'),
+        Input::get('y'), Input::get('w'), Input::get('h'),
+        Input::get('w'), Input::get('h'));
+    imagejpeg($dest, $src, $quality);
 
-        return "<img src='" . $src . "'>";
-    });
+    return "<img src='" . $src . "'>";
+});
 
-    ```
+```
 
 ## 它是如何工作的...
 
@@ -904,75 +904,75 @@ Route::post('userform', function()
 1.  创建一个路由来保存我们的自动完成表单：
 
 ```php
-    Route::get('autocomplete', function()
-    {
-        return View::make('autocomplete');
-    });
-    ```
+Route::get('autocomplete', function()
+{
+    return View::make('autocomplete');
+});
+```
 
 1.  在`app/views`目录中创建一个名为`autocomplete.php`的视图，其中包含我们表单的 HTML 和 JavaScript：
 
 ```php
-    <!DOCTYPE html>
-    <html>
-        <head>
-            <title>Laravel Autocomplete</title>
-            <meta charset="utf-8">
-            <link rel="stylesheet"href="//codeorigin.jquery.com/ui/1.10.2/themes/smoothness/jquery-ui.css" />
-            <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-            <script src="//codeorigin.jquery.com/ui/1.10.2/jquery-ui.min.js"></script>
-        </head>
-        <body>
-            <h2>Laravel Autocomplete</h2>
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Laravel Autocomplete</title>
+        <meta charset="utf-8">
+        <link rel="stylesheet"href="//codeorigin.jquery.com/ui/1.10.2/themes/smoothness/jquery-ui.css" />
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+        <script src="//codeorigin.jquery.com/ui/1.10.2/jquery-ui.min.js"></script>
+    </head>
+    <body>
+        <h2>Laravel Autocomplete</h2>
 
-            <?= Form::open() ?>
-            <?= Form::label('auto', 'Find a color: ') ?>
-            <?= Form::text('auto', '', array('id' => 'auto'))?>
-            <br>
-            <?= Form::label('response', 'Our color key: ') ?>
-            <?= Form::text('response', '', array('id' =>'response', 'disabled' => 'disabled')) ?>
-            <?= Form::close() ?>
+        <?= Form::open() ?>
+        <?= Form::label('auto', 'Find a color: ') ?>
+        <?= Form::text('auto', '', array('id' => 'auto'))?>
+        <br>
+        <?= Form::label('response', 'Our color key: ') ?>
+        <?= Form::text('response', '', array('id' =>'response', 'disabled' => 'disabled')) ?>
+        <?= Form::close() ?>
 
-            <script type="text/javascript">
-                $(function() {
-                    $("#auto").autocomplete({
-                        source: "getdata",
-                        minLength: 1,
-                        select: function( event, ui ) {
-                            $('#response').val(ui.item.id);
-                        }
-                    });
+        <script type="text/javascript">
+            $(function() {
+                $("#auto").autocomplete({
+                    source: "getdata",
+                    minLength: 1,
+                    select: function( event, ui ) {
+                        $('#response').val(ui.item.id);
+                    }
                 });
-            </script>
-        </body>
-    </html>
-    ```
+            });
+        </script>
+    </body>
+</html>
+```
 
 1.  创建一个路由，用于填充`autocomplete`字段的数据：
 
 ```php
-    Route::get('getdata', function()
-    {
-        $term = Str::lower(Input::get('term'));
-        $data = array(
-            'R' => 'Red',
-            'O' => 'Orange',
-            'Y' => 'Yellow',
-            'G' => 'Green',
-            'B' => 'Blue',
-            'I' => 'Indigo',
-            'V' => 'Violet',
-        );
-        $return_array = array();
+Route::get('getdata', function()
+{
+    $term = Str::lower(Input::get('term'));
+    $data = array(
+        'R' => 'Red',
+        'O' => 'Orange',
+        'Y' => 'Yellow',
+        'G' => 'Green',
+        'B' => 'Blue',
+        'I' => 'Indigo',
+        'V' => 'Violet',
+    );
+    $return_array = array();
 
-        foreach ($data as $k => $v) {
-            if (strpos(Str::lower($v), $term) !== FALSE) {
-                $return_array[] = array('value' => $v, 'id' =>$k);
-            }
+    foreach ($data as $k => $v) {
+        if (strpos(Str::lower($v), $term) !== FALSE) {
+            $return_array[] = array('value' => $v, 'id' =>$k);
         }
-        return Response::json($return_array);
-    });
-    ```
+    }
+    return Response::json($return_array);
+});
+```
 
 ## 它是如何工作的...
 
@@ -1001,97 +1001,97 @@ Route::post('userform', function()
 1.  在我们的`app`目录中，创建一个名为`libraries`的目录，并在我们的`composer.json`文件中更新如下：
 
 ```php
-    "autoload": {
-        "classmap": [
-            "app/commands",
-            "app/controllers",
-            "app/models",
-            "app/database/migrations",
-            "app/database/seeds",
-            "app/tests/TestCase.php",
-            "app/libraries"
-        ]
-    },
-    ```
+"autoload": {
+    "classmap": [
+        "app/commands",
+        "app/controllers",
+        "app/models",
+        "app/database/migrations",
+        "app/database/seeds",
+        "app/tests/TestCase.php",
+        "app/libraries"
+    ]
+},
+```
 
 1.  在我们的`app/libraries`目录中，创建一个名为`Captcha.php`的文件，用于保存我们简单的`Captcha`类：
 
 ```php
-    <?php
-    class Captcha {
-        public function make() 
-        {
-            $string = Str::random(6, 'alpha');
-            Session::put('my_captcha', $string);
+<?php
+class Captcha {
+    public function make() 
+    {
+        $string = Str::random(6, 'alpha');
+        Session::put('my_captcha', $string);
 
-            $width      = 100;
-            $height     = 25;
-            $image      = imagecreatetruecolor($width,$height);
-            $text_color = imagecolorallocate($image, 130, 130,130);
-            $bg_color   = imagecolorallocate($image, 190, 190,190);
+        $width      = 100;
+        $height     = 25;
+        $image      = imagecreatetruecolor($width,$height);
+        $text_color = imagecolorallocate($image, 130, 130,130);
+        $bg_color   = imagecolorallocate($image, 190, 190,190);
 
-            imagefilledrectangle($image, 0, 0, $width, $height,$bg_color);        
-            imagestring($image, 5, 16, 4, $string,$text_color);
+        imagefilledrectangle($image, 0, 0, $width, $height,$bg_color);        
+        imagestring($image, 5, 16, 4, $string,$text_color);
 
-            ob_start();
-            imagejpeg($image);
-            $jpg = ob_get_clean();
-            return "data:image/jpeg;base64,". base64_encode($jpg);
-        }
+        ob_start();
+        imagejpeg($image);
+        $jpg = ob_get_clean();
+        return "data:image/jpeg;base64,". base64_encode($jpg);
     }
-    ```
+}
+```
 
 1.  在我们的应用程序根目录中，打开命令行界面以更新`composer`自动加载程序：
 
 ```php
-    **php composer.phar dump-autoload**
+**php composer.phar dump-autoload**
 
-    ```
+```
 
 1.  在`routes.php`中创建一个路由来保存带有`captcha`的表单：
 
 ```php
-    Route::get('captcha', function() 
-    {
-        $captcha = new Captcha;
-        $cap = $captcha->make();
-        return View::make('captcha')->with('cap', $cap);
-    });
-    ```
+Route::get('captcha', function() 
+{
+    $captcha = new Captcha;
+    $cap = $captcha->make();
+    return View::make('captcha')->with('cap', $cap);
+});
+```
 
 1.  在`app/views`目录中创建我们的`captcha`视图，名称为`captcha.php`：
 
 ```php
-    <h1>Laravel Captcha</h1>
-    <?php
-    if (Session::get('captcha_result')) {
-        echo '<h2>' . Session::get('captcha_result') . '</h2>';
-    }
-    ?>
-    <?php echo Form::open() ?>
-    <?php echo Form::label('captcha', 'Type these letters:') ?>
-    <br>
-    <img src="<?php echo $cap ?>">
-    <br>
-    <?php echo Form::text('captcha') ?>
-    <br>
-    <?php echo Form::submit('Verify!') ?>
-    <?php echo Form::close() ?>
-    ```
+<h1>Laravel Captcha</h1>
+<?php
+if (Session::get('captcha_result')) {
+    echo '<h2>' . Session::get('captcha_result') . '</h2>';
+}
+?>
+<?php echo Form::open() ?>
+<?php echo Form::label('captcha', 'Type these letters:') ?>
+<br>
+<img src="<?php echo $cap ?>">
+<br>
+<?php echo Form::text('captcha') ?>
+<br>
+<?php echo Form::submit('Verify!') ?>
+<?php echo Form::close() ?>
+```
 
 1.  创建一个路由来比较`captcha`值和用户输入：
 
 ```php
-    Route::post('captcha', function() 
-    {
-        if (Session::get('my_captcha') !==Input::get('captcha')) {
-            Session::flash('captcha_result', 'No Match.');
-        } else {
-            Session::flash('captcha_result', 'They Match!');
-        }
-        return Redirect::to('captcha');
-    });
-    ```
+Route::post('captcha', function() 
+{
+    if (Session::get('my_captcha') !==Input::get('captcha')) {
+        Session::flash('captcha_result', 'No Match.');
+    } else {
+        Session::flash('captcha_result', 'They Match!');
+    }
+    return Redirect::to('captcha');
+});
+```
 
 ## 它是如何工作的...
 

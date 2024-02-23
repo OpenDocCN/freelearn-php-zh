@@ -37,44 +37,44 @@ Doctrine ORM 提供了以下三种实现继承的方式：
 1.  首先创建映射的超类。在`src/Blog/Entity/`位置的`Author.php`文件中创建一个名为`Author`的新抽象类，如下所示：
 
 ```php
-      <?php
+  <?php
 
-      namespace Blog\Entity;
+  namespace Blog\Entity;
 
-      use Doctrine\ORM\Mapping\MappedSuperclass;
-      use Doctrine\ORM\Mapping\Id;
-      use Doctrine\ORM\Mapping\GeneratedValue;
-      use Doctrine\ORM\Mapping\Column;
+  use Doctrine\ORM\Mapping\MappedSuperclass;
+  use Doctrine\ORM\Mapping\Id;
+  use Doctrine\ORM\Mapping\GeneratedValue;
+  use Doctrine\ORM\Mapping\Column;
 
-      /**
-      * Author superclass
-      *
-      * @**MappedSuperclass**
-      */
-      abstract class Author
-    {
-        /**
-         * @var int
-         *
-         * @Id
-         * @GeneratedValue
-         * @Column(type="integer")
-         */
-        protected $id;
-        /**
-         * @var string
-         *
-         * @Column(type="string")
-         */
-        protected $name;
-        /**
-         * @var string
-         *
-         * @Column(type="string")
-         */
-        protected $email;
-    }
-    ```
+  /**
+  * Author superclass
+  *
+  * @**MappedSuperclass**
+  */
+  abstract class Author
+{
+    /**
+     * @var int
+     *
+     * @Id
+     * @GeneratedValue
+     * @Column(type="integer")
+     */
+    protected $id;
+    /**
+     * @var string
+     *
+     * @Column(type="string")
+     */
+    protected $name;
+    /**
+     * @var string
+     *
+     * @Column(type="string")
+     */
+    protected $email;
+}
+```
 
 由于`@MappedSuperclass`注释，`Author`类的映射属性被`PostAuthor`和`CommentAuthor`类继承的属性将被 Doctrine 考虑在内。
 
@@ -87,44 +87,44 @@ Doctrine ORM 提供了以下三种实现继承的方式：
 1.  在包含`PostAuthor`类的相同目录中创建一个名为`PostAuthor.php`的文件，如下所示：
 
 ```php
-    <?php
+<?php
 
-    namespace Blog\Entity;
+namespace Blog\Entity;
 
-    use Doctrine\Common\Collections\ArrayCollection;
-    use Doctrine\ORM\Mapping\Entity;
-    use Doctrine\ORM\Mapping\OneToMany;
-    use Doctrine\ORM\Mapping\Column;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\ORM\Mapping\Entity;
+use Doctrine\ORM\Mapping\OneToMany;
+use Doctrine\ORM\Mapping\Column;
+
+/**
+ * Post author entity
+ *
+ * @Entity
+ */
+class PostAuthor **extends Author**
+{
+    /**
+     * @var string
+     *
+     * @Column(type="text", nullable=true)
+     */
+    protected $bio;
+    /**
+     * @var Post[]
+     *
+     * @OneToMany(targetEntity="Post", mappedBy="postAuthor")
+     */
+    protected $posts;
 
     /**
-     * Post author entity
-     *
-     * @Entity
+     * Initializes collections
      */
-    class PostAuthor **extends Author**
+    public function __construct()
     {
-        /**
-         * @var string
-         *
-         * @Column(type="text", nullable=true)
-         */
-        protected $bio;
-        /**
-         * @var Post[]
-         *
-         * @OneToMany(targetEntity="Post", mappedBy="postAuthor")
-         */
-        protected $posts;
-
-        /**
-         * Initializes collections
-         */
-        public function __construct()
-        {
-            $this->posts = new ArrayCollection();
-        }
+        $this->posts = new ArrayCollection();
     }
-    ```
+}
+```
 
 `PostAuthor`实体类扩展了`Author`映射的超类。`PostAuthor`保存了帖子作者的特定数据：一个`bio`属性和一个对帖子的一对多关联。
 
@@ -135,40 +135,40 @@ Doctrine ORM 提供了以下三种实现继承的方式：
 1.  为了使这个关联工作，我们需要将关联的拥有方的代码添加到`src/Blog/Entity/Post.php`文件中。为此，请添加以下属性：
 
 ```php
-        /**
-         * @var PostAuthor
-         *
-         * @ManyToOne(targetEntity="PostAuthor", inversedBy="posts")
-         */
-        protected $author;
-    ```
+    /**
+     * @var PostAuthor
+     *
+     * @ManyToOne(targetEntity="PostAuthor", inversedBy="posts")
+     */
+    protected $author;
+```
 
 1.  你猜对了！为上述属性编写 getter 和 setter。
 
 1.  现在在包含`CommentAuthor`实体类的相同目录中创建一个名为`CommentAuthor.php`的文件，如下所示：
 
 ```php
-      <?php
+  <?php
 
-      namespace Blog\Entity;
+  namespace Blog\Entity;
 
-      use Doctrine\ORM\Mapping\Entity;
+  use Doctrine\ORM\Mapping\Entity;
 
-      /**
-      * Comment author entity
-      *
-      * @Entity
-      */
-      class CommentAuthor extends Author
-    {
-        /**
-         * @var Comment[]
-         *
-         * @OneToMany(targetEntity="Comment", mappedBy="commentAuthor")
-         */
-        protected $comments;
-    }
-    ```
+  /**
+  * Comment author entity
+  *
+  * @Entity
+  */
+  class CommentAuthor extends Author
+{
+    /**
+     * @var Comment[]
+     *
+     * @OneToMany(targetEntity="Comment", mappedBy="commentAuthor")
+     */
+    protected $comments;
+}
+```
 
 这个实体类与`PostAuthor`类非常相似，只是它的关联与`Post`相关而不是`Comment`，并且它没有`bio`属性。
 
@@ -179,83 +179,83 @@ Doctrine ORM 提供了以下三种实现继承的方式：
 1.  我们还需要添加关联的拥有方。打开`src/Blog/Entity/Comment.php`文件并添加以下属性：
 
 ```php
-        /**
-         * @var CommentAuthor
-         *
-         * @ManyToOne(targetEntity="CommentAuthor", inversedBy="comments")
-         */
-        protected $author;
-    ```
+    /**
+     * @var CommentAuthor
+     *
+     * @ManyToOne(targetEntity="CommentAuthor", inversedBy="comments")
+     */
+    protected $author;
+```
 
 1.  完成上一步后，添加 getter 和 setter。
 
 1.  为了了解 Doctrine 如何处理这种类型的继承，并测试我们的代码，我们将通过在`src/DataFixtures/LoadAuthorData.php`文件中插入示例数据来创建一个 fixture，如下所示：
 
 ```php
-    <?php
+<?php
 
-    namespace Blog\DataFixtures;
+namespace Blog\DataFixtures;
 
-    use Blog\Entity\Comment;
-    use Blog\Entity\CommentAuthor;
-    use Blog\Entity\Post;
-    use Blog\Entity\PostAuthor;
-    use Doctrine\Common\DataFixtures\Doctrine;
-    use Doctrine\Common\DataFixtures\FixtureInterface;
-    use Doctrine\Common\Persistence\ObjectManager;
+use Blog\Entity\Comment;
+use Blog\Entity\CommentAuthor;
+use Blog\Entity\Post;
+use Blog\Entity\PostAuthor;
+use Doctrine\Common\DataFixtures\Doctrine;
+use Doctrine\Common\DataFixtures\FixtureInterface;
+use Doctrine\Common\Persistence\ObjectManager;
 
+/**
+ * Author fixtures
+ */
+class LoadAuthorData implements FixtureInterface
+{
     /**
-     * Author fixtures
+     * {@inheritDoc}
      */
-    class LoadAuthorData implements FixtureInterface
+    public function load(ObjectManager $manager)
     {
-        /**
-         * {@inheritDoc}
-         */
-        public function load(ObjectManager $manager)
-        {
-            $postAuthor = new PostAuthor();
-            $postAuthor->setName('George Abitbol');
-            $postAuthor->setEmail('gabitbol@example.com');
-            $postAuthor->setBio('L\'homme le plus classe du monde');
+        $postAuthor = new PostAuthor();
+        $postAuthor->setName('George Abitbol');
+        $postAuthor->setEmail('gabitbol@example.com');
+        $postAuthor->setBio('L\'homme le plus classe du monde');
 
-            $manager->persist($postAuthor);
+        $manager->persist($postAuthor);
 
-            $post = new Post();
-            $post->setTitle('My post');
-            $post->setBody('Lorem ipsum');
-            $post->setPublicationDate(new \DateTime());
-            $post->setauthor($postAuthor);
+        $post = new Post();
+        $post->setTitle('My post');
+        $post->setBody('Lorem ipsum');
+        $post->setPublicationDate(new \DateTime());
+        $post->setauthor($postAuthor);
 
-            $manager->persist($post);
+        $manager->persist($post);
 
-            $commentAuthor = new CommentAuthor();
-            $commentAuthor->setName('Kévin Dunglas');
-            $commentAuthor->setEmail('dunglas@gmail.com');
+        $commentAuthor = new CommentAuthor();
+        $commentAuthor->setName('Kévin Dunglas');
+        $commentAuthor->setEmail('dunglas@gmail.com');
 
-            $manager->persist($commentAuthor);
+        $manager->persist($commentAuthor);
 
-            $comment = new Comment();
-            $comment->setBody('My comment');
-            $comment->setAuthor($commentAuthor);
-            $comment->setPublicationDate(new \DateTime());
+        $comment = new Comment();
+        $comment->setBody('My comment');
+        $comment->setAuthor($commentAuthor);
+        $comment->setPublicationDate(new \DateTime());
 
-            $post->addComment($comment);
-            $manager->persist($comment);
+        $post->addComment($comment);
+        $manager->persist($comment);
 
-            $manager->flush();
-        }
+        $manager->flush();
     }
-    ```
+}
+```
 
 这个 fixture 创建了`Post`、`PostAuthor`、`Comment`和`CommentAuthor`的实例，然后将它们持久化到数据库中。
 
 1.  更新以下模式：
 
 ```php
-     **php vendor/bin/doctrine orm:schema-tool:update --force**
+ **php vendor/bin/doctrine orm:schema-tool:update --force**
 
-    ```
+```
 
 以下 ER 图表示在使用 MySQL 作为 DBMS 时将生成的模式：
 
@@ -266,16 +266,16 @@ Doctrine ORM 提供了以下三种实现继承的方式：
 1.  然后使用以下命令加载 fixture：
 
 ```php
-     **php bin/load-fixtures.php**
+ **php bin/load-fixtures.php**
 
-    ```
+```
 
 1.  使用 SQLite 客户端使用以下命令显示每个表中插入的内容：
 
 ```php
-     **sqlite3 data/blog.db "SELECT * FROM PostAuthor; SELECT * FROM CommentAuthor;"**
+ **sqlite3 data/blog.db "SELECT * FROM PostAuthor; SELECT * FROM CommentAuthor;"**
 
-    ```
+```
 
 在上述步骤之后，George 和我的详细信息应该如下所示：
 
@@ -298,40 +298,40 @@ Doctrine ORM 提供了以下三种实现继承的方式：
 1.  打开`src/Blog/Entity/Author.php`文件并找到以下片段：
 
 ```php
-      use Doctrine\ORM\Mapping\MappedSuperclass;
-      use Doctrine\ORM\Mapping\Id;
-      use Doctrine\ORM\Mapping\GeneratedValue;
-      use Doctrine\ORM\Mapping\Column;
+  use Doctrine\ORM\Mapping\MappedSuperclass;
+  use Doctrine\ORM\Mapping\Id;
+  use Doctrine\ORM\Mapping\GeneratedValue;
+  use Doctrine\ORM\Mapping\Column;
 
-      /**
-      * Author mapped superclass
-      *
-      * @MappedSuperclass
-    ```
+  /**
+  * Author mapped superclass
+  *
+  * @MappedSuperclass
+```
 
 1.  用以下片段替换上述片段：
 
 ```php
-      use Doctrine\ORM\Mapping\Entity;
-      use Doctrine\ORM\Mapping\InheritanceType;
-      use Doctrine\ORM\Mapping\Id;
-      use Doctrine\ORM\Mapping\GeneratedValue;
-      use Doctrine\ORM\Mapping\Column;
+  use Doctrine\ORM\Mapping\Entity;
+  use Doctrine\ORM\Mapping\InheritanceType;
+  use Doctrine\ORM\Mapping\Id;
+  use Doctrine\ORM\Mapping\GeneratedValue;
+  use Doctrine\ORM\Mapping\Column;
 
-      /**
-      * Author superclass
-      *
-      * @Entity
-      * @InheritanceType("SINGLE_TABLE")
-    ```
+  /**
+  * Author superclass
+  *
+  * @Entity
+  * @InheritanceType("SINGLE_TABLE")
+```
 
 1.  使用以下查询更新模式并再次加载 fixture：
 
 ```php
-     **php vendor/bin/doctrine orm:schema-tool:update --force**
-     **php bin/load-fixtures.php**
+ **php vendor/bin/doctrine orm:schema-tool:update --force**
+ **php bin/load-fixtures.php**
 
-    ```
+```
 
 以下截图是单表继承类型的 ER 图：
 
@@ -375,22 +375,22 @@ Doctrine 提供的最后一种策略是类表继承。层次结构的每个类�
 1.  打开`src/Blog/Entity/Author.php`文件，并找到我们添加的`@InheritanceType`注释，以使用单表继承：
 
 ```php
-      * @InheritanceType("SINGLE_TABLE")
-    ```
+  * @InheritanceType("SINGLE_TABLE")
+```
 
 1.  将参数`SINGLE_TABLE`替换为以下参数：
 
 ```php
-      * @InheritanceType("JOINED")
-    ```
+  * @InheritanceType("JOINED")
+```
 
 1.  再次使用以下查询更新模式并加载数据：
 
 ```php
-     **php vendor/bin/doctrine orm:schema-tool:update --force**
-     **php bin/load-fixtures.php**
+ **php vendor/bin/doctrine orm:schema-tool:update --force**
+ **php bin/load-fixtures.php**
 
-    ```
+```
 
 以下 ER 图表示生成的模式，再次使用 MySQL：
 
@@ -409,9 +409,9 @@ Doctrine 提供的最后一种策略是类表继承。层次结构的每个类�
 1.  要显示我们在`Author`、`CommentAuthor`和`PostAuthor`表中插入的数据，使用 SQLite 客户端运行以下查询：
 
 ```php
-     **sqlite3 data/blog.db "SELECT * FROM Author; SELECT * FROM PostAuthor; SELECT * FROM CommentAuthor;"**
+ **sqlite3 data/blog.db "SELECT * FROM Author; SELECT * FROM PostAuthor; SELECT * FROM CommentAuthor;"**
 
-    ```
+```
 
 以下是预期结果：
 
@@ -464,27 +464,27 @@ Doctrine ORM 的事件的完整文档（包括非生命周期事件）可在在�
 1.  将以下使用语句添加到这两个文件中：
 
 ```php
-      use Doctrine\ORM\Mapping\HasLifecycleCallbacks;
-      use Doctrine\ORM\Mapping\PrePersist;
-    ```
+  use Doctrine\ORM\Mapping\HasLifecycleCallbacks;
+  use Doctrine\ORM\Mapping\PrePersist;
+```
 
 1.  在这两个文件的`@Entity`旁边添加`@HasLifecycleCallbacks`注释。这将在这两个实体类中启用生命周期回调。
 
 1.  然后，在这两个文件中添加以下方法，当`prePersist`事件发生时设置发布日期：
 
 ```php
-        /**
-         * Sets publication date to now at persist time
-         * 
-         * @PrePersist
-         */
-        public function setPublicationDateOnPrePersist()
-        {
-            if (!$this->publicationDate) {
-                $this->publicationDate = new \DateTime();
-            }
+    /**
+     * Sets publication date to now at persist time
+     * 
+     * @PrePersist
+     */
+    public function setPublicationDateOnPrePersist()
+    {
+        if (!$this->publicationDate) {
+            $this->publicationDate = new \DateTime();
         }
-    ```
+    }
+```
 
 当`Comment`或`Post`实体通过实体管理器的`persist()`方法传递时，将执行此方法。如果尚未执行，它将`publicationDate`属性设置为当前时间。
 

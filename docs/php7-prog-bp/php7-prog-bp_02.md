@@ -377,23 +377,23 @@ INSERT INTO `shopping_items` (NULL, 'Watch', '100.99', 'Watch.png');
 1.  登录到 MySQL 客户端并按照以下步骤进行：
 
 ```php
-    **mysql -u root -p**
+**mysql -u root -p**
 
-    ```
+```
 
 1.  然后键入`use <数据库名称>`：
 
 ```php
-    **mysql>  use <database>;**
+**mysql>  use <database>;**
 
-    ```
+```
 
 1.  使用`source`命令导入脚本：
 
 ```php
-    **mysql> source insert_shopping_items.sql**
+**mysql> source insert_shopping_items.sql**
 
-    ```
+```
 
 当我们运行`SELECT * FROM shopping_items`时，我们应该看到以下内容：
 

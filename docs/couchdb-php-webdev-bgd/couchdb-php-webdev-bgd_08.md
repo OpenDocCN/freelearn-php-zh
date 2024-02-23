@@ -79,24 +79,24 @@ CouchDB 为我们提供了临时视图，供我们在开发或尝试测试视图
 1.  让我们编辑**Map Function**文本区域中的代码，使其与我们之前查看的示例代码匹配：
 
 ```php
-    function(doc) {
-    emit(doc._id, doc)
-    }
+function(doc) {
+emit(doc._id, doc)
+}
 
-    ```
+```
 
 1.  点击**运行**以查看`map`函数的结果。![进行操作的时间-创建临时视图](img/3586_08_015.jpg)
 
 1.  让我们确保我们只能通过检查`doc.type`是否等于`post:`来看到帖子。
 
 ```php
-    function(doc) {
-    if (doc.type == 'post') {
-    emit(doc._id, doc);
-    }
-    }
+function(doc) {
+if (doc.type == 'post') {
+emit(doc._id, doc);
+}
+}
 
-    ```
+```
 
 1.  再次点击**运行**，你会看到相同的结果。
 
@@ -124,13 +124,13 @@ CouchDB 为我们提供了临时视图，供我们在开发或尝试测试视图
 1.  让我们让我们的函数更有用一些，将我们的键改为`doc.user`。
 
 ```php
-    function(doc) {
-    if (doc.type == 'post') {
-    emit(doc.user, doc);
-    }
-    }
+function(doc) {
+if (doc.type == 'post') {
+emit(doc.user, doc);
+}
+}
 
-    ```
+```
 
 1.  点击**运行**以查看结果。![进行操作的时间-创建用于列出帖子的视图](img/3586_08_020.jpg)
 
@@ -197,45 +197,45 @@ CouchDB 为我们提供了临时视图，供我们在开发或尝试测试视图
 1.  使用一个`curl`语句通过传递`johndoe`的关键字（或者您数据库中帖子数量较多的其他用户）来查询我们的设计文档，然后通过`python mjson.tool`使其变得更漂亮：
 
 ```php
-    **curl http://127.0.0.1:5984/verge/_design/application/_view/posts_by_user?key=%22johndoe%22 | python -mjson.tool** 
+**curl http://127.0.0.1:5984/verge/_design/application/_view/posts_by_user?key=%22johndoe%22 | python -mjson.tool** 
 
-    ```
+```
 
 1.  终端将返回类似以下的内容：
 
 ```php
-    {
-    "offset": 0,
-    "rows": [
-    {
-    "id": "352e5c2d51fb1293c44a2146d4003aa3",
-    "key": "johndoe",
-    "value": {
-    "_id": "352e5c2d51fb1293c44a2146d4003aa3",
-    "_rev": "3-ced38337602bd6c0587dc2d9792f6cff",
-    "content": "I don\\'t like peanut butter.",
-    "date_created": "Wed, 28 Sep 2011 13:44:09 -0700",
-    "type": "post",
-    "user": "johndoe"
-    }
-    },
-    {
-    "id": "d3dd453dbfefab8c8ea62a7efe000fad",
-    "key": "johndoe",
-    "value": {
-    "_id": "d3dd453dbfefab8c8ea62a7efe000fad",
-    "_rev": "2-07c7502eecb088aad5ee8bd4bc6371d1",
-    "content": "I do!\r\n",
-    "date_created": "Mon, 17 Oct 2011 21:36:18 -0700",
-    "type": "post",
-    "user": "johndoe"
-    }
-    }
-    ],
-    "total_rows": 4
-    }
+{
+"offset": 0,
+"rows": [
+{
+"id": "352e5c2d51fb1293c44a2146d4003aa3",
+"key": "johndoe",
+"value": {
+"_id": "352e5c2d51fb1293c44a2146d4003aa3",
+"_rev": "3-ced38337602bd6c0587dc2d9792f6cff",
+"content": "I don\\'t like peanut butter.",
+"date_created": "Wed, 28 Sep 2011 13:44:09 -0700",
+"type": "post",
+"user": "johndoe"
+}
+},
+{
+"id": "d3dd453dbfefab8c8ea62a7efe000fad",
+"key": "johndoe",
+"value": {
+"_id": "d3dd453dbfefab8c8ea62a7efe000fad",
+"_rev": "2-07c7502eecb088aad5ee8bd4bc6371d1",
+"content": "I do!\r\n",
+"date_created": "Mon, 17 Oct 2011 21:36:18 -0700",
+"type": "post",
+"user": "johndoe"
+}
+}
+],
+"total_rows": 4
+}
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -246,65 +246,65 @@ CouchDB 为我们提供了临时视图，供我们在开发或尝试测试视图
 1.  如果您真的只想检索我们的`map`函数为`johndoe`返回的第一篇帖子，您可以通过在查询字符串的末尾添加`limit=1`来实现这一点：
 
 ```php
-    **curl 'http://127.0.0.1:5984/verge/_design/application/_view/posts_by_user?key=%22johndoe%22&limit=1'| python -mjson.tool** 
+**curl 'http://127.0.0.1:5984/verge/_design/application/_view/posts_by_user?key=%22johndoe%22&limit=1'| python -mjson.tool** 
 
-    ```
+```
 
 1.  您的终端将返回以下输出。请注意，这次您只会得到一篇帖子：
 
 ```php
-    {
-    "offset": 0,
-    "rows": [
-    {
-    "id": "352e5c2d51fb1293c44a2146d4003aa3",
-    "key": "johndoe",
-    "value": {
-    "_id": "352e5c2d51fb1293c44a2146d4003aa3",
-    "_rev": "3-ced38337602bd6c0587dc2d9792f6cff",
-    "content": "I don\\'t like peanut butter.",
-    "content": "I don\\'t like peanut butter.",
-    "date_created": "Wed, 28 Sep 2011 13:44:09 -0700",
-    "type": "post",
-    "user": "johndoe"
-    }
-    }
-    ],
-    "total_rows": 4
-    }
+{
+"offset": 0,
+"rows": [
+{
+"id": "352e5c2d51fb1293c44a2146d4003aa3",
+"key": "johndoe",
+"value": {
+"_id": "352e5c2d51fb1293c44a2146d4003aa3",
+"_rev": "3-ced38337602bd6c0587dc2d9792f6cff",
+"content": "I don\\'t like peanut butter.",
+"content": "I don\\'t like peanut butter.",
+"date_created": "Wed, 28 Sep 2011 13:44:09 -0700",
+"type": "post",
+"user": "johndoe"
+}
+}
+],
+"total_rows": 4
+}
 
-    ```
+```
 
 1.  现在，如果我们想要看到我们的`map`函数为`johndoe`返回的最后一篇帖子，您可以通过在我们的语句末尾添加`descending=true`以及`limit=1`来实现这一点，以获取最新的帖子，如下所示：
 
 ```php
-    **curl 'http://127.0.0.1:5984/verge/_design/application/_view/posts_by_user?key=%22johndoe%22&limit=1&descending=true'| python -mjson.tool** 
+**curl 'http://127.0.0.1:5984/verge/_design/application/_view/posts_by_user?key=%22johndoe%22&limit=1&descending=true'| python -mjson.tool** 
 
-    ```
+```
 
 1.  您的命令行将精确返回您要查找的内容：由`johndoe`创建的最后一篇帖子。
 
 ```php
-    {
-    "offset": 2,
-    "rows": [
-    {
-    "id": "d3dd453dbfefab8c8ea62a7efe000fad",
-    "key": "johndoe",
-    "value": {
-    "_id": "d3dd453dbfefab8c8ea62a7efe000fad",
-    "_rev": "2-07c7502eecb088aad5ee8bd4bc6371d1",
-    "content": "I do!\r\n",
-    "date_created": "Mon, 17 Oct 2011 21:36:18 -0700",
-    "type": "post",
-    "user": "johndoe"
-    }
-    }
-    ],
-    "total_rows": 4
-    }
+{
+"offset": 2,
+"rows": [
+{
+"id": "d3dd453dbfefab8c8ea62a7efe000fad",
+"key": "johndoe",
+"value": {
+"_id": "d3dd453dbfefab8c8ea62a7efe000fad",
+"_rev": "2-07c7502eecb088aad5ee8bd4bc6371d1",
+"content": "I do!\r\n",
+"date_created": "Mon, 17 Oct 2011 21:36:18 -0700",
+"type": "post",
+"user": "johndoe"
+}
+}
+],
+"total_rows": 4
+}
 
-    ```
+```
 
 通过这些示例，您应该清楚地知道我们可以链式和组合我们的`query`选项以各种方式检索数据。我们可以玩一会儿查询视图，但让我们继续尝试将`posts_by_user`视图构建到我们的应用程序中，以便我们可以在用户的个人资料上显示用户的帖子。
 
@@ -319,53 +319,53 @@ CouchDB 为我们提供了临时视图，供我们在开发或尝试测试视图
 1.  创建一个名为`get_posts_by_user`的新的`public`函数，它将接受`$username`作为参数。
 
 ```php
-    public function get_posts_by_user($username) {
-    }
+public function get_posts_by_user($username) {
+}
 
-    ```
+```
 
 1.  现在，让我们创建一个新的`Bones`实例，以便我们可以查询 CouchDB。让我们还实例化一个名为`$posts`的数组，在这个函数的最后返回它。
 
 ```php
-    public function get_posts_by_user($username) {
-    **$bones = new Bones();
-    $posts = array();
-    return $posts;** 
-    }
+public function get_posts_by_user($username) {
+**$bones = new Bones();
+$posts = array();
+return $posts;** 
+}
 
-    ```
+```
 
 1.  接下来，让我们通过传递`$username`作为关键字来查询我们的视图，并使用`foreach`函数来遍历所有结果到一个名为`$_post`的变量中。
 
 ```php
-    public function get_posts_by_user($username) {
-    $bones = new Bones();
-    $posts = array();
-    **foreach ($bones->couch- >get('_design/application/_view/posts_by_user?key="' . $username . '"&descending=true')->body->rows as $_post) {
-    }** 
-    return $posts;
-    }
+public function get_posts_by_user($username) {
+$bones = new Bones();
+$posts = array();
+**foreach ($bones->couch- >get('_design/application/_view/posts_by_user?key="' . $username . '"&descending=true')->body->rows as $_post) {
+}** 
+return $posts;
+}
 
-    ```
+```
 
 1.  最后，让我们使用`$_post`变量中的数据创建和填充一个新的`Post`实例。然后，让我们将`$post`添加到`$posts`数组中。
 
 ```php
-    public function get_posts_by_user($username) {
-    $bones = new Bones();
-    $posts = array();
-    foreach ($bones->couch- >get('_design/application/_view/posts_by_user?key="' . $username . '"')->body->rows as $_post) {
-    **$post = new Post();
-    $post->_id = $_post->id;
-    $post->date_created = $_post->value->date_created;
-    $post->content = $_post->value->content;
-    $post->user = $_post->value->user;
-    array_push($posts, $post);
-    }** 
-    return $posts;
-    }
+public function get_posts_by_user($username) {
+$bones = new Bones();
+$posts = array();
+foreach ($bones->couch- >get('_design/application/_view/posts_by_user?key="' . $username . '"')->body->rows as $_post) {
+**$post = new Post();
+$post->_id = $_post->id;
+$post->date_created = $_post->value->date_created;
+$post->content = $_post->value->content;
+$post->user = $_post->value->user;
+array_push($posts, $post);
+}** 
+return $posts;
+}
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -380,45 +380,45 @@ CouchDB 为我们提供了临时视图，供我们在开发或尝试测试视图
 1.  打开`index.php`，找到`/user/:username`路由，并添加以下代码，将我们的`get_posts_by_user`函数返回的帖子传递给一个变量，以便我们的视图访问：
 
 ```php
-    get('/user/:username', function($app) {
-    $app->set('user', User::find_by_username($app- >request('username')));
-    $app->set('is_current_user', ($app->request('username') == User::current_user() ? true : false));
-    **$app->set('posts', Post::get_posts_by_user($app- >request('username')));** 
-    $app->render('user/profile');
-    });
+get('/user/:username', function($app) {
+$app->set('user', User::find_by_username($app- >request('username')));
+$app->set('is_current_user', ($app->request('username') == User::current_user() ? true : false));
+**$app->set('posts', Post::get_posts_by_user($app- >request('username')));** 
+$app->render('user/profile');
+});
 
-    ```
+```
 
 1.  打开`views/user/profile.php`，并在**创建新帖子**文本区域的下面添加以下代码，以便我们可以在用户资料页面上显示帖子列表：
 
 ```php
-    <h2>Posts</h2>
-    **<?php foreach ($posts as $post): ?>
-    <div class="post-item row">
-    <div class="span7">
-    <strong><?php echo $user->name; ?></strong>
-    <p>
-    <?php echo $post->content; ?>
-    </p>
-    <?php echo $post->date_created; ?>
-    </div>
-    <div class="span1">
-    <a href=#">(Delete)</a>
-    </div>
-    <div class="span8"></div>
-    </div>** 
-    <?php endforeach; ?>
+<h2>Posts</h2>
+**<?php foreach ($posts as $post): ?>
+<div class="post-item row">
+<div class="span7">
+<strong><?php echo $user->name; ?></strong>
+<p>
+<?php echo $post->content; ?>
+</p>
+<?php echo $post->date_created; ?>
+</div>
+<div class="span1">
+<a href=#">(Delete)</a>
+</div>
+<div class="span8"></div>
+</div>** 
+<?php endforeach; ?>
 
-    ```
+```
 
 1.  最后，为了支持我们添加的一些新代码，让我们更新我们的`public/css/master.css`文件，使资料看起来漂亮整洁。
 
 ```php
-    .post-item {padding: 10px 0 10px 0;}
-    .post-item .span8 {margin-top: 20px; border-bottom: 1px solid #ccc;}
-    .post-item .span1 a {color:red;}
+.post-item {padding: 10px 0 10px 0;}
+.post-item .span8 {margin-top: 20px; border-bottom: 1px solid #ccc;}
+.post-item .span1 a {color:red;}
 
-    ```
+```
 
 ## 发生了什么？
 
@@ -502,57 +502,57 @@ CouchDB 为我们提供了临时视图，供我们在开发或尝试测试视图
 1.  现在我们已经创建了一个`reduce`函数，我们需要确保`get_posts_by_user`函数在不使用`reduce`函数的情况下使用该视图。我们将通过在查询字符串中添加`reduce=false`来实现这一点。这告诉视图不要运行`reduce`函数。
 
 ```php
-    public function get_posts_by_user($username) {
-    $bones = new Bones();
-    $posts = array();
-    **foreach ($bones->couch- >get('_design/application/_view/posts_by_user?key="' . $username . '"&descending=true&reduce=false')->body->rows as $_post) {** 
+public function get_posts_by_user($username) {
+$bones = new Bones();
+$posts = array();
+**foreach ($bones->couch- >get('_design/application/_view/posts_by_user?key="' . $username . '"&descending=true&reduce=false')->body->rows as $_post) {** 
 
-    ```
+```
 
 1.  创建一个名为`get_post_count_by_user`的新的`public`函数，它将接受`$username`作为参数。
 
 ```php
-    public function get_post_count_by_user($username) {
-    }
+public function get_post_count_by_user($username) {
+}
 
-    ```
+```
 
 1.  让我们添加一个调用我们的视图，模仿我们的`get_posts_by_user`函数。但是，这一次，我们将在查询字符串中添加`reduce=true`。一旦我们从视图中获得结果，就遍历数据以获取位于第一个返回行的值中的值。
 
 ```php
-    public function get_post_count_by_user($username) {
-    **$bones = new Bones();
-    $rows = $bones->couch- >get('_design/application/_view/posts_by_user?key="' . " $username . '"&reduce=true')->body->rows;
-    if ($rows) {
-    return $rows[0]->value;
-    } else {
-    return 0;
-    }** 
-    }
+public function get_post_count_by_user($username) {
+**$bones = new Bones();
+$rows = $bones->couch- >get('_design/application/_view/posts_by_user?key="' . " $username . '"&reduce=true')->body->rows;
+if ($rows) {
+return $rows[0]->value;
+} else {
+return 0;
+}** 
+}
 
-    ```
+```
 
 1.  打开`index.php`，找到`/user/:username`路由。
 
 1.  添加代码将`get_post_count_by_user`函数的值传递给我们的视图可以访问的变量。
 
 ```php
-    get('/user/:username', function($app) {
-    $app->set('user', User::get_by_username($app- >request('username')));
-    $app->set('is_current_user', ($app->request('username') == User::current_user() ? true : false));
-    $app->set('posts', Post::get_posts_by_user($app- >request('username')));
-    **$app->set('post_count', Post::get_post_count_by_user($app- >request('username')));** 
-    $app->render('user/profile');
-    });
+get('/user/:username', function($app) {
+$app->set('user', User::get_by_username($app- >request('username')));
+$app->set('is_current_user', ($app->request('username') == User::current_user() ? true : false));
+$app->set('posts', Post::get_posts_by_user($app- >request('username')));
+**$app->set('post_count', Post::get_post_count_by_user($app- >request('username')));** 
+$app->render('user/profile');
+});
 
-    ```
+```
 
 1.  最后，打开用户资料（`views/user/profile.php`）并在我们的`post`列表顶部显示$post_count 变量。
 
 ```php
-    <h2>Posts (<?php echo $post_count; ?>)</h2>
+<h2>Posts (<?php echo $post_count; ?>)</h2>
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -587,25 +587,25 @@ CouchDB 为我们提供了临时视图，供我们在开发或尝试测试视图
 1.  在您的工作目录中打开`classes/base.php`，并添加`$_rev`变量。
 
 ```php
-    abstract class Base
-    {
-    protected $_id;
-    **protected $_rev;** 
-    protected $type;
+abstract class Base
+{
+protected $_id;
+**protected $_rev;** 
+protected $type;
 
-    ```
+```
 
 1.  不幸的是，现在每次调用`to_json`函数时，无论是否使用，`_rev`都将始终包含在内。如果我们向 CouchDB 发送一个`null _rev`，它将抛出错误。因此，让我们在`classes/base.php`的`to_json`函数中添加一些代码，如果没有设置值，就取消设置我们的`_rev`变量。
 
 ```php
-    public function to_json() {
-    **if (isset($this->_rev) === false) {
-    unset($this->_rev);
-    }** 
-    return json_encode(get_object_vars($this));
-    }
+public function to_json() {
+**if (isset($this->_rev) === false) {
+unset($this->_rev);
+}** 
+return json_encode(get_object_vars($this));
+}
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -618,68 +618,68 @@ CouchDB 为我们提供了临时视图，供我们在开发或尝试测试视图
 1.  让我们从打开`classes/post.php`并向`get_posts_by_user`函数添加一行代码开始，以便我们可以使用`_rev`。
 
 ```php
-    public function get_posts_by_user($username) {
-    $bones = new Bones();
-    $posts = array();
-    foreach $bones->couch- >get('_design/application/_view/posts_by_user?key="' . $username . '"&descending=true&reduce=false')->body->rows as $_post) {
-    $post = new Post();
-    $post->_id = $_post->value->_id;
-    **$post->_rev = $_post->value->_rev;** 
-    $post->date_created = $_post->value->date_created;
+public function get_posts_by_user($username) {
+$bones = new Bones();
+$posts = array();
+foreach $bones->couch- >get('_design/application/_view/posts_by_user?key="' . $username . '"&descending=true&reduce=false')->body->rows as $_post) {
+$post = new Post();
+$post->_id = $_post->value->_id;
+**$post->_rev = $_post->value->_rev;** 
+$post->date_created = $_post->value->date_created;
 
-    ```
+```
 
 1.  接下来，让我们在`classes/post.php`文件中创建一个简单的`delete`函数，以便我们可以删除帖子。
 
 ```php
-    public function delete() {
-    $bones = new Bones();
-    try {
-    $bones->couch->delete($this->_id, $this->_rev);
-    }
-    catch(SagCouchException $e) {
-    $bones->error500($e);
-    }
-    }
+public function delete() {
+$bones = new Bones();
+try {
+$bones->couch->delete($this->_id, $this->_rev);
+}
+catch(SagCouchException $e) {
+$bones->error500($e);
+}
+}
 
-    ```
+```
 
 1.  现在我们有了删除帖子的后端支持，让我们在我们的`index.php`文件中添加一个接受`_id`和`_rev`的路由。通过这个路由，我们可以触发从我们的个人资料页面删除帖子。
 
 ```php
-    get('/post/delete/:id/:rev', function($app) {
-    $post = new Post();
-    $post->_id = $app->request('id');
-    $post->_rev = $app->request('rev'
-    $post->delete();
-    $app->set('success', 'Your post has been deleted');
-    $app->redirect('/user/' . User::current_user());
-    });
+get('/post/delete/:id/:rev', function($app) {
+$post = new Post();
+$post->_id = $app->request('id');
+$post->_rev = $app->request('rev'
+$post->delete();
+$app->set('success', 'Your post has been deleted');
+$app->redirect('/user/' . User::current_user());
+});
 
-    ```
+```
 
 1.  最后，让我们更新我们的`views/user/profile.php`页面，以便用户点击`delete`链接时，会命中我们的路由，并传递必要的变量。
 
 ```php
-    <?php foreach ($posts as $post): ?>
-    <div class="post-item row">
-    <div class="span7">
-    <strong><?php echo $user->name; ?></strong>
-    <p>
-    <?php echo $post->content; ?>
-    </p>
-    <?php echo $post->date_created; ?>
-    </div>
-    <div class="span1">
-    **<a href="<?php echo $this->make_route('/post/delete/' . $post->_id . '/' . $post->_rev)?>" class="delete">
-    (Delete)
-    </a>** 
-    </div>
-    <div class="span8"></div>
-    </div>
-    <?php endforeach; ?>
+<?php foreach ($posts as $post): ?>
+<div class="post-item row">
+<div class="span7">
+<strong><?php echo $user->name; ?></strong>
+<p>
+<?php echo $post->content; ?>
+</p>
+<?php echo $post->date_created; ?>
+</div>
+<div class="span1">
+**<a href="<?php echo $this->make_route('/post/delete/' . $post->_id . '/' . $post->_rev)?>" class="delete">
+(Delete)
+</a>** 
+</div>
+<div class="span8"></div>
+</div>
+<?php endforeach; ?>
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -755,15 +755,15 @@ function(newDoc, oldDoc, userCtx) { //JavaScript Code }
 1.  在**值**文本区域中，添加以下代码（格式和缩进无关紧要）：
 
 ```php
-    function(newDoc, oldDoc, userCtx) {
-    if (newDoc.user) {
-    if(newDoc.user != userCtx.name) {
-    throw({"forbidden": "You may only update this document with user " + userCtx.name});
-    }
-    }
-    }
+function(newDoc, oldDoc, userCtx) {
+if (newDoc.user) {
+if(newDoc.user != userCtx.name) {
+throw({"forbidden": "You may only update this document with user " + userCtx.name});
+}
+}
+}
 
-    ```
+```
 
 1.  点击**保存**，您的文档将被更新以包括验证函数。
 
@@ -774,23 +774,23 @@ function(newDoc, oldDoc, userCtx) { //JavaScript Code }
 1.  首先，我们检查要保存的文档是否使用此`if`语句附加了一个用户变量：
 
 ```php
-    if (newDoc.user).
+if (newDoc.user).
 
-    ```
+```
 
 1.  然后，我们检查文档上的用户名是否与当前登录用户的用户名匹配：
 
 ```php
-    if(newDoc.user != userCtx.name).
+if(newDoc.user != userCtx.name).
 
-    ```
+```
 
 1.  如果事实证明文档确实与用户相关联，并且尝试保存的用户不是已登录用户，则我们使用以下代码行抛出禁止错误（带有状态码`403`的 HTTP 响应），并说明为什么无法保存文档：
 
 ```php
-    throw({"forbidden": "You may only update this document with user " + userCtx.name});
+throw({"forbidden": "You may only update this document with user " + userCtx.name});
 
-    ```
+```
 
 值得注意的是，一个设计文档只能有一个`validate_doc_update`函数。因此，如果你想对不同的文档进行不同类型的验证，那么你需要做如下操作：
 
@@ -835,16 +835,16 @@ if (newDoc.type == "comment") {
 1.  找到我们创建帖子的循环，并在我们的删除按钮周围添加这段代码。
 
 ```php
-    <div class="span1">
-    <?php if ($is_current_user) { ?>
-    <a href="<?php echo $this->make_route('/post/delete/' . $post-
-    >
-    _id . '/' . $post->_rev)?>" class="delete">(Delete)
-    </a>
-    <?php } ?>
-    </div>
+<div class="span1">
+<?php if ($is_current_user) { ?>
+<a href="<?php echo $this->make_route('/post/delete/' . $post-
+>
+_id . '/' . $post->_rev)?>" class="delete">(Delete)
+</a>
+<?php } ?>
+</div>
 
-    ```
+```
 
 ## 刚刚发生了什么？
 

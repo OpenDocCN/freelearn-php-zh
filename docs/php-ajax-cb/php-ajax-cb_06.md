@@ -266,61 +266,61 @@ alert(getDiscountPercentage(book2_actual_price, book2_discounted_price));
 输出：
 
 ```php
-    function getDiscountPercentage(actual_price,discounted_price){var discount_percentage=100*(actual_price-discounted_price)/actual_price;return discount_percentage;alert(discount_percentage);}var book1_actual_price=50;var book1_discounted_price=48;alert(getDiscountPercentage(book1_actual_price,book1_discounted_price));var book2_actual_price=45;var book2_discounted_price=40;alert(getDiscountPercentage(book2_actual_price,book2_discounted_price));
+function getDiscountPercentage(actual_price,discounted_price){var discount_percentage=100*(actual_price-discounted_price)/actual_price;return discount_percentage;alert(discount_percentage);}var book1_actual_price=50;var book1_discounted_price=48;alert(getDiscountPercentage(book1_actual_price,book1_discounted_price));var book2_actual_price=45;var book2_discounted_price=40;alert(getDiscountPercentage(book2_actual_price,book2_discounted_price));
 
-    ```
+```
 
 1.  JSMin+由 Tweakers.net（基于 Narcissus JavaScript 引擎）。
 
 输出：
 
 ```php
-    function getDiscountPercentage(actual_price,discounted_price){var discount_percentage=100*(actual_price-discounted_price)/actual_price;return discount_percentage;alert(discount_percentage)};var book1_actual_price=50,book1_discounted_price=48;alert(getDiscountPercentage(book1_actual_price,book1_discounted_price));var book2_actual_price=45,book2_discounted_price=40;alert(getDiscountPercentage(book2_actual_price,book2_discounted_price))
+function getDiscountPercentage(actual_price,discounted_price){var discount_percentage=100*(actual_price-discounted_price)/actual_price;return discount_percentage;alert(discount_percentage)};var book1_actual_price=50,book1_discounted_price=48;alert(getDiscountPercentage(book1_actual_price,book1_discounted_price));var book2_actual_price=45,book2_discounted_price=40;alert(getDiscountPercentage(book2_actual_price,book2_discounted_price))
 
-    ```
+```
 
 1.  Dean Edwards 的 Packer。
 
 输出：
 
 ```php
-    function getDiscountPercentage(a,b){var c=100*(a-b)/a;return c;alert(c)}var book1_actual_price=50;var book1_discounted_price=48;alert(getDiscountPercentage(book1_actual_price,book1_discounted_price));var book2_actual_price=45;var book2_discounted_price=40;alert(getDiscountPercentage(book2_actual_price,book2_discounted_price));
+function getDiscountPercentage(a,b){var c=100*(a-b)/a;return c;alert(c)}var book1_actual_price=50;var book1_discounted_price=48;alert(getDiscountPercentage(book1_actual_price,book1_discounted_price));var book2_actual_price=45;var book2_discounted_price=40;alert(getDiscountPercentage(book2_actual_price,book2_discounted_price));
 
-    ```
+```
 
 使用 Base62 编码选项输出（混淆代码）：
 
 ```php
-    eval(function(p,a,c,k,e,r){e=function(c){return c.toString(a)};if(!''.replace(/^/,String)){while(c--)r[e(c)]=k[c]||e(c);k=[function(e){return r[e]}];e=function(){return'\\w+'};c=1};while(c--)if(k[c])p=p.replace(new RegExp('\\b'+e(c)+'\\b','g'),k[c]);return p}('7 1(a,b){0 c=8*(a-b)/a;9 c;2(c)}0 3=d;0 4=e;2(1(3,4));0 5=f;0 6=g;2(1(5,6));',17,17,'var|getDiscountPercentage|alert|book1_actual_price|book1_discounted_price|book2_actual_price|book2_discounted_price|function|100|return||||50|48|45|40'.split('|'),0,{}))
+eval(function(p,a,c,k,e,r){e=function(c){return c.toString(a)};if(!''.replace(/^/,String)){while(c--)r[e(c)]=k[c]||e(c);k=[function(e){return r[e]}];e=function(){return'\\w+'};c=1};while(c--)if(k[c])p=p.replace(new RegExp('\\b'+e(c)+'\\b','g'),k[c]);return p}('7 1(a,b){0 c=8*(a-b)/a;9 c;2(c)}0 3=d;0 4=e;2(1(3,4));0 5=f;0 6=g;2(1(5,6));',17,17,'var|getDiscountPercentage|alert|book1_actual_price|book1_discounted_price|book2_actual_price|book2_discounted_price|function|100|return||||50|48|45|40'.split('|'),0,{}))
 
-    ```
+```
 
 1.  YUI Compressor。
 
 输出：
 
 ```php
-    function getDiscountPercentage(b,c){var a=100*(b-c)/b;return a;alert(a)}var book1_actual_price=50;var book1_discounted_price=48;alert(getDiscountPercentage(book1_actual_price,book1_discounted_price));var book2_actual_price=45;var book2_discounted_price=40;alert(getDiscountPercentage(book2_actual_price,book2_discounted_price));
+function getDiscountPercentage(b,c){var a=100*(b-c)/b;return a;alert(a)}var book1_actual_price=50;var book1_discounted_price=48;alert(getDiscountPercentage(book1_actual_price,book1_discounted_price));var book2_actual_price=45;var book2_discounted_price=40;alert(getDiscountPercentage(book2_actual_price,book2_discounted_price));
 
-    ```
+```
 
 1.  Google Closure Compiler。
 
 输出：
 
 ```php
-    function getDiscountPercentage(a,b){return 100*(a-b)/a}var book1_actual_price=50,book1_discounted_price=48;alert(getDiscountPercentage(book1_actual_price,book1_discounted_price));var book2_actual_price=45,book2_discounted_price=40;alert(getDiscountPercentage(book2_actual_price,book2_discounted_price));
+function getDiscountPercentage(a,b){return 100*(a-b)/a}var book1_actual_price=50,book1_discounted_price=48;alert(getDiscountPercentage(book1_actual_price,book1_discounted_price));var book2_actual_price=45,book2_discounted_price=40;alert(getDiscountPercentage(book2_actual_price,book2_discounted_price));
 
-    ```
+```
 
 1.  UglifyJS。
 
 输出：
 
 ```php
-    function getDiscountPercentage(a,b){var c=100*(a-b)/a;return c}var book1_actual_price=50,book1_discounted_price=48;alert(getDiscountPercentage(book1_actual_price,book1_discounted_price));var book2_actual_price=45,book2_discounted_price=40;alert(getDiscountPercentage(book2_actual_price,book2_discounted_price))
+function getDiscountPercentage(a,b){var c=100*(a-b)/a;return c}var book1_actual_price=50,book1_discounted_price=48;alert(getDiscountPercentage(book1_actual_price,book1_discounted_price));var book2_actual_price=45,book2_discounted_price=40;alert(getDiscountPercentage(book2_actual_price,book2_discounted_price))
 
-    ```
+```
 
 931 字节 JavaScript 代码的表格化结果如下：
 
@@ -720,35 +720,35 @@ s.parentNode.insertBefore(ga,s);
 要启用 JavaScript、CSS 和 HTML 代码的自动 gzip 处理，我们可以使用 AddOutputFilterByType 并指定它们的 MIME 类型：
 
 ```php
-    <IfModule mod_deflate.c>
-    AddOutputFilterByType
-    DEFLATE application/javascript text/css text/html
-    </IfModule>
+<IfModule mod_deflate.c>
+AddOutputFilterByType
+DEFLATE application/javascript text/css text/html
+</IfModule>
 
-    ```
+```
 
 1.  `mod_expires:`
 
 要在静态内容上启用自动浏览器缓存，例如 JavaScript、CSS、图像文件、SWF 文件和 favicon，我们可以指定它们的 MIME 类型和过期时间，如下所示：
 
 ```php
-    <IfModule mod_expires.c>
-    FileETag None
-    ExpiresActive On
-    ExpiresByType application/javascript "access plus 1 month"
-    ExpiresByType text/css "access plus 1 month"
-    ExpiresByType image/gif "access plus 1 month"
-    ExpiresByType image/jpeg "access plus 1 month"
-    ExpiresByType image/png "access plus 1 month"
-    ExpiresByType application/x-shockwave-flash
-    "access plus 1 month"
-    # special MIME type for icons
-    AddType image/vnd.microsoft.icon .ico
-    # now we have icon MIME type, we can use it
-    ExpiresByType image/vnd.microsoft.icon "access plus 3 months"
-    </IfModule>
+<IfModule mod_expires.c>
+FileETag None
+ExpiresActive On
+ExpiresByType application/javascript "access plus 1 month"
+ExpiresByType text/css "access plus 1 month"
+ExpiresByType image/gif "access plus 1 month"
+ExpiresByType image/jpeg "access plus 1 month"
+ExpiresByType image/png "access plus 1 month"
+ExpiresByType application/x-shockwave-flash
+"access plus 1 month"
+# special MIME type for icons
+AddType image/vnd.microsoft.icon .ico
+# now we have icon MIME type, we can use it
+ExpiresByType image/vnd.microsoft.icon "access plus 3 months"
+</IfModule>
 
-    ```
+```
 
 在上述代码片段中，我们已经为图标文件注册了一个 MIME 类型，并且使用了 MIME 类型，我们已经设置了三个月的过期时间。这主要是针对 favicon 文件。对于静态内容，我们可以安全地设置 1 到 6 个月或更长的过期时间。上述代码将通过`Last-Modified`标头处理浏览器缓存，而不是通过 ETag，因为我们已经禁用了 ETag 支持。YSlow 建议我们完全禁用 ETag，以减少 HTTP 请求标头的大小。
 
@@ -769,108 +769,108 @@ Google 在这个领域的杰出努力的一个例子是发明了`mod_pagespeed` 
 以下是要放置在`pagespeed.conf`文件中的`pagespeed_module`的快速配置代码：
 
 ```php
-    LoadModule pagespeed_module /usr/lib/httpd/modules/mod_pagespeed.so
-    # Only attempt to load mod_deflate if it hasn't been loaded already.
-    <IfModule !mod_deflate.c>
-    LoadModule deflate_module /usr/lib/httpd/modules/mod_deflate.so
-    </IfModule>
-    <IfModule pagespeed_module>
-    ModPagespeed on
-    AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER text/html
-    # The ModPagespeedFileCachePath and
-    # ModPagespeedGeneratedFilePrefix directories must exist and be
-    # writable by the apache user (as specified by the User
-    # directive).
-    ModPagespeedFileCachePath "/var/mod_pagespeed/cache/"
-    ModPagespeedGeneratedFilePrefix "/var/mod_pagespeed/files/"
-    # Override the mod_pagespeed 'rewrite level'. The default level
-    # "CoreFilters" uses a set of rewrite filters that are generally
-    # safe for most web pages. Most sites should not need to change
-    # this value and can instead fine-tune the configuration using the
-    # ModPagespeedDisableFilters and ModPagespeedEnableFilters
-    # directives, below. Valid values for ModPagespeedRewriteLevel are
-    # PassThrough and CoreFilters.
-    #
-    ModPagespeedRewriteLevel CoreFilters
-    # Explicitly disables specific filters. This is useful in
-    # conjuction with ModPagespeedRewriteLevel. For instance, if one
-    # of the filters in the CoreFilters needs to be disabled for a
-    # site, that filter can be added to
-    # ModPagespeedDisableFilters. This directive contains a
-    # comma-separated list of filter names, and can be repeated.
-    #
-    # ModPagespeedDisableFilters rewrite_javascript
-    # Explicitly enables specific filters. This is useful in
-    # conjuction with ModPagespeedRewriteLevel. For instance, filters
-    # not included in the CoreFilters may be enabled using this
-    # directive. This directive contains a comma-separated list of
-    # filter names, and can be repeated.
-    #
-    ModPagespeedEnableFilters combine_heads
-    ModPagespeedEnableFilters outline_css,outline_javascript
-    ModPagespeedEnableFilters move_css_to_head
-    ModPagespeedEnableFilters convert_jpeg_to_webp
-    ModPagespeedEnableFilters remove_comments
-    ModPagespeedEnableFilters collapse_whitespace
-    ModPagespeedEnableFilters elide_attributes
-    ModPagespeedEnableFilters remove_quotes
-    # Enables server-side instrumentation and statistics. If this rewriter is
-    # enabled, then each rewritten HTML page will have instrumentation javacript
-    # added that sends latency beacons to /mod_pagespeed_beacon. These
-    # statistics can be accessed at /mod_pagespeed_statistics. You must also
-    # enable the mod_pagespeed_statistics and mod_pagespeed_beacon handlers
-    # below.
-    #
-    ModPagespeedEnableFilters add_instrumentation
-    # ModPagespeedDomain
-    # authorizes rewriting of JS, CSS, and Image files found in this
-    # domain. By default only resources with the same origin as the
-    # HTML file are rewritten. For example:
-    #
-    # ModPagespeedDomain cdn.myhost.com
-    #
-    # This will allow resources found on http://cdn.myhost.com to be
-    # rewritten in addition to those in the same domain as the HTML.
-    #
-    # Wildcards (* and ?) are allowed in the domain specification. Be
-    # careful when using them as if you rewrite domains that do not
-    # send you traffic, then the site receiving the traffic will not
-    # know how to serve the rewritten content.
-    ModPagespeedDomain *
-    ModPagespeedFileCacheSizeKb 102400
-    ModPagespeedFileCacheCleanIntervalMs 3600000
-    ModPagespeedLRUCacheKbPerProcess 1024
-    ModPagespeedLRUCacheByteLimit 16384
-    ModPagespeedCssInlineMaxBytes 2048
-    ModPagespeedImgInlineMaxBytes 2048
-    ModPagespeedJsInlineMaxBytes 2048
-    ModPagespeedCssOutlineMinBytes 3000
-    ModPagespeedJsOutlineMinBytes 3000
-    ModPagespeedImgMaxRewritesAtOnce 8
-    # This handles the client-side instrumentation callbacks which are injected
-    # by the add_instrumentation filter.
-    # You can use a different location by adding the ModPagespeedBeaconUrl
-    # directive; see the documentation on add_instrumentation.
-    #
-    <Location /mod_pagespeed_beacon>
-    SetHandler mod_pagespeed_beacon
-    </Location>
-    # This page lets you view statistics about the mod_pagespeed module.
-    <Location /mod_pagespeed_statistics>
-    Order allow,deny
-    # You may insert other "Allow from" lines to add hosts you want to
-    # allow to look at generated statistics. Another possibility is
-    # to comment out the "Order" and "Allow" options from the config
-    # file, to allow any client that can reach your server to examine
-    # statistics. This might be appropriate in an experimental setup or
-    # if the Apache server is protected by a reverse proxy that will
-    # filter URLs in some fashion.
-    Allow from localhost
-    SetHandler mod_pagespeed_statistics
-    </Location>
-    </IfModule>
+LoadModule pagespeed_module /usr/lib/httpd/modules/mod_pagespeed.so
+# Only attempt to load mod_deflate if it hasn't been loaded already.
+<IfModule !mod_deflate.c>
+LoadModule deflate_module /usr/lib/httpd/modules/mod_deflate.so
+</IfModule>
+<IfModule pagespeed_module>
+ModPagespeed on
+AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER text/html
+# The ModPagespeedFileCachePath and
+# ModPagespeedGeneratedFilePrefix directories must exist and be
+# writable by the apache user (as specified by the User
+# directive).
+ModPagespeedFileCachePath "/var/mod_pagespeed/cache/"
+ModPagespeedGeneratedFilePrefix "/var/mod_pagespeed/files/"
+# Override the mod_pagespeed 'rewrite level'. The default level
+# "CoreFilters" uses a set of rewrite filters that are generally
+# safe for most web pages. Most sites should not need to change
+# this value and can instead fine-tune the configuration using the
+# ModPagespeedDisableFilters and ModPagespeedEnableFilters
+# directives, below. Valid values for ModPagespeedRewriteLevel are
+# PassThrough and CoreFilters.
+#
+ModPagespeedRewriteLevel CoreFilters
+# Explicitly disables specific filters. This is useful in
+# conjuction with ModPagespeedRewriteLevel. For instance, if one
+# of the filters in the CoreFilters needs to be disabled for a
+# site, that filter can be added to
+# ModPagespeedDisableFilters. This directive contains a
+# comma-separated list of filter names, and can be repeated.
+#
+# ModPagespeedDisableFilters rewrite_javascript
+# Explicitly enables specific filters. This is useful in
+# conjuction with ModPagespeedRewriteLevel. For instance, filters
+# not included in the CoreFilters may be enabled using this
+# directive. This directive contains a comma-separated list of
+# filter names, and can be repeated.
+#
+ModPagespeedEnableFilters combine_heads
+ModPagespeedEnableFilters outline_css,outline_javascript
+ModPagespeedEnableFilters move_css_to_head
+ModPagespeedEnableFilters convert_jpeg_to_webp
+ModPagespeedEnableFilters remove_comments
+ModPagespeedEnableFilters collapse_whitespace
+ModPagespeedEnableFilters elide_attributes
+ModPagespeedEnableFilters remove_quotes
+# Enables server-side instrumentation and statistics. If this rewriter is
+# enabled, then each rewritten HTML page will have instrumentation javacript
+# added that sends latency beacons to /mod_pagespeed_beacon. These
+# statistics can be accessed at /mod_pagespeed_statistics. You must also
+# enable the mod_pagespeed_statistics and mod_pagespeed_beacon handlers
+# below.
+#
+ModPagespeedEnableFilters add_instrumentation
+# ModPagespeedDomain
+# authorizes rewriting of JS, CSS, and Image files found in this
+# domain. By default only resources with the same origin as the
+# HTML file are rewritten. For example:
+#
+# ModPagespeedDomain cdn.myhost.com
+#
+# This will allow resources found on http://cdn.myhost.com to be
+# rewritten in addition to those in the same domain as the HTML.
+#
+# Wildcards (* and ?) are allowed in the domain specification. Be
+# careful when using them as if you rewrite domains that do not
+# send you traffic, then the site receiving the traffic will not
+# know how to serve the rewritten content.
+ModPagespeedDomain *
+ModPagespeedFileCacheSizeKb 102400
+ModPagespeedFileCacheCleanIntervalMs 3600000
+ModPagespeedLRUCacheKbPerProcess 1024
+ModPagespeedLRUCacheByteLimit 16384
+ModPagespeedCssInlineMaxBytes 2048
+ModPagespeedImgInlineMaxBytes 2048
+ModPagespeedJsInlineMaxBytes 2048
+ModPagespeedCssOutlineMinBytes 3000
+ModPagespeedJsOutlineMinBytes 3000
+ModPagespeedImgMaxRewritesAtOnce 8
+# This handles the client-side instrumentation callbacks which are injected
+# by the add_instrumentation filter.
+# You can use a different location by adding the ModPagespeedBeaconUrl
+# directive; see the documentation on add_instrumentation.
+#
+<Location /mod_pagespeed_beacon>
+SetHandler mod_pagespeed_beacon
+</Location>
+# This page lets you view statistics about the mod_pagespeed module.
+<Location /mod_pagespeed_statistics>
+Order allow,deny
+# You may insert other "Allow from" lines to add hosts you want to
+# allow to look at generated statistics. Another possibility is
+# to comment out the "Order" and "Allow" options from the config
+# file, to allow any client that can reach your server to examine
+# statistics. This might be appropriate in an experimental setup or
+# if the Apache server is protected by a reverse proxy that will
+# filter URLs in some fashion.
+Allow from localhost
+SetHandler mod_pagespeed_statistics
+</Location>
+</IfModule>
 
-    ```
+```
 
 ### 工作原理...
 

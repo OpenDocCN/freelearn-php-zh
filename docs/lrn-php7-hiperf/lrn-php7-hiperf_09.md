@@ -239,48 +239,48 @@ Artisan 是 Laravel 提供的命令行界面，它有一些很好的命令可以
 +   `make:controller`: 这个命令在`Controllers`文件夹中创建一个新的控制器。可以如下使用：
 
 ```php
-    **php artisan make:controller MyController**
+**php artisan make:controller MyController**
 
-    ```
+```
 
 如果需要一个有命名空间的控制器，就像之前的`Customer`命名空间一样，可以如下操作：
 
 ```php
-    **php artisan make:controller Customer/CustomerController**
+**php artisan make:controller Customer/CustomerController**
 
-    ```
+```
 
 这个命令将在`Customer`文件夹中创建`CustomerController`。如果`Customer`文件夹不存在，它也将创建该文件夹。
 
 +   `make:model`: 这在`app`文件夹中创建一个新的模型。语法与`make:controller`命令相同，如下：
 
 ```php
-    **php artisan make:model Customer**
+**php artisan make:model Customer**
 
-    ```
+```
 
 对于有命名空间的模型，可以如下使用：
 
 ```php
-    **php artisan make:model Customer/Customer**
+**php artisan make:model Customer/Customer**
 
-    ```
+```
 
 这将在`Customer`文件夹中创建`Customer`模型，并为其使用`Customer`命名空间。
 
 +   `make:event`: 这在`Events`文件夹中创建一个新的`event`类。可以如下使用：
 
 ```php
-    **php artisan make:event MyEvent**
+**php artisan make:event MyEvent**
 
-    ```
+```
 
 +   `make:listener`: 这个命令为事件创建一个新的监听器。可以如下使用：
 
 ```php
-    **php artisan make:listener MyListener --event MyEvent**
+**php artisan make:listener MyListener --event MyEvent**
 
-    ```
+```
 
 上述命令将为我们的`MyEvent`事件创建一个新的监听器。我们必须始终使用`--event`选项提及我们需要创建监听器的事件。
 

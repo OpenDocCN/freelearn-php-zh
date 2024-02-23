@@ -31,105 +31,105 @@ PHP Framework Interop Group（PHP-FIG）是一个成员定义了 PHP 编码标�
 +   类名中每个单词的首字母必须大写。大括号应该在类声明后的行上，结束括号应该在类结束行的下一行。这是一个例子：
 
 ```php
-    class Foo
-    {
-      …
-      …
-      …
-    }
-    ```
+class Foo
+{
+  …
+  …
+  …
+}
+```
 
 +   类方法和函数名应遵循驼峰命名约定。起始大括号应该在类声明的下一行，结束括号应该在函数定义的最后一行。方法名和括号之间不应有空格。此外，参数和括号之间不应有空格，参数的逗号之后应有一个空格，但逗号和下一个参数之间应有一个空格。这是一个例子：
 
 ```php
-    public function phpBook($arg1, $arg2, $arg3)
-    {
-      …
-      …
-      …
-    }
-    ```
+public function phpBook($arg1, $arg2, $arg3)
+{
+  …
+  …
+  …
+}
+```
 
 +   如果有命名空间声明，声明后必须有一个空行。如果有使用声明，所有使用声明都必须放在该命名空间声明之后。每行必须有一个使用声明，并且在使用块之后必须有一个空格。此外，`extends`和`implements`关键字必须与类声明在同一行上。这是一个例子：
 
 ```php
-    namespace Packt\Videos;
+namespace Packt\Videos;
 
-    use Packt\Books;
-    use Packt\Presentations;
+use Packt\Books;
+use Packt\Presentations;
 
-    class PacktClass extends VideosClass implements BaseClass
-    {
-      …
-      …
-      …
-    }
-    ```
+class PacktClass extends VideosClass implements BaseClass
+{
+  …
+  …
+  …
+}
+```
 
 +   所有属性都必须声明可见性，并且属性必须使用驼峰命名法。此外，私有或受保护的属性不得以下划线开头。看下面的例子：
 
 ```php
-    class PacktClass
-    {
-      public $books;
-      private $electronicBooks;
-      …
-      …
-      …
-    }
-    ```
+class PacktClass
+{
+  public $books;
+  private $electronicBooks;
+  …
+  …
+  …
+}
+```
 
 +   如果有`abstract`关键字，它必须在类关键字之前出现，对于方法，`final`关键字必须在方法的可见性之前出现。另一方面，`static`关键字必须在方法可见性之后出现。看一个例子：
 
 ```php
-    abstract class PacktClass
-    {
-      final public static function favoriteBooks()
-      {
-        …
-        …
-        …
-      }
-    }
-    ```
+abstract class PacktClass
+{
+  final public static function favoriteBooks()
+  {
+    …
+    …
+    …
+  }
+}
+```
 
 +   所有 PHP 关键字必须使用小写，包括`true`和`false`关键字。常量必须以大写形式声明和使用。
 
 +   对于所有控制结构，关键字后必须有一个空格。如果有一个表达式用于这个控制结构，那么括号中不应该有空格，后面跟着的代码块也不应该有空格。括号和开始的大括号之间必须有一个空格。开始的大括号必须在同一行上。结束的大括号必须在主体结束的下一行。参考以下代码以更好地理解：
 
 ```php
-    if ($book == "PHP 7") {
-      …
-      …
-      …
-    } else {
-      …
-      …
-      …
-    }
-    ```
+if ($book == "PHP 7") {
+  …
+  …
+  …
+} else {
+  …
+  …
+  …
+}
+```
 
 +   在循环的情况下，空格必须如下例所示：
 
 ```php
-    for ($h = 0; $h < 10; $h++) {
-      …
-      …
-      …
-    }
+for ($h = 0; $h < 10; $h++) {
+  …
+  …
+  …
+}
 
-    foreach ($books as $key => $value) {
-      …
-      …
-      …
-    }
+foreach ($books as $key => $value) {
+  …
+  …
+  …
+}
 
-    while ($book) {
-      …
-      …
-      …
-    }
-    ```
+while ($book) {
+  …
+  …
+  …
+}
+```
 
 为了本书的目的，我没有遵循大括号在控制结构声明的同一行上的规则，并且总是在声明的下一行使用它。我觉得这样做并不更清晰；这是个人选择，任何人都可以遵循这里提到的标准。
 
@@ -174,19 +174,19 @@ class Book
 1.  现在，将以下代码放入`BookTest.php`文件中：
 
 ```php
-    include (__DIR__.'/../Book.php');
+include (__DIR__.'/../Book.php');
 
-    class BookTest extends PHPUnit_Framework_TestCase 
-    {
-      public function testBookClass()
-      {
-        $expected = 'PHP 7';
-        $book = new Book('PHP 7');
-        $actual = $book->getBook();
-        $this->assertEquals($expected, $book);
-      }
-    }
-    ```
+class BookTest extends PHPUnit_Framework_TestCase 
+{
+  public function testBookClass()
+  {
+    $expected = 'PHP 7';
+    $book = new Book('PHP 7');
+    $actual = $book->getBook();
+    $this->assertEquals($expected, $book);
+  }
+}
+```
 
 1.  现在，我们已经编写了我们的第一个测试。请注意，我们将我们的类命名为`BookTest`，它继承了`PHPUnit_Framework_TestCase`类。我们可以随意命名我们的测试类。但是，名称应该容易识别，这样我们就知道这是为需要测试的类编写的。
 
@@ -197,9 +197,9 @@ class Book
 1.  现在，我们准备运行我们的第一个测试。在项目的根目录中打开命令行或终端，并发出以下命令：
 
 ```php
-    **php phpunit.phar tests/BookTest.php**
+**php phpunit.phar tests/BookTest.php**
 
-    ```
+```
 
 当命令被执行时，我们将得到类似以下截图的输出：
 
@@ -210,13 +210,13 @@ class Book
 1.  现在，让我们稍微改变我们的类，并将`PHP`传递给`Book`类，如下面的代码所示：
 
 ```php
-    public function testBookClass()
-    {
-      $book = new Book('PHP');
-      $title = $book->getBook();
-      $this->assertEquals('PHP 7', $book);
-    }
-    ```
+public function testBookClass()
+{
+  $book = new Book('PHP');
+  $title = $book->getBook();
+  $this->assertEquals('PHP 7', $book);
+}
+```
 
 1.  现在，我们正在寻找 PHP 7，我们的`Book`类返回`PHP`，所以它没有通过我们的测试。执行此测试后，我们将会失败，如下面的截图所示：![测试驱动开发（TDD）](img/B05225_07_02.jpg)
 

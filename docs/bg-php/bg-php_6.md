@@ -89,18 +89,18 @@ PSR-4 自动加载将根据其命名空间加载类在使用时。例如，新�
 1.  我们还加载了一个名为`Whoops`的第三方包。我们通过在`require`块中将其包含为依赖项来加载此包：
 
 ```php
-    {
-        "autoload": {
-            "psr-4": {
-                "App\\" : "app/",
-                "System\\" : "system/"
-            }
-        },
-        "require": {
-            "filp/whoops": "².1"
+{
+    "autoload": {
+        "psr-4": {
+            "App\\" : "app/",
+            "System\\" : "system/"
         }
+    },
+    "require": {
+        "filp/whoops": "².1"
     }
-    ```
+}
+```
 
 1.  保存`composer.json`。现在，在`webroot`中，创建两个文件：`index.php`和`.htaccess`。
 
@@ -109,16 +109,16 @@ PSR-4 自动加载将根据其命名空间加载类在使用时。例如，新�
 1.  出于安全原因，如果一个文件夹不包含`index`文件，我们不希望其内容显示在浏览器中。要禁用目录浏览，请输入：
 
 ```php
-    Options –Indexes
-    ```
+Options –Indexes
+```
 
 1.  接下来，将检查是否启用了 mod rewrite：
 
 ```php
-    <IfModule mod_rewrite.c>
-    //more code
-    </IfModule>
-    ```
+<IfModule mod_rewrite.c>
+//more code
+</IfModule>
+```
 
 ### 注意
 
@@ -127,9 +127,9 @@ PSR-4 自动加载将根据其命名空间加载类在使用时。例如，新�
 1.  接下来，打开重写引擎并将基础设置为此文件夹的根目录：
 
 ```php
-    RewriteEngine On
-    RewriteBase /
-    ```
+RewriteEngine On
+RewriteBase /
+```
 
 1.  要强制使用 HTTPS，可以取消下面的`#`，但只能在启用了 HTTP 的服务器上这样做。
 
@@ -154,16 +154,16 @@ QSA 表示此标志强制重写引擎将查询字符串部分附加到现有字�
 完整的文件应该如下所示：
 
 ```php
-    # Disable directory snooping
-    Options -Indexes
+# Disable directory snooping
+Options -Indexes
 
-    <IfModule mod_rewrite.c>
+<IfModule mod_rewrite.c>
 
-        # Uncomment the rule below to force HTTPS (SSL)
-    ………..
-        RewriteRule ^(.*)$ index.php?$1 [QSA,L]
-    </IfModule>
-    ```
+    # Uncomment the rule below to force HTTPS (SSL)
+………..
+    RewriteRule ^(.*)$ index.php?$1 [QSA,L]
+</IfModule>
+```
 
 ### 注意
 
@@ -180,15 +180,15 @@ QSA 表示此标志强制重写引擎将查询字符串部分附加到现有字�
 1.  我们应该通知用户 Composer 正在请求什么以及去哪里获取它。我们通过使用`else`子句来做到这一点：
 
 ```php
-    if(file_exists('../vendor/autoload.php')){
-        require '../vendor/autoload.php';
-    } else {
-        echo "<h1>Please install via composer.json</h1>";
-        echo "<p>Install Composer instructions: <a href='https://getcomposer.org/doc/00-intro.md#globally'>https://getcomposer.org/doc/00-intro.md#globally</a></p>";
-        echo "<p>Once composer is installed navigate to the working directory in your terminal/command prompt and enter 'composer install'</p>";
-        exit;
-    }
-    ```
+if(file_exists('../vendor/autoload.php')){
+    require '../vendor/autoload.php';
+} else {
+    echo "<h1>Please install via composer.json</h1>";
+    echo "<p>Install Composer instructions: <a href='https://getcomposer.org/doc/00-intro.md#globally'>https://getcomposer.org/doc/00-intro.md#globally</a></p>";
+    echo "<p>Once composer is installed navigate to the working directory in your terminal/command prompt and enter 'composer install'</p>";
+    exit;
+}
+```
 
 1.  接下来，我们将设置我们的环境。
 
@@ -199,25 +199,25 @@ QSA 表示此标志强制重写引擎将查询字符串部分附加到现有字�
 在生产环境中，您不希望显示错误。拥有一个环境常量是设置应用程序环境的好方法：
 
 ```php
-    define('ENVIRONMENT', 'development');
-    ```
+define('ENVIRONMENT', 'development');
+```
 
 1.  现在，根据`environment`常量，我们可以设置适当的错误报告级别：
 
 ```php
-    if (defined('ENVIRONMENT')){
-        switch (ENVIRONMENT){
-            case 'development':
-                error_reporting(E_ALL);
-            break;
-            case 'production':
-                error_reporting(0);
-            break;
-            default:
-                exit('The application environment is not set correctly.');
-        }
+if (defined('ENVIRONMENT')){
+    switch (ENVIRONMENT){
+        case 'development':
+            error_reporting(E_ALL);
+        break;
+        case 'production':
+            error_reporting(0);
+        break;
+        default:
+            exit('The application environment is not set correctly.');
     }
-    ```
+}
+```
 
 ### 注意
 
@@ -226,19 +226,19 @@ QSA 表示此标志强制重写引擎将查询字符串部分附加到现有字�
 完整的文件看起来像这样：
 
 ```php
-    <?php
-    if(file_exists('../vendor/autoload.php')){
-        require '../vendor/autoload.php';
-    } else {
-    ……
-                error_reporting(0);
-            break;
-    default:
-                exit('The application environment is not set correctly.');
-        }
-
+<?php
+if(file_exists('../vendor/autoload.php')){
+    require '../vendor/autoload.php';
+} else {
+……
+            error_reporting(0);
+        break;
+default:
+            exit('The application environment is not set correctly.');
     }
-    ```
+
+}
+```
 
 ### 注意
 
@@ -269,8 +269,8 @@ QSA 表示此标志强制重写引擎将查询字符串部分附加到现有字�
 1.  如果在 Windows 上，导航到`framework`文件夹并启动 php 服务器：
 
 ```php
-    php –S localhost:8000 –t Webroot
-    ```
+php –S localhost:8000 –t Webroot
+```
 
 ### 注意
 
@@ -279,34 +279,34 @@ QSA 表示此标志强制重写引擎将查询字符串部分附加到现有字�
 终端输出将如下所示（您的系统上的某些细节可能会有所不同）：
 
 ```php
-    PHP 7.1.4 Development Server started at Wed Nov 29 20:37:27 2017
-    Listening on http://localhost:8000
-    Document root is /Users/davidcarr/Dropbox /projects/localsites/framework/webroot
-    Press Ctrl-C to quit.
-    ```
+PHP 7.1.4 Development Server started at Wed Nov 29 20:37:27 2017
+Listening on http://localhost:8000
+Document root is /Users/davidcarr/Dropbox /projects/localsites/framework/webroot
+Press Ctrl-C to quit.
+```
 
 1.  现在，转到`http://localhost:8000`，您将看到我们在`index.php`的`else`语句中编写的 Composer 说明。
 
 1.  这是因为我们还没有设置 Composer。我们可以在终端中输入以下内容来完成这一步：
 
 ```php
-    composer install
+composer install
 
-    ```
+```
 
 输出将如下所示：
 
 ```php
-    Loading composer repositories with package information
-    Updating dependencies (including require-dev)
-    Package operations: 2 installs, 0 updates, 0 removals
-      - Installing psr/log (1.0.2) Loading from cache
-      - Installing filp/whoops (2.1.14) Downloading: 100%
-    filp/whoops suggests installing symfony/var-dumper (Pretty print complex values better with var-dumper available)
-    filp/whoops suggests installing whoops/soap (Formats errors as SOAP responses)
-    Writing lock file
-    Generating autoload files
-    ```
+Loading composer repositories with package information
+Updating dependencies (including require-dev)
+Package operations: 2 installs, 0 updates, 0 removals
+  - Installing psr/log (1.0.2) Loading from cache
+  - Installing filp/whoops (2.1.14) Downloading: 100%
+filp/whoops suggests installing symfony/var-dumper (Pretty print complex values better with var-dumper available)
+filp/whoops suggests installing whoops/soap (Formats errors as SOAP responses)
+Writing lock file
+Generating autoload files
+```
 
 1.  请注意，现在将创建一个名为`vendor`的新文件夹。这个文件夹是 Composer 安装其所需文件和任何第三方依赖项的位置。
 
@@ -321,11 +321,11 @@ QSA 表示此标志强制重写引擎将查询字符串部分附加到现有字�
 1.  回到编辑器中的 index.php，在文件底部添加以下行：
 
 ```php
-    //initiate config
-    $config = App\Config::get();
+//initiate config
+$config = App\Config::get();
 
-    new System\Route($config);
-    ```
+new System\Route($config);
+```
 
 这将加载我们的`config`类并设置我们的路由。
 
@@ -406,18 +406,18 @@ QSA 表示此标志强制重写引擎将查询字符串部分附加到现有字�
 有关完整的代码片段，请参阅代码文件夹中的`Lesson 6.php`文件。
 
 ```php
-    <?php namespace App;
+<?php namespace App;
 
-    class Config {
-    ……
-        public static function get()
-                'db_name'     => 'mini',
-                'db_username' => 'root',
-                'db_password' => '',
-            ];
-        }
+class Config {
+……
+    public static function get()
+            'db_name'     => 'mini',
+            'db_username' => 'root',
+            'db_password' => '',
+        ];
     }
-    ```
+}
+```
 
 ### 注意
 
@@ -462,22 +462,22 @@ QSA 表示此标志强制重写引擎将查询字符串部分附加到现有字�
 有关完整的代码片段，请参阅代码文件夹中的`Lesson 6.php`文件。
 
 ```php
-    <?php
-    namespace System;
+<?php
+namespace System;
 
-    /*
-     * View - load template pages
-     *
-     */
-    class View {
-    …….
-            } else {
-                die("View: $path not found!");
-            }
-
+/*
+ * View - load template pages
+ *
+ */
+class View {
+…….
+        } else {
+            die("View: $path not found!");
         }
+
     }
-    ```
+}
+```
 
 1.  保存文件并在`system`文件夹内创建一个名为`Route.php`的新文件。
 
@@ -486,8 +486,8 @@ QSA 表示此标志强制重写引擎将查询字符串部分附加到现有字�
 1.  我们刚刚创建的`View`类需要对这个类可用。要导入它，请添加：
 
 ```php
-    use System\View;
-    ```
+use System\View;
+```
 
 ### 注意
 
@@ -496,24 +496,24 @@ QSA 表示此标志强制重写引擎将查询字符串部分附加到现有字�
 1.  现在，创建一个名为`Route`的类和一个名为`__construct`的方法，该方法期望一个名为`$config`的参数：
 
 ```php
-    <?php namespace System;
+<?php namespace System;
 
-    use System\View;
-    class Route
+use System\View;
+class Route
+{
+    public function __construct($config)
     {
-        public function __construct($config)
-        {
-    ```
+```
 
 1.  现在，设置以下变量：
 
 ```php
-    $url        = explode('/', trim($_SERVER['REQUEST_URI'], '/'));
-    $controller = !empty($url[0]) ? $url[0] : $config['default_controller'];
-    $method     = !empty($url[1]) ? $url[1] : $config['default_method'];
-    $args       = !empty($url[2]) ? array_slice($url, 2) : array();
-    $class      = $config['namespace'].$controller;0
-    ```
+$url        = explode('/', trim($_SERVER['REQUEST_URI'], '/'));
+$controller = !empty($url[0]) ? $url[0] : $config['default_controller'];
+$method     = !empty($url[1]) ? $url[1] : $config['default_method'];
+$args       = !empty($url[2]) ? array_slice($url, 2) : array();
+$class      = $config['namespace'].$controller;0
+```
 
 ### 注意
 
@@ -544,45 +544,45 @@ $args 将获取$url 的第一个 2 个索引之后的所有其他索引。
 1.  设置这些变量后，进行检查，即如果类不存在，则调用`Route`类中存在的`not_found`方法（尚未设置）：
 
 ```php
-    //check the class exists
-    if (! class_exists($class)) {
-        return $this->not_found();
-    }
-    ```
+//check the class exists
+if (! class_exists($class)) {
+    return $this->not_found();
+}
+```
 
 1.  接下来，检查方法以确保它存在：
 
 ```php
-    //check the method exists
-    if (! method_exists($class, $method)) {
-        return $this->not_found();
-    }
-    ```
+//check the method exists
+if (! method_exists($class, $method)) {
+    return $this->not_found();
+}
+```
 
 1.  接下来，设置一个类的实例：
 
 ```php
-    //create an instance of the controller
-    $classInstance = new $class;
-    ```
+//create an instance of the controller
+$classInstance = new $class;
+```
 
 1.  通过调用`call_user_func_array`并将类实例和方法的数组以及任何参数作为第二个参数传递来运行该类：
 
 ```php
-    //call the controller and its method and pass in any arguments
-    call_user_func_array(array($classInstance, $method), $args);
-    ```
+//call the controller and its method and pass in any arguments
+call_user_func_array(array($classInstance, $method), $args);
+```
 
 1.  如果调用了一个不存在的`route`，则需要一个`not_found`方法。这将调用`render`方法并将`404`作为参数传递。这将尝试加载`app/view/404.php`，如果存在的话：
 
 ```php
-    //class or method not found return a 404 view
-    public function not_found()
-    {
-        $view = new View();
-        return $view->render('404');
-    }
-    ```
+//class or method not found return a 404 view
+public function not_found()
+{
+    $view = new View();
+    return $view->render('404');
+}
+```
 
 完整的类如下所示：
 
@@ -591,19 +591,19 @@ $args 将获取$url 的第一个 2 个索引之后的所有其他索引。
 有关完整的代码片段，请参阅代码文件夹中的`Lesson 6.php`文件。
 
 ```php
-    <?php namespace System;
+<?php namespace System;
 
-    use System\View;
+use System\View;
 
-    class Route
-    …….
-        {
-            $view = new View();
-            return $view->render('404');
-        }
-     }
+class Route
+…….
+    {
+        $view = new View();
+        return $view->render('404');
     }
-    ```
+ }
+}
+```
 
 ## 操纵输出
 
@@ -612,8 +612,8 @@ $args 将获取$url 的第一个 2 个索引之后的所有其他索引。
 1.  加载框架`http://localhost:8000`，你会看到以下输出：
 
 ```php
-    View: 404 not found!
-    ```
+View: 404 not found!
+```
 
 ### 注意
 
@@ -676,34 +676,34 @@ $args 将获取$url 的第一个 2 个索引之后的所有其他索引。
 有关完整的代码片段，请参考代码文件夹中的`Lesson 6.php`文件。
 
 ```php
-    <?php namespace System;
+<?php namespace System;
 
-    use System\View;
+use System\View;
 
-    class BaseController
-    {
+class BaseController
+{
 
-      public $view;
-    ………
-        $url = isset($_SERVER['REQUEST_URI']) ? rtrim($_SERVER['REQUEST_URI'], '/') : NULL;
-        $url = filter_var($url, FILTER_SANITIZE_URL);
-        return $this->url = $url;
-      }
+  public $view;
+………
+    $url = isset($_SERVER['REQUEST_URI']) ? rtrim($_SERVER['REQUEST_URI'], '/') : NULL;
+    $url = filter_var($url, FILTER_SANITIZE_URL);
+    return $this->url = $url;
+  }
 
-    }
-    ```
+}
+```
 
 **Home 控制器:**
 
 1.  在`app/Config.php`中，我们将`default_controller`设置为`home`:
 
 ```php
-    //set default controller
-    'default_controller' => 'Home',
+//set default controller
+'default_controller' => 'Home',
 
-    //set default method
-    'default_method' => 'index',
-    ```
+//set default method
+'default_method' => 'index',
+```
 
 1.  现在让我们创建它。在`app`文件夹中创建一个`Controllers`文件夹，并创建一个名为`Home.php`的文件。
 
@@ -724,19 +724,19 @@ $args 将获取$url 的第一个 2 个索引之后的所有其他索引。
 1.  在这种情况下，传递默认值，将加载`app\views\default.php`：
 
 ```php
-    <?php
-    namespace App\Controllers;
+<?php
+namespace App\Controllers;
 
-    use System\BaseController;
+use System\BaseController;
 
-    class Home extends BaseController
-    {
-      public function index()
-      {
-        return $this->view->render('default');
-      }
-    }
-    ```
+class Home extends BaseController
+{
+  public function index()
+  {
+    return $this->view->render('default');
+  }
+}
+```
 
 ## 活动：探索结果
 
@@ -747,9 +747,9 @@ $args 将获取$url 的第一个 2 个索引之后的所有其他索引。
 1.  记得那个 Whoops 类吗？好吧，让我们看看它的作用。打开你的`default.php`视图文件，在文件末尾添加这段代码。打开 php 并写点东西，但不是在一个字符串中。代码应该如下所示：
 
 ```php
-    Hello from default view.
-    <?php ohno!
-    ```
+Hello from default view.
+<?php ohno!
+```
 
 1.  现在，在浏览器中保存并重新加载页面，你会看到：![活动：探索结果](img/6_03.jpg)
 
@@ -854,21 +854,21 @@ PDO 是一个数据库抽象层；它是一个支持 12 种不同数据库引擎
 1.  要导入 PDO，请使用`use`语句：
 
 ```php
-    <?php
-    namespace App\Helpers;
+<?php
+namespace App\Helpers;
 
-    use PDO;
-    ```
+use PDO;
+```
 
 1.  接下来，定义一个名为`Database`的类，它扩展了`PDO`。在类内部创建一个名为`$instances`的属性，并将其设置为数组数据类型。
 
 1.  `$instances`属性将用于确保只有一个数据库连接在使用：
 
 ```php
-    class Database extends PDO
-    {
-    protected static $instances = array();
-    ```
+class Database extends PDO
+{
+protected static $instances = array();
+```
 
 1.  接下来，创建一个名为`get()`的方法，接受一个名为`$config`的参数。这将是在`app\Config.php`中设置的`Config`。
 
@@ -891,20 +891,20 @@ PDO 是一个数据库抽象层；它是一个支持 12 种不同数据库引擎
 有关完整的代码片段，请参考代码文件夹中的`Lesson 6.php`文件。
 
 ```php
-    GET method
+GET method
 
-    public static function get($config)
-    {
-      // Group information
-    …….
-      // Setting Database into $instances to avoid duplication
-      self::$instances[$id] = $instance;
+public static function get($config)
+{
+  // Group information
+…….
+  // Setting Database into $instances to avoid duplication
+  self::$instances[$id] = $instance;
 
-      //return the pdo instance
-      return $instance;
+  //return the pdo instance
+  return $instance;
 
-    }
-    ```
+}
+```
 
 **RAW 方法**
 
@@ -915,11 +915,11 @@ PDO 是一个数据库抽象层；它是一个支持 12 种不同数据库引擎
 这对于执行不需要安全的查询非常有用。如果没有进行检查，查询将按原样执行，并返回结果。
 
 ```php
-    public function raw($sql)
-    {
-      return $this->query($sql);
-    }
-    ```
+public function raw($sql)
+{
+  return $this->query($sql);
+}
+```
 
 **SELECT 方法：**
 
@@ -948,13 +948,13 @@ PDO 是一个数据库抽象层；它是一个支持 12 种不同数据库引擎
 有关完整的代码片段，请参阅代码文件夹中的`Lesson 6.php`文件。
 
 ```php
-    public function select($sql, $array = array(), $fetchMode = PDO::FETCH_OBJ, $class = '')
-    {
-    ……
-        return $stmt->fetchAll($fetchMode);
-      }
-    }
-    ```
+public function select($sql, $array = array(), $fetchMode = PDO::FETCH_OBJ, $class = '')
+{
+……
+    return $stmt->fetchAll($fetchMode);
+  }
+}
+```
 
 **插入方法**
 
@@ -975,21 +975,21 @@ PDO 是一个数据库抽象层；它是一个支持 12 种不同数据库引擎
 1.  最后，返回最后插入记录的 ID。当您需要主键在记录插入后立即使用时，这将非常有用：
 
 ```php
-    public function insert($table, $data)
-    {
-      ksort($data);
-      $fieldNames = implode(',', array_keys($data));
-      $fieldValues = ':'.implode(', :', array_keys($data));
+public function insert($table, $data)
+{
+  ksort($data);
+  $fieldNames = implode(',', array_keys($data));
+  $fieldValues = ':'.implode(', :', array_keys($data));
 
-      $stmt = $this->prepare("INSERT INTO $table ($fieldNames) VALUES ($fieldValues)");
+  $stmt = $this->prepare("INSERT INTO $table ($fieldNames) VALUES ($fieldValues)");
 
-      foreach ($data as $key => $value) {
-        $stmt->bindValue(":$key", $value);
-      }
-      $stmt->execute();
-     return $this->lastInsertId();
-    }
-    ```
+  foreach ($data as $key => $value) {
+    $stmt->bindValue(":$key", $value);
+  }
+  $stmt->execute();
+ return $this->lastInsertId();
+}
+```
 
 **更新方法**
 
@@ -1018,19 +1018,19 @@ PDO 是一个数据库抽象层；它是一个支持 12 种不同数据库引擎
 有关完整的代码片段，请参阅代码文件夹中的`Lesson 6.php`文件。
 
 ```php
-    public function update($table, $data, $where)
+public function update($table, $data, $where)
 
-    {
+{
 
-      ksort($data);
+  ksort($data);
 
-      $fieldDetails = null;
-    …….
-      }
-      $stmt->execute();
-      return $stmt->rowCount();
-    }
-    ```
+  $fieldDetails = null;
+…….
+  }
+  $stmt->execute();
+  return $stmt->rowCount();
+}
+```
 
 **删除方法**
 
@@ -1053,15 +1053,15 @@ PDO 是一个数据库抽象层；它是一个支持 12 种不同数据库引擎
 有关完整的代码片段，请参阅代码文件夹中的`Lesson 6.php`文件。
 
 ```php
-    public function delete($table, $where, $limit = 1)
-    {
-      ksort($where);
+public function delete($table, $where, $limit = 1)
+{
+  ksort($where);
 
-    ……..
-      $stmt->execute();
-      return $stmt->rowCount();
-    }
-    ```
+……..
+  $stmt->execute();
+  return $stmt->rowCount();
+}
+```
 
 **截断方法**
 
@@ -1072,11 +1072,11 @@ PDO 是一个数据库抽象层；它是一个支持 12 种不同数据库引擎
 1.  在方法内部，调用$this->exec 和 SQL 命令 TRUNCATE TABLE $table。这将清空表，导致没有记录。所有主键将被重置为 0，就好像从未使用过表一样：
 
 ```php
-    public function truncate($table)
-    {
-      return $this->exec("TRUNCATE TABLE $table");
-    }
-    ```
+public function truncate($table)
+{
+  return $this->exec("TRUNCATE TABLE $table");
+}
+```
 
 完整的类如下所示：
 
@@ -1085,21 +1085,21 @@ PDO 是一个数据库抽象层；它是一个支持 12 种不同数据库引擎
 有关完整的代码片段，请参阅代码文件夹中的`Lesson 6.php`文件。
 
 ```php
-    <?php namespace App\Helpers;
+<?php namespace App\Helpers;
 
-    use PDO;
-    class Database extends PDO
-    {
-      /**
-       * @var array Array of saved databases for reusing
-       */
-       */
-    ……
-      {
-        return $this->exec("TRUNCATE TABLE $table");
-      }
-    }
-    ```
+use PDO;
+class Database extends PDO
+{
+  /**
+   * @var array Array of saved databases for reusing
+   */
+   */
+……
+  {
+    return $this->exec("TRUNCATE TABLE $table");
+  }
+}
+```
 
 1.  保存这个类。这是一个复杂的类，我们将要编写的其余代码要简单得多。在接下来的几页中，我们将使用数据库助手，并且随着使用方法的目的和用途，它们将变得清晰。
 
@@ -1126,16 +1126,16 @@ PDO 是一个数据库抽象层；它是一个支持 12 种不同数据库引擎
 有关完整的代码片段，请参考代码文件夹中的`Lesson 6.php`文件。
 
 ```php
-    <?php namespace System;
-    /*
-     * model - the base model
-     *
-    ……..
-    //connect to PDO here.
-    $this->db = Database::get($config);
-    }
-    }
-    ```
+<?php namespace System;
+/*
+ * model - the base model
+ *
+……..
+//connect to PDO here.
+$this->db = Database::get($config);
+}
+}
+```
 
 1.  现在，我们准备开始使用数据库。在继续我们的代码库之前，打开你之前连接的数据库，可以使用 phpmyadmin 或 MySQL 客户端，也可以使用终端。
 
@@ -1158,8 +1158,8 @@ mysql -u root -p
 1.  选择那个数据库：
 
 ```php
-    use mini
-    ```
+use mini
+```
 
 ### 注意
 
@@ -1168,39 +1168,39 @@ mysql -u root -p
 1.  数据库是空的，所以让我们创建一个名为 contacts 的表：
 
 ```php
-    create table contacts ( `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-    `name` varchar(255) DEFAULT NULL,
-    PRIMARY KEY (`id`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-    ```
+create table contacts ( `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+`name` varchar(255) DEFAULT NULL,
+PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+```
 
 要查看你的表的列表：
 
 ```php
-    show tables;
+show tables;
 
-    +-----------------+
-    | Tables_in_mini |
-    +-----------------+
-    | contacts    |
-    +-----------------+
-    1 row in set (0.00 sec)
++-----------------+
+| Tables_in_mini |
++-----------------+
+| contacts    |
++-----------------+
+1 row in set (0.00 sec)
 
-    Insert data into the table
-    insert into contacts (name) values('Dave');
-    insert into contacts (name) values('Markus');
+Insert data into the table
+insert into contacts (name) values('Dave');
+insert into contacts (name) values('Markus');
 
-    this will insert the records to see the contents of the table:
-    select * from contacts;
+this will insert the records to see the contents of the table:
+select * from contacts;
 
-    +----+--------+
-    | id | name  |
-    +----+--------+
-    |  1 | Dave  |
-    |  2 | Markus |
-    +----+--------+
-    2 rows in set (0.00 sec)
-    ```
++----+--------+
+| id | name  |
++----+--------+
+|  1 | Dave  |
+|  2 | Markus |
++----+--------+
+2 rows in set (0.00 sec)
+```
 
 通过这几个命令，数据库已经创建，表也已经被创建，并且已经填充了两条记录。
 
@@ -1233,46 +1233,46 @@ mysql -u root -p
 这个模型看起来像这样：
 
 ```php
-    <?php
-    namespace App\Models;
-    use System\BaseModel;
+<?php
+namespace App\Models;
+use System\BaseModel;
 
-    class Contact extends BaseModel
-    {
-      public function getContacts()
-      {
-        return $this->db->select('* FROM contacts);
-      }
-    }
-    ```
+class Contact extends BaseModel
+{
+  public function getContacts()
+  {
+    return $this->db->select('* FROM contacts);
+  }
+}
+```
 
 1.  现在，我们需要运行这个模型。这个最好的地方是在一个控制器内。在`app\Controllers`文件夹内创建一个名为`Contacts`的新控制器。
 
 这个类扩展自`BaseController`，并有一个名为`index`的方法：
 
 ```php
-    <?php
-    namespace App\Controllers;
+<?php
+namespace App\Controllers;
 
-    use System\BaseController;
+use System\BaseController;
 
-    class Contacts extends BaseController
-    {
-      public function index()
-      {
+class Contacts extends BaseController
+{
+  public function index()
+  {
 
-      }
-    }
-    ```
+  }
+}
+```
 
 让`index`方法加载一个名为`contacts/index`的视图：
 
 ```php
-    public function index()
-    {
-      return $this->view->render('contacts/index');
-    }
-    ```
+public function index()
+{
+  return $this->view->render('contacts/index');
+}
+```
 
 1.  在`app\views`中创建一个名为`contacts`的文件夹，并创建一个名为`index.php`的文件。
 
@@ -1281,22 +1281,22 @@ mysql -u root -p
 1.  回到`contacts` `controller`，我们需要导入`contact`模型。我们通过使用`use`语句并设置命名空间到模型来做到这一点：
 
 ```php
-    use App\Models\Contact;
+use App\Models\Contact;
 
-    ```
+```
 
 1.  在`index`方法内，创建一个`contact`模型的新实例，并调用`getContacts()`方法。将其赋值给一个名为`$records`的变量：
 
 ```php
-    $contacts = new Contact();
-    $records = $contacts->getContacts();
-    ```
+$contacts = new Contact();
+$records = $contacts->getContacts();
+```
 
 1.  接下来，将`$records`传递给`view:`
 
 ```php
-    return $this->view->render('contacts/index', compact('records'));
-    ```
+return $this->view->render('contacts/index', compact('records'));
+```
 
 ### 注意
 
@@ -1307,13 +1307,13 @@ mysql -u root -p
 1.  打开`php`并检查`$records`是否存在，然后进行`foreach`循环并循环遍历每条记录。从`$row`对象中`echo`出`name`键。添加一个包含`<br>`标签的字符串-这将导致每次循环都在新行上：
 
 ```php
-    <?php
-    if (isset($records)) {
-      foreach ($records as $row) {
-        echo $row->name.'<br>';
-      }
-    }
-    ```
+<?php
+if (isset($records)) {
+  foreach ($records as $row) {
+    echo $row->name.'<br>';
+  }
+}
+```
 
 1.  保存并在浏览器中运行，转到`http://localhost:8000/contacts`。您将看到数据库中存储的`contacts`表中的联系人列表。
 

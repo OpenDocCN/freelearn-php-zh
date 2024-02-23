@@ -27,18 +27,18 @@ Magento 后端在许多方面可以被视为与 Magento 前端分开的应用程
 1.  将以下代码添加到其中：
 
 ```php
-    <admin>
-     <routers>
-       <giftregistry>
-         <use>admin</use>
-           <args>
-               <module>Mdg_Giftregistry_Adminhmtl</module>
-               <frontName>giftregistry</frontName>
-           </args>
-       </giftregistry>
-     </routers>
-    </admin>
-    ```
+<admin>
+ <routers>
+   <giftregistry>
+     <use>admin</use>
+       <args>
+           <module>Mdg_Giftregistry_Adminhmtl</module>
+           <frontName>giftregistry</frontName>
+       </args>
+   </giftregistry>
+ </routers>
+</admin>
+```
 
 这段代码与我们以前用来指定前端路由的代码非常相似；然而，通过这种方式声明路由，我们正在打破一个未写的 Magento 设计模式。
 
@@ -59,18 +59,18 @@ Magento 后端在许多方面可以被视为与 Magento 前端分开的应用程
 1.  使用以下代码更新路由配置：
 
 ```php
-    <admin>
-     <routers>
-       <adminhtml>
-         <args>
-           <modules>
-             <mdg_giftregistry before="Mage_Adminhtml">Mdg_Giftregistry_Adminhtml</mdg_giftregistry>
-           </modules>
-         </args>
-       </adminhtml>
-     </routers>
-    </admin>
-    ```
+<admin>
+ <routers>
+   <adminhtml>
+     <args>
+       <modules>
+         <mdg_giftregistry before="Mage_Adminhtml">Mdg_Giftregistry_Adminhtml</mdg_giftregistry>
+       </modules>
+     </args>
+   </adminhtml>
+ </routers>
+</admin>
+```
 
 做出这些改变后，我们可以通过管理命名空间正确访问我们的管理控制器；例如，`http://magento.localhost.com/giftregistry/index`现在将是`http://magento.localhost.com/admin/giftregistry/index`。
 
@@ -85,45 +85,45 @@ Magento 后端在许多方面可以被视为与 Magento 前端分开的应用程
 1.  将以下代码添加到其中：
 
 ```php
-    <?php
-    class Mdg_Giftregistry_Adminhtml_GiftregistryController extends Mage_Adminhtml_Controller_Action
+<?php
+class Mdg_Giftregistry_Adminhtml_GiftregistryController extends Mage_Adminhtml_Controller_Action
+{
+    public function indexAction()
     {
-        public function indexAction()
-        {
-            $this->loadLayout();
-            $this->renderLayout();
-            return $this;
-        }
-
-        public function editAction()
-        {
-            $this->loadLayout();
-            $this->renderLayout();
-            return $this;
-        }
-
-        public function saveAction()
-        {
-            $this->loadLayout();
-            $this->renderLayout();
-            return $this;
-        }
-
-        public function newAction()
-        {
-            $this->loadLayout();
-            $this->renderLayout();
-            return $this;
-        }
-
-        public function massDeleteAction()
-        {
-            $this->loadLayout();
-            $this->renderLayout();
-            return $this;
-        }
+        $this->loadLayout();
+        $this->renderLayout();
+        return $this;
     }
-    ```
+
+    public function editAction()
+    {
+        $this->loadLayout();
+        $this->renderLayout();
+        return $this;
+    }
+
+    public function saveAction()
+    {
+        $this->loadLayout();
+        $this->renderLayout();
+        return $this;
+    }
+
+    public function newAction()
+    {
+        $this->loadLayout();
+        $this->renderLayout();
+        return $this;
+    }
+
+    public function massDeleteAction()
+    {
+        $this->loadLayout();
+        $this->renderLayout();
+        return $this;
+    }
+}
+```
 
 请注意一个重要的事情：这个新控制器扩展了`Mage_Adminhtml_Controller_Action`而不是我们到目前为止一直在使用的`Mage_Core_Controller_Front_Action`。这样做的原因是`Adminhtml`控制器具有额外的验证，以防止非管理员用户访问它们的操作。
 
@@ -154,22 +154,22 @@ Magento 后端在许多方面可以被视为与 Magento 前端分开的应用程
 1.  将以下代码复制到布局文件中：
 
 ```php
-    <?xml version="1.0"?>
-    <layout version="0.1.0">
-        <adminhtml_customer_edit>
-            <reference name="left">
-                <reference name="customer_edit_tabs">
-                    <block type="mdg_giftregistry/adminhtml_customer_edit_tab_giftregistry" name="tab_giftregistry_main" template="mdg_giftregistry/giftregistry/customer/main.phtml">
-                    </block>
-                    <action method="addTab">
-                     <name>mdg_giftregistry</name>
-                  <block>tab_giftregistry_main</block>
-              </action>
-                </reference>
+<?xml version="1.0"?>
+<layout version="0.1.0">
+    <adminhtml_customer_edit>
+        <reference name="left">
+            <reference name="customer_edit_tabs">
+                <block type="mdg_giftregistry/adminhtml_customer_edit_tab_giftregistry" name="tab_giftregistry_main" template="mdg_giftregistry/giftregistry/customer/main.phtml">
+                </block>
+                <action method="addTab">
+                 <name>mdg_giftregistry</name>
+              <block>tab_giftregistry_main</block>
+          </action>
             </reference>
-        </adminhtml_customer_edit>
-    </layout>
-    ```
+        </reference>
+    </adminhtml_customer_edit>
+</layout>
+```
 
 我们还需要将新的布局文件添加到`config.xml`模块中。执行以下步骤来完成：
 
@@ -180,18 +180,18 @@ Magento 后端在许多方面可以被视为与 Magento 前端分开的应用程
 1.  将以下代码复制到`config.xml`文件中：
 
 ```php
-    …
-        <adminhtml>
-            <layout>
-                <updates>
-                    <mdg_giftregistry module="mdg_giftregistry">
-                        <file>giftregistry.xml</file>
-                    </mdg_giftregistry>
-                </updates>
-            </layout>
-        </adminhtml>
-    …
-    ```
+…
+    <adminhtml>
+        <layout>
+            <updates>
+                <mdg_giftregistry module="mdg_giftregistry">
+                    <file>giftregistry.xml</file>
+                </mdg_giftregistry>
+            </updates>
+        </layout>
+    </adminhtml>
+…
+```
 
 在布局内部，我们正在创建一个新的容器块，并声明一个包含此块的新选项卡。
 
@@ -208,43 +208,43 @@ Magento 后端在许多方面可以被视为与 Magento 前端分开的应用程
 1.  将以下代码添加到其中：
 
 ```php
-    <?php 
-    class Mdg_Giftregistry_Block_Adminhtml_Customer_Edit_Tab_Giftregistry
-        extends Mage_Adminhtml_Block_Template
-        implements Mage_Adminhtml_Block_Widget_Tab_Interface {
+<?php 
+class Mdg_Giftregistry_Block_Adminhtml_Customer_Edit_Tab_Giftregistry
+    extends Mage_Adminhtml_Block_Template
+    implements Mage_Adminhtml_Block_Widget_Tab_Interface {
 
-        public function __construct()
-        {
-            $this->setTemplate('mdg/giftregistry/customer/main.phtml');
-            parent::_construct();
-        }
-
-        public function getCustomerId()
-        {
-            return Mage::registry('current_customer')->getId();
-        }
-
-        public function getTabLabel()
-        {
-            return $this->__('GiftRegistry List');
-        }
-
-        public function getTabTitle()
-        {
-            return $this->__('Click to view the customer Gift Registries');
-        }
-
-        public function canShowTab()
-        {
-            return true;
-        }
-
-        public function isHidden()
-        {
-            return false;
-        }
+    public function __construct()
+    {
+        $this->setTemplate('mdg/giftregistry/customer/main.phtml');
+        parent::_construct();
     }
-    ```
+
+    public function getCustomerId()
+    {
+        return Mage::registry('current_customer')->getId();
+    }
+
+    public function getTabLabel()
+    {
+        return $this->__('GiftRegistry List');
+    }
+
+    public function getTabTitle()
+    {
+        return $this->__('Click to view the customer Gift Registries');
+    }
+
+    public function canShowTab()
+    {
+        return true;
+    }
+
+    public function isHidden()
+    {
+        return false;
+    }
+}
+```
 
 这个块类有一些有趣的事情发生。首先，我们正在扩展一个不同的块类`Mage_Adminhtml_Block_Template`，并实现一个新的接口`Mage_Adminhtml_Block_Widget_Tab_Interface`。这样做是为了访问 Magento 后端的所有功能和功能。
 
@@ -257,19 +257,19 @@ Magento 后端在许多方面可以被视为与 Magento 前端分开的应用程
 1.  将以下代码复制到其中：
 
 ```php
-    <div class="entry-edit">
-        <div class="entry-edit-head">
-            <h4 class="icon-head head-customer-view"><?php echo $this->__('Customer Gift Registry List') ?></h4>
-        </div>
-        <table cellspacing="2" class="box-left">
-            <tr>
-                <td>
-                    Nothing here 
-                </td>
-            </tr>
-        </table>
+<div class="entry-edit">
+    <div class="entry-edit-head">
+        <h4 class="icon-head head-customer-view"><?php echo $this->__('Customer Gift Registry List') ?></h4>
     </div>
-    ```
+    <table cellspacing="2" class="box-left">
+        <tr>
+            <td>
+                Nothing here 
+            </td>
+        </tr>
+    </table>
+</div>
+```
 
 目前，我们只是向模板添加占位内容，以便我们实际上可以看到我们的选项卡在操作中；现在，如果我们转到后端的客户部分，我们应该看到一个新的选项卡可用，并且单击该选项卡将显示我们的占位内容。
 
@@ -290,58 +290,58 @@ Magento 后端在许多方面可以被视为与 Magento 前端分开的应用程
 1.  将以下代码复制到`Giftregistry/List.php`文件中：
 
 ```php
-    <?php
-    class Mdg_Giftregistry_Block_Adminhtml_Customer_Edit_Tab_Giftregistry_List extends Mage_Adminhtml_Block_Widget_Grid
+<?php
+class Mdg_Giftregistry_Block_Adminhtml_Customer_Edit_Tab_Giftregistry_List extends Mage_Adminhtml_Block_Widget_Grid
+{
+    public function __construct()
     {
-        public function __construct()
-        {
-            parent::__construct();
-            $this->setId('registryList');
-            $this->setUseAjax(true);
-            $this->setDefaultSort('event_date');
-            $this->setFilterVisibility(false);
-            $this->setPagerVisibility(false);
-        }
-
-        protected function _prepareCollection()
-        {
-            $collection = Mage::getModel('mdg_giftregistry/entity')
-                ->getCollection()
-                ->addFieldToFilter('main_table.customer_id', $this->getRequest()->getParam('id'));
-            $this->setCollection($collection);
-            return parent::_prepareCollection();
-        }
-
-        protected function _prepareColumns()
-        {
-            $this->addColumn('entity_id', array(
-                'header'   => Mage::helper('mdg_giftregistry')->__('Id'),
-                'width'    => 50,
-                'index'    => 'entity_id',
-                'sortable' => false,
-            ));
-
-            $this->addColumn('event_location', array(
-                'header'   => Mage::helper('mdg_giftregistry')->__('Location'),
-                'index'    => 'event_location',
-                'sortable' => false,
-            ));
-
-            $this->addColumn('event_date', array(
-                'header'   => Mage::helper('mdg_giftregistry')->__('Event Date'),
-                'index'    => 'event_date',
-                'sortable' => false,
-            ));
-
-            $this->addColumn('type_id', array(
-                'header'   => Mage::helper('mdg_giftregistry')->__('Event Type'),
-                'index'    => 'type_id',
-                'sortable' => false,
-            ));
-            return parent::_prepareColumns();
-        }
+        parent::__construct();
+        $this->setId('registryList');
+        $this->setUseAjax(true);
+        $this->setDefaultSort('event_date');
+        $this->setFilterVisibility(false);
+        $this->setPagerVisibility(false);
     }
-    ```
+
+    protected function _prepareCollection()
+    {
+        $collection = Mage::getModel('mdg_giftregistry/entity')
+            ->getCollection()
+            ->addFieldToFilter('main_table.customer_id', $this->getRequest()->getParam('id'));
+        $this->setCollection($collection);
+        return parent::_prepareCollection();
+    }
+
+    protected function _prepareColumns()
+    {
+        $this->addColumn('entity_id', array(
+            'header'   => Mage::helper('mdg_giftregistry')->__('Id'),
+            'width'    => 50,
+            'index'    => 'entity_id',
+            'sortable' => false,
+        ));
+
+        $this->addColumn('event_location', array(
+            'header'   => Mage::helper('mdg_giftregistry')->__('Location'),
+            'index'    => 'event_location',
+            'sortable' => false,
+        ));
+
+        $this->addColumn('event_date', array(
+            'header'   => Mage::helper('mdg_giftregistry')->__('Event Date'),
+            'index'    => 'event_date',
+            'sortable' => false,
+        ));
+
+        $this->addColumn('type_id', array(
+            'header'   => Mage::helper('mdg_giftregistry')->__('Event Type'),
+            'index'    => 'type_id',
+            'sortable' => false,
+        ));
+        return parent::_prepareColumns();
+    }
+}
+```
 
 看看我们刚刚创建的类，只涉及三个函数：
 
@@ -364,23 +364,23 @@ Magento 后端在许多方面可以被视为与 Magento 前端分开的应用程
 1.  进行以下更改：
 
 ```php
-    <?xml version="1.0"?>
-    <layout version="0.1.0">
-        <adminhtml_customer_edit>
-            <reference name="left">
-                <reference name="customer_edit_tabs">
-                    <block type="mdg_giftregistry/adminhtml_customer_edit_tab_giftregistry" name="tab_giftregistry_main" template="mdg/giftregistry/customer/main.phtml">
-                        <block type="mdg_giftregistry/adminhtml_customer_edit_tab_giftregistry_list" name="tab_giftregistry_list" as="giftregistry_list" />
-                    </block>
-                    <action method="addTab">
-                        <name>mdg_giftregistry</name>
-                        <block>mdg_giftregistry/adminhtml_customer_edit_tab_giftregistry</block>
-                    </action>
-                </reference>
+<?xml version="1.0"?>
+<layout version="0.1.0">
+    <adminhtml_customer_edit>
+        <reference name="left">
+            <reference name="customer_edit_tabs">
+                <block type="mdg_giftregistry/adminhtml_customer_edit_tab_giftregistry" name="tab_giftregistry_main" template="mdg/giftregistry/customer/main.phtml">
+                    <block type="mdg_giftregistry/adminhtml_customer_edit_tab_giftregistry_list" name="tab_giftregistry_list" as="giftregistry_list" />
+                </block>
+                <action method="addTab">
+                    <name>mdg_giftregistry</name>
+                    <block>mdg_giftregistry/adminhtml_customer_edit_tab_giftregistry</block>
+                </action>
             </reference>
-        </adminhtml_customer_edit>
-    </layout>
-    ```
+        </reference>
+    </adminhtml_customer_edit>
+</layout>
+```
 
 我们所做的是将网格块添加为我们的主块的一部分，但如果我们转到客户编辑页面并点击**礼品注册**选项卡，我们仍然看到旧的占位文本，并且网格没有显示。
 
@@ -393,13 +393,13 @@ Magento 后端在许多方面可以被视为与 Magento 前端分开的应用程
 1.  用以下内容替换模板代码：
 
 ```php
-    <div class="entry-edit">
-        <div class="entry-edit-head">
-            <h4 class="icon-head head-customer-view"><?php echo $this->__('Customer Gift Registry List') ?></h4>
-        </div>
-        <?php echo $this->getChildHtml('tab_giftregistry_list'); ?>
+<div class="entry-edit">
+    <div class="entry-edit-head">
+        <h4 class="icon-head head-customer-view"><?php echo $this->__('Customer Gift Registry List') ?></h4>
     </div>
-    ```
+    <?php echo $this->getChildHtml('tab_giftregistry_list'); ?>
+</div>
+```
 
 `getChildHtml()`函数负责渲染所有子块。
 
@@ -422,23 +422,23 @@ Magento 后端在许多方面可以被视为与 Magento 前端分开的应用程
 1.  将以下代码放入该文件中：
 
 ```php
-    <?xml version="1.0"?>
-    <config>
-        <menu>
-            <mdg_giftregistry module="mdg_giftregistry">
-                <title>Gift Registry</title>
-                <sort_order>71</sort_order>
-                <children>
-                    <items module="mdg_giftregistry">
-                        <title>Manage Registries</title>
-                        <sort_order>0</sort_order>
-                        <action>adminhtml/giftregistry/index</action>
-                    </items>
-                </children>
-            </mdg_giftregistry>
-        </menu>
-    </config>
-    ```
+<?xml version="1.0"?>
+<config>
+    <menu>
+        <mdg_giftregistry module="mdg_giftregistry">
+            <title>Gift Registry</title>
+            <sort_order>71</sort_order>
+            <children>
+                <items module="mdg_giftregistry">
+                    <title>Manage Registries</title>
+                    <sort_order>0</sort_order>
+                    <action>adminhtml/giftregistry/index</action>
+                </items>
+            </children>
+        </mdg_giftregistry>
+    </menu>
+</config>
+```
 
 ### 注意
 
@@ -459,25 +459,25 @@ Magento 后端在许多方面可以被视为与 Magento 前端分开的应用程
 1.  在菜单路径之后添加以下代码：
 
 ```php
-    <acl>
-        <resources>
-            <admin>
-                <children>
-                    <giftregistry translate="title" module="mdg_giftregistry">
-                        <title>Gift Registry</title>
-                        <sort_order>300</sort_order>
-                        <children>
-                            <items translate="title" module="mdg_giftregistry">
-                                <title>Manage Registries</title>
-                                <sort_order>0</sort_order>
-                            </items>
-                        </children>
-                    </giftregistry>
-                </children>
-            </admin>
-        </resources>
-    </acl>
-    ```
+<acl>
+    <resources>
+        <admin>
+            <children>
+                <giftregistry translate="title" module="mdg_giftregistry">
+                    <title>Gift Registry</title>
+                    <sort_order>300</sort_order>
+                    <children>
+                        <items translate="title" module="mdg_giftregistry">
+                            <title>Manage Registries</title>
+                            <sort_order>0</sort_order>
+                        </items>
+                    </children>
+                </giftregistry>
+            </children>
+        </admin>
+    </resources>
+</acl>
+```
 
 现在，在 Magento 后端，如果我们导航到**系统** | **权限** | **角色**，选择**管理员**角色，并尝试在列表底部设置**角色资源**，我们可以看到我们创建的新 ACL 资源，如下面的截图所示：
 
@@ -498,17 +498,17 @@ Magento 后端在许多方面可以被视为与 Magento 前端分开的应用程
 1.  将以下代码添加到其中：
 
 ```php
-    <?php
-    class Mdg_Giftregistry_Block_Adminhtml_Registries extends Mage_Adminhtml_Block_Widget_Grid_Container
-    {
-    public function __construct(){
-        $this->_controller = 'adminhtml_registries';
-        $this->_blockGroup = 'mdg_giftregistry';
-        $this->_headerText = Mage::helper('mdg_giftregistry')->__('Gift Registry Manager');
-        parent::__construct();
-      }
-    }
-    ```
+<?php
+class Mdg_Giftregistry_Block_Adminhtml_Registries extends Mage_Adminhtml_Block_Widget_Grid_Container
+{
+public function __construct(){
+    $this->_controller = 'adminhtml_registries';
+    $this->_blockGroup = 'mdg_giftregistry';
+    $this->_headerText = Mage::helper('mdg_giftregistry')->__('Gift Registry Manager');
+    parent::__construct();
+  }
+}
+```
 
 我们在网格容器内的`construct`函数中设置的一个重要的事情是使用受保护的`_controller`和`_blockGroup`值，Magento 网格容器通过这些值来识别相应的网格块。
 
@@ -523,57 +523,57 @@ Magento 后端在许多方面可以被视为与 Magento 前端分开的应用程
 1.  将以下代码添加到`Grid.php`中：
 
 ```php
-    File Location: Grid.php
-    <?php
-    class Mdg_Giftregistry_Block_Adminhtml_Registries_Grid extends Mage_Adminhtml_Block_Widget_Grid
-    {
-        public function __construct(){
-            parent::__construct();
-            $this->setId('registriesGrid');
-            $this->setDefaultSort('event_date');
-            $this->setDefaultDir('ASC');
-            $this->setSaveParametersInSession(true);
-        }
-
-        protected function _prepareCollection(){
-            $collection = Mage::getModel('mdg_giftregistry/entity')->getCollection();
-            $this->setCollection($collection);
-            return parent::_prepareCollection();
-        }
-
-        protected function _prepareColumns()
-        {
-            $this->addColumn('entity_id', array(
-                'header'   => Mage::helper('mdg_giftregistry')->__('Id'),
-                'width'    => 50,
-                'index'    => 'entity_id',
-                'sortable' => false,
-            ));
-
-            $this->addColumn('event_location', array(
-                'header'   => Mage::helper('mdg_giftregistry')->__('Location'),
-                'index'    => 'event_location',
-                'sortable' => false,
-            ));
-
-            $this->addColumn('event_date', array(
-                'header'   => Mage::helper('mdg_giftregistry')->__('Event Date'),
-                'index'    => 'event_date',
-                'sortable' => false,
-            ));
-
-            $this->addColumn('type_id', array(
-                'header'   => Mage::helper('mdg_giftregistry')->__('Event Type'),
-                'index'    => 'type_id',
-                'sortable' => false,
-            ));
-            return parent::_prepareColumns();
-        }
-
-        protected function _prepareMassaction(){
-        }
+File Location: Grid.php
+<?php
+class Mdg_Giftregistry_Block_Adminhtml_Registries_Grid extends Mage_Adminhtml_Block_Widget_Grid
+{
+    public function __construct(){
+        parent::__construct();
+        $this->setId('registriesGrid');
+        $this->setDefaultSort('event_date');
+        $this->setDefaultDir('ASC');
+        $this->setSaveParametersInSession(true);
     }
-    ```
+
+    protected function _prepareCollection(){
+        $collection = Mage::getModel('mdg_giftregistry/entity')->getCollection();
+        $this->setCollection($collection);
+        return parent::_prepareCollection();
+    }
+
+    protected function _prepareColumns()
+    {
+        $this->addColumn('entity_id', array(
+            'header'   => Mage::helper('mdg_giftregistry')->__('Id'),
+            'width'    => 50,
+            'index'    => 'entity_id',
+            'sortable' => false,
+        ));
+
+        $this->addColumn('event_location', array(
+            'header'   => Mage::helper('mdg_giftregistry')->__('Location'),
+            'index'    => 'event_location',
+            'sortable' => false,
+        ));
+
+        $this->addColumn('event_date', array(
+            'header'   => Mage::helper('mdg_giftregistry')->__('Event Date'),
+            'index'    => 'event_date',
+            'sortable' => false,
+        ));
+
+        $this->addColumn('type_id', array(
+            'header'   => Mage::helper('mdg_giftregistry')->__('Event Type'),
+            'index'    => 'type_id',
+            'sortable' => false,
+        ));
+        return parent::_prepareColumns();
+    }
+
+    protected function _prepareMassaction(){
+    }
+}
+```
 
 这个网格代码与我们之前为**客户**选项卡创建的非常相似，唯一的区别是这次我们不是特别按客户记录进行过滤，而且我们还创建了一个网格容器块，而不是实现一个自定义块。
 
@@ -584,14 +584,14 @@ Magento 后端在许多方面可以被视为与 Magento 前端分开的应用程
 1.  将以下代码添加到其中：
 
 ```php
-    …
-        <adminhtml_giftregistry_index>
-             <reference name="content">
-                 <block type="mdg_giftregistry/adminhtml_registries" name="registries" />
-             </reference>
-         </adminhtml_giftregistry_index>
-    …
-    ```
+…
+    <adminhtml_giftregistry_index>
+         <reference name="content">
+             <block type="mdg_giftregistry/adminhtml_registries" name="registries" />
+         </reference>
+     </adminhtml_giftregistry_index>
+…
+```
 
 由于我们使用了网格容器，我们只需要指定网格容器块，Magento 将负责加载匹配的网格容器。
 
@@ -610,18 +610,18 @@ Magento 后端在许多方面可以被视为与 Magento 前端分开的应用程
 1.  用以下代码替换`_prepareMassaction()`函数：
 
 ```php
-    protected function _prepareMassaction(){
-        $this->setMassactionIdField('entity_id');
-        $this->getMassactionBlock()->setFormFieldName('registries');
+protected function _prepareMassaction(){
+    $this->setMassactionIdField('entity_id');
+    $this->getMassactionBlock()->setFormFieldName('registries');
 
-        $this->getMassactionBlock()->addItem('delete', array(
-            'label'     => Mage::helper('mdg_giftregistry')->__('Delete'),
-            'url'       => $this->getUrl('*/*/massDelete'),
-            'confirm'   => Mage::helper('mdg_giftregistry')->__('Are you sure?')
-        ));
-        return $this;
-    }
-    ```
+    $this->getMassactionBlock()->addItem('delete', array(
+        'label'     => Mage::helper('mdg_giftregistry')->__('Delete'),
+        'url'       => $this->getUrl('*/*/massDelete'),
+        'confirm'   => Mage::helper('mdg_giftregistry')->__('Are you sure?')
+    ));
+    return $this;
+}
+```
 
 大规模操作的工作方式是通过将一系列选定的 ID 传递给我们指定的控制器动作；在这种情况下，`massDelete()`动作将添加代码来迭代注册表集合并删除每个指定的注册表。执行以下步骤：
 
@@ -630,30 +630,30 @@ Magento 后端在许多方面可以被视为与 Magento 前端分开的应用程
 1.  用以下代码替换空白的`massDelete()`动作：
 
 ```php
-    …
-    public function massDeleteAction()
-    {
-        $registryIds = $this->getRequest()->getParam('registries');
-            if(!is_array($registryIds)) {
-                 Mage::getSingleton('adminhtml/session')->addError(Mage::helper('mdg_giftregistry')->__('Please select one or more registries.'));
-            } else {
-                try {
-                    $registry = Mage::getModel('mdg_giftregistry/entity');
-                    foreach ($registryIds as $registryId) {
-                        $registry->reset()
-                            ->load($registryId)
-                            ->delete();
-                    }
-                    Mage::getSingleton('adminhtml/session')->addSuccess(
-                    Mage::helper('adminhtml')->__('Total of %d record(s) were deleted.', count($registryIds))
-                    );
-                } catch (Exception $e) {
-                    Mage::getSingleton('adminhtml/session')->addError($e->getMessage());
+…
+public function massDeleteAction()
+{
+    $registryIds = $this->getRequest()->getParam('registries');
+        if(!is_array($registryIds)) {
+             Mage::getSingleton('adminhtml/session')->addError(Mage::helper('mdg_giftregistry')->__('Please select one or more registries.'));
+        } else {
+            try {
+                $registry = Mage::getModel('mdg_giftregistry/entity');
+                foreach ($registryIds as $registryId) {
+                    $registry->reset()
+                        ->load($registryId)
+                        ->delete();
                 }
+                Mage::getSingleton('adminhtml/session')->addSuccess(
+                Mage::helper('adminhtml')->__('Total of %d record(s) were deleted.', count($registryIds))
+                );
+            } catch (Exception $e) {
+                Mage::getSingleton('adminhtml/session')->addError($e->getMessage());
             }
-            $this->_redirect('*/*/index');
-    }
-    ```
+        }
+        $this->_redirect('*/*/index');
+}
+```
 
 ### 注意
 
@@ -666,13 +666,13 @@ Magento 后端在许多方面可以被视为与 Magento 前端分开的应用程
 1.  向其中添加以下函数：
 
 ```php
-    …
-    public function getRowUrl($row)
-    {
-        return $this->getUrl('*/*/edit', array('id' => $row->getEntityId()));
-    }
-    …
-    ```
+…
+public function getRowUrl($row)
+{
+    return $this->getUrl('*/*/edit', array('id' => $row->getEntityId()));
+}
+…
+```
 
 # 表单小部件
 
@@ -689,26 +689,26 @@ Magento 后端在许多方面可以被视为与 Magento 前端分开的应用程
 1.  向类文件中添加以下代码：
 
 ```php
-    class Mdg_Giftregistry_Block_Adminhtml_Registries_Edit extends Mage_Adminhtml_Block_Widget_Form_Container
-    {
-        public function __construct(){
-            parent::__construct();
-            $this->_objectId = 'id';
-            $this->_blockGroup = 'registries';
-            $this->_controller = 'adminhtml_giftregistry';
-            $this->_mode = 'edit';
+class Mdg_Giftregistry_Block_Adminhtml_Registries_Edit extends Mage_Adminhtml_Block_Widget_Form_Container
+{
+    public function __construct(){
+        parent::__construct();
+        $this->_objectId = 'id';
+        $this->_blockGroup = 'registries';
+        $this->_controller = 'adminhtml_giftregistry';
+        $this->_mode = 'edit';
 
-            $this->_updateButton('save', 'label', Mage::helper('mdg_giftregistry')->__('Save Registry'));
-            $this->_updateButton('delete', 'label', Mage::helper('mdg_giftregistry')->__('Delete Registry'));
-        }
-
-        public function getHeaderText(){
-            if(Mage::registry('registries_data') && Mage::registry('registries_data')->getId())
-                return Mage::helper('mdg_giftregistry')->__("Edit Registry '%s'", $this->htmlEscape(Mage::registry('registries_data')->getTitle()));
-            return Mage::helper('mdg_giftregistry')->__('Add Registry');
-        }
+        $this->_updateButton('save', 'label', Mage::helper('mdg_giftregistry')->__('Save Registry'));
+        $this->_updateButton('delete', 'label', Mage::helper('mdg_giftregistry')->__('Delete Registry'));
     }
-    ```
+
+    public function getHeaderText(){
+        if(Mage::registry('registries_data') && Mage::registry('registries_data')->getId())
+            return Mage::helper('mdg_giftregistry')->__("Edit Registry '%s'", $this->htmlEscape(Mage::registry('registries_data')->getTitle()));
+        return Mage::helper('mdg_giftregistry')->__('Add Registry');
+    }
+}
+```
 
 与网格小部件类似，表单容器小部件将自动识别并加载匹配的表单块。
 
@@ -731,67 +731,67 @@ $this->getLayout()->createBlock($this->_blockGroup . '/' . $this->_controller . 
 1.  向其中添加以下代码：
 
 ```php
-    <?php
-    class Mdg_Giftregistry_Block_Adminhtml_Registries_Edit_Form extends  Mage_Adminhtml_Block_Widget_Form
-    {
-        protected function _prepareForm(){
-            $form = new Varien_Data_Form(array(
-                'id' => 'edit_form',
-                'action' => $this->getUrl('*/*/save', array('id' => $this->getRequest()->getParam('id'))),
-                'method' => 'post',
-                'enctype' => 'multipart/form-data'
-            ));
-            $form->setUseContainer(true);
-            $this->setForm($form);
+<?php
+class Mdg_Giftregistry_Block_Adminhtml_Registries_Edit_Form extends  Mage_Adminhtml_Block_Widget_Form
+{
+    protected function _prepareForm(){
+        $form = new Varien_Data_Form(array(
+            'id' => 'edit_form',
+            'action' => $this->getUrl('*/*/save', array('id' => $this->getRequest()->getParam('id'))),
+            'method' => 'post',
+            'enctype' => 'multipart/form-data'
+        ));
+        $form->setUseContainer(true);
+        $this->setForm($form);
 
-            if (Mage::getSingleton('adminhtml/session')->getFormData()){
-                $data = Mage::getSingleton('adminhtml/session')->getFormData();
-                Mage::getSingleton('adminhtml/session')->setFormData(null);
-            }elseif(Mage::registry('registry_data'))
-                $data = Mage::registry('registry_data')->getData();
+        if (Mage::getSingleton('adminhtml/session')->getFormData()){
+            $data = Mage::getSingleton('adminhtml/session')->getFormData();
+            Mage::getSingleton('adminhtml/session')->setFormData(null);
+        }elseif(Mage::registry('registry_data'))
+            $data = Mage::registry('registry_data')->getData();
 
-            $fieldset = $form->addFieldset('registry_form', array('legend'=>Mage::helper('mdg_giftregistry')->__('Gift Registry information')));
+        $fieldset = $form->addFieldset('registry_form', array('legend'=>Mage::helper('mdg_giftregistry')->__('Gift Registry information')));
 
-            $fieldset->addField('type_id', 'text', array(
-                'label'     => Mage::helper('mdg_giftregistry')->__('Registry Id'),
-                'class'     => 'required-entry',
-                'required'  => true,
-                'name'      => 'type_id',
-            ));
+        $fieldset->addField('type_id', 'text', array(
+            'label'     => Mage::helper('mdg_giftregistry')->__('Registry Id'),
+            'class'     => 'required-entry',
+            'required'  => true,
+            'name'      => 'type_id',
+        ));
 
-            $fieldset->addField('website_id', 'text', array(
-                'label'     => Mage::helper('mdg_giftregistry')->__('Website Id'),
-                'class'     => 'required-entry',
-                'required'  => true,
-                'name'      => 'website_id',
-            ));
+        $fieldset->addField('website_id', 'text', array(
+            'label'     => Mage::helper('mdg_giftregistry')->__('Website Id'),
+            'class'     => 'required-entry',
+            'required'  => true,
+            'name'      => 'website_id',
+        ));
 
-            $fieldset->addField('event_location', 'text', array(
-                'label'     => Mage::helper('mdg_giftregistry')->__('Event Location'),
-                'class'     => 'required-entry',
-                'required'  => true,
-                'name'      => 'event_location',
-            ));
+        $fieldset->addField('event_location', 'text', array(
+            'label'     => Mage::helper('mdg_giftregistry')->__('Event Location'),
+            'class'     => 'required-entry',
+            'required'  => true,
+            'name'      => 'event_location',
+        ));
 
-            $fieldset->addField('event_date', 'text', array(
-                'label'     => Mage::helper('mdg_giftregistry')->__('Event Date'),
-                'class'     => 'required-entry',
-                'required'  => true,
-                'name'      => 'event_date',
-            ));
+        $fieldset->addField('event_date', 'text', array(
+            'label'     => Mage::helper('mdg_giftregistry')->__('Event Date'),
+            'class'     => 'required-entry',
+            'required'  => true,
+            'name'      => 'event_date',
+        ));
 
-            $fieldset->addField('event_country', 'text', array(
-                'label'     => Mage::helper('mdg_giftregistry')->__('Event Country'),
-                'class'     => 'required-entry',
-                'required'  => true,
-                'name'      => 'event_country',
-            ));
+        $fieldset->addField('event_country', 'text', array(
+            'label'     => Mage::helper('mdg_giftregistry')->__('Event Country'),
+            'class'     => 'required-entry',
+            'required'  => true,
+            'name'      => 'event_country',
+        ));
 
-            $form->setValues($data);
-            return parent::_prepareForm();
-        }
+        $form->setValues($data);
+        return parent::_prepareForm();
     }
-    ```
+}
+```
 
 我们还需要修改我们的布局文件，并告诉 Magento 加载我们的表单容器。
 
@@ -871,31 +871,31 @@ if (Mage::getSingleton('adminhtml/session')->getFormData()){
 1.  用以下代码替换空白的`saveAction()`函数：
 
 ```php
-    public function saveAction()
+public function saveAction()
+{
+    if ($this->getRequest()->getPost())
     {
-        if ($this->getRequest()->getPost())
-        {
-            try {
-                $data = $this->getRequest()->getPost();
-                $id = $this->getRequest()->getParam('id');
+        try {
+            $data = $this->getRequest()->getPost();
+            $id = $this->getRequest()->getParam('id');
 
-                if ($data && $id) {
-                    $registry = Mage::getModel('mdg_giftregistry/entity')->load($id);
-                    $registry->setData($data);
-                    $registry->save();
-                      $this->_redirect('*/*/edit', array('id' => $this->getRequest()->getParam('registry_id')));
-                }
-            } catch (Exception $e) {
-                $this->_getSession()->addError(
-                    Mage::helper('mdg_giftregistry')->__('An error occurred while saving the registry data. Please review the log and try again.')
-                );
-                Mage::logException($e);
-                $this->_redirect('*/*/edit', array('id' => $this->getRequest()->getParam('registry_id')));
-                return $this;
+            if ($data && $id) {
+                $registry = Mage::getModel('mdg_giftregistry/entity')->load($id);
+                $registry->setData($data);
+                $registry->save();
+                  $this->_redirect('*/*/edit', array('id' => $this->getRequest()->getParam('registry_id')));
             }
+        } catch (Exception $e) {
+            $this->_getSession()->addError(
+                Mage::helper('mdg_giftregistry')->__('An error occurred while saving the registry data. Please review the log and try again.')
+            );
+            Mage::logException($e);
+            $this->_redirect('*/*/edit', array('id' => $this->getRequest()->getParam('registry_id')));
+            return $this;
         }
     }
-    ```
+}
+```
 
 让我们逐步分解一下这段代码在做什么：
 

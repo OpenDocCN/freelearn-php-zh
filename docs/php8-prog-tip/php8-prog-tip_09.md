@@ -143,100 +143,100 @@ object(CurlHandle)#1 (0) {}
 1.  我们首先定义一个`Http/Request`类。类构造函数将给定的 URL 解析为其组成部分，如下所示的代码片段所示：
 
 ```php
-    // /repo/src/Http/Request.php
-    namespace Http;
-    class Request {
-        public $url      = '';
-        public $method   = 'GET';
-        // not all properties shown
-        public $query    = '';
-        public function __construct(string $url) {
-            $result = [];
-            $parsed = parse_url($url);
-            $vars   = array_keys(get_object_vars($this));
-            foreach ($vars as $name)
-                $this->$name = $parsed[$name] ?? '';
-            if (!empty($this->query))
-                parse_str($this->query, $result);
-            $this->query = $result;
-            $this->url   = $url;
-        }
-    }
-    ```
+// /repo/src/Http/Request.php
+namespace Http;
+class Request {
+    public $url      = '';
+    public $method   = 'GET';
+    // not all properties shown
+    public $query    = '';
+    public function __construct(string $url) {
+        $result = [];
+        $parsed = parse_url($url);
+        $vars   = array_keys(get_object_vars($this));
+        foreach ($vars as $name)
+            $this->$name = $parsed[$name] ?? '';
+        if (!empty($this->query))
+            parse_str($this->query, $result);
+        $this->query = $result;
+        $this->url   = $url;
+    }
+}
+```
 
 1.  接下来，我们定义一个`CurlStrategy`类，它使用`cURL`扩展来发送消息。请注意，`__construct()`方法使用了构造函数参数推广。您可能还注意到，我们为`$handle`参数提供了一个`CurlHandle`数据类型。这是 PHP 8 中独有的巨大优势，它确保了创建此策略类实例的任何程序都必须提供正确的资源数据类型。代码如下所示：
 
 ```php
-    // /repo/src/Http/Client/CurlStrategy.php
-    namespace Http\Client;
-    use CurlHandle;
-    use Http\Request;
-    class CurlStrategy {
-        public function __construct(
-            public CurlHandle $handle) {}
-    ```
+// /repo/src/Http/Client/CurlStrategy.php
+namespace Http\Client;
+use CurlHandle;
+use Http\Request;
+class CurlStrategy {
+    public function __construct(
+        public CurlHandle $handle) {}
+```
 
 1.  然后我们定义了用于发送消息的实际逻辑，如下所示：
 
 ```php
-        public function send(Request $request) {
-            // not all code is shown
-            curl_setopt($this->handle, 
-                CURLOPT_URL, $request->url);
-            if (strtolower($request->method) === 'post') {
-                $opts = [CURLOPT_POST => 1,
-                    CURLOPT_POSTFIELDS =>
-                        http_build_query($request->query)];
-                curl_setopt_array($this->handle, $opts);
-            }
-            return curl_exec($this->handle);
-        }
-    }
-    ```
+    public function send(Request $request) {
+        // not all code is shown
+        curl_setopt($this->handle, 
+            CURLOPT_URL, $request->url);
+        if (strtolower($request->method) === 'post') {
+            $opts = [CURLOPT_POST => 1,
+                CURLOPT_POSTFIELDS =>
+                    http_build_query($request->query)];
+            curl_setopt_array($this->handle, $opts);
+        }
+        return curl_exec($this->handle);
+    }
+}
+```
 
 1.  然后我们可以使用`StreamsStrategy`类做同样的事情。再次注意下面的代码片段中如何使用类作为构造函数参数类型提示，以确保正确使用该策略：
 
 ```php
-    // /repo/src/Http/Client/StreamsStrategy.php
-    namespace Http\Client;
-    use SplFileObject;
-    use Exception;
-    use Http\Request;
-    class StreamsStrategy {
-        public function __construct(
-            public ?SplFileObject $obj) {}
-        // remaining code not shown
-    ```
+// /repo/src/Http/Client/StreamsStrategy.php
+namespace Http\Client;
+use SplFileObject;
+use Exception;
+use Http\Request;
+class StreamsStrategy {
+    public function __construct(
+        public ?SplFileObject $obj) {}
+    // remaining code not shown
+```
 
 1.  然后我们定义一个调用程序，调用两种策略并提供结果。在设置自动加载后，我们创建一个新的`Http\Request`实例，并提供一个任意的 URL 作为参数，如下所示：
 
 ```php
-    // //repo/ch07/php8_objs_returned.php
-    require_once __DIR__ 
-        . '/../src/Server/Autoload/Loader.php';
-    $autoload = new \Server\Autoload\Loader();
-    use Http\Request;
-    use Http\Client\{CurlStrategy,StreamsStrategy};
-    $url = 'https://api.unlikelysource.com/api
-        ?city=Livonia&country=US';
-    $request = new Request($url);
-    ```
+// //repo/ch07/php8_objs_returned.php
+require_once __DIR__ 
+    . '/../src/Server/Autoload/Loader.php';
+$autoload = new \Server\Autoload\Loader();
+use Http\Request;
+use Http\Client\{CurlStrategy,StreamsStrategy};
+$url = 'https://api.unlikelysource.com/api
+    ?city=Livonia&country=US';
+$request = new Request($url);
+```
 
 1.  接下来，我们定义一个`StreamsStrategy`实例并发送请求，如下所示：
 
 ```php
-    $streams  = new StreamsStrategy();
-    $response = $streams->send($request);
-    echo $response;
-    ```
+$streams  = new StreamsStrategy();
+$response = $streams->send($request);
+echo $response;
+```
 
 1.  然后我们定义一个`CurlStrategy`实例并发送相同的请求，如下所示的代码片段所示：
 
 ```php
-    $curl     = new CurlStrategy(curl_init());
-    $response = $curl->send($request);
-    echo $response;
-    ```
+$curl     = new CurlStrategy(curl_init());
+$response = $curl->send($request);
+echo $response;
+```
 
 两种策略的输出是相同的。这里显示了部分输出（请注意，此示例仅适用于 PHP 8！）：
 
@@ -296,36 +296,36 @@ PHP 提供了许多扩展，允许您消耗和生成 XML 文档。在 PHP 8 中�
 1.  我们首先创建一个`XMLWriter`实例。然后打开到共享内存的连接，并初始化 XML 文档类型，如下所示：
 
 ```php
-    // //repo/ch07/php8_xml_writer.php
-    $xml = new XMLWriter();
-    $xml->openMemory();
-    $xml->startDocument('1.0', 'UTF-8');
-    ```
+// //repo/ch07/php8_xml_writer.php
+$xml = new XMLWriter();
+$xml->openMemory();
+$xml->startDocument('1.0', 'UTF-8');
+```
 
 1.  接下来，我们使用`startElement()`来初始化`fruit`根节点，并添加一个值为`Apple`的子节点项，如下所示：
 
 ```php
-    $xml->startElement('fruit');
-    $xml->startElement('item');
-    $xml->text('Apple');
-    $xml->endElement();
-    ```
+$xml->startElement('fruit');
+$xml->startElement('item');
+$xml->text('Apple');
+$xml->endElement();
+```
 
 1.  接下来，我们添加另一个值为`Banana`的子节点项，如下所示：
 
 ```php
-    $xml->startElement('item');
-    $xml->text('Banana');
-    $xml->endElement();
-    ```
+$xml->startElement('item');
+$xml->text('Banana');
+$xml->endElement();
+```
 
 1.  最后，我们关闭`fruit`根节点并结束 XML 文档。以下代码片段中的最后一个命令显示当前的 XML 文档：
 
 ```php
-    $xml->endElement();
-    $xml->endDocument();
-    echo $xml->outputMemory();
-    ```
+$xml->endElement();
+$xml->endDocument();
+echo $xml->outputMemory();
+```
 
 以下是在 PHP 7 中运行的示例程序的输出：
 
@@ -387,76 +387,76 @@ root@php8_tips_php7 [ /repo/ch07 ]# php php8_xml_writer.php
 1.  我们首先定义一个递归函数，显示后代的姓名和配偶（如果有），如下面的代码片段所示。该函数还识别后代的性别，并检查是否有子女。如果后者为`true`，则函数会调用自身：
 
 ```php
-    function recurse($branch) {
-        foreach ($branch as $node) {
-            echo $node->descendent;
-            echo ($node->descendent['gender'] == 'F')
-                 ? ', daughter of '
-                 : ', son of ';
-            echo $node['name'];
-            if (empty($node->spouse)) echo "\n";
-            else echo ", married to {$node->spouse}\n";
-            if (!empty($node->branch)) 
-                recurse($node->branch);
-        }
-    }
-    ```
+function recurse($branch) {
+    foreach ($branch as $node) {
+        echo $node->descendent;
+        echo ($node->descendent['gender'] == 'F')
+             ? ', daughter of '
+             : ', son of ';
+        echo $node['name'];
+        if (empty($node->spouse)) echo "\n";
+        else echo ", married to {$node->spouse}\n";
+        if (!empty($node->branch)) 
+            recurse($node->branch);
+    }
+}
+```
 
 1.  然后我们从外部 XML 文件创建一个`SimpleXMLElement`实例，并调用递归函数，如下所示：
 
 ```php
-    // //repo/ch07/php7_simple_xml.php
-    $fn = __DIR__ . '/includes/tree.xml';
-    $xml = simplexml_load_file($fn);
-    recurse($xml);
-    ```
+// //repo/ch07/php7_simple_xml.php
+$fn = __DIR__ . '/includes/tree.xml';
+$xml = simplexml_load_file($fn);
+recurse($xml);
+```
 
 这段代码块在 PHP 7 和 PHP 8 中都可以工作。以下是在 PHP 7 中运行的输出：
 
 ```php
-    root@php8_tips_php7 [ /repo/ch07 ]# php php7_simple_xml.php
-    George V, son of Windsor, married to Mary of Treck
-    George VI, son of George V, married to Elizabeth Bowes-Lyon
-    Elizabeth II, daughter of George VI, married to Philip
-    Prince Charles, son of Elizabeth II, married to Diana Spencer
-    William, son of Prince Charles, married to Kate Middleton
-    Harry, son of Prince Charles, married to Meghan Markle
-    Princess Anne, daughter of Elizabeth II, married to M.Phillips
-    Princess Margaret, daughter of George VI, married to A.Jones
-    Edward VIII, son of George V, married to Wallis Simpson
-    Princess Mary, daughter of George V, married to H.Lascelles
-    Prince Henry, son of George V, married to Lady Alice Montegu
-    Prince George, son of George V, married to Princess Marina
-    Prince John, son of George V
-    ```
+root@php8_tips_php7 [ /repo/ch07 ]# php php7_simple_xml.php
+George V, son of Windsor, married to Mary of Treck
+George VI, son of George V, married to Elizabeth Bowes-Lyon
+Elizabeth II, daughter of George VI, married to Philip
+Prince Charles, son of Elizabeth II, married to Diana Spencer
+William, son of Prince Charles, married to Kate Middleton
+Harry, son of Prince Charles, married to Meghan Markle
+Princess Anne, daughter of Elizabeth II, married to M.Phillips
+Princess Margaret, daughter of George VI, married to A.Jones
+Edward VIII, son of George V, married to Wallis Simpson
+Princess Mary, daughter of George V, married to H.Lascelles
+Prince Henry, son of George V, married to Lady Alice Montegu
+Prince George, son of George V, married to Princess Marina
+Prince John, son of George V
+```
 
 然而，在 PHP 8 中，由于`SimpleXMLElement`现在实现了`RecursiveIterator`，生成相同结果的代码更简单了。
 
 1.  与之前显示的示例一样，我们从外部文件定义了一个`SimpleXMLElement`实例。但是，我们无需定义递归函数，我们只需要定义一个`RecursiveIteratorIterator`实例，如下所示：
 
 ```php
-    // //repo/ch07/php8_simple_xml.php
-    $fn = __DIR__ . '/includes/tree.xml';
-    $xml = simplexml_load_file($fn);
-    $iter = new RecursiveIteratorIterator($xml,
-        RecursiveIteratorIterator::SELF_FIRST);
-    ```
+// //repo/ch07/php8_simple_xml.php
+$fn = __DIR__ . '/includes/tree.xml';
+$xml = simplexml_load_file($fn);
+$iter = new RecursiveIteratorIterator($xml,
+    RecursiveIteratorIterator::SELF_FIRST);
+```
 
 1.  之后，我们只需要一个简单的`foreach()`循环，内部逻辑与前面的示例相同。无需检查分支节点是否存在，也不需要递归 - 这由`RecursiveIteratorIterator`实例处理！您需要的代码如下所示：
 
 ```php
-    foreach ($iter as $branch) {
-        if (!empty($branch->descendent)) {
-            echo $branch->descendent;
-            echo ($branch->descendent['gender'] == 'F')
-                 ? ', daughter of '
-                 : ', son of ';
-            echo $branch['name'];
-            if (empty($branch->spouse)) echo "\n";
-            else echo ", married to {$branch->spouse}\n";
-        }
-    }
-    ```
+foreach ($iter as $branch) {
+    if (!empty($branch->descendent)) {
+        echo $branch->descendent;
+        echo ($branch->descendent['gender'] == 'F')
+             ? ', daughter of '
+             : ', son of ';
+        echo $branch['name'];
+        if (empty($branch->spouse)) echo "\n";
+        else echo ", married to {$branch->spouse}\n";
+    }
+}
+```
 
 在 PHP 8 中运行此代码示例的输出如下所示。如您所见，输出完全相同：
 
@@ -583,21 +583,21 @@ array(87) {
 1.  首先，我们初始化一个多字节文本字符串。在下面的示例中，这是*快速的棕色狐狸跳过了篱笆*的泰语翻译。needle 参数设置为`NULL`，并初始化要测试的函数数组：
 
 ```php
-    // /repo/ch07/php8_mb_string_empty_needle.php
-    $text   = 'สุนัขจิ้งจอกสีน้ำตาลกระโดดข้ามรั้วอย่างรวดเร็ว';
-    $needle = NULL;
-    $funcs  = ['mb_strpos',   'mb_strrpos', 'mb_stripos',
-               'mb_strripos', 'mb_strstr', 'mb_stristr',
-               'mb_strrchr',  'mb_strrichr'];
-    ```
+// /repo/ch07/php8_mb_string_empty_needle.php
+$text   = 'สุนัขจิ้งจอกสีน้ำตาลกระโดดข้ามรั้วอย่างรวดเร็ว';
+$needle = NULL;
+$funcs  = ['mb_strpos',   'mb_strrpos', 'mb_stripos',
+           'mb_strripos', 'mb_strstr', 'mb_stristr',
+           'mb_strrchr',  'mb_strrichr'];
+```
 
 1.  然后我们定义一个`printf()`模式，并循环遍历要测试的函数。对于每个函数调用，我们提供文本，然后是一个空的 needle 参数，如下所示：
 
 ```php
-    $patt = "Testing: %12s : %s\n";
-    foreach ($funcs as $str)
-        printf($patt, $str, $str($text, $needle));
-    ```
+$patt = "Testing: %12s : %s\n";
+foreach ($funcs as $str)
+    printf($patt, $str, $str($text, $needle));
+```
 
 PHP 7 的输出如下所示：
 
@@ -648,21 +648,21 @@ Testing:  mb_strrichr :
 1.  我们首先定义一个常量来表示我们希望使用的字符编码。分配一个代表*The quick brown fox jumped over the fence*泰语翻译的文本字符串。然后我们使用`mb_convert_encoding()`来确保使用正确的编码。代码如下所示：
 
 ```php
-    // /repo/ch07/php7_mb_string_strpos.php
-    define('ENCODING', 'UTF-8');
-    $text    = 'สุนัขจิ้งจอกสีน้ำตาลกระโดดข้ามรั้วอย่างรวดเร็ว';
-    $encoded = mb_convert_encoding($text, ENCODING);
-    ```
+// /repo/ch07/php7_mb_string_strpos.php
+define('ENCODING', 'UTF-8');
+$text    = 'สุนัขจิ้งจอกสีน้ำตาลกระโดดข้ามรั้วอย่างรวดเร็ว';
+$encoded = mb_convert_encoding($text, ENCODING);
+```
 
 1.  然后我们将*fence*的泰语翻译分配给`$needle`，并输出字符串的长度和`$needle`在文本中的位置。然后我们调用`mb_strrpos()`来找到`$needle`的最后一次出现。请注意在以下代码片段中，我们故意遵循了使用编码作为第三个参数而不是偏移量的不良做法：
 
 ```php
-    $needle  = 'รั้ว';
-    echo 'String Length: ' 
-        . mb_strlen($encoded, ENCODING) . "\n";
-    echo 'Substring Pos: ' 
-        . mb_strrpos($encoded, $needle, ENCODING) . "\n";
-    ```
+$needle  = 'รั้ว';
+echo 'String Length: ' 
+    . mb_strlen($encoded, ENCODING) . "\n";
+echo 'Substring Pos: ' 
+    . mb_strrpos($encoded, $needle, ENCODING) . "\n";
+```
 
 这个代码示例在 PHP 7 中完美运行，如下所示：
 
@@ -710,20 +710,20 @@ echo 'Substring Pos: '
 1.  首先，我们定义要使用的编码，并将“Two quick brown foxes jumped over the fence”的泰语翻译作为多字节字符串赋给`$text`。接下来，我们使用`mb_convert_encoding()`来确保使用正确的编码。然后，我们使用`mb_regex_encoding()`将`mb_ereg*`设置为所选的编码。代码如下所示：
 
 ```php
-    // /repo/ch07/php7_mb_string_strpos.php
-    define('ENCODING', 'UTF-8');
-    $text = 'สุนัขจิ้งจอกสีน้ำตาล 2 ตัวกระโดดข้ามรั้ว';
-    $str  = mb_convert_encoding($text, ENCODING);
-    mb_regex_encoding(ENCODING);
-    ```
+// /repo/ch07/php7_mb_string_strpos.php
+define('ENCODING', 'UTF-8');
+$text = 'สุนัขจิ้งจอกสีน้ำตาล 2 ตัวกระโดดข้ามรั้ว';
+$str  = mb_convert_encoding($text, ENCODING);
+mb_regex_encoding(ENCODING);
+```
 
 1.  然后我们调用`mb_ereg_replace()`，并将整数值`50`作为第一个参数，并用字符串`"3"`替换它。原始字符串和修改后的字符串都被输出。你可以在这里查看代码：
 
 ```php
-    $mod1 = mb_ereg_replace(50, '3', $str);
-    echo "Original: $str\n";
-    echo "Modified: $mod1\n";
-    ```
+$mod1 = mb_ereg_replace(50, '3', $str);
+echo "Original: $str\n";
+echo "Modified: $mod1\n";
+```
 
 请注意，`mb_ereg_replace()`的第一个参数应该是一个字符串，但我们却提供了一个整数。在 PHP 8 之前的`mbstring`扩展版本中，如果提供整数作为第一个参数，它会被视为 ASCII 码点。
 
@@ -850,94 +850,94 @@ imagepolygon(resource $image, array $points,
 1.  我们首先定义一个`__construct()`方法，创建目标类的`ReflectionClass`实例，如下所示：
 
 ```php
-    // /repo/src/Services/DocBlockChecker.php
-    namespace Services;
-    use ReflectionClass;
-    class DocBlockChecker {
-        public $target = '';    // class to check
-        public $reflect = NULL; // ReflectionClass instance
-        public function __construct(string $target) {
-            $this->target = $target;
-            $this->reflect = new ReflectionClass($target);
-        }
-    ```
+// /repo/src/Services/DocBlockChecker.php
+namespace Services;
+use ReflectionClass;
+class DocBlockChecker {
+    public $target = '';    // class to check
+    public $reflect = NULL; // ReflectionClass instance
+    public function __construct(string $target) {
+        $this->target = $target;
+        $this->reflect = new ReflectionClass($target);
+    }
+```
 
 1.  然后我们定义一个`check()`方法，获取所有类方法，返回一个`ReflectionMethod`实例数组，如下所示：
 
 ```php
-        public function check() {
-            $methods = [];
-            $list = $this->reflect->getMethods();
-    ```
+    public function check() {
+        $methods = [];
+        $list = $this->reflect->getMethods();
+```
 
 1.  然后我们循环遍历所有方法，并使用`getDocComment()`来检查是否已经存在`docblock`，如下所示：
 
 ```php
-          foreach ($list as $refMeth) {
-              $docBlock = $refMeth->getDocComment();
-    ```
+      foreach ($list as $refMeth) {
+          $docBlock = $refMeth->getDocComment();
+```
 
 1.  如果`docblock`不存在，我们将开始一个新的`docblock`，然后调用`getParameters()`，它返回一个`ReflectionParameter`实例数组，如下面的代码片段所示：
 
 ```php
-              if (!$docBlock) {
-                  $docBlock = "/**\n * " 
-                      . $refMeth->getName() . "\n";
-                  $params = $refMeth->getParameters();
-    ```
+          if (!$docBlock) {
+              $docBlock = "/**\n * " 
+                  . $refMeth->getName() . "\n";
+              $params = $refMeth->getParameters();
+```
 
 1.  如果我们有参数，我们收集用于显示的信息，如下所示：
 
 ```php
-                if ($params) {
-                  foreach ($params as $refParm) {
-                    $type = $refParm->getType() 
-                          ?? 'mixed';
-                    $type = (string) $type;
-                    $name = $refParm->getName();
-                    $default = '';
-                    if (!$refParm->isVariadic() 
-                     && $refParm->isOptional()) {
-                      $default=$refParm->getDefaultValue(); }
-                    if ($default === '') {
-                      $default = "(empty string)"; }
-                    $docBlock .= " * @param $type "
-                      . "\${$name} : $default\n";
-                  }
-              }
-    ```
+            if ($params) {
+              foreach ($params as $refParm) {
+                $type = $refParm->getType() 
+                      ?? 'mixed';
+                $type = (string) $type;
+                $name = $refParm->getName();
+                $default = '';
+                if (!$refParm->isVariadic() 
+                 && $refParm->isOptional()) {
+                  $default=$refParm->getDefaultValue(); }
+                if ($default === '') {
+                  $default = "(empty string)"; }
+                $docBlock .= " * @param $type "
+                  . "\${$name} : $default\n";
+              }
+          }
+```
 
 1.  然后我们设置返回类型，并将`docblock`分配给一个`$methods`数组，然后返回，如下所示：
 
 ```php
-               if ($refMeth->isConstructor())
-                   $return = 'void';
-                else
-                    $return = $refMeth->getReturnType() 
-                              ?? 'mixed';
-                $docBlock .= " * @return $return\n";
-                $docBlock .= " */\n";
-            }
-            $methods[$refMeth->getName()] = $docBlock;
-        }
-        return $methods;
-      }
-    }
-    ```
+           if ($refMeth->isConstructor())
+               $return = 'void';
+            else
+                $return = $refMeth->getReturnType() 
+                          ?? 'mixed';
+            $docBlock .= " * @return $return\n";
+            $docBlock .= " */\n";
+        }
+        $methods[$refMeth->getName()] = $docBlock;
+    }
+    return $methods;
+  }
+}
+```
 
 1.  现在新的`docblock`检查类已经完成，我们定义一个调用程序，如下面的代码片段所示。调用程序针对`/repo/src/Php7/Reflection/Test.php`类（此处未显示）。这个类具有一些带有参数和返回值的方法的混合：
 
 ```php
-    // //repo/ch07/php7_reflection_usage.php
-    $target = 'Php7\Reflection\Test';
-    require_once __DIR__ 
-        . '/../src/Server/Autoload/Loader.php';
-    use Server\Autoload\Loader;
-    use Services\DocBlockChecker;
-    |$autoload = new Loader();
-    $checker = new DocBlockChecker($target);
-    var_dump($checker->check());
-    ```
+// //repo/ch07/php7_reflection_usage.php
+$target = 'Php7\Reflection\Test';
+require_once __DIR__ 
+    . '/../src/Server/Autoload/Loader.php';
+use Server\Autoload\Loader;
+use Services\DocBlockChecker;
+|$autoload = new Loader();
+$checker = new DocBlockChecker($target);
+var_dump($checker->check());
+```
 
 调用程序的输出如下所示：
 
@@ -1002,52 +1002,52 @@ array(4) {
 1.  首先，我们定义一个函数，接受一个`ReflectionParameter`实例，并返回一个包含参数名称和默认值的数组，如下所示：
 
 ```php
-    // /repo/ch07/php8_reflection_parms_defaults.php
-    $func = function (ReflectionParameter $parm) {
-        $name = $parm->getName();
-        $opts = NULL;
-        if ($parm->isDefaultValueAvailable())
-            $opts = $parm->getDefaultValue();
-    ```
+// /repo/ch07/php8_reflection_parms_defaults.php
+$func = function (ReflectionParameter $parm) {
+    $name = $parm->getName();
+    $opts = NULL;
+    if ($parm->isDefaultValueAvailable())
+        $opts = $parm->getDefaultValue();
+```
 
 1.  接下来，我们定义一个`switch()`语句来清理选项，如下所示：
 
 ```php
-        switch (TRUE) {
-            case (is_array($opts)) :
-                $tmp = '';
-                foreach ($opts as $key => $val)
-                    $tmp .= $key . ':' . $val . ',';
-                $opts = substr($tmp, 0, -1);
-                break;
-            case (is_bool($opts)) :
-                $opts = ($opts) ? 'TRUE' : 'FALSE';
-                break;
-            case ($opts === '') :
-                $opts = "''";
-                break;
-            default :
-                $opts = 'No Default';
-        }
-        return [$name, $opts];
-    };
-    ```
+    switch (TRUE) {
+        case (is_array($opts)) :
+            $tmp = '';
+            foreach ($opts as $key => $val)
+                $tmp .= $key . ':' . $val . ',';
+            $opts = substr($tmp, 0, -1);
+            break;
+        case (is_bool($opts)) :
+            $opts = ($opts) ? 'TRUE' : 'FALSE';
+            break;
+        case ($opts === '') :
+            $opts = "''";
+            break;
+        default :
+            $opts = 'No Default';
+    }
+    return [$name, $opts];
+};
+```
 
 1.  然后我们确定要反射的函数并提取其参数。在下面的例子中，我们反射`setcookie()`：
 
 ```php
-    $test = 'setcookie';
-    $ref = new ReflectionFunction($test);
-    $parms = $ref->getParameters();
-    ```
+$test = 'setcookie';
+$ref = new ReflectionFunction($test);
+$parms = $ref->getParameters();
+```
 
 1.  然后，我们循环遍历`ReflectionParameter`实例的数组并产生输出，如下所示：
 
 ```php
-    $patt = "%18s : %s\n";
-    foreach ($parms as $obj)
-        vprintf($patt, $func($obj));
-    ```
+$patt = "%18s : %s\n";
+foreach ($parms as $obj)
+    vprintf($patt, $func($obj));
+```
 
 以下是在 PHP 7 中运行的输出：
 
@@ -1269,38 +1269,38 @@ echo "Total Entries: $i\n";
 1.  首先，我们定义一个执行匹配并检查是否发生任何错误的函数，如下：
 
 ```php
-    $pregTest = function ($pattern, $string) {
-        $result  = preg_match($pattern, $string);
-        $lastErr = preg_last_error();
-        if ($lastErr == PREG_NO_ERROR) {
-            $msg = 'RESULT: ';
-            $msg .= ($result) ? 'MATCH' : 'NO MATCH';
-        } else {
-            $msg = 'ERROR : ';
-            if (function_exists('preg_last_error_msg'))
-                $msg .= preg_last_error_msg();
-            else
-                $msg .= $lastErr;
-        }
-        return "$msg\n";
-    };
-    ```
+$pregTest = function ($pattern, $string) {
+    $result  = preg_match($pattern, $string);
+    $lastErr = preg_last_error();
+    if ($lastErr == PREG_NO_ERROR) {
+        $msg = 'RESULT: ';
+        $msg .= ($result) ? 'MATCH' : 'NO MATCH';
+    } else {
+        $msg = 'ERROR : ';
+        if (function_exists('preg_last_error_msg'))
+            $msg .= preg_last_error_msg();
+        else
+            $msg .= $lastErr;
+    }
+    return "$msg\n";
+};
+```
 
 1.  然后我们创建一个故意包含 `\8+` 无效转义序列的模式，如下：
 
 ```php
-    $pattern = '/\8+/';
-    $string  = 'test 8';
-    echo $pregTest($pattern, $string);
-    ```
+$pattern = '/\8+/';
+$string  = 'test 8';
+echo $pregTest($pattern, $string);
+```
 
 1.  接下来，我们定义一个故意导致 PCRE 超出回溯限制的模式，如下：
 
 ```php
-    $pattern = '/(?:\D+|<\d+>)*[!?]/';
-    $string  = 'test ';
-    echo $pregTest($pattern, $string);
-    ```
+$pattern = '/(?:\D+|<\d+>)*[!?]/';
+$string  = 'test ';
+echo $pregTest($pattern, $string);
+```
 
 以下是 PHP 7.1 中的输出：
 
@@ -1342,20 +1342,20 @@ PHP 8 中引入到 Intl 扩展的主要更改是以下新的日期格式：
 1.  首先，我们定义一个`DateTime`实例和一个包含新格式代码的数组，如下所示：
 
 ```php
-    $dt = new DateTime('tomorrow');
-    $pt = [IntlDateFormatter::RELATIVE_FULL,
-        IntlDateFormatter::RELATIVE_LONG,
-        IntlDateFormatter::RELATIVE_MEDIUM,
-        IntlDateFormatter::RELATIVE_SHORT
-    ];
-    ```
+$dt = new DateTime('tomorrow');
+$pt = [IntlDateFormatter::RELATIVE_FULL,
+    IntlDateFormatter::RELATIVE_LONG,
+    IntlDateFormatter::RELATIVE_MEDIUM,
+    IntlDateFormatter::RELATIVE_SHORT
+];
+```
 
 1.  然后我们循环遍历格式并输出结果，如下所示：
 
 ```php
-    foreach ($pt as $fmt) 
-        echo IntlDateFormatter::formatObject($dt, $fmt)."\n";
-    ```
+foreach ($pt as $fmt) 
+    echo IntlDateFormatter::formatObject($dt, $fmt)."\n";
+```
 
 这个例子在 PHP 7 中不起作用。以下是 PHP 8 的输出：
 

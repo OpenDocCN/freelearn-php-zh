@@ -39,100 +39,100 @@
 1.  打开`routes.php`文件：
 
 ```php
-    Route::get('getting-data', function()
-    {
-      return View::make('getting-data');
-    });
+Route::get('getting-data', function()
+{
+  return View::make('getting-data');
+});
 
-    Route::get('tab1', function()
-    {
-      if (Request::ajax()) {
-      return View::make('tab1');
-    }
-      return Response::error('404');
-    });
+Route::get('tab1', function()
+{
+  if (Request::ajax()) {
+  return View::make('tab1');
+}
+  return Response::error('404');
+});
 
-    Route::get('tab2', function()
-    {
-      if (Request::ajax()) {
-      return View::make('tab2');
-    }
-      return Response::error('404');
-    });
-    ```
+Route::get('tab2', function()
+{
+  if (Request::ajax()) {
+  return View::make('tab2');
+}
+  return Response::error('404');
+});
+```
 
 1.  在`views`目录中，创建一个名为`tab1.php`的文件：
 
 ```php
-    <h1>CHAPTER 1 - Down the Rabbit-Hole</h1>
-    <p>
-      Alice was beginning to get very tired of sitting by her sister on the bank,and of having nothing to do: once or twice she had peeped into the book her sister was reading, but it had no pictures or conversations in it, 'and what is the use of a book,' thought Alice 'without pictures or conversation?'
-    </p>
-    <p>
-      So she was considering in her own mind (as well as she could, for the hot day made her feel very sleepy and stupid), whether the pleasure of making a daisy-chain would be worth the trouble of getting up and picking the daisies, when suddenly a White Rabbit with pink eyes ran close by her.
-    </p>
-    ```
+<h1>CHAPTER 1 - Down the Rabbit-Hole</h1>
+<p>
+  Alice was beginning to get very tired of sitting by her sister on the bank,and of having nothing to do: once or twice she had peeped into the book her sister was reading, but it had no pictures or conversations in it, 'and what is the use of a book,' thought Alice 'without pictures or conversation?'
+</p>
+<p>
+  So she was considering in her own mind (as well as she could, for the hot day made her feel very sleepy and stupid), whether the pleasure of making a daisy-chain would be worth the trouble of getting up and picking the daisies, when suddenly a White Rabbit with pink eyes ran close by her.
+</p>
+```
 
 1.  在`views`目录中，创建一个名为`tab2.php`的文件：
 
 ```php
-    <h1>Chapter 1</h1>
-    <p>"TOM!"</p>
-    <p>No answer.</p>
-    <p>"TOM!"</p>
-    <p>No answer.</p>
-    <p>"What's gone with that boy,  I wonder? You TOM!"</p>
-    <p>No answer.</p>
-    <p>
-      The old lady pulled her spectacles down and looked over them about the room; 
-      then she put them up and looked out under them. She seldom or never looked 
-      through them for so small a thing as a boy; they were her state pair, 
-      the pride of her heart, and were built for "style," not service—she could 
-      have seen through a pair of stove-lids just as well. She looked perplexed 
-      for a moment, and then said, not fiercely, but still loud enough for the 
-      furniture to hear:
-    </p>
-    <p>"Well, I lay if I get hold of you I'll—"</p>
-    <p>
-      She did not finish, for by this time she was bending down and punching 
-      under the bed with the broom, and so she needed breath to punctuate 
-      the punches with. She resurrected nothing but the cat.
-    </p>
-    ```
+<h1>Chapter 1</h1>
+<p>"TOM!"</p>
+<p>No answer.</p>
+<p>"TOM!"</p>
+<p>No answer.</p>
+<p>"What's gone with that boy,  I wonder? You TOM!"</p>
+<p>No answer.</p>
+<p>
+  The old lady pulled her spectacles down and looked over them about the room; 
+  then she put them up and looked out under them. She seldom or never looked 
+  through them for so small a thing as a boy; they were her state pair, 
+  the pride of her heart, and were built for "style," not service—she could 
+  have seen through a pair of stove-lids just as well. She looked perplexed 
+  for a moment, and then said, not fiercely, but still loud enough for the 
+  furniture to hear:
+</p>
+<p>"Well, I lay if I get hold of you I'll—"</p>
+<p>
+  She did not finish, for by this time she was bending down and punching 
+  under the bed with the broom, and so she needed breath to punctuate 
+  the punches with. She resurrected nothing but the cat.
+</p>
+```
 
 1.  在`views`目录中，创建一个名为`getting-data.php`的文件：
 
 ```php
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset=utf-8 />
-      <title>Getting Data</title>
-      <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
-    </head>
-    <body>
-    <ul>
-      <li><a href="#" id="tab1" class="tabs">Alice In Wonderland</a></li>
-      <li><a href="#" id="tab2" class="tabs">Tom Sawyer</a></li>
-    </ul>
-    <h1 id="title"></h1>
-    <div id="container"></div>
-    <script>
-      $(function() {
-      $(".tabs").on("click", function(e) {e.preventDefault();
-      var tab = $(this).attr("id");
-      var title = $(this).html();
-      $("#container").html("loading…");
-      $.get(tab, function(data) {
-      $("#title").html(title);
-      $("#container").html(data);
-    });
-    });
-    });
-    </script>
-    </body>
-    </html>
-    ```
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset=utf-8 />
+  <title>Getting Data</title>
+  <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
+</head>
+<body>
+<ul>
+  <li><a href="#" id="tab1" class="tabs">Alice In Wonderland</a></li>
+  <li><a href="#" id="tab2" class="tabs">Tom Sawyer</a></li>
+</ul>
+<h1 id="title"></h1>
+<div id="container"></div>
+<script>
+  $(function() {
+  $(".tabs").on("click", function(e) {e.preventDefault();
+  var tab = $(this).attr("id");
+  var title = $(this).html();
+  $("#container").html("loading…");
+  $.get(tab, function(data) {
+  $("#title").html(title);
+  $("#container").html(data);
+});
+});
+});
+</script>
+</body>
+</html>
+```
 
 1.  在`http://{yourserver}/getting-data`页面查看页面，并单击链接以加载内容。
 
@@ -159,58 +159,58 @@
 1.  在`controllers`目录中，创建一个名为`BooksController.php`的文件：
 
 ```php
-    <?php
+<?php
 
-      class BooksController extends BaseController {
+  class BooksController extends BaseController {
 
-      public function getIndex()
-    {
-      return View::make('books.index');
-    }
+  public function getIndex()
+{
+  return View::make('books.index');
+}
 
-      public function getBooks()
-    {
-      $books = array('Alice in Wonderland','Tom Sawyer','Gulliver\'s Travels','Dracula','Leaves of Grass');
-      return Response::json($books);
-    }
-    }
-    ```
+  public function getBooks()
+{
+  $books = array('Alice in Wonderland','Tom Sawyer','Gulliver\'s Travels','Dracula','Leaves of Grass');
+  return Response::json($books);
+}
+}
+```
 
 1.  在`routes.php`中，注册书籍控制器
 
 ```php
-    Route::controller('books', 'BooksController');
-    ```
+Route::controller('books', 'BooksController');
+```
 
 1.  在`views`目录中，创建一个名为`books`的文件夹，在该文件夹中创建一个名为`index.php`的文件：
 
 ```php
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset=utf-8 />
-      <title>Show Books</title>
-      <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
-    </head>
-    <body>
-    <a href="#" id="book-button">Load Books</a>
-    <div id="book-list"></div>
-    <script>
-    $(function() {
-    $('#book-button').on('click', function(e) {e.preventDefault();
-    $('#book-list').html('loading...');
-    $.get('books/books', function(data) {var book_list = '';
-    $.each(data, function(){book_list += this + '<br>';
-    })
-    $("#book-list").html(book_list);
-    $('#book-button').hide();
-    });
-    });
-    });
-    </script>
-    </body>
-    </html>
-    ```
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset=utf-8 />
+  <title>Show Books</title>
+  <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
+</head>
+<body>
+<a href="#" id="book-button">Load Books</a>
+<div id="book-list"></div>
+<script>
+$(function() {
+$('#book-button').on('click', function(e) {e.preventDefault();
+$('#book-list').html('loading...');
+$.get('books/books', function(data) {var book_list = '';
+$.each(data, function(){book_list += this + '<br>';
+})
+$("#book-list").html(book_list);
+$('#book-button').hide();
+});
+});
+});
+</script>
+</body>
+</html>
+```
 
 ## 它是如何工作的...
 
@@ -237,74 +237,74 @@
 1.  在`controllers`目录中，创建一个名为`SearchController.php`的文件：
 
 ```php
-    <?php
+<?php
 
-    class SearchController extends BaseController {
+class SearchController extends BaseController {
 
-      public function getIndex()
-    {
-      return View::make('search.index');
-    }
+  public function getIndex()
+{
+  return View::make('search.index');
+}
 
-      public function postSearch()
-    {
-      $return = array();
-      $term = Input::get('term');
+  public function postSearch()
+{
+  $return = array();
+  $term = Input::get('term');
 
-      $books = array(array('name' => 'Alice in Wonderland', 'author' => 'Lewis Carroll'),array('name' => 'Tom Sawyer', 'author' => 'Mark Twain'),array('name' => 'Gulliver\'s Travels', 'author' =>'Jonathan Swift'),array('name' => 'The Art of War', 'author' => 'Sunzi'),array('name' => 'Dracula', 'author' => 'Bram Stoker'),array('name' => 'War and Peace', 'author' =>'LeoTolstoy'),);
+  $books = array(array('name' => 'Alice in Wonderland', 'author' => 'Lewis Carroll'),array('name' => 'Tom Sawyer', 'author' => 'Mark Twain'),array('name' => 'Gulliver\'s Travels', 'author' =>'Jonathan Swift'),array('name' => 'The Art of War', 'author' => 'Sunzi'),array('name' => 'Dracula', 'author' => 'Bram Stoker'),array('name' => 'War and Peace', 'author' =>'LeoTolstoy'),);
 
-    foreach ($books as $book) {
-    if (stripos($book['name'], $term) !== FALSE) $return[] =$book;
-    }
+foreach ($books as $book) {
+if (stripos($book['name'], $term) !== FALSE) $return[] =$book;
+}
 
-    return Response::json($return);
-    }
-    }
-    ```
+return Response::json($return);
+}
+}
+```
 
 1.  在`routes.php`文件中，注册控制器：
 
 ```php
-      Route::controller('search', 'SearchController');
-    ```
+  Route::controller('search', 'SearchController');
+```
 
 1.  在`views`目录中，创建一个名为`search`的文件夹，在该文件夹中，创建一个名为`index.php`的文件：
 
 ```php
-    <!DOCTYPE html>
-    <html>
-    <head>
-    <meta charset=utf-8 />
-    <title>AJAX Search</title>
-    <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
-    </head>
-    <body>
-    <h1>Search</h1>
-    <form id="search-form">
-    <input name="search" id="term"> <input type="submit">
-    </form>
-    <div id="results"></div>
-    <script>
-      $(function() {
-      $("#search-form").on("submit", function(e) {e.preventDefault();
-      var search_term = $("#term").val();
-      var display_results = $("#results");
-      display_results.html("loading...");
-      var results = '';
-      $.post("search/search", {term: search_term}, function(data) {if (data.length == 0) {results = 'No Results';
-      } else {
-      $.each(data, function() {
-      results += this.name + ' by ' + this.author + '<br>';
-    });
-    }
-    display_results.html(results);
-    });
-    })
-    });
-    </script>
-    </body>
-    </html>
-    ```
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset=utf-8 />
+<title>AJAX Search</title>
+<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
+</head>
+<body>
+<h1>Search</h1>
+<form id="search-form">
+<input name="search" id="term"> <input type="submit">
+</form>
+<div id="results"></div>
+<script>
+  $(function() {
+  $("#search-form").on("submit", function(e) {e.preventDefault();
+  var search_term = $("#term").val();
+  var display_results = $("#results");
+  display_results.html("loading...");
+  var results = '';
+  $.post("search/search", {term: search_term}, function(data) {if (data.length == 0) {results = 'No Results';
+  } else {
+  $.each(data, function() {
+  results += this.name + ' by ' + this.author + '<br>';
+});
+}
+display_results.html(results);
+});
+})
+});
+</script>
+</body>
+</html>
+```
 
 ## 它是如何工作的...
 
@@ -331,73 +331,73 @@ CREATE TABLE users (id int(10) unsigned NOT NULL AUTO_INCREMENT,email varchar(25
 1.  在`controllers`目录中，创建一个名为`UsersController.php`的文件：
 
 ```php
-    <?php
-    class UsersController extends BaseController {
-      public function getIndex()
-      {
-      return View::make('users.index');
-      }
+<?php
+class UsersController extends BaseController {
+  public function getIndex()
+  {
+  return View::make('users.index');
+  }
 
-      public function postRegister()
-      {
-      $rules = array('email' => 'required|email','password' => 'required|min:6');
+  public function postRegister()
+  {
+  $rules = array('email' => 'required|email','password' => 'required|min:6');
 
-      $validation = Validator::make(Input::all(), $rules);
+  $validation = Validator::make(Input::all(), $rules);
 
-      if ($validation->fails())
-      {
-      return Response::json($validation->errors()->toArray());
-    }
-    else
-    {
-    DB::table('users')->insert(array('email' => Input::get('email'),'password' => Hash::make(Input::get('password'))));
-    return Response::json(array('Registration is complete!'));
-    }
-    }
-    }
-    ```
+  if ($validation->fails())
+  {
+  return Response::json($validation->errors()->toArray());
+}
+else
+{
+DB::table('users')->insert(array('email' => Input::get('email'),'password' => Hash::make(Input::get('password'))));
+return Response::json(array('Registration is complete!'));
+}
+}
+}
+```
 
 1.  在`routes.php`中注册控制器：
 
 ```php
-     **Route::controller('users', 'UsersController');**
+ **Route::controller('users', 'UsersController');**
 
-    ```
+```
 
 1.  在`views`目录中，创建一个名为`users`的文件夹，在该文件夹中，创建一个名为`index.php`的文件：
 
 ```php
-    <!doctype html>
-    <html lang="en">
-      <head>
-      <meta charset="utf-8">
-      <title>User Register</title>
-      <script type="text/javascript"src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
-      </head>
-      <body>
-      <form id="register">
-      <label for="email">Your email:</label> 
-      <input type="email" name="email" id="email"><br>
-      <label for="password">Your password:</label> 
-      <input type="password" name="password" id="password"><br>
-      <input type="submit">
-      </form>
-      <div id="results"></div>
-      <script>
-      $(function(){
-      $("#register").on("submit", function(e) {e.preventDefault();
-      var results = '';
-      $.post('users/register', {email: $("#email").val(), password:$("#password").val()}, function(data) {
-      $.each(data, function(){results += this + '<br>';
-    });
-      $("#results").html(results);
-    });
-    });
-    });
-    </script>
-      </body>
-    </html>
-    ```
+<!doctype html>
+<html lang="en">
+  <head>
+  <meta charset="utf-8">
+  <title>User Register</title>
+  <script type="text/javascript"src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
+  </head>
+  <body>
+  <form id="register">
+  <label for="email">Your email:</label> 
+  <input type="email" name="email" id="email"><br>
+  <label for="password">Your password:</label> 
+  <input type="password" name="password" id="password"><br>
+  <input type="submit">
+  </form>
+  <div id="results"></div>
+  <script>
+  $(function(){
+  $("#register").on("submit", function(e) {e.preventDefault();
+  var results = '';
+  $.post('users/register', {email: $("#email").val(), password:$("#password").val()}, function(data) {
+  $.each(data, function(){results += this + '<br>';
+});
+  $("#results").html(results);
+});
+});
+});
+</script>
+  </body>
+</html>
+```
 
 ## 它是如何工作的...
 
@@ -440,75 +440,75 @@ CREATE TABLE books (id int(10) unsigned NOT NULL AUTO_INCREMENT,name varchar(255
 1.  在`controllers`目录中，创建一个名为`BooksController.php`的新文件：
 
 ```php
-    <?php
-    class BooksController extends BaseController {
-      public function getIndex()
-    {
-      return View::make('books.index');
-    }
+<?php
+class BooksController extends BaseController {
+  public function getIndex()
+{
+  return View::make('books.index');
+}
 
-      public function postBooks()
-    {
-      if (!$genre = Input::get('genre')) {
-      $books = Book::all();
-      } else {
-      $books = Book::whereIn('genre', $genre)->get();
-    }
-    return $books;
-    }
-    }
-    ```
+  public function postBooks()
+{
+  if (!$genre = Input::get('genre')) {
+  $books = Book::all();
+  } else {
+  $books = Book::whereIn('genre', $genre)->get();
+}
+return $books;
+}
+}
+```
 
 1.  在`routes.php`文件中注册`books`控制器：
 
 ```php
-     **Route::controller('books', 'BooksController');**
+ **Route::controller('books', 'BooksController');**
 
-    ```
+```
 
 1.  在`views`目录中，创建一个名为`books`的新文件夹，在该文件夹中，创建一个名为`index.php`的文件：
 
 ```php
-    <!doctype html>
-    <html lang="en">
-      <head>
-      <meta charset="utf-8">
-      <title>Books filter</title>
-      <scriptsrc="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-      </head>
-      <body>
-      <form id="filter">
-      Comedy: <input type="checkbox" name="genre[]" value="comedy"><br>
-      Drama: <input type="checkbox" name="genre[]" value="drama"><br>
-      Fantasy: <input type="checkbox" name="genre[]" value="fantasy"><br>
-      Horror: <input type="checkbox" name="genre[]" value="horror"><br>
-      Philosophy: <input type="checkbox" name="genre[]" value="philosophy"><br>
-      </form>
-      <hr>
-      <h3>Results</h3>
-      <div id="books"></div>
-      <script>
-      $(function(){
-      $("input[type=checkbox]").on('click', function() {var books = '';
-      $("#books").html('loading...');
-      $.post('books/books', $("#filter").serialize(), function(data){$.each(data, function(){books += this.name + ' by ' + this.author + ' (' + this.genre + ')<br>';
-    });
-    $("#books").html(books);
-    });
-    });
-    });
-    </script>
-    </body>
-    </html>
-    ```
+<!doctype html>
+<html lang="en">
+  <head>
+  <meta charset="utf-8">
+  <title>Books filter</title>
+  <scriptsrc="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+  </head>
+  <body>
+  <form id="filter">
+  Comedy: <input type="checkbox" name="genre[]" value="comedy"><br>
+  Drama: <input type="checkbox" name="genre[]" value="drama"><br>
+  Fantasy: <input type="checkbox" name="genre[]" value="fantasy"><br>
+  Horror: <input type="checkbox" name="genre[]" value="horror"><br>
+  Philosophy: <input type="checkbox" name="genre[]" value="philosophy"><br>
+  </form>
+  <hr>
+  <h3>Results</h3>
+  <div id="books"></div>
+  <script>
+  $(function(){
+  $("input[type=checkbox]").on('click', function() {var books = '';
+  $("#books").html('loading...');
+  $.post('books/books', $("#filter").serialize(), function(data){$.each(data, function(){books += this.name + ' by ' + this.author + ' (' + this.genre + ')<br>';
+});
+$("#books").html(books);
+});
+});
+});
+</script>
+</body>
+</html>
+```
 
 1.  在`models`目录中，创建一个名为`Book.php`的文件：
 
 ```php
-    <?php
-    class Book extends Eloquent {
-    }
-    ```
+<?php
+class Book extends Eloquent {
+}
+```
 
 1.  在浏览器中，转到`http://{my-server}/books`，并点击一些复选框以查看结果。
 
@@ -533,105 +533,105 @@ CREATE TABLE books (id int(10) unsigned NOT NULL AUTO_INCREMENT,name varchar(255
 1.  打开`composer.json`文件，并更新`require`部分以类似以下代码：
 
 ```php
-      "require": {
-      "laravel/framework": "4.0.*",
-      "rezzza/mailchimp": "dev-master"
-    }
-    ```
+  "require": {
+  "laravel/framework": "4.0.*",
+  "rezzza/mailchimp": "dev-master"
+}
+```
 
 1.  在命令行窗口中，位于 artisan 文件的位置，使用以下命令更新 Composer：
 
 ```php
-     **php composer.phar update**
+ **php composer.phar update**
 
-    ```
+```
 
 1.  在`app/config`目录中，创建一个名为`mailchimp.php`的文件：
 
 ```php
-    <?php
+<?php
 
-    return array('key' => '12345abcde-us1','list' => '123456789'
-    );
-    ```
+return array('key' => '12345abcde-us1','list' => '123456789'
+);
+```
 
 1.  在`views`目录中，创建一个名为`signup.php`的文件：
 
 ```php
-    <!doctype html>
-    <html lang="en">
-      <head>
-      <meta charset="utf-8">
-      <title>Newsletter Signup</title>
-      <link href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.2.2/css/bootstrap-combined.min.css" rel="stylesheet">
-      <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
-      <script src="//netdna.bootstrapcdn.com/twitter-bootstrap/2.2.2/js/bootstrap.min.js"></script>
-      </head>
-      <body>
-      <p>
-      <a href="#signupModal" role="button" class="btn btn-info" data-toggle="modal">Newsletter Signup</a>
-      </p>
-      <div id="results"></div>
-      <div id="signupModal" class="modal hide fade">
-      <div class="modal-header">
-      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-      <h3>Sign-up for our awesome newsletter!</h3>
-      </div>
-      <div class="modal-body">
-      <p>
-      <form id="newsletter_form">
-      <label>Your First Name</label>
-      <input name="fname"><br>
-      <label>Last Name</label>
-      <input name="lname"><br>
-      <label>Email</label>
-      <input name="email">
-      </form>
-      </p>
-      </div>
-      <div class="modal-footer">
-      <a href="#" class="btn close" data-dismiss="modal">Close</a>
-      <a href="#" class="btn btn-primary" id="newsletter_submit">Signup</a>
-      </div>
-      </div>
-      <script>
-      $(function(){
-      $("#newsletter_submit").on('click', function(e){e.preventDefault();
-      $("#results").html("loading...");
-      $.post('signup-submit', $("#newsletter_form").serialize(), function(data){
-      $('#signupModal').modal('hide');
-      $("#results").html(data);
-    });
-    });
-    });
-      </script>
-      </body>
-    </html>
-    ```
+<!doctype html>
+<html lang="en">
+  <head>
+  <meta charset="utf-8">
+  <title>Newsletter Signup</title>
+  <link href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.2.2/css/bootstrap-combined.min.css" rel="stylesheet">
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
+  <script src="//netdna.bootstrapcdn.com/twitter-bootstrap/2.2.2/js/bootstrap.min.js"></script>
+  </head>
+  <body>
+  <p>
+  <a href="#signupModal" role="button" class="btn btn-info" data-toggle="modal">Newsletter Signup</a>
+  </p>
+  <div id="results"></div>
+  <div id="signupModal" class="modal hide fade">
+  <div class="modal-header">
+  <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+  <h3>Sign-up for our awesome newsletter!</h3>
+  </div>
+  <div class="modal-body">
+  <p>
+  <form id="newsletter_form">
+  <label>Your First Name</label>
+  <input name="fname"><br>
+  <label>Last Name</label>
+  <input name="lname"><br>
+  <label>Email</label>
+  <input name="email">
+  </form>
+  </p>
+  </div>
+  <div class="modal-footer">
+  <a href="#" class="btn close" data-dismiss="modal">Close</a>
+  <a href="#" class="btn btn-primary" id="newsletter_submit">Signup</a>
+  </div>
+  </div>
+  <script>
+  $(function(){
+  $("#newsletter_submit").on('click', function(e){e.preventDefault();
+  $("#results").html("loading...");
+  $.post('signup-submit', $("#newsletter_form").serialize(), function(data){
+  $('#signupModal').modal('hide');
+  $("#results").html(data);
+});
+});
+});
+  </script>
+  </body>
+</html>
+```
 
 1.  在`routes.php`文件中，添加我们需要的路由，使用以下代码：
 
 ```php
-    Route::get('signup', function()
-    {
-      return View::make('signup');
-    });
+Route::get('signup', function()
+{
+  return View::make('signup');
+});
 
-    Route::post('signup-submit', function()
-    {
-      $mc = new MCAPI(Config::get('mailchimp.key'));
+Route::post('signup-submit', function()
+{
+  $mc = new MCAPI(Config::get('mailchimp.key'));
 
-      $response = $mc->listSubscribe('{list_id}',Input::get('email'),array('FNAME' => Input::get('fname'),'LNAME' => Input::get('lname')
-    )
-    );
+  $response = $mc->listSubscribe('{list_id}',Input::get('email'),array('FNAME' => Input::get('fname'),'LNAME' => Input::get('lname')
+)
+);
 
-    if ($mc->errorCode){
-    return 'There was an error: ' . $mc->errorMessage;
-    } else {
-    return 'You have been subscribed!';
-    }
-    });
-    ```
+if ($mc->errorCode){
+return 'There was an error: ' . $mc->errorMessage;
+} else {
+return 'You have been subscribed!';
+}
+});
+```
 
 ## 它是如何工作的...
 
@@ -666,97 +666,97 @@ CREATE TABLE books (id int(10) unsigned NOT NULL AUTO_INCREMENT,name varchar(255
 1.  在`views`目录中，创建一个名为`emailform.php`的文件，如下所示：
 
 ```php
-      <!doctype html>
-      <html lang="en">
-      <head>
-      <meta charset="utf-8">
-      <title></title>
-      <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-      </head>
-      <body>
-      <div id="container">
-      <div id="error"></div>
-      <form id="email-form">
-      <label>To: </label>
-      <input name="to" type="email"><br>
-      <label>From: </label>
-      <input name="from" type="email"><br>
-      <label>Subject: </label>
-      <input name="subject"><br>
-      <label>Message:</label><br>
-      <textarea name="message"></textarea><br>
-      <input type="submit" value="Send">
-      </form>
-      </div>
-      <script>
-      $(function(){
-      $("#email-form").on('submit', function(e){e.preventDefault();
-      $.post('email-send', $(this).serialize(), function(data){
-      if (data == 0) {
-      $("#error").html('<h3>There was an error</h3>');
-      } else {
-      if (isNaN(data)) {
-      $("#error").html('<h3>' + data + '</h3>');
-      } else {
-      $("#container").html('Your email has been sent!');
-    }
-    }
-    });
-    });
-    });
-    </script>
-    </body>
-    </html>
-    ```
+  <!doctype html>
+  <html lang="en">
+  <head>
+  <meta charset="utf-8">
+  <title></title>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+  </head>
+  <body>
+  <div id="container">
+  <div id="error"></div>
+  <form id="email-form">
+  <label>To: </label>
+  <input name="to" type="email"><br>
+  <label>From: </label>
+  <input name="from" type="email"><br>
+  <label>Subject: </label>
+  <input name="subject"><br>
+  <label>Message:</label><br>
+  <textarea name="message"></textarea><br>
+  <input type="submit" value="Send">
+  </form>
+  </div>
+  <script>
+  $(function(){
+  $("#email-form").on('submit', function(e){e.preventDefault();
+  $.post('email-send', $(this).serialize(), function(data){
+  if (data == 0) {
+  $("#error").html('<h3>There was an error</h3>');
+  } else {
+  if (isNaN(data)) {
+  $("#error").html('<h3>' + data + '</h3>');
+  } else {
+  $("#container").html('Your email has been sent!');
+}
+}
+});
+});
+});
+</script>
+</body>
+</html>
+```
 
 1.  在`views`文件夹中，创建我们的电子邮件模板视图文件，命名为`ajaxemail.php`，并使用以下代码：
 
 ```php
-    <!DOCTYPE html>
-    <html lang="en-US">
-    <head>
-    <meta charset="utf-8">
-    </head>
-    <body>
-    <h2>Your Message:</h2>
-    <div><?= $message ?></div>
-    </body>
-    </html>
-    ```
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<meta charset="utf-8">
+</head>
+<body>
+<h2>Your Message:</h2>
+<div><?= $message ?></div>
+</body>
+</html>
+```
 
 1.  在`routes.php`文件中，根据以下代码片段创建路由：
 
 ```php
-      Route::get('email-form', function()
-    {
-      return View::make('emailform');
-    });
-      Route::post('email-send', function()
-    {
-      $input = Input::all();
+  Route::get('email-form', function()
+{
+  return View::make('emailform');
+});
+  Route::post('email-send', function()
+{
+  $input = Input::all();
 
-      $rules = array('to'      => 'required|email','from'    => 'required|email','subject' => 'required','message' => 'required'
-    );
+  $rules = array('to'      => 'required|email','from'    => 'required|email','subject' => 'required','message' => 'required'
+);
 
-      $validation = Validator::make($input, $rules);
+  $validation = Validator::make($input, $rules);
 
-      if ($validation->fails())
-    {
-      $return = '';
-      foreach ($validation->errors()->all() as $err) {
-      $return .= $err . '<br>';
-    }
-      return $return;
-    }
+  if ($validation->fails())
+{
+  $return = '';
+  foreach ($validation->errors()->all() as $err) {
+  $return .= $err . '<br>';
+}
+  return $return;
+}
 
-      $send = Mail::send('ajaxemail', array('message' =>Input::get('message')), function($message)
-    {
-      $message->to(Input::get('to'))->replyTo(Input::get('from'))->subject(Input::get('subject'));
-    });
+  $send = Mail::send('ajaxemail', array('message' =>Input::get('message')), function($message)
+{
+  $message->to(Input::get('to'))->replyTo(Input::get('from'))->subject(Input::get('subject'));
+});
 
-      return $send;
-    });
-    ```
+  return $send;
+});
+```
 
 ## 它是如何工作的...
 
@@ -783,72 +783,72 @@ CREATE TABLE books (id int(10) unsigned NOT NULL AUTO_INCREMENT,name varchar(255
 1.  在我们的数据库中，使用以下命令创建一个新表并添加一些示例数据：
 
 ```php
-    DROP TABLE IF EXISTS bookprices;
-    CREATE TABLE bookprices (id int(10) unsigned NOT NULL AUTO_INCREMENT,price float(10,2) DEFAULT NULL,book varchar(100) DEFAULT NULL,PRIMARY KEY (id)) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-      INSERT INTO bookprices VALUES ('1', '14.99', 'Alice in Wonderland');
-      INSERT INTO bookprices VALUES ('2', '24.50', 'Frankenstein');
-      INSERT INTO bookprices VALUES ('3', '29.80', 'War andPeace');
-      INSERT INTO bookprices VALUES ('4', '11.08', 'Moby Dick');
-      INSERT INTO bookprices VALUES ('5', '19.72', 'The Wizard of Oz');
-      INSERT INTO bookprices VALUES ('6', '45.00', 'The Odyssey');
-    ```
+DROP TABLE IF EXISTS bookprices;
+CREATE TABLE bookprices (id int(10) unsigned NOT NULL AUTO_INCREMENT,price float(10,2) DEFAULT NULL,book varchar(100) DEFAULT NULL,PRIMARY KEY (id)) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+  INSERT INTO bookprices VALUES ('1', '14.99', 'Alice in Wonderland');
+  INSERT INTO bookprices VALUES ('2', '24.50', 'Frankenstein');
+  INSERT INTO bookprices VALUES ('3', '29.80', 'War andPeace');
+  INSERT INTO bookprices VALUES ('4', '11.08', 'Moby Dick');
+  INSERT INTO bookprices VALUES ('5', '19.72', 'The Wizard of Oz');
+  INSERT INTO bookprices VALUES ('6', '45.00', 'The Odyssey');
+```
 
 1.  在`app/models`目录中，创建一个名为`Bookprices.php`的文件，并包含以下代码片段：
 
 ```php
-    <?php
-    class Bookprices extends Eloquent {
-    }
-    ```
+<?php
+class Bookprices extends Eloquent {
+}
+```
 
 1.  在`routes.php`文件中，按照以下代码添加我们的路由：
 
 ```php
-    Route::get('table', function()
-    {
-      $bookprices = Bookprices::all();
-      return View::make('table')->with('bookprices', $bookprices);
-    });
-    ```
+Route::get('table', function()
+{
+  $bookprices = Bookprices::all();
+  return View::make('table')->with('bookprices', $bookprices);
+});
+```
 
 1.  在`views`目录中，创建一个名为`table.php`的文件，其中包含以下代码：
 
 ```php
-    <!doctype html>
-    <html lang="en">
-      <head>
-      <meta charset="utf-8">
-      <title></title>
-      <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-      <script src="//ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/jquery.dataTables.min.js"></script>
-      <link rel="stylesheet" type="text/css" href="//ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/css/jquery.dataTables.css">
-      </head>
-      <body>
-      <h1>Book List</h1>
-      <table>
-      <thead>
-      <tr>
-      <th>Price</th>
-      <th>Name</th>
-      </tr>
-      </thead>
-      <tbody>
-      <?php foreach ($bookprices as $book): ?>
-      <tr>
-      <td><?php echo $book['price'] ?></td>
-      <td><?php echo $book['book'] ?></td>
-      </tr>
-      <?php endforeach; ?>
-      </tbody>
-      </table>
-      <script>
-      $(function(){
-      $("table").dataTable();
-    });
-      </script>
-      </body>
-      </html>
-    ```
+<!doctype html>
+<html lang="en">
+  <head>
+  <meta charset="utf-8">
+  <title></title>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+  <script src="//ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/jquery.dataTables.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="//ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/css/jquery.dataTables.css">
+  </head>
+  <body>
+  <h1>Book List</h1>
+  <table>
+  <thead>
+  <tr>
+  <th>Price</th>
+  <th>Name</th>
+  </tr>
+  </thead>
+  <tbody>
+  <?php foreach ($bookprices as $book): ?>
+  <tr>
+  <td><?php echo $book['price'] ?></td>
+  <td><?php echo $book['book'] ?></td>
+  </tr>
+  <?php endforeach; ?>
+  </tbody>
+  </table>
+  <script>
+  $(function(){
+  $("table").dataTable();
+});
+  </script>
+  </body>
+  </html>
+```
 
 ## 它是如何工作的...
 

@@ -161,34 +161,34 @@ Percona 目前仅适用于 Linux 系统。目前不支持 Windows。在本书中
 1.  使用终端中的以下命令打开您的源列表文件：
 
 ```php
-    **sudo nano /etc/apt/sources.list** 
+**sudo nano /etc/apt/sources.list** 
 
-    ```
+```
 
 如果提示输入密码，请输入您的 Debian 密码。文件将被打开。
 
 1.  现在，将以下存储库信息放在`sources.list`文件的末尾：
 
 ```php
-    deb http://repo.percona.com/apt jessie main
-    deb-src http://repo.percona.com/apt jessie main
-    ```
+deb http://repo.percona.com/apt jessie main
+deb-src http://repo.percona.com/apt jessie main
+```
 
 1.  按下*CTRL* + *O*保存文件，按下*CTRL* + *X*关闭文件。
 
 1.  使用终端中的以下命令更新系统：
 
 ```php
-    **sudo apt-get update**
+**sudo apt-get update**
 
-    ```
+```
 
 1.  通过在终端中发出以下命令开始安装：
 
 ```php
-    **sudo apt-get install percona-server-server-5.5**
+**sudo apt-get install percona-server-server-5.5**
 
-    ```
+```
 
 1.  安装将开始。该过程与安装 MySQL 服务器的过程相同。在安装过程中，将要求输入 Percona Server 的 root 密码；您只需输入即可。安装完成后，您将可以像使用 MySQL 一样使用 Percona Server。
 
@@ -315,62 +315,62 @@ Percona XtraDB Cluster 提供了一个高性能的集群环境，可以帮助轻
 1.  首先，在终端中发出以下命令在 Node1 上安装 Percona XtraDB Cluster：
 
 ```php
-    **apt-get install percona-xtradb-cluster-56**
+**apt-get install percona-xtradb-cluster-56**
 
-    ```
+```
 
 安装将类似于正常的 Percona Server 安装开始。在安装过程中，还将要求设置 root 用户的密码。
 
 1.  安装完成后，我们需要创建一个具有复制权限的新用户。在登录到 MySQL 终端后，发出以下命令：
 
 ```php
-    **CREATE USER 'sstpackt'@'localhost' IDENTIFIED BY 'sstuserpassword';**
-    **GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO 'sstpackt'@'localhost';**
-    **FLUSH PRIVILEGES;**
+**CREATE USER 'sstpackt'@'localhost' IDENTIFIED BY 'sstuserpassword';**
+**GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO 'sstpackt'@'localhost';**
+**FLUSH PRIVILEGES;**
 
-    ```
+```
 
 第一个查询创建一个用户名为`sstpackt`，密码为`sstuserpassword`的用户。用户名和密码可以是任何内容，但建议使用一个好的和强大的密码。第二个查询为我们的新用户设置适当的权限，包括锁定表和复制。第三个查询刷新权限。
 
 1.  现在，打开位于`/etc/mysql/my.cnf`的 MySQL 配置文件。然后，在`mysqld`块中放置以下配置：
 
 ```php
-    #Add the galera library
-    wsrep_provider=/usr/lib/libgalera_smm.so
+#Add the galera library
+wsrep_provider=/usr/lib/libgalera_smm.so
 
-    #Add cluster nodes addresses
-    wsrep_cluster_address=gcomm://10.211.55.1,10.211.55.2,10.211.55.3
+#Add cluster nodes addresses
+wsrep_cluster_address=gcomm://10.211.55.1,10.211.55.2,10.211.55.3
 
-    #The binlog format should be ROW. It is required for galera to work properly
-    binlog_format=ROW
+#The binlog format should be ROW. It is required for galera to work properly
+binlog_format=ROW
 
-    #default storage engine for mysql will be InnoDB
-    default_storage_engine=InnoDB
+#default storage engine for mysql will be InnoDB
+default_storage_engine=InnoDB
 
-    #The InnoDB auto increment lock mode should be 2, and it is required for galera
-    innodb_autoinc_lock_mode=2
+#The InnoDB auto increment lock mode should be 2, and it is required for galera
+innodb_autoinc_lock_mode=2
 
-    #Node 1 address
-    wsrep_node_address=10.211.55.1
+#Node 1 address
+wsrep_node_address=10.211.55.1
 
-    #SST method
-    wsrep_sst_method=xtrabackup
+#SST method
+wsrep_sst_method=xtrabackup
 
-    #Authentication for SST method. Use the same user name and password created in above step 2
-    wsrep_sst_auth="sstpackt:sstuserpassword"
+#Authentication for SST method. Use the same user name and password created in above step 2
+wsrep_sst_auth="sstpackt:sstuserpassword"
 
-    #Give the cluster a name
-    wsrep_cluster_name=packt_cluster
-    ```
+#Give the cluster a name
+wsrep_cluster_name=packt_cluster
+```
 
 在添加上述配置后保存文件。
 
 1.  现在，通过发出以下命令启动第一个节点：
 
 ```php
-    **/etc/init.d/mysql bootstrap-pxc**
+**/etc/init.d/mysql bootstrap-pxc**
 
-    ```
+```
 
 这将引导第一个节点。引导意味着启动初始集群并定义哪个节点具有正确的信息，其他所有节点都应该同步到哪个节点。由于 Node1 是我们的初始集群节点，并且我们在这里创建了一个新用户，因此我们只需引导 Node1。
 
@@ -381,9 +381,9 @@ Percona XtraDB Cluster 提供了一个高性能的集群环境，可以帮助轻
 1.  在第一个节点上登录 MySQL 终端，并发出以下命令：
 
 ```php
-    **SHOW STATUS LIKE '%wsrep%';**
+**SHOW STATUS LIKE '%wsrep%';**
 
-    ```
+```
 
 将显示一个非常长的列表。以下是其中的一些：
 
@@ -394,9 +394,9 @@ Percona XtraDB Cluster 提供了一个高性能的集群环境，可以帮助轻
 1.  通过在终端中发出以下命令来启动两个新节点：
 
 ```php
-    **/etc/init.d/mysql start**
+**/etc/init.d/mysql start**
 
-    ```
+```
 
 现在可以通过重复步骤 7 来验证每个节点。
 
@@ -437,9 +437,9 @@ Redis 提供了一个命令行，其中提供了一些有用的命令。在 Redi
 +   `选择`：此命令更改当前数据库。默认情况下，redis-cli 将在数据库 0 打开。因此，如果我们想要转到数据库 1，我们将运行以下命令：
 
 ```php
-    **SELECT 1**
+**SELECT 1**
 
-    ```
+```
 
 +   `FLUSHDB`：此命令刷新当前数据库。当前数据库中的所有键或数据将被删除。
 
@@ -448,9 +448,9 @@ Redis 提供了一个命令行，其中提供了一些有用的命令。在 Redi
 +   `KEYS`：此命令列出与模式匹配的当前数据库中的所有键。以下命令列出当前数据库中的所有键。
 
 ```php
-    **KEYS ***
+**KEYS ***
 
-    ```
+```
 
 现在，是时候在 PHP 中与 Redis 进行一些操作了。
 

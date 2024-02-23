@@ -37,54 +37,54 @@
 1.  在此示例中，我们定义了一个具有受保护属性`$date`的类。请注意，`get`和`set`方法允许将其视为`DateTime`对象或字符串。无论如何，该值实际上都存储为`DateTime`实例。
 
 ```php
-    $a = new class() {
-      protected $date;
-      public function setDate($date)
-      {
-        if (is_string($date)) {
-            $this->date = new DateTime($date);
-        } else {
-            $this->date = $date;
-        }
-      }
-      public function getDate($asString = FALSE)
-      {
-        if ($asString) {
-            return $this->date->format('Y-m-d H:i:s');
-        } else {
-            return $this->date;
-        }
-      }
-    };
-    ```
+$a = new class() {
+  protected $date;
+  public function setDate($date)
+  {
+    if (is_string($date)) {
+        $this->date = new DateTime($date);
+    } else {
+        $this->date = $date;
+    }
+  }
+  public function getDate($asString = FALSE)
+  {
+    if ($asString) {
+        return $this->date->format('Y-m-d H:i:s');
+    } else {
+        return $this->date;
+    }
+  }
+};
+```
 
 1.  Getter 和 setter 允许您过滤或清理传入或传出的数据。在下面的示例中，有两个属性`$intVal`和`$arrVal`，它们被设置为默认初始值`NULL`。请注意，getter 的返回值不仅是数据类型化的，而且还提供了默认值。setter 也要么强制执行传入的数据类型，要么将传入的值强制转换为特定的数据类型：
 
 ```php
-    <?php
-    class GetSet
-    {
-      protected $intVal = NULL;
-      protected $arrVal = NULL;
-      // note the use of the null coalesce operator to return a default value
-      public function getIntVal() : int
-      {
-        return $this->intVal ?? 0;
-      }
-      public function getArrVal() : array
-      {
-        return $this->arrVal ?? array();
-      }
-      public function setIntVal($val)
-      {
-        $this->intVal = (int) $val ?? 0;
-      }
-      public function setArrVal(array $val)
-      {
-        $this->arrVal = $val ?? array();
-      }
-    }
-    ```
+<?php
+class GetSet
+{
+  protected $intVal = NULL;
+  protected $arrVal = NULL;
+  // note the use of the null coalesce operator to return a default value
+  public function getIntVal() : int
+  {
+    return $this->intVal ?? 0;
+  }
+  public function getArrVal() : array
+  {
+    return $this->arrVal ?? array();
+  }
+  public function setIntVal($val)
+  {
+    $this->intVal = (int) $val ?? 0;
+  }
+  public function setArrVal(array $val)
+  {
+    $this->arrVal = $val ?? array();
+  }
+}
+```
 
 1.  如果一个类有很多属性，为每个属性定义一个明确的 getter 和 setter 可能会变得乏味。在这种情况下，可以使用魔术方法`__call()`定义一种*回退*。以下类定义了九个不同的属性。我们不必定义九个 getter 和九个 setter，而是定义一个名为`__call()`的方法，该方法确定使用是`get`还是`set`。如果是`get`，它会从内部数组中检索键。如果是`set`，它会将值存储在内部数组中。
 
@@ -93,34 +93,34 @@
 `__call()`方法是一个魔术方法，如果应用程序调用不存在的方法，则会执行该方法。
 
 ```php
-    <?php
-    class LotsProps
-    {
-      protected $firstName  = NULL;
-      protected $lastName   = NULL;
-      protected $addr1      = NULL;
-      protected $addr2      = NULL;
-      protected $city       = NULL;
-      protected $state      = NULL;
-      protected $province   = NULL;
-      protected $postalCode = NULL;
-      protected $country    = NULL;
-      protected $values     = array();
+<?php
+class LotsProps
+{
+  protected $firstName  = NULL;
+  protected $lastName   = NULL;
+  protected $addr1      = NULL;
+  protected $addr2      = NULL;
+  protected $city       = NULL;
+  protected $state      = NULL;
+  protected $province   = NULL;
+  protected $postalCode = NULL;
+  protected $country    = NULL;
+  protected $values     = array();
 
-      public function __call($method, $params)
-      {
-        preg_match('/^(get|set)(.*?)$/i', $method, $matches);
-        $prefix = $matches[1] ?? '';
-        $key    = $matches[2] ?? '';
-        $key    = strtolower($key);
-        if ($prefix == 'get') {
-            return $this->values[$key] ?? '---';
-        } else {
-            $this->values[$key] = $params[0];
-        }
-      }
+  public function __call($method, $params)
+  {
+    preg_match('/^(get|set)(.*?)$/i', $method, $matches);
+    $prefix = $matches[1] ?? '';
+    $key    = $matches[2] ?? '';
+    $key    = strtolower($key);
+    if ($prefix == 'get') {
+        return $this->values[$key] ?? '---';
+    } else {
+        $this->values[$key] = $params[0];
     }
-    ```
+  }
+}
+```
 
 ## 工作原理...
 
@@ -245,68 +245,68 @@ $a->setCountry('USA');
 1.  链表的主要用途之一是以不同的顺序显示项目。一种方法是创建键值对的迭代，其中键表示新顺序，值包含主列表中键的值。这样的函数可能如下所示：
 
 ```php
-    function buildLinkedList(array $primary,
-                             callable $makeLink)
-    {
-      $linked = new ArrayIterator();
-      foreach ($primary as $key => $row) {
-        $linked->offsetSet($makeLink($row), $key);
-      }
-      $linked->ksort();
-      return $linked;
-    }
-    ```
+function buildLinkedList(array $primary,
+                         callable $makeLink)
+{
+  $linked = new ArrayIterator();
+  foreach ($primary as $key => $row) {
+    $linked->offsetSet($makeLink($row), $key);
+  }
+  $linked->ksort();
+  return $linked;
+}
+```
 
 1.  我们使用匿名函数生成新的键，以提供额外的灵活性。您还会注意到我们按键排序(`ksort()`)，以便链表按键顺序迭代。
 
 1.  我们只需要通过链表进行迭代，但是从主列表`$customer`中产生结果：
 
 ```php
-    foreach ($linked as $key => $link) {
-      $output .= printRow($customer[$link]);
-    }
-    ```
+foreach ($linked as $key => $link) {
+  $output .= printRow($customer[$link]);
+}
+```
 
 1.  请注意，我们绝对不会触及主列表。这使我们能够生成多个链表，每个链表代表不同的顺序，同时保留我们的原始数据集。
 
 1.  链表的另一个重要用途是用于过滤。该技术与之前显示的类似。唯一的区别是我们扩展了`buildLinkedList()`函数，添加了一个过滤列和过滤值：
 
 ```php
-    function buildLinkedList(array $primary,
-                             callable $makeLink,
-                             $filterCol = NULL,
-                             $filterVal = NULL)
-    {
-      $linked = new ArrayIterator();
-      $filterVal = trim($filterVal);
-      foreach ($primary as $key => $row) {
-        if ($filterCol) {
-          if (trim($row[$filterCol]) == $filterVal) {
-            $linked->offsetSet($makeLink($row), $key);
-          }
-        } else {
-          $linked->offsetSet($makeLink($row), $key);
-        }
+function buildLinkedList(array $primary,
+                         callable $makeLink,
+                         $filterCol = NULL,
+                         $filterVal = NULL)
+{
+  $linked = new ArrayIterator();
+  $filterVal = trim($filterVal);
+  foreach ($primary as $key => $row) {
+    if ($filterCol) {
+      if (trim($row[$filterCol]) == $filterVal) {
+        $linked->offsetSet($makeLink($row), $key);
       }
-      $linked->ksort();
-      return $linked;
+    } else {
+      $linked->offsetSet($makeLink($row), $key);
     }
-    ```
+  }
+  $linked->ksort();
+  return $linked;
+}
+```
 
 1.  我们只在链表中包含与主列表中的`$filterCol`表示的值匹配的值。迭代逻辑与步骤 2 中显示的相同。
 
 1.  最后，另一种形式的链表是*双向*链表。在这种情况下，列表构造成可以向前或向后进行迭代。在 PHP 的情况下，我们很幸运地拥有一个 SPL 类`SplDoublyLinkedList`，它可以很好地完成这项任务。以下是构建双向链表的函数：
 
 ```php
-    function buildDoublyLinkedList(ArrayIterator $linked)
-    {
-      $double = new SplDoublyLinkedList();
-      foreach ($linked as $key => $value) {
-        $double->push($value);
-      }
-      return $double;
-    }
-    ```
+function buildDoublyLinkedList(ArrayIterator $linked)
+{
+  $double = new SplDoublyLinkedList();
+  foreach ($linked as $key => $value) {
+    $double->push($value);
+  }
+  return $double;
+}
+```
 
 ### 注意
 
@@ -446,71 +446,71 @@ $makeLink = function ($row) {
 1.  然后我们定义一个新函数`bubbleSort()`，它接受引用的链表，主列表，排序字段和表示排序顺序（升序或降序）的参数：
 
 ```php
-    function bubbleSort(&$linked, $primary, $sortField, $order = 'A')
-    {
-    ```
+function bubbleSort(&$linked, $primary, $sortField, $order = 'A')
+{
+```
 
 1.  所需的变量包括代表迭代次数的变量，交换次数的变量，以及基于链表的迭代器：
 
 ```php
-      static $iterations = 0;
-      $swaps = 0;
-      $iterator = new ArrayIterator($linked);
-    ```
+  static $iterations = 0;
+  $swaps = 0;
+  $iterator = new ArrayIterator($linked);
+```
 
 1.  在`while()`循环中，只有在迭代仍然有效时才继续进行，也就是说仍在进行中。然后我们获取当前键和值，以及下一个键和值。请注意额外的`if()`语句以确保迭代仍然有效（也就是说，确保我们不会掉出列表的末尾！）：
 
 ```php
-    while ($iterator->valid()) {
-      $currentLink = $iterator->current();
-      $currentKey  = $iterator->key();
-      if (!$iterator->valid()) break;
-      $iterator->next();
-      $nextLink = $iterator->current();
-      $nextKey  = $iterator->key();
-    ```
+while ($iterator->valid()) {
+  $currentLink = $iterator->current();
+  $currentKey  = $iterator->key();
+  if (!$iterator->valid()) break;
+  $iterator->next();
+  $nextLink = $iterator->current();
+  $nextKey  = $iterator->key();
+```
 
 1.  接下来，我们检查排序是升序还是降序。根据方向，我们检查下一个值是大于还是小于当前值。比较的结果存储在`$expr`中：
 
 ```php
-    if ($order == 'A') {
-        $expr = $primary[$linked->offsetGet
-                ($currentKey)][$sortField] > 
-                $primary[$linked->offsetGet($nextKey)][$sortField];
-    } else {
-        $expr = $primary[$linked->offsetGet
-                ($currentKey)][$sortField] < 
-                $primary[$linked->offsetGet($nextKey)][$sortField];
-    }
-    ```
+if ($order == 'A') {
+    $expr = $primary[$linked->offsetGet
+            ($currentKey)][$sortField] > 
+            $primary[$linked->offsetGet($nextKey)][$sortField];
+} else {
+    $expr = $primary[$linked->offsetGet
+            ($currentKey)][$sortField] < 
+            $primary[$linked->offsetGet($nextKey)][$sortField];
+}
+```
 
 1.  如果`$expr`的值为`TRUE`，并且我们有有效的当前键和下一个键，则交换链表中的值。我们还增加`$swaps`：
 
 ```php
-    if ($expr && $currentKey && $nextKey 
-        && $linked->offsetExists($currentKey) 
-        && $linked->offsetExists($nextKey)) {
-        $tmp = $linked->offsetGet($currentKey);
-        $linked->offsetSet($currentKey, 
-        $linked->offsetGet($nextKey));
-        $linked->offsetSet($nextKey, $tmp);
-        $swaps++;
-      }
-    }
-    ```
+if ($expr && $currentKey && $nextKey 
+    && $linked->offsetExists($currentKey) 
+    && $linked->offsetExists($nextKey)) {
+    $tmp = $linked->offsetGet($currentKey);
+    $linked->offsetSet($currentKey, 
+    $linked->offsetGet($nextKey));
+    $linked->offsetSet($nextKey, $tmp);
+    $swaps++;
+  }
+}
+```
 
 1.  最后，如果发生了任何交换，我们需要再次运行迭代，直到没有更多的交换。因此，我们对同一个方法进行递归调用：
 
 ```php
-    if ($swaps) bubbleSort($linked, $primary, $sortField, $order);
-    ```
+if ($swaps) bubbleSort($linked, $primary, $sortField, $order);
+```
 
 1.  *真正*的返回值是重新组织的链表。我们还返回迭代的次数，仅供参考：
 
 ```php
-      return ++$iterations;
-    }
-    ```
+  return ++$iterations;
+}
+```
 
 ## 工作原理...
 
@@ -555,45 +555,45 @@ echo printCustomer($headers, $linked, $customer);
 1.  首先，我们定义一个`Application\Generic\Stack`类。核心逻辑封装在 SPL 类`SplStack`中：
 
 ```php
-    namespace Application\Generic;
-    use SplStack;
-    class Stack
-    {
-      // code
-    }
-    ```
+namespace Application\Generic;
+use SplStack;
+class Stack
+{
+  // code
+}
+```
 
 1.  接下来，我们定义一个表示堆栈的属性，并设置一个`SplStack`实例：
 
 ```php
-    protected $stack;
-    public function __construct()
-    {
-      $this->stack = new SplStack();
-    }
-    ```
+protected $stack;
+public function __construct()
+{
+  $this->stack = new SplStack();
+}
+```
 
 1.  然后我们定义了从堆栈中添加和删除的方法，经典的`push()`和`pop()`方法：
 
 ```php
-    public function push($message)
-    {
-      $this->stack->push($message);
-    }
-    public function pop()
-    {
-      return $this->stack->pop();
-    }
-    ```
+public function push($message)
+{
+  $this->stack->push($message);
+}
+public function pop()
+{
+  return $this->stack->pop();
+}
+```
 
 1.  我们还添加了一个`__invoke()`的实现，返回`stack`属性的实例。这允许我们在直接函数调用中使用对象：
 
 ```php
-    public function __invoke()
-    {
-      return $this->stack;
-    }
-    ```
+public function __invoke()
+{
+  return $this->stack;
+}
+```
 
 ## 工作原理...
 
@@ -652,96 +652,96 @@ foreach ($stack() as $item) {
 1.  我们首先构建一个搜索类`Application\Generic\Search`，它接受主列表作为参数。作为控制，我们还定义一个属性`$iterations`：
 
 ```php
-    namespace Application\Generic;
-    class Search
-    {
-      protected $primary;
-      protected $iterations;
-      public function __construct($primary)
-      {
-        $this->primary = $primary;
-      }
-    ```
+namespace Application\Generic;
+class Search
+{
+  protected $primary;
+  protected $iterations;
+  public function __construct($primary)
+  {
+    $this->primary = $primary;
+  }
+```
 
 1.  接下来，我们定义一个方法`binarySearch()`，它设置了搜索基础设施。首要任务是构建一个单独的数组`$search`，其中键是搜索中包含的列的组合。然后我们按键排序：
 
 ```php
-    public function binarySearch(array $keys, $item)
-    {
-      $search = array();
-      foreach ($this->primary as $primaryKey => $data) {
-        $searchKey = function ($keys, $data) {
-          $key = '';
-          foreach ($keys as $k) $key .= $data[$k];
-    ```
+public function binarySearch(array $keys, $item)
+{
+  $search = array();
+  foreach ($this->primary as $primaryKey => $data) {
+    $searchKey = function ($keys, $data) {
+      $key = '';
+      foreach ($keys as $k) $key .= $data[$k];
+```
 
 ```php
-          return $key;
-        };
-        $search[$searchKey($keys, $data)] = $primaryKey;
-      }
-      ksort($search);
-    ```
+      return $key;
+    };
+    $search[$searchKey($keys, $data)] = $primaryKey;
+  }
+  ksort($search);
+```
 
 1.  然后我们将键提取到另一个数组`$binary`中，以便我们可以根据数字键执行二进制排序。然后我们调用`doBinarySearch()`，它会从我们的中间数组`$search`中得到一个键，或一个布尔值`FALSE`：
 
 ```php
-      $binary = array_keys($search);
-      $result = $this->doBinarySearch($binary, $item);
-      return $this->primary[$search[$result]] ?? FALSE;
-    }
-    ```
+  $binary = array_keys($search);
+  $result = $this->doBinarySearch($binary, $item);
+  return $this->primary[$search[$result]] ?? FALSE;
+}
+```
 
 1.  首先，`doBinarySearch()`初始化一系列参数。`$iterations`，`$found`，`$loop`，`$done`和`$max`都用于防止无限循环。`$upper`和`$lower`表示要检查的列表切片：
 
 ```php
-    public function doBinarySearch($binary, $item)
-    {
-      $iterations = 0;
-      $found = FALSE;
-      $loop  = TRUE;
-      $done  = -1;
-      $max   = count($binary);
-      $lower = 0;
-      $upper = $max - 1;
-    ```
+public function doBinarySearch($binary, $item)
+{
+  $iterations = 0;
+  $found = FALSE;
+  $loop  = TRUE;
+  $done  = -1;
+  $max   = count($binary);
+  $lower = 0;
+  $upper = $max - 1;
+```
 
 1.  然后我们实现一个`while()`循环并设置中点：
 
 ```php
-      while ($loop && !$found) {
-        $mid = (int) (($upper - $lower) / 2) + $lower;
-    ```
+  while ($loop && !$found) {
+    $mid = (int) (($upper - $lower) / 2) + $lower;
+```
 
 1.  现在我们可以使用新的 PHP 7 **太空船操作符**，它在单个比较中给出小于、等于或大于。如果小于，则将上限设置为中点。如果大于，则将下限调整为中点。如果相等，则完成：
 
 ```php
-    switch ($item <=> $binary[$mid]) {
-      // $item < $binary[$mid]
-      case -1 :
-      $upper = $mid;
-      break;
-      // $item == $binary[$mid]
-      case 0 :
-      $found = $binary[$mid];
-      break;
-      // $item > $binary[$mid]
-      case 1 :
-      default :
-      $lower = $mid;
-    }
-    ```
+switch ($item <=> $binary[$mid]) {
+  // $item < $binary[$mid]
+  case -1 :
+  $upper = $mid;
+  break;
+  // $item == $binary[$mid]
+  case 0 :
+  $found = $binary[$mid];
+  break;
+  // $item > $binary[$mid]
+  case 1 :
+  default :
+  $lower = $mid;
+}
+```
 
 1.  现在是一点循环控制。我们增加迭代次数，并确保它不超过列表的大小。如果超过了，肯定有问题，我们需要退出。否则，我们检查上限和下限是否连续两次相同，如果是，则搜索项未找到。然后我们存储迭代次数并返回找到的内容（或未找到）：
 
 ```php
-        $loop = (($iterations++ < $max) && ($done < 1));
-        $done += ($upper == $lower) ? 1 : 0;
-      }
-      $this->iterations = $iterations;
-      return $found;
-    }
-    ```
+    $loop = (($iterations++ < $max) && ($done < 1));
+    $done += ($upper == $lower) ? 1 : 0;
+  }
+  $this->iterations = $iterations;
+  return $found;
+}
+```
 
 ## 它是如何工作的...
 
@@ -791,162 +791,162 @@ echo 'Upper:Mid:Lower:<=> | ' . $upper . ':' . $mid . ':' . $lower . ':' . ($ite
 1.  首先，我们定义一个基本类来保存搜索条件。该对象包含三个属性：键，最终表示数据库列；运算符（`LIKE`，`<`，`>`等）；和可选的项目。项目是可选的原因是一些运算符，如`IS NOT NULL`，不需要特定的数据：
 
 ```php
-    namespace Application\Database\Search;
-    class Criteria
-    {
-      public $key;
-      public $item;
-      public $operator;
-      public function __construct($key, $operator, $item = NULL)
-      {
-        $this->key  = $key;
-        $this->operator = $operator;
-        $this->item = $item;
-      }
-    }
-    ```
+namespace Application\Database\Search;
+class Criteria
+{
+  public $key;
+  public $item;
+  public $operator;
+  public function __construct($key, $operator, $item = NULL)
+  {
+    $this->key  = $key;
+    $this->operator = $operator;
+    $this->item = $item;
+  }
+}
+```
 
 1.  接下来，我们需要定义一个类`Application\Database\Search\Engine`，并提供必要的类常量和属性。`$columns`和`$mapping`之间的区别在于`$columns`保存的信息最终将出现在 HTML 的`SELECT`字段（或等效字段）中。出于安全原因，我们不希望公开数据库列的实际名称，因此需要另一个数组`$mapping`：
 
 ```php
-    namespace Application\Database\Search;
-    use PDO;
-    use Application\Database\Connection;
-    class Engine
-    {
-      const ERROR_PREPARE = 'ERROR: unable to prepare statement';
-      const ERROR_EXECUTE = 'ERROR: unable to execute statement';
-      const ERROR_COLUMN  = 'ERROR: column name not on list';
-      const ERROR_OPERATOR= 'ERROR: operator not on list';
-      const ERROR_INVALID = 'ERROR: invalid search criteria';
+namespace Application\Database\Search;
+use PDO;
+use Application\Database\Connection;
+class Engine
+{
+  const ERROR_PREPARE = 'ERROR: unable to prepare statement';
+  const ERROR_EXECUTE = 'ERROR: unable to execute statement';
+  const ERROR_COLUMN  = 'ERROR: column name not on list';
+  const ERROR_OPERATOR= 'ERROR: operator not on list';
+  const ERROR_INVALID = 'ERROR: invalid search criteria';
 
-      protected $connection;
-      protected $table;
-      protected $columns;
-      protected $mapping;
-      protected $statement;
-      protected $sql = '';
-    ```
+  protected $connection;
+  protected $table;
+  protected $columns;
+  protected $mapping;
+  protected $statement;
+  protected $sql = '';
+```
 
 1.  接下来，我们定义一组我们愿意支持的运算符。键表示实际的 SQL。值是表单中将出现的内容：
 
 ```php
-      protected $operators = [
-          'LIKE'     => 'Equals',
-          '<'        => 'Less Than',
-          '>'        => 'Greater Than',
-          '<>'       => 'Not Equals',
-          'NOT NULL' => 'Exists',
-      ];
-    ```
+  protected $operators = [
+      'LIKE'     => 'Equals',
+      '<'        => 'Less Than',
+      '>'        => 'Greater Than',
+      '<>'       => 'Not Equals',
+      'NOT NULL' => 'Exists',
+  ];
+```
 
 1.  构造函数接受数据库连接实例作为参数。为了我们的目的，我们将使用第五章中定义的`Application\Database\Connection`。我们还需要提供数据库表的名称，以及`$columns`，一个任意列键和标签的数组，这些将出现在 HTML 表单中。这将引用`$mapping`，其中键与`$columns`匹配，但值表示实际的数据库列名：
 
 ```php
-    public function __construct(Connection $connection, 
-                                $table, array $columns, array $mapping)
-    {
-      $this->connection  = $connection;
-      $this->setTable($table);
-      $this->setColumns($columns);
-      $this->setMapping($mapping);
-    }
-    ```
+public function __construct(Connection $connection, 
+                            $table, array $columns, array $mapping)
+{
+  $this->connection  = $connection;
+  $this->setTable($table);
+  $this->setColumns($columns);
+  $this->setMapping($mapping);
+}
+```
 
 1.  在构造函数之后，我们提供一系列有用的 getter 和 setter：
 
 ```php
-    public function setColumns($columns)
-    {
-      $this->columns = $columns;
-    }
-    public function getColumns()
-    {
-      return $this->columns;
-    }
-    // etc.
-    ```
+public function setColumns($columns)
+{
+  $this->columns = $columns;
+}
+public function getColumns()
+{
+  return $this->columns;
+}
+// etc.
+```
 
 1.  可能最关键的方法是构建要准备的 SQL 语句。在初始`SELECT`设置之后，我们添加一个`WHERE`子句，使用`$mapping`添加实际的数据库列名。然后添加操作符并实现`switch()`，根据操作符，可能会或可能不会添加一个表示搜索项的命名占位符：
 
 ```php
-    public function prepareStatement(Criteria $criteria)
-    {
-      $this->sql = 'SELECT * FROM ' . $this->table . ' WHERE ';
-      $this->sql .= $this->mapping[$criteria->key] . ' ';
-      switch ($criteria->operator) {
-        case 'NOT NULL' :
-          $this->sql .= ' IS NOT NULL OR ';
-          break;
-        default :
-          $this->sql .= $criteria->operator . ' :' 
-          . $this->mapping[$criteria->key] . ' OR ';
-      }
-    ```
+public function prepareStatement(Criteria $criteria)
+{
+  $this->sql = 'SELECT * FROM ' . $this->table . ' WHERE ';
+  $this->sql .= $this->mapping[$criteria->key] . ' ';
+  switch ($criteria->operator) {
+    case 'NOT NULL' :
+      $this->sql .= ' IS NOT NULL OR ';
+      break;
+    default :
+      $this->sql .= $criteria->operator . ' :' 
+      . $this->mapping[$criteria->key] . ' OR ';
+  }
+```
 
 1.  现在核心的`SELECT`已经定义，我们删除任何尾随的`OR`关键字，并添加一个导致结果根据搜索列排序的子句。然后将该语句发送到数据库进行准备：
 
 ```php
-      $this->sql = substr($this->sql, 0, -4)
-        . ' ORDER BY ' . $this->mapping[$criteria->key];
-      $statement = $this->connection->pdo->prepare($this->sql);
-      return $statement;
-    }
-    ```
+  $this->sql = substr($this->sql, 0, -4)
+    . ' ORDER BY ' . $this->mapping[$criteria->key];
+  $statement = $this->connection->pdo->prepare($this->sql);
+  return $statement;
+}
+```
 
 1.  现在我们准备转向主要的展示，`search()`方法。我们接受一个`Application\Database\Search\Criteria`对象作为参数。这确保我们至少有一个项目键和操作符。为了安全起见，我们添加了一个`if()`语句来检查这些属性：
 
 ```php
-    public function search(Criteria $criteria)
-    {
-      if (empty($criteria->key) || empty($criteria->operator)) {
-        yield ['error' => self::ERROR_INVALID];
-        return FALSE;
-      }
-    ```
+public function search(Criteria $criteria)
+{
+  if (empty($criteria->key) || empty($criteria->operator)) {
+    yield ['error' => self::ERROR_INVALID];
+    return FALSE;
+  }
+```
 
 1.  然后我们调用`prepareStatement()`使用`try` / `catch`来捕获错误：
 
 ```php
-    try {
-        if (!$statement = $this->prepareStatement($criteria)) {
-          yield ['error' => self::ERROR_PREPARE];
-          return FALSE;
-    }
-    ```
+try {
+    if (!$statement = $this->prepareStatement($criteria)) {
+      yield ['error' => self::ERROR_PREPARE];
+      return FALSE;
+}
+```
 
 1.  接下来，我们构建一个将提供给`execute()`的参数数组。键表示在准备语句中用作占位符的数据库列名。请注意，我们使用`=`而不是`LIKE %value%构造`：
 
 ```php
-    $params = array();
-    switch ($criteria->operator) {
-      case 'NOT NULL' :
-        // do nothing: already in statement
-        break;
-        case 'LIKE' :
-        $params[$this->mapping[$criteria->key]] = 
-        '%' . $criteria->item . '%';
-        break;
-        default :
-        $params[$this->mapping[$criteria->key]] = 
-        $criteria->item;
-    }
-    ```
+$params = array();
+switch ($criteria->operator) {
+  case 'NOT NULL' :
+    // do nothing: already in statement
+    break;
+    case 'LIKE' :
+    $params[$this->mapping[$criteria->key]] = 
+    '%' . $criteria->item . '%';
+    break;
+    default :
+    $params[$this->mapping[$criteria->key]] = 
+    $criteria->item;
+}
+```
 
 1.  该语句被执行，并使用`yield`关键字返回结果，这有效地将此方法转换为生成器：
 
 ```php
-        $statement->execute($params);
-        while ($row = $statement->fetch(PDO::FETCH_ASSOC)) {
-          yield $row;
-        }
-      } catch (Throwable $e) {
-        error_log(__METHOD__ . ':' . $e->getMessage());
-        throw new Exception(self::ERROR_EXECUTE);
-      }
-      return TRUE;
+    $statement->execute($params);
+    while ($row = $statement->fetch(PDO::FETCH_ASSOC)) {
+      yield $row;
     }
-    ```
+  } catch (Throwable $e) {
+    error_log(__METHOD__ . ':' . $e->getMessage());
+    throw new Exception(self::ERROR_EXECUTE);
+  }
+  return TRUE;
+}
+```
 
 ## 工作原理...
 
@@ -1080,191 +1080,191 @@ $results = $engine->search($criteria);
 1.  首先，我们需要从使用多个`JOIN`子句的 SQL 语句中生成一个 3D 数组。我们将使用在第一章中介绍的`Application/Database/Connection`类，*建立基础*，来制定一个适当的 SQL 查询。我们留下两个参数`min`和`max`，以支持分页。不幸的是，在这种情况下，我们不能简单地使用`LIMIT`和`OFFSET`，因为行数将取决于任何给定顾客的购买数量。因此，我们可以通过对顾客 ID 的限制来限制行数，假设（希望）是递增的。为了使这个功能正常工作，我们还需要将主要的`ORDER`设置为顾客 ID：
 
 ```php
-    define('ITEMS_PER_PAGE', 6);
-    define('SUBROWS_PER_PAGE', 6);
-    define('DB_CONFIG_FILE', '/../config/db.config.php');
-    include __DIR__ . '/../Application/Database/Connection.php';
-    use Application\Database\Connection;
-    $conn = new Connection(include __DIR__ . DB_CONFIG_FILE);
-    $sql  = 'SELECT c.id,c.name,c.balance,c.email,f.phone, '
-      . 'u.transaction,u.date,u.quantity,u.sale_price,r.title '
-      . 'FROM customer AS c '
-      . 'JOIN profile AS f '
-      . 'ON f.id = c.id '
-      . 'JOIN purchases AS u '
-      . 'ON u.customer_id = c.id '
-      . 'JOIN products AS r '
-      . 'ON u.product_id = r.id '
-      . 'WHERE c.id >= :min AND c.id < :max '
-      . 'ORDER BY c.id ASC, u.date DESC ';
-    ```
+define('ITEMS_PER_PAGE', 6);
+define('SUBROWS_PER_PAGE', 6);
+define('DB_CONFIG_FILE', '/../config/db.config.php');
+include __DIR__ . '/../Application/Database/Connection.php';
+use Application\Database\Connection;
+$conn = new Connection(include __DIR__ . DB_CONFIG_FILE);
+$sql  = 'SELECT c.id,c.name,c.balance,c.email,f.phone, '
+  . 'u.transaction,u.date,u.quantity,u.sale_price,r.title '
+  . 'FROM customer AS c '
+  . 'JOIN profile AS f '
+  . 'ON f.id = c.id '
+  . 'JOIN purchases AS u '
+  . 'ON u.customer_id = c.id '
+  . 'JOIN products AS r '
+  . 'ON u.product_id = r.id '
+  . 'WHERE c.id >= :min AND c.id < :max '
+  . 'ORDER BY c.id ASC, u.date DESC ';
+```
 
 1.  接下来我们可以实现基于顾客 ID 的分页形式，使用简单的`$_GET`参数进行限制。请注意，我们添加了额外的检查，以确保`$prev`的值不会低于零。您可能考虑添加另一个控件，以确保`$next`的值不会超出最后一个顾客 ID。在这个例子中，我们只允许它递增：
 
 ```php
-    $page = $_GET['page'] ?? 1;
-    $page = (int) $page;
-    $next = $page + 1;
-    $prev = $page - 1;
-    $prev = ($prev >= 0) ? $prev : 0;
-    ```
+$page = $_GET['page'] ?? 1;
+$page = (int) $page;
+$next = $page + 1;
+$prev = $page - 1;
+$prev = ($prev >= 0) ? $prev : 0;
+```
 
 1.  然后我们计算`$min`和`$max`的值，并准备并执行 SQL 语句：
 
 ```php
-    $min  = $prev * ITEMS_PER_PAGE;
-    $max  = $page * ITEMS_PER_PAGE;
-    $stmt = $conn->pdo->prepare($sql);
-    $stmt->execute(['min' => $min, 'max' => $max]);
-    ```
+$min  = $prev * ITEMS_PER_PAGE;
+$max  = $page * ITEMS_PER_PAGE;
+$stmt = $conn->pdo->prepare($sql);
+$stmt->execute(['min' => $min, 'max' => $max]);
+```
 
 1.  使用`while()`循环可以用来获取结果。我们在这个例子中使用了`PDO::FETCH_ASSOC`的简单获取模式。我们使用顾客 ID 作为键，将基本顾客信息存储为数组参数。然后我们在一个子数组中存储一组购买信息，`$results[$key]['purchases'][]`。当顾客 ID 改变时，这是一个信号，表示要为下一个顾客存储相同的信息。请注意，我们在一个数组键 total 中累积每个顾客的总数：
 
 ```php
-    $custId = 0;
-    $result = array();
-    $grandTotal = 0.0;
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-      if ($row['id'] != $custId) {
-        $custId = $row['id'];
-        $result[$custId] = [
-          'name'    => $row['name'],
-          'balance' => $row['balance'],
-          'email'   => $row['email'],
-          'phone'   => $row['phone'],
-        ];
-        $result[$custId]['total'] = 0;
-      }
-      $result[$custId]['purchases'][] = [
-        'transaction' => $row['transaction'],
-        'date'        => $row['date'],
-        'quantity'    => $row['quantity'],
-        'sale_price'  => $row['sale_price'],
-        'title'       => $row['title'],
-      ];
-      $result[$custId]['total'] += $row['sale_price'];
-      $grandTotal += $row['sale_price'];
-    }
-    ?>
-    ```
+$custId = 0;
+$result = array();
+$grandTotal = 0.0;
+while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+  if ($row['id'] != $custId) {
+    $custId = $row['id'];
+    $result[$custId] = [
+      'name'    => $row['name'],
+      'balance' => $row['balance'],
+      'email'   => $row['email'],
+      'phone'   => $row['phone'],
+    ];
+    $result[$custId]['total'] = 0;
+  }
+  $result[$custId]['purchases'][] = [
+    'transaction' => $row['transaction'],
+    'date'        => $row['date'],
+    'quantity'    => $row['quantity'],
+    'sale_price'  => $row['sale_price'],
+    'title'       => $row['title'],
+  ];
+  $result[$custId]['total'] += $row['sale_price'];
+  $grandTotal += $row['sale_price'];
+}
+?>
+```
 
 1.  接下来我们实现视图逻辑。首先，我们从显示主要顾客信息的块开始：
 
 ```php
-    <div class="container">
-    <?php foreach ($result as $key => $data) : ?>
-    <div class="mainLeft color0">
-        <?= $data['name'] ?> [<?= $key ?>]
+<div class="container">
+<?php foreach ($result as $key => $data) : ?>
+<div class="mainLeft color0">
+    <?= $data['name'] ?> [<?= $key ?>]
+</div>
+<div class="mainRight">
+  <div class="row">
+    <div class="left">Balance</div>
+           <div class="right"><?= $data['balance']; ?></div>
+  </div>
+  <div class="row">
+    <div class="left color2">Email</div>
+           <div class="right"><?= $data['email']; ?></div>
+  </div>
+  <div class="row">
+    <div class="left">Phone</div>
+           <div class="right"><?= $data['phone']; ?></div>
     </div>
-    <div class="mainRight">
-      <div class="row">
-        <div class="left">Balance</div>
-               <div class="right"><?= $data['balance']; ?></div>
-      </div>
-      <div class="row">
-        <div class="left color2">Email</div>
-               <div class="right"><?= $data['email']; ?></div>
-      </div>
-      <div class="row">
-        <div class="left">Phone</div>
-               <div class="right"><?= $data['phone']; ?></div>
-        </div>
-      <div class="row">
-            <div class="left color2">Total Purchases</div>
-        <div class="right">
-    <?= number_format($data['total'],2); ?>
-    </div>
-      </div>
-    ```
+  <div class="row">
+        <div class="left color2">Total Purchases</div>
+    <div class="right">
+<?= number_format($data['total'],2); ?>
+</div>
+  </div>
+```
 
 1.  接下来是显示该顾客的购买列表的逻辑：
 
 ```php
-    <!-- Purchases Info -->
-    <table>
-      <tr>
-      <th>Transaction</th><th>Date</th><th>Qty</th>
-       <th>Price</th><th>Product</th>
-      </tr>
-      <?php $count  = 0; ?>
-      <?php foreach ($data['purchases'] as $purchase) : ?>
-      <?php $class = ($count++ & 01) ? 'color1' : 'color2'; ?>
-      <tr>
-      <td class="<?= $class ?>"><?= $purchase['transaction'] ?></td>
-      <td class="<?= $class ?>"><?= $purchase['date'] ?></td>
-      <td class="<?= $class ?>"><?= $purchase['quantity'] ?></td>
-      <td class="<?= $class ?>"><?= $purchase['sale_price'] ?></td>
-      <td class="<?= $class ?>"><?= $purchase['title'] ?></td>
-      </tr>
-      <?php endforeach; ?>
-    </table>
-    ```
+<!-- Purchases Info -->
+<table>
+  <tr>
+  <th>Transaction</th><th>Date</th><th>Qty</th>
+   <th>Price</th><th>Product</th>
+  </tr>
+  <?php $count  = 0; ?>
+  <?php foreach ($data['purchases'] as $purchase) : ?>
+  <?php $class = ($count++ & 01) ? 'color1' : 'color2'; ?>
+  <tr>
+  <td class="<?= $class ?>"><?= $purchase['transaction'] ?></td>
+  <td class="<?= $class ?>"><?= $purchase['date'] ?></td>
+  <td class="<?= $class ?>"><?= $purchase['quantity'] ?></td>
+  <td class="<?= $class ?>"><?= $purchase['sale_price'] ?></td>
+  <td class="<?= $class ?>"><?= $purchase['title'] ?></td>
+  </tr>
+  <?php endforeach; ?>
+</table>
+```
 
 1.  为了分页的目的，我们添加按钮来表示*上一个*和*下一个*：
 
 ```php
-    <?php endforeach; ?>
-    <div class="container">
-      <a href="?page=<?= $prev ?>">
-            <input type="button" value="Previous"></a>
-      <a href="?page=<?= $next ?>">
-            <input type="button" value="Next" class="buttonRight"></a>
-    </div>
-    <div class="clearRow"></div>
-    </div>
-    ```
+<?php endforeach; ?>
+<div class="container">
+  <a href="?page=<?= $prev ?>">
+        <input type="button" value="Previous"></a>
+  <a href="?page=<?= $next ?>">
+        <input type="button" value="Next" class="buttonRight"></a>
+</div>
+<div class="clearRow"></div>
+</div>
+```
 
 1.  到目前为止，结果非常不整洁！因此，我们添加了一个简单的 JavaScript 函数，根据其`id`属性切换`<div>`标签的可见性：
 
 ```php
-    <script type="text/javascript">
-    function showOrHide(id) {
-      var div = document.getElementById(id);
-      div.style.display = div.style.display == "none" ? "block" : "none";
-    }
-    </script>
-    ```
+<script type="text/javascript">
+function showOrHide(id) {
+  var div = document.getElementById(id);
+  div.style.display = div.style.display == "none" ? "block" : "none";
+}
+</script>
+```
 
 1.  接下来我们将购买表格包裹在最初不可见的`<div>`标签中。然后，我们可以设置初始可见的子行数的限制，并添加一个*显示*剩余购买数据的链接：
 
 ```php
-    <div class="row" id="<?= 'purchase' . $key ?>" style="display:none;">
-      <table>
-        <tr>
-          <th>Transaction</th><th>Date</th><th>Qty</th>
-                     <th>Price</th><th>Product</th>
-        </tr>
-      <?php $count  = 0; ?>
-      <?php $first  = TRUE; ?>
-      <?php foreach ($data['purchases'] as $purchase) : ?>
-        <?php if ($count > SUBROWS_PER_PAGE && $first) : ?>
-        <?php     $first = FALSE; ?>
-        <?php     $subId = 'subrow' . $key; ?>
-        </table>
-        <a href="#" onClick="showOrHide('<?= $subId ?>')">More</a>
-        <div id="<?= $subId ?>" style="display:none;">
-        <table>
-        <?php endif; ?>
-      <?php $class = ($count++ & 01) ? 'color1' : 'color2'; ?>
-      <tr>
-      <td class="<?= $class ?>"><?= $purchase['transaction'] ?></td>
-      <td class="<?= $class ?>"><?= $purchase['date'] ?></td>
-      <td class="<?= $class ?>"><?= $purchase['quantity'] ?></td>
-      <td class="<?= $class ?>"><?= $purchase['sale_price'] ?></td>
-      <td class="<?= $class ?>"><?= $purchase['title'] ?></td>
-      </tr>
-      <?php endforeach; ?>
-      </table>
-      <?php if (!$first) : ?></div><?php endif; ?>
-    </div>
-    ```
+<div class="row" id="<?= 'purchase' . $key ?>" style="display:none;">
+  <table>
+    <tr>
+      <th>Transaction</th><th>Date</th><th>Qty</th>
+                 <th>Price</th><th>Product</th>
+    </tr>
+  <?php $count  = 0; ?>
+  <?php $first  = TRUE; ?>
+  <?php foreach ($data['purchases'] as $purchase) : ?>
+    <?php if ($count > SUBROWS_PER_PAGE && $first) : ?>
+    <?php     $first = FALSE; ?>
+    <?php     $subId = 'subrow' . $key; ?>
+    </table>
+    <a href="#" onClick="showOrHide('<?= $subId ?>')">More</a>
+    <div id="<?= $subId ?>" style="display:none;">
+    <table>
+    <?php endif; ?>
+  <?php $class = ($count++ & 01) ? 'color1' : 'color2'; ?>
+  <tr>
+  <td class="<?= $class ?>"><?= $purchase['transaction'] ?></td>
+  <td class="<?= $class ?>"><?= $purchase['date'] ?></td>
+  <td class="<?= $class ?>"><?= $purchase['quantity'] ?></td>
+  <td class="<?= $class ?>"><?= $purchase['sale_price'] ?></td>
+  <td class="<?= $class ?>"><?= $purchase['title'] ?></td>
+  </tr>
+  <?php endforeach; ?>
+  </table>
+  <?php if (!$first) : ?></div><?php endif; ?>
+</div>
+```
 
 1.  然后我们添加一个按钮，当点击时，会显示隐藏的`<div>`标签：
 
 ```php
-    <input type="button" value="Purchases" class="buttonRight" 
-        onClick="showOrHide('<?= 'purchase' . $key ?>')">
-    ```
+<input type="button" value="Purchases" class="buttonRight" 
+    onClick="showOrHide('<?= 'purchase' . $key ?>')">
+```
 
 ## 它是如何工作的...
 

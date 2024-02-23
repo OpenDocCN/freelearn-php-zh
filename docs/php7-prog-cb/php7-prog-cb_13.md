@@ -31,113 +31,113 @@
 1.  在进行更改之前，`CountryList`的样子如下：
 
 ```php
-    class CountryList
-    {
-      protected $connection;
-      protected $key   = 'iso3';
-      protected $value = 'name';
-      protected $table = 'iso_country_codes';
+class CountryList
+{
+  protected $connection;
+  protected $key   = 'iso3';
+  protected $value = 'name';
+  protected $table = 'iso_country_codes';
 
-      public function setConnection(Connection $connection)
-      {
-        $this->connection = $connection;
-      }
-      public function list()
-      {
-        $list = [];
-        $sql  = sprintf('SELECT %s,%s FROM %s', $this->key, 
-                        $this->value, $this->table);
-        $stmt = $this->connection->pdo->query($sql);
-        while ($item = $stmt->fetch(PDO::FETCH_ASSOC)) {
-          $list[$item[$this->key]] =  $item[$this->value];
-        }
-        return $list;
-      }
-
+  public function setConnection(Connection $connection)
+  {
+    $this->connection = $connection;
+  }
+  public function list()
+  {
+    $list = [];
+    $sql  = sprintf('SELECT %s,%s FROM %s', $this->key, 
+                    $this->value, $this->table);
+    $stmt = $this->connection->pdo->query($sql);
+    while ($item = $stmt->fetch(PDO::FETCH_ASSOC)) {
+      $list[$item[$this->key]] =  $item[$this->value];
     }
-    ```
+    return $list;
+  }
+
+}
+```
 
 1.  我们现在将`list()`移到一个名为`ListTrait`的特征中：
 
 ```php
-    trait ListTrait
-    {
-      public function list()
-      {
-        $list = [];
-        $sql  = sprintf('SELECT %s,%s FROM %s', 
-                        $this->key, $this->value, $this->table);
-        $stmt = $this->connection->pdo->query($sql);
-        while ($item = $stmt->fetch(PDO::FETCH_ASSOC)) {
-               $list[$item[$this->key]] = $item[$this->value];
-        }
-        return $list;
-      }
+trait ListTrait
+{
+  public function list()
+  {
+    $list = [];
+    $sql  = sprintf('SELECT %s,%s FROM %s', 
+                    $this->key, $this->value, $this->table);
+    $stmt = $this->connection->pdo->query($sql);
+    while ($item = $stmt->fetch(PDO::FETCH_ASSOC)) {
+           $list[$item[$this->key]] = $item[$this->value];
     }
-    ```
+    return $list;
+  }
+}
+```
 
 1.  然后，我们可以将`ListTrait`中的代码插入到一个新的类`CountryListUsingTrait`中，如下所示：
 
 ```php
-    class CountryListUsingTrait
-    {
-      use ListTrait;   
-      protected $connection;
-      protected $key   = 'iso3';
-      protected $value = 'name';
-      protected $table = 'iso_country_codes';
-      public function setConnection(Connection $connection)
-      {
-        $this->connection = $connection;
-      }
+class CountryListUsingTrait
+{
+  use ListTrait;   
+  protected $connection;
+  protected $key   = 'iso3';
+  protected $value = 'name';
+  protected $table = 'iso_country_codes';
+  public function setConnection(Connection $connection)
+  {
+    $this->connection = $connection;
+  }
 
-    }
-    ```
+}
+```
 
 1.  接下来，我们注意到许多类需要设置一个连接实例。同样，这需要一个特征。然而，这一次，我们将特征放在`Application\Database`命名空间中。这是新的特征：
 
 ```php
-    namespace Application\Database;
-    trait ConnectionTrait
-    {
-      protected $connection;
-      public function setConnection(Connection $connection)
-      {
-        $this->connection = $connection;
-      }
-    }
-    ```
+namespace Application\Database;
+trait ConnectionTrait
+{
+  protected $connection;
+  public function setConnection(Connection $connection)
+  {
+    $this->connection = $connection;
+  }
+}
+```
 
 1.  特征经常用于避免代码重复。通常情况下，您还需要确定使用特征的类。一个好的方法是开发一个与特征匹配的接口。在这个例子中，我们将定义`Application\Database\ConnectionAwareInterface`：
 
 ```php
-    namespace Application\Database;
-    use Application\Database\Connection;
-    interface ConnectionAwareInterface
-    {
-      public function setConnection(Connection $connection);
-    }
-    ```
+namespace Application\Database;
+use Application\Database\Connection;
+interface ConnectionAwareInterface
+{
+  public function setConnection(Connection $connection);
+}
+```
 
 1.  这是修订后的`CountryListUsingTrait`类。请注意，由于特征的位置受到其命名空间的影响，我们需要在类的顶部添加一个`use`语句。您还会注意到，我们实现了`ConnectionAwareInterface`来确定这个类需要特征中定义的方法。请注意，我们正在利用新的 PHP 7 组使用语法：
 
 ```php
-    namespace Application\Generic;
-    use PDO;
-    use Application\Database\ { 
-    Connection, ConnectionTrait, ConnectionAwareInterface 
-    };
-    class CountryListUsingTrait implements ConnectionAwareInterface
-    {
-      use ListTrait;
-      use ConnectionTrait;
+namespace Application\Generic;
+use PDO;
+use Application\Database\ { 
+Connection, ConnectionTrait, ConnectionAwareInterface 
+};
+class CountryListUsingTrait implements ConnectionAwareInterface
+{
+  use ListTrait;
+  use ConnectionTrait;
 
-      protected $key   = 'iso3';
-      protected $value = 'name';
-      protected $table = 'iso_country_codes';
+  protected $key   = 'iso3';
+  protected $value = 'name';
+  protected $table = 'iso_country_codes';
 
-    }
-    ```
+}
+```
 
 ## 它是如何工作的...
 
@@ -211,38 +211,38 @@ try {
 1.  首先，我们定义一个通用异常处理类，`Application\Error\Handler`：
 
 ```php
-    namespace Application\Error;
-    class Handler
-    {
-      // code goes here
-    }
-    ```
+namespace Application\Error;
+class Handler
+{
+  // code goes here
+}
+```
 
 1.  我们定义了代表日志文件的属性。如果未提供名称，则以年、月和日命名。在构造函数中，我们使用`set_exception_handler()`将`exceptionHandler()`方法（在这个类中）分配为回退处理程序：
 
 ```php
-    protected $logFile;
-    public function __construct(
-      $logFileDir = NULL, $logFile = NULL)
-    {
-      $logFile = $logFile    ?? date('Ymd') . '.log';
-      $logFileDir = $logFileDir ?? __DIR__;
-      $this->logFile = $logFileDir . '/' . $logFile;
-      $this->logFile = str_replace('//', '/', $this->logFile);
-      set_exception_handler([$this,'exceptionHandler']);
-    }
-    ```
+protected $logFile;
+public function __construct(
+  $logFileDir = NULL, $logFile = NULL)
+{
+  $logFile = $logFile    ?? date('Ymd') . '.log';
+  $logFileDir = $logFileDir ?? __DIR__;
+  $this->logFile = $logFileDir . '/' . $logFile;
+  $this->logFile = str_replace('//', '/', $this->logFile);
+  set_exception_handler([$this,'exceptionHandler']);
+}
+```
 
 1.  接下来，我们定义`exceptionHandler()`方法，它以`Exception`对象作为参数。我们记录异常的日期和时间、异常的类名以及其消息在日志文件中：
 
 ```php
-    public function exceptionHandler($ex)
-    {
-      $message = sprintf('%19s : %20s : %s' . PHP_EOL,
-        date('Y-m-d H:i:s'), get_class($ex), $ex->getMessage());
-      file_put_contents($this->logFile, $message, FILE_APPEND); 
-    }
-    ```
+public function exceptionHandler($ex)
+{
+  $message = sprintf('%19s : %20s : %s' . PHP_EOL,
+    date('Y-m-d H:i:s'), get_class($ex), $ex->getMessage());
+  file_put_contents($this->logFile, $message, FILE_APPEND); 
+}
+```
 
 1.  如果我们在代码中明确放置了`try/catch`块，这将覆盖我们的通用异常处理程序。另一方面，如果我们不使用 try/catch 并且抛出异常，通用异常处理程序将发挥作用。
 
@@ -347,38 +347,38 @@ echo 'Application Continues ...' . PHP_EOL;
 1.  修改前面步骤中定义的`Application\Error\Handler`类。在构造函数中，将一个新的`errorHandler()`方法设置为默认的错误处理程序：
 
 ```php
-    public function __construct($logFileDir = NULL, $logFile = NULL)
-    {
-      $logFile    = $logFile    ?? date('Ymd') . '.log';
-      $logFileDir = $logFileDir ?? __DIR__;
-      $this->logFile = $logFileDir . '/' . $logFile;
-      $this->logFile = str_replace('//', '/', $this->logFile);
-      set_exception_handler([$this,'exceptionHandler']);
-      set_error_handler([$this, 'errorHandler']);
-    }
-    ```
+public function __construct($logFileDir = NULL, $logFile = NULL)
+{
+  $logFile    = $logFile    ?? date('Ymd') . '.log';
+  $logFileDir = $logFileDir ?? __DIR__;
+  $this->logFile = $logFileDir . '/' . $logFile;
+  $this->logFile = str_replace('//', '/', $this->logFile);
+  set_exception_handler([$this,'exceptionHandler']);
+  set_error_handler([$this, 'errorHandler']);
+}
+```
 
 1.  然后，使用文档化的参数定义新方法。与我们的异常处理程序一样，我们将信息记录到日志文件中。
 
 ```php
-    public function errorHandler($errno, $errstr, $errfile, $errline)
-    {
-      $message = sprintf('ERROR: %s : %d : %s : %s : %s' . PHP_EOL,
-        date('Y-m-d H:i:s'), $errno, $errstr, $errfile, $errline);
-      file_put_contents($this->logFile, $message, FILE_APPEND);
-    }
-    ```
+public function errorHandler($errno, $errstr, $errfile, $errline)
+{
+  $message = sprintf('ERROR: %s : %d : %s : %s : %s' . PHP_EOL,
+    date('Y-m-d H:i:s'), $errno, $errstr, $errfile, $errline);
+  file_put_contents($this->logFile, $message, FILE_APPEND);
+}
+```
 
 1.  另外，为了能够区分错误和异常，将`EXCEPTION`添加到`exceptionHandler()`方法中发送到日志文件的消息中：
 
 ```php
-    public function exceptionHandler($ex)
-    {
-      $message = sprintf('EXCEPTION: %19s : %20s : %s' . PHP_EOL,
-        date('Y-m-d H:i:s'), get_class($ex), $ex->getMessage());
-      file_put_contents($this->logFile, $message, FILE_APPEND);
-    }
-    ```
+public function exceptionHandler($ex)
+{
+  $message = sprintf('EXCEPTION: %19s : %20s : %s' . PHP_EOL,
+    date('Y-m-d H:i:s'), get_class($ex), $ex->getMessage());
+  file_put_contents($this->logFile, $message, FILE_APPEND);
+}
+```
 
 ## 它是如何工作的...
 
@@ -475,15 +475,15 @@ echo 'Application continues ... ' . PHP_EOL;
 1.  然而，最佳实践是使用软件包管理器来安装和维护 PHPUnit。为此，我们将使用一个名为**Composer**的软件包管理程序。要安装 Composer，请访问主网站[`getcomposer.org/`](https://getcomposer.org/)，并按照下载页面上的说明进行操作。在撰写本文时，当前的过程如下。请注意，您需要用当前版本的哈希替换`<hash>`：
 
 ```php
-    php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-    php -r "if (hash_file('SHA384', 'composer-setup.php') === '<hash>') { 
-        echo 'Installer verified'; 
-    } else { 
-        echo 'Installer corrupt'; unlink('composer-setup.php'); 
-    } echo PHP_EOL;"
-    php composer-setup.php
-    php -r "unlink('composer-setup.php');"
-    ```
+php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+php -r "if (hash_file('SHA384', 'composer-setup.php') === '<hash>') { 
+    echo 'Installer verified'; 
+} else { 
+    echo 'Installer corrupt'; unlink('composer-setup.php'); 
+} echo PHP_EOL;"
+php composer-setup.php
+php -r "unlink('composer-setup.php');"
+```
 
 ### 提示
 
@@ -494,143 +494,143 @@ echo 'Application continues ... ' . PHP_EOL;
 1.  接下来，我们使用 Composer 来安装 PHPUnit。这是通过创建一个包含一系列指令的`composer.json`文件来实现的，这些指令概述了项目参数和依赖关系。这些指令的完整描述超出了本书的范围；然而，为了这个示例，我们使用`require`关键参数创建了一组最小的指令。您还会注意到文件的内容是以**JavaScript 对象表示**（**JSON**）格式呈现的：
 
 ```php
-    {
-      "require-dev": {
-        "phpunit/phpunit": "*"
-      }
-    }
-    ```
+{
+  "require-dev": {
+    "phpunit/phpunit": "*"
+  }
+}
+```
 
 1.  要从命令行执行安装，我们运行以下命令。输出如下所示：
 
 ```php
-    **php composer.phar install**
+**php composer.phar install**
 
-    ```
+```
 
 ![如何做...](img/B05314_13_08.jpg)
 
 1.  PHPUnit 及其依赖项被放置在`vendor`文件夹中，如果不存在，Composer 将创建它。然后，调用 PHPUnit 的主要命令被符号链接到`vendor/bin`文件夹中。如果您将此文件夹放在您的`PATH`中，您只需要运行此命令，它将检查版本并顺便确认安装：
 
 ```php
-    **phpunit --version**
+**phpunit --version**
 
-    ```
+```
 
 ### 运行简单测试
 
 1.  为了说明这一点，让我们假设我们有一个包含`add()`函数的`chap_13_unit_test_simple.php`文件：
 
 ```php
-    <?php
-    function add($a = NULL, $b = NULL)
-    {
-      return $a + $b;
-    }
-    ```
+<?php
+function add($a = NULL, $b = NULL)
+{
+  return $a + $b;
+}
+```
 
 1.  测试然后被写成扩展`PHPUnit\Framework\TestCase`的类。如果你正在测试一个函数库，在测试类的开头，包括包含函数定义的文件。然后你会写一些以单词`test`开头的方法，通常后面跟着你正在测试的函数的名称，可能还有一些额外的驼峰命名的单词来进一步描述测试。为了这个示例，我们将定义一个`SimpleTest`测试类：
 
 ```php
-    <?php
-    use PHPUnit\Framework\TestCase;
-    require_once __DIR__ . '/chap_13_unit_test_simple.php';
-    class SimpleTest extends TestCase
-    {
-      // testXXX() methods go here
-    }
-    ```
+<?php
+use PHPUnit\Framework\TestCase;
+require_once __DIR__ . '/chap_13_unit_test_simple.php';
+class SimpleTest extends TestCase
+{
+  // testXXX() methods go here
+}
+```
 
 1.  断言构成了任何一组测试的核心。`另请参阅`部分为您提供了完整断言列表的文档参考。断言是一个 PHPUnit 方法，它比较一个已知值与您希望测试的值产生的值。例如`assertEquals()`，它检查第一个参数是否等于第二个参数。以下示例测试了一个名为`add()`的方法，并确认`add(1,1)`的返回值为**2**：
 
 ```php
-    public function testAdd()
-    {
-      $this->assertEquals(2, add(1,1));
-    }
-    ```
+public function testAdd()
+{
+  $this->assertEquals(2, add(1,1));
+}
+```
 
 1.  您也可以测试某些事情是否*不*成立。这个例子断言 1 + 1 不等于 3：
 
 ```php
-    $this->assertNotEquals(3, add(1,1));
-    ```
+$this->assertNotEquals(3, add(1,1));
+```
 
 1.  在测试字符串时，使用`assertRegExp()`断言非常有用。假设，为了举例说明，我们正在测试一个函数，该函数从多维数组中生成 HTML 表：
 
 ```php
-    function table(array $a)
-    {
-      $table = '<table>';
-      foreach ($a as $row) {
-        $table .= '<tr><td>';
-        $table .= implode('</td><td>', $row);
-        $table .= '</td></tr>';
-      }
-      $table .= '</table>';
-      return $table;
-    }
-    ```
+function table(array $a)
+{
+  $table = '<table>';
+  foreach ($a as $row) {
+    $table .= '<tr><td>';
+    $table .= implode('</td><td>', $row);
+    $table .= '</td></tr>';
+  }
+  $table .= '</table>';
+  return $table;
+}
+```
 
 1.  我们可以构建一个简单的测试，确认输出包含`<table>`，一个或多个字符，然后是`</table>`。此外，我们希望确认存在一个`<td>B</td>`元素。在编写测试时，我们构建一个测试数组，其中包含三个子数组，分别包含字母 A—C，D—F 和 G—I。然后我们将测试数组传递给函数，并对结果运行断言：
 
 ```php
-    public function testTable()
-    {
-      $a = [range('A', 'C'),range('D', 'F'),range('G','I')];
-      $table = table($a);
-      $this->assertRegExp('!^<table>.+</table>$!', $table);
-      $this->assertRegExp('!<td>B</td>!', $table);
-    }
-    ```
+public function testTable()
+{
+  $a = [range('A', 'C'),range('D', 'F'),range('G','I')];
+  $table = table($a);
+  $this->assertRegExp('!^<table>.+</table>$!', $table);
+  $this->assertRegExp('!<td>B</td>!', $table);
+}
+```
 
 1.  为了测试一个类，而不是包含一个函数库，只需包含定义要测试的类的文件。为了举例说明，让我们将先前显示的函数库移动到一个`Demo`类中：
 
 ```php
-    <?php
-    class Demo
-    {
-      public function add($a, $b)
-      {
-        return $a + $b;
-      }
+<?php
+class Demo
+{
+  public function add($a, $b)
+  {
+    return $a + $b;
+  }
 
-      public function sub($a, $b)
-      {
-        return $a - $b;
-      }
-      // etc.
-    }
-    ```
+  public function sub($a, $b)
+  {
+    return $a - $b;
+  }
+  // etc.
+}
+```
 
 1.  在我们的`SimpleClassTest`测试类中，我们不包含库文件，而是包含代表`Demo`类的文件。我们需要`Demo`的一个实例来运行测试。为此，我们使用一个专门设计的`setup()`方法，在每次测试之前运行。此外，您会注意到一个`teardown()`方法，在每次测试后立即运行：
 
 ```php
-    <?php
-    use PHPUnit\Framework\TestCase;
-    require_once __DIR__ . '/Demo.php';
-    class SimpleClassTest extends TestCase
-    {
-      protected $demo;
-      public function setup()
-      {
-        $this->demo = new Demo();
-      }
-      public function teardown()
-      {
-        unset($this->demo);
-      }
-      public function testAdd()
-      {
-        $this->assertEquals(2, $this->demo->add(1,1));
-      }
-      public function testSub()
-      {
-        $this->assertEquals(0, $this->demo->sub(1,1));
-      }
-      // etc.
-    }
-    ```
+<?php
+use PHPUnit\Framework\TestCase;
+require_once __DIR__ . '/Demo.php';
+class SimpleClassTest extends TestCase
+{
+  protected $demo;
+  public function setup()
+  {
+    $this->demo = new Demo();
+  }
+  public function teardown()
+  {
+    unset($this->demo);
+  }
+  public function testAdd()
+  {
+    $this->assertEquals(2, $this->demo->add(1,1));
+  }
+  public function testSub()
+  {
+    $this->assertEquals(0, $this->demo->sub(1,1));
+  }
+  // etc.
+}
+```
 
 ### 注意
 
@@ -643,74 +643,74 @@ echo 'Application continues ... ' . PHP_EOL;
 1.  作为使用数据库的类的示例，我们将定义一个`VisitorOps`类。新类将包括添加、删除和查找访问者的方法。请注意，我们还添加了一个方法来返回最新执行的 SQL 语句：
 
 ```php
-    <?php
-    require __DIR__ . '/../Application/Database/Connection.php';
-    use Application\Database\Connection;
-    class VisitorOps
-    {
+<?php
+require __DIR__ . '/../Application/Database/Connection.php';
+use Application\Database\Connection;
+class VisitorOps
+{
 
-    const TABLE_NAME = 'visitors';
-    protected $connection;
-    protected $sql;
+const TABLE_NAME = 'visitors';
+protected $connection;
+protected $sql;
 
-    public function __construct(array $config)
-    {
-      $this->connection = new Connection($config);
-    }
+public function __construct(array $config)
+{
+  $this->connection = new Connection($config);
+}
 
-    public function getSql()
-    {
-      return $this->sql;
-    }
+public function getSql()
+{
+  return $this->sql;
+}
 
-    public function findAll()
-    {
-      $sql = 'SELECT * FROM ' . self::TABLE_NAME;
-      $stmt = $this->runSql($sql);
-      while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        yield $row;
-      }
-    }
+public function findAll()
+{
+  $sql = 'SELECT * FROM ' . self::TABLE_NAME;
+  $stmt = $this->runSql($sql);
+  while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+    yield $row;
+  }
+}
 
-    public function findById($id)
-    {
-      $sql = 'SELECT * FROM ' . self::TABLE_NAME;
-      $sql .= ' WHERE id = ?';
-      $stmt = $this->runSql($sql, [$id]);
-      return $stmt->fetch(PDO::FETCH_ASSOC);
-    }
+public function findById($id)
+{
+  $sql = 'SELECT * FROM ' . self::TABLE_NAME;
+  $sql .= ' WHERE id = ?';
+  $stmt = $this->runSql($sql, [$id]);
+  return $stmt->fetch(PDO::FETCH_ASSOC);
+}
 
-    public function removeById($id)
-    {
-      $sql = 'DELETE FROM ' . self::TABLE_NAME;
-      $sql .= ' WHERE id = ?';
-      return $this->runSql($sql, [$id]);
-    }
+public function removeById($id)
+{
+  $sql = 'DELETE FROM ' . self::TABLE_NAME;
+  $sql .= ' WHERE id = ?';
+  return $this->runSql($sql, [$id]);
+}
 
-    public function addVisitor($data)
-    {
-      $sql = 'INSERT INTO ' . self::TABLE_NAME;
-      $sql .= ' (' . implode(',',array_keys($data)) . ') ';
-      $sql .= ' VALUES ';
-      $sql .= ' ( :' . implode(',:',array_keys($data)) . ') ';
-      $this->runSql($sql, $data);
-      return $this->connection->pdo->lastInsertId();
-    }
+public function addVisitor($data)
+{
+  $sql = 'INSERT INTO ' . self::TABLE_NAME;
+  $sql .= ' (' . implode(',',array_keys($data)) . ') ';
+  $sql .= ' VALUES ';
+  $sql .= ' ( :' . implode(',:',array_keys($data)) . ') ';
+  $this->runSql($sql, $data);
+  return $this->connection->pdo->lastInsertId();
+}
 
-    public function runSql($sql, $params = NULL)
-    {
-      $this->sql = $sql;
-      try {
-          $stmt = $this->connection->pdo->prepare($sql);
-          $result = $stmt->execute($params);
-      } catch (Throwable $e) {
-          error_log(__METHOD__ . ':' . $e->getMessage());
-          return FALSE;
-      }
-      return $stmt;
-    }
-    }
-    ```
+public function runSql($sql, $params = NULL)
+{
+  $this->sql = $sql;
+  try {
+      $stmt = $this->connection->pdo->prepare($sql);
+      $result = $stmt->execute($params);
+  } catch (Throwable $e) {
+      error_log(__METHOD__ . ':' . $e->getMessage());
+      return FALSE;
+  }
+  return $stmt;
+}
+}
+```
 
 1.  对于涉及数据库的测试，建议使用测试数据库，而不是实际生产数据库。因此，您需要额外的数据库连接参数集，可以在`setup()`方法中用于建立数据库连接。
 
@@ -731,129 +731,129 @@ echo 'Application continues ... ' . PHP_EOL;
 1.  在这种情况下，为了举例说明，定义一个服务类`VisitorService`，它使用先前讨论的`VisitorOps`类：
 
 ```php
-    <?php
-    require_once __DIR__ . '/VisitorOps.php';
-    require_once __DIR__ . '/../Application/Database/Connection.php';
-    use Application\Database\Connection;
-    class VisitorService
-    {
-      protected $visitorOps;
-      public function __construct(array $config)
-      {
-        $this->visitorOps = new VisitorOps($config);
-      }
-      public function showAllVisitors()
-      {
-        $table = '<table>';
-        foreach ($this->visitorOps->findAll() as $row) {
-          $table .= '<tr><td>';
-          $table .= implode('</td><td>', $row);
-          $table .= '</td></tr>';
-        }
-        $table .= '</table>';
-        return $table;
-      }
-    ```
+<?php
+require_once __DIR__ . '/VisitorOps.php';
+require_once __DIR__ . '/../Application/Database/Connection.php';
+use Application\Database\Connection;
+class VisitorService
+{
+  protected $visitorOps;
+  public function __construct(array $config)
+  {
+    $this->visitorOps = new VisitorOps($config);
+  }
+  public function showAllVisitors()
+  {
+    $table = '<table>';
+    foreach ($this->visitorOps->findAll() as $row) {
+      $table .= '<tr><td>';
+      $table .= implode('</td><td>', $row);
+      $table .= '</td></tr>';
+    }
+    $table .= '</table>';
+    return $table;
+  }
+```
 
 1.  为了测试目的，我们为`$visitorOps`属性添加了 getter 和 setter。这使我们能够在真实的`VisitorOps`类的位置插入一个模拟类：
 
 ```php
-    public function getVisitorOps()
-    {
-      return $this->visitorOps;
-    }
+public function getVisitorOps()
+{
+  return $this->visitorOps;
+}
 
-    public function setVisitorOps(VisitorOps $visitorOps)
-    {
-      $this->visitorOps = $visitorOps;
-    }
-    } // closing brace for VisitorService
-    ```
+public function setVisitorOps(VisitorOps $visitorOps)
+{
+  $this->visitorOps = $visitorOps;
+}
+} // closing brace for VisitorService
+```
 
 1.  接下来，我们定义一个`VisitorOpsMock`模拟类，模拟其父类的功能。类常量和属性都会被继承。然后我们添加模拟测试数据，并添加一个 getter 以便以后访问测试数据：
 
 ```php
-    <?php
-    require_once __DIR__ . '/VisitorOps.php';
-    class VisitorOpsMock extends VisitorOps
-    {
-      protected $testData;
-      public function __construct()
-      {
-        $data = array();
-        for ($x = 1; $x <= 3; $x++) {
-          $data[$x]['id'] = $x;
-          $data[$x]['email'] = $x . 'test@unlikelysource.com';
-          $data[$x]['visit_date'] = 
-            '2000-0' . $x . '-0' . $x . ' 00:00:00';
-          $data[$x]['comments'] = 'TEST ' . $x;
-          $data[$x]['name'] = 'TEST ' . $x;
-        }
-        $this->testData = $data;
-      }
-      public function getTestData()
-      {
-        return $this->testData;
-      }
-    ```
+<?php
+require_once __DIR__ . '/VisitorOps.php';
+class VisitorOpsMock extends VisitorOps
+{
+  protected $testData;
+  public function __construct()
+  {
+    $data = array();
+    for ($x = 1; $x <= 3; $x++) {
+      $data[$x]['id'] = $x;
+      $data[$x]['email'] = $x . 'test@unlikelysource.com';
+      $data[$x]['visit_date'] = 
+        '2000-0' . $x . '-0' . $x . ' 00:00:00';
+      $data[$x]['comments'] = 'TEST ' . $x;
+      $data[$x]['name'] = 'TEST ' . $x;
+    }
+    $this->testData = $data;
+  }
+  public function getTestData()
+  {
+    return $this->testData;
+  }
+```
 
 1.  接下来，我们覆盖`findAll()`以使用`yield`返回测试数据，就像父类一样。请注意，我们仍然构建 SQL 字符串，因为这是父类的做法：
 
 ```php
-    public function findAll()
-    {
-      $sql = 'SELECT * FROM ' . self::TABLE_NAME;
-      foreach ($this->testData as $row) {
-        yield $row;
-      }
-    }
-    ```
+public function findAll()
+{
+  $sql = 'SELECT * FROM ' . self::TABLE_NAME;
+  foreach ($this->testData as $row) {
+    yield $row;
+  }
+}
+```
 
 1.  为了模拟`findById()`，我们只需从`$this->testData`返回该数组键。对于`removeById()`，我们从`$this->testData`中取消设置为参数的数组键：
 
 ```php
-    public function findById($id)
-    {
-      $sql = 'SELECT * FROM ' . self::TABLE_NAME;
-      $sql .= ' WHERE id = ?';
-      return $this->testData[$id] ?? FALSE;
-    }
-    public function removeById($id)
-    {
-      $sql = 'DELETE FROM ' . self::TABLE_NAME;
-      $sql .= ' WHERE id = ?';
-      if (empty($this->testData[$id])) {
-          return 0;
-      } else {
-          unset($this->testData[$id]);
-          return 1;
-      }
-    }
-    ```
+public function findById($id)
+{
+  $sql = 'SELECT * FROM ' . self::TABLE_NAME;
+  $sql .= ' WHERE id = ?';
+  return $this->testData[$id] ?? FALSE;
+}
+public function removeById($id)
+{
+  $sql = 'DELETE FROM ' . self::TABLE_NAME;
+  $sql .= ' WHERE id = ?';
+  if (empty($this->testData[$id])) {
+      return 0;
+  } else {
+      unset($this->testData[$id]);
+      return 1;
+  }
+}
+```
 
 1.  添加数据稍微复杂一些，因为我们需要模拟`id`参数可能不会被提供的情况，因为数据库通常会自动生成这个参数。为了解决这个问题，我们检查`id`参数。如果没有设置，我们找到最大的数组键并递增：
 
 ```php
-    public function addVisitor($data)
-    {
-      $sql = 'INSERT INTO ' . self::TABLE_NAME;
-      $sql .= ' (' . implode(',',array_keys($data)) . ') ';
-      $sql .= ' VALUES ';
-      $sql .= ' ( :' . implode(',:',array_keys($data)) . ') ';
-      if (!empty($data['id'])) {
-          $id = $data['id'];
-      } else {
-          $keys = array_keys($this->testData);
-          sort($keys);
-          $id = end($keys) + 1;
-          $data['id'] = $id;
-      }
-        $this->testData[$id] = $data;
-        return 1;
-      }
+public function addVisitor($data)
+{
+  $sql = 'INSERT INTO ' . self::TABLE_NAME;
+  $sql .= ' (' . implode(',',array_keys($data)) . ') ';
+  $sql .= ' VALUES ';
+  $sql .= ' ( :' . implode(',:',array_keys($data)) . ') ';
+  if (!empty($data['id'])) {
+      $id = $data['id'];
+  } else {
+      $keys = array_keys($this->testData);
+      sort($keys);
+      $id = end($keys) + 1;
+      $data['id'] = $id;
+  }
+    $this->testData[$id] = $data;
+    return 1;
+  }
 
-    } // ending brace for the class VisitorOpsMock
-    ```
+} // ending brace for the class VisitorOpsMock
+```
 
 ### 使用匿名类作为模拟对象
 
@@ -862,75 +862,75 @@ echo 'Application continues ... ' . PHP_EOL;
 1.  在这个示例中，我们将修改之前介绍的`VisitorServiceTest.php`，将其命名为`VisitorServiceTestAnonClass.php`：
 
 ```php
-    <?php
-    use PHPUnit\Framework\TestCase;
-    require_once __DIR__ . '/VisitorService.php';
-    require_once __DIR__ . '/VisitorOps.php';
-    class VisitorServiceTestAnonClass extends TestCase
-    {
-      protected $visitorService;
-      protected $dbConfig = [
-        'driver'   => 'mysql',
-        'host'     => 'localhost',
-        'dbname'   => 'php7cookbook_test',
-        'user'     => 'cook',
-        'password' => 'book',
-        'errmode'  => PDO::ERRMODE_EXCEPTION,
-      ];
-        protected $testData;
-    ```
+<?php
+use PHPUnit\Framework\TestCase;
+require_once __DIR__ . '/VisitorService.php';
+require_once __DIR__ . '/VisitorOps.php';
+class VisitorServiceTestAnonClass extends TestCase
+{
+  protected $visitorService;
+  protected $dbConfig = [
+    'driver'   => 'mysql',
+    'host'     => 'localhost',
+    'dbname'   => 'php7cookbook_test',
+    'user'     => 'cook',
+    'password' => 'book',
+    'errmode'  => PDO::ERRMODE_EXCEPTION,
+  ];
+    protected $testData;
+```
 
 1.  您会注意到在`setup()`中，我们定义了一个匿名类，它扩展了`VisitorOps`。我们只需要覆盖`findAll()`方法：
 
 ```php
-    public function setup()
-    {
-      $data = array();
-      for ($x = 1; $x <= 3; $x++) {
-        $data[$x]['id'] = $x;
-        $data[$x]['email'] = $x . 'test@unlikelysource.com';
-        $data[$x]['visit_date'] = 
-          '2000-0' . $x . '-0' . $x . ' 00:00:00';
-        $data[$x]['comments'] = 'TEST ' . $x;
-        $data[$x]['name'] = 'TEST ' . $x;
+public function setup()
+{
+  $data = array();
+  for ($x = 1; $x <= 3; $x++) {
+    $data[$x]['id'] = $x;
+    $data[$x]['email'] = $x . 'test@unlikelysource.com';
+    $data[$x]['visit_date'] = 
+      '2000-0' . $x . '-0' . $x . ' 00:00:00';
+    $data[$x]['comments'] = 'TEST ' . $x;
+    $data[$x]['name'] = 'TEST ' . $x;
+  }
+  $this->testData = $data;
+  $this->visitorService = 
+    new VisitorService($this->dbConfig);
+  $opsMock = 
+    new class ($this->testData) extends VisitorOps {
+      protected $testData;
+      public function __construct($testData)
+      {
+        $this->testData = $testData;
       }
-      $this->testData = $data;
-      $this->visitorService = 
-        new VisitorService($this->dbConfig);
-      $opsMock = 
-        new class ($this->testData) extends VisitorOps {
-          protected $testData;
-          public function __construct($testData)
-          {
-            $this->testData = $testData;
-          }
-          public function findAll()
-          {
-            return $this->testData;
-          }
-        };
-        $this->visitorService->setVisitorOps($opsMock);
-    }
-    ```
+      public function findAll()
+      {
+        return $this->testData;
+      }
+    };
+    $this->visitorService->setVisitorOps($opsMock);
+}
+```
 
 1.  请注意，在`testShowAllVisitors()`中，当执行`$this->visitorService->showAllVisitors()`时，访客服务会调用匿名类，然后调用覆盖的`findAll()`：
 
 ```php
-    public function teardown()
-    {
-      unset($this->visitorService);
-    }
-    public function testShowAllVisitors()
-    {
-      $result = $this->visitorService->showAllVisitors();
-      $this->assertRegExp('!^<table>.+</table>$!', $result);
-      foreach ($this->testData as $key => $value) {
-        $dataWeWant = '!<td>' . $key . '</td>!';
-        $this->assertRegExp($dataWeWant, $result);
-      }
-    }
-    }
-    ```
+public function teardown()
+{
+  unset($this->visitorService);
+}
+public function testShowAllVisitors()
+{
+  $result = $this->visitorService->showAllVisitors();
+  $this->assertRegExp('!^<table>.+</table>$!', $result);
+  foreach ($this->testData as $key => $value) {
+    $dataWeWant = '!<td>' . $key . '</td>!';
+    $this->assertRegExp($dataWeWant, $result);
+  }
+}
+}
+```
 
 ### 使用模拟构建器
 
@@ -939,40 +939,40 @@ echo 'Application continues ... ' . PHP_EOL;
 1.  在下面的例子中，我们复制了`VisitorServiceTestAnonClass`；唯一的区别在于在`setup()`中提供`VisitorOps`的实例的方式，在这种情况下使用`getMockBuilder()`。请注意，尽管在这个例子中我们没有使用`with()`，但它被用来向模拟方法提供受控参数：
 
 ```php
-    <?php
-    use PHPUnit\Framework\TestCase;
-    require_once __DIR__ . '/VisitorService.php';
-    require_once __DIR__ . '/VisitorOps.php';
-    class VisitorServiceTestAnonMockBuilder extends TestCase
-    {
-      // code is identical to VisitorServiceTestAnon
-      public function setup()
-      {
-        $data = array();
-        for ($x = 1; $x <= 3; $x++) {
-          $data[$x]['id'] = $x;
-          $data[$x]['email'] = $x . 'test@unlikelysource.com';
-          $data[$x]['visit_date'] = 
-            '2000-0' . $x . '-0' . $x . ' 00:00:00';
-          $data[$x]['comments'] = 'TEST ' . $x;
-          $data[$x]['name'] = 'TEST ' . $x;
-      }
-      $this->testData = $data;
-        $this->visitorService = 
-          new VisitorService($this->dbConfig);
-        $opsMock = $this->getMockBuilder(VisitorOps::class)
-                        ->setMethods(['findAll'])
-                        ->disableOriginalConstructor()
-                        ->getMock();
-                        $opsMock->expects($this->once())
-                        ->method('findAll')
-                        ->with()
-                        ->will($this->returnValue($this->testData));
-                        $this->visitorService->setVisitorOps($opsMock);
-      }
-      // remaining code is the same
-    }
-    ```
+<?php
+use PHPUnit\Framework\TestCase;
+require_once __DIR__ . '/VisitorService.php';
+require_once __DIR__ . '/VisitorOps.php';
+class VisitorServiceTestAnonMockBuilder extends TestCase
+{
+  // code is identical to VisitorServiceTestAnon
+  public function setup()
+  {
+    $data = array();
+    for ($x = 1; $x <= 3; $x++) {
+      $data[$x]['id'] = $x;
+      $data[$x]['email'] = $x . 'test@unlikelysource.com';
+      $data[$x]['visit_date'] = 
+        '2000-0' . $x . '-0' . $x . ' 00:00:00';
+      $data[$x]['comments'] = 'TEST ' . $x;
+      $data[$x]['name'] = 'TEST ' . $x;
+  }
+  $this->testData = $data;
+    $this->visitorService = 
+      new VisitorService($this->dbConfig);
+    $opsMock = $this->getMockBuilder(VisitorOps::class)
+                    ->setMethods(['findAll'])
+                    ->disableOriginalConstructor()
+                    ->getMock();
+                    $opsMock->expects($this->once())
+                    ->method('findAll')
+                    ->with()
+                    ->will($this->returnValue($this->testData));
+                    $this->visitorService->setVisitorOps($opsMock);
+  }
+  // remaining code is the same
+}
+```
 
 ### 注意
 
@@ -1187,70 +1187,70 @@ public function testShowAllVisitors()
 1.  最简单的情况下，您只需要将所有测试移动到一个文件夹中：
 
 ```php
-    **mkdir tests**
-    **cp *Test.php tests**
+**mkdir tests**
+**cp *Test.php tests**
 
-    ```
+```
 
 1.  您需要调整包含或需要外部文件的命令，以适应新位置。所示的示例（SimpleTest）是在前一篇中开发的：
 
 ```php
-    <?php
-    use PHPUnit\Framework\TestCase;
-    require_once __DIR__ . '/../chap_13_unit_test_simple.php';
+<?php
+use PHPUnit\Framework\TestCase;
+require_once __DIR__ . '/../chap_13_unit_test_simple.php';
 
-    class SimpleTest extends TestCase
-    {
-      // etc.
-    ```
+class SimpleTest extends TestCase
+{
+  // etc.
+```
 
 1.  然后，您可以简单地使用目录路径作为参数运行`phpunit`。PHPUnit 将自动运行该文件夹中的所有测试。在此示例中，我们假设有一个`tests`子目录：
 
 ```php
-    **phpunit tests**
+**phpunit tests**
 
-    ```
+```
 
 1.  您可以使用`--bootstrap`选项指定在运行测试之前执行的文件。此选项的典型用法是初始化自动加载：
 
 ```php
-    **phpunit --boostrap tests_with_autoload/bootstrap.php tests**
+**phpunit --boostrap tests_with_autoload/bootstrap.php tests**
 
-    ```
+```
 
 1.  这是实现自动加载的示例`bootstrap.php`文件：
 
 ```php
-    <?php
-    require __DIR__ . '/../../Application/Autoload/Loader.php';
-    Application\Autoload\Loader::init([__DIR__]);
-    ```
+<?php
+require __DIR__ . '/../../Application/Autoload/Loader.php';
+Application\Autoload\Loader::init([__DIR__]);
+```
 
 1.  另一种可能性是使用 XML 配置文件定义一个或多个测试集。以下是一个示例，仅运行 Simple*测试：
 
 ```php
-    <phpunit>
-      <testsuites>
-        <testsuite name="simple">
-          <file>SimpleTest.php</file>
-          <file>SimpleDbTest.php</file>
-          <file>SimpleClassTest.php</file>
-        </testsuite>
-      </testsuites>
-    </phpunit>
-    ```
+<phpunit>
+  <testsuites>
+    <testsuite name="simple">
+      <file>SimpleTest.php</file>
+      <file>SimpleDbTest.php</file>
+      <file>SimpleClassTest.php</file>
+    </testsuite>
+  </testsuites>
+</phpunit>
+```
 
 1.  以下是另一个示例，它基于目录运行测试，并指定了一个引导文件：
 
 ```php
-    <phpunit bootstrap="bootstrap.php">
-      <testsuites>
-        <testsuite name="visitor">
-          <directory>Simple</directory>
-        </testsuite>
-      </testsuites>
-    </phpunit>
-    ```
+<phpunit bootstrap="bootstrap.php">
+  <testsuites>
+    <testsuite name="visitor">
+      <directory>Simple</directory>
+    </testsuite>
+  </testsuites>
+</phpunit>
+```
 
 ## 它是如何工作...
 
@@ -1341,338 +1341,338 @@ class ClassTest extends TestCase
 1.  为了说明这一点，我们假设我们正在生成最终将出现在`prospects`表中的数据。以下是用于创建此表的 SQL 语句：
 
 ```php
-    CREATE TABLE 'prospects' (
-      'id' int(11) NOT NULL AUTO_INCREMENT,
-      'first_name' varchar(128) NOT NULL,
-      'last_name' varchar(128) NOT NULL,
-      'address' varchar(256) DEFAULT NULL,
-      'city' varchar(64) DEFAULT NULL,
-      'state_province' varchar(32) DEFAULT NULL,
-      'postal_code' char(16) NOT NULL,
-      'phone' varchar(16) NOT NULL,
-      'country' char(2) NOT NULL,
-      'email' varchar(250) NOT NULL,
-      'status' char(8) DEFAULT NULL,
-      'budget' decimal(10,2) DEFAULT NULL,
-      'last_updated' datetime DEFAULT NULL,
-      PRIMARY KEY ('id'),
-      UNIQUE KEY 'UNIQ_35730C06E7927C74' ('email')
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-    ```
+CREATE TABLE 'prospects' (
+  'id' int(11) NOT NULL AUTO_INCREMENT,
+  'first_name' varchar(128) NOT NULL,
+  'last_name' varchar(128) NOT NULL,
+  'address' varchar(256) DEFAULT NULL,
+  'city' varchar(64) DEFAULT NULL,
+  'state_province' varchar(32) DEFAULT NULL,
+  'postal_code' char(16) NOT NULL,
+  'phone' varchar(16) NOT NULL,
+  'country' char(2) NOT NULL,
+  'email' varchar(250) NOT NULL,
+  'status' char(8) DEFAULT NULL,
+  'budget' decimal(10,2) DEFAULT NULL,
+  'last_updated' datetime DEFAULT NULL,
+  PRIMARY KEY ('id'),
+  UNIQUE KEY 'UNIQ_35730C06E7927C74' ('email')
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+```
 
 1.  现在是时候创建一个能够生成假数据的类了。然后我们将创建方法来为上面显示的每个字段生成数据，除了`id`，它是自动生成的：
 
 ```php
-    namespace Application\Test;
+namespace Application\Test;
 
-    use PDO;
-    use Exception;
-    use DateTime;
-    use DateInterval;
-    use PDOException;
-    use SplFileObject;
-    use InvalidArgumentsException;
-    use Application\Database\Connection;
+use PDO;
+use Exception;
+use DateTime;
+use DateInterval;
+use PDOException;
+use SplFileObject;
+use InvalidArgumentsException;
+use Application\Database\Connection;
 
-    class FakeData
-    {
-      // data generation methods here
-    }
-    ```
+class FakeData
+{
+  // data generation methods here
+}
+```
 
 1.  接下来，我们定义将用作过程一部分的常量和属性：
 
 ```php
-    const MAX_LOOKUPS     = 10;
-    const SOURCE_FILE     = 'file';
-    const SOURCE_TABLE    = 'table';
-    const SOURCE_METHOD   = 'method';
-    const SOURCE_CALLBACK = 'callback';
-    const FILE_TYPE_CSV   = 'csv';
-    const FILE_TYPE_TXT   = 'txt';
-    const ERROR_DB        = 'ERROR: unable to read source table';
-    const ERROR_FILE      = 'ERROR: file not found';
-    const ERROR_COUNT     = 'ERROR: unable to ascertain count or ID column missing';
-    const ERROR_UPLOAD    = 'ERROR: unable to upload file';
-    const ERROR_LOOKUP    = 'ERROR: unable to find any IDs in the source table';
+const MAX_LOOKUPS     = 10;
+const SOURCE_FILE     = 'file';
+const SOURCE_TABLE    = 'table';
+const SOURCE_METHOD   = 'method';
+const SOURCE_CALLBACK = 'callback';
+const FILE_TYPE_CSV   = 'csv';
+const FILE_TYPE_TXT   = 'txt';
+const ERROR_DB        = 'ERROR: unable to read source table';
+const ERROR_FILE      = 'ERROR: file not found';
+const ERROR_COUNT     = 'ERROR: unable to ascertain count or ID column missing';
+const ERROR_UPLOAD    = 'ERROR: unable to upload file';
+const ERROR_LOOKUP    = 'ERROR: unable to find any IDs in the source table';
 
-    protected $connection;
-    protected $mapping;
-    protected $files;
-    protected $tables;
-    ```
+protected $connection;
+protected $mapping;
+protected $files;
+protected $tables;
+```
 
 1.  然后我们定义将用于生成随机字母、街道名称和电子邮件地址的属性。您可以将这些数组视为种子，可以根据需要进行修改和/或扩展。例如，您可以为法国受众替换巴黎的街道名称片段：
 
 ```php
-    protected $alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    protected $street1 = ['Amber','Blue','Bright','Broad','Burning',
-      'Cinder','Clear','Dewy','Dusty','Easy']; // etc. 
-    protected $street2 = ['Anchor','Apple','Autumn','Barn','Beacon',
-      'Bear','Berry','Blossom','Bluff','Cider','Cloud']; // etc.
-    protected $street3 = ['Acres','Arbor','Avenue','Bank','Bend',
-      'Canyon','Circle','Street'];
-    protected $email1 = ['northern','southern','eastern','western',
-      'fast','midland','central'];
-    protected $email2 = ['telecom','telco','net','connect'];
-    protected $email3 = ['com','net'];
-    ```
+protected $alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+protected $street1 = ['Amber','Blue','Bright','Broad','Burning',
+  'Cinder','Clear','Dewy','Dusty','Easy']; // etc. 
+protected $street2 = ['Anchor','Apple','Autumn','Barn','Beacon',
+  'Bear','Berry','Blossom','Bluff','Cider','Cloud']; // etc.
+protected $street3 = ['Acres','Arbor','Avenue','Bank','Bend',
+  'Canyon','Circle','Street'];
+protected $email1 = ['northern','southern','eastern','western',
+  'fast','midland','central'];
+protected $email2 = ['telecom','telco','net','connect'];
+protected $email3 = ['com','net'];
+```
 
 1.  在构造函数中，我们接受一个用于数据库访问的`Connection`对象，一个映射到假数据的数组：
 
 ```php
-    public function __construct(Connection $conn, array $mapping)
-    {
-      $this->connection = $conn;
-      $this->mapping = $mapping;
-    }
-    ```
+public function __construct(Connection $conn, array $mapping)
+{
+  $this->connection = $conn;
+  $this->mapping = $mapping;
+}
+```
 
 1.  为了生成街道名称，而不是尝试创建一个数据库表，使用一组种子数组来生成随机组合可能更有效。以下是这种方法可能的工作方式的示例：
 
 ```php
-    public function getAddress($entry)
-    {
-      return random_int(1,999)
-       . ' ' . $this->street1[array_rand($this->street1)]
-       . ' ' . $this->street2[array_rand($this->street2)]
-       . ' ' . $this->street3[array_rand($this->street3)];
-    }
-    ```
+public function getAddress($entry)
+{
+  return random_int(1,999)
+   . ' ' . $this->street1[array_rand($this->street1)]
+   . ' ' . $this->street2[array_rand($this->street2)]
+   . ' ' . $this->street3[array_rand($this->street3)];
+}
+```
 
 1.  根据所需的逼真程度，您还可以构建一个将邮政编码与城市匹配的数据库表。邮政编码也可以随机生成。以下是一个为英国生成邮政编码的示例：
 
 ```php
-    public function getPostalCode($entry, $pattern = 1)
-    {
-      return $this->alpha[random_int(0,25)]
-       . $this->alpha[random_int(0,25)]
-       . random_int(1, 99)
-       . ' '
-       . random_int(1, 9)
-       . $this->alpha[random_int(0,25)]
-       . $this->alpha[random_int(0,25)];
-    }
-    ```
+public function getPostalCode($entry, $pattern = 1)
+{
+  return $this->alpha[random_int(0,25)]
+   . $this->alpha[random_int(0,25)]
+   . random_int(1, 99)
+   . ' '
+   . random_int(1, 9)
+   . $this->alpha[random_int(0,25)]
+   . $this->alpha[random_int(0,25)];
+}
+```
 
 1.  生成假电子邮件也可以使用一组种子数组来产生随机结果。我们还可以编程让它接收一个现有的`$entry`数组，并使用这些参数来创建地址的名称部分：
 
 ```php
-    public function getEmail($entry, $params = NULL)
-    {
-      $first = $entry[$params[0]] ?? $this->alpha[random_int(0,25)];
-      $last  = $entry[$params[1]] ?? $this->alpha[random_int(0,25)];
-      return $first[0] . '.' . $last
-       . '@'
-       . $this->email1[array_rand($this->email1)]
-       . $this->email2[array_rand($this->email2)]
-       . '.'
-       . $this->email3[array_rand($this->email3)];
-    }
-    ```
+public function getEmail($entry, $params = NULL)
+{
+  $first = $entry[$params[0]] ?? $this->alpha[random_int(0,25)];
+  $last  = $entry[$params[1]] ?? $this->alpha[random_int(0,25)];
+  return $first[0] . '.' . $last
+   . '@'
+   . $this->email1[array_rand($this->email1)]
+   . $this->email2[array_rand($this->email2)]
+   . '.'
+   . $this->email3[array_rand($this->email3)];
+}
+```
 
 1.  对于日期生成，一个方法是接受一个现有的`$entry`数组作为参数。参数将是一个数组，其中第一个值是开始日期。第二个参数将是从开始日期*减去*的最大天数。这实际上让您从一个范围返回一个随机日期。请注意，我们使用`DateTime::sub()`来减去随机天数。`sub()`需要一个`DateInterval`实例，我们使用`P`、随机天数和`'D'`来构建它：
 
 ```php
-    public function getDate($entry, $params)
-    {
-      list($fromDate, $maxDays) = $params;
-      $date = new DateTime($fromDate);
-      $date->sub(new DateInterval('P' . random_int(0, $maxDays) . 'D'));
-      return $date->format('Y-m-d H:i:s');
-    }
-    ```
+public function getDate($entry, $params)
+{
+  list($fromDate, $maxDays) = $params;
+  $date = new DateTime($fromDate);
+  $date->sub(new DateInterval('P' . random_int(0, $maxDays) . 'D'));
+  return $date->format('Y-m-d H:i:s');
+}
+```
 
 1.  正如本教程开始时提到的，我们用于生成假数据的数据源会有所不同。在某些情况下，如前面几个步骤所示，我们使用种子数组，并构建假数据。在其他情况下，我们可能希望使用文本或 CSV 文件作为数据源。以下是这种方法可能的样子：
 
 ```php
-    public function getEntryFromFile($name, $type)
-    {
-      if (empty($this->files[$name])) {
-          $this->pullFileData($name, $type);
-      }
-      return $this->files[$name][
-      random_int(0, count($this->files[$name]))];
-    }
-    ```
+public function getEntryFromFile($name, $type)
+{
+  if (empty($this->files[$name])) {
+      $this->pullFileData($name, $type);
+  }
+  return $this->files[$name][
+  random_int(0, count($this->files[$name]))];
+}
+```
 
 1.  您会注意到，我们首先需要将文件数据提取到一个数组中，这个数组形成了返回值。以下是为我们执行此操作的方法。如果找不到指定的文件，我们会抛出一个`Exception`。文件类型被识别为我们的类常量之一：`FILE_TYPE_TEXT`或`FILE_TYPE_CSV`。根据类型，我们使用`fgetcsv()`或`fgets()`：
 
 ```php
-    public function pullFileData($name, $type)
-    {
-      if (!file_exists($name)) {
-          throw new Exception(self::ERROR_FILE);
+public function pullFileData($name, $type)
+{
+  if (!file_exists($name)) {
+      throw new Exception(self::ERROR_FILE);
+  }
+  $fileObj = new SplFileObject($name, 'r');
+  if ($type == self::FILE_TYPE_CSV) {
+      while ($data = $fileObj->fgetcsv()) {
+        $this->files[$name][] = trim($data);
       }
-      $fileObj = new SplFileObject($name, 'r');
-      if ($type == self::FILE_TYPE_CSV) {
-          while ($data = $fileObj->fgetcsv()) {
-            $this->files[$name][] = trim($data);
-          }
-      } else {
-          while ($data = $fileObj->fgets()) {
-            $this->files[$name][] = trim($data);
-          }
+  } else {
+      while ($data = $fileObj->fgets()) {
+        $this->files[$name][] = trim($data);
       }
-    ```
+  }
+```
 
 1.  这个过程中可能最复杂的部分是从数据库表中抽取随机数据。我们接受表名、包含主键的列的名称、在查找表中数据库列名和目标列名之间映射的数组作为参数：
 
 ```php
-    public function getEntryFromTable($tableName, $idColumn, $mapping)
-    {
-      $entry = array();
-      try {
-          if (empty($this->tables[$tableName])) {
-            $sql  = 'SELECT ' . $idColumn . ' FROM ' . $tableName 
-              . ' ORDER BY ' . $idColumn . ' ASC LIMIT 1';
-            $stmt = $this->connection->pdo->query($sql);
-            $this->tables[$tableName]['first'] = 
-              $stmt->fetchColumn();
-            $sql  = 'SELECT ' . $idColumn . ' FROM ' . $tableName 
-              . ' ORDER BY ' . $idColumn . ' DESC LIMIT 1';
-            $stmt = $this->connection->pdo->query($sql);
-            $this->tables[$tableName]['last'] = 
-              $stmt->fetchColumn();
-        }
-    ```
+public function getEntryFromTable($tableName, $idColumn, $mapping)
+{
+  $entry = array();
+  try {
+      if (empty($this->tables[$tableName])) {
+        $sql  = 'SELECT ' . $idColumn . ' FROM ' . $tableName 
+          . ' ORDER BY ' . $idColumn . ' ASC LIMIT 1';
+        $stmt = $this->connection->pdo->query($sql);
+        $this->tables[$tableName]['first'] = 
+          $stmt->fetchColumn();
+        $sql  = 'SELECT ' . $idColumn . ' FROM ' . $tableName 
+          . ' ORDER BY ' . $idColumn . ' DESC LIMIT 1';
+        $stmt = $this->connection->pdo->query($sql);
+        $this->tables[$tableName]['last'] = 
+          $stmt->fetchColumn();
+    }
+```
 
 1.  现在我们可以设置准备好的语句并初始化一些关键变量：
 
 ```php
-    $result = FALSE;
-    $count = self::MAX_LOOKUPS;
-    $sql  = 'SELECT * FROM ' . $tableName 
-      . ' WHERE ' . $idColumn . ' = ?';
-    $stmt = $this->connection->pdo->prepare($sql);
-    ```
+$result = FALSE;
+$count = self::MAX_LOOKUPS;
+$sql  = 'SELECT * FROM ' . $tableName 
+  . ' WHERE ' . $idColumn . ' = ?';
+$stmt = $this->connection->pdo->prepare($sql);
+```
 
 1.  我们将实际的查找放在一个`do...while`循环中。原因是我们至少需要运行一次查询才能得到结果。只有当我们没有得到结果时，我们才继续循环。我们生成一个介于最低 ID 和最高 ID 之间的随机数，然后在查询的参数中使用这个数。请注意，我们还要减少一个计数器以防止无限循环。这是因为 ID 不是连续的情况下，我们可能会意外地生成一个不存在的 ID。如果我们超过了最大尝试次数，仍然没有结果，我们会抛出一个`Exception`：
 
 ```php
-    do {
-      $id = random_int($this->tables[$tableName]['first'], 
-        $this->tables[$tableName]['last']);
-      $stmt->execute([$id]);
-      $result = $stmt->fetch(PDO::FETCH_ASSOC);
-    } while ($count-- && !$result);
-      if (!$result) {
-          error_log(__METHOD__ . ':' . self::ERROR_LOOKUP);
-          throw new Exception(self::ERROR_LOOKUP);
-      }
-    } catch (PDOException $e) {
-        error_log(__METHOD__ . ':' . $e->getMessage());
-        throw new Exception(self::ERROR_DB);
-    }
-    ```
+do {
+  $id = random_int($this->tables[$tableName]['first'], 
+    $this->tables[$tableName]['last']);
+  $stmt->execute([$id]);
+  $result = $stmt->fetch(PDO::FETCH_ASSOC);
+} while ($count-- && !$result);
+  if (!$result) {
+      error_log(__METHOD__ . ':' . self::ERROR_LOOKUP);
+      throw new Exception(self::ERROR_LOOKUP);
+  }
+} catch (PDOException $e) {
+    error_log(__METHOD__ . ':' . $e->getMessage());
+    throw new Exception(self::ERROR_DB);
+}
+```
 
 1.  然后，我们使用映射数组从源表中检索值，使用目标表中预期的键：
 
 ```php
-    foreach ($mapping as $key => $value) {
-      $entry[$value] = $result[$key] ?? NULL;
-    }
-    return $entry;
-    }
-    ```
+foreach ($mapping as $key => $value) {
+  $entry[$value] = $result[$key] ?? NULL;
+}
+return $entry;
+}
+```
 
 1.  这个类的核心是一个`getRandomEntry()`方法，它生成一个假数据的数组。我们逐个遍历`$mapping`，并检查各种参数：
 
 ```php
-    public function getRandomEntry()
-    {
-      $entry = array();
-      foreach ($this->mapping as $key => $value) {
-        if (isset($value['source'])) {
-          switch ($value['source']) {
-    ```
+public function getRandomEntry()
+{
+  $entry = array();
+  foreach ($this->mapping as $key => $value) {
+    if (isset($value['source'])) {
+      switch ($value['source']) {
+```
 
 1.  `source`参数用于实现有效地作为策略模式的功能。我们支持四种不同的`source`，都定义为类常量。第一个是`SOURCE_FILE`。在这种情况下，我们使用之前讨论过的`getEntryFromFile()`方法：
 
 ```php
-            case self::SOURCE_FILE :
-                $entry[$key] = $this->getEntryFromFile(
-                $value['name'], $value['type']);
-              break;
-    ```
+        case self::SOURCE_FILE :
+            $entry[$key] = $this->getEntryFromFile(
+            $value['name'], $value['type']);
+          break;
+```
 
 1.  回调选项根据`$mapping`数组中提供的回调返回一个值：
 
 ```php
-            case self::SOURCE_CALLBACK :
-                $entry[$key] = $value['name']();
-              break;
-    ```
+        case self::SOURCE_CALLBACK :
+            $entry[$key] = $value['name']();
+          break;
+```
 
 1.  `SOURCE_TABLE`选项使用`$mapping`中定义的数据库表作为查找。请注意，之前讨论的`getEntryFromTable()`能够返回一个值数组，这意味着我们需要使用`array_merge()`来合并结果：
 
 ```php
-            case self::SOURCE_TABLE :
-                $result = $this->getEntryFromTable(
-                $value['name'],$value['idCol'],$value['mapping']);
-                $entry = array_merge($entry, $result);
-              break;
-    ```
+        case self::SOURCE_TABLE :
+            $result = $this->getEntryFromTable(
+            $value['name'],$value['idCol'],$value['mapping']);
+            $entry = array_merge($entry, $result);
+          break;
+```
 
 1.  `SOURCE_METHOD`选项，也是默认选项，使用了这个类中已经包含的一个方法。我们检查是否包括了参数，如果有，就将其添加到方法调用中。注意使用`{}`来影响插值。如果我们进行了`$this->$value['name']()`的 PHP 7 调用，由于抽象语法树（AST）的重写，它会插值为`${$this->$value}['name']()`，这不是我们想要的：
 
 ```php
-            case self::SOURCE_METHOD :
-            default :
-              if (!empty($value['params'])) {
-                  $entry[$key] = $this->{$value['name']}(
-                    $entry, $value['params']);
-              } else {
-                  $entry[$key] = $this->{$value['name']}($entry);
-              }
-            }
+        case self::SOURCE_METHOD :
+        default :
+          if (!empty($value['params'])) {
+              $entry[$key] = $this->{$value['name']}(
+                $entry, $value['params']);
+          } else {
+              $entry[$key] = $this->{$value['name']}($entry);
+          }
         }
-      }
-      return $entry;
     }
-    ```
+  }
+  return $entry;
+}
+```
 
 1.  我们定义一个循环遍历`getRandomEntry()`以生成多行假数据的方法。我们还添加了一个选项来插入到目标表。如果启用了这个选项，我们设置一个准备好的语句来插入，并检查是否需要截断当前表中的任何数据：
 
 ```php
-    public function generateData(
-    $howMany, $destTableName = NULL, $truncateDestTable = FALSE)
-    {
-      try {
-          if ($destTableName) {
-            $sql = 'INSERT INTO ' . $destTableName
-              . ' (' . implode(',', array_keys($this->mapping)) 
-              . ') '. ' VALUES ' . ' (:' 
-              . implode(',:', array_keys($this->mapping)) . ')';
-            $stmt = $this->connection->pdo->prepare($sql);
-            if ($truncateDestTable) {
-              $sql = 'DELETE FROM ' . $destTableName;
-              $this->connection->pdo->query($sql);
-            }
-          }
-      } catch (PDOException $e) {
-          error_log(__METHOD__ . ':' . $e->getMessage());
-          throw new Exception(self::ERROR_COUNT);
+public function generateData(
+$howMany, $destTableName = NULL, $truncateDestTable = FALSE)
+{
+  try {
+      if ($destTableName) {
+        $sql = 'INSERT INTO ' . $destTableName
+          . ' (' . implode(',', array_keys($this->mapping)) 
+          . ') '. ' VALUES ' . ' (:' 
+          . implode(',:', array_keys($this->mapping)) . ')';
+        $stmt = $this->connection->pdo->prepare($sql);
+        if ($truncateDestTable) {
+          $sql = 'DELETE FROM ' . $destTableName;
+          $this->connection->pdo->query($sql);
+        }
       }
-    ```
+  } catch (PDOException $e) {
+      error_log(__METHOD__ . ':' . $e->getMessage());
+      throw new Exception(self::ERROR_COUNT);
+  }
+```
 
 1.  接下来，我们循环请求的数据行数，并运行`getRandomEntry()`。如果请求插入数据库，我们在`try/catch`块中执行准备好的语句。无论如何，我们使用`yield`关键字将这个方法转换为生成器：
 
 ```php
-    for ($x = 0; $x < $howMany; $x++) {
-      $entry = $this->getRandomEntry();
-      if ($insert) {
-        try {
-            $stmt->execute($entry);
-        } catch (PDOException $e) {
-            error_log(__METHOD__ . ':' . $e->getMessage());
-            throw new Exception(self::ERROR_DB);
-        }
-      }
-      yield $entry;
+for ($x = 0; $x < $howMany; $x++) {
+  $entry = $this->getRandomEntry();
+  if ($insert) {
+    try {
+        $stmt->execute($entry);
+    } catch (PDOException $e) {
+        error_log(__METHOD__ . ':' . $e->getMessage());
+        throw new Exception(self::ERROR_DB);
     }
-    }
-    ```
+  }
+  yield $entry;
+}
+}
+```
 
 ### 提示
 
@@ -1805,61 +1805,61 @@ foreach ($fake->generateData(10) as $row) {
 1.  我们首先开发一个`Application\Security\SessOptions`类，该类将保存会话参数，并且还具有启动会话的能力。我们还定义了一个类常量，以防传递无效的会话选项：
 
 ```php
-    namespace Application\Security;
-    use ReflectionClass;
-    use InvalidArgumentsException;
-    class SessOptions
-    {
-      const ERROR_PARAMS = 'ERROR: invalid session options';
-    ```
+namespace Application\Security;
+use ReflectionClass;
+use InvalidArgumentsException;
+class SessOptions
+{
+  const ERROR_PARAMS = 'ERROR: invalid session options';
+```
 
 1.  接下来，我们扫描`php.ini`会话指令列表（在[`php.net/manual/en/session.configuration.php`](http://php.net/manual/en/session.configuration.php)中记录）。我们特别寻找`Changeable`列中标记为`PHP_INI_ALL`的指令。这些指令可以在运行时被覆盖，因此可以作为`session_start()`的参数使用：![如何做...](img/B05314_13_16.jpg)
 
 1.  然后，我们将这些定义为类常量，这将使该类更易于开发。大多数优秀的代码编辑器都能够扫描类并为您提供常量列表，从而轻松管理会话设置。请注意，并非所有设置都显示在书中，以节省空间：
 
 ```php
-    const SESS_OP_NAME         = 'name';
-    const SESS_OP_LAZY_WRITE   = 'lazy_write';  // AVAILABLE // SINCE PHP 7.0.0.
-    const SESS_OP_SAVE_PATH    = 'save_path';
-    const SESS_OP_SAVE_HANDLER = 'save_handler';
-    // etc.
-    ```
+const SESS_OP_NAME         = 'name';
+const SESS_OP_LAZY_WRITE   = 'lazy_write';  // AVAILABLE // SINCE PHP 7.0.0.
+const SESS_OP_SAVE_PATH    = 'save_path';
+const SESS_OP_SAVE_HANDLER = 'save_handler';
+// etc.
+```
 
 1.  然后，我们可以定义构造函数，它接受一个`php.ini`会话设置数组作为参数。我们使用`ReflectionClass`来获取类常量列表，并通过循环运行`$options`参数来确认设置是否允许。还要注意使用`array_flip()`，它可以翻转键和值，以便我们的类常量的实际值形成数组键，类常量的名称成为值：
 
 ```php
-    protected $options;
-    protected $allowed;
-    public function __construct(array $options)
-    {
-      $reflect = new ReflectionClass(get_class($this));
-      $this->allowed = $reflect->getConstants();
-      $this->allowed = array_flip($this->allowed);
-      unset($this->allowed[self::ERROR_PARAMS]);
-      foreach ($options as $key => $value) {
-        if(!isset($this->allowed[$key])) {
-          error_log(__METHOD__ . ':' . self::ERROR_PARAMS);
-          throw new InvalidArgumentsException(
-          self::ERROR_PARAMS);
-        }
-      }
-      $this->options = $options;
+protected $options;
+protected $allowed;
+public function __construct(array $options)
+{
+  $reflect = new ReflectionClass(get_class($this));
+  $this->allowed = $reflect->getConstants();
+  $this->allowed = array_flip($this->allowed);
+  unset($this->allowed[self::ERROR_PARAMS]);
+  foreach ($options as $key => $value) {
+    if(!isset($this->allowed[$key])) {
+      error_log(__METHOD__ . ':' . self::ERROR_PARAMS);
+      throw new InvalidArgumentsException(
+      self::ERROR_PARAMS);
     }
-    ```
+  }
+  $this->options = $options;
+}
+```
 
 1.  最后，我们以另外两种方法结束；一种方法让我们可以从外部访问允许的参数，另一种方法启动会话：
 
 ```php
-    public function getAllowed()
-    {
-      return $this->allowed;
-    }
+public function getAllowed()
+{
+  return $this->allowed;
+}
 
-    public function start()
-    {
-      session_start($this->options);
-    }
-    ```
+public function start()
+{
+  session_start($this->options);
+}
+```
 
 ## 它是如何工作的...
 

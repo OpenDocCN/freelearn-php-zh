@@ -94,22 +94,22 @@ PHP Fatal error:  Uncaught Error: Non-static method Test::notStatic() cannot b
 1.  首先，我们定义一个带有单个属性的简单匿名类：
 
 ```php
-    // /repo/ch05/php8_oop_diff_array_key_exists.php
-    $obj = new class () { public $var = 'OK.'; };
-    ```
+// /repo/ch05/php8_oop_diff_array_key_exists.php
+$obj = new class () { public $var = 'OK.'; };
+```
 
 1.  然后我们运行三个测试，分别使用`isset()`、`property_exists()`和`array_key_exists()`来检查`$var`的存在：
 
 ```php
-    // not all code is shown
-    $default = 'DEFAULT';
-    echo (isset($obj->var)) 
-        ? $obj->var : $default;
-    echo (property_exists($obj,'var')) 
-        ? $obj->var : $default;
-    echo (array_key_exists('var',$obj)) 
-        ? $obj->var : $default;
-    ```
+// not all code is shown
+$default = 'DEFAULT';
+echo (isset($obj->var)) 
+    ? $obj->var : $default;
+echo (property_exists($obj,'var')) 
+    ? $obj->var : $default;
+echo (array_key_exists('var',$obj)) 
+    ? $obj->var : $default;
+```
 
 当我们在 PHP 7 中运行这段代码时，所有测试都成功，如下所示：
 
@@ -154,46 +154,46 @@ OK.OK.PHP Fatal error:  Uncaught TypeError: array_key_exists(): Argument #2 ($
 1.  首先，我们定义并添加一个方法到`OopBreakScan`类中，该方法扫描文件内容以查找`__autoload()`函数。请注意，错误消息是在`Base`类中定义的一个类常量，只是警告存在`__autoload()`函数：
 
 ```php
-    namespace Migration;
-    class OopBreakScan extends Base {
-        public static function scanMagicAutoloadFunction(
-            string $contents, array &$message) : bool {
-            $found  = 0;
-            $found += (stripos($contents, 
-                'function __autoload(') !== FALSE);
-            $message[] = ($found)
-                       ? Base::ERR_MAGIC_AUTOLOAD
-                       : sprintf(Base::OK_PASSED,
-                           __FUNCTION__);
-            return (bool) $found;
-        }
-        // remaining methods not shown
-    ```
+namespace Migration;
+class OopBreakScan extends Base {
+    public static function scanMagicAutoloadFunction(
+        string $contents, array &$message) : bool {
+        $found  = 0;
+        $found += (stripos($contents, 
+            'function __autoload(') !== FALSE);
+        $message[] = ($found)
+                   ? Base::ERR_MAGIC_AUTOLOAD
+                   : sprintf(Base::OK_PASSED,
+                       __FUNCTION__);
+        return (bool) $found;
+    }
+    // remaining methods not shown
+```
 
 这个类扩展了一个`Migration\Base`类（未显示）。这很重要，因为任何自动加载逻辑都需要找到子类和它的超类。
 
 1.  接下来，我们定义一个调用程序，在其中定义了一个魔术`__autoload()`函数：
 
 ```php
-    // /repo/ch05/php7_autoload_function.php
-    function __autoLoad($class) {
-        $fn = __DIR__ . '/../src/'
-            . str_replace('\\', '/', $class)
-            . '.php';
-        require_once $fn;
-    }
-    ```
+// /repo/ch05/php7_autoload_function.php
+function __autoLoad($class) {
+    $fn = __DIR__ . '/../src/'
+        . str_replace('\\', '/', $class)
+        . '.php';
+    require_once $fn;
+}
+```
 
 1.  然后我们通过让调用程序扫描自身来使用这个类：
 
 ```php
-    use Migration\OopBreakScan;
-    $contents = file_get_contents(__FILE__);
-    $message  = [];
-    OopBreakScan::
-        scanMagicAutoloadFunction($contents, $message);
-    var_dump($message);
-    ```
+use Migration\OopBreakScan;
+$contents = file_get_contents(__FILE__);
+$message  = [];
+OopBreakScan::
+    scanMagicAutoloadFunction($contents, $message);
+var_dump($message);
+```
 
 以下是在 PHP 7 中运行的输出：
 
@@ -243,29 +243,29 @@ PHP Fatal error:  __autoload() is no longer supported, use spl_autoload_regist
 1.  在`__construct()`方法中，我们分配了源目录。随后，我们使用上面提到的数组可调用语法调用`spl_auto_register()`：
 
 ```php
-    // /repo/src/Server/Autoload/Loader.php
-    namespace Server\Autoload;
-    class Loader {
-        const DEFAULT_SRC = __DIR__ . '/../..';
-        public $src_dir = '';
-        public function __construct($src_dir = NULL) {
-            $this->src_dir = $src_dir 
-                ?? realpath(self::DEFAULT_SRC);
-            spl_autoload_register([$this, 'autoload']);
-        }
-    ```
+// /repo/src/Server/Autoload/Loader.php
+namespace Server\Autoload;
+class Loader {
+    const DEFAULT_SRC = __DIR__ . '/../..';
+    public $src_dir = '';
+    public function __construct($src_dir = NULL) {
+        $this->src_dir = $src_dir 
+            ?? realpath(self::DEFAULT_SRC);
+        spl_autoload_register([$this, 'autoload']);
+    }
+```
 
 1.  实际的自动加载代码与我们上面`__autoload()`函数示例中显示的类似。以下是执行实际自动加载的方法：
 
 ```php
-        public function autoload($class) {
-            $fn = str_replace('\\', '/', $class);
-            $fn = $this->src_dir . '/' . $fn . '.php';
-            $fn = str_replace('//', '/', $fn);
-            require_once($fn);
-        }
-    }
-    ```
+    public function autoload($class) {
+        $fn = str_replace('\\', '/', $class);
+        $fn = $this->src_dir . '/' . $fn . '.php';
+        $fn = str_replace('//', '/', $fn);
+        require_once($fn);
+    }
+}
+```
 
 现在你已经了解了如何使用`spl_auto_register()`函数，我们必须检查在运行 PHP 8 时可能出现的代码中断。
 
@@ -354,44 +354,44 @@ PHP 的**魔术方法**是预定义的钩子，它们中断了 OOP 应用程序�
 1.  首先，我们定义了一个`Text`类，它有一个同名的类构造方法。构造方法基于提供的文件名创建了一个`SplFileObject`实例：
 
 ```php
-    // /repo/ch05/php8_oop_bc_break_construct.php
-    class Text {
-        public $fh = '';
-        public const ERROR_FN = 'ERROR: file not found';
-        public function text(string $fn) {
-            if (!file_exists($fn))
-                throw new Exception(self::ERROR_FN);
-            $this->fh = new SplFileObject($fn, 'r');
-        }
-        public function getText() {
-            return $this->fh->fpassthru();
-        }
-    }
-    ```
+// /repo/ch05/php8_oop_bc_break_construct.php
+class Text {
+    public $fh = '';
+    public const ERROR_FN = 'ERROR: file not found';
+    public function text(string $fn) {
+        if (!file_exists($fn))
+            throw new Exception(self::ERROR_FN);
+        $this->fh = new SplFileObject($fn, 'r');
+    }
+    public function getText() {
+        return $this->fh->fpassthru();
+    }
+}
+```
 
 1.  然后我们添加了三行过程代码来使用这个类，提供一个包含葛底斯堡演说的文件的文件名：
 
 ```php
-    $fn   = __DIR__ . '/../sample_data/gettysburg.txt';
-    $text = new Text($fn);
-    echo $text->getText();
-    ```
+$fn   = __DIR__ . '/../sample_data/gettysburg.txt';
+$text = new Text($fn);
+echo $text->getText();
+```
 
 1.  首先在 PHP 7 中运行程序会产生一个弃用通知，然后是预期的文本。这里只显示了输出的前几行：
 
 ```php
-    root@php8_tips_php7 [ /repo/ch05 ]# 
-    php php8_bc_break_construct.php
-    PHP Deprecated:  Methods with the same name as their class will not be constructors in a future version of PHP; Text has a deprecated constructor in /repo/ch05/php8_bc_break_construct.php on line 4
-    Fourscore and seven years ago our fathers brought forth on this continent a new nation, conceived in liberty and dedicated to the proposition that all men are created equal. ... <remaining text not shown>
-    ```
+root@php8_tips_php7 [ /repo/ch05 ]# 
+php php8_bc_break_construct.php
+PHP Deprecated:  Methods with the same name as their class will not be constructors in a future version of PHP; Text has a deprecated constructor in /repo/ch05/php8_bc_break_construct.php on line 4
+Fourscore and seven years ago our fathers brought forth on this continent a new nation, conceived in liberty and dedicated to the proposition that all men are created equal. ... <remaining text not shown>
+```
 
 1.  然而，在 PHP 8 中运行相同的程序会抛出一个致命的`Error`，如你从这个输出中看到的：
 
 ```php
-    root@php8_tips_php8 [ /repo/ch05 ]# php php8_bc_break_construct.php 
-    PHP Fatal error:  Uncaught Error: Call to a member function fpassthru() on string in /repo/ch05/php8_bc_break_construct.php:16
-    ```
+root@php8_tips_php8 [ /repo/ch05 ]# php php8_bc_break_construct.php 
+PHP Fatal error:  Uncaught Error: Call to a member function fpassthru() on string in /repo/ch05/php8_bc_break_construct.php:16
+```
 
 重要的是要注意，在 PHP 8 中显示的错误并没有告诉你程序失败的真正原因。因此，非常重要的是要扫描你的 PHP 应用程序，特别是旧的应用程序，看看是否有一个与类同名的方法。因此，**最佳实践**就是简单地将与类同名的方法重命名为`__construct()`。
 
@@ -408,114 +408,114 @@ PHP 8 中解决的另一个问题与类构造方法中抛出`Exception`或执行
 1.  我们首先定义一个接口，指定一个查询方法。这个方法需要一个 SQL 字符串作为参数，并且期望返回一个数组作为结果：
 
 ```php
-    // /repo/src/Php7/Connector/ConnectInterface.php
-    namespace Php7\Connector;
-    interface ConnectInterface {
-        public function query(string $sql) : array;
-    }
-    ```
+// /repo/src/Php7/Connector/ConnectInterface.php
+namespace Php7\Connector;
+interface ConnectInterface {
+    public function query(string $sql) : array;
+}
+```
 
 1.  接下来，我们定义一个基类，其中定义了一个`__destruct()`魔术方法。因为这个类实现了`ConnectInterface`但没有定义`query()`，所以它被标记为`abstract`：
 
 ```php
-    // /repo/src/Php7/Connector/Base.php
-    namespace Php7\Connector;
-    abstract class Base implements ConnectInterface {
-        const CONN_TERMINATED = 'Connection Terminated';
-        public $conn = NULL;
-        public function __destruct() {
-            $message = get_class($this)
-                     . ':' . self::CONN_TERMINATED;
-            error_log($message);
-        }
-    }
-    ```
+// /repo/src/Php7/Connector/Base.php
+namespace Php7\Connector;
+abstract class Base implements ConnectInterface {
+    const CONN_TERMINATED = 'Connection Terminated';
+    public $conn = NULL;
+    public function __destruct() {
+        $message = get_class($this)
+                 . ':' . self::CONN_TERMINATED;
+        error_log($message);
+    }
+}
+```
 
 1.  接下来，我们定义`ConnectPdo`类。它继承自`Base`，它的`query()`方法使用`PDO`语法来产生结果。`__construct()`方法如果创建连接时出现问题，则抛出`PDOException`：
 
 ```php
-    // /repo/src/Php7/Connector/ConnectPdo.php
-    namespace Php7\Connector;
-    use PDO;
-    class ConnectPdo extends Base {
-        public function __construct(
-            string $dsn, string $usr, string $pwd) {
-            $this->conn = new PDO($dsn, $usr, $pwd);
-        }
-        public function query(string $sql) : array {
-            $stmt = $this->conn->query($sql);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        }
-    }
-    ```
+// /repo/src/Php7/Connector/ConnectPdo.php
+namespace Php7\Connector;
+use PDO;
+class ConnectPdo extends Base {
+    public function __construct(
+        string $dsn, string $usr, string $pwd) {
+        $this->conn = new PDO($dsn, $usr, $pwd);
+    }
+    public function query(string $sql) : array {
+        $stmt = $this->conn->query($sql);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+}
+```
 
 1.  以类似的方式，我们定义了`ConnectMysqli`类。它继承自`Base`，它的`query()`方法使用`MySQLi`语法来产生结果。`__construct()`方法如果创建连接时出现问题，则执行`die()`：
 
 ```php
-    // /repo/src/Php7/Connector/ConnectMysqli.php
-    namespace Php7\Connector;
-    class ConnectMysqli extends Base {
-        public function __construct(
-            string $db, string $usr, string $pwd) {
-            $this->conn = mysqli_connect('localhost', 
-                $usr, $pwd, $db) 
-                or die("Unable to Connect\n");
-        }
-        public function query(string $sql) : array {
-            $result = mysqli_query($this->conn, $sql);
-            return mysqli_fetch_all($result, MYSQLI_ASSOC);
-        }
-    }
-    ```
+// /repo/src/Php7/Connector/ConnectMysqli.php
+namespace Php7\Connector;
+class ConnectMysqli extends Base {
+    public function __construct(
+        string $db, string $usr, string $pwd) {
+        $this->conn = mysqli_connect('localhost', 
+            $usr, $pwd, $db) 
+            or die("Unable to Connect\n");
+    }
+    public function query(string $sql) : array {
+        $result = mysqli_query($this->conn, $sql);
+        return mysqli_fetch_all($result, MYSQLI_ASSOC);
+    }
+}
+```
 
 1.  最后，我们定义一个调用程序，使用先前描述的两个连接类，并为连接字符串、用户名和密码定义无效值：
 
 ```php
-    // /repo/ch05/php8_bc_break_destruct.php
-    include __DIR__ . '/../vendor/autoload.php';
-    use Php7\Connector\ {ConnectPdo,ConnectMysqli};
-    $db  = 'test';
-    $usr = 'fake';
-    $pwd = 'xyz';
-    $dsn = 'mysql:host=localhost;dbname=' . $db;
-    $sql = 'SELECT event_name, event_date FROM events';
-    ```
+// /repo/ch05/php8_bc_break_destruct.php
+include __DIR__ . '/../vendor/autoload.php';
+use Php7\Connector\ {ConnectPdo,ConnectMysqli};
+$db  = 'test';
+$usr = 'fake';
+$pwd = 'xyz';
+$dsn = 'mysql:host=localhost;dbname=' . $db;
+$sql = 'SELECT event_name, event_date FROM events';
+```
 
 1.  接下来，在调用程序中，我们调用两个类，并尝试执行查询。连接故意失败，因为我们提供了错误的用户名和密码：
 
 ```php
-    $ptn = "%2d : %s : %s\n";
-    try {
-        $conn = new ConnectPdo($dsn, $usr, $pwd);
-        var_dump($conn->query($sql));
-    } catch (Throwable $t) {
-        printf($ptn, __LINE__, get_class($t), 
-               $t->getMessage());
-    }
-    $conn = new ConnectMysqli($db, $usr, $pwd);
-    var_dump($conn->query($sql));
-    ```
+$ptn = "%2d : %s : %s\n";
+try {
+    $conn = new ConnectPdo($dsn, $usr, $pwd);
+    var_dump($conn->query($sql));
+} catch (Throwable $t) {
+    printf($ptn, __LINE__, get_class($t), 
+           $t->getMessage());
+}
+$conn = new ConnectMysqli($db, $usr, $pwd);
+var_dump($conn->query($sql));
+```
 
 1.  正如您从上面的讨论中所了解的，PHP 7 中运行的输出显示了在创建`ConnectPdo`实例时从类构造函数抛出`PDOException`。另一方面，当`ConnectMysqli`实例失败时，将调用`die()`，并显示消息**无法连接**。您还可以在输出的最后一行看到来自`__destruct()`方法的错误日志信息。以下是该输出：
 
 ```php
-    root@php8_tips_php7 [ /repo/ch05 ]# 
-    php php8_bc_break_destruct.php 
-    15 : PDOException : SQLSTATE[28000] [1045] Access denied for user 'fake'@'localhost' (using password: YES)
-    PHP Warning:  mysqli_connect(): (HY000/1045): Access denied for user 'fake'@'localhost' (using password: YES) in /repo/src/Php7/Connector/ConnectMysqli.php on line 8
-    Unable to Connect
-    Php7\Connector\ConnectMysqli:Connection Terminated
-    ```
+root@php8_tips_php7 [ /repo/ch05 ]# 
+php php8_bc_break_destruct.php 
+15 : PDOException : SQLSTATE[28000] [1045] Access denied for user 'fake'@'localhost' (using password: YES)
+PHP Warning:  mysqli_connect(): (HY000/1045): Access denied for user 'fake'@'localhost' (using password: YES) in /repo/src/Php7/Connector/ConnectMysqli.php on line 8
+Unable to Connect
+Php7\Connector\ConnectMysqli:Connection Terminated
+```
 
 1.  在 PHP 8 中，`__destruct()`方法在任何情况下都不会被调用，导致如下所示的输出。正如您在输出中所看到的，`PDOException`被捕获，然后发出`die()`命令。`__destruct()`方法没有任何输出。PHP 8 的输出如下：
 
 ```php
-    root@php8_tips_php8 [ /repo/ch05 ]# 
-    php php8_bc_break_destruct.php 
-    15 : PDOException : SQLSTATE[28000] [1045] Access denied for user 'fake'@'localhost' (using password: YES)
-    PHP Warning:  mysqli_connect(): (HY000/1045): Access denied for user 'fake'@'localhost' (using password: YES) in /repo/src/Php7/Connector/ConnectMysqli.php on line 8
-    Unable to Connect
-    ```
+root@php8_tips_php8 [ /repo/ch05 ]# 
+php php8_bc_break_destruct.php 
+15 : PDOException : SQLSTATE[28000] [1045] Access denied for user 'fake'@'localhost' (using password: YES)
+PHP Warning:  mysqli_connect(): (HY000/1045): Access denied for user 'fake'@'localhost' (using password: YES) in /repo/src/Php7/Connector/ConnectMysqli.php on line 8
+Unable to Connect
+```
 
 现在您已经知道如何发现与`__destruct()`方法以及对`die()`或`exit()`的调用有关的潜在代码中断，让我们将注意力转向`__toString()`方法的更改。
 
@@ -538,23 +538,23 @@ interface Stringable {
 1.  在这个例子中，我们定义了一个定义了`__toString()`的`Test`类：
 
 ```php
-    // /repo/ch05/php8_bc_break_magic_to_string.php
-    class Test {
-        public $fname = 'Fred';
-        public $lname = 'Flintstone';
-        public function __toString() : string {
-            return $this->fname . ' ' . $this->lname;
-        }
-    }
-    ```
+// /repo/ch05/php8_bc_break_magic_to_string.php
+class Test {
+    public $fname = 'Fred';
+    public $lname = 'Flintstone';
+    public function __toString() : string {
+        return $this->fname . ' ' . $this->lname;
+    }
+}
+```
 
 1.  然后我们创建类的一个实例，然后是一个`ReflectionObject`实例：
 
 ```php
-    $test = new Test;
-    $reflect = new ReflectionObject($test);
-    echo $reflect;
-    ```
+$test = new Test;
+$reflect = new ReflectionObject($test);
+echo $reflect;
+```
 
 在 PHP 7 中运行的输出的前几行（如下所示）只是显示它是`Test`类的一个实例：
 
@@ -601,37 +601,37 @@ Object of class [ <user> class Test implements Stringable ] {
 1.  首先，我们定义一个具有三个属性的类：
 
 ```php
-    // /repo/ch05/php8_serialization.php
-    class Test  {
-        public $name = 'Doug';
-        private $key = 12345;
-        protected $status = ['A','B','C'];
-    }
-    ```
+// /repo/ch05/php8_serialization.php
+class Test  {
+    public $name = 'Doug';
+    private $key = 12345;
+    protected $status = ['A','B','C'];
+}
+```
 
 1.  然后我们创建一个实例，对该实例进行序列化，并显示生成的字符串：
 
 ```php
-    $test = new Test();
-    $str = serialize($test);
-    echo $str . "\n";
-    ```
+$test = new Test();
+$str = serialize($test);
+echo $str . "\n";
+```
 
 1.  以下是序列化对象的样子：
 
 ```php
-    O:4:"Test":3:{s:4:"name";s:4:"Doug";s:9:"Testkey"; i:12345;
-    s:9:"*status";a:3:{i:0;s:1:"A";i:1;s:1:"B";i:2;s:1:"C";}}
-    ```
+O:4:"Test":3:{s:4:"name";s:4:"Doug";s:9:"Testkey"; i:12345;
+s:9:"*status";a:3:{i:0;s:1:"A";i:1;s:1:"B";i:2;s:1:"C";}}
+```
 
 从序列化字符串中可以看出，字母`O`代表*对象*，`a`代表*数组*，`s`代表*字符串*，`i`代表*整数*。
 
 1.  然后我们将对象反序列化为一个新变量，并使用`var_dump()`来检查这两个变量：
 
 ```php
-    $obj = unserialize($str);
-    var_dump($test, $obj);
-    ```
+$obj = unserialize($str);
+var_dump($test, $obj);
+```
 
 1.  将`var_dump()`的输出并排放置，您可以清楚地看到恢复的对象与原始对象是相同的：
 
@@ -648,36 +648,36 @@ Object of class [ <user> class Test implements Stringable ] {
 1.  首先，我们定义一个具有三个属性的`Test`类：
 
 ```php
-    // /repo/ch05/php8_serialization_sleep.php
-    class Test  {
-        public $name = 'Doug';
-        protected $key = 12345;
-        protected $password = '$2y$10$ux07vQNSA0ctbzZcZNA'
-             . 'lxOa8hi6kchJrJZzqWcxpw/XQUjSNqacx.';
-    ```
+// /repo/ch05/php8_serialization_sleep.php
+class Test  {
+    public $name = 'Doug';
+    protected $key = 12345;
+    protected $password = '$2y$10$ux07vQNSA0ctbzZcZNA'
+         . 'lxOa8hi6kchJrJZzqWcxpw/XQUjSNqacx.';
+```
 
 1.  然后我们定义一个`__sleep()`方法来排除`$password`属性：
 
 ```php
-        public function __sleep() {
-            return ['name','key'];
-        }
-    }
-    ```
+    public function __sleep() {
+        return ['name','key'];
+    }
+}
+```
 
 1.  然后我们创建这个类的一个实例并对其进行序列化。最后一行输出序列化字符串的状态：
 
 ```php
-    $test = new Test();
-    $str = serialize($test)
-    echo $str . "\n";
-    ```
+$test = new Test();
+$str = serialize($test)
+echo $str . "\n";
+```
 
 1.  在输出中，您可以清楚地看到`$password`属性不存在。以下是输出：
 
 ```php
-    O:4:"Test":2:{s:4:"name";s:4:"Doug";s:6:"*key";i:12345;}
-    ```
+O:4:"Test":2:{s:4:"name";s:4:"Doug";s:6:"*key";i:12345;}
+```
 
 这一点很重要，因为在大多数情况下，您需要对对象进行序列化的原因是希望将其存储在某个地方，无论是在会话文件中还是在数据库中。如果文件系统或数据库随后受到损害，您就少了一个安全漏洞需要担心！
 
@@ -692,63 +692,63 @@ Object of class [ <user> class Test implements Stringable ] {
 1.  首先，我们定义一个`Test`类，该类定义了`__sleep()`来返回一个不存在的变量：
 
 ```php
-    class Test {
-        public $name = 'Doug';
-        public function __sleep() {
-            return ['name', 'missing'];
-        }
-    }
-    ```
+class Test {
+    public $name = 'Doug';
+    public function __sleep() {
+        return ['name', 'missing'];
+    }
+}
+```
 
 1.  接下来，我们创建一个`Test`的实例并对其进行序列化：
 
 ```php
-    echo "Test instance before serialization:\n";
-    $test = new Test();
-    var_dump($test);
-    ```
+echo "Test instance before serialization:\n";
+$test = new Test();
+var_dump($test);
+```
 
 1.  然后我们将字符串反序列化为一个新实例`$restored`：
 
 ```php
-    echo "Test instance after serialization:\n";
-    $stored = serialize($test);
-    $restored = unserialize($stored);
-    var_dump($restored);
-    ```
+echo "Test instance after serialization:\n";
+$stored = serialize($test);
+$restored = unserialize($stored);
+var_dump($restored);
+```
 
 1.  理论上，两个对象实例`$test`和`$restored`应该是相同的。然而，看一下在 PHP 7 中运行的输出：
 
 ```php
-    root@php8_tips_php7 [ /repo/ch05 ]#
-    php php8_bc_break_sleep.php
-    Test instance before serialization:
-    /repo/ch05/php8_bc_break_sleep.php:13:
-    class Test#1 (1) {
-      public $name =>  string(4) "Doug"
-    }
-    Test instance after serialization:
-    PHP Notice:  serialize(): "missing" returned as member variable from __sleep() but does not exist in /repo/ch05/php8_bc_break_sleep.php on line 16
-    class Test#2 (2) {
-      public $name =>  string(4) "Doug"
-      public $missing =>  NULL
-    }
-    ```
+root@php8_tips_php7 [ /repo/ch05 ]#
+php php8_bc_break_sleep.php
+Test instance before serialization:
+/repo/ch05/php8_bc_break_sleep.php:13:
+class Test#1 (1) {
+  public $name =>  string(4) "Doug"
+}
+Test instance after serialization:
+PHP Notice:  serialize(): "missing" returned as member variable from __sleep() but does not exist in /repo/ch05/php8_bc_break_sleep.php on line 16
+class Test#2 (2) {
+  public $name =>  string(4) "Doug"
+  public $missing =>  NULL
+}
+```
 
 1.  从输出中可以看出，这两个对象显然*不*相同！然而，在 PHP 8 中，不存在的属性被忽略。看一下在 PHP 8 中运行相同脚本的情况：
 
 ```php
-    root@php8_tips_php8 [ /repo/ch05 ]# php php8_bc_break_sleep.php 
-    Test instance before serialization:
-    object(Test)#1 (1) {
-      ["name"]=>  string(4) "Doug"
-    }
-    Test instance after serialization:
-    PHP Warning:  serialize(): "missing" returned as member variable from __sleep() but does not exist in /repo/ch05/php8_bc_break_sleep.php on line 16
-    object(Test)#2 (1) {
-      ["name"]=>  string(4) "Doug"
-    }
-    ```
+root@php8_tips_php8 [ /repo/ch05 ]# php php8_bc_break_sleep.php 
+Test instance before serialization:
+object(Test)#1 (1) {
+  ["name"]=>  string(4) "Doug"
+}
+Test instance after serialization:
+PHP Warning:  serialize(): "missing" returned as member variable from __sleep() but does not exist in /repo/ch05/php8_bc_break_sleep.php on line 16
+object(Test)#2 (1) {
+  ["name"]=>  string(4) "Doug"
+}
+```
 
 您可能还注意到，在 PHP 7 中，会发出一个`Notice`，而在 PHP 8 中，相同的情况会产生一个`Warning`。在这种情况下，对潜在代码中断的预迁移检查是困难的，因为您需要确定魔术方法`__sleep()`是否被定义，以及是否在列表中包含了一个不存在的属性。
 
@@ -761,26 +761,26 @@ Object of class [ <user> class Test implements Stringable ] {
 1.  首先，我们定义一个在实例化时打开文件句柄的类。我们还定义一个返回文件内容的方法：
 
 ```php
-    // /repo/ch05/php8_serialization_wakeup.php
-    class Gettysburg {
-        public $fn = __DIR__ . '/gettysburg.txt';
-        public $obj = NULL;
-        public function __construct() {
-            $this->obj = new SplFileObject($this->fn, 'r');
-        }
-        public function getText() {
-            $this->obj->rewind();
-            return $this->obj->fpassthru();
-        }
-    }
-    ```
+// /repo/ch05/php8_serialization_wakeup.php
+class Gettysburg {
+    public $fn = __DIR__ . '/gettysburg.txt';
+    public $obj = NULL;
+    public function __construct() {
+        $this->obj = new SplFileObject($this->fn, 'r');
+    }
+    public function getText() {
+        $this->obj->rewind();
+        return $this->obj->fpassthru();
+    }
+}
+```
 
 1.  要使用这个类，创建一个实例，并运行`getText()`。（这假设`$this->fn`引用的文件存在！）
 
 ```php
-    $old = new Gettysburg();
-    echo $old->getText();
-    ```
+$old = new Gettysburg();
+echo $old->getText();
+```
 
 1.  输出（未显示）是葛底斯堡演说。
 
@@ -791,40 +791,40 @@ Object of class [ <user> class Test implements Stringable ] {
 1.  到目前为止，在原地运行代码，这是输出：
 
 ```php
-    PHP Fatal error:  Uncaught Exception: Serialization of 'SplFileObject' is not allowed in /repo/ch05/php8_serialization_wakeup.php:19
-    ```
+PHP Fatal error:  Uncaught Exception: Serialization of 'SplFileObject' is not allowed in /repo/ch05/php8_serialization_wakeup.php:19
+```
 
 1.  为了解决这个问题，我们返回到类中，添加一个`__sleep()`方法，防止`SplFileObject`实例被序列化：
 
 ```php
-        public function __sleep() {
-            return ['fn'];
-        }
-    ```
+    public function __sleep() {
+        return ['fn'];
+    }
+```
 
 1.  如果我们重新运行代码来序列化对象，一切都很好。这是反序列化和调用`getText()`的代码：
 
 ```php
-    $str = serialize($old);
-    $new = unserialize($str);
-    echo $new->getText();
-    ```
+$str = serialize($old);
+$new = unserialize($str);
+echo $new->getText();
+```
 
 1.  然而，如果我们尝试对对象进行反序列化，就会出现另一个错误：
 
 ```php
-    PHP Fatal error:  Uncaught Error: Call to a member function rewind() on null in /repo/ch05/php8_serialization_wakeup.php:13
-    ```
+PHP Fatal error:  Uncaught Error: Call to a member function rewind() on null in /repo/ch05/php8_serialization_wakeup.php:13
+```
 
 问题当然是，在序列化过程中文件句柄丢失了。当对象被反序列化时，`__construct()`方法没有被调用。
 
 1.  这正是`__wakeup()`魔术方法存在的原因。为了解决错误，我们定义一个`__wakeup()`方法，调用`__construct()`方法：
 
 ```php
-        public function __wakeup() {
-            self::__construct();
-        }
-    ```
+    public function __wakeup() {
+        self::__construct();
+    }
+```
 
 1.  如果我们重新运行代码，现在我们会看到葛底斯堡演说出现两次（未显示）。
 
@@ -848,66 +848,66 @@ interface Serializable {
 1.  首先，我们定义一个实现`Serializable`接口的类。该类定义了三个属性 - 两个是字符串类型，另一个表示日期和时间：
 
 ```php
-    // /repo/ch05/php8_bc_break_serializable.php
-    class A implements Serializable {
-        private $a = 'A';
-        private $b = 'B';
-        private $u = NULL;
-    ```
+// /repo/ch05/php8_bc_break_serializable.php
+class A implements Serializable {
+    private $a = 'A';
+    private $b = 'B';
+    private $u = NULL;
+```
 
 1.  然后我们定义一个自定义的`serialize()`方法，在序列化对象的属性之前初始化日期和时间。`unserialize()`方法将值恢复到所有属性中：
 
 ```php
-        public function serialize() {
-            $this->u = new DateTime();
-            return serialize(get_object_vars($this));
-        }
-        public function unserialize($payload) {
-            $vars = unserialize($payload);
-            foreach ($vars as $key => $val)
-                $this->$key = $val;
-        }
-    }
-    ```
+    public function serialize() {
+        $this->u = new DateTime();
+        return serialize(get_object_vars($this));
+    }
+    public function unserialize($payload) {
+        $vars = unserialize($payload);
+        foreach ($vars as $key => $val)
+            $this->$key = $val;
+    }
+}
+```
 
 1.  然后我们创建一个实例，并使用`var_dump()`检查其内容：
 
 ```php
-    $a1 = new A();
-    var_dump($a1);
-    ```
+$a1 = new A();
+var_dump($a1);
+```
 
 1.  `var_dump()`的输出显示`u`属性尚未初始化：
 
 ```php
-    object(A)#1 (3) {
-      ["a":"A":private]=> string(1) "A"
-      ["b":"A":private]=> string(1) "B"
-      ["u":"A":private]=> NULL
-    }
-    ```
+object(A)#1 (3) {
+  ["a":"A":private]=> string(1) "A"
+  ["b":"A":private]=> string(1) "B"
+  ["u":"A":private]=> NULL
+}
+```
 
 1.  然后我们对其进行序列化，并将其恢复到一个变量`$a2`中：
 
 ```php
-    $str = serialize($a1);
-    $a2 = unserialize($str);
-    var_dump($a2);
-    ```
+$str = serialize($a1);
+$a2 = unserialize($str);
+var_dump($a2);
+```
 
 1.  从下面的`var_dump()`输出中，您可以看到对象已经完全恢复。此外，我们知道自定义的`serialize()`方法被调用，因为`u`属性被初始化为日期和时间值。以下是输出：
 
 ```php
-    object(A)#3 (3) {
-      ["a":"A":private]=> string(1) "A"
-      ["b":"A":private]=> string(1) "B"
-      ["u":"A":private]=> object(DateTime)#4 (3) {
-        ["date"]=> string(26) "2021-02-12 05:35:10.835999"
-        ["timezone_type"]=> int(3)
-        ["timezone"]=> string(3) "UTC"
-      }
-    }
-    ```
+object(A)#3 (3) {
+  ["a":"A":private]=> string(1) "A"
+  ["b":"A":private]=> string(1) "B"
+  ["u":"A":private]=> object(DateTime)#4 (3) {
+    ["date"]=> string(26) "2021-02-12 05:35:10.835999"
+    ["timezone_type"]=> int(3)
+    ["timezone"]=> string(3) "UTC"
+  }
+}
+```
 
 现在让我们来看一下实现`Serializable`接口的对象在序列化过程中可能出现的问题。
 
@@ -944,84 +944,84 @@ interface Serializable {
 1.  在示例中，一个`Test`类在实例化时使用一个随机密钥进行初始化：
 
 ```php
-    // /repo/ch05/php8_bc_break_serialization.php
-    class Test extends ArrayObject {
-        protected $id = 12345;
-        public $name = 'Doug';
-        private $key = '';
-        public function __construct() {
-            $this->key = bin2hex(random_bytes(8));
-        }
-    ```
+// /repo/ch05/php8_bc_break_serialization.php
+class Test extends ArrayObject {
+    protected $id = 12345;
+    public $name = 'Doug';
+    private $key = '';
+    public function __construct() {
+        $this->key = bin2hex(random_bytes(8));
+    }
+```
 
 1.  我们添加一个`getKey()`方法来显示当前的关键值：
 
 ```php
-        public function getKey() {
-            return $this->key;
-        }
-    ```
+    public function getKey() {
+        return $this->key;
+    }
+```
 
 1.  在序列化时，关键点被过滤出结果字符串：
 
 ```php
-        public function __serialize() {
-            return ['id' => $this->id, 
-                    'name' => $this->name];
-        }
-    ```
+    public function __serialize() {
+        return ['id' => $this->id, 
+                'name' => $this->name];
+    }
+```
 
 1.  在反序列化时，生成一个新的关键点：
 
 ```php
-        public function __unserialize($data) {
-            $this->id = $data['id'];
-            $this->name = $data['name'];
-            $this->__construct();
-        }
-    }
-    ```
+    public function __unserialize($data) {
+        $this->id = $data['id'];
+        $this->name = $data['name'];
+        $this->__construct();
+    }
+}
+```
 
 1.  现在我们创建一个实例，并揭示关键点：
 
 ```php
-    $test = new Test();
-    echo "\nOld Key: " . $test->getKey() . "\n";
-    ```
+$test = new Test();
+echo "\nOld Key: " . $test->getKey() . "\n";
+```
 
 关键点可能会出现如下：
 
 ```php
-    Old Key: mXq78DhplByDWuPtzk820g==
-    ```
+Old Key: mXq78DhplByDWuPtzk820g==
+```
 
 1.  我们添加代码来序列化对象并显示字符串：
 
 ```php
-    $str = serialize($test);
-    echo $str . "\n";
-    ```
+$str = serialize($test);
+echo $str . "\n";
+```
 
 这是序列化字符串可能的样子：
 
 ```php
-    O:4:"Test":2:{s:2:"id";i:12345;s:4:"name";s:4:"Doug";}
-    ```
+O:4:"Test":2:{s:2:"id";i:12345;s:4:"name";s:4:"Doug";}
+```
 
 从输出中可以看到，秘密不会出现在序列化的字符串中。这很重要，因为如果序列化字符串的存储位置受到损害，可能会暴露安全漏洞，使攻击者有可能侵入您的系统。
 
 1.  然后我们添加代码来反序列化字符串并显示关键点：
 
 ```php
-    $obj = unserialize($str);
-    echo "New Key: " . $obj->getKey() . "\n";
-    ```
+$obj = unserialize($str);
+echo "New Key: " . $obj->getKey() . "\n";
+```
 
 这是最后一部分输出。请注意，生成了一个新的关键点：
 
 ```php
-    New Key: kDgU7FGfJn5qlOKcHEbyqQ==
-    ```
+New Key: kDgU7FGfJn5qlOKcHEbyqQ==
+```
 
 正如您所看到的，使用新的 PHP 序列化功能并不复杂。任何时间问题现在完全在您的控制之下，因为新的魔术方法是按照对象序列化和反序列化的顺序执行的。
 
@@ -1060,14 +1060,14 @@ PHP 中的协变支持旨在保留从最具体到最一般的类型的顺序。�
 1.  在这个例子中，`PDO`实例是在`try`块内创建的。接下来的两个`catch`块首先寻找`PDOException`。接着是一个第二个`catch`块，它捕获任何实现`Throwable`的类。因为 PHP 的`Exception`和`Error`类都实现了`Throwable`，所以第二个`catch`块最终成为除了`PDOException`之外的任何错误的后备：
 
 ```php
-    try {
-        $pdo = new PDO($dsn, $usr, $pwd, $opts);
-    } catch (PDOException $p) {
-        error_log('Database Error: ' . $p->getMessage());
-    } catch (Throwable $t) {
-        error_log('Unknown Error: ' . $t->getMessage());
-    }
-    ```
+try {
+    $pdo = new PDO($dsn, $usr, $pwd, $opts);
+} catch (PDOException $p) {
+    error_log('Database Error: ' . $p->getMessage());
+} catch (Throwable $t) {
+    error_log('Unknown Error: ' . $t->getMessage());
+}
+```
 
 1.  在这个例子中，如果`PDO`实例由于无效参数而失败，错误日志将包含条目**数据库错误**，后面跟着从`PDOException`中获取的消息。
 
@@ -1076,14 +1076,14 @@ PHP 中的协变支持旨在保留从最具体到最一般的类型的顺序。�
 1.  然而，在这个例子中，`catch`块的顺序是颠倒的：
 
 ```php
-    try {
-        $pdo = new PDO($dsn, $usr, $pwd, $opts);
-    } catch (Throwable $t) {
-        error_log('Unknown Error: ' . $t->getMessage());
-    } catch (PDOException $p) {
-        error_log('Database Error: ' . $p->getMessage());
-    }
-    ```
+try {
+    $pdo = new PDO($dsn, $usr, $pwd, $opts);
+} catch (Throwable $t) {
+    error_log('Unknown Error: ' . $t->getMessage());
+} catch (PDOException $p) {
+    error_log('Database Error: ' . $p->getMessage());
+}
+```
 
 1.  由于 PHP 协变支持的工作方式，第二个`catch`块永远不会被调用。相反，所有源自此代码块的错误日志条目将以**未知错误**开头。
 
@@ -1092,70 +1092,70 @@ PHP 中的协变支持旨在保留从最具体到最一般的类型的顺序。�
 1.  首先，我们定义一个接口`FactoryIterface`，它标识一个`make()`方法。此方法接受一个`array`作为参数，并且预期返回一个`ArrayObject`类型的对象：
 
 ```php
-    interface FactoryInterface {
-        public function make(array $arr): ArrayObject;
-    }
-    ```
+interface FactoryInterface {
+    public function make(array $arr): ArrayObject;
+}
+```
 
 1.  接下来，我们定义一个`ArrTest`类，它扩展了`ArrayObject`：
 
 ```php
-    class ArrTest extends ArrayObject {
-        const DEFAULT_TEST = 'This is a test';
-    }
-    ```
+class ArrTest extends ArrayObject {
+    const DEFAULT_TEST = 'This is a test';
+}
+```
 
 1.  `ArrFactory`类实现了`FactoryInterface`并完全定义了`make()`方法。但是，请注意，此方法返回`ArrTest`数据类型而不是`ArrayObject`：
 
 ```php
-    class ArrFactory implements FactoryInterface {
-        protected array $data;
-        public function make(array $data): ArrTest {
-            $this->data = $data;
-            return new ArrTest($this->data);
-        }
-    }
-    ```
+class ArrFactory implements FactoryInterface {
+    protected array $data;
+    public function make(array $data): ArrTest {
+        $this->data = $data;
+        return new ArrTest($this->data);
+    }
+}
+```
 
 1.  在程序调用代码块中，我们创建了一个`ArrFactory`的实例，并两次运行其`make()`方法，理论上产生了两个`ArrTest`实例。然后我们使用`var_dump()`来显示所产生的两个对象的当前状态：
 
 ```php
-    $factory = new ArrFactory();
-    $obj1 = $factory->make([1,2,3]);
-    $obj2 = $factory->make(['A','B','C']);
-    var_dump($obj1, $obj2);
-    ```
+$factory = new ArrFactory();
+$obj1 = $factory->make([1,2,3]);
+$obj2 = $factory->make(['A','B','C']);
+var_dump($obj1, $obj2);
+```
 
 1.  在 PHP 7.1 中，由于它不支持协变返回数据类型，会抛出致命的`Error`。下面显示的输出告诉我们，方法返回类型声明与`FactoryInterface`中定义的不匹配：
 
 ```php
-    root@php8_tips_php7 [ /repo/ch05 ]# 
-    php php8_variance_covariant.php
-    PHP Fatal error:  Declaration of ArrFactory::make(array $data): ArrTest must be compatible with FactoryInterface::make(array $arr): ArrayObject in /repo/ch05/php8_variance_covariant.php on line 9
-    ```
+root@php8_tips_php7 [ /repo/ch05 ]# 
+php php8_variance_covariant.php
+PHP Fatal error:  Declaration of ArrFactory::make(array $data): ArrTest must be compatible with FactoryInterface::make(array $arr): ArrayObject in /repo/ch05/php8_variance_covariant.php on line 9
+```
 
 1.  当我们在 PHP 8 中运行相同的代码时，您会看到对返回类型提供了协变支持。执行继续进行，如下所示：
 
 ```php
-    root@php8_tips_php8 [ /repo/ch05 ]# 
-    php php8_variance_covariant.php
-    object(ArrTest)#2 (1) {
-      ["storage":"ArrayObject":private]=>
-      array(3) {
-        [0]=>    int(1)
-        [1]=>    int(2)
-        [2]=>    int(3)
-      }
-    }
-    object(ArrTest)#3 (1) {
-      ["storage":"ArrayObject":private]=>
-      array(3) {
-        [0]=>    string(1) "A"
-        [1]=>    string(1) "B"
-        [2]=>    string(1) "C"
-      }
-    }
-    ```
+root@php8_tips_php8 [ /repo/ch05 ]# 
+php php8_variance_covariant.php
+object(ArrTest)#2 (1) {
+  ["storage":"ArrayObject":private]=>
+  array(3) {
+    [0]=>    int(1)
+    [1]=>    int(2)
+    [2]=>    int(3)
+  }
+}
+object(ArrTest)#3 (1) {
+  ["storage":"ArrayObject":private]=>
+  array(3) {
+    [0]=>    string(1) "A"
+    [1]=>    string(1) "B"
+    [2]=>    string(1) "C"
+  }
+}
+```
 
 `ArrTest`扩展了`ArrayObject`，是一个明显符合里氏替换原则定义的条件的子类型。正如您从最后的输出中看到的那样，PHP 8 比之前的 PHP 版本更全面地接受了真正的面向对象编程原则。最终结果是，在使用 PHP 8 时，您的代码和应用架构可以更直观和逻辑合理。
 
@@ -1174,57 +1174,57 @@ PHP 中的协变支持旨在保留从最具体到最一般的类型的顺序。�
 1.  在这个例子中，我们首先定义了一个`IterObj`类，它扩展了内置的`ArrayIterator PHP 类`：
 
 ```php
-    // /repo/ch05/php8_variance_contravariant.php
-    class IterObj extends ArrayIterator {}
-    ```
+// /repo/ch05/php8_variance_contravariant.php
+class IterObj extends ArrayIterator {}
+```
 
 1.  然后我们定义一个抽象的`Base`类，规定了一个`stringify()`方法。请注意，它唯一参数的数据类型是`IterObj`：
 
 ```php
-    abstract class Base {
-        public abstract function stringify(IterObj $it);
-    }
-    ```
+abstract class Base {
+    public abstract function stringify(IterObj $it);
+}
+```
 
 1.  接下来，我们定义一个`IterTest`类，它扩展了`Base`并为`stringify()`方法提供了实现。特别值得注意的是，我们覆盖了数据类型，将其更改为`iterable`：
 
 ```php
-    class IterTest extends Base {
-        public function stringify(iterable $it) {
-            return implode(',', 
-                iterator_to_array($it)) . "\n";
-        }
-    }
-    class IterObj extends ArrayIterator {}
-    ```
+class IterTest extends Base {
+    public function stringify(iterable $it) {
+        return implode(',', 
+            iterator_to_array($it)) . "\n";
+    }
+}
+class IterObj extends ArrayIterator {}
+```
 
 1.  接下来的几行代码创建了`IterTest`、`IterObj`和`ArrayIterator`的实例。然后我们调用`stringify()`方法两次，分别将后两个对象作为参数提供：
 
 ```php
-    $test  = new IterTest();
-    $objIt = new IterObj([1,2,3]);
-    $arrIt = new ArrayIterator(['A','B','C']);
-    echo $test->stringify($objIt);
-    echo $test->stringify($arrIt);
-    ```
+$test  = new IterTest();
+$objIt = new IterObj([1,2,3]);
+$arrIt = new ArrayIterator(['A','B','C']);
+echo $test->stringify($objIt);
+echo $test->stringify($arrIt);
+```
 
 1.  在 PHP 7.1 中运行此代码示例会产生预期的致命`Error`，如下所示：
 
 ```php
-    root@php8_tips_php7 [ /repo/ch05 ]#
-    php php8_variance_contravariant.php
-    PHP Fatal error:  Declaration of IterTest::stringify(iterable $it) must be compatible with Base::stringify(IterObj $it) in /repo/ch05/php8_variance_contravariant.php on line 11
-    ```
+root@php8_tips_php7 [ /repo/ch05 ]#
+php php8_variance_contravariant.php
+PHP Fatal error:  Declaration of IterTest::stringify(iterable $it) must be compatible with Base::stringify(IterObj $it) in /repo/ch05/php8_variance_contravariant.php on line 11
+```
 
 因为 PHP 7.1 不支持逆变参数，它将其参数的数据类型视为不变，并简单地显示一条消息，指示子类的数据类型与父类中指定的数据类型不兼容。
 
 1.  另一方面，PHP 8 提供了对逆变参数的支持。因此，它认识到`IterObj`，在`Base`类中指定的数据类型，是与`iterable`兼容的子类型。此外，提供的两个参数也与`iterable`兼容，允许程序执行继续进行。以下是 PHP 8 的输出：
 
 ```php
-    root@php8_tips_php8 [ /repo/ch05 ]# php php8_variance_contravariant.php
-    1,2,3
-    A,B,C
-    ```
+root@php8_tips_php8 [ /repo/ch05 ]# php php8_variance_contravariant.php
+1,2,3
+A,B,C
+```
 
 PHP 8 对协变返回和逆变参数的支持带来的主要优势是能够覆盖方法逻辑以及**方法签名**。您会发现，尽管 PHP 8 在执行良好的编码实践方面要严格得多，但增强的变异支持使您在设计继承结构时拥有更大的自由度。在某种意义上，至少在参数和返回值数据类型方面，PHP 8 是*更*不受限制的！
 
@@ -1251,28 +1251,28 @@ PHP 8 中的主要区别是，一个相对不常用的方法`fgetss()`已从`Spl
 1.  我们首先定义一个获取文件名的代码块：
 
 ```php
-    // /repo/ch05/php7_spl_splfileobject.php
-    $fn = $_GET['fn'] ?? '';
-    if (!$fn || !file_exists($fn))
-        exit('Unable to locate file');
-    ```
+// /repo/ch05/php7_spl_splfileobject.php
+$fn = $_GET['fn'] ?? '';
+if (!$fn || !file_exists($fn))
+    exit('Unable to locate file');
+```
 
 1.  然后我们创建`SplFileObject`实例，并使用`fgetss()`方法逐行读取文件。最后，我们输出安全内容：
 
 ```php
-    $obj = new SplFileObject($fn, 'r');
-    $safe = '';
-    while ($line = $obj->fgetss()) $safe .= $line;
-    echo '<h1>Contents</h1><hr>' . $safe;
-    ```
+$obj = new SplFileObject($fn, 'r');
+$safe = '';
+while ($line = $obj->fgetss()) $safe .= $line;
+echo '<h1>Contents</h1><hr>' . $safe;
+```
 
 1.  假设要读取的文件是这个：
 
 ```php
-    <h1>This File is Infected</h1>
-    <script>alert('You Been Hacked');</script>
-    <img src="http://very.bad.site/hacked.php" />
-    ```
+<h1>This File is Infected</h1>
+<script>alert('You Been Hacked');</script>
+<img src="http://very.bad.site/hacked.php" />
+```
 
 1.  以下是在 PHP 7.1 中使用此 URL 运行的输出：
 
@@ -1319,88 +1319,88 @@ echo '<h1>Contents</h1><hr>' . $safe;
 这是该类生成的数据的样子：
 
 ```php
-    array(20) {
-      [0] =>  array(1) {
-        [177000000000] =>    string(10) "Bezos,Jeff"
-      }
-      [1] =>  array(1) {
-        [157000000000] =>    string(9) "Musk,Elon"
-      }
-      [2] =>  array(1) {
-        [136000000000] =>    string(10) "Gates,Bill"
-      }
-      ... remaining data not shown
-    ```
+array(20) {
+  [0] =>  array(1) {
+    [177000000000] =>    string(10) "Bezos,Jeff"
+  }
+  [1] =>  array(1) {
+    [157000000000] =>    string(9) "Musk,Elon"
+  }
+  [2] =>  array(1) {
+    [136000000000] =>    string(10) "Gates,Bill"
+  }
+  ... remaining data not shown
+```
 
 正如你所看到的，数据以降序呈现，其中键表示净值。相比之下，在我们的示例程序中，我们计划按姓氏的升序产生数据。
 
 1.  然后，我们定义一个常量，用于标识亿万富翁数据源文件，并设置一个自动加载程序：
 
 ```php
-    // /repo/ch05/php7_spl_splheap.php
-    define('SRC_FILE', __DIR__ 
-        . '/../sample_data/billionaires.txt');
-    require_once __DIR__ 
-        . '/../src/Server/Autoload/Loader.php';
-    $loader = new \Server\Autoload\Loader();
-    ```
+// /repo/ch05/php7_spl_splheap.php
+define('SRC_FILE', __DIR__ 
+    . '/../sample_data/billionaires.txt');
+require_once __DIR__ 
+    . '/../src/Server/Autoload/Loader.php';
+$loader = new \Server\Autoload\Loader();
+```
 
 1.  接下来，我们创建一个`BillionaireTracker`类的实例，并将结果赋给`$list`：
 
 ```php
-    use Services\BillionaireTracker;
-    $tracker = new BillionaireTracker();
-    $list = $tracker->extract(SRC_FILE);
-    ```
+use Services\BillionaireTracker;
+$tracker = new BillionaireTracker();
+$list = $tracker->extract(SRC_FILE);
+```
 
 1.  现在来看最感兴趣的部分：创建堆。为了实现这一点，我们定义了一个扩展`SplHeap`的匿名类。然后，我们定义了一个`compare()`方法，执行必要的逻辑将插入的元素放在适当的位置。PHP 7 允许你改变方法签名。在这个例子中，我们以数组的形式提供参数：
 
 ```php
-    $heap = new class () extends SplHeap {
-        public function compare(
-            array $arr1, array $arr2) : int {
-            $cmp1 = array_values($arr2)[0];
-            $cmp2 = array_values($arr1)[0];
-            return $cmp1 <=> $cmp2;
-        }
-    };
-    ```
+$heap = new class () extends SplHeap {
+    public function compare(
+        array $arr1, array $arr2) : int {
+        $cmp1 = array_values($arr2)[0];
+        $cmp2 = array_values($arr1)[0];
+        return $cmp1 <=> $cmp2;
+    }
+};
+```
 
 你可能还注意到`$cmp1`的值是从第二个数组中赋值的，而`$cmp2`的值是从第一个数组中赋值的。这种切换的原因是因为我们希望按升序产生结果。
 
 1.  然后，我们使用`SplHeap::insert()`将元素添加到堆中：
 
 ```php
-    foreach ($list as $item)
-        $heap->insert($item);
-    ```
+foreach ($list as $item)
+    $heap->insert($item);
+```
 
 1.  最后，我们定义了一个`BillionaireTracker::view()`方法（未显示）来遍历堆并显示结果：
 
 ```php
-    $patt = "%20s\t%32s\n";
-    $line = str_repeat('-', 56) . "\n";
-    echo $tracker->view($heap, $patt, $line);
-    ```
+$patt = "%20s\t%32s\n";
+$line = str_repeat('-', 56) . "\n";
+echo $tracker->view($heap, $patt, $line);
+```
 
 1.  以下是我们在 PHP 7.1 中运行的小程序产生的输出：
 
 ```php
-    root@php8_tips_php7 [ /repo/ch05 ]# 
-    php php7_spl_splheap.php
-    --------------------------------------------------------
-               Net Worth                                Name
-    --------------------------------------------------------
-          84,000,000,000                       Ambani,Mukesh
-         115,000,000,000                     Arnault,Bernard
-          83,600,000,000                       Ballmer,Steve
-          ... some lines were omitted to save space ...
-          58,200,000,000                          Walton,Rob
-         100,000,000,000                     Zuckerberg,Mark
-    --------------------------------------------------------
-                                           1,795,100,000,000
-    --------------------------------------------------------
-    ```
+root@php8_tips_php7 [ /repo/ch05 ]# 
+php php7_spl_splheap.php
+--------------------------------------------------------
+           Net Worth                                Name
+--------------------------------------------------------
+      84,000,000,000                       Ambani,Mukesh
+     115,000,000,000                     Arnault,Bernard
+      83,600,000,000                       Ballmer,Steve
+      ... some lines were omitted to save space ...
+      58,200,000,000                          Walton,Rob
+     100,000,000,000                     Zuckerberg,Mark
+--------------------------------------------------------
+                                       1,795,100,000,000
+--------------------------------------------------------
+```
 
 然而，当我们尝试在 PHP 8 中运行相同的程序时，会抛出错误。以下是在 PHP 8 中运行相同程序的输出：
 
@@ -1440,66 +1440,66 @@ $heap = new class () extends SplHeap {
 1.  首先，我们定义一个匿名类，它继承了`SplDoublyLinkedList`。我们还添加了一个`show()`方法来显示列表的内容：
 
 ```php
-    // /repo/ch05/php7_spl_spldoublylinkedlist.php
-    $double = new class() extends SplDoublyLinkedList {
-        public function show(int $mode) {
-            $this->setIteratorMode($mode);
-            $this->rewind();
-            while ($item = $this->current()) {
-                echo $item . '. ';
-                $this->next();
-            }
-        }
-    };
-    ```
+// /repo/ch05/php7_spl_spldoublylinkedlist.php
+$double = new class() extends SplDoublyLinkedList {
+    public function show(int $mode) {
+        $this->setIteratorMode($mode);
+        $this->rewind();
+        while ($item = $this->current()) {
+            echo $item . '. ';
+            $this->next();
+        }
+    }
+};
+```
 
 1.  接下来，我们定义一个样本数据的数组，并使用`push()`将值插入到链表中。请注意，我们使用`if()`语句来确定操作是否成功或失败。如果操作失败，将抛出一个`Exception`：
 
 ```php
-    $item = ['Person', 'Woman', 'Man', 'Camera', 'TV'];
-    foreach ($item as $key => $value)
-        if (!$double->push($value))
-            throw new Exception('ERROR');
-    ```
+$item = ['Person', 'Woman', 'Man', 'Camera', 'TV'];
+foreach ($item as $key => $value)
+    if (!$double->push($value))
+        throw new Exception('ERROR');
+```
 
 这是潜在代码中断存在的代码块。在 PHP 7 及更低版本中，`push()`返回`TRUE`或`FALSE`。在 PHP 8 中，没有返回值。
 
 1.  然后我们使用`SplDoublyLinkedList`类的常量将模式设置为 FIFO（正向），并显示列表：
 
 ```php
-    echo "**************** Foward ********************\n";
-    $forward = SplDoublyLinkedList::IT_MODE_FIFO
-             | SplDoublyLinkedList::IT_MODE_KEEP;
-    $double->show($forward);
-    ```
+echo "**************** Foward ********************\n";
+$forward = SplDoublyLinkedList::IT_MODE_FIFO
+         | SplDoublyLinkedList::IT_MODE_KEEP;
+$double->show($forward);
+```
 
 1.  接下来，我们使用`SplDoublyLinkedList`类的常量将模式设置为 LIFO（反向），并显示列表：
 
 ```php
-    echo "\n\n************* Reverse *****************\n";
-    $reverse = SplDoublyLinkedList::IT_MODE_LIFO
-             | SplDoublyLinkedList::IT_MODE_KEEP;
-    $double->show($reverse);
-    ```
+echo "\n\n************* Reverse *****************\n";
+$reverse = SplDoublyLinkedList::IT_MODE_LIFO
+         | SplDoublyLinkedList::IT_MODE_KEEP;
+$double->show($reverse);
+```
 
 这是在 PHP 7.1 中运行的输出：
 
 ```php
-    root@php8_tips_php7 [ /repo/ch05 ]# 
-    php php7_spl_spldoublylinkedlist.php
-    **************** Foward ********************
-    Person. Woman. Man. Camera. TV. 
-    **************** Reverse ********************
-    TV. Camera. Man. Woman. Person. 
-    ```
+root@php8_tips_php7 [ /repo/ch05 ]# 
+php php7_spl_spldoublylinkedlist.php
+**************** Foward ********************
+Person. Woman. Man. Camera. TV. 
+**************** Reverse ********************
+TV. Camera. Man. Woman. Person. 
+```
 
 1.  如果我们在 PHP 8 中运行相同的代码，这是结果：
 
 ```php
-    root@php8_tips_php8 [ /home/ch05 ]# 
-    php php7_spl_spldoublylinkedlist.php 
-    PHP Fatal error:  Uncaught Exception: ERROR in /home/ch05/php7_spl_spldoublylinkedlist.php:23
-    ```
+root@php8_tips_php8 [ /home/ch05 ]# 
+php php7_spl_spldoublylinkedlist.php 
+PHP Fatal error:  Uncaught Exception: ERROR in /home/ch05/php7_spl_spldoublylinkedlist.php:23
+```
 
 如果`push()`没有返回任何值，在`if()`语句中 PHP 会假定为`NULL`，然后被插入为布尔值`FALSE`！因此，在第一个`push()`命令之后，`if()`块会导致抛出一个`Exception`。因为`Exception`没有被捕获，会生成一个致命的`Error`。
 

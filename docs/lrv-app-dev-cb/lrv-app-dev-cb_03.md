@@ -39,98 +39,98 @@
 1.  进入您的`app/config/session.php`配置文件，并确保它设置为使用`native`：
 
 ```php
-    **'driver' => 'native'**
+**'driver' => 'native'**
 
-    ```
+```
 
 1.  `app/config/auth.php`配置文件的默认设置应该是可以的，但确保它们设置如下：
 
 ```php
-    'driver' => 'eloquent',
-    'model' => 'User',
-    'table' => 'users',
-    ```
+'driver' => 'eloquent',
+'model' => 'User',
+'table' => 'users',
+```
 
 1.  在 MySQL 中，创建一个名为`authapp`的数据库，并确保在`app/config/database.php`配置文件中设置正确。以下是我们将使用的设置：
 
 ```php
-    'default' => 'mysql',
+'default' => 'mysql',
 
-    'connections' => array(
+'connections' => array(
 
-        'mysql' => array(
-            'driver'   => 'mysql',
-            'host'     => 'localhost',
-            'database' => 'authapp',
-            'username' => 'root',
-            'password' => '',
-            'charset'  => 'utf8',
-            'prefix'   => '',
-        ),
+    'mysql' => array(
+        'driver'   => 'mysql',
+        'host'     => 'localhost',
+        'database' => 'authapp',
+        'username' => 'root',
+        'password' => '',
+        'charset'  => 'utf8',
+        'prefix'   => '',
     ),
-    ```
+),
+```
 
 1.  我们将使用迁移和 Schema 构建器以及 Artisan 命令行来设置我们的`Users`表，因此我们需要创建我们的迁移表：
 
 ```php
-    **php artisan migrate:install**
+**php artisan migrate:install**
 
-    ```
+```
 
 1.  为我们的`Users`表创建迁移：
 
 ```php
-    **php artisan migrate:make create_users_table**
+**php artisan migrate:make create_users_table**
 
-    ```
+```
 
 1.  在`app/database/migrations`目录中，将会有一个新文件，文件名是日期后跟着`create_users_table.php`。在那个文件中，我们创建我们的表：
 
 ```php
-    <?php
+<?php
 
-    use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Migrations\Migration;
 
-    class CreateUsersTable extends Migration {
+class CreateUsersTable extends Migration {
 
-        /**
-        * Run the migrations.
-        *
-        * @return void
-        */
-        public function up()
+    /**
+    * Run the migrations.
+    *
+    * @return void
+    */
+    public function up()
+    {
+        Schema::create('users', function($table)
         {
-            Schema::create('users', function($table)
-            {
-                $table->increments('id');
-                $table->string('email');
-                $table->string('password', 64);
-                $table->string('name');
-                $table->boolean('admin');
-                $table->timestamps();
-            });
-
-        }
-
-        /**
-        * Reverse the migrations.
-        *
-        * @return void
-        */
-        public function down()
-        {
-            Schema::drop('users');
-        }
+            $table->increments('id');
+            $table->string('email');
+            $table->string('password', 64);
+            $table->string('name');
+            $table->boolean('admin');
+            $table->timestamps();
+        });
 
     }
-    ```
+
+    /**
+    * Reverse the migrations.
+    *
+    * @return void
+    */
+    public function down()
+    {
+        Schema::drop('users');
+    }
+
+}
+```
 
 1.  在 Artisan 中运行迁移来创建我们的表，一切都应该设置好了：
 
 ```php
-    **php artisan migrate**
+**php artisan migrate**
 
-    ```
+```
 
 ## 它是如何工作的…
 
@@ -155,159 +155,159 @@
 1.  在我们的`routes.php`文件中创建一个路由来保存我们的注册表单：
 
 ```php
-    Route::get('registration', function()
-    {
-        return View::make('registration');
-    });
-    ```
+Route::get('registration', function()
+{
+    return View::make('registration');
+});
+```
 
 1.  通过在`app/views`中创建一个名为`registration.php`的新文件来创建一个注册表单：
 
 ```php
-    <!DOCTYPE html>
-    <html>
-        <head>
-            <title>Laravel Authentication - Registration</title>
-            <meta charset="utf-8">
-        </head>
-        <body>
-            <h2>Laravel Authentication - Registration</h2>
-            <?php $messages =  $errors->all('<p style="color:red">:message</p>') ?>
-            <?php foreach ($messages as $msg): ?>
-                <?= $msg ?>
-            <?php endforeach; ?>
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Laravel Authentication - Registration</title>
+        <meta charset="utf-8">
+    </head>
+    <body>
+        <h2>Laravel Authentication - Registration</h2>
+        <?php $messages =  $errors->all('<p style="color:red">:message</p>') ?>
+        <?php foreach ($messages as $msg): ?>
+            <?= $msg ?>
+        <?php endforeach; ?>
 
-    <?= Form::open() ?>
-            <?= Form::label('email', 'Email address: ') ?>
-            <?= Form::text('email', Input::old('email')) ?>
-            <br>
-            <?= Form::label('password', 'Password: ') ?>
-            <?= Form::password('password') ?>
-            <br>
-            <?= Form::label('password_confirm','Retype Password: ') ?>
-            <?= Form::password('password_confirm') ?>
-            <br>
-            <?= Form::label('name', 'Name: ') ?>
-            <?= Form::text('name', Input::old('name')) ?>
-            <br>
-            <?= Form::label('admin', 'Admin?: ') ?>
-            <?= Form::checkbox('admin','true',Input::old('admin')) ?>
-            <br>
-            <?= Form::submit('Register!') ?>
-            <?= Form::close() ?>
-        </body>
-    </html>
-    ```
+<?= Form::open() ?>
+        <?= Form::label('email', 'Email address: ') ?>
+        <?= Form::text('email', Input::old('email')) ?>
+        <br>
+        <?= Form::label('password', 'Password: ') ?>
+        <?= Form::password('password') ?>
+        <br>
+        <?= Form::label('password_confirm','Retype Password: ') ?>
+        <?= Form::password('password_confirm') ?>
+        <br>
+        <?= Form::label('name', 'Name: ') ?>
+        <?= Form::text('name', Input::old('name')) ?>
+        <br>
+        <?= Form::label('admin', 'Admin?: ') ?>
+        <?= Form::checkbox('admin','true',Input::old('admin')) ?>
+        <br>
+        <?= Form::submit('Register!') ?>
+        <?= Form::close() ?>
+    </body>
+</html>
+```
 
 1.  创建一个路由来处理注册页面：
 
 ```php
-    Route::post('registration', array('before' => 'csrf',function()
+Route::post('registration', array('before' => 'csrf',function()
+{
+    $rules = array(
+        'email'    => 'required|email|unique:users',
+        'password' => 'required|same:password_confirm',
+        'name'     => 'required'
+    );
+    $validation = Validator::make(Input::all(), $rules);
+
+    if ($validation->fails())
     {
-        $rules = array(
-            'email'    => 'required|email|unique:users',
-            'password' => 'required|same:password_confirm',
-            'name'     => 'required'
-        );
-        $validation = Validator::make(Input::all(), $rules);
+        return Redirect::to('registration')->withErrors($validation)->withInput();
+    }
 
-        if ($validation->fails())
-        {
-            return Redirect::to('registration')->withErrors($validation)->withInput();
-        }
-
-        $user           = new User;
-        $user->email    = Input::get('email');
-        $user->password = Hash::make(Input::get('password'));
-        $user->name     = Input::get('name');
-        $user->admin    = Input::get('admin') ? 1 : 0;
-        if ($user->save())
-        {
-            Auth::loginUsingId($user->id);
-            return Redirect::to('profile');
-        }
-        return Redirect::to('registration')->withInput();
-    }));
-    ```
+    $user           = new User;
+    $user->email    = Input::get('email');
+    $user->password = Hash::make(Input::get('password'));
+    $user->name     = Input::get('name');
+    $user->admin    = Input::get('admin') ? 1 : 0;
+    if ($user->save())
+    {
+        Auth::loginUsingId($user->id);
+        return Redirect::to('profile');
+    }
+    return Redirect::to('registration')->withInput();
+}));
+```
 
 1.  通过在`routes.php`中添加一个路由来为您的个人资料创建一个简单的页面：
 
 ```php
-    Route::get('profile', function()
+Route::get('profile', function()
+{
+    if (Auth::check())
     {
-        if (Auth::check())
-        {
-            return 'Welcome! You have been authorized!';
-        }
-        else
-        {
-            return 'Please <a href="login">Login</a>';
-        }
-    });
-    ```
+        return 'Welcome! You have been authorized!';
+    }
+    else
+    {
+        return 'Please <a href="login">Login</a>';
+    }
+});
+```
 
 1.  在`routes.php`中创建一个登录路由来保存登录表单：
 
 ```php
-    Route::get('login', function()
-    {
-        return View::make('login');
-    });
-    ```
+Route::get('login', function()
+{
+    return View::make('login');
+});
+```
 
 1.  在我们的`app/views`目录中，创建一个名为`login.php`的文件：
 
 ```php
-    <!DOCTYPE html>
-    <html>
-        <head>
-            <title>Laravel Authentication - Login</title>
-            <meta charset="utf-8">
-        </head>
-        <body>
-            <h2>Laravel Authentication - Login</h2>
-            <?= '<span style="color:red">' .Session::get('login_error') . '</span>' ?>
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Laravel Authentication - Login</title>
+        <meta charset="utf-8">
+    </head>
+    <body>
+        <h2>Laravel Authentication - Login</h2>
+        <?= '<span style="color:red">' .Session::get('login_error') . '</span>' ?>
 
-            <?= Form::open() ?>
-            <?= Form::label('email', 'Email address: ') ?>
-            <?= Form::text('email', Input::old('email')) ?>
-            <br>
-            <?= Form::label('password', 'Password: ') ?>
-            <?= Form::password('password') ?>
-            <br>
-            <?= Form::submit('Login!') ?>
-            <?= Form::close() ?>
-        </body>
-    </html>
-    ```
+        <?= Form::open() ?>
+        <?= Form::label('email', 'Email address: ') ?>
+        <?= Form::text('email', Input::old('email')) ?>
+        <br>
+        <?= Form::label('password', 'Password: ') ?>
+        <?= Form::password('password') ?>
+        <br>
+        <?= Form::submit('Login!') ?>
+        <?= Form::close() ?>
+    </body>
+</html>
+```
 
 1.  在`routes.php`中创建一个路由来验证登录：
 
 ```php
-    Route::post('login', function()
+Route::post('login', function()
+{
+    $user = array(
+        'username' => Input::get('email'),
+        'password' => Input::get('password')
+    );
+
+    if (Auth::attempt($user))
     {
-        $user = array(
-            'username' => Input::get('email'),
-            'password' => Input::get('password')
-        );
+        return Redirect::to('profile');
+    }
 
-        if (Auth::attempt($user))
-        {
-            return Redirect::to('profile');
-        }
-
-        return Redirect::to('login')->with('login_error','Could not log in.');
-    });
-    ```
+    return Redirect::to('login')->with('login_error','Could not log in.');
+});
+```
 
 1.  在`routes.php`中创建一个安全页面的路由：
 
 ```php
-    Route::get('secured', array('before' => 'auth', function()
-    {
-        return 'This is a secured page!';
-    }));
-    ```
+Route::get('secured', array('before' => 'auth', function()
+{
+    return 'This is a secured page!';
+}));
+```
 
 ## 工作原理...
 
@@ -342,100 +342,100 @@ profile 路由的第一件事是运行`Auth::check()`来查看用户是否真的
 1.  使用以下代码更新 profile 路由：
 
 ```php
-    Route::get('profile', function()
+Route::get('profile', function()
+{
+    if (Auth::check())
     {
-        if (Auth::check())
-        {
-            return View::make('profile')->with('user',Auth::user());
-        }
-        else
-        {
-            return Redirect::to('login')->with('login_error','You must login first.');
-        }
-    });
-    ```
+        return View::make('profile')->with('user',Auth::user());
+    }
+    else
+    {
+        return Redirect::to('login')->with('login_error','You must login first.');
+    }
+});
+```
 
 1.  通过在`app/views`目录中创建一个名为`profile.php`的文件来创建我们的 profile 视图：
 
 ```php
-    <?php echo Session::get('notify') ?  "<p style='color:
-        green'>" . Session::get('notify') . "</p>" : "" ?>
-    <h1>Welcome <?php echo $user->name ?></h1>
-    <p>Your email: <?php echo $user->email ?></p>
-    <p>Your account was created on: <?php echo $user
-        ->created_at ?></p>
-    <p><a href="<?= URL::to('profile-edit') ?>">Edit your
-        information</a></p>
-    ```
+<?php echo Session::get('notify') ?  "<p style='color:
+    green'>" . Session::get('notify') . "</p>" : "" ?>
+<h1>Welcome <?php echo $user->name ?></h1>
+<p>Your email: <?php echo $user->email ?></p>
+<p>Your account was created on: <?php echo $user
+    ->created_at ?></p>
+<p><a href="<?= URL::to('profile-edit') ?>">Edit your
+    information</a></p>
+```
 
 1.  创建一个路由来保存我们的表单以编辑信息：
 
 ```php
-    Route::get('profile-edit', function()
+Route::get('profile-edit', function()
+{
+    if (Auth::check())
     {
-        if (Auth::check())
-        {
-            $user = Input::old() ? (object) Input::old() :Auth::user();
-            return View::make('profile_edit')->with('user',$user);
-        }
-    });
-    ```
+        $user = Input::old() ? (object) Input::old() :Auth::user();
+        return View::make('profile_edit')->with('user',$user);
+    }
+});
+```
 
 1.  为我们的编辑表单创建一个视图：
 
 ```php
-    <h2>Edit User Info</h2>
-    <?php $messages =  $errors->all('<p style="color:red">:message</p>') ?>
-    <?php foreach ($messages as $msg): ?>
-        <?= $msg ?>
-    <?php endforeach; ?>
-    <?= Form::open() ?>
-    <?= Form::label('email', 'Email address: ') ?>
-    <?= Form::text('email', $user->email) ?>
-    <br>
-    <?= Form::label('password', 'Password: ') ?>
-    <?= Form::password('password') ?>
-    <br>
-    <?= Form::label('password_confirm', 'Retype Password: ') ?>
-    <?= Form::password('password_confirm') ?>
-    <br>
-    <?= Form::label('name', 'Name: ') ?>
-    <?= Form::text('name',  $user->name) ?>
-    <br>
-    <?= Form::submit('Update!') ?>
-    <?= Form::close() ?>
-    ```
+<h2>Edit User Info</h2>
+<?php $messages =  $errors->all('<p style="color:red">:message</p>') ?>
+<?php foreach ($messages as $msg): ?>
+    <?= $msg ?>
+<?php endforeach; ?>
+<?= Form::open() ?>
+<?= Form::label('email', 'Email address: ') ?>
+<?= Form::text('email', $user->email) ?>
+<br>
+<?= Form::label('password', 'Password: ') ?>
+<?= Form::password('password') ?>
+<br>
+<?= Form::label('password_confirm', 'Retype Password: ') ?>
+<?= Form::password('password_confirm') ?>
+<br>
+<?= Form::label('name', 'Name: ') ?>
+<?= Form::text('name',  $user->name) ?>
+<br>
+<?= Form::submit('Update!') ?>
+<?= Form::close() ?>
+```
 
 1.  创建一个处理表单的路由：
 
 ```php
-    Route::post('profile-edit', function()
+Route::post('profile-edit', function()
+{
+    $rules = array(
+        'email'    => 'required|email',
+        'password' => 'same:password_confirm',
+        'name'     => 'required'
+    );
+    $validation = Validator::make(Input::all(), $rules);
+
+    if ($validation->fails())
     {
-        $rules = array(
-            'email'    => 'required|email',
-            'password' => 'same:password_confirm',
-            'name'     => 'required'
-        );
-        $validation = Validator::make(Input::all(), $rules);
+        return Redirect::to('profile-edit')->withErrors($validation)->withInput();
+    }
 
-        if ($validation->fails())
-        {
-            return Redirect::to('profile-edit')->withErrors($validation)->withInput();
-        }
-
-        $user = User::find(Auth::user()->id);
-        $user->email = Input::get('email');
-        if (Input::get('password')) {
-            $user->password = Hash::make(Input::get('password'));
-        }
-        $user->name = Input::get('name');
-        if ($user->save())
-        {
-            return Redirect::to('profile')->with('notify','Information updated');
-        }
-        return Redirect::to('profile-edit')->withInput();
-    });
-    ```
+    $user = User::find(Auth::user()->id);
+    $user->email = Input::get('email');
+    if (Input::get('password')) {
+        $user->password = Hash::make(Input::get('password'));
+    }
+    $user->name = Input::get('name');
+    if ($user->save())
+    {
+        return Redirect::to('profile')->with('notify','Information updated');
+    }
+    return Redirect::to('profile-edit')->withInput();
+});
+```
 
 ## 工作原理...
 
@@ -472,42 +472,42 @@ profile 路由的第一件事是运行`Auth::check()`来查看用户是否真的
 1.  在我们的`filters.php`文件中创建一个检查已登录用户的过滤器。默认的 Laravel`auth`过滤器就可以了：
 
 ```php
-    Route::filter('auth', function()
-    {
-        if (Auth::guest()) return Redirect::guest('login');
-    });
-    ```
+Route::filter('auth', function()
+{
+    if (Auth::guest()) return Redirect::guest('login');
+});
+```
 
 1.  在`filter.php`中创建一个用于检查用户是否为管理员的过滤器：
 
 ```php
-    Route::filter('auth_admin', function()
-    {
-        if (Auth::guest()) return Redirect::guest('login');
-        if (Auth::user()->admin != TRUE)
-            return Redirect::to('restricted');
-    });
-    ```
+Route::filter('auth_admin', function()
+{
+    if (Auth::guest()) return Redirect::guest('login');
+    if (Auth::user()->admin != TRUE)
+        return Redirect::to('restricted');
+});
+```
 
 1.  创建一个我们限制给已登录用户的路由：
 
 ```php
-    Route::get('restricted', array('before' => 'auth',
-        function()
-    {
-        return 'This page is restricted to logged-in users!
-            <a href="admin">Admins Click Here.</a>';
-    }));
-    ```
+Route::get('restricted', array('before' => 'auth',
+    function()
+{
+    return 'This page is restricted to logged-in users!
+        <a href="admin">Admins Click Here.</a>';
+}));
+```
 
 1.  创建一个只限管理员访问的路由：
 
 ```php
-    Route::get('admin', array('before' => 'auth_admin',function()
-    {
-        return 'This page is restricted to Admins only!';
-    }));
-    ```
+Route::get('admin', array('before' => 'auth_admin',function()
+{
+    return 'This page is restricted to Admins only!';
+}));
+```
 
 ## 它是如何工作的...
 
@@ -530,43 +530,43 @@ profile 路由的第一件事是运行`Auth::check()`来查看用户是否真的
 1.  打开我们应用的`composer.json`文件，并将 HybridAuth 添加到`require`部分，使其看起来像这样：
 
 ```php
-    "require": {
-        "laravel/framework": "4.0.*",
-        "hybridauth/hybridauth": "dev-master"
-    },
-    ```
+"require": {
+    "laravel/framework": "4.0.*",
+    "hybridauth/hybridauth": "dev-master"
+},
+```
 
 1.  在命令行界面中，按以下方式更新 composer：
 
 ```php
-    **php composer.phar update**
+**php composer.phar update**
 
-    ```
+```
 
 1.  在`app/config`目录中，创建一个名为`oauth.php`的新文件：
 
 ```php
-    <?php
-    return array(
-        "base_url"   => "http://path/to/our/app/oauth/auth",
-        "providers"  => array (
-            "OpenID" => array ("enabled" => true),
-            "Facebook" => array (
-                "enabled"  => TRUE,
-                "keys"     => array ("id" => "APP_ID", "secret"=> "APP_SECRET"),
-                "scope"    => "email",
-            ),
-            "Twitter" => array (
-                "enabled" => true,
-                "keys"    => array ("key" => "CONSUMER_KEY","secret" => "CONSUMER_SECRET")
-            ),
-            "LinkedIn" => array (
-                "enabled" => true,
-                "keys" => array ("key" => "APP_KEY", "secret"=> "APP_SECRET")
-            )
+<?php
+return array(
+    "base_url"   => "http://path/to/our/app/oauth/auth",
+    "providers"  => array (
+        "OpenID" => array ("enabled" => true),
+        "Facebook" => array (
+            "enabled"  => TRUE,
+            "keys"     => array ("id" => "APP_ID", "secret"=> "APP_SECRET"),
+            "scope"    => "email",
+        ),
+        "Twitter" => array (
+            "enabled" => true,
+            "keys"    => array ("key" => "CONSUMER_KEY","secret" => "CONSUMER_SECRET")
+        ),
+        "LinkedIn" => array (
+            "enabled" => true,
+            "keys" => array ("key" => "APP_KEY", "secret"=> "APP_SECRET")
         )
-    );
-    ```
+    )
+);
+```
 
 ## 它是如何工作的...
 
@@ -589,72 +589,72 @@ profile 路由的第一件事是运行`Auth::check()`来查看用户是否真的
 1.  在我们的`app/config`目录中，创建一个名为`openid_auth.php`的新文件：
 
 ```php
-    <?php
-    return array(
-        "base_url"   => "http://path/to/our/app/openid/auth",
-        "providers"  => array (
-            "OpenID" => array ("enabled" => TRUE)
-        )
-    );
-    ```
+<?php
+return array(
+    "base_url"   => "http://path/to/our/app/openid/auth",
+    "providers"  => array (
+        "OpenID" => array ("enabled" => TRUE)
+    )
+);
+```
 
 1.  在我们的`routes.php`文件中，创建一个路由来保存我们的登录表单：
 
 ```php
-    Route::get('login', function()
-    {
-        return View::make('login');
-    });
-    ```
+Route::get('login', function()
+{
+    return View::make('login');
+});
+```
 
 1.  在我们的`app/views`目录中，创建一个名为`login.php`的新视图：
 
 ```php
-    <!DOCTYPE html>
-    <html>
-        <head>
-            <title>Laravel Open ID Login</title>
-            <meta charset="utf-8">
-        </head>
-        <body>
-            <h1>OpenID Login</h1>
-            <?= Form::open(array('url' => 'openid', 'method' =>'POST')) ?>
-            <?= Form::label('openid_identity', 'OpenID') ?>
-            <?= Form::text('openid_identity', Input::old('openid_identity')) ?>
-            <br>
-            <?= Form::submit('Log In!') ?>
-            <?= Form::close() ?>
-        </body>
-    </html>
-    ```
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Laravel Open ID Login</title>
+        <meta charset="utf-8">
+    </head>
+    <body>
+        <h1>OpenID Login</h1>
+        <?= Form::open(array('url' => 'openid', 'method' =>'POST')) ?>
+        <?= Form::label('openid_identity', 'OpenID') ?>
+        <?= Form::text('openid_identity', Input::old('openid_identity')) ?>
+        <br>
+        <?= Form::submit('Log In!') ?>
+        <?= Form::close() ?>
+    </body>
+</html>
+```
 
 1.  在`routes.php`中，创建用于运行身份验证的路由：
 
 ```php
-    Route::any('openid/{auth?}', function($auth = NULL)
-    {
-        if ($auth == 'auth') {
-            try {
-                Hybrid_Endpoint::process();
-            } catch (Exception $e) {
-                return Redirect::to('openid');
-            }
-            return;
-        }
-
+Route::any('openid/{auth?}', function($auth = NULL)
+{
+    if ($auth == 'auth') {
         try {
-            $oauth = new Hybrid_Auth(app_path(). '/config/openid_auth.php');
-            $provider = $oauth->authenticate('OpenID',array('openid_identifier' =>Input::get('openid_identity')));
-            $profile = $provider->getUserProfile();
+            Hybrid_Endpoint::process();
+        } catch (Exception $e) {
+            return Redirect::to('openid');
         }
-        catch(Exception $e) {
-            return $e->getMessage();
-        }
-        echo 'Welcome ' . $profile->firstName . ' ' . $profile->lastName . '<br>';
-        echo 'Your email: ' . $profile->email . '<br>';
-        dd($profile);
-    });
-    ```
+        return;
+    }
+
+    try {
+        $oauth = new Hybrid_Auth(app_path(). '/config/openid_auth.php');
+        $provider = $oauth->authenticate('OpenID',array('openid_identifier' =>Input::get('openid_identity')));
+        $profile = $provider->getUserProfile();
+    }
+    catch(Exception $e) {
+        return $e->getMessage();
+    }
+    echo 'Welcome ' . $profile->firstName . ' ' . $profile->lastName . '<br>';
+    echo 'Your email: ' . $profile->email . '<br>';
+    dd($profile);
+});
+```
 
 ## 它是如何工作的...
 
@@ -685,55 +685,55 @@ profile 路由的第一件事是运行`Auth::check()`来查看用户是否真的
 1.  获取 App ID 和 App Secret 密钥，在`app/config`目录中创建一个名为`fb_auth.php`的文件：
 
 ```php
-    <?php
-    return array(
-        "base_url" => "http://path/to/our/app/fbauth/auth",
-        "providers" => array (
-            "Facebook" => array (
-                "enabled"  => TRUE,
-                "keys" => array ("id" => "APP_ID", "secret" =>"APP_SECRET"),
-                "scope" => "email"
-            )
+<?php
+return array(
+    "base_url" => "http://path/to/our/app/fbauth/auth",
+    "providers" => array (
+        "Facebook" => array (
+            "enabled"  => TRUE,
+            "keys" => array ("id" => "APP_ID", "secret" =>"APP_SECRET"),
+            "scope" => "email"
         )
-    );
-    ```
+    )
+);
+```
 
 1.  在`routes.php`中创建一个用于我们的 Facebook 登录按钮的路由：
 
 ```php
-    Route::get('facebook', function()
-    {
-        return "<a href='fbauth'>Login with Facebook</a>";
-    });
-    ```
+Route::get('facebook', function()
+{
+    return "<a href='fbauth'>Login with Facebook</a>";
+});
+```
 
 1.  创建一个路由来处理登录信息并显示它：
 
 ```php
-    Route::get('fbauth/{auth?}', function($auth = NULL)
-    {
-        if ($auth == 'auth') {
-            try {
-                Hybrid_Endpoint::process();
-            } catch (Exception $e) {
-                return Redirect::to('fbauth');
-            }
-            return;
-        }
-
+Route::get('fbauth/{auth?}', function($auth = NULL)
+{
+    if ($auth == 'auth') {
         try {
-            $oauth = new Hybrid_Auth(app_path(). '/config/fb_auth.php');
-            $provider = $oauth->authenticate('Facebook');
-            $profile = $provider->getUserProfile();
+            Hybrid_Endpoint::process();
+        } catch (Exception $e) {
+            return Redirect::to('fbauth');
         }
-        catch(Exception $e) {
-            return $e->getMessage();
-        }
-        echo 'Welcome ' . $profile->firstName . ' '. $profile->lastName . '<br>';
-        echo 'Your email: ' . $profile->email . '<br>';
-        dd($profile);
-    });
-    ```
+        return;
+    }
+
+    try {
+        $oauth = new Hybrid_Auth(app_path(). '/config/fb_auth.php');
+        $provider = $oauth->authenticate('Facebook');
+        $profile = $provider->getUserProfile();
+    }
+    catch(Exception $e) {
+        return $e->getMessage();
+    }
+    echo 'Welcome ' . $profile->firstName . ' '. $profile->lastName . '<br>';
+    echo 'Your email: ' . $profile->email . '<br>';
+    dd($profile);
+});
+```
 
 ## 它是如何工作的...
 
@@ -764,55 +764,55 @@ profile 路由的第一件事是运行`Auth::check()`来查看用户是否真的
 1.  获取 Consumer Key 和 Consumer Secret，并在`app/config`目录中创建一个名为`tw_auth.php`的文件：
 
 ```php
-    <?php
-    return array(
-        "base_url"   => "http://path/to/our/app/twauth/auth",
-        "providers"  => array (
-            "Twitter" => array (
-                "enabled" => true,
-                "keys"    => array ("key" => "CONSUMER_KEY",
-    			     "secret" => "CONSUMER_SECRET")
-            )
+<?php
+return array(
+    "base_url"   => "http://path/to/our/app/twauth/auth",
+    "providers"  => array (
+        "Twitter" => array (
+            "enabled" => true,
+            "keys"    => array ("key" => "CONSUMER_KEY",
+			     "secret" => "CONSUMER_SECRET")
         )
-    );
-    ```
+    )
+);
+```
 
 1.  在`routes.php`中创建一个用于我们的 Twitter 登录按钮的路由：
 
 ```php
-    Route::get('twitter', function()
-    {
-        return "<a href='twauth'>Login with Twitter</a>";
-    });
-    ```
+Route::get('twitter', function()
+{
+    return "<a href='twauth'>Login with Twitter</a>";
+});
+```
 
 1.  创建一个路由来处理 Twitter 信息：
 
 ```php
-    Route::get('twauth/{auth?}', function($auth = NULL)
-    {
-        if ($auth == 'auth') {
-            try {
-                Hybrid_Endpoint::process();
-            } catch (Exception $e) {
-                return Redirect::to('twauth');
-            }
-            return;
-        }
-
+Route::get('twauth/{auth?}', function($auth = NULL)
+{
+    if ($auth == 'auth') {
         try {
-            $oauth = new Hybrid_Auth(app_path(). '/config/tw_auth.php');
-            $provider = $oauth->authenticate('Twitter');
-            $profile = $provider->getUserProfile();
+            Hybrid_Endpoint::process();
+        } catch (Exception $e) {
+            return Redirect::to('twauth');
         }
-        catch(Exception $e) {
-            return $e->getMessage();
-        }
-        echo 'Welcome ' . $profile->displayName . '<br>';
-        echo 'Your image: <img src="' . $profile->photoURL. '">';
-        dd($profile);
-    });
-    ```
+        return;
+    }
+
+    try {
+        $oauth = new Hybrid_Auth(app_path(). '/config/tw_auth.php');
+        $provider = $oauth->authenticate('Twitter');
+        $profile = $provider->getUserProfile();
+    }
+    catch(Exception $e) {
+        return $e->getMessage();
+    }
+    echo 'Welcome ' . $profile->displayName . '<br>';
+    echo 'Your image: <img src="' . $profile->photoURL. '">';
+    dd($profile);
+});
+```
 
 ## 它是如何工作的...
 
@@ -843,55 +843,55 @@ profile 路由的第一件事是运行`Auth::check()`来查看用户是否真的
 1.  获取 API 密钥和秘密密钥，在`app/config`目录中创建一个名为`li_auth.php`的文件：
 
 ```php
-    <?php
-    return array(
-        "base_url"   => "http://path/to/our/app/liauth/auth",
-        "providers"  => array (
-            "LinkedIn" => array (
-                "enabled" => true,
-                "keys"    => array ("key" => "API_KEY","secret" => "SECRET_KEY")
-            )
+<?php
+return array(
+    "base_url"   => "http://path/to/our/app/liauth/auth",
+    "providers"  => array (
+        "LinkedIn" => array (
+            "enabled" => true,
+            "keys"    => array ("key" => "API_KEY","secret" => "SECRET_KEY")
         )
-    );
-    ```
+    )
+);
+```
 
 1.  在`routes.php`中创建一个用于 LinkedIn 登录按钮的路由：
 
 ```php
-    Route::get('linkedin', function()
-    {
-        return "<a href='liauth'>Login with LinkedIn</a>";
-    });
-    ```
+Route::get('linkedin', function()
+{
+    return "<a href='liauth'>Login with LinkedIn</a>";
+});
+```
 
 1.  创建一个处理 LinkedIn 信息的路由：
 
 ```php
-    Route::get('liauth/{auth?}', function($auth = NULL)
-    {
-        if ($auth == 'auth') {
-            try {
-                Hybrid_Endpoint::process();
-            } catch (Exception $e) {
-                return Redirect::to('liauth');
-            }
-            return;
-        }
-
+Route::get('liauth/{auth?}', function($auth = NULL)
+{
+    if ($auth == 'auth') {
         try {
-            $oauth = new Hybrid_Auth(app_path(). '/config/li_auth.php');
-            $provider = $oauth->authenticate('LinkedIn');
-            $profile = $provider->getUserProfile();
+            Hybrid_Endpoint::process();
+        } catch (Exception $e) {
+            return Redirect::to('liauth');
         }
-        catch(Exception $e) {
-            return $e->getMessage();
-        }
-        echo 'Welcome ' . $profile->firstName . ' ' . $profile->lastName . '<br>';
-        echo 'Your email: ' . $profile->email . '<br>';
-        echo 'Your image: <img src="' . $profile->photoURL. '">';
-        dd($profile);
-    });
-    ```
+        return;
+    }
+
+    try {
+        $oauth = new Hybrid_Auth(app_path(). '/config/li_auth.php');
+        $provider = $oauth->authenticate('LinkedIn');
+        $profile = $provider->getUserProfile();
+    }
+    catch(Exception $e) {
+        return $e->getMessage();
+    }
+    echo 'Welcome ' . $profile->firstName . ' ' . $profile->lastName . '<br>';
+    echo 'Your email: ' . $profile->email . '<br>';
+    echo 'Your image: <img src="' . $profile->photoURL. '">';
+    dd($profile);
+});
+```
 
 ## 它是如何工作的...
 

@@ -35,43 +35,43 @@
 1.  创建一个文件来包含类定义。为了自动加载的目的，建议文件名与类名匹配。在文件顶部，在关键字`class`之前，添加一个**DocBlock**。然后您可以定义属性和方法。在这个例子中，我们定义了一个类`Test`。它有一个属性`$test`和一个方法`getTest()`：
 
 ```php
-    <?php
-    declare(strict_types=1);
-    /**
-     * This is a demonstration class.
-     *
-     * The purpose of this class is to get and set 
-     * a protected property $test
-     *
-     */
-    class Test
-    {
+<?php
+declare(strict_types=1);
+/**
+ * This is a demonstration class.
+ *
+ * The purpose of this class is to get and set 
+ * a protected property $test
+ *
+ */
+class Test
+{
 
-      protected $test = 'TEST';
+  protected $test = 'TEST';
 
-      /**
-       * This method returns the current value of $test
-       *
-       * @return string $test
-       */
-      public function getTest() : string
-      {
-        return $this->test;
-      }
+  /**
+   * This method returns the current value of $test
+   *
+   * @return string $test
+   */
+  public function getTest() : string
+  {
+    return $this->test;
+  }
 
-      /**
-       * This method sets the value of $test
-       *
-       * @param string $test
-       * @return Test $this
-       */
-      public function setTest(string $test)
-      {
-        $this->test = $test;
-        return $this;
-      }
-    }
-    ```
+  /**
+   * This method sets the value of $test
+   *
+   * @param string $test
+   * @return Test $this
+   */
+  public function setTest(string $test)
+  {
+    $this->test = $test;
+    return $this;
+  }
+}
+```
 
 ### 提示
 
@@ -84,43 +84,43 @@
 1.  可以在一个文件中定义多个类，但这不被认为是最佳实践。在这个例子中，我们创建一个文件`NameAddress.php`，其中定义了两个类，`Name`和`Address`：
 
 ```php
-    <?php
-    declare(strict_types=1);
-    class Name
-    {
+<?php
+declare(strict_types=1);
+class Name
+{
 
-      protected $name = '';
+  protected $name = '';
 
-      public function getName() : string
-      {
-        return $this->name;
-      }
+  public function getName() : string
+  {
+    return $this->name;
+  }
 
-      public function setName(string $name)
-      {
-        $this->name = $name;
+  public function setName(string $name)
+  {
+    $this->name = $name;
 
-        return $this;
-      }
-    }
+    return $this;
+  }
+}
 
-    class Address
-    {
+class Address
+{
 
-      protected $address = '';
+  protected $address = '';
 
-      public function getAddress() : string
-      {
-        return $this->address;
-      }
+  public function getAddress() : string
+  {
+    return $this->address;
+  }
 
-      public function setAddress(string $address)
-      {
-        $this->address = $address;
-        return $this;
-      }
-    }
-    ```
+  public function setAddress(string $address)
+  {
+    $this->address = $address;
+    return $this;
+  }
+}
+```
 
 ### 提示
 
@@ -129,24 +129,24 @@
 1.  类名不区分大小写。重复将被标记为错误。在这个例子中，在一个名为`TwoClass.php`的文件中，我们定义了两个类，`TwoClass`和`twoclass`：
 
 ```php
-    <?php
-    class TwoClass
-    {
-      public function showOne()
-      {
-        return 'ONE';
-      }
-    }
+<?php
+class TwoClass
+{
+  public function showOne()
+  {
+    return 'ONE';
+  }
+}
 
-    // a fatal error will occur when the second class definition is parsed
-    class twoclass
-    {
-      public function showTwo()
-      {
-        return 'TWO';
-      }
-    }
-    ```
+// a fatal error will occur when the second class definition is parsed
+class twoclass
+{
+  public function showTwo()
+  {
+    return 'TWO';
+  }
+}
+```
 
 1.  PHP 7.1 已解决了在使用关键字`$this`时的不一致行为。虽然在 PHP 7.0 和 PHP 5.x 中允许使用，但在 PHP 7.1 中，如果`$this`被用作：
 
@@ -169,15 +169,15 @@
 1.  如果您需要创建一个对象实例，但不想定义一个离散的类，您可以使用内置于 PHP 中的通用`stdClass`。`stdClass`允许您在不必定义一个扩展`stdClass`的离散类的情况下*即兴*定义属性：
 
 ```php
-    $obj = new stdClass();
-    ```
+$obj = new stdClass();
+```
 
 1.  这个功能在 PHP 的许多不同地方使用。例如，当您使用**PHP 数据对象**（**PDO**）来进行数据库查询时，其中的一个获取模式是`PDO::FETCH_OBJ`。这种模式返回`stdClass`的实例，其中的属性代表数据库表列：
 
 ```php
-    $stmt = $connection->pdo->query($sql);
-    $row  = $stmt->fetch(PDO::FETCH_OBJ);
-    ```
+$stmt = $connection->pdo->query($sql);
+$row  = $stmt->fetch(PDO::FETCH_OBJ);
+```
 
 ## 它是如何工作的...
 
@@ -261,50 +261,50 @@ var_dump($row);
 1.  在`child`类中，使用关键字`extends`来建立继承关系。在接下来的例子中，`Customer`类扩展了`Base`类。`Customer`的任何实例都将继承可见的方法和属性，这里是`$id`，`getId()`和`setId()`：
 
 ```php
-    class Base
-    {
-      protected $id;
-      public function getId()
-      {
-        return $this->id;
-      }
-      public function setId($id)
-      {
-        $this->id = $id;
-      }
-    }
+class Base
+{
+  protected $id;
+  public function getId()
+  {
+    return $this->id;
+  }
+  public function setId($id)
+  {
+    $this->id = $id;
+  }
+}
 
-    class Customer extends Base
-    {
-      protected $name;
-      public function getName()
-      {
-        return $this->name;
-      }
-      public function setName($name)
-      {
-        $this->name = $name;
-      }
-    }
-    ```
+class Customer extends Base
+{
+  protected $name;
+  public function getName()
+  {
+    return $this->name;
+  }
+  public function setName($name)
+  {
+    $this->name = $name;
+  }
+}
+```
 
 1.  您可以通过将其标记为`abstract`来强制任何使用您的类的开发人员定义一个方法。在这个例子中，`Base`类将`validate()`方法定义为`abstract`。它必须是抽象的原因是因为从父类`Base`的角度来确定子类如何被验证是不可能的：
 
 ```php
-    abstract class Base
-    {
-      protected $id;
-      public function getId()
-      {
-        return $this->id;
-      }
-      public function setId($id)
-      {
-        $this->id = $id;
-      }
-      public function validate();
-    }
-    ```
+abstract class Base
+{
+  protected $id;
+  public function getId()
+  {
+    return $this->id;
+  }
+  public function setId($id)
+  {
+    $this->id = $id;
+  }
+  public function validate();
+}
+```
 
 ### 注意
 
@@ -313,54 +313,54 @@ var_dump($row);
 1.  PHP 只支持单一继承线。下一个例子展示了一个名为`Member`的类，它从`Customer`继承。`Customer`又从`Base`继承：
 
 ```php
-    class Base
-    {
-      protected $id;
-      public function getId()
-      {
-        return $this->id;
-      }
-      public function setId($id)
-      {
-        $this->id = $id;
-      }
-    }
+class Base
+{
+  protected $id;
+  public function getId()
+  {
+    return $this->id;
+  }
+  public function setId($id)
+  {
+    $this->id = $id;
+  }
+}
 
-    class Customer extends Base
-    {
-      protected $name;
-      public function getName()
-      {
-        return $this->name;
-      }
-      public function setName($name)
-      {
-        $this->name = $name;
-      }
-    }
+class Customer extends Base
+{
+  protected $name;
+  public function getName()
+  {
+    return $this->name;
+  }
+  public function setName($name)
+  {
+    $this->name = $name;
+  }
+}
 
-    class Member extends Customer
-    {
-      protected $membership;
-      public function getMembership()
-      {
-        return $this->membership;
-      }
-      public function setMembership($memberId)
-      {
-        $this->membership = $memberId;
-      }
-    }
-    ```
+class Member extends Customer
+{
+  protected $membership;
+  public function getMembership()
+  {
+    return $this->membership;
+  }
+  public function setMembership($memberId)
+  {
+    $this->membership = $memberId;
+  }
+}
+```
 
 1.  为了满足类型提示，目标类的任何子类都可以使用。下面的代码片段中显示的`test()`函数需要`Base`类的一个实例作为参数。继承线中的任何类都可以被接受为参数。传递给`test()`的任何其他内容都会引发`TypeError`：
 
 ```php
-    function test(Base $object)
-    {
-      return $object->getId();
-    }
-    ```
+function test(Base $object)
+{
+  return $object->getId();
+}
+```
 
 ## 它是如何工作的...
 
@@ -530,55 +530,55 @@ PHP 允许你访问属性或方法，而不必创建类的实例。用于此目�
 1.  最简单的方法是在声明普通属性或方法时，在声明可见级别后添加`static`关键字。使用`self`关键字在内部引用属性：
 
 ```php
-    class Test
-    {
-      public static $test = 'TEST';
-      public static function getTest()
-      {
-        return self::$test;
-      }
-    }
-    ```
+class Test
+{
+  public static $test = 'TEST';
+  public static function getTest()
+  {
+    return self::$test;
+  }
+}
+```
 
 1.  `self`关键字将会提前绑定，这会在访问子类中的静态信息时造成问题。如果你绝对需要访问子类的信息，使用`static`关键字代替`self`。这个过程被称为**后期静态绑定**。
 
 1.  在下面的示例中，如果你输出`Child::getEarlyTest()`，输出将是**TEST**。另一方面，如果你运行`Child::getLateTest()`，输出将是**CHILD**。原因是当使用`self`时，PHP 将绑定到*最早*的定义，而对于`static`关键字，将使用*最新*的绑定：
 
 ```php
-    class Test2
-    {
-      public static $test = 'TEST2';
-      public static function getEarlyTest()
-      {
-        return self::$test;
-      }
-      public static function getLateTest()
-      {
-        return static::$test;
-      }
-    }
+class Test2
+{
+  public static $test = 'TEST2';
+  public static function getEarlyTest()
+  {
+    return self::$test;
+  }
+  public static function getLateTest()
+  {
+    return static::$test;
+  }
+}
 
-    class Child extends Test2
-    {
-      public static $test = 'CHILD';
-    }
-    ```
+class Child extends Test2
+{
+  public static $test = 'CHILD';
+}
+```
 
 1.  在许多情况下，**工厂**设计模式与静态方法一起使用，以根据不同的参数生成对象的实例。在这个例子中，定义了一个静态方法`factory()`，它返回一个 PDO 连接：
 
 ```php
-    public static function factory(
-      $driver,$dbname,$host,$user,$pwd,array $options = [])
-      {
-        $dsn = sprintf('%s:dbname=%s;host=%s', 
-        $driver, $dbname, $host);
-        try {
-            return new PDO($dsn, $user, $pwd, $options);
-        } catch (PDOException $e) {
-            error_log($e->getMessage);
-        }
-      }
-    ```
+public static function factory(
+  $driver,$dbname,$host,$user,$pwd,array $options = [])
+  {
+    $dsn = sprintf('%s:dbname=%s;host=%s', 
+    $driver, $dbname, $host);
+    try {
+        return new PDO($dsn, $user, $pwd, $options);
+    } catch (PDOException $e) {
+        error_log($e->getMessage);
+    }
+  }
+```
 
 ## 它是如何工作的...
 
@@ -639,8 +639,8 @@ echo $country . '';
 1.  要在命名空间中定义一个类，只需在代码文件顶部添加关键字`namespace`：
 
 ```php
-    namespace Application\Entity;
-    ```
+namespace Application\Entity;
+```
 
 ### 注意
 
@@ -651,61 +651,61 @@ echo $country . '';
 1.  在关键字`namespace`之前应该只有一个注释和/或关键字`declare`。
 
 ```php
-    <?php
-    declare(strict_types=1);
-    namespace Application\Entity;
-    /**
-     * Address
-     *
-     */
-    class Address
-    {
-      // some code
-    }
-    ```
+<?php
+declare(strict_types=1);
+namespace Application\Entity;
+/**
+ * Address
+ *
+ */
+class Address
+{
+  // some code
+}
+```
 
 1.  在 PHP 5 中，如果您需要访问外部命名空间中的类，可以添加一个只包含命名空间的`use`语句。然后，您需要使用命名空间的最后一个组件作为前缀来引用该命名空间内的任何类：
 
 ```php
-    use Application\Entity;
-    $name = new Entity\Name();
-    $addr = new Entity\Address();
-    $prof = new Entity\Profile();
-    ```
+use Application\Entity;
+$name = new Entity\Name();
+$addr = new Entity\Address();
+$prof = new Entity\Profile();
+```
 
 1.  或者，您可以明确指定所有三个类：
 
 ```php
-    use Application\Entity\Name;
-    use Application\Entity\Address;
-    use Application\Entity\Profile;
-    $name = new Name();
-    $addr = new Address();
-    $prof = new Profile();
-    ```
+use Application\Entity\Name;
+use Application\Entity\Address;
+use Application\Entity\Profile;
+$name = new Name();
+$addr = new Address();
+$prof = new Profile();
+```
 
 1.  PHP 7 引入了一种称为**group use**的语法改进，大大提高了代码的可读性：
 
 ```php
-    use Application\Entity\ {
-      Name,
-      Address,
-      Profile
-    };
-    $name = new Name();
-    $addr = new Address();
-    $prof = new Profile();
-    ```
+use Application\Entity\ {
+  Name,
+  Address,
+  Profile
+};
+$name = new Name();
+$addr = new Address();
+$prof = new Profile();
+```
 
 1.  如第一章中所述，*构建基础*，命名空间是**自动加载**过程的一个组成部分。此示例显示了一个演示自动加载程序，它会回显传递的参数，然后尝试根据命名空间和类名包含一个文件。这假设目录结构与命名空间匹配：
 
 ```php
-    function __autoload($class)
-    {
-      echo "Argument Passed to Autoloader = $class\n";
-      include __DIR__ . '/../' . str_replace('\\', DIRECTORY_SEPARATOR, $class) . '.php';
-    }
-    ```
+function __autoload($class)
+{
+  echo "Argument Passed to Autoloader = $class\n";
+  include __DIR__ . '/../' . str_replace('\\', DIRECTORY_SEPARATOR, $class) . '.php';
+}
+```
 
 ## 工作原理...
 
@@ -817,37 +817,37 @@ $prof = new Profile();
 1.  在此示例中，定义了一个带有受保护属性`$id`的`Base`类。为了访问此属性，定义了“getId（）”和“setId（）”公共方法。受保护方法“generateRandId（）”可以在内部使用，并且在`Customer`子类中继承。此方法不能直接在类定义之外调用。请注意使用新的 PHP 7“random_bytes（）”函数创建随机 ID。
 
 ```php
-    class Base
-    {
-      protected $id;
-      private $key = 12345;
-      public function getId()
-      {
-        return $this->id;
-      }
-      public function setId()
-      {
-        $this->id = $this->generateRandId();
-      }
-      protected function generateRandId()
-      {
-        return unpack('H*', random_bytes(8))[1];
-      }
-    }
+class Base
+{
+  protected $id;
+  private $key = 12345;
+  public function getId()
+  {
+    return $this->id;
+  }
+  public function setId()
+  {
+    $this->id = $this->generateRandId();
+  }
+  protected function generateRandId()
+  {
+    return unpack('H*', random_bytes(8))[1];
+  }
+}
 
-    class Customer extends Base
-    {
-      protected $name;
-      public function getName()
-      {
-        return $this->name;
-      }
-      public function setName($name)
-      {
-        $this->name = $name;
-      }
-    }
-    ```
+class Customer extends Base
+{
+  protected $name;
+  public function getName()
+  {
+    return $this->name;
+  }
+  public function setName($name)
+  {
+    $this->name = $name;
+  }
+}
+```
 
 ### 注意
 
@@ -860,31 +860,31 @@ $prof = new Profile();
 1.  下一个代码示例显示了一个名为`Registry`的类，其中只能有一个实例。因为构造函数标记为`private`，所以唯一可以创建实例的方法是通过静态方法“getInstance（）”：
 
 ```php
-    class Registry
-    {
-      protected static $instance = NULL;
-      protected $registry = array();
-      private function __construct()
-      {
-        // nobody can create an instance of this class
-      }
-      public static function getInstance()
-      {
-        if (!self::$instance) {
-          self::$instance = new self();
-        }
-        return self::$instance;
-      }
-      public function __get($key)
-      {
-        return $this->registry[$key] ?? NULL;
-      }
-      public function __set($key, $value)
-      {
-        $this->registry[$key] = $value;
-      }
+class Registry
+{
+  protected static $instance = NULL;
+  protected $registry = array();
+  private function __construct()
+  {
+    // nobody can create an instance of this class
+  }
+  public static function getInstance()
+  {
+    if (!self::$instance) {
+      self::$instance = new self();
     }
-    ```
+    return self::$instance;
+  }
+  public function __get($key)
+  {
+    return $this->registry[$key] ?? NULL;
+  }
+  public function __set($key, $value)
+  {
+    $this->registry[$key] = $value;
+  }
+}
+```
 
 ### 注意
 
@@ -893,29 +893,29 @@ $prof = new Profile();
 1.  通常，类常量被认为具有`public`的可见性级别。从 PHP 7.1 开始，您可以将类常量声明为`protected`或`private`。在以下示例中，`TEST_WHOLE_WORLD`类常量的行为与 PHP 5 中完全相同。接下来的两个常量，`TEST_INHERITED`和`TEST_LOCAL`，遵循与任何`protected`或`private`属性或方法相同的规则：
 
 ```php
-    class Test
-    {
+class Test
+{
 
-      public const TEST_WHOLE_WORLD  = 'visible.everywhere';
+  public const TEST_WHOLE_WORLD  = 'visible.everywhere';
 
-      // NOTE: only works in PHP 7.1 and above
-      protected const TEST_INHERITED = 'visible.in.child.classes';
+  // NOTE: only works in PHP 7.1 and above
+  protected const TEST_INHERITED = 'visible.in.child.classes';
 
-      // NOTE: only works in PHP 7.1 and above
-      private const TEST_LOCAL= 'local.to.class.Test.only';
+  // NOTE: only works in PHP 7.1 and above
+  private const TEST_LOCAL= 'local.to.class.Test.only';
 
-      public static function getTestInherited()
-      {
-        return static::TEST_INHERITED;
-      }
+  public static function getTestInherited()
+  {
+    return static::TEST_INHERITED;
+  }
 
-      public static function getTestLocal()
-      {
-        return static::TEST_LOCAL;
-      }
+  public static function getTestLocal()
+  {
+    return static::TEST_LOCAL;
+  }
 
-    }
-    ```
+}
+```
 
 ## 它是如何工作的...
 
@@ -971,115 +971,115 @@ echo 'Random ID (does not work): ' . $customer->generateRandId();
 1.  在此示例中，`ConnectionAwareInterface`标识了一个方法“setConnection（）”，该方法需要一个`Connection`的实例作为参数：
 
 ```php
-    interface ConnectionAwareInterface
-    {
-      public function setConnection(Connection $connection);
-    }
-    ```
+interface ConnectionAwareInterface
+{
+  public function setConnection(Connection $connection);
+}
+```
 
 1.  要使用接口，请在定义类的开放行之后添加关键字`implements`。我们定义了两个类，`CountryList`和`CustomerList`，它们都需要通过`setConnection()`方法访问`Connection`类。为了识别这种依赖关系，这两个类都实现了`ConnectionAwareInterface`：
 
 ```php
-    class CountryList implements ConnectionAwareInterface
-    {
-      protected $connection;
-      public function setConnection(Connection $connection)
-      {
-        $this->connection = $connection;
-      }
-      public function list()
-      {
-        $list = [];
-        $stmt = $this->connection->pdo->query(
-          'SELECT iso3, name FROM iso_country_codes');
-        while ($country = $stmt->fetch(PDO::FETCH_ASSOC)) {
-          $list[$country['iso3']] =  $country['name'];
-        }
-        return $list;
-      }
-
+class CountryList implements ConnectionAwareInterface
+{
+  protected $connection;
+  public function setConnection(Connection $connection)
+  {
+    $this->connection = $connection;
+  }
+  public function list()
+  {
+    $list = [];
+    $stmt = $this->connection->pdo->query(
+      'SELECT iso3, name FROM iso_country_codes');
+    while ($country = $stmt->fetch(PDO::FETCH_ASSOC)) {
+      $list[$country['iso3']] =  $country['name'];
     }
-    class CustomerList implements ConnectionAwareInterface
-    {
-      protected $connection;
-      public function setConnection(Connection $connection)
-      {
-        $this->connection = $connection;
-      }
-      public function list()
-      {
-        $list = [];
-        $stmt = $this->connection->pdo->query(
-          'SELECT id, name FROM customer');
-        while ($customer = $stmt->fetch(PDO::FETCH_ASSOC)) {
-          $list[$customer['id']] =  $customer['name'];
-        }
-        return $list;
-      }
+    return $list;
+  }
 
+}
+class CustomerList implements ConnectionAwareInterface
+{
+  protected $connection;
+  public function setConnection(Connection $connection)
+  {
+    $this->connection = $connection;
+  }
+  public function list()
+  {
+    $list = [];
+    $stmt = $this->connection->pdo->query(
+      'SELECT id, name FROM customer');
+    while ($customer = $stmt->fetch(PDO::FETCH_ASSOC)) {
+      $list[$customer['id']] =  $customer['name'];
     }
-    ```
+    return $list;
+  }
+
+}
+```
 
 1.  接口可用于满足类型提示。以下类`ListFactory`包含一个`factory()`方法，该方法初始化任何实现`ConnectionAwareInterface`的类。接口是`setConnection()`方法被定义的保证。将类型提示设置为接口而不是特定类实例使`factory`方法更通用：
 
 ```php
-    namespace Application\Generic;
+namespace Application\Generic;
 
-    use PDO;
-    use Exception;
-    use Application\Database\Connection;
-    use Application\Database\ConnectionAwareInterface;
+use PDO;
+use Exception;
+use Application\Database\Connection;
+use Application\Database\ConnectionAwareInterface;
 
-    class ListFactory
-    {
-      const ERROR_AWARE = 'Class must be Connection Aware';
-      public static function factory(
-        ConnectionAwareInterface $class, $dbParams)
-      {
-        if ($class instanceofConnectionAwareInterface) {
-            $class->setConnection(new Connection($dbParams));
-            return $class;
-        } else {
-            throw new Exception(self::ERROR_AWARE);
-        }
-        return FALSE;
-      }
+class ListFactory
+{
+  const ERROR_AWARE = 'Class must be Connection Aware';
+  public static function factory(
+    ConnectionAwareInterface $class, $dbParams)
+  {
+    if ($class instanceofConnectionAwareInterface) {
+        $class->setConnection(new Connection($dbParams));
+        return $class;
+    } else {
+        throw new Exception(self::ERROR_AWARE);
     }
-    ```
+    return FALSE;
+  }
+}
+```
 
 1.  如果一个类实现多个接口，如果方法签名不匹配，则会发生**命名冲突**。在这个例子中，有两个接口，`DateAware`和`TimeAware`。除了定义`setDate()`和`setTime()`方法之外，它们都定义了`setBoth()`。具有重复的方法名称不是问题，尽管这不被认为是最佳实践。问题在于方法签名不同：
 
 ```php
-    interface DateAware
-    {
-      public function setDate($date);
-      public function setBoth(DateTime $dateTime);
-    }
+interface DateAware
+{
+  public function setDate($date);
+  public function setBoth(DateTime $dateTime);
+}
 
-    interface TimeAware
-    {
-      public function setTime($time);
-      public function setBoth($date, $time);
-    }
+interface TimeAware
+{
+  public function setTime($time);
+  public function setBoth($date, $time);
+}
 
-    class DateTimeHandler implements DateAware, TimeAware
-    {
-      protected $date;
-      protected $time;
-      public function setDate($date)
-      {
-        $this->date = $date;
-      }
-      public function setTime($time)
-      {
-        $this->time = $time;
-      }
-      public function setBoth(DateTime $dateTime)
-      {
-        $this->date = $date;
-      }
-    }
-    ```
+class DateTimeHandler implements DateAware, TimeAware
+{
+  protected $date;
+  protected $time;
+  public function setDate($date)
+  {
+    $this->date = $date;
+  }
+  public function setTime($time)
+  {
+    $this->time = $time;
+  }
+  public function setBoth(DateTime $dateTime)
+  {
+    $this->date = $date;
+  }
+}
+```
 
 1.  代码块的当前状态将生成致命错误（无法捕获！）。要解决问题，首选方法是从一个接口中删除`setBoth()`的定义。或者，您可以调整方法签名以匹配。
 
@@ -1159,42 +1159,42 @@ interface TimeAware
 1.  现在我们将`list()`复制到一个名为`ListTrait`的特征中：
 
 ```php
-    trait ListTrait
-    {
-      public function list()
-      {
-        $list = [];
-        $sql  = sprintf('SELECT %s, %s FROM %s', 
-          $this->key, $this->value, $this->table);
-        $stmt = $this->connection->pdo->query($sql);
-        while ($item = $stmt->fetch(PDO::FETCH_ASSOC)) {
-          $list[$item[$this->key]] = $item[$this->value];
-        }
-        return $list;
-      }
+trait ListTrait
+{
+  public function list()
+  {
+    $list = [];
+    $sql  = sprintf('SELECT %s, %s FROM %s', 
+      $this->key, $this->value, $this->table);
+    $stmt = $this->connection->pdo->query($sql);
+    while ($item = $stmt->fetch(PDO::FETCH_ASSOC)) {
+      $list[$item[$this->key]] = $item[$this->value];
     }
-    ```
+    return $list;
+  }
+}
+```
 
 1.  然后我们可以将`ListTrait`中的代码插入到一个新的类`CountryListUsingTrait`中，如下面的代码片段所示。现在可以从这个类中删除整个`list()`方法：
 
 ```php
-    class CountryListUsingTrait implements ConnectionAwareInterface
-    {
+class CountryListUsingTrait implements ConnectionAwareInterface
+{
 
-      use ListTrait;
+  use ListTrait;
 
-      protected $connection;
-      protected $key   = 'iso3';
-      protected $value = 'name';
-      protected $table = 'iso_country_codes';
+  protected $connection;
+  protected $key   = 'iso3';
+  protected $value = 'name';
+  protected $table = 'iso_country_codes';
 
-      public function setConnection(Connection $connection)
-      {
-        $this->connection = $connection;
-      }
+  public function setConnection(Connection $connection)
+  {
+    $this->connection = $connection;
+  }
 
-    }
-    ```
+}
+```
 
 ### 注意
 
@@ -1203,61 +1203,61 @@ interface TimeAware
 1.  特征受命名空间的影响。在第 1 步中所示的示例中，如果我们的新`CountryListUsingTrait`类放置在一个名为`Application\Generic`的命名空间中，我们还需要将`ListTrait`移动到该命名空间中：
 
 ```php
-    namespace Application\Generic;
+namespace Application\Generic;
 
-    use PDO;
+use PDO;
 
-    trait ListTrait
-    {
-      public function list()
-      {
-        // code as shown above
-      }
-    }
-    ```
+trait ListTrait
+{
+  public function list()
+  {
+    // code as shown above
+  }
+}
+```
 
 1.  特征中的方法会覆盖继承的方法。
 
 1.  在下面的示例中，您会注意到`setId()`方法的返回值在`Base`父类和`Test`特征之间不同。`Customer`类继承自`Base`，但也使用`Test`。在这种情况下，特征中定义的方法将覆盖`Base`父类中定义的方法：
 
 ```php
-    trait Test
-    {
-      public function setId($id)
-      {
-        $obj = new stdClass();
-        $obj->id = $id;
-        $this->id = $obj;
-      }
-    }
+trait Test
+{
+  public function setId($id)
+  {
+    $obj = new stdClass();
+    $obj->id = $id;
+    $this->id = $obj;
+  }
+}
 
-    class Base
-    {
-      protected $id;
-      public function getId()
-      {
-        return $this->id;
-      }
-      public function setId($id)
-      {
-        $this->id = $id;
-      }
-    }
+class Base
+{
+  protected $id;
+  public function getId()
+  {
+    return $this->id;
+  }
+  public function setId($id)
+  {
+    $this->id = $id;
+  }
+}
 
-    class Customer extends Base
-    {
-      use Test;
-      protected $name;
-      public function getName()
-      {
-        return $this->name;
-      }
-      public function setName($name)
-      {
-        $this->name = $name;
-      }
-    }
-    ```
+class Customer extends Base
+{
+  use Test;
+  protected $name;
+  public function getName()
+  {
+    return $this->name;
+  }
+  public function setName($name)
+  {
+    $this->name = $name;
+  }
+}
+```
 
 ### 注意
 
@@ -1268,82 +1268,82 @@ interface TimeAware
 1.  在这个例子中，`Test`特征定义了一个`$id`属性以及`getId()`方法和`setId()`。特征还定义了`setName()`，与`Customer`类中定义的相同方法冲突。在这种情况下，`Customer`中直接定义的`setName()`方法将覆盖特征中定义的`setName()`：
 
 ```php
-    trait Test
-    {
-      protected $id;
-      public function getId()
-      {
-        return $this->id;
-      }
-      public function setId($id)
-      {
-        $this->id = $id;
-      }
-      public function setName($name)
-      {
-        $obj = new stdClass();
-        $obj->name = $name;
-        $this->name = $obj;
-      }
-    }
+trait Test
+{
+  protected $id;
+  public function getId()
+  {
+    return $this->id;
+  }
+  public function setId($id)
+  {
+    $this->id = $id;
+  }
+  public function setName($name)
+  {
+    $obj = new stdClass();
+    $obj->name = $name;
+    $this->name = $obj;
+  }
+}
 
-    class Customer
-    {
-      use Test;
-      protected $name;
-      public function getName()
-      {
-        return $this->name;
-      }
-      public function setName($name)
-      {
-        $this->name = $name;
-      }
-    }
-    ```
+class Customer
+{
+  use Test;
+  protected $name;
+  public function getName()
+  {
+    return $this->name;
+  }
+  public function setName($name)
+  {
+    $this->name = $name;
+  }
+}
+```
 
 1.  在使用多个特征时，使用`insteadof`关键字解决方法名称冲突。此外，使用`as`关键字为方法名称创建别名。
 
 1.  在这个例子中，有两个特征，`IdTrait`和`NameTrait`。两个特征都定义了一个`setKey()`方法，但是以不同的方式表示键。`Test`类使用了这两个特征。请注意`insteadof`关键字，它允许我们区分冲突的方法。因此，当从`Test`类调用`setKey()`时，源将来自`NameTrait`。此外，`IdTrait`中的`setKey()`仍然可用，但是在别名`setKeyDate()`下：
 
 ```php
-    trait IdTrait
-    {
-      protected $id;
-      public $key;
-      public function setId($id)
-      {
-        $this->id = $id;
-      }
-      public function setKey()
-      {
-        $this->key = date('YmdHis') 
-        . sprintf('%04d', rand(0,9999));
-      }
-    }
+trait IdTrait
+{
+  protected $id;
+  public $key;
+  public function setId($id)
+  {
+    $this->id = $id;
+  }
+  public function setKey()
+  {
+    $this->key = date('YmdHis') 
+    . sprintf('%04d', rand(0,9999));
+  }
+}
 
-    trait NameTrait
-    {
-      protected $name;
-      public $key;
-      public function setName($name)
-      {
-        $this->name = $name;
-      }
-      public function setKey()
-      {
-        $this->key = unpack('H*', random_bytes(18))[1];
-      }
-    }
+trait NameTrait
+{
+  protected $name;
+  public $key;
+  public function setName($name)
+  {
+    $this->name = $name;
+  }
+  public function setKey()
+  {
+    $this->key = unpack('H*', random_bytes(18))[1];
+  }
+}
 
-    class Test
-    {
-      use IdTrait, NameTrait {
-        NameTrait::setKeyinsteadofIdTrait;
-        IdTrait::setKey as setKeyDate;
-      }
-    }
-    ```
+class Test
+{
+  use IdTrait, NameTrait {
+    NameTrait::setKeyinsteadofIdTrait;
+    IdTrait::setKey as setKeyDate;
+  }
+}
+```
 
 ## 它是如何工作的...
 
@@ -1403,88 +1403,88 @@ PHP 7 引入了一个新特性，**匿名类**。就像匿名函数一样，匿�
 在定义中，您可以定义任何属性和方法（包括魔术方法）。在这个例子中，我们定义了一个具有两个属性和一个魔术方法`__construct()`的匿名类：
 
 ```php
-    $a = new class (123.45, 'TEST') {
-      public $total = 0;
-      public $test  = '';
-      public function __construct($total, $test)
-      {
-        $this->total = $total;
-        $this->test  = $test;
-      }
-    };
-    ```
+$a = new class (123.45, 'TEST') {
+  public $total = 0;
+  public $test  = '';
+  public function __construct($total, $test)
+  {
+    $this->total = $total;
+    $this->test  = $test;
+  }
+};
+```
 
 1.  匿名类可以扩展任何类。
 
 在这个例子中，一个匿名类扩展了`FilterIterator`，并覆盖了`__construct()`和`accept()`方法。作为参数，它接受了`ArrayIterator` `$b`，它代表了一个 10 到 100 的增量为 10 的数组。第二个参数作为输出的限制：
 
 ```php
-    $b = new ArrayIterator(range(10,100,10));
-    $f = new class ($b, 50) extends FilterIterator {
-      public $limit = 0;
-      public function __construct($iterator, $limit)
-      {
-        $this->limit = $limit;
-        parent::__construct($iterator);
-      }
-      public function accept()
-      {
-        return ($this->current() <= $this->limit);
-      }
-    };
-    ```
+$b = new ArrayIterator(range(10,100,10));
+$f = new class ($b, 50) extends FilterIterator {
+  public $limit = 0;
+  public function __construct($iterator, $limit)
+  {
+    $this->limit = $limit;
+    parent::__construct($iterator);
+  }
+  public function accept()
+  {
+    return ($this->current() <= $this->limit);
+  }
+};
+```
 
 1.  匿名类可以实现一个接口。
 
 在这个例子中，一个匿名类用于生成 HTML 颜色代码图表。该类实现了内置的 PHP `Countable`接口。定义了一个`count()`方法，当这个类与需要`Countable`的方法或函数一起使用时调用：
 
 ```php
-    define('MAX_COLORS', 256 ** 3);
+define('MAX_COLORS', 256 ** 3);
 
-    $d = new class () implements Countable {
-      public $current = 0;
-      public $maxRows = 16;
-      public $maxCols = 64;
-      public function cycle()
-      {
-        $row = '';
-        $max = $this->maxRows * $this->maxCols;
-        for ($x = 0; $x < $this->maxRows; $x++) {
-          $row .= '<tr>';
-          for ($y = 0; $y < $this->maxCols; $y++) {
-            $row .= sprintf(
-              '<td style="background-color: #%06X;"', 
-              $this->current);
-            $row .= sprintf(
-              'title="#%06X">&nbsp;</td>', 
-              $this->current);
-            $this->current++;
-            $this->current = ($this->current >MAX_COLORS) ? 0 
-                 : $this->current;
-          }
-          $row .= '</tr>';
-        }
-        return $row;
+$d = new class () implements Countable {
+  public $current = 0;
+  public $maxRows = 16;
+  public $maxCols = 64;
+  public function cycle()
+  {
+    $row = '';
+    $max = $this->maxRows * $this->maxCols;
+    for ($x = 0; $x < $this->maxRows; $x++) {
+      $row .= '<tr>';
+      for ($y = 0; $y < $this->maxCols; $y++) {
+        $row .= sprintf(
+          '<td style="background-color: #%06X;"', 
+          $this->current);
+        $row .= sprintf(
+          'title="#%06X">&nbsp;</td>', 
+          $this->current);
+        $this->current++;
+        $this->current = ($this->current >MAX_COLORS) ? 0 
+             : $this->current;
       }
-      public function count()
-      {
-        return MAX_COLORS;
-      }
-    };
-    ```
+      $row .= '</tr>';
+    }
+    return $row;
+  }
+  public function count()
+  {
+    return MAX_COLORS;
+  }
+};
+```
 
 1.  匿名类可以使用特征。
 
 1.  这个最后的例子是对前面立即定义的修改。我们不是定义一个`Test`类，而是定义一个匿名类：
 
 ```php
-    $a = new class() {
-      use IdTrait, NameTrait {
-        NameTrait::setKeyinsteadofIdTrait;
-        IdTrait::setKey as setKeyDate;
-      }
-    };
-    ```
+$a = new class() {
+  use IdTrait, NameTrait {
+    NameTrait::setKeyinsteadofIdTrait;
+    IdTrait::setKey as setKeyDate;
+  }
+};
+```
 
 ## 它是如何工作的...
 

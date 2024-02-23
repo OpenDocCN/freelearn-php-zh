@@ -201,15 +201,15 @@ Linux 用户请参考 XAMPP（[www.apachefriends.org/en/xampp.html](http://www.a
 1.  在您的文本编辑器中创建一个名为`index.php`的文件。输入以下代码。（稍后我们将更详细地讨论 PHP 的具体内容）：
 
 ```php
-    <html>
-    <body>
-    <?php 
-    echo print "<p>Hello World... </p>";
-    phpinfo();
-    ?>
-    <body>
-    </html>
-    ```
+<html>
+<body>
+<?php 
+echo print "<p>Hello World... </p>";
+phpinfo();
+?>
+<body>
+</html>
+```
 
 结果应该如下截图所示：
 

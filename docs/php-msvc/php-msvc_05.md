@@ -469,33 +469,33 @@ Lumen 有一个目录用于放置所有的中间件，因此我们将在`User`�
 +   停止 Docker 容器：
 
 ```php
-     **docker-compose stop**
+ **docker-compose stop**
 
-    ```
+```
 
 +   通过添加以下行来编辑`docker-compose.yml`文件：
 
 ```php
-          microservice_battle_fpm:
-              build: ./microservices/battle/php-fpm/
-              volumes_from:
-              - source_battle
-              links:
-                  - autodiscovery
-         **- microservice_user_nginx**
-              expose:
-                  - 9000
-              environment:
-                  - BACKEND=microservice-battle-nginx
-                  - CONSUL=autodiscovery
-    ```
+      microservice_battle_fpm:
+          build: ./microservices/battle/php-fpm/
+          volumes_from:
+          - source_battle
+          links:
+              - autodiscovery
+     **- microservice_user_nginx**
+          expose:
+              - 9000
+          environment:
+              - BACKEND=microservice-battle-nginx
+              - CONSUL=autodiscovery
+```
 
 +   启动 Docker 容器：
 
 ```php
-     **docker-compose start**
+ **docker-compose start**
 
-    ```
+```
 
 从现在开始，`Battle`微服务应该能够看到`User`微服务，所以让我们调用`User`微服务以获取来自 Battle 微服务的用户信息。为此，我们需要在`BattleController.php`文件中包含`GuzzleHttp\Client`，并在 duel 函数中创建一个 Guzzle 实例来使用它：
 

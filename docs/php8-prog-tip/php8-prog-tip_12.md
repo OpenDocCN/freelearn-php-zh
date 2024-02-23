@@ -74,63 +74,63 @@ __wakeup(): void;
 1.  第一个例子涉及`NoTypes`类，该类定义了`__call()`但没有定义任何数据类型：
 
 ```php
-    // /repo/ch09/php8_bc_break_magic.php
-    class NoTypes {
-        public function __call($name, $args) {
-            return "Attempt made to call '$name' "
-                 . "with these arguments: '"
-                 . implode(',', $args) . "'\n";
-        }
-    }
-    $no = new NoTypes();
-    echo $no->doesNotExist('A','B','C');
-    ```
+// /repo/ch09/php8_bc_break_magic.php
+class NoTypes {
+    public function __call($name, $args) {
+        return "Attempt made to call '$name' "
+             . "with these arguments: '"
+             . implode(',', $args) . "'\n";
+    }
+}
+$no = new NoTypes();
+echo $no->doesNotExist('A','B','C');
+```
 
 1.  以下示例（与前面的示例在同一个文件中）是`MixedTypes`类的示例，它定义了`__invoke()`，但使用的是`array`数据类型而不是`mixed`。
 
 ```php
-    class MixedTypes {
-        public function __invoke(array $args) : string {
-            return "Arguments: '"
-                 . implode(',', $args) . "'\n";
-        }
-    }
-    $mixed= new MixedTypes();
-    echo $mixed(['A','B','C']);
-    ```
+class MixedTypes {
+    public function __invoke(array $args) : string {
+        return "Arguments: '"
+             . implode(',', $args) . "'\n";
+    }
+}
+$mixed= new MixedTypes();
+echo $mixed(['A','B','C']);
+```
 
 这是在前面步骤中显示的代码示例的 PHP 7 输出：
 
 ```php
-    root@php8_tips_php7 [ /repo/ch09 ]# 
-    php php8_bc_break_magic.php 
-    Attempt made to call 'doesNotExist' with these arguments: 'A,B,C'
-    Arguments: 'A,B,C'
-    ```
+root@php8_tips_php7 [ /repo/ch09 ]# 
+php php8_bc_break_magic.php 
+Attempt made to call 'doesNotExist' with these arguments: 'A,B,C'
+Arguments: 'A,B,C'
+```
 
 这是在 PHP 8 下运行的相同代码示例：
 
 ```php
-    root@php8_tips_php8 [ /repo/ch09 ]# 
-    php php8_bc_break_magic.php 
-    Attempt made to call 'doesNotExist' with these arguments: 'A,B,C'
-    Arguments: 'A,B,C'
-    ```
+root@php8_tips_php8 [ /repo/ch09 ]# 
+php php8_bc_break_magic.php 
+Attempt made to call 'doesNotExist' with these arguments: 'A,B,C'
+Arguments: 'A,B,C'
+```
 
 正如您所看到的，这两组输出是相同的。第一个显示的类`NoTypes`之所以有效，是因为没有定义数据类型提示。有趣的是，`MixedTypes`类在 PHP 8 及以下版本中都可以工作，因为新的`mixed`数据类型实际上是所有类型的联合。因此，您可以安全地在`mixed`的位置使用任何特定的数据类型。
 
 1.  在我们的最后一个例子中，我们将定义`WrongType`类。在这个类中，我们将定义一个名为`__isset()`的魔术方法，使用一个与 PHP 8 要求不匹配的返回数据类型。在这里，我们使用的是`string`，而在 PHP 8 中，它的返回类型需要是`bool`：
 
 ```php
-    // /repo/ch09/php8_bc_break_magic_wrong.php
-    class WrongType {
-        public function __isset($var) : string {
-            return (isset($this->$var)) ? 'Y' : '';
-        }
-    }
-    $wrong = new WrongType();
-    echo (isset($wrong->nothing)) ? 'Set' : 'Not Set';
-    ```
+// /repo/ch09/php8_bc_break_magic_wrong.php
+class WrongType {
+    public function __isset($var) : string {
+        return (isset($this->$var)) ? 'Y' : '';
+    }
+}
+$wrong = new WrongType();
+echo (isset($wrong->nothing)) ? 'Set' : 'Not Set';
+```
 
 这个例子在 PHP 7 中可以工作，因为它依赖于这样一个事实：如果变量未设置，则在这个例子中返回空字符串，然后被插入为`FALSE`布尔值。这是 PHP 7 的输出：
 
@@ -204,38 +204,38 @@ PDOStatement::setFetchMode(int $mode, mixed ...$args)
 1.  让我们从包含一个包含数据库连接参数的配置文件开始。从这个文件，我们将创建一个`PDO`实例：
 
 ```php
-    // /repo/ch09/php8_pdo_signature_change.php
-    $config = include __DIR__ . '/../src/config/config.php';
-    $db_cfg = $config['db-config'];
-    $pdo    = new PDO($db_cfg['dsn'], 
-        $db_cfg['usr'], $db_cfg['pwd']);
-    ```
+// /repo/ch09/php8_pdo_signature_change.php
+$config = include __DIR__ . '/../src/config/config.php';
+$db_cfg = $config['db-config'];
+$pdo    = new PDO($db_cfg['dsn'], 
+    $db_cfg['usr'], $db_cfg['pwd']);
+```
 
 1.  现在，让我们定义一个 SQL 语句并发送它以便进行准备：
 
 ```php
-    $sql    = 'SELECT hotelName, city, locality, '
-            . 'country, postalCode FROM hotels '
-            . 'WHERE country = ? AND city = ?';
-    $stmt   = $pdo->prepare($sql);
-    ```
+$sql    = 'SELECT hotelName, city, locality, '
+        . 'country, postalCode FROM hotels '
+        . 'WHERE country = ? AND city = ?';
+$stmt   = $pdo->prepare($sql);
+```
 
 1.  接下来，我们将执行准备好的语句，并将获取模式设置为`PDO::FETCH_ASSOC`。请注意，当我们使用此获取模式时，`setFetchMode()`方法只提供一个参数：
 
 ```php
-    $stmt->execute(['IN', 'Budhera']);
-    $stmt->setFetchMode(PDO::FETCH_ASSOC);
-    while ($row = $stmt->fetch()) var_dump($row);
-    ```
+$stmt->execute(['IN', 'Budhera']);
+$stmt->setFetchMode(PDO::FETCH_ASSOC);
+while ($row = $stmt->fetch()) var_dump($row);
+```
 
 1.  最后，我们将再次执行相同的预处理语句。这次，我们将将获取模式设置为`PDO::FETCH_CLASS`。请注意，当我们使用此获取模式时，`setFetchMode()`方法提供了两个参数：
 
 ```php
-    $stmt->execute(['IN', 'Budhera']);
-    $stmt->setFetchMode(
-        PDO::FETCH_CLASS, ArrayObject::class);
-    while ($row = $stmt->fetch()) var_dump($row);
-    ```
+$stmt->execute(['IN', 'Budhera']);
+$stmt->setFetchMode(
+    PDO::FETCH_CLASS, ArrayObject::class);
+while ($row = $stmt->fetch()) var_dump($row);
+```
 
 第一个查询的输出是一个关联数组。第二个查询产生一个`ArrayObject`实例。以下是输出：
 
@@ -282,35 +282,35 @@ object(ArrayObject)#3 (6) {
 1.  首先，让我们定义一个具有不匹配的`<div>`标签的字符串：
 
 ```php
-    // /repo/ch08/php7_tidy_repair_str_static.php
-    $str = <<<EOT
-    <DIV>
-        <Div>Some Content</div>
-        <Div>Some Other Content
-    </div>
-    EOT;
-    ```
+// /repo/ch08/php7_tidy_repair_str_static.php
+$str = <<<EOT
+<DIV>
+    <Div>Some Content</div>
+    <Div>Some Other Content
+</div>
+EOT;
+```
 
 1.  然后，定义一个匿名类，该类扩展了`tidy`，修复了字符串，并返回所有 HTML 标签都是小写的字符串：
 
 ```php
-    $class = new class() extends tidy {
-        public function repairString($str) {
-            $fixed = parent::repairString($str);
-            return preg_replace_callback(
-                '/<+?>/',
-                function ($item) { 
-                    return strtolower($item); },
-                $fixed);
-        }
-    };
-    ```
+$class = new class() extends tidy {
+    public function repairString($str) {
+        $fixed = parent::repairString($str);
+        return preg_replace_callback(
+            '/<+?>/',
+            function ($item) { 
+                return strtolower($item); },
+            $fixed);
+    }
+};
+```
 
 1.  最后，输出修复后的字符串：
 
 ```php
-    echo $class->repairString($str);
-    ```
+echo $class->repairString($str);
+```
 
 如果我们在 PHP 7 中运行此代码示例，输出将如下所示：
 
@@ -373,61 +373,61 @@ echo $class::repairString($str);
 1.  首先，我们必须定义一个`Where`类，它接受无限数量的参数来形成 SQL `WHERE`子句。注意`static`的返回数据类型：
 
 ```php
-    // /src/Php8/Sql/Where.php
-    namespace Php8\Sql;
-    class Where {
-        public $where = [];
-        public function where(...$args) : static {
-            $this->where = array_merge($this->where, $args);
-            return $this;
-        }
-        // not all code is shown
-    }
-    ```
+// /src/Php8/Sql/Where.php
+namespace Php8\Sql;
+class Where {
+    public $where = [];
+    public function where(...$args) : static {
+        $this->where = array_merge($this->where, $args);
+        return $this;
+    }
+    // not all code is shown
+}
+```
 
 1.  现在，让我们定义主类`Select`，它提供了构建 SQL `SELECT`语句部分的方法。再次注意，所示的方法都返回当前类实例，并且返回数据类型为`static`：
 
 ```php
-    // /src/Php8/Sql/Select.php
-    namespace Php8\Sql;
-    class Select extends Where {
-        public $from  = '';
-        public $limit  = 0;
-        public $offset  = 0;
-        public function from(string $table) : static {
-            $this->from = $table;
-            return $this;
-        }
-        public function order(string $order) : static {
-            $this->order = $order;
-            return $this;
-        }
-        public function limit(int $num) : static {
-            $this->limit = $num;
-            return $this;
-        }
-        // not all methods and properties are shown
-    }
-    ```
+// /src/Php8/Sql/Select.php
+namespace Php8\Sql;
+class Select extends Where {
+    public $from  = '';
+    public $limit  = 0;
+    public $offset  = 0;
+    public function from(string $table) : static {
+        $this->from = $table;
+        return $this;
+    }
+    public function order(string $order) : static {
+        $this->order = $order;
+        return $this;
+    }
+    public function limit(int $num) : static {
+        $this->limit = $num;
+        return $this;
+    }
+    // not all methods and properties are shown
+}
+```
 
 1.  最后，我们必须定义一个调用程序，提供构建 SQL 语句所需的值。请注意，`echo`语句使用流畅接口，使得以编程方式创建 SQL 语句更容易理解：
 
 ```php
-    // /repo/ch09/php8_static_return_type.php
-    require_once __DIR__ 
-        . '/../src/Server/Autoload/Loader.php';
-    $loader = new \Server\Autoload\Loader();
-    use Php8\Sql\Select;
-    $start = "'2021-06-01'";
-    $end   = "'2021-12-31'";
-    $select = new Select();
-    echo $select->from('events')
-               ->cols(['id', 'event_name', 'event_date'])
-               ->limit(10)
-               ->where('event_date', '>=', $start)
-               ->where('AND', 'event_date', '<=', $end)
-               ->render();
-    ```
+// /repo/ch09/php8_static_return_type.php
+require_once __DIR__ 
+    . '/../src/Server/Autoload/Loader.php';
+$loader = new \Server\Autoload\Loader();
+use Php8\Sql\Select;
+$start = "'2021-06-01'";
+$end   = "'2021-12-31'";
+$select = new Select();
+echo $select->from('events')
+           ->cols(['id', 'event_name', 'event_date'])
+           ->limit(10)
+           ->where('event_date', '>=', $start)
+           ->where('AND', 'event_date', '<=', $end)
+           ->render();
+```
 
 这是在 PHP 8 中运行代码示例的输出：
 
@@ -456,38 +456,38 @@ SELECT id,event_name,event_date FROM events WHERE event_date >= '2021-06-01' AND
 1.  首先，让我们确定命名空间并设置自动加载程序：
 
 ```php
-    // /repo/ch09/php7_class_normal.php
-    namespace Php7\Image\Strategy;
-    require_once __DIR__ 
-        . '/../src/Server/Autoload/Loader.php';
-    $autoload = new \Server\Autoload\Loader();
-    ```
+// /repo/ch09/php7_class_normal.php
+namespace Php7\Image\Strategy;
+require_once __DIR__ 
+    . '/../src/Server/Autoload/Loader.php';
+$autoload = new \Server\Autoload\Loader();
+```
 
 1.  在特殊的`::class`常量被引入之前，要生成完整命名空间类名的列表，你必须将其全部写成字符串，如下所示：
 
 ```php
-    $listOld = [
-        'Php7\Image\Strategy\DotFill',
-        'Php7\Image\Strategy\LineFill',
-        'Php7\Image\Strategy\PlainFill',
-        'Php7\Image\Strategy\RotateText',
-        'Php7\Image\Strategy\Shadow'
-    ];
-    print_r($listOld);
-    ```
+$listOld = [
+    'Php7\Image\Strategy\DotFill',
+    'Php7\Image\Strategy\LineFill',
+    'Php7\Image\Strategy\PlainFill',
+    'Php7\Image\Strategy\RotateText',
+    'Php7\Image\Strategy\Shadow'
+];
+print_r($listOld);
+```
 
 1.  使用特殊的`::class`常量，你可以减少所需的输入量，也可以使代码更易读，如下所示：
 
 ```php
-    $listNew = [
-        DotFill::class,
-        LineFill::class,
-        PlainFill::class,
-        RotateText::class,
-        Shadow::class
-    ];
-    print_r($listNew);
-    ```
+$listNew = [
+    DotFill::class,
+    LineFill::class,
+    PlainFill::class,
+    RotateText::class,
+    Shadow::class
+];
+print_r($listNew);
+```
 
 如果我们运行这个代码示例，我们会看到两个列表在 PHP 7 和 PHP 8 中是相同的。这是 PHP 7 的输出：
 
@@ -523,28 +523,28 @@ Array (
 1.  当抛出`Error`或`Exception`时，最佳实践是在错误日志中记录条目。在这个例子中，在 PHP 7 和 PHP 8 中都有效，这个`Error`或`Exception`的类名被包含在日志消息中：
 
 ```php
-    // /repo/ch09/php7_class_and_obj.php
-    try {
-        $pdo = new PDO();
-        echo 'No problem';
-    } catch (Throwable $t) {
-        $msg = get_class($t) . ':' . $t->getMessage();
-        error_log($msg);
-    }
-    ```
+// /repo/ch09/php7_class_and_obj.php
+try {
+    $pdo = new PDO();
+    echo 'No problem';
+} catch (Throwable $t) {
+    $msg = get_class($t) . ':' . $t->getMessage();
+    error_log($msg);
+}
+```
 
 1.  在 PHP 8 中，您可以通过重新编写示例来实现相同的结果，如下所示：
 
 ```php
-    // /repo/ch09/php8_class_and_obj.php
-    try {
-        $pdo = new PDO();
-        echo 'No problem';
-    } catch (Throwable $t) {
-        $msg = $t::class . ':' . $t->getMessage();
-        error_log($msg);
-    }
-    ```
+// /repo/ch09/php8_class_and_obj.php
+try {
+    $pdo = new PDO();
+    echo 'No problem';
+} catch (Throwable $t) {
+    $msg = $t::class . ':' . $t->getMessage();
+    error_log($msg);
+}
+```
 
 从第二个代码块中可以看出，语法更加简洁，避免了使用过程函数。然而，我们必须强调，在这个例子中，并没有性能上的提升。
 
@@ -720,80 +720,80 @@ $topic->remove();
 1.  这是一个包含一组嵌套的`<div>`标签的 HTML 片段：
 
 ```php
-    <!DOCTYPE html>
-    <!-- /repo/ch09/dom_test_1.html -->
-    <div id="content">
-    <div id="A">Topic A</div>
-    <div id="B">Topic B</div>
-    <div id="C">Topic C</div>
-    <div id="X">Topic X</div>
-    </div>
-    ```
+<!DOCTYPE html>
+<!-- /repo/ch09/dom_test_1.html -->
+<div id="content">
+<div id="A">Topic A</div>
+<div id="B">Topic B</div>
+<div id="C">Topic C</div>
+<div id="X">Topic X</div>
+</div>
+```
 
 1.  第二个 HTML 片段包括主题 D、E 和 F：
 
 ```php
-    <!DOCTYPE html>
-    <!-- /repo/ch09/dom_test_2.html -->
-    <div id="content">
-    <div id="D">Topic D</div>
-    <div id="E">Topic E</div>
-    <div id="F">Topic F</div>
-    </div>
-    ```
+<!DOCTYPE html>
+<!-- /repo/ch09/dom_test_2.html -->
+<div id="content">
+<div id="D">Topic D</div>
+<div id="E">Topic E</div>
+<div id="F">Topic F</div>
+</div>
+```
 
 1.  从这两个片段中创建`DOMDocument`实例，我们可以进行静态调用；也就是`loadHTMLFile`。请注意，这种用法在 PHP 7 中已经被弃用，并在 PHP 8 中被移除了。
 
 ```php
-    $doc1 = DomDocument::loadHTMLFile( 'dom_test_1.html');
-    $doc2 = DomDocument::loadHTMLFile('dom_test_2.html');
-    ```
+$doc1 = DomDocument::loadHTMLFile( 'dom_test_1.html');
+$doc2 = DomDocument::loadHTMLFile('dom_test_2.html');
+```
 
 1.  然后，我们可以将`Topic X`提取到`$topic`中，并将其导入到第二个文档中作为`$new`。接下来，检索目标节点；也就是`content`：
 
 ```php
-    $topic = $doc1->getElementById('X');
-    $new = $doc2->importNode($topic);
-    $new->textContent= $topic->textContent;
-    $main = $doc2->getElementById('content');
-    ```
+$topic = $doc1->getElementById('X');
+$new = $doc2->importNode($topic);
+$new->textContent= $topic->textContent;
+$main = $doc2->getElementById('content');
+```
 
 1.  这是 PHP 7 和 PHP 8 开始有所不同的地方。在 PHP 7 中，要移动节点，代码必须如下所示：
 
 ```php
-    // /repo/ch09/php7_dom_changes.php
-    $main->appendChild($new);
-    $topic->parentNode->removeChild($topic);
-    ```
+// /repo/ch09/php7_dom_changes.php
+$main->appendChild($new);
+$topic->parentNode->removeChild($topic);
+```
 
 1.  然而，在 PHP 8 中，当使用新接口时，代码更加紧凑。在 PHP 8 中，不需要引用父节点来移除主题。
 
 ```php
-    // /repo/ch09/php8_dom_changes.php
-    $main->append($new);
-    $topic->remove();
-    ```
+// /repo/ch09/php8_dom_changes.php
+$main->append($new);
+$topic->remove();
+```
 
 1.  对于 PHP 7 和 PHP 8，我们可以这样查看生成的 HTML：
 
 ```php
-    echo $doc1->saveHTML();
-    echo $doc2->saveHTML();
-    ```
+echo $doc1->saveHTML();
+echo $doc2->saveHTML();
+```
 
 1.  另一个不同之处是如何提取`$main`的新最后一个子元素的值。在 PHP 7 中可能如下所示：
 
 ```php
-    // /repo/ch09/php7_dom_changes.php
-    echo $main->lastChild->textContent . "\n";
-    ```
+// /repo/ch09/php7_dom_changes.php
+echo $main->lastChild->textContent . "\n";
+```
 
 1.  在 PHP 8 中也是一样的：
 
 ```php
-    // /repo/ch09/php8_dom_changes.php
-    echo $main->lastElementChild->textContent . "\n";
-    ```
+// /repo/ch09/php8_dom_changes.php
+echo $main->lastElementChild->textContent . "\n";
+```
 
 这两个代码示例的输出略有不同。在 PHP 7 中，您将看到一个弃用通知，如下所示：
 
@@ -842,62 +842,62 @@ Last Topic in Doc 2: Topic X
 1.  首先，让我们初始化一些代表间隔、日期格式和保存最终值的数组的关键变量：
 
 ```php
-    // /repo/ch09/php7_date_time_30-60-90.php
-    $days  = [0, 30, 60, 90];
-    $fmt   = 'Y-m-d';
-    $aging = [];
-    ```
+// /repo/ch09/php7_date_time_30-60-90.php
+$days  = [0, 30, 60, 90];
+$fmt   = 'Y-m-d';
+$aging = [];
+```
 
 1.  现在，让我们定义一个循环，将间隔添加到`DateTime`实例中，以产生（希望如此！）表示 0、30、60 和 90 天的数组。经验丰富的开发人员很可能已经发现了问题！
 
 ```php
-    $dti = new DateTime('now');
-    foreach ($days as $span) {
-        $interval = new DateInterval('P' . $span . 'D');
-        $item = $dti->add($interval);
-        $aging[$span] = clone $item;
-    }
-    ```
+$dti = new DateTime('now');
+foreach ($days as $span) {
+    $interval = new DateInterval('P' . $span . 'D');
+    $item = $dti->add($interval);
+    $aging[$span] = clone $item;
+}
+```
 
 1.  接下来，显示已生成的日期集合：
 
 ```php
-    echo "Day\tDate\n";
-    foreach ($aging as $key => $obj)
-        echo "$key\t" . $obj->format($fmt) . "\n";
-    ```
+echo "Day\tDate\n";
+foreach ($aging as $key => $obj)
+    echo "$key\t" . $obj->format($fmt) . "\n";
+```
 
 1.  这里显示的输出是一场完全的灾难：
 
 ```php
-    root@php8_tips_php7 [ /repo/ch09 ]# 
-    php php7_date_time_30-60-90.php 
-    Day    Date
-    0    2021-11-20
-    30    2021-06-23
-    60    2021-08-22
-    90    2021-11-20
-    ```
+root@php8_tips_php7 [ /repo/ch09 ]# 
+php php7_date_time_30-60-90.php 
+Day    Date
+0    2021-11-20
+30    2021-06-23
+60    2021-08-22
+90    2021-11-20
+```
 
 如您所见，问题在于`DateTime`类不是不可变的。因此，每次添加`DateInterval`时，原始值都会被改变，导致显示的日期不准确。
 
 1.  然而，通过进行一个简单的改变，我们可以解决这个问题。我们只需要创建一个`DateTimeImmutable`实例，而不是最初创建一个`DateTime`实例：
 
 ```php
-    $dti = new DateTimeImmutable('now');
-    ```
+$dti = new DateTimeImmutable('now');
+```
 
 1.  然而，要用`DateTime`实例填充数组，我们需要将`DateTimeImmutable`转换为`DateTime`。在 PHP 7.3 中，引入了`DateTime::createFromImmutable()`方法。因此，当值被赋给`$aging`时，修改后的代码可能如下所示：
 
 ```php
-    $aging[$span] = DateTime::createFromImmutable($item);
-    ```
+$aging[$span] = DateTime::createFromImmutable($item);
+```
 
 1.  否则，您将被困在创建一个新的`DateTime`实例中，如下所示：
 
 ```php
-    $aging[$span] = new DateTime($item->format($fmt));
-    ```
+$aging[$span] = new DateTime($item->format($fmt));
+```
 
 通过这一个改变，正确的输出将如下所示：
 
@@ -920,26 +920,26 @@ Day    Date
 1.  首先，定义一个 `DateTimeImmutable` 实例并 `echo` 其类和日期：
 
 ```php
-    // /repo/ch09/php8_date_time.php
-    $fmt = 'l, d M Y';
-    $dti = new DateTimeImmutable('last day of next month');
-    echo $dti::class . ':' . $dti->format($fmt) . "\n";
-    ```
+// /repo/ch09/php8_date_time.php
+$fmt = 'l, d M Y';
+$dti = new DateTimeImmutable('last day of next month');
+echo $dti::class . ':' . $dti->format($fmt) . "\n";
+```
 
 1.  然后，从 `$dti` 创建一个 `DateTime` 实例，并添加 90 天的间隔，显示其类和当前日期：
 
 ```php
-    $dtt = DateTime::createFromInterface($dti);
-    $dtt->add(new DateInterval('P90D'));
-    echo $dtt::class . ':' . $dtt->format($fmt) . "\n";
-    ```
+$dtt = DateTime::createFromInterface($dti);
+$dtt->add(new DateInterval('P90D'));
+echo $dtt::class . ':' . $dtt->format($fmt) . "\n";
+```
 
 1.  最后，从 `$dtt` 创建一个 `DateTimeImmutable` 实例并显示其类和日期：
 
 ```php
-    $dtx = DateTimeImmutable::createFromInterface($dtt);
-    echo $dtx::class . ':' . $dtx->format($fmt) . "\n";
-    ```
+$dtx = DateTimeImmutable::createFromInterface($dtt);
+echo $dtx::class . ':' . $dtx->format($fmt) . "\n";
+```
 
 以下是在 PHP 8 中运行此代码示例的输出：
 
@@ -977,34 +977,34 @@ use Trait1, Trait2 { <METHOD> as <NEW_NAME>; }
 1.  首先，让我们定义两个定义相同方法 `test()` 的 traits，但返回不同的结果：
 
 ```php
-    // /repo/ch09/php7_trait_conflict_as.php
-    trait Test1 {
-        public function test() {
-            return '111111';
-        }
-    }
-    trait Test2 {
-        public function test() {
-            return '222222';
-        }
-    }
-    ```
+// /repo/ch09/php7_trait_conflict_as.php
+trait Test1 {
+    public function test() {
+        return '111111';
+    }
+}
+trait Test2 {
+    public function test() {
+        return '222222';
+    }
+}
+```
 
 1.  然后，定义一个匿名类，使用两个 traits 并将 `test()` 指定为 `otherTest()` 以避免命名冲突：
 
 ```php
-    $main = new class () {
-        use Test1, Test2 { test as otherTest; }
-        public function test() { return 'TEST'; }
-    };
-    ```
+$main = new class () {
+    use Test1, Test2 { test as otherTest; }
+    public function test() { return 'TEST'; }
+};
+```
 
 1.  接下来，定义一个代码块来 `echo` 两个方法的返回值：
 
 ```php
-    echo $main->test() . "\n";
-    echo $main->otherTest() . "\n";
-    ```
+echo $main->test() . "\n";
+echo $main->otherTest() . "\n";
+```
 
 以下是在 PHP 7 中的输出：
 
@@ -1047,29 +1047,29 @@ $main = new class () {
 1.  首先，让我们声明严格类型检查并定义一个带有抽象方法`add()`的 trait。请注意，方法签名要求所有数据类型都是整数：
 
 ```php
-    // /repo/ch09/php7_trait_abstract_signature.php
-    declare(strict_types=1);
-    trait Test1 {
-        public abstract function add(int $a, int $b) : int;
-    }
-    ```
+// /repo/ch09/php7_trait_abstract_signature.php
+declare(strict_types=1);
+trait Test1 {
+    public abstract function add(int $a, int $b) : int;
+}
+```
 
 1.  接下来，定义一个使用 trait 并定义`add()`的匿名类。请注意，类的数据类型都是`float`。
 
 ```php
-    $main = new class () {
-        use Test1;
-        public function add(float $a, float $b) : float {
-            return $a + $b;
-        }
-    };
-    ```
+$main = new class () {
+    use Test1;
+    public function add(float $a, float $b) : float {
+        return $a + $b;
+    }
+};
+```
 
 1.  然后，输出添加`111.111`和`222.222`的结果：
 
 ```php
-    echo $main->add(111.111, 222.222) . "\n";
-    ```
+echo $main->add(111.111, 222.222) . "\n";
+```
 
 在 PHP 7 中运行的这个小代码示例的结果令人惊讶：
 
@@ -1114,42 +1114,42 @@ PHP Fatal error:  Declaration of class@anonymous::add(float $a, float $b): flo
 1.  首先，让我们定义一个`Cipher`类，其构造函数为`$key`和`$salt`生成随机值。它还定义了一个名为`encode()`的公共方法，该方法调用了私有的`encrypt()`方法：
 
 ```php
-    // /repo/src/Php7/Encrypt/Cipher.php
-    namespace Php7\Encrypt;
-    class Cipher {
-        public $key  = '';
-        public $salt = 0;
-        public function __construct() {
-            $this->salt  = rand(1,255);
-            $this->key   = bin2hex(random_bytes(8));
-        }
-        public function encode(string $plain) {
-            return $this->encrypt($plain);
-        }
-    ```
+// /repo/src/Php7/Encrypt/Cipher.php
+namespace Php7\Encrypt;
+class Cipher {
+    public $key  = '';
+    public $salt = 0;
+    public function __construct() {
+        $this->salt  = rand(1,255);
+        $this->key   = bin2hex(random_bytes(8));
+    }
+    public function encode(string $plain) {
+        return $this->encrypt($plain);
+    }
+```
 
 1.  接下来，让我们定义一个名为`encrypt()`的私有方法，该方法使用`str_rot13()`生成加密文本。请注意，该方法标记为`final`。尽管这没有任何意义，但为了说明这一点，请假设这是有意的：
 
 ```php
-        final private function encrypt(string $plain) {       
-            return base64_encode(str_rot13($plain));
-        }
-    }
-    ```
+    final private function encrypt(string $plain) {       
+        return base64_encode(str_rot13($plain));
+    }
+}
+```
 
 1.  最后，让我们定义一个简短的调用程序，创建类实例并调用已定义的方法：
 
 ```php
-    // /repo/ch09/php7_oop_diffs_private_method.php
-    include __DIR__ . '/../src/Server/Autoload/Loader.php';
-    $loader = new \Server\Autoload\Loader();
-    use Php7\Encrypt\{Cipher,OpenCipher};
-    $text = 'Super secret message';
-    $cipher1 = new Cipher();
-    echo $cipher1->encode($text) . "\n";
-    $cipher2 = new OpenCipher();
-    var_dump($cipher2->encode($text));
-    ```
+// /repo/ch09/php7_oop_diffs_private_method.php
+include __DIR__ . '/../src/Server/Autoload/Loader.php';
+$loader = new \Server\Autoload\Loader();
+use Php7\Encrypt\{Cipher,OpenCipher};
+$text = 'Super secret message';
+$cipher1 = new Cipher();
+echo $cipher1->encode($text) . "\n";
+$cipher2 = new OpenCipher();
+var_dump($cipher2->encode($text));
+```
 
 如果我们在 PHP 7 中运行调用程序，将得到以下输出：
 
@@ -1199,41 +1199,41 @@ array(2) {
 1.  对于这个示例，我们将定义一个`DirectoryIterator`实例，从当前目录中获取文件列表：
 
 ```php
-    // /repo/ch09/php8_oop_diff_anon_class_renaming.php
-    $iter = new DirectoryIterator(__DIR__);
-    ```
+// /repo/ch09/php8_oop_diff_anon_class_renaming.php
+$iter = new DirectoryIterator(__DIR__);
+```
 
 1.  然后，我们将定义一个匿名类，该类扩展了`FilterIterator`。在这个类中，我们将定义`accept()`方法，该方法产生布尔结果。如果结果为`TRUE`，则该项将出现在最终迭代中：
 
 ```php
-    $anon = new class ($iter) extends FilterIterator {
-        public $search = '';
-        public function accept() {
-            return str_contains(
-                $this->current(), $this->search);
-        }
-    };
-    ```
+$anon = new class ($iter) extends FilterIterator {
+    public $search = '';
+    public function accept() {
+        return str_contains(
+            $this->current(), $this->search);
+    }
+};
+```
 
 1.  接下来，我们将生成一个包含名称中包含`bc_break`的文件列表：
 
 ```php
-    $anon->search = 'bc_break';
-    foreach ($anon as $fn) echo $fn . "\n";
-    ```
+$anon->search = 'bc_break';
+foreach ($anon as $fn) echo $fn . "\n";
+```
 
 1.  在接下来的两行中，我们将使用`instanceof`来测试匿名类是否实现了`OuterIterface`：
 
 ```php
-    if ($anon instanceof OuterIterator)
-        echo "This object implements OuterIterator\n";
-    ```
+if ($anon instanceof OuterIterator)
+    echo "This object implements OuterIterator\n";
+```
 
 1.  最后，我们将使用`var_dump()`简单地转储匿名类的内容：
 
 ```php
-    echo var_dump($anon);
-    ```
+echo var_dump($anon);
+```
 
 这是在 PHP 8 下运行的输出。我们无法在 PHP 7 中运行此示例，因为该版本缺少`str_contains()`函数！
 

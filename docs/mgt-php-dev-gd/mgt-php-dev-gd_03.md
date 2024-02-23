@@ -29,16 +29,16 @@
 1.  接下来，我们需要导航到我们的 Magento 根文件夹。如果您正在使用默认的 vagrant box，安装已经提供；根文件夹位于`/srv/www/ce1720/public_html/`下，我们可以通过运行以下命令行来导航到它：
 
 ```php
-    **$ cd /srv/www/ce1720/public_html**
+**$ cd /srv/www/ce1720/public_html**
 
-    ```
+```
 
 1.  最后，我们可以通过运行以下命令行来启动 IMC：
 
 ```php
-    **$ php shell/imc.php**
+**$ php shell/imc.php**
 
-    ```
+```
 
 1.  如果一切安装成功，我们应该看到一行新的以`magento >`开头的内容。
 
@@ -77,37 +77,37 @@ Magento 模型不包含与数据库通信的任何逻辑；它们是与数据库
 1.  启动 Magento 交互式控制台，运行在 Magento 分期安装根目录下：
 
 ```php
-    **php shell/imc.php**
+**php shell/imc.php**
 
-    ```
+```
 
 1.  我们的第一步是通过输入来创建一个新的产品对象实例：
 
 ```php
-    **magento> $product = Mage::getModel('catalog/product');**
+**magento> $product = Mage::getModel('catalog/product');**
 
-    ```
+```
 
 1.  我们可以通过运行以下命令来确认这是否是产品类的空实例：
 
 ```php
-    **magento> echo get_class($product);**
+**magento> echo get_class($product);**
 
-    ```
+```
 
 1.  我们应该看到以下成功的输出：
 
 ```php
-    **magento> Magento_Catalog_Model_Product**
+**magento> Magento_Catalog_Model_Product**
 
-    ```
+```
 
 1.  如果我们想了解更多关于类方法的信息，可以运行以下命令行：
 
 ```php
-    **magento> print_r(get_class_methods($product));**
+**magento> print_r(get_class_methods($product));**
 
-    ```
+```
 
 这将返回一个包含类内所有可用方法的数组。让我们尝试运行以下代码片段并修改产品的价格和名称：
 
@@ -147,38 +147,38 @@ $product->save();
 1.  `Varien_Object`类不仅有一个`__call()`方法，还有两个已弃用的方法，`__set()`和`__get()`；这两个方法被`__call()`方法替代，因此不再使用。
 
 ```php
-    public function __call($method, $args)
-    {
-       switch (substr($method, 0, 3)) {
-           case 'get' :
-               //Varien_Profiler::start('GETTER: '.get_class($this).'::'.$method);
-               $key = $this->_underscore(substr($method,3));
-               $data = $this->getData($key, isset($args[0]) ? $args[0] : null);
-               //Varien_Profiler::stop('GETTER: '.get_class($this).'::'.$method);
-               return $data;
+public function __call($method, $args)
+{
+   switch (substr($method, 0, 3)) {
+       case 'get' :
+           //Varien_Profiler::start('GETTER: '.get_class($this).'::'.$method);
+           $key = $this->_underscore(substr($method,3));
+           $data = $this->getData($key, isset($args[0]) ? $args[0] : null);
+           //Varien_Profiler::stop('GETTER: '.get_class($this).'::'.$method);
+           return $data;
 
-           case 'set' :
-               //Varien_Profiler::start('SETTER: '.get_class($this).'::'.$method);
-               $key = $this->_underscore(substr($method,3));
-               $result = $this->setData($key, isset($args[0]) ? $args[0] : null);
-               //Varien_Profiler::stop('SETTER: '.get_class($this).'::'.$method);
-               return $result;
+       case 'set' :
+           //Varien_Profiler::start('SETTER: '.get_class($this).'::'.$method);
+           $key = $this->_underscore(substr($method,3));
+           $result = $this->setData($key, isset($args[0]) ? $args[0] : null);
+           //Varien_Profiler::stop('SETTER: '.get_class($this).'::'.$method);
+           return $result;
 
-           case 'uns' :
-               //Varien_Profiler::start('UNS: '.get_class($this).'::'.$method);
-               $key = $this->_underscore(substr($method,3));
-               $result = $this->unsetData($key);
-               //Varien_Profiler::stop('UNS: '.get_class($this).'::'.$method);
-               return $result;
-           case 'has' :
-               //Varien_Profiler::start('HAS: '.get_class($this).'::'.$method);
-               $key = $this->_underscore(substr($method,3));
-               //Varien_Profiler::stop('HAS: '.get_class($this).'::'.$method);
-               return isset($this->_data[$key]);
-       }
-       throw new Varien_Exception("Invalid method" . get_class($this)."::".$method."(".print_r($args,1).")");
-    }
-    ```
+       case 'uns' :
+           //Varien_Profiler::start('UNS: '.get_class($this).'::'.$method);
+           $key = $this->_underscore(substr($method,3));
+           $result = $this->unsetData($key);
+           //Varien_Profiler::stop('UNS: '.get_class($this).'::'.$method);
+           return $result;
+       case 'has' :
+           //Varien_Profiler::start('HAS: '.get_class($this).'::'.$method);
+           $key = $this->_underscore(substr($method,3));
+           //Varien_Profiler::stop('HAS: '.get_class($this).'::'.$method);
+           return isset($this->_data[$key]);
+   }
+   throw new Varien_Exception("Invalid method" . get_class($this)."::".$method."(".print_r($args,1).")");
+}
+```
 
 在`__call()`方法内部，我们有一个 switch 语句，不仅处理 getter 和 setter，还处理`unset`和`has`函数。
 
@@ -448,37 +448,37 @@ WHERE p.entity_type_id = eav.entity_type_id
 1.  我们的第一步是实例化一个产品集合：
 
 ```php
-    **$collection = Mage::getModel('catalog/product')->getCollection();**
+**$collection = Mage::getModel('catalog/product')->getCollection();**
 
-    ```
+```
 
 1.  然后，我们将明确告诉 Magento 选择名称属性：
 
 ```php
-    **$collection->addAttributeToSelect('name');**
+**$collection->addAttributeToSelect('name');**
 
-    ```
+```
 
 1.  现在按名称对集合进行排序：
 
 ```php
-    **$collection->setOrder('name', 'asc');**
+**$collection->setOrder('name', 'asc');**
 
-    ```
+```
 
 1.  最后，我们将告诉 Magento 加载集合：
 
 ```php
-    **$collection->load();**
+**$collection->load();**
 
-    ```
+```
 
 1.  最终结果是商店中所有产品的集合按名称排序；我们可以通过运行以下命令来检查实际的 SQL 查询：
 
 ```php
-    **echo $collection->getSelect()->__toString();**
+**echo $collection->getSelect()->__toString();**
 
-    ```
+```
 
 仅仅通过三行代码的帮助，我们就能告诉 Magento 抓取商店中的所有产品，具体选择名称，并最终按名称排序产品。
 

@@ -33,24 +33,24 @@ AST 的另一个好处是*取消引用*的过程。取消引用简单地指的�
 1.  任何返回回调的函数或方法都可以通过简单地添加括号`()`（带或不带参数）立即执行。任何返回数组的函数或方法都可以通过使用方括号`[]`指示元素来立即取消引用。在下面显示的简短（但琐碎）示例中，函数`test()`返回一个数组。数组包含六个匿名函数。`$a`的值为`$t`。`$$a`被解释为`$test`：
 
 ```php
-    function test()
-    {
-        return [
-            1 => function () { return [
-                1 => function ($a) { return 'Level 1/1:' . ++$a; },
-                2 => function ($a) { return 'Level 1/2:' . ++$a; },
-            ];},
-            2 => function () { return [
-                1 => function ($a) { return 'Level 2/1:' . ++$a; },
-                2 => function ($a) { return 'Level 2/2:' . ++$a; },
-            ];}
-        ];
-    }
+function test()
+{
+    return [
+        1 => function () { return [
+            1 => function ($a) { return 'Level 1/1:' . ++$a; },
+            2 => function ($a) { return 'Level 1/2:' . ++$a; },
+        ];},
+        2 => function () { return [
+            1 => function ($a) { return 'Level 2/1:' . ++$a; },
+            2 => function ($a) { return 'Level 2/2:' . ++$a; },
+        ];}
+    ];
+}
 
-    $a = 't';
-    $t = 'test';
-    echo $$a()[1]()2;
-    ```
+$a = 't';
+$t = 'test';
+echo $$a()[1]()2;
+```
 
 1.  AST 允许我们发出`echo $$a()[1]()2`命令。这是从左到右解析的，执行如下：
 
@@ -71,44 +71,44 @@ AST 的另一个好处是*取消引用*的过程。取消引用简单地指的�
 1.  以下是一个更加实质性的例子，利用 AST 语法来定义数据过滤和验证类。首先，我们定义`Application\Web\Securityclass`。在构造函数中，我们构建并定义了两个数组。第一个数组由过滤回调组成。第二个数组有验证回调：
 
 ```php
-    public function __construct()
-      {
-        $this->filter = [
-          'striptags' => function ($a) { return strip_tags($a); },
-          'digits'    => function ($a) { return preg_replace(
-          '/[⁰-9]/', '', $a); },
-          'alpha'     => function ($a) { return preg_replace(
-          '/[^A-Z]/i', '', $a); }
-        ];
-        $this->validate = [
-          'alnum'  => function ($a) { return ctype_alnum($a); },
-          'digits' => function ($a) { return ctype_digit($a); },
-          'alpha'  => function ($a) { return ctype_alpha($a); }
-        ];
-      }
-    ```
+public function __construct()
+  {
+    $this->filter = [
+      'striptags' => function ($a) { return strip_tags($a); },
+      'digits'    => function ($a) { return preg_replace(
+      '/[⁰-9]/', '', $a); },
+      'alpha'     => function ($a) { return preg_replace(
+      '/[^A-Z]/i', '', $a); }
+    ];
+    $this->validate = [
+      'alnum'  => function ($a) { return ctype_alnum($a); },
+      'digits' => function ($a) { return ctype_digit($a); },
+      'alpha'  => function ($a) { return ctype_alpha($a); }
+    ];
+  }
+```
 
 1.  我们希望能以*开发人员友好*的方式调用此功能。因此，如果我们想要过滤数字，那么运行这样的命令将是理想的：
 
 ```php
-    $security->filterDigits($item));
-    ```
+$security->filterDigits($item));
+```
 
 1.  为了实现这一点，我们定义了魔术方法`__call()`，它使我们能够访问不存在的方法：
 
 ```php
-    public function __call($method, $params)
-    {
+public function __call($method, $params)
+{
 
-      preg_match('/^(filter|validate)(.*?)$/i', $method, $matches);
-      $prefix   = $matches[1] ?? '';
-      $function = strtolower($matches[2] ?? '');
-      if ($prefix && $function) {
-        return $this->$prefix$function;
-      }
-      return $value;
-    }
-    ```
+  preg_match('/^(filter|validate)(.*?)$/i', $method, $matches);
+  $prefix   = $matches[1] ?? '';
+  $function = strtolower($matches[2] ?? '');
+  if ($prefix && $function) {
+    return $this->$prefix$function;
+  }
+  return $value;
+}
+```
 
 我们使用`preg_match()`来匹配`$method`参数与`filter`或`validate`。然后，第二个子匹配将被转换为`$this->filter`或`$this->validate`中的数组键。如果两个子模式都产生子匹配，我们将第一个子匹配分配给`$prefix`，将第二个子匹配分配给`$function`。这些最终成为执行适当回调时的变量参数。
 
@@ -176,19 +176,19 @@ foreach ($data as $item) {
 1.  变量变量是间接引用值的一种方式。在下面的例子中，首先`$$foo`被解释为`${$bar}`。因此最终的返回值是`$bar`的值，而不是`$foo`的直接值（应该是`bar`）：
 
 ```php
-    $foo = 'bar';
-    $bar = 'baz';
-    echo $$foo; // returns  'baz'; 
-    ```
+$foo = 'bar';
+$bar = 'baz';
+echo $$foo; // returns  'baz'; 
+```
 
 1.  在下一个例子中，我们有一个变量变量`$$foo`，它引用一个具有`bar 键`和`baz 子键`的多维数组：
 
 ```php
-    $foo = 'bar';
-    $bar = ['bar' => ['baz' => 'bat']];
-    // returns 'bat'
-    echo $$foo['bar']['baz'];
-    ```
+$foo = 'bar';
+$bar = ['bar' => ['baz' => 'bat']];
+// returns 'bat'
+echo $$foo['bar']['baz'];
+```
 
 1.  在 PHP 5 中，解析是从右到左进行的，这意味着 PHP 引擎将寻找一个`$foo 数组`，其中包含一个`bar 键`和一个`baz 子键`。然后，元素的返回值将被解释以获得最终值`${$foo['bar']['baz']}`。
 
@@ -197,34 +197,34 @@ foreach ($data as $item) {
 1.  在下一个示例中，您可以看到在 PHP 5 中`$foo->$bar['bada']`的解释与 PHP 7 相比有很大不同。在下面的例子中，PHP 5 首先会解释`$bar['bada']`，并将此返回值与`$foo 对象实例`进行引用。另一方面，在 PHP 7 中，解析是一致的，从左到右进行，这意味着首先解释`$foo->$bar`，并期望一个具有`bada 元素`的数组。顺便说一句，这个例子还使用了 PHP 7 的*匿名类*特性：
 
 ```php
-    // PHP 5: $foo->{$bar['bada']}
-    // PHP 7: ($foo->$bar)['bada']
-    $bar = 'baz';
-    // $foo = new class 
-    { 
-        public $baz = ['bada' => 'boom']; 
-    };
-    // returns 'boom'
-    echo $foo->$bar['bada'];
-    ```
+// PHP 5: $foo->{$bar['bada']}
+// PHP 7: ($foo->$bar)['bada']
+$bar = 'baz';
+// $foo = new class 
+{ 
+    public $baz = ['bada' => 'boom']; 
+};
+// returns 'boom'
+echo $foo->$bar['bada'];
+```
 
 1.  最后一个示例与上面的示例相同，只是期望的返回值是一个回调，然后立即执行如下：
 
 ```php
-    // PHP 5: $foo->{$bar['bada']}()
-    // PHP 7: ($foo->$bar)['bada']()
-    $bar = 'baz';
-    // NOTE: this example uses the new PHP 7 anonymous class feature
-    $foo = new class 
+// PHP 5: $foo->{$bar['bada']}()
+// PHP 7: ($foo->$bar)['bada']()
+$bar = 'baz';
+// NOTE: this example uses the new PHP 7 anonymous class feature
+$foo = new class 
+{ 
+     public function __construct() 
     { 
-         public function __construct() 
-        { 
-            $this->baz = ['bada' => function () { return 'boom'; }]; 
-        } 
-    };
-    // returns 'boom'
-    echo $foo->$bar['bada']();
-    ```
+        $this->baz = ['bada' => function () { return 'boom'; }]; 
+    } 
+};
+// returns 'boom'
+echo $foo->$bar['bada']();
+```
 
 ## 它是如何工作的...
 
@@ -249,31 +249,31 @@ foreach ($data as $item) {
 1.  考虑以下代码块：
 
 ```php
-    $a = [1, 2, 3];
-    foreach ($a as $v) {
-      printf("%2d\n", $v);
-      unset($a[1]);
-    }
-    ```
+$a = [1, 2, 3];
+foreach ($a as $v) {
+  printf("%2d\n", $v);
+  unset($a[1]);
+}
+```
 
 1.  在 PHP 5 和 7 中，输出如下：
 
 ```php
-     1
-     2
-     3
-    ```
+ 1
+ 2
+ 3
+```
 
 1.  然而，在循环之前添加一个赋值，行为会改变：
 
 ```php
-    $a = [1, 2, 3];
-    $b = &$a;
-    foreach ($a as $v) {
-      printf("%2d\n", $v);
-      unset($a[1]);
-    }
-    ```
+$a = [1, 2, 3];
+$b = &$a;
+foreach ($a as $v) {
+  printf("%2d\n", $v);
+  unset($a[1]);
+}
+```
 
 1.  比较 PHP 5 和 7 的输出：
 
@@ -284,11 +284,11 @@ foreach ($data as $item) {
 1.  处理引用内部数组指针的函数在 PHP 5 中也导致不一致的行为。看下面的代码示例：
 
 ```php
-    $a = [1,2,3];
-    foreach($a as &$v) {
-        printf("%2d - %2d\n", $v, current($a));
-    }
-    ```
+$a = [1,2,3];
+foreach($a as &$v) {
+    printf("%2d - %2d\n", $v, current($a));
+}
+```
 
 ### 提示
 
@@ -303,12 +303,12 @@ foreach ($data as $item) {
 1.  在`foreach（）`循环中添加一个新元素，一旦引用数组迭代完成，也在 PHP 5 中存在问题。这种行为在 PHP 7 中已经变得一致。以下代码示例演示了这一点：
 
 ```php
-    $a = [1];
-    foreach($a as &$v) {
-        printf("%2d -\n", $v);
-        $a[1]=2;
-    }
-    ```
+$a = [1];
+foreach($a as &$v) {
+    printf("%2d -\n", $v);
+    $a[1]=2;
+}
+```
 
 1.  我们将观察到以下输出：
 
@@ -321,12 +321,12 @@ foreach ($data as $item) {
 看看这个例子：
 
 ```php
-    $a=[1,2,3,4];
-    foreach($a as &$v) {
-        echo "$v\n";
-        array_pop($a);
-    }
-    ```
+$a=[1,2,3,4];
+foreach($a as &$v) {
+    echo "$v\n";
+    array_pop($a);
+}
+```
 
 1.  您将观察到以下输出：
 
@@ -337,17 +337,17 @@ foreach ($data as $item) {
 1.  最后，我们有一个情况，您正在通过引用遍历数组，并且有一个嵌套的`foreach（）`循环，它本身也通过引用在相同的数组上进行迭代。在 PHP 5 中，这种结构根本不起作用。在 PHP 7 中，这个问题已经解决。以下代码块演示了这种行为：
 
 ```php
-    $a = [0, 1, 2, 3];
-    foreach ($a as &$x) {
-           foreach ($a as &$y) {
-             echo "$x - $y\n";
-             if ($x == 0 && $y == 1) {
-               unset($a[1]);
-               unset($a[2]);
-             }
-           }
-    }
-    ```
+$a = [0, 1, 2, 3];
+foreach ($a as &$x) {
+       foreach ($a as &$y) {
+         echo "$x - $y\n";
+         if ($x == 0 && $y == 1) {
+           unset($a[1]);
+           unset($a[2]);
+         }
+       }
+}
+```
 
 1.  以下是输出：
 
@@ -380,50 +380,50 @@ foreach ($data as $item) {
 1.  首先，我们定义一个`Application\Web\Access`类。在构造函数中，我们接受一个文件名作为参数。日志文件被打开为`SplFileObject`并分配给`$this->log`：
 
 ```php
-    Namespace Application\Web;
+Namespace Application\Web;
 
-    use Exception;
-    use SplFileObject;
-    class Access
-    {
-      const ERROR_UNABLE = 'ERROR: unable to open file';
-      protected $log;
-      public $frequency = array();
-      public function __construct($filename)
-      {
-        if (!file_exists($filename)) {
-          $message = __METHOD__ . ' : ' . self::ERROR_UNABLE . PHP_EOL;
-          $message .= strip_tags($filename) . PHP_EOL;
-          throw new Exception($message);
-        }
-        $this->log = new SplFileObject($filename, 'r');
-      }
-    ```
+use Exception;
+use SplFileObject;
+class Access
+{
+  const ERROR_UNABLE = 'ERROR: unable to open file';
+  protected $log;
+  public $frequency = array();
+  public function __construct($filename)
+  {
+    if (!file_exists($filename)) {
+      $message = __METHOD__ . ' : ' . self::ERROR_UNABLE . PHP_EOL;
+      $message .= strip_tags($filename) . PHP_EOL;
+      throw new Exception($message);
+    }
+    $this->log = new SplFileObject($filename, 'r');
+  }
+```
 
 1.  接下来，我们定义一个遍历文件的生成器，逐行进行迭代：
 
 ```php
-    public function fileIteratorByLine()
-    {
-      $count = 0;
-      while (!$this->log->eof()) {
-        yield $this->log->fgets();
-        $count++;
-      }
-      return $count;
-    }
-    ```
+public function fileIteratorByLine()
+{
+  $count = 0;
+  while (!$this->log->eof()) {
+    yield $this->log->fgets();
+    $count++;
+  }
+  return $count;
+}
+```
 
 1.  最后，我们定义一个方法，查找并提取 IP 地址作为子匹配：
 
 ```php
-    public function getIp($line)
-    {
-      preg_match('/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/', $line, $match);
-      return $match[1] ?? '';
-      }
-    }
-    ```
+public function getIp($line)
+{
+  preg_match('/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/', $line, $match);
+  return $match[1] ?? '';
+  }
+}
+```
 
 ## 它是如何工作的...
 
@@ -511,72 +511,72 @@ foreach ($access->frequency as $key => $value) {
 1.  首先，我们定义了一个`Application\Iterator\LargeFile`类，具有适当的属性和常量：
 
 ```php
-    namespace Application\Iterator;
+namespace Application\Iterator;
 
-    use Exception;
-    use InvalidArgumentException;
-    use SplFileObject;
-    use NoRewindIterator;
+use Exception;
+use InvalidArgumentException;
+use SplFileObject;
+use NoRewindIterator;
 
-    class LargeFile
-    {
-      const ERROR_UNABLE = 'ERROR: Unable to open file';
-      const ERROR_TYPE   = 'ERROR: Type must be "ByLength", "ByLine" or "Csv"';     
-      protected $file;
-      protected $allowedTypes = ['ByLine', 'ByLength', 'Csv'];
-    ```
+class LargeFile
+{
+  const ERROR_UNABLE = 'ERROR: Unable to open file';
+  const ERROR_TYPE   = 'ERROR: Type must be "ByLength", "ByLine" or "Csv"';     
+  protected $file;
+  protected $allowedTypes = ['ByLine', 'ByLength', 'Csv'];
+```
 
 1.  然后我们定义了一个`__construct()`方法，接受文件名作为参数，并用`SplFileObject`实例填充`$file`属性。如果文件不存在，这也是抛出异常的好地方：
 
 ```php
-    public function __construct($filename, $mode = 'r')
-    {
-      if (!file_exists($filename)) {
-        $message = __METHOD__ . ' : ' . self::ERROR_UNABLE . PHP_EOL;
-        $message .= strip_tags($filename) . PHP_EOL;
-        throw new Exception($message);
-      }
-      $this->file = new SplFileObject($filename, $mode);
-    }
-    ```
+public function __construct($filename, $mode = 'r')
+{
+  if (!file_exists($filename)) {
+    $message = __METHOD__ . ' : ' . self::ERROR_UNABLE . PHP_EOL;
+    $message .= strip_tags($filename) . PHP_EOL;
+    throw new Exception($message);
+  }
+  $this->file = new SplFileObject($filename, $mode);
+}
+```
 
 1.  接下来我们定义了一个`fileIteratorByLine()method`方法，该方法使用`fgets()`逐行读取文件。创建一个类似的`fileIteratorByLength()`方法，但使用`fread()`来实现也是个不错的主意。使用`fgets()`的方法适用于包含换行符的文本文件。另一个方法可以用于解析大型二进制文件：
 
 ```php
-    protected function fileIteratorByLine()
-    {
-      $count = 0;
-      while (!$this->file->eof()) {
-        yield $this->file->fgets();
-        $count++;
-      }
-      return $count;
-    }
+protected function fileIteratorByLine()
+{
+  $count = 0;
+  while (!$this->file->eof()) {
+    yield $this->file->fgets();
+    $count++;
+  }
+  return $count;
+}
 
-    protected function fileIteratorByLength($numBytes = 1024)
-    {
-      $count = 0;
-      while (!$this->file->eof()) {
-        yield $this->file->fread($numBytes);
-        $count++;
-      }
-      return $count; 
-    }
-    ```
+protected function fileIteratorByLength($numBytes = 1024)
+{
+  $count = 0;
+  while (!$this->file->eof()) {
+    yield $this->file->fread($numBytes);
+    $count++;
+  }
+  return $count; 
+}
+```
 
 1.  最后，我们定义了一个`getIterator()`方法，返回一个`NoRewindIterator()`实例。该方法接受`ByLine`或`ByLength`作为参数，这两个参数是指前一步骤中定义的两种方法。该方法还需要接受`$numBytes`，以防调用`ByLength`。我们需要一个`NoRewindIterator()`实例的原因是强制在这个例子中只能单向读取文件：
 
 ```php
-    public function getIterator($type = 'ByLine', $numBytes = NULL)
-    {
-      if(!in_array($type, $this->allowedTypes)) {
-        $message = __METHOD__ . ' : ' . self::ERROR_TYPE . PHP_EOL;
-        throw new InvalidArgumentException($message);
-      }
-      $iterator = 'fileIterator' . $type;
-      return new NoRewindIterator($this->$iterator($numBytes));
-    }
-    ```
+public function getIterator($type = 'ByLine', $numBytes = NULL)
+{
+  if(!in_array($type, $this->allowedTypes)) {
+    $message = __METHOD__ . ' : ' . self::ERROR_TYPE . PHP_EOL;
+    throw new InvalidArgumentException($message);
+  }
+  $iterator = 'fileIterator' . $type;
+  return new NoRewindIterator($this->$iterator($numBytes));
+}
+```
 
 ## 它是如何工作的...
 
@@ -642,62 +642,62 @@ echo str_repeat('-', 52) . PHP_EOL;
 1.  首先，我们定义了一个`Application\Database\Connection`类，该类根据构造函数提供的一组参数创建一个 PDO 实例：
 
 ```php
-    <?php
-      namespace Application\Database;
+<?php
+  namespace Application\Database;
 
-      use Exception;
-      use PDO;
+  use Exception;
+  use PDO;
 
-      class Connection
-      { 
-        const ERROR_UNABLE = 'ERROR: Unable to create database connection';    
-        public $pdo;
+  class Connection
+  { 
+    const ERROR_UNABLE = 'ERROR: Unable to create database connection';    
+    public $pdo;
 
-        public function __construct(array $config)
-        {
-          if (!isset($config['driver'])) {
-            $message = __METHOD__ . ' : ' . self::ERROR_UNABLE . PHP_EOL;
-            throw new Exception($message);
-        }
-        $dsn = $config['driver'] 
-        . ':host=' . $config['host'] 
-        . ';dbname=' . $config['dbname'];
-        try {
-          $this->pdo = new PDO($dsn, 
-          $config['user'], 
-          $config['password'], 
-          [PDO::ATTR_ERRMODE => $config['errmode']]);
-        } catch (PDOException $e) {
-          error_log($e->getMessage());
-        }
-      }
-
+    public function __construct(array $config)
+    {
+      if (!isset($config['driver'])) {
+        $message = __METHOD__ . ' : ' . self::ERROR_UNABLE . PHP_EOL;
+        throw new Exception($message);
     }
-    ```
+    $dsn = $config['driver'] 
+    . ':host=' . $config['host'] 
+    . ';dbname=' . $config['dbname'];
+    try {
+      $this->pdo = new PDO($dsn, 
+      $config['user'], 
+      $config['password'], 
+      [PDO::ATTR_ERRMODE => $config['errmode']]);
+    } catch (PDOException $e) {
+      error_log($e->getMessage());
+    }
+  }
+
+}
+```
 
 1.  然后我们加入了一个`Application\Iterator\LargeFile`的实例。我们为这个类添加了一个新的方法，用于遍历 CSV 文件：
 
 ```php
-    protected function fileIteratorCsv()
-    {
-      $count = 0;
-      while (!$this->file->eof()) {
-        yield $this->file->fgetcsv();
-        $count++;
-      }
-      return $count;        
-    }    
-    ```
+protected function fileIteratorCsv()
+{
+  $count = 0;
+  while (!$this->file->eof()) {
+    yield $this->file->fgetcsv();
+    $count++;
+  }
+  return $count;        
+}    
+```
 
 1.  我们还需要将`Csv`添加到允许的迭代器方法列表中：
 
 ```php
-      const ERROR_UNABLE = 'ERROR: Unable to open file';
-      const ERROR_TYPE   = 'ERROR: Type must be "ByLength", "ByLine" or "Csv"';
+  const ERROR_UNABLE = 'ERROR: Unable to open file';
+  const ERROR_TYPE   = 'ERROR: Type must be "ByLength", "ByLine" or "Csv"';
 
-      protected $file;
-      protected $allowedTypes = ['ByLine', 'ByLength', 'Csv'];
-    ```
+  protected $file;
+  protected $allowedTypes = ['ByLine', 'ByLength', 'Csv'];
+```
 
 ## 它是如何工作的...
 
@@ -781,95 +781,95 @@ foreach ($iterator as $row) {
 1.  首先，我们定义了一个`Application\Iterator\Directory`类，该类定义了适当的属性和常量，并使用外部类：
 
 ```php
-    namespace Application\Iterator;
+namespace Application\Iterator;
 
-    use Exception;
-    use RecursiveDirectoryIterator;
-    use RecursiveIteratorIterator;
-    use RecursiveRegexIterator;
-    use RegexIterator;
+use Exception;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use RecursiveRegexIterator;
+use RegexIterator;
 
-    class Directory
-    {
+class Directory
+{
 
-      const ERROR_UNABLE = 'ERROR: Unable to read directory';
+  const ERROR_UNABLE = 'ERROR: Unable to read directory';
 
-      protected $path;
-      protected $rdi;
-      // recursive directory iterator
-    ```
+  protected $path;
+  protected $rdi;
+  // recursive directory iterator
+```
 
 1.  构造函数基于目录路径创建了一个`RecursiveDirectoryIterator`实例，该实例位于`RecursiveIteratorIterator`内部：
 
 ```php
-    public function __construct($path)
-    {
-      try {
-        $this->rdi = new RecursiveIteratorIterator(
-          new RecursiveDirectoryIterator($path),
-          RecursiveIteratorIterator::SELF_FIRST);
-      } catch (\Throwable $e) {
-        $message = __METHOD__ . ' : ' . self::ERROR_UNABLE . PHP_EOL;
-        $message .= strip_tags($path) . PHP_EOL;
-        echo $message;
-        exit;
-      }
-    }
-    ```
+public function __construct($path)
+{
+  try {
+    $this->rdi = new RecursiveIteratorIterator(
+      new RecursiveDirectoryIterator($path),
+      RecursiveIteratorIterator::SELF_FIRST);
+  } catch (\Throwable $e) {
+    $message = __METHOD__ . ' : ' . self::ERROR_UNABLE . PHP_EOL;
+    $message .= strip_tags($path) . PHP_EOL;
+    echo $message;
+    exit;
+  }
+}
+```
 
 1.  接下来，我们决定如何处理迭代。一种可能性是模仿 Linux 的`ls -l -R`命令的输出。请注意，我们使用了`yield`关键字，有效地将此方法转换为**生成器**，然后可以从外部调用。目录迭代产生的每个对象都是一个 SPL `FileInfo`对象，它可以为我们提供有关文件的有用信息。这个方法可能是这样的：
 
 ```php
-    public function ls($pattern = NULL)
-    {
-      $outerIterator = ($pattern) 
-      ? $this->regex($this->rdi, $pattern) 
-      : $this->rdi;
-      foreach($outerIterator as $obj){
-        if ($obj->isDir()) {
-          if ($obj->getFileName() == '..') {
-            continue;
-          }
-          $line = $obj->getPath() . PHP_EOL;
-        } else {
-          $line = sprintf('%4s %1d %4s %4s %10d %12s %-40s' . PHP_EOL,
-          substr(sprintf('%o', $obj->getPerms()), -4),
-          ($obj->getType() == 'file') ? 1 : 2,
-          $obj->getOwner(),
-          $obj->getGroup(),
-          $obj->getSize(),
-          date('M d Y H:i', $obj->getATime()),
-          $obj->getFileName());
-        }
-        yield $line;
+public function ls($pattern = NULL)
+{
+  $outerIterator = ($pattern) 
+  ? $this->regex($this->rdi, $pattern) 
+  : $this->rdi;
+  foreach($outerIterator as $obj){
+    if ($obj->isDir()) {
+      if ($obj->getFileName() == '..') {
+        continue;
       }
+      $line = $obj->getPath() . PHP_EOL;
+    } else {
+      $line = sprintf('%4s %1d %4s %4s %10d %12s %-40s' . PHP_EOL,
+      substr(sprintf('%o', $obj->getPerms()), -4),
+      ($obj->getType() == 'file') ? 1 : 2,
+      $obj->getOwner(),
+      $obj->getGroup(),
+      $obj->getSize(),
+      date('M d Y H:i', $obj->getATime()),
+      $obj->getFileName());
     }
-    ```
+    yield $line;
+  }
+}
+```
 
 1.  您可能已经注意到，方法调用包括文件模式。我们需要一种方法来过滤递归，只包括匹配的文件。SPL 中还有另一个迭代器完全适合这个需求：`RegexIterator`类：
 
 ```php
-    protected function regex($iterator, $pattern)
-    {
-      $pattern = '!^.' . str_replace('.', '\\.', $pattern) . '$!';
-      return new RegexIterator($iterator, $pattern);
-    }
-    ```
+protected function regex($iterator, $pattern)
+{
+  $pattern = '!^.' . str_replace('.', '\\.', $pattern) . '$!';
+  return new RegexIterator($iterator, $pattern);
+}
+```
 
 1.  最后，这是另一种方法，但这次我们将模仿`dir /s`命令：
 
 ```php
-    public function dir($pattern = NULL)
-    {
-      $outerIterator = ($pattern) 
-      ? $this->regex($this->rdi, $pattern) 
-      : $this->rdi;
-      foreach($outerIterator as $name => $obj){
-          yield $name . PHP_EOL;
-        }        
-      }
-    }
-    ```
+public function dir($pattern = NULL)
+{
+  $outerIterator = ($pattern) 
+  ? $this->regex($this->rdi, $pattern) 
+  : $this->rdi;
+  foreach($outerIterator as $name => $obj){
+      yield $name . PHP_EOL;
+    }        
+  }
+}
+```
 
 ## 工作原理...
 

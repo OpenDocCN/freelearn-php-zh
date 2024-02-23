@@ -244,125 +244,125 @@ opcache.jit_buffer_size=64M
 1.  我们首先定义 Mandelbrot 参数。特别重要的是迭代次数（`MAX_LOOPS`）。较大的数字会产生更多的计算并减慢整体生产速度。我们还捕获开始时间：
 
 ```php
-    // /repo/ch10/php8_jit_mandelbrot.php
-    define('BAILOUT',   16);
-    define('MAX_LOOPS', 10000);
-    define('EDGE',      40.0);
-    $d1  = microtime(1);
-    ```
+// /repo/ch10/php8_jit_mandelbrot.php
+define('BAILOUT',   16);
+define('MAX_LOOPS', 10000);
+define('EDGE',      40.0);
+$d1  = microtime(1);
+```
 
 1.  为了方便多次运行程序，我们添加了一个捕获命令行参数`-n`的选项。如果存在此参数，则 Mandelbrot 输出将被抑制：
 
 ```php
-    $time_only = (bool) ($argv[1] ?? $_GET['time'] ?? FALSE);
-    ```
+$time_only = (bool) ($argv[1] ?? $_GET['time'] ?? FALSE);
+```
 
 1.  然后，我们定义一个名为`iterate()`的函数，直接从 Dmitry Stogov 的 Mandelbrot 实现中提取。实际代码在此未显示，可以在前面提到的 URL 中查看。
 
 1.  接下来，我们通过`EDGE`确定的 X/Y 坐标运行，生成 ASCII 图像：
 
 ```php
-    $out = '';
-    $f   = EDGE - 1;
-    for ($y = -$f; $y < $f; $y++) {
-        for ($x = -$f; $x < $f; $x++) {
-            $out .= (iterate($x/EDGE,$y/EDGE) == 0)
-                  ? '*' : ' ';
-        }
-        $out .= "\n";
-    }
-    ```
+$out = '';
+$f   = EDGE - 1;
+for ($y = -$f; $y < $f; $y++) {
+    for ($x = -$f; $x < $f; $x++) {
+        $out .= (iterate($x/EDGE,$y/EDGE) == 0)
+              ? '*' : ' ';
+    }
+    $out .= "\n";
+}
+```
 
 1.  最后，我们生成输出。如果通过 Web 请求运行，则输出将包含在`<pre>`标签中。如果存在`-n`标志，则只显示经过的时间：
 
 ```php
-    if (!empty($_SERVER['REQUEST_URI'])) {
-        $out = '<pre>' . $out . '</pre>';
-    }
-    if (!$time_only) echo $out;
-    $d2 = microtime(1);
-    $diff = $d2 - $d1;
-    printf("\nPHP Elapsed %0.3f\n", $diff);
-    ```
+if (!empty($_SERVER['REQUEST_URI'])) {
+    $out = '<pre>' . $out . '</pre>';
+}
+if (!$time_only) echo $out;
+$d2 = microtime(1);
+$diff = $d2 - $d1;
+printf("\nPHP Elapsed %0.3f\n", $diff);
+```
 
 1.  我们首先在 PHP 7 Docker 容器中使用`-n`标志运行程序三次。以下是结果。请注意，在与本书配合使用的演示 Docker 容器中，经过的时间很容易超过 10 秒：
 
 ```php
-    root@php8_tips_php7 [ /repo/ch10 ]# 
-    php php8_jit_mandelbrot.php -n
-    PHP Elapsed 10.320
-    root@php8_tips_php7 [ /repo/ch10 ]# 
-    php php8_jit_mandelbrot.php -n
-    PHP Elapsed 10.134
-    root@php8_tips_php7 [ /repo/ch10 ]# 
-    php php8_jit_mandelbrot.php -n
-    PHP Elapsed 11.806
-    ```
+root@php8_tips_php7 [ /repo/ch10 ]# 
+php php8_jit_mandelbrot.php -n
+PHP Elapsed 10.320
+root@php8_tips_php7 [ /repo/ch10 ]# 
+php php8_jit_mandelbrot.php -n
+PHP Elapsed 10.134
+root@php8_tips_php7 [ /repo/ch10 ]# 
+php php8_jit_mandelbrot.php -n
+PHP Elapsed 11.806
+```
 
 1.  现在我们转向 PHP 8 Docker 容器。首先，我们调整`php.ini`文件以禁用 JIT 编译器。以下是设置：
 
 ```php
-    opcache.jit=off
-    opcache.jit_buffer_size=0
-    ```
+opcache.jit=off
+opcache.jit_buffer_size=0
+```
 
 1.  以下是在使用`-n`标志的 PHP 8 中运行程序三次的结果：
 
 ```php
-    root@php8_tips_php8 [ /repo/ch10 ]# 
-    php php8_jit_mandelbrot.php -n
-    PHP Elapsed 1.183
-    root@php8_tips_php8 [ /repo/ch10 ]# 
-    php php8_jit_mandelbrot.php -n
-    PHP Elapsed 1.192
-    root@php8_tips_php8 [ /repo/ch10 ]# 
-    php php8_jit_mandelbrot.php -n
-    PHP Elapsed 1.210
-    ```
+root@php8_tips_php8 [ /repo/ch10 ]# 
+php php8_jit_mandelbrot.php -n
+PHP Elapsed 1.183
+root@php8_tips_php8 [ /repo/ch10 ]# 
+php php8_jit_mandelbrot.php -n
+PHP Elapsed 1.192
+root@php8_tips_php8 [ /repo/ch10 ]# 
+php php8_jit_mandelbrot.php -n
+PHP Elapsed 1.210
+```
 
 1.  立即可以看到切换到 PHP 8 的一个很好的理由！即使没有 JIT 编译器，PHP 8 也能在 1 秒多一点的时间内执行相同的程序：1/10 的时间量！
 
 1.  接下来，我们修改`php.ini`文件设置，以使用 JIT 编译器`function`跟踪器模式。以下是使用的设置：
 
 ```php
-    opcache.jit=function
-    opcache.jit_buffer_size=64M
-    ```
+opcache.jit=function
+opcache.jit_buffer_size=64M
+```
 
 1.  然后我们再次使用`-n`标志运行相同的程序。以下是在使用 JIT 编译器`function`跟踪器模式的 PHP 8 中运行的结果：
 
 ```php
-    root@php8_tips_php8 [ /repo/ch10 ]# 
-    php php8_jit_mandelbrot.php -n
-    PHP Elapsed 0.323
-    root@php8_tips_php8 [ /repo/ch10 ]# 
-    php php8_jit_mandelbrot.php -n
-    PHP Elapsed 0.322
-    root@php8_tips_php8 [ /repo/ch10 ]# 
-    php php8_jit_mandelbrot.php -n
-    PHP Elapsed 0.324
-    ```
+root@php8_tips_php8 [ /repo/ch10 ]# 
+php php8_jit_mandelbrot.php -n
+PHP Elapsed 0.323
+root@php8_tips_php8 [ /repo/ch10 ]# 
+php php8_jit_mandelbrot.php -n
+PHP Elapsed 0.322
+root@php8_tips_php8 [ /repo/ch10 ]# 
+php php8_jit_mandelbrot.php -n
+PHP Elapsed 0.324
+```
 
 1.  哇！我们成功将处理速度提高了 3 倍。速度现在不到 1/3 秒！但是如果我们尝试推荐的 JIT 编译器`tracing`模式会发生什么呢？以下是调用该模式的设置：
 
 ```php
-    opcache.jit=tracing
-    opcache.jit_buffer_size=64M
-    ```
+opcache.jit=tracing
+opcache.jit_buffer_size=64M
+```
 
 1.  以下是我们上一组程序运行的结果：
 
 ```php
-    root@php8_tips_php8 [ /repo/ch10 ]# 
-    php php8_jit_mandelbrot.php -n
-    PHP Elapsed 0.132
-    root@php8_tips_php8 [ /repo/ch10 ]# 
-    php php8_jit_mandelbrot.php -n
-    PHP Elapsed 0.132
-    root@php8_tips_php8 [ /repo/ch10 ]# 
-    php php8_jit_mandelbrot.php -n
-    PHP Elapsed 0.131
-    ```
+root@php8_tips_php8 [ /repo/ch10 ]# 
+php php8_jit_mandelbrot.php -n
+PHP Elapsed 0.132
+root@php8_tips_php8 [ /repo/ch10 ]# 
+php php8_jit_mandelbrot.php -n
+PHP Elapsed 0.132
+root@php8_tips_php8 [ /repo/ch10 ]# 
+php php8_jit_mandelbrot.php -n
+PHP Elapsed 0.131
+```
 
 正如输出所示，最后的结果真是令人震惊。我们不仅可以比没有 JIT 编译器的 PHP 8 运行相同的程序快 10 倍，而且比 PHP 7 运行*快 100 倍*！
 
@@ -457,64 +457,64 @@ TRACE-2$iterate$41: ; (unknown)
 1.  首先，我们定义了代码中稍后使用的一对常量：
 
 ```php
-    // /repo/ch10/php7_spl_fixed_arr_size.php
-    define('MAX_SIZE', 1000000);
-    define('PATTERN', "%14s : %8.8f : %12s\n");
-    ```
+// /repo/ch10/php7_spl_fixed_arr_size.php
+define('MAX_SIZE', 1000000);
+define('PATTERN', "%14s : %8.8f : %12s\n");
+```
 
 1.  接下来，我们定义一个函数，该函数添加了 100 万个由 64 个字节长的字符串组成的元素：
 
 ```php
-    function testArr($list, $label) {
-        $alpha = new InfiniteIterator(
-            new ArrayIterator(range('A','Z')));
-        $start_mem = memory_get_usage();
-        $start_time = microtime(TRUE);
-        for ($x = 0; $x < MAX_SIZE; $x++) {
-            $letter = $alpha->current();
-            $alpha->next();
-            $list[$x] = str_repeat($letter, 64);
-        }
-        $mem_diff = memory_get_usage() - $start_mem;
-        return [$label, (microtime(TRUE) - $start_time),
-            number_format($mem_diff)];
-    }
-    ```
+function testArr($list, $label) {
+    $alpha = new InfiniteIterator(
+        new ArrayIterator(range('A','Z')));
+    $start_mem = memory_get_usage();
+    $start_time = microtime(TRUE);
+    for ($x = 0; $x < MAX_SIZE; $x++) {
+        $letter = $alpha->current();
+        $alpha->next();
+        $list[$x] = str_repeat($letter, 64);
+    }
+    $mem_diff = memory_get_usage() - $start_mem;
+    return [$label, (microtime(TRUE) - $start_time),
+        number_format($mem_diff)];
+}
+```
 
 1.  然后，我们调用该函数三次，分别提供`array`、`ArrayObject`和`SplFixedArray`作为参数：
 
 ```php
-    printf("%14s : %10s : %12s\n", '', 'Time', 'Memory');
-    $result = testArr([], 'Array');
-    vprintf(PATTERN, $result);
-    $result = testArr(new ArrayObject(), 'ArrayObject');
-    vprintf(PATTERN, $result);
-    $result = testArr(
-        new SplFixedArray(MAX_SIZE), 'SplFixedArray');
-    vprintf(PATTERN, $result);
-    ```
+printf("%14s : %10s : %12s\n", '', 'Time', 'Memory');
+$result = testArr([], 'Array');
+vprintf(PATTERN, $result);
+$result = testArr(new ArrayObject(), 'ArrayObject');
+vprintf(PATTERN, $result);
+$result = testArr(
+    new SplFixedArray(MAX_SIZE), 'SplFixedArray');
+vprintf(PATTERN, $result);
+```
 
 1.  以下是我们的 PHP 7.1 Docker 容器的结果：
 
 ```php
-    root@php8_tips_php7 [ /repo/ch10 ]# 
-    php php7_spl_fixed_arr_size.php 
-                   :       Time :       Memory
-             Array : 1.19430900 :  129,558,888
-       ArrayObject : 1.20231009 :  129,558,832
-     SplFixedArray : 1.19744802 :   96,000,280
-    ```
+root@php8_tips_php7 [ /repo/ch10 ]# 
+php php7_spl_fixed_arr_size.php 
+               :       Time :       Memory
+         Array : 1.19430900 :  129,558,888
+   ArrayObject : 1.20231009 :  129,558,832
+ SplFixedArray : 1.19744802 :   96,000,280
+```
 
 1.  在 PHP 8 中，所花费的时间显著减少，如下所示：
 
 ```php
-    root@php8_tips_php8 [ /repo/ch10 ]# 
-    php php7_spl_fixed_arr_size.php 
-                   :       Time :       Memory
-             Array : 0.13694692 :  129,558,888
-       ArrayObject : 0.11058593 :  129,558,832
-     SplFixedArray : 0.09748793 :   96,000,280
-    ```
+root@php8_tips_php8 [ /repo/ch10 ]# 
+php php7_spl_fixed_arr_size.php 
+               :       Time :       Memory
+         Array : 0.13694692 :  129,558,888
+   ArrayObject : 0.11058593 :  129,558,832
+ SplFixedArray : 0.09748793 :   96,000,280
+```
 
 从结果中可以看出，PHP 8 处理数组的速度比 PHP 7.1 快 10 倍。两个版本使用的内存量是相同的。无论使用哪个版本的 PHP，`SplFixedArray`使用的内存量都明显少于标准数组或`ArrayObject`。现在让我们来看看在 PHP 8 中`SplFixedArray`的使用方式发生了哪些变化。
 
@@ -529,18 +529,18 @@ TRACE-2$iterate$41: ; (unknown)
 1.  我们首先从数组构建一个`SplFixedArray`实例：
 
 ```php
-    // /repo/ch10/php7_spl_fixed_arr_iter.php
-    $arr   = ['Person', 'Woman', 'Man', 'Camera', 'TV'];$fixed = SplFixedArray::fromArray($arr);
-    ```
+// /repo/ch10/php7_spl_fixed_arr_iter.php
+$arr   = ['Person', 'Woman', 'Man', 'Camera', 'TV'];$fixed = SplFixedArray::fromArray($arr);
+```
 
 1.  然后，我们使用数组导航方法来遍历数组：
 
 ```php
-    while ($fixed->valid()) {
-        echo $fixed->current() . '. ';
-        $fixed->next();
-    }
-    ```
+while ($fixed->valid()) {
+    echo $fixed->current() . '. ';
+    $fixed->next();
+}
+```
 
 在 PHP 7 中，输出是数组中的五个单词：
 
@@ -630,79 +630,79 @@ Person. Woman. Man. Camera. TV.
 1.  首先，我们定义`Access`类：
 
 ```php
-    // /repo/src/Php8/Sort/Access.php
-    namespace Php8\Sort;
-    class Access {
-        public $name, $time;
-        public function __construct($name, $time) {
-            $this->name = $name;
-            $this->time = $time;
-        }
-    }
-    ```
+// /repo/src/Php8/Sort/Access.php
+namespace Php8\Sort;
+class Access {
+    public $name, $time;
+    public function __construct($name, $time) {
+        $this->name = $name;
+        $this->time = $time;
+    }
+}
+```
 
 1.  接下来，我们定义一个样本数据集，其中包含一个 CSV 文件，`/repo/sample_data/access.csv`，共有 21 行。每一行代表不同的姓名和访问时间的组合：
 
 ```php
-    "Fred",  "2021-06-01 11:11:11"
-    "Fred",  "2021-06-01 02:22:22"
-    "Betty", "2021-06-03 03:33:33"
-    "Fred",  "2021-06-11 11:11:11"
-    "Barney","2021-06-03 03:33:33"
-    "Betty", "2021-06-01 11:11:11"
-    "Betty", "2021-06-11 11:11:11"
-    "Barney","2021-06-01 11:11:11"
-    "Fred",  "2021-06-11 02:22:22"
-    "Wilma", "2021-06-01 11:11:11"
-    "Betty", "2021-06-13 03:33:33"
-    "Fred",  "2021-06-21 11:11:11"
-    "Betty", "2021-06-21 11:11:11"
-    "Barney","2021-06-13 03:33:33"
-    "Betty", "2021-06-23 03:33:33"
-    "Barney","2021-06-11 11:11:11"
-    "Barney","2021-06-21 11:11:11"
-    "Fred",  "2021-06-21 02:22:22"
-    "Barney","2021-06-23 03:33:33"
-    "Wilma", "2021-06-21 11:11:11"
-    "Wilma", "2021-06-11 11:11:11"
-    ```
+"Fred",  "2021-06-01 11:11:11"
+"Fred",  "2021-06-01 02:22:22"
+"Betty", "2021-06-03 03:33:33"
+"Fred",  "2021-06-11 11:11:11"
+"Barney","2021-06-03 03:33:33"
+"Betty", "2021-06-01 11:11:11"
+"Betty", "2021-06-11 11:11:11"
+"Barney","2021-06-01 11:11:11"
+"Fred",  "2021-06-11 02:22:22"
+"Wilma", "2021-06-01 11:11:11"
+"Betty", "2021-06-13 03:33:33"
+"Fred",  "2021-06-21 11:11:11"
+"Betty", "2021-06-21 11:11:11"
+"Barney","2021-06-13 03:33:33"
+"Betty", "2021-06-23 03:33:33"
+"Barney","2021-06-11 11:11:11"
+"Barney","2021-06-21 11:11:11"
+"Fred",  "2021-06-21 02:22:22"
+"Barney","2021-06-23 03:33:33"
+"Wilma", "2021-06-21 11:11:11"
+"Wilma", "2021-06-11 11:11:11"
+```
 
 您会注意到，扫描样本数据时，所有具有`11:11:11`作为入口时间的日期都是重复的，但是您还会注意到，任何给定日期的原始顺序始终是用户`Fred`，`Betty`，`Barney`和`Wilma`。另外，请注意，对于时间为`03:33:33`的日期，`Betty`的条目总是在`Barney`之前。
 
 1.  然后我们定义一个调用程序。在这个程序中，首先要做的是配置自动加载和`use` `Access`类：
 
 ```php
-    // /repo/ch010/php8_sort_stable_simple.php
-    require __DIR__ . 
-    '/../src/Server/Autoload/Loader.php';
-    $loader = new \Server\Autoload\Loader();
-    use Php8\Sort\Access;
-    ```
+// /repo/ch010/php8_sort_stable_simple.php
+require __DIR__ . 
+'/../src/Server/Autoload/Loader.php';
+$loader = new \Server\Autoload\Loader();
+use Php8\Sort\Access;
+```
 
 1.  接下来，我们将样本数据加载到`$access`数组中：
 
 ```php
-    $access = [];
-    $data = new SplFileObject(__DIR__ 
-        . '/../sample_data/access.csv');
-    while ($row = $data->fgetcsv())
-        if (!empty($row) && count($row) === 2)
-            $access[] = new Access($row[0], $row[1]);
-    ```
+$access = [];
+$data = new SplFileObject(__DIR__ 
+    . '/../sample_data/access.csv');
+while ($row = $data->fgetcsv())
+    if (!empty($row) && count($row) === 2)
+        $access[] = new Access($row[0], $row[1]);
+```
 
 1.  然后我们执行`usort()`。请注意，用户定义的回调函数执行每个实例的`time`属性的比较：
 
 ```php
-    usort($access, 
-        function($a, $b) { return $a->time <=> $b->time; });
-    ```
+usort($access, 
+    function($a, $b) { return $a->time <=> $b->time; });
+```
 
 1.  最后，我们循环遍历新排序的数组并显示结果：
 
 ```php
-    foreach ($access as $entry)
-        echo $entry->time . "\t" . $entry->name . "\n";
-    ```
+foreach ($access as $entry)
+    echo $entry->time . "\t" . $entry->name . "\n";
+```
 
 在 PHP 7 中，请注意虽然时间是有序的，但是姓名并不反映预期的顺序`Fred`，`Betty`，`Barney`和`Wilma`。以下是 PHP 7 的输出：
 
@@ -773,35 +773,35 @@ php php8_sort_stable_simple.php
 1.  首先，我们定义一个函数来生成随机的 3 个字母组合：
 
 ```php
-    // /repo/ch010/php8_sort_stable_keys.php
-    $randVal = function () {
-        $alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        return $alpha[rand(0,25)] . $alpha[rand(0,25)] 
-               . $alpha[rand(0,25)];};
-    ```
+// /repo/ch010/php8_sort_stable_keys.php
+$randVal = function () {
+    $alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    return $alpha[rand(0,25)] . $alpha[rand(0,25)] 
+           . $alpha[rand(0,25)];};
+```
 
 1.  接下来，我们使用示例数据加载了一个`ArrayIterator`实例。每隔一个元素是重复的。我们还记录了开始时间：
 
 ```php
-    $start = microtime(TRUE);
-    $max   = 20;
-    $iter  = new ArrayIterator;
-    for ($x = 256; $x < $max + 256; $x += 2) {
-        $key = sprintf('%04X', $x);
-        $iter->offsetSet($key, $randVal());
-        $key = sprintf('%04X', $x + 1);
-        $iter->offsetSet($key, 'AAA'); // <-- duplicate
-    }
-    ```
+$start = microtime(TRUE);
+$max   = 20;
+$iter  = new ArrayIterator;
+for ($x = 256; $x < $max + 256; $x += 2) {
+    $key = sprintf('%04X', $x);
+    $iter->offsetSet($key, $randVal());
+    $key = sprintf('%04X', $x + 1);
+    $iter->offsetSet($key, 'AAA'); // <-- duplicate
+}
+```
 
 1.  然后我们执行`ArrayIterator::asort()`并显示结果的顺序以及经过的时间：
 
 ```php
-    // not all code is shown
-    $iter->asort();
-    foreach ($iter as $key => $value) echo "$key\t$value\n";
-    echo "\nElapsed Time: " . (microtime(TRUE) - $start);
-    ```
+// not all code is shown
+$iter->asort();
+foreach ($iter as $key => $value) echo "$key\t$value\n";
+echo "\nElapsed Time: " . (microtime(TRUE) - $start);
+```
 
 以下是在 PHP 7 中运行此代码示例的结果：
 
@@ -932,28 +932,28 @@ WeakReference {
 1.  首先，我们定义了四个对象。请注意，`$obj2` 是对 `$obj1` 的普通引用，而 `$obj4` 是对 `$obj3` 的弱引用：
 
 ```php
-    // /repo/ch010/php8_weak_reference.php
-    $obj1 = new class () { public $name = 'Fred'; };
-    $obj2 = $obj1;  // normal reference
-    $obj3 = new class () { public $name = 'Fred'; };
-    $obj4 = WeakReference::create($obj3); // weak ref
-    ```
+// /repo/ch010/php8_weak_reference.php
+$obj1 = new class () { public $name = 'Fred'; };
+$obj2 = $obj1;  // normal reference
+$obj3 = new class () { public $name = 'Fred'; };
+$obj4 = WeakReference::create($obj3); // weak ref
+```
 
 1.  然后我们显示 `$obj1` 在取消设置之前和之后的 `$obj2` 的内容。由于 `$obj1` 和 `$obj2` 之间的连接是一个普通的 PHP 引用，所以由于创建了强引用，`$obj1` 仍然保留在内存中：
 
 ```php
-    var_dump($obj2);
-    unset($obj1);
-    var_dump($obj2);  // $obj1 still loaded in memory
-    ```
+var_dump($obj2);
+unset($obj1);
+var_dump($obj2);  // $obj1 still loaded in memory
+```
 
 1.  然后我们对 `$obj3` 和 `$obj4` 做同样的操作。请注意，我们需要使用 `WeakReference::get()` 来获取关联的对象。一旦取消设置了 `$obj3`，与 `$obj3` 和 `$obj4` 相关的所有信息都将从内存中删除：
 
 ```php
-    var_dump($obj4->get());
-    unset($obj3);
-    var_dump($obj4->get()); // both $obj3 and $obj4 are gone
-    ```
+var_dump($obj4->get());
+unset($obj3);
+var_dump($obj4->get()); // both $obj3 and $obj4 are gone
+```
 
 以下是在 PHP 8 中运行此代码示例的输出：
 
@@ -1006,33 +1006,33 @@ final WeakMap implements Countable,
 1.  首先，我们基于`SplObjectStorage`定义一个容器类。（稍后，在下一节中，我们将开发另一个执行相同功能并基于`WeakMap`的容器类。）这是`UsesSplObjectStorage`类。在`__construct()`方法中，我们将配置的过滤器附加到`SplObjectStorage`实例：
 
 ```php
-    // /repo/src/Php7/Container/UsesSplObjectStorage.php
-    namespace Php7\Container;
-    use SplObjectStorage;
-    class UsesSplObjectStorage {
-        public $container;
-        public $default;
-        public function __construct(array $config = []) {
-            $this->container = new SplObjectStorage();
-            if ($config) foreach ($config as $obj)
-                $this->container->attach(
-                    $obj, get_class($obj));
-            $this->default = new class () {
-                public function filter($value) { 
-                    return $value; }};
-        }
-    ```
+// /repo/src/Php7/Container/UsesSplObjectStorage.php
+namespace Php7\Container;
+use SplObjectStorage;
+class UsesSplObjectStorage {
+    public $container;
+    public $default;
+    public function __construct(array $config = []) {
+        $this->container = new SplObjectStorage();
+        if ($config) foreach ($config as $obj)
+            $this->container->attach(
+                $obj, get_class($obj));
+        $this->default = new class () {
+            public function filter($value) { 
+                return $value; }};
+    }
+```
 
 1.  然后，我们定义一个`get()`方法，遍历`SplObjectStorage`容器并返回找到的过滤器。如果找不到，则返回一个简单地将数据直接传递的默认类：
 
 ```php
-        public function get(string $key) {
-            foreach ($this->container as $idx => $obj)
-                if ($obj instanceof $key) return $obj;
-            return $this->default;    
-        }
-    }
-    ```
+    public function get(string $key) {
+        foreach ($this->container as $idx => $obj)
+            if ($obj instanceof $key) return $obj;
+        return $this->default;    
+    }
+}
+```
 
 请注意，当使用`foreach()`循环来迭代`SplObjectStorage`实例时，我们返回*值*（`$obj`），而不是键。另一方面，如果我们使用`WeakMap`实例，我们需要返回*键*而不是值！
 
@@ -1041,77 +1041,77 @@ final WeakMap implements Countable,
 1.  首先，我们定义自动加载并使用适当的类：
 
 ```php
-    // /repo/ch010/php7_weak_map_problem.php
-    require __DIR__ . '/../src/Server/Autoload/Loader.php';
-    loader = new \Server\Autoload\Loader();
-    use Laminas\Filter\ {StringTrim, StripNewlines,
-        StripTags, ToInt, Whitelist, UriNormalize};
-    use Php7\Container\UsesSplObjectStorage;
-    ```
+// /repo/ch010/php7_weak_map_problem.php
+require __DIR__ . '/../src/Server/Autoload/Loader.php';
+loader = new \Server\Autoload\Loader();
+use Laminas\Filter\ {StringTrim, StripNewlines,
+    StripTags, ToInt, Whitelist, UriNormalize};
+use Php7\Container\UsesSplObjectStorage;
+```
 
 1.  接下来，我们定义一个样本数据数组：
 
 ```php
-    $data = [
-        'name'    => '<script>bad JavaScript</script>name',
-        'status'  => 'should only contain digits 9999',
-        'gender'  => 'FMZ only allowed M, F or X',
-        'space'   => "  leading/trailing whitespace or\n",
-        'url'     => 'unlikelysource.com/about',
-    ];
-    ```
+$data = [
+    'name'    => '<script>bad JavaScript</script>name',
+    'status'  => 'should only contain digits 9999',
+    'gender'  => 'FMZ only allowed M, F or X',
+    'space'   => "  leading/trailing whitespace or\n",
+    'url'     => 'unlikelysource.com/about',
+];
+```
 
 1.  然后，我们分配了对所有字段（`$required`）和对某些字段特定的过滤器（`$added`）：
 
 ```php
-    $required = [StringTrim::class, 
-                 StripNewlines::class, StripTags::class];
-    $added = ['status'  => ToInt::class,
-              'gender'  => Whitelist::class,
-              'url'     => UriNormalize::class ];
-    ```
+$required = [StringTrim::class, 
+             StripNewlines::class, StripTags::class];
+$added = ['status'  => ToInt::class,
+          'gender'  => Whitelist::class,
+          'url'     => UriNormalize::class ];
+```
 
 1.  之后，我们创建一个过滤器实例数组，用于填充我们的服务容器`UseSplObjectStorage`。请记住，每个过滤器类都带有很大的开销，可以被认为是一个*昂贵*的对象：
 
 ```php
-    $filters = [
-        new StringTrim(),
-        new StripNewlines(),
-        new StripTags(),
-        new ToInt(),
-        new Whitelist(['list' => ['M','F','X']]),
-        new UriNormalize(['enforcedScheme' => 'https']),
-    ];
-    $container = new UsesSplObjectStorage($filters);
-    ```
+$filters = [
+    new StringTrim(),
+    new StripNewlines(),
+    new StripTags(),
+    new ToInt(),
+    new Whitelist(['list' => ['M','F','X']]),
+    new UriNormalize(['enforcedScheme' => 'https']),
+];
+$container = new UsesSplObjectStorage($filters);
+```
 
 1.  现在我们使用我们的容器类循环遍历数据文件，以检索过滤器实例。`filter()`方法会产生特定于该过滤器的经过清理的值：
 
 ```php
-    foreach ($data as $key => &$value) {
-        foreach ($required as $class) {
-            $value = $container->get($class)->filter($value);
-        }
-        if (isset($added[$key])) {
-            $value = $container->get($added[$key])
-                                ->filter($value);
-        }
-    }
-    var_dump($data);
-    ```
+foreach ($data as $key => &$value) {
+    foreach ($required as $class) {
+        $value = $container->get($class)->filter($value);
+    }
+    if (isset($added[$key])) {
+        $value = $container->get($added[$key])
+                            ->filter($value);
+    }
+}
+var_dump($data);
+```
 
 1.  最后，我们获取内存统计信息，以便比较`SplObjectStorage`和`WeakMap`的使用情况。我们还取消了`$filters`，理论上应该释放大量内存。我们运行`gc_collect_cycles()`来强制 PHP 垃圾回收过程，将释放的内存重新放入池中。
 
 ```php
-    $mem = memory_get_usage();
-    unset($filters);
-    gc_collect_cycles();
-    $end = memory_get_usage();
-    echo "\nMemory Before Unset: $mem\n";
-    echo "Memory After  Unset: $end\n";
-    echo 'Difference         : ' . ($end - $mem) . "\n";
-    echo 'Peak Memory Usage : ' . memory_get_peak_usage();
-    ```
+$mem = memory_get_usage();
+unset($filters);
+gc_collect_cycles();
+$end = memory_get_usage();
+echo "\nMemory Before Unset: $mem\n";
+echo "Memory After  Unset: $end\n";
+echo 'Difference         : ' . ($end - $mem) . "\n";
+echo 'Peak Memory Usage : ' . memory_get_peak_usage();
+```
 
 这是在 PHP 8 中运行的调用程序的结果：
 
@@ -1150,63 +1150,63 @@ Peak Memory Usage  : 780168
 1.  如前面的代码示例所述，我们定义了一个名为`UsesWeakMap`的容器类，其中包含我们昂贵的过滤器类。这个类和前一节中显示的类的主要区别在于`UsesWeakMap`使用`WeakMap`而不是`SplObjectStorage`进行存储。以下是类设置和`__construct()`方法：
 
 ```php
-    // /repo/src/Php7/Container/UsesWeakMap.php
-    namespace Php8\Container;
-    use WeakMap;
-    class UsesWeakMap {
-        public $container;
-        public $default;
-        public function __construct(array $config = []) {
-            $this->container = new WeakMap();
-            if ($config)
-                foreach ($config as $obj)
-                    $this->container->offsetSet(
-                        $obj, get_class($obj));
-            $this->default = new class () {
-                public function filter($value) { 
-                    return $value; }};
-        }
-    ```
+// /repo/src/Php7/Container/UsesWeakMap.php
+namespace Php8\Container;
+use WeakMap;
+class UsesWeakMap {
+    public $container;
+    public $default;
+    public function __construct(array $config = []) {
+        $this->container = new WeakMap();
+        if ($config)
+            foreach ($config as $obj)
+                $this->container->offsetSet(
+                    $obj, get_class($obj));
+        $this->default = new class () {
+            public function filter($value) { 
+                return $value; }};
+    }
+```
 
 1.  两个类之间的另一个区别是`WeakMap`实现了`IteratorAggregate`。然而，这仍然允许我们在`get()`方法中使用简单的`foreach()`循环：
 
 ```php
-        public function get(string $key) {
-            foreach ($this->container as $idx => $obj)
-                if ($idx instanceof $key) return $idx;
-            return $this->default;
-        }
-    }
-    ```
+    public function get(string $key) {
+        foreach ($this->container as $idx => $obj)
+            if ($idx instanceof $key) return $idx;
+        return $this->default;
+    }
+}
+```
 
 请注意，当使用`foreach()`循环来迭代`WeakMap`实例时，我们返回的是*键*(`$idx`)，而不是值！
 
 1.  然后，我们定义一个调用程序，调用自动加载程序并使用适当的过滤器类。这个调用程序和上一节的程序最大的区别在于我们使用基于`WeakMap`的新容器类：
 
 ```php
-    // /repo/ch010/php8_weak_map_problem.php
-    require __DIR__ . '/../src/Server/Autoload/Loader.php';
-    $loader = new \Server\Autoload\Loader();
-    use Laminas\Filter\ {StringTrim, StripNewlines,
-        StripTags, ToInt, Whitelist, UriNormalize};
-    use Php8\Container\UsesWeakMap;
-    ```
+// /repo/ch010/php8_weak_map_problem.php
+require __DIR__ . '/../src/Server/Autoload/Loader.php';
+$loader = new \Server\Autoload\Loader();
+use Laminas\Filter\ {StringTrim, StripNewlines,
+    StripTags, ToInt, Whitelist, UriNormalize};
+use Php8\Container\UsesWeakMap;
+```
 
 1.  与前一个示例一样，我们定义了一个样本数据数组并分配过滤器。这段代码没有显示，因为它与前一个示例的*步骤 2*和*3*相同。
 
 1.  然后，我们在一个数组中创建过滤器实例，该数组作为参数传递给我们的新容器类。我们使用过滤器数组作为参数来创建容器类实例：
 
 ```php
-    $filters = [
-        new StringTrim(),
-        new StripNewlines(),
-        new StripTags(),
-        new ToInt(),
-        new Whitelist(['list' => ['M','F','X']]),
-        new UriNormalize(['enforcedScheme' => 'https']),
-    ];
-    $container = new UsesWeakMap($filters);
-    ```
+$filters = [
+    new StringTrim(),
+    new StripNewlines(),
+    new StripTags(),
+    new ToInt(),
+    new Whitelist(['list' => ['M','F','X']]),
+    new UriNormalize(['enforcedScheme' => 'https']),
+];
+$container = new UsesWeakMap($filters);
+```
 
 1.  最后，就像前一个示例中的*步骤 6*一样，我们循环遍历数据并应用容器类中的过滤器。我们还收集并显示内存统计信息。
 

@@ -89,12 +89,12 @@ Bootstrap，HTML、CSS 和 JavaScript 库以及引导概念是两个不同的东
 1.  打开`webroot/index.php`，并在第 9 行后添加以下行：
 
 ```php
-    defined('DS') || define('DS', DIRECTORY_SEPARATOR);
-    define('APPDIR', realpath(__DIR__.'/../app/') .DS);
-    define('SYSTEMDIR', realpath(__DIR__.'/../system/') .DS);
-    define('PUBLICDIR', realpath(__DIR__) .DS);
-    define('ROOTDIR', realpath(__DIR__.'/../') .DS);
-    ```
+defined('DS') || define('DS', DIRECTORY_SEPARATOR);
+define('APPDIR', realpath(__DIR__.'/../app/') .DS);
+define('SYSTEMDIR', realpath(__DIR__.'/../system/') .DS);
+define('PUBLICDIR', realpath(__DIR__) .DS);
+define('ROOTDIR', realpath(__DIR__.'/../') .DS);
+```
 
 这些是可以在框架中的任何地方调用的常量。第一行定义了目录分隔符，例如`/`或`\`，具体取决于机器：
 
@@ -111,14 +111,14 @@ Bootstrap，HTML、CSS 和 JavaScript 库以及引导概念是两个不同的东
 1.  现在，让我们修复`View`类。打开`system/View.php`，在第 24 行，替换：
 
 ```php
-    $filepath = "../app/views/$path.php";
-    ```
+$filepath = "../app/views/$path.php";
+```
 
 使用：
 
 ```php
-    $filepath = APPDIR."views/$path.php";
-    ```
+$filepath = APPDIR."views/$path.php";
+```
 
 ### 注意
 
@@ -139,19 +139,19 @@ Bootstrap，HTML、CSS 和 JavaScript 库以及引导概念是两个不同的东
 1.  打开`errors.php`并输入以下代码：
 
 ```php
-    <?php
-    use App\Helpers\Session;
+<?php
+use App\Helpers\Session;
 
-    if (isset($errors)) {
-        foreach($errors as $error) {
-            echo "<div class='alert alert-danger'>$error</div>";
-        }
+if (isset($errors)) {
+    foreach($errors as $error) {
+        echo "<div class='alert alert-danger'>$error</div>";
     }
+}
 
-    if (Session::get('success')) {
-        echo "<div class='alert alert-success'>".Session::pull('success')."</div>";
-    }
-    ```
+if (Session::get('success')) {
+    echo "<div class='alert alert-success'>".Session::pull('success')."</div>";
+}
+```
 
 ### 注意
 
@@ -164,22 +164,22 @@ Bootstrap，HTML、CSS 和 JavaScript 库以及引导概念是两个不同的东
 1.  打开`header.php`并输入以下代码：
 
 ```php
-    <!doctype html>
-    <html lang="en">
-    <head>
-    <meta charset="utf-8">
-    <title><?=(isset($title) ? $title.' - ' : '');?> Demo</
-    title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/css/style.css">
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title><?=(isset($title) ? $title.' - ' : '');?> Demo</
+title>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+<link rel="stylesheet" href="/css/style.css">
 
-    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
-    </head>
-    <body>
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+</head>
+<body>
 
-    <div class="container">
-    ```
+<div class="container">
+```
 
 ### 注意
 
@@ -192,20 +192,20 @@ Bootstrap，HTML、CSS 和 JavaScript 库以及引导概念是两个不同的东
 有关完整的代码片段，请参考代码文件夹中的`Lesson 7.php`文件。
 
 ```php
-    </div>
-    </body>
-    </html>
-    ```
+</div>
+</body>
+</html>
+```
 
 1.  现在，打开`nav.php`并输入以下代码：
 
 ```php
-    <nav class="navbar navbar-default">
-    ……
-          </div><!--/.nav-collapse -->
-        </div><!--/.container-fluid -->
-    </nav>
-    ```
+<nav class="navbar navbar-default">
+……
+      </div><!--/.nav-collapse -->
+    </div><!--/.container-fluid -->
+</nav>
+```
 
 ### 注意
 
@@ -214,10 +214,10 @@ Bootstrap，HTML、CSS 和 JavaScript 库以及引导概念是两个不同的东
 1.  现在，打开`app/views/404.php`并包含布局文件：
 
 ```php
-    <?php include(APPDIR.'views/layouts/header.php');?>
-    404!
-    <?php include(APPDIR.'views/layouts/footer.php');?>
-    ```
+<?php include(APPDIR.'views/layouts/header.php');?>
+404!
+<?php include(APPDIR.'views/layouts/footer.php');?>
+```
 
 ### 注意
 
@@ -230,8 +230,8 @@ Bootstrap，HTML、CSS 和 JavaScript 库以及引导概念是两个不同的东
 1.  如果框架尚未运行，请在浏览器中打开框架。在根目录时，从终端运行以下命令：
 
 ```php
-    php –S localhost:8000 –t webroot
-    ```
+php –S localhost:8000 –t webroot
+```
 
 ### 注意
 
@@ -244,15 +244,15 @@ Bootstrap，HTML、CSS 和 JavaScript 库以及引导概念是两个不同的东
 有关完整的代码片段，请参考代码文件夹中的`Lesson 7.php`文件。
 
 ```php
-    <!doctype html>
-    <html lang="en">
-    <head>
-    ……
-    404!
-    </div>
-    </body>
-    </html>
-    ```
+<!doctype html>
+<html lang="en">
+<head>
+……
+404!
+</div>
+</body>
+</html>
+```
 
 随着我们进入本章的深入，这些布局将变得更加明显。
 
@@ -345,17 +345,17 @@ Bootstrap，HTML、CSS 和 JavaScript 库以及引导概念是两个不同的东
 1.  在我们开始构建身份验证之前，我们需要两个新的帮助程序。在`app/Helpers`中创建一个名为`Url.php`的新文件，并输入：
 
 ```php
-    <?php namespace App\Helpers;
+<?php namespace App\Helpers;
 
-    class Url
-    {
-        public static function redirect($path = '/')
-       {
-            header('Location: '.$path);
-            exit();
-        }
+class Url
+{
+    public static function redirect($path = '/')
+   {
+        header('Location: '.$path);
+        exit();
     }
-    ```
+}
+```
 
 ### 注意
 
@@ -380,92 +380,92 @@ Bootstrap，HTML、CSS 和 JavaScript 库以及引导概念是两个不同的东
 需要的第一个方法是确定会话是否已启动。如果更新了`sessionStarted`参数，它将将其设置为`false。这`将告诉`init`方法打开会话：
 
 ```php
-    <?php namespace App\Helpers;
+<?php namespace App\Helpers;
 
-    class Session
-    {
-        private static $sessionStarted = false;
-    /**
-     * if session has not started, start sessions
-     */
-    public static function init()
-    {
-        if (self::$sessionStarted == false) {
-            session_start();
-            self::$sessionStarted = true;
-        }
+class Session
+{
+    private static $sessionStarted = false;
+/**
+ * if session has not started, start sessions
+ */
+public static function init()
+{
+    if (self::$sessionStarted == false) {
+        session_start();
+        self::$sessionStarted = true;
     }
-    ```
+}
+```
 
 1.  接下来，创建一个名为`set`的方法，接受两个参数`$key`和`$value`。这用于向会话添加一个`$key`并将`$value`设置为`$key`：
 
 ```php
-    public static function set($key, $value = false)
-    {
-        /**
-         * Check whether session is set in array or not
-         * If array then set all session key-values in foreach loop
-         */
-        if (is_array($key) && $value === false) {
-            foreach ($key as $name => $value) {
-                $_SESSION[$name] = $value;
-            }
-        } else {
-            $_SESSION[$key] = $value;
+public static function set($key, $value = false)
+{
+    /**
+     * Check whether session is set in array or not
+     * If array then set all session key-values in foreach loop
+     */
+    if (is_array($key) && $value === false) {
+        foreach ($key as $name => $value) {
+            $_SESSION[$name] = $value;
         }
+    } else {
+        $_SESSION[$key] = $value;
     }
-    ```
+}
+```
 
 1.  接下来，创建一个名为`pull`的方法，带有一个参数。这将从会话中提取`key`并在从会话中删除它后返回它，这对于一次性消息非常有用：
 
 ```php
-    public static function pull($key)
-    {
-        $value = $_SESSION[$key];
-        unset($_SESSION[$key]);
-        return $value;
-    }
-    ```
+public static function pull($key)
+{
+    $value = $_SESSION[$key];
+    unset($_SESSION[$key]);
+    return $value;
+}
+```
 
 1.  接下来，创建一个 get 方法。这将从提供的键返回一个会话：
 
 ```php
-    public static function get($key)
-    {
-        if (isset($_SESSION[$key])) {
-            return $_SESSION[$key];
-        }
-
-        return false;
+public static function get($key)
+{
+    if (isset($_SESSION[$key])) {
+        return $_SESSION[$key];
     }
-    ```
+
+    return false;
+}
+```
 
 ### 注意
 
 有时，您希望查看会话的内容。创建一个名为`display`的方法，返回`$_SESSION`对象：
 
 ```php
-    public static function display()
-    {
-        return $_SESSION;
-    }
-    ```
+public static function display()
+{
+    return $_SESSION;
+}
+```
 
 1.  最后一个方法用于在提供`$key`时销毁会话密钥，否则将销毁整个会话：
 
 ```php
-    public static function destroy($key = '')
-    {
-        if (self::$sessionStarted == true) {
-            if (empty($key)) {
-                session_unset();
-                session_destroy();
-            } else {
-                unset($_SESSION[$key]);
-            }
+public static function destroy($key = '')
+{
+    if (self::$sessionStarted == true) {
+        if (empty($key)) {
+            session_unset();
+            session_destroy();
+        } else {
+            unset($_SESSION[$key]);
         }
     }
-    ```
+}
+```
 
 完整的类如下所示：
 
@@ -474,16 +474,16 @@ Bootstrap，HTML、CSS 和 JavaScript 库以及引导概念是两个不同的东
 有关完整的代码片段，请参阅代码文件夹中的`Lesson 7.php`文件。
 
 ```php
-    <?php namespace App\Helpers;
+<?php namespace App\Helpers;
 
-    class Session
-    {
-        private static $sessionStarted = false;
-    ……..
-        }
-
+class Session
+{
+    private static $sessionStarted = false;
+……..
     }
-    ```
+
+}
+```
 
 1.  现在，我们需要在应用程序运行时自动设置会话。我们通过在`app/Config.php`中添加`Session::init()`来实现这一点：
 
@@ -494,16 +494,16 @@ Bootstrap，HTML、CSS 和 JavaScript 库以及引导概念是两个不同的东
 有关完整的代码片段，请参阅代码文件夹中的`Lesson 7.php`文件。
 
 ```php
-    <?php namespace App;
+<?php namespace App;
 
-    use App\Helpers\Session;
+use App\Helpers\Session;
 
-    class Config {
-    …….
-            ];
-        }
+class Config {
+…….
+        ];
     }
-    ```
+}
+```
 
 **构建身份验证：**
 
@@ -512,16 +512,16 @@ Bootstrap，HTML、CSS 和 JavaScript 库以及引导概念是两个不同的东
 1.  在数据库中创建一个名为 users 的新表：
 
 ```php
-    CREATE TABLE `users` (
-      `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-      `username` varchar(255) DEFAULT NULL,
-      `email` varchar(255) DEFAULT NULL,
-      `password` varchar(255) DEFAULT NULL,
-      `created_at` datetime DEFAULT NULL,
-      `reset_token` varchar(255) DEFAULT NULL,
-      PRIMARY KEY (`id`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-    ```
+CREATE TABLE `users` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `username` varchar(255) DEFAULT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `password` varchar(255) DEFAULT NULL,
+  `created_at` datetime DEFAULT NULL,
+  `reset_token` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+```
 
 ### 注意
 
@@ -544,13 +544,13 @@ ID 是`primary`键，并将设置为自动递增，这意味着每个记录都�
 有关完整的代码片段，请参阅代码文件夹中的`Lesson 7.php`文件。
 
 ```php
-    <?php namespace App\Models;
-    …….
-        {
-            $this->db->delete('users', $where);
-        }
+<?php namespace App\Models;
+…….
+    {
+        $this->db->delete('users', $where);
     }
-    ```
+}
+```
 
 **创建 Admin Controller：**
 
@@ -575,30 +575,30 @@ ID 是`primary`键，并将设置为自动递增，这意味着每个记录都�
 有关完整的代码片段，请参阅代码文件夹中的`Lesson 7.php`文件。
 
 ```php
-    <?php namespace App\Controllers;
+<?php namespace App\Controllers;
 
-    use System\BaseController;
-    ……..
-            $this->view->render('admin/index', compact('title'));
-        }
-
+use System\BaseController;
+……..
+        $this->view->render('admin/index', compact('title'));
     }
-    ```
+
+}
+```
 
 1.  如果用户已登录，则将加载`admin/index`视图。创建视图`app/views/admin/index.php`和入口：
 
 ```php
-    <?php
-    include(APPDIR.'views/layouts/header.php');
-    include(APPDIR.'views/layouts/nav.php');
-    include(APPDIR.'views/layouts/errors.php');
-    ?>
+<?php
+include(APPDIR.'views/layouts/header.php');
+include(APPDIR.'views/layouts/nav.php');
+include(APPDIR.'views/layouts/errors.php');
+?>
 
-    <h1>Dashboard</h1>
-    <p>This is the application dashboard.</p>
+<h1>Dashboard</h1>
+<p>This is the application dashboard.</p>
 
-    <?php include(APPDIR.'views/layouts/footer.php');?>
-    ```
+<?php include(APPDIR.'views/layouts/footer.php');?>
+```
 
 现在，我们需要创建一个`login`视图。在`app/views/admin`中创建一个名为`auth`的文件夹，并创建`login.php`。
 
@@ -625,17 +625,17 @@ ID 是`primary`键，并将设置为自动递增，这意味着每个记录都�
 有关完整的代码片段，请参考代码文件夹中的`Lesson 7.php`文件。
 
 ```php
-    <?php include(APPDIR.'views/layouts/header.php');?>
+<?php include(APPDIR.'views/layouts/header.php');?>
 
-    <div class="wrapper well">
+<div class="wrapper well">
 
-        <?php include(APPDIR.'views/layouts/errors.php');?>
-    …….
-    .wrapper h1 {
-        margin-top: 0px;
-        font-size: 25px;
-    }
-    ```
+    <?php include(APPDIR.'views/layouts/errors.php');?>
+…….
+.wrapper h1 {
+    margin-top: 0px;
+    font-size: 25px;
+}
+```
 
 1.  现在，回到 admin 控制器并创建一个`login`方法：
 
@@ -650,29 +650,29 @@ ID 是`primary`键，并将设置为自动递增，这意味着每个记录都�
 `compact()`使得可以通过简单输入它们的名称而使用变量，而不需要`$`：
 
 ```php
-    public function login()
-    {
-        if (Session::get('logged_in')) {
-            Url::redirect('/admin');
-        }
-
-        $errors = [];
-
-        $title = 'Login';
-
-        $this->view->render('admin/auth/login', compact('title', 'errors'));
+public function login()
+{
+    if (Session::get('logged_in')) {
+        Url::redirect('/admin');
     }
-    ```
+
+    $errors = [];
+
+    $title = 'Login';
+
+    $this->view->render('admin/auth/login', compact('title', 'errors'));
+}
+```
 
 这将加载`login`视图，并在按下提交时实际上不会执行任何操作。我们需要检查表单是否已提交，但在这之前，我们需要向`user`模型添加两个方法：
 
 ```php
-    public function get_hash($username)
-    {
-        $data = $this->db->select('password FROM users WHERE username = :username', [':username' => $username]);
-       return (isset($data[0]->password) ? $data[0]->password : null);
-    }
-    ```
+public function get_hash($username)
+{
+    $data = $this->db->select('password FROM users WHERE username = :username', [':username' => $username]);
+   return (isset($data[0]->password) ? $data[0]->password : null);
+}
+```
 
 `get_hash($username)`将从`users`表中选择`password`，其中`username`与提供的用户名匹配。
 
@@ -683,12 +683,12 @@ ID 是`primary`键，并将设置为自动递增，这意味着每个记录都�
 1.  对于`get_data()`，做同样的事情，只是这次返回的是一个数据数组，而不是单个列：
 
 ```php
-    public function get_data($username)
-    {
-        $data = $this->db->select('* FROM users WHERE username = :username', [':username' => $username]);
-        return (isset($data[0]) ? $data[0] : null);
-    }
-    ```
+public function get_data($username)
+{
+    $data = $this->db->select('* FROM users WHERE username = :username', [':username' => $username]);
+    return (isset($data[0]) ? $data[0] : null);
+}
+```
 
 1.  现在，在我们的`login`方法中，我们可以通过检查`$_POST`数组是否包含名为`submit`的对象来检查表单是否已提交。
 
@@ -703,41 +703,41 @@ ID 是`primary`键，并将设置为自动递增，这意味着每个记录都�
 1.  最后，将用户重定向到 admin `index`页面：
 
 ```php
-    if (isset($_POST['submit'])) {
-                $username = htmlspecialchars($_POST['username']);
-               $password = htmlspecialchars($_POST['password']);
-               if (password_verify($password, $this->user->get_hash($username)) == false) {
-                    $errors[] = 'Wrong username or password';
-                }
-                if (count($errors) == 0) {
-                    //logged in
-                    $data = $this->user->get_data($username);
-                    Session::set('logged_in', true);
-                    Session::set('user_id', $data->id);
-
-                    Url::redirect('/admin');
-                }
+if (isset($_POST['submit'])) {
+            $username = htmlspecialchars($_POST['username']);
+           $password = htmlspecialchars($_POST['password']);
+           if (password_verify($password, $this->user->get_hash($username)) == false) {
+                $errors[] = 'Wrong username or password';
             }
-    ```
+            if (count($errors) == 0) {
+                //logged in
+                $data = $this->user->get_data($username);
+                Session::set('logged_in', true);
+                Session::set('user_id', $data->id);
+
+                Url::redirect('/admin');
+            }
+        }
+```
 
 完整的方法看起来像这样：
 
 ```php
-    public function login()
-    {
-        if (Session::get('logged_in')) {
-            Url::redirect('/admin');
-        }
-    ……
-        $this->view->render('admin/auth/login', compact('title', 'errors'));
+public function login()
+{
+    if (Session::get('logged_in')) {
+        Url::redirect('/admin');
     }
-    ```
+……
+    $this->view->render('admin/auth/login', compact('title', 'errors'));
+}
+```
 
 1.  如果框架尚未运行，请运行框架：
 
 ```php
-    php –S localhost:8000 –t webroot
-    ```
+php –S localhost:8000 –t webroot
+```
 
 1.  转到`http://localhost:8000/admin/login`。
 
@@ -748,16 +748,16 @@ ID 是`primary`键，并将设置为自动递增，这意味着每个记录都�
 1.  让我们创建我们的登录。我们需要一个哈希密码来存储在数据库中。要在`login`方法中创建一个哈希密码，请输入：
 
 ```php
-    echo password_hash('demo', PASSWORD_BCRYPT);
-    ```
+echo password_hash('demo', PASSWORD_BCRYPT);
+```
 
 第一个参数是您想要的`密码`，在本例中是`demo`。第二个参数是要使用的`PASSWORD`函数的类型。使用默认的`PASSWORD_ BCRYPT`意味着 PHP 将使用可能的最强版本。
 
 1.  当您刷新页面时，您将看到以下类似的哈希：
 
 ```php
-    $2y$10$OAZK6znqAvV2fXS1BbYoVet3pC9dStWVFQGlrgEV4oz2GwJi0nKtC
-    ```
+$2y$10$OAZK6znqAvV2fXS1BbYoVet3pC9dStWVFQGlrgEV4oz2GwJi0nKtC
+```
 
 1.  复制这个并将一个新记录插入到数据库客户端中，并将 ID 列留空。它将自动填充。
 
@@ -776,12 +776,12 @@ ID 是`primary`键，并将设置为自动递增，这意味着每个记录都�
 1.  在方法内部，销毁会话`object`，然后重定向到`login`页面：
 
 ```php
-    public function logout()
-    {
-        Session::destroy();
-        Url::redirect('/admin/login');
-    }
-    ```
+public function logout()
+{
+    Session::destroy();
+    Url::redirect('/admin/login');
+}
+```
 
 1.  现在，返回应用程序并点击右上角的`logout`。您将被注销并带回`login`页面。
 
@@ -790,14 +790,14 @@ ID 是`primary`键，并将设置为自动递增，这意味着每个记录都�
 找到以下内容：
 
 ```php
-    'default_controller' => 'Home'
-    ```
+'default_controller' => 'Home'
+```
 
 用以下内容替换它：
 
 ```php
-    'default_controller' => Admin,
-    ```
+'default_controller' => Admin,
+```
 
 1.  现在，如果您点击`Admin`（重新加载页面后），您将看到管理员仪表板。
 
@@ -874,38 +874,38 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 1.  在加载名为`reset:`的视图之前，设置一个`errors`数组并设置页面标题。
 
 ```php
-    public function reset()
-    {
-        if (Session::get('logged_in')) {
-            Url::redirect('/admin');
-        }
-
-        $errors = [];
-
-        $title = 'Reset Account';
-
-        $this->view->render('admin/auth/reset', compact('title', 'errors'));
+public function reset()
+{
+    if (Session::get('logged_in')) {
+        Url::redirect('/admin');
     }
-    ```
+
+    $errors = [];
+
+    $title = 'Reset Account';
+
+    $this->view->render('admin/auth/reset', compact('title', 'errors'));
+}
+```
 
 1.  现在，在`app/views/admin/auth`中创建一个名为`reset.php`的视图并输入：
 
 ```php
-    <?php include(APPDIR.'views/layouts/header.php');?>
+<?php include(APPDIR.'views/layouts/header.php');?>
 
-    <div class="wrapper well">
+<div class="wrapper well">
 
-        <?php include(APPDIR.'views/layouts/errors.php');?>
+    <?php include(APPDIR.'views/layouts/errors.php');?>
 
-        <h1>Reset Account</h1>
+    <h1>Reset Account</h1>
 
-        <form method="post">
-    …
-    …
-        </div>
+    <form method="post">
+…
+…
+    </div>
 
-    <?php include(APPDIR.'views/layouts/footer.php');?>
-    ```
+<?php include(APPDIR.'views/layouts/footer.php');?>
+```
 
 ### 注意
 
@@ -916,23 +916,23 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 1.  首先，检查表单是否已使用`isset`提交，并传递提交按钮名称：
 
 ```php
-    if (isset($_POST['submit'])) {
-    ```
+if (isset($_POST['submit'])) {
+```
 
 1.  接下来，确保电子邮件地址已`isset`，否则默认为`null`。检查电子邮件地址是否处于正确的格式中：
 
 ```php
-    $email = (isset($_POST['email']) ? $_POST['email'] : null);
+$email = (isset($_POST['email']) ? $_POST['email'] : null);
 
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 
-        $errors[] = 'Please enter a valid email address';
-    } else {
-        if ($email != $this->user->get_user_email($email)){
-            $errors[] = 'Email address not found';
-        }
+    $errors[] = 'Please enter a valid email address';
+} else {
+    if ($email != $this->user->get_user_email($email)){
+        $errors[] = 'Email address not found';
     }
-    ```
+}
+```
 
 1.  最后，检查电子邮件地址是否属于现有用户。为此，在用户模型中创建一个名为`get_user_email($email)`的新方法：
 
@@ -941,18 +941,18 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 如果存在，这将返回电子邮件地址，否则将返回`null`。
 
 ```php
-    public function get_user_email($email)
-    {
-        $data = $this->db->select('email from users where email = :email', [':email' => $email]);
-        return (isset($data[0]->email) ? $data[0]->email : null);
-    }
-    ```
+public function get_user_email($email)
+{
+    $data = $this->db->select('email from users where email = :email', [':email' => $email]);
+    return (isset($data[0]->email) ? $data[0]->email : null);
+}
+```
 
 在前面的控制器中，我们有：
 
 ```php
-    if ($email != $this->user->get_user_email($email)){
-    ```
+if ($email != $this->user->get_user_email($email)){
+```
 
 ### 注意
 
@@ -961,8 +961,8 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 1.  在验证检查之后，没有错误：
 
 ```php
-    if (count($errors) == 0) {
-    ```
+if (count($errors) == 0) {
+```
 
 1.  保存文件；到目前为止，该方法看起来像这样：
 
@@ -971,13 +971,13 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 有关完整的代码片段，请参阅代码文件夹中的`Lesson 7.php`文件。
 
 ```php
-    public function reset()
-    {
-    …….
+public function reset()
+{
+…….
 
-        $this->view->render('admin/auth/reset', compact('title', 'errors'));
-    }
-    ```
+    $this->view->render('admin/auth/reset', compact('title', 'errors'));
+}
+```
 
 此时，除其他事项外，需要发送电子邮件。
 
@@ -988,36 +988,36 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 1.  打开`composer.json`和`phpmailer`在要求列表中：
 
 ```php
-    {
-        "autoload": {
-            "psr-4": {
-                "App\\" : "app/",
-                "System\\" : "system/"
-            }
-        },
-        "require": {
-            "filp/whoops": "².1",
-            "phpmailer/phpmailer": "~6.0"
+{
+    "autoload": {
+        "psr-4": {
+            "App\\" : "app/",
+            "System\\" : "system/"
         }
+    },
+    "require": {
+        "filp/whoops": "².1",
+        "phpmailer/phpmailer": "~6.0"
     }
-    ```
+}
+```
 
 1.  保存文件并在终端中键入`composer update`。这将拉取`phpmailer`，使其可用于我们的应用程序。
 
 1.  在`Admin`控制器的顶部，导入`phpmailer`：
 
 ```php
-    use PHPMailer\PHPMailer\PHPMailer;
-    use PHPMailer\PHPMailer\Exception;
-    ```
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+```
 
 1.  接下来，转到以下`if`语句内的`reset`方法。这是我们将恢复的地方：
 
 ```php
-    if (count($errors) == 0) {
+if (count($errors) == 0) {
 
-    }
-    ```
+}
+```
 
 1.  现在，我们需要生成一个随机令牌。为此，使用`md5`，`uniqid`和`rand`来生成一个随机令牌。
 
@@ -1026,22 +1026,22 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 这将在数据库中存储`$token`与用户记录：
 
 ```php
-    $token = md5(uniqid(rand(),true));
-    $data  = ['reset_token' => $token];
-    $where = ['email' => $email];
-    $this->user->update($data, $where);
-    ```
+$token = md5(uniqid(rand(),true));
+$data  = ['reset_token' => $token];
+$where = ['email' => $email];
+$this->user->update($data, $where);
+```
 
 1.  现在，我们通过创建`phpmailer`的新实例来设置要发送的电子邮件，然后设置电子邮件的发送者。根据需要更改这一点。
 
 1.  传递`$email`地址，这将被发送到，并通过将 true 传递给 isHTML()来设置 HTML 模式：
 
 ```php
-    $mail = new PHPMailer(true);
-    $mail->setFrom('noreply@domain.com');
-    $mail->addAddress($email);
-    $mail->isHTML(true);
-    ```
+$mail = new PHPMailer(true);
+$mail->setFrom('noreply@domain.com');
+$mail->addAddress($email);
+$mail->isHTML(true);
+```
 
 1.  设置主题和电子邮件正文。我们提供两种正文：HTML 和纯文本。纯文本用于用户的电子邮件客户端无法呈现 HTML 的情况。
 
@@ -1052,24 +1052,24 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 重要的是要记住`http://localhost:8000`的 URL 只适用于您的计算机。
 
 ```php
-    $mail->Subject = 'Reset you account';
-    $mail->Body    = "<p>To change your password please click <a 
-    href='http://localhost:8000/admin/change_password/$token'>this link</a></p>";
-    $mail->AltBody = "To change your password please go to this address: http://localhost:8000/admin/change_password/$token";
-    ```
+$mail->Subject = 'Reset you account';
+$mail->Body    = "<p>To change your password please click <a 
+href='http://localhost:8000/admin/change_password/$token'>this link</a></p>";
+$mail->AltBody = "To change your password please go to this address: http://localhost:8000/admin/change_password/$token";
+```
 
 1.  现在，一切都设置好了。发送电子邮件：
 
 ```php
-    $mail->send();
-    ```
+$mail->send();
+```
 
 1.  创建一个会话来通知用户并重定向管理员/重置：
 
 ```php
-    Session::set('success', "Email sent to ".htmlentities($email));
-    Url::redirect('/admin/reset');
-    ```
+Session::set('success', "Email sent to ".htmlentities($email));
+Url::redirect('/admin/reset');
+```
 
 完成的方法看起来像这样：
 
@@ -1078,17 +1078,17 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 有关完整的代码片段，请参考代码文件夹中的`Lesson 7.php`文件。
 
 ```php
-    public function reset()
-    {
-        if (Session::get('logged_in')) {
-            Url::redirect('/admin');
-        }
-    …….
-        $title = 'Reset Account';
-
-        $this->view->render('admin/auth/reset', compact('title', 'errors'));
+public function reset()
+{
+    if (Session::get('logged_in')) {
+        Url::redirect('/admin');
     }
-    ```
+…….
+    $title = 'Reset Account';
+
+    $this->view->render('admin/auth/reset', compact('title', 'errors'));
+}
+```
 
 1.  当用户点击电子邮件中的链接时，我们需要处理请求。为此，创建另一个名为`change_password`的方法，接受一个名为`$token`的参数：
 
@@ -1099,11 +1099,11 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 有关完整的代码片段，请参考代码文件夹中的`Lesson 7.php`文件。
 
 ```php
-    $user = $this->user->get_user_reset_token($token);
-    if ($user == null) {
-           $errors[] = 'user not found.';
-    }
-    ```
+$user = $this->user->get_user_reset_token($token);
+if ($user == null) {
+       $errors[] = 'user not found.';
+}
+```
 
 该方法看起来像这样：
 
@@ -1112,11 +1112,11 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 有关完整的代码片段，请参考代码文件夹中的`Lesson 7.php`文件。
 
 ```php
-    $title = 'Change Password';
+$title = 'Change Password';
 
-        $this->view->render('admin/auth/change_password', compact('title', 'token', 'errors'));
-    }
-    ```
+    $this->view->render('admin/auth/change_password', compact('title', 'token', 'errors'));
+}
+```
 
 ### 注意
 
@@ -1129,13 +1129,13 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 有关完整的代码片段，请参考代码文件夹中的`Lesson 7.php`文件。
 
 ```php
-    <?php include(APPDIR.'views/layouts/header.php');?>
+<?php include(APPDIR.'views/layouts/header.php');?>
 
-    ……
-        </div>
+……
+    </div>
 
-    <?php include(APPDIR.'views/layouts/footer.php');?>
-    ```
+<?php include(APPDIR.'views/layouts/footer.php');?>
+```
 
 ### 注意
 
@@ -1154,14 +1154,14 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 有关完整的代码片段，请参考代码文件夹中的`Lesson 7.php`文件。
 
 ```php
-    if (isset($_POST['submit'])) {
+if (isset($_POST['submit'])) {
 
-        $token = htmlspecialchars($_POST['token']);
-    ……..
-        }
-
+    $token = htmlspecialchars($_POST['token']);
+……..
     }
-    ```
+
+}
+```
 
 1.  更新后，记录用户并将其重定向到管理员仪表板。
 
@@ -1172,15 +1172,15 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 有关完整的代码片段，请参考代码文件夹中的`Lesson 7.php`文件。
 
 ```php
-    public function change_password($token)
-    {
-    …….
+public function change_password($token)
+{
+…….
 
-        $title = 'Change Password';
+    $title = 'Change Password';
 
-        $this->view->render('admin/auth/change_password', compact('title', 'token', 'errors'));
-    }
-    ```
+    $this->view->render('admin/auth/change_password', compact('title', 'token', 'errors'));
+}
+```
 
 这结束了认证部分。现在我们可以登录、登出，并在忘记密码时重置密码。
 
@@ -1259,71 +1259,71 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 有关完整的代码片段，请参考代码文件夹中的`Lesson 7.php`文件。
 
 ```php
-    get_users() – returns all users ordered by username
-        $data = $this->db->select('username from users where username = :username', [':username' => $username]);
-        return (isset($data[0]->username) ? $data[0]->username : null);
-    }
-    ```
+get_users() – returns all users ordered by username
+    $data = $this->db->select('username from users where username = :username', [':username' => $username]);
+    return (isset($data[0]->username) ? $data[0]->username : null);
+}
+```
 
 1.  现在，在`app/Controllers`中创建一个`Users`控制器。创建`Users.php.`
 
 1.  设置命名空间并导入帮助程序和`User`模型：
 
 ```php
-    use System\BaseController;
-    use App\Helpers\Session;
-    use App\Helpers\Url;
-    use App\Models\User;
-    class Users extends BaseController
-    {
-    ```
+use System\BaseController;
+use App\Helpers\Session;
+use App\Helpers\Url;
+use App\Models\User;
+class Users extends BaseController
+{
+```
 
 1.  接下来，创建一个名为`$user`的类属性和一个`__construct`方法。然后，检查用户是否已登录，如果没有，将其重定向到登录页面。
 
 1.  创建一个新的用户实例：
 
 ```php
-    $this->user = new User()
-    ```
+$this->user = new User()
+```
 
 ### 注意
 
 在构造函数中进行这个检查意味着这个类的所有方法都将受到未经授权用户的保护。
 
 ```php
-    protected $user;
+protected $user;
 
-    public function __construct()
-    {
-        parent::__construct();
+public function __construct()
+{
+    parent::__construct();
 
-        if (! Session::get('logged_in')) {
-            Url::redirect('/admin/login');
-        }
-
-        $this->user = new User();
+    if (! Session::get('logged_in')) {
+        Url::redirect('/admin/login');
     }
-    ```
+
+    $this->user = new User();
+}
+```
 
 1.  接下来，创建一个`index`方法。这将调用`get_users()`并加载一个视图并传入用户对象：
 
 ```php
-    public function index()
-    {
-        $users = $this->user->get_users();
-        $title = 'Users';
+public function index()
+{
+    $users = $this->user->get_users();
+    $title = 'Users';
 
-        $this->view->render('admin/users/index', compact('users', 'title'));
-    }
-    ```
+    $this->view->render('admin/users/index', compact('users', 'title'));
+}
+```
 
 1.  为了视图，创建`app/views/admin/users/index.php.`
 
 1.  包括布局文件并创建一个表格来显示用户列表：
 
 ```php
-    foreach($users as $user)
-    ```
+foreach($users as $user)
+```
 
 1.  循环遍历所有用户记录。作为安全措施，当从数据库中打印数据时，我们将使用`htmlentities()`。这将把所有标签转换为它们的 HTML 对应项，这意味着如果任何代码被注入到数据库中，它将简单地被打印为文本，使其无用。
 
@@ -1332,29 +1332,29 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 有关完整的代码片段，请参考代码文件夹中的`Lesson 7.php`文件。
 
 ```php
-    <?php
-    include(APPDIR.'views/layouts/header.php');
-    include(APPDIR.'views/layouts/nav.php');
-    ……
-        </table>
-    </div>
+<?php
+include(APPDIR.'views/layouts/header.php');
+include(APPDIR.'views/layouts/nav.php');
+……
+    </table>
+</div>
 
-    <?php include(APPDIR.'views/layouts/footer.php');?>
-    ```
+<?php include(APPDIR.'views/layouts/footer.php');?>
+```
 
 1.  在循环内部，我们有两个用于编辑和删除的操作链接。请注意，用户的 ID 被传递到`href`值的末尾。这是为了将 ID 传递到 URL 中。
 
 1.  此外，我们有一个指向`/users/add`的`添加用户`按钮。让我们创建这个。在你的`Users`控制器中，创建一个名为`add()`的新方法：
 
 ```php
-    public function add()
-        {
-            $errors = [];
+public function add()
+    {
+        $errors = [];
 
-            $title = 'Add User';
-            $this->view->render('admin/users/add', compact('errors', 'title'));
-        }
-    ```
+        $title = 'Add User';
+        $this->view->render('admin/users/add', compact('errors', 'title'));
+    }
+```
 
 1.  现在，在`app/views/admin/users`中创建一个名为`add.php`的视图。
 
@@ -1371,8 +1371,8 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 1.  要在用户名和电子邮件上实现粘性表单，使用三元运算符：
 
 ```php
-    (isset($_POST['username']) ? $_POST['username'] : '')
-    ```
+(isset($_POST['username']) ? $_POST['username'] : '')
+```
 
 这表示如果`$_POST['username']`已设置，则打印它，否则打印空字符串：
 
@@ -1381,76 +1381,76 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 有关完整的代码片段，请参考代码文件夹中的`Lesson 7.php`文件。
 
 ```php
-    <?php
-    include(APPDIR.'views/layouts/header.php');
-    include(APPDIR.'views/layouts/nav.php');
-    include(APPDIR.'views/layouts/errors.php');
-    ……..
-    </form>
+<?php
+include(APPDIR.'views/layouts/header.php');
+include(APPDIR.'views/layouts/nav.php');
+include(APPDIR.'views/layouts/errors.php');
+……..
+</form>
 
-    <?php include(APPDIR.'views/layouts/footer.php');?>
-    ```
+<?php include(APPDIR.'views/layouts/footer.php');?>
+```
 
 1.  提交后，表单数据将被发布到`/users/add`。这需要在`Users`控制器的`add`方法中处理。
 
 1.  检查表单提交：
 
 ```php
-    if (isset($_POST['submit'])) {
-    ```
+if (isset($_POST['submit'])) {
+```
 
 1.  接下来，收集表单数据：
 
 ```php
-    $username            = (isset($_POST['username']) ? $_POST['username'] : null);
-    $email                    = (isset($_POST['email']) ? $_POST['email'] : null);
-    $password            = (isset($_POST['password']) ? $_POST['password'] : null);
-    $password_confirm    = (isset($_POST['password_confirm']) ? $_POST['password_confirm'] : null);
-    ```
+$username            = (isset($_POST['username']) ? $_POST['username'] : null);
+$email                    = (isset($_POST['email']) ? $_POST['email'] : null);
+$password            = (isset($_POST['password']) ? $_POST['password'] : null);
+$password_confirm    = (isset($_POST['password_confirm']) ? $_POST['password_confirm'] : null);
+```
 
 1.  然后，开始验证过程。
 
 1.  检查`username`的长度是否超过 3 个字符：
 
 ```php
-    if (strlen($username) < 3) {
-        $errors[] = 'Username is too short';
-    }
-    ```
+if (strlen($username) < 3) {
+    $errors[] = 'Username is too short';
+}
+```
 
 1.  接下来，通过将`$username`传递给 Model 上的`get_user_username($username)`方法来检查`$username`是否已经存在于数据库中。如果结果与`$username`相同，则它已经存在，因此创建一个错误：
 
 ```php
-    else {
-        if ($username == $this->user->get_user_username($username)){
-            $errors[] = 'Username address is already in use';
-        }
+else {
+    if ($username == $this->user->get_user_username($username)){
+        $errors[] = 'Username address is already in use';
     }
-    ```
+}
+```
 
 1.  对于电子邮件验证，请使用`filter_var`和`FILTER_VALIDATE_EMAIL`检查电子邮件格式是否有效。如果这不返回 true，则创建一个错误。
 
 1.  就像`username`一样，检查`$email`是否已经存在于数据库中：
 
 ```php
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $errors[] = 'Please enter a valid email address';
-    } else {
-        if ($email == $this->user->get_user_email($email)){
-            $errors[] = 'Email address is already in use';
-        }
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    $errors[] = 'Please enter a valid email address';
+} else {
+    if ($email == $this->user->get_user_email($email)){
+        $errors[] = 'Email address is already in use';
     }
-    ```
+}
+```
 
 1.  对于密码，检查`$password`是否与`$password_confirm`匹配或创建错误。否则，检查密码的长度是否超过 3 个字符：
 
 ```php
-    if ($password != $password_confirm) {
-        $errors[] = 'Passwords do not match';
-    } elseif (strlen($password) < 3) {
-        $errors[] = 'Password is too short';
-    }
-    ```
+if ($password != $password_confirm) {
+    $errors[] = 'Passwords do not match';
+} elseif (strlen($password) < 3) {
+    $errors[] = 'Password is too short';
+}
+```
 
 1.  如果没有错误，继续并设置一个包含要插入数据库的数据的`$data`数组。
 
@@ -1461,21 +1461,21 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 1.  通过调用`$this->insert($data)`创建用户并在重定向回/users 之前设置消息：
 
 ```php
-    if (count($errors) == 0) {
+if (count($errors) == 0) {
 
-        $data = [
-            'username' => $username,
-            'email' => $email,
-            'password' => password_hash($password, PASSWORD_BCRYPT)
-        ];
+    $data = [
+        'username' => $username,
+        'email' => $email,
+        'password' => password_hash($password, PASSWORD_BCRYPT)
+    ];
 
-        $this->user->insert($data);
+    $this->user->insert($data);
 
-        Session::set('success', 'User created');
-        Url::redirect('/users');
+    Session::set('success', 'User created');
+    Url::redirect('/users');
 
-    }
-    ```
+}
+```
 
 完整的方法如下所示：
 
@@ -1484,14 +1484,14 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 有关完整的代码片段，请参考代码文件夹中的`Lesson 7.php`文件。
 
 ```php
-    public function add()
-        {
-            $errors = [];
-    …….
-            $title = 'Add User';
-            $this->view->render('admin/users/add', compact('errors', 'title'));
-        }
-    ```
+public function add()
+    {
+        $errors = [];
+…….
+        $title = 'Add User';
+        $this->view->render('admin/users/add', compact('errors', 'title'));
+    }
+```
 
 1.  要编辑用户，URL 结构是`/users/edit/1`。末尾的数字是用户的 ID。
 
@@ -1504,22 +1504,22 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 1.  如果`$user`等于`null`，则重定向到`404`页面。否则，设置一个`$errors`数组，`$title`，并加载视图，将用户、错误和标题传递给`compact()`：
 
 ```php
-    public function edit($id)
-    {
-        if (! is_numeric($id)) {
-     Url::redirect('/users');
-        }
-        $user = $this->user->get_user($id);
-        if ($user == null) {
-            Url::redirect('/404');
-        }
-
-        $errors = [];
-
-        $title = 'Edit User';
-        $this->view->render('admin/users/edit', compact('user', 'errors', 'title'));
+public function edit($id)
+{
+    if (! is_numeric($id)) {
+ Url::redirect('/users');
     }
-    ```
+    $user = $this->user->get_user($id);
+    if ($user == null) {
+        Url::redirect('/404');
+    }
+
+    $errors = [];
+
+    $title = 'Edit User';
+    $this->view->render('admin/users/edit', compact('user', 'errors', 'title'));
+}
+```
 
 1.  现在，在`app/views/admin/users`中创建一个名为`edit.php`的视图：
 
@@ -1536,15 +1536,15 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 有关完整的代码片段，请参考代码文件夹中的`Lesson 7.php`文件。
 
 ```php
-    <?php
-    include(APPDIR.'views/layouts/header.php');
-    include(APPDIR.'views/layouts/nav.php');
-    include(APPDIR.'views/layouts/errors.php');
-    ……
-    </form>
+<?php
+include(APPDIR.'views/layouts/header.php');
+include(APPDIR.'views/layouts/nav.php');
+include(APPDIR.'views/layouts/errors.php');
+……
+</form>
 
-    <?php include(APPDIR.'views/layouts/footer.php');?>
-    ```
+<?php include(APPDIR.'views/layouts/footer.php');?>
+```
 
 ### 注意
 
@@ -1559,48 +1559,48 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 有关完整的代码片段，请参考代码文件夹中的`Lesson 7.php`文件。
 
 ```php
-    if (isset($_POST['submit'])) {
-        $username            = (isset($_POST['username']) ? $_POST['username'] : null);
-    ……
-                $errors[] = 'Password is too short';
-            }
+if (isset($_POST['submit'])) {
+    $username            = (isset($_POST['username']) ? $_POST['username'] : null);
+……
+            $errors[] = 'Password is too short';
         }
-    ```
+    }
+```
 
 1.  接下来，检查是否有错误：
 
 ```php
-    if (count($errors) == 0) {
-    ```
+if (count($errors) == 0) {
+```
 
 1.  将`$data`数组设置为更新用户记录。这次，只提供了用户名和电子邮件：
 
 ```php
-    $data = [
-        'username' => $username,
-        'email' => $email
-    ];
-    ```
+$data = [
+    'username' => $username,
+    'email' => $email
+];
+```
 
 1.  如果密码已更新，则将密码添加到`$data`数组中：
 
 ```php
-    if ($password != null) {
-        $data['password'] = password_hash($password, PASSWORD_BCRYPT);
-    }
-    ```
+if ($password != null) {
+    $data['password'] = password_hash($password, PASSWORD_BCRYPT);
+}
+```
 
 1.  `where`语句表示 ID 与`$id`匹配。运行`update()`并设置消息并重定向到用户页面：
 
 ```php
-    $where = ['id' => $id];
+$where = ['id' => $id];
 
-    $this->user->update($data, $where);
+$this->user->update($data, $where);
 
-    Session::set('success', 'User updated');
+Session::set('success', 'User updated');
 
-    Url::redirect('/users');
-    ```
+Url::redirect('/users');
+```
 
 完整的`update`方法如下：
 
@@ -1609,15 +1609,15 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 有关完整的代码片段，请参考代码文件夹中的`Lesson 7.php`文件。
 
 ```php
-    public function edit($id)
-    {
-        if (! is_numeric($id)) {
-    ……
-        }
-        $title = 'Edit User';
-        $this->view->render('admin/users/edit', compact('user', 'errors', 'title'));
+public function edit($id)
+{
+    if (! is_numeric($id)) {
+……
     }
-    ```
+    $title = 'Edit User';
+    $this->view->render('admin/users/edit', compact('user', 'errors', 'title'));
+}
+```
 
 1.  完成用户控制器的最后一步是添加删除用户的功能。
 
@@ -1634,30 +1634,30 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 1.  最后，设置消息并重定向回`/users`：
 
 ```php
-    public function delete($id)
-        {
-            if (! is_numeric($id)) {
-                Url::redirect('/users');
-            }
-            if (Session::get('user_id') == $id) {
-                die('You cannot delete yourself.');
-            }
-            $user = $this->user->get_user($id);
-            if ($user == null) {
-                Url::redirect('/404');
-            }
-            $where = ['id' => $user->id];
-            $this->user->delete($where);
-            Session::set('success', 'User deleted');
+public function delete($id)
+    {
+        if (! is_numeric($id)) {
             Url::redirect('/users');
         }
-    ```
+        if (Session::get('user_id') == $id) {
+            die('You cannot delete yourself.');
+        }
+        $user = $this->user->get_user($id);
+        if ($user == null) {
+            Url::redirect('/404');
+        }
+        $where = ['id' => $user->id];
+        $this->user->delete($where);
+        Session::set('success', 'User deleted');
+        Url::redirect('/users');
+    }
+```
 
 1.  现在运行应用程序：
 
 ```php
-    php –S localhost:8000 –t webroot
-    ```
+php –S localhost:8000 –t webroot
+```
 
 1.  转到`http://localhost:8000/users`，点击`Add User`，然后填写表单。
 
@@ -1676,28 +1676,28 @@ PHP Mailer 检查格式是否正确。在电子邮件的情况下，这将期望
 1.  打开`app/views/admin/users/index.php`，并在`footer.php`代码块之前放置此 JavaScript：
 
 ```php
-    <script language="JavaScript" type="text/javascript">
-    function del(id, title) {
-        if (confirm("Are you sure you want to delete '" + title + "'?")) {
-            window.location.href = '/users/delete/' + id;
-        }
+<script language="JavaScript" type="text/javascript">
+function del(id, title) {
+    if (confirm("Are you sure you want to delete '" + title + "'?")) {
+        window.location.href = '/users/delete/' + id;
     }
-    </script>
-    ```
+}
+</script>
+```
 
 1.  这定义了一个 JavaScript 函数，它接受一个 ID 和一个`username`。当`confirm()`通过`window.location.href`时，它将运行，将页面重定向到删除 URL，然后将 ID `var`传递到 URL 的末尾。
 
 1.  在您看到删除链接的循环中：
 
 ```php
-    <a href="/users/delete/<?=$row->id;?>" class="btn btn-xs btn-danger">Delete</a>
-    ```
+<a href="/users/delete/<?=$row->id;?>" class="btn btn-xs btn-danger">Delete</a>
+```
 
 替换为：
 
 ```php
-    <a href="javascript:del('<?=$row->id;?>','<?=$row->username;?>')" class="btn btn-xs btn-danger">Delete</a>
-    ```
+<a href="javascript:del('<?=$row->id;?>','<?=$row->username;?>')" class="btn btn-xs btn-danger">Delete</a>
+```
 
 这调用`javascript:del()`，触发确认弹出窗口并传递用户的`ID`和`username`。
 

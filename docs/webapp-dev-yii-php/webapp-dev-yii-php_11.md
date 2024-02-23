@@ -330,36 +330,36 @@ public $layout='//layouts/column2';
 1.  由于我们正在扩展`TrackstarActiveRecord`，我们可以从自动生成的 sys-messages 创建表单中删除不必要的字段，并从模型类中删除它们的相关规则。例如，从`modules/admin/views/sysMessage/_form.php`中删除以下表单字段：
 
 ```php
-    <div class="row">
-        <?php echo $form->labelEx($model,'create_time'); ?>
-        <?php echo $form->textField($model,'create_time'); ?>
-        <?php echo $form->error($model,'create_time'); ?>
-      </div>
+<div class="row">
+    <?php echo $form->labelEx($model,'create_time'); ?>
+    <?php echo $form->textField($model,'create_time'); ?>
+    <?php echo $form->error($model,'create_time'); ?>
+  </div>
 
-      <div class="row">
-        <?php echo $form->labelEx($model,'create_user_id'); ?>
-        <?php echo $form->textField($model,'create_user_id'); ?>
-        <?php echo $form->error($model,'create_user_id'); ?>
-      </div>
+  <div class="row">
+    <?php echo $form->labelEx($model,'create_user_id'); ?>
+    <?php echo $form->textField($model,'create_user_id'); ?>
+    <?php echo $form->error($model,'create_user_id'); ?>
+  </div>
 
-      <div class="row">
-        <?php echo $form->labelEx($model,'update_time'); ?>
-        <?php echo $form->textField($model,'update_time'); ?>
-        <?php echo $form->error($model,'update_time'); ?>
-      </div>
+  <div class="row">
+    <?php echo $form->labelEx($model,'update_time'); ?>
+    <?php echo $form->textField($model,'update_time'); ?>
+    <?php echo $form->error($model,'update_time'); ?>
+  </div>
 
-      <div class="row">
-        <?php echo $form->labelEx($model,'update_user_id'); ?>
-        <?php echo $form->textField($model,'update_user_id'); ?>
-        <?php echo $form->error($model,'update_user_id'); ?>
-      </div> 
-    ```
+  <div class="row">
+    <?php echo $form->labelEx($model,'update_user_id'); ?>
+    <?php echo $form->textField($model,'update_user_id'); ?>
+    <?php echo $form->error($model,'update_user_id'); ?>
+  </div> 
+```
 
 1.  然后从`SysMessage::rules()`方法中更改这两条规则：
 
 ```php
-    array('create_user, update_user', 'numerical', 'integerOnly'=>true), and array('create_time, update_time', 'safe'),
-    ```
+array('create_user, update_user', 'numerical', 'integerOnly'=>true), and array('create_time, update_time', 'safe'),
+```
 
 重要的是只为用户可以输入的那些字段指定规则。对于已定义规则的字段，可以从`POST`或`GET`请求中以批量方式设置，并且保留不希望用户访问的字段的规则可能会导致安全问题。
 

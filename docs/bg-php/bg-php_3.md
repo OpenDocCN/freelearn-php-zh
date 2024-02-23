@@ -112,46 +112,46 @@ echo addNumbers(5,6);
 1.  在新文件中，创建您的打开和关闭 php 标记：
 
 ```php
-    <?php
-    ?>
-    ```
+<?php
+?>
+```
 
 1.  现在，我们将创建两个新变量：`$sweaterPrice`和`$precentOff`。它们将存储产品的原始价格以及折扣百分比。
 
 ```php
-    <?php
-    $sweaterPrice = 50;
-    $percentOff = 0.25;
-    ?>
-    ```
+<?php
+$sweaterPrice = 50;
+$percentOff = 0.25;
+?>
+```
 
 1.  现在我们有了变量，我们可以定义我们的函数。我们的函数很简单；它接受一个价格和折扣百分比。在函数内部，我们将价格乘以折扣百分比并返回乘积。
 
 ```php
-    <?php
-       $sweaterPrice = 50;
-        $percentOff = 0.25;
+<?php
+   $sweaterPrice = 50;
+    $percentOff = 0.25;
 
-        function couponCode($price, $discount){
-            return $price * $discount;
-        }
-    ?>
-    ```
+    function couponCode($price, $discount){
+        return $price * $discount;
+    }
+?>
+```
 
 1.  最后，我们可以继续向我们的用户打印关于折扣的消息，使用我们新创建的函数：
 
 ```php
-    <?php
+<?php
 
-        $sweaterPrice = 50;
-        $percentOff = 0.25;
+    $sweaterPrice = 50;
+    $percentOff = 0.25;
 
-        function couponCode($price, $discount){
-            return $price * $discount;
-        }
-        echo "The sweater originally costs $" . $sweaterPrice . " with the discount you'll pay $" . ($sweaterPrice - couponCode($sweaterPrice, $percentOff)) . "\n";
-    ?>
-    ```
+    function couponCode($price, $discount){
+        return $price * $discount;
+    }
+    echo "The sweater originally costs $" . $sweaterPrice . " with the discount you'll pay $" . ($sweaterPrice - couponCode($sweaterPrice, $percentOff)) . "\n";
+?>
+```
 
 现在您已经了解了函数，应该可以轻松地开发可重用的代码并应用它们。在下一节中，我们将学习有关类的知识。类将使我们更好地理解如何将代码和属性结构化为一个整洁的包。
 
@@ -426,10 +426,10 @@ public function speak(){
 1.  在新文件中，创建您的`php`标签：
 
 ```php
-    <?php
+<?php
 
-    ?>
-    ```
+?>
+```
 
 1.  接下来，定义一个基本的员工类：
 
@@ -438,34 +438,34 @@ public function speak(){
 有关完整的代码片段，请参考代码文件夹中的`Lesson 3.php`文件。
 
 ```php
-    <?php
+<?php
 
-        class BaseEmployee {
-            private $name;
-            private $title;
-            private $salary;
+    class BaseEmployee {
+        private $name;
+        private $title;
+        private $salary;
 
-            function __construct($name, $title, $salary){
-                $this->name = $name;
-                $this->title = $title;
-                $this->salary = $salary;
-     }
+        function __construct($name, $title, $salary){
+            $this->name = $name;
+            $this->title = $title;
+            $this->salary = $salary;
+ }
 
-            public function setName($name){
-                $this->name = $name;
-    ......
-            }
-            public function getTitle(){
-                return $this->title;
-            }
-
-            public function getSalary(){
-                return $this->salary;
-            }
+        public function setName($name){
+            $this->name = $name;
+......
+        }
+        public function getTitle(){
+            return $this->title;
         }
 
-    ?>
-    ```
+        public function getSalary(){
+            return $this->salary;
+        }
+    }
+
+?>
+```
 
 1.  从这个基类中，我们可以继续创建一个扩展基类的`employee`类。在这个扩展类中，我们将添加一个额外的函数，用于计算员工的月工资：
 
@@ -474,27 +474,27 @@ public function speak(){
 有关完整的代码片段，请参考代码文件夹中的`Lesson 3.php`文件。
 
 ```php
-    <?php
-        class BaseEmployee {
-            private $name;
-            private $title;
-            private $salary;
+<?php
+    class BaseEmployee {
+        private $name;
+        private $title;
+        private $salary;
 
-            function __construct($name, $title, $salary){
-    ...
+        function __construct($name, $title, $salary){
+...
 
-            public function getSalary(){
-            return $this->salary;
-            }
+        public function getSalary(){
+        return $this->salary;
         }
+    }
 
-        class Employee extends BaseEmployee{
-            public function calculateMonthlyPay(){
-                return $this->salary / 12;
-            }
+    class Employee extends BaseEmployee{
+        public function calculateMonthlyPay(){
+            return $this->salary / 12;
         }
-    ?>
-    ```
+    }
+?>
+```
 
 1.  最后，我们将使用新类来打印月工资：
 
@@ -503,25 +503,25 @@ public function speak(){
 有关完整的代码片段，请参考代码文件夹中的`Lesson 3.php`文件。
 
 ```php
-    <?php
+<?php
 
-        class BaseEmployee {
-            private $name;
-            private $title;
-            private $salary;
-    ......
-        class Employee extends BaseEmployee{
-            public function calculateMonthlyPay(){
-                return $this->salary / 12;
-            }
+    class BaseEmployee {
+        private $name;
+        private $title;
+        private $salary;
+......
+    class Employee extends BaseEmployee{
+        public function calculateMonthlyPay(){
+            return $this->salary / 12;
         }
+    }
 
-        $markus = new Employee("Markus Gray", "CEO", 100000);
+    $markus = new Employee("Markus Gray", "CEO", 100000);
 
-        echo "Monthly Pay is " . $markus->calculateMonthlyPay();
+    echo "Monthly Pay is " . $markus->calculateMonthlyPay();
 
-    ?>
-    ```
+?>
+```
 
 # 摘要
 

@@ -333,30 +333,30 @@ for($i=0; $i < 10; $i++) {
 1.  首先，在您的`composer.json`文件中包含 Elasticsearch：
 
 ```php
-          { 
-          "require":{ 
-          "elasticsearch/elasticsearch":"~2.0" 
-          } 
-          } 
+      { 
+      "require":{ 
+      "elasticsearch/elasticsearch":"~2.0" 
+      } 
+      } 
 
-    ```
+```
 
 1.  获取 composer：
 
 ```php
-          curl-s http://getcomposer.org/installer | php 
-          phpcomposer.phar install --no-dev 
+      curl-s http://getcomposer.org/installer | php 
+      phpcomposer.phar install --no-dev 
 
-    ```
+```
 
 1.  通过将其包含在项目中来实例化一个新的客户端：
 
 ```php
-          require'vendor/autoload.php'; 
+      require'vendor/autoload.php'; 
 
-          $client =Elasticsearch\ClientBuilder::create()->build(); 
+      $client =Elasticsearch\ClientBuilder::create()->build(); 
 
-    ```
+```
 
 现在让我们尝试索引一个文档。为此，让我们创建一个使用 PHP 客户端的 PHP 文件，如下所示：
 

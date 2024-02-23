@@ -25,25 +25,25 @@ Composer 是一个命令行工具，可以在操作系统中全局安装，或�
 1.  发出以下命令以下载 Composer 安装程序。文件名为`installer`，安装后只能通过以下代码使用 PHP 执行：
 
 ```php
-    **Wget https://getcomposer.org/installer**
+**Wget https://getcomposer.org/installer**
 
-    ```
+```
 
 1.  发出以下命令在 Debian 或 Ubuntu 上全局安装它：
 
 ```php
-    **Php install --install-dir=/usr/local/bin --filename=composer**
+**Php install --install-dir=/usr/local/bin --filename=composer**
 
-    ```
+```
 
 此命令将下载 Composer 并将其安装在`/usr/local/bin`目录中，文件名为`composer`。现在，我们将能够全局运行 Composer。
 
 1.  通过在终端中发出以下命令来验证 Composer 安装：
 
 ```php
-    **Composer --version**
+**Composer --version**
 
-    ```
+```
 
 如果显示 Composer 版本，则 Composer 已成功全局安装。
 

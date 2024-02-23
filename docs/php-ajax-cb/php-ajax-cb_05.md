@@ -597,51 +597,51 @@ echo date('Y-m-d H:i:s');
 +   它可以在 Mozilla Firefox、Google Chrome、Safari 甚至支持原生`XMLHttpRequest`对象的 IE7 或更高版本中本地实例化如下：
 
 ```php
-    var xmlHttpObj = new XMLHttpRequest();
+var xmlHttpObj = new XMLHttpRequest();
 
-    ```
+```
 
 +   现在，在 Internet Explorer 6 或 5 中，要使用`XMLHttpRequest`对象，它必须在 JavaScript 中作为 ActiveX 对象创建：
 
 ```php
-    var xmlHttpObj = new ActiveXObject("MSXML2.XMLHTTP.3.0");
+var xmlHttpObj = new ActiveXObject("MSXML2.XMLHTTP.3.0");
 
-    ```
+```
 
 +   但是即使是 ActiveX 对象类在不同的 Windows 平台上也可能不同，所以我们可能还需要使用以下代码：
 
 ```php
-    var xmlHttpObj = new ActiveXObject("Microsoft.XMLHTTP");
+var xmlHttpObj = new ActiveXObject("Microsoft.XMLHTTP");
 
-    ```
+```
 
 +   现在，让我们创建一个 Ajax 函数，它将在跨浏览器平台中返回`XMLHttpRequest`对象：
 
 ```php
-    function getAjaxObj()
-    {
-    var xmlHttpObj = null;
-    // use the ActiveX control for IE5 and IE6
-    try
-    {
-    xmlHttpObj = new ActiveXObject("MSXML2.XMLHTTP.3.0");
-    }
-    catch (e)
-    {
-    try
-    {
-    xmlHttpObj = new ActiveXObject("Microsoft.XMLHTTP");
-    }
-    catch(e)
-    {
-    // for IE7, Mozilla, Safari
-    xmlHttpObj = new XMLHttpRequest();
-    }
-    }
-    return xmlHttpObj;
-    }
+function getAjaxObj()
+{
+var xmlHttpObj = null;
+// use the ActiveX control for IE5 and IE6
+try
+{
+xmlHttpObj = new ActiveXObject("MSXML2.XMLHTTP.3.0");
+}
+catch (e)
+{
+try
+{
+xmlHttpObj = new ActiveXObject("Microsoft.XMLHTTP");
+}
+catch(e)
+{
+// for IE7, Mozilla, Safari
+xmlHttpObj = new XMLHttpRequest();
+}
+}
+return xmlHttpObj;
+}
 
-    ```
+```
 
 +   由于除了 Internet Explorer 之外的浏览器都不支持 ActiveX 对象，因此使用`try`和`catch`块语句创建`XMLHTTPRequest`对象的实例，以便没有 JavaScript 错误，代码可以在跨浏览器中使用。
 

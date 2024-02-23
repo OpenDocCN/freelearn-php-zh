@@ -142,32 +142,32 @@ foreach($results as $item) {
 1.  为了向我们的数据库提供数据，我们可以创建一个简单的 SQL 脚本，就像这样：
 
 ```php
-    INSERT INTO user_profiles ('Chin Wu', 30, 'Mongolia'); 
-    INSERT INTO user_profiles ('Erik Schmidt', 22, 'Germany'); 
-    INSERT INTO user_profiles ('Rashma Naru', 33, 'India'); 
+INSERT INTO user_profiles ('Chin Wu', 30, 'Mongolia'); 
+INSERT INTO user_profiles ('Erik Schmidt', 22, 'Germany'); 
+INSERT INTO user_profiles ('Rashma Naru', 33, 'India'); 
 
-    ```
+```
 
 1.  让我们把它保存在一个名为`insert_profiles.sql`的文件中。在与 SQL 文件相同的目录中，通过以下命令登录 MySQL 客户端：
 
 ```php
-     **mysql -u root -p**
+ **mysql -u root -p**
 
-    ```
+```
 
 1.  然后输入使用<数据库名称>：
 
 ```php
-     **mysql>  use <database>;**
+ **mysql>  use <database>;**
 
-    ```
+```
 
 1.  通过运行 source 命令导入脚本：
 
 ```php
-     **mysql> source insert_profiles.sql**
+ **mysql> source insert_profiles.sql**
 
-    ```
+```
 
 现在我们的用户资料页面应该显示如下：
 

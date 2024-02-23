@@ -183,56 +183,56 @@ UNIQUE KEY 'useremail' ('useremail')
 1.  在`Dao`目录中创建一个名为`BaseDao.php`的新 PHP 文件，并键入以下类：
 
 ```php
-    <?php
-    namespace My\Dao;
-    abstract class BaseDao {
-    private $db = null;
-    const DB_SERVER = "localhost";
-    const DB_USER = "root";
-    const DB_PASSWORD = "root";
-    const DB_NAME = "user";
-    }
-    ?>
+<?php
+namespace My\Dao;
+abstract class BaseDao {
+private $db = null;
+const DB_SERVER = "localhost";
+const DB_USER = "root";
+const DB_PASSWORD = "root";
+const DB_NAME = "user";
+}
+?>
 
-    ```
+```
 
 您可以看到这个类`使用命名空间 My\Dao;`，并且在类名之前还有一个`abstract`关键字，这将类定义为抽象类。这意味着该类不能被实例化，或者至少在内部有一个抽象方法。此外，您可以看到添加的类常量，其中包含数据库信息和一个私有类变量`$db`来保存数据库连接。您可以根据需要修改这些常量。
 
 1.  现在，在类中添加以下`getDb()`方法：
 
 ```php
-    protected final function getDb(){
-    $dsn = 'mysql:dbname='.self::DB_NAME.';host='.self::DB_SERVER;
-    try {
-    $this->db = new \PDO($dsn, self::DB_USER, self::DB_PASSWORD);
-    } catch (PDOException $e) {
-    throw new \Exception('Connection failed: ' . $e->getMessage());
-    }
-    return $this->db;
-    }
+protected final function getDb(){
+$dsn = 'mysql:dbname='.self::DB_NAME.';host='.self::DB_SERVER;
+try {
+$this->db = new \PDO($dsn, self::DB_USER, self::DB_PASSWORD);
+} catch (PDOException $e) {
+throw new \Exception('Connection failed: ' . $e->getMessage());
+}
+return $this->db;
+}
 
-    ```
+```
 
 `protected final function getDb()`函数使用 PDO 连接到 MySQL 数据库。类的私有变量存储了可以用于数据库连接的 PDO 实例。此外，`getDb()`方法是`final`和`protected`的，因此子类继承此方法并且无法覆盖它。
 
 `$dsn`变量包含**数据源名称（DSN）**，其中包含连接到数据库所需的信息。以下行创建一个 PDO 实例，表示与请求的数据库的连接，并在成功时返回一个 PDO 对象：
 
 ```php
-    $this->db = new \PDO($dsn, self::DB_USER, self::DB_PASSWORD);
+$this->db = new \PDO($dsn, self::DB_USER, self::DB_PASSWORD);
 
-    ```
+```
 
 请注意，如果尝试连接到请求的数据库失败，DSN 会抛出`PDOException`异常。我们在 PDO 前面加上反斜杠\，这样 PHP 就知道它在全局命名空间中。
 
 1.  在类中添加以下`abstract`方法：
 
 ```php
-    abstract protected function get($uniqueKey);
-    abstract protected function insert(array $values);
-    abstract protected function update($id, array $values);
-    abstract protected function delete($uniqueKey);
+abstract protected function get($uniqueKey);
+abstract protected function insert(array $values);
+abstract protected function update($id, array $values);
+abstract protected function delete($uniqueKey);
 
-    ```
+```
 
 您可以看到子类要实现的方法被标记为`abstract protected`，`get()`方法将用于根据唯一表键从表中选择单个条目，`insert()`将在表中插入一行，`update()`将用于更新表中的一行，`delete()`将用于删除一个条目。因此，所有这些方法都被保留为抽象方法（没有方法体），因为它们将通过子类来实现。
 
@@ -255,18 +255,18 @@ UNIQUE KEY 'useremail' ('useremail')
 1.  在`Dao`目录中创建一个名为`UserDao.php`的新 PHP 文件，并键入以下代码：
 
 ```php
-    <?php
-    namespace My\Dao;
-    class UserDao extends BaseDao {
-    private $db = null;
-    public function __construct() {
-    $this->db = $this->getDb();
-    }
-    }
-    $userDao = new \My\Dao\UserDao;
-    ?>
+<?php
+namespace My\Dao;
+class UserDao extends BaseDao {
+private $db = null;
+public function __construct() {
+$this->db = $this->getDb();
+}
+}
+$userDao = new \My\Dao\UserDao;
+?>
 
-    ```
+```
 
 正如您所看到的，该类位于`My\Dao`命名空间下，并扩展到`BaseDao`类，因此该类将具有从父类继承的方法。Dao 类有自己的私有`$db`，它存储了从继承的`getDb()`方法返回的 PDO 实例；正如您所看到的，这个`$db`变量被分配给了类构造函数。
 
@@ -275,130 +275,130 @@ UNIQUE KEY 'useremail' ('useremail')
 1.  键入`get()`方法的实现（将该方法添加到类中），使其看起来类似于以下内容：
 
 ```php
-    public function get($useremail) {
-    $statement = $this->db->prepare("SELECT * FROM users WHERE useremail = :useremail LIMIT 1 ");
-    $statement->bindParam(':useremail', $useremail);
-    $statement->execute();
-    if ($statement->rowCount() > 0) {
-    $row = $statement->fetch();
-    return $row;
-    }
-    }
+public function get($useremail) {
+$statement = $this->db->prepare("SELECT * FROM users WHERE useremail = :useremail LIMIT 1 ");
+$statement->bindParam(':useremail', $useremail);
+$statement->execute();
+if ($statement->rowCount() > 0) {
+$row = $statement->fetch();
+return $row;
+}
+}
 
-    ```
+```
 
 您可以看到，`prepare()`方法准备了要由`PDOStatement::execute()`方法执行的 SQL 语句。正如您所看到的，以下语句查询用于从`users`表中选择一行的所有列，而`：useremail`中的给定电子邮件地址（与`bindParam()`绑定的参数）匹配`useremail`列。
 
 ```php
-    SELECT * FROM users WHERE useremail = :useremail LIMIT 1;
+SELECT * FROM users WHERE useremail = :useremail LIMIT 1;
 
-    ```
+```
 
 最后，如果找到匹配的行，则获取包含用户详细信息的数组并返回。
 
 1.  键入`insert()`方法的实现，使其看起来类似于以下内容：
 
 ```php
-    public function insert(array $values) {
-    $sql = "INSERT INTO users ";
-    $fields = array_keys($values);
-    $vals = array_values($values);
-    $sql .= '('.implode(',', $fields).') ';
-    $arr = array();
-    foreach ($fields as $f) {
-    $arr[] = '?';
-    }
-    $sql .= 'VALUES ('.implode(',', $arr).') ';
-    $statement = $this->db->prepare($sql);
-    foreach ($vals as $i=>$v) {
-    $statement->bindValue($i+1, $v);
-    }
-    return $statement->execute();
-    }
+public function insert(array $values) {
+$sql = "INSERT INTO users ";
+$fields = array_keys($values);
+$vals = array_values($values);
+$sql .= '('.implode(',', $fields).') ';
+$arr = array();
+foreach ($fields as $f) {
+$arr[] = '?';
+}
+$sql .= 'VALUES ('.implode(',', $arr).') ';
+$statement = $this->db->prepare($sql);
+foreach ($vals as $i=>$v) {
+$statement->bindValue($i+1, $v);
+}
+return $statement->execute();
+}
 
-    ```
+```
 
 该方法接受传入的用户信息数组，准备`users`表的 MySQL `insert`查询，并执行该查询。请注意，我们已经将字段名称保留在`$fields`数组中，并将字段值保留在`$vals`数组中，这些值分别从传递的数组的键和值中提取。我们在准备的语句中使用？代替所有给定值，这些值将被绑定到`PDOStatement::bindValue()`方法中。`bindValue()`将一个值绑定到一个参数。
 
 1.  在`update()`方法的实现中键入代码，使其看起来类似于以下内容：
 
 ```php
-    public function update($id, array $values) {
-    $sql = "UPDATE users SET ";
-    $fields = array_keys($values);
-    $vals = array_values($values);
-    foreach ($fields as $i=>$f) {
-    $fields[$i] .= ' = ? ';
-    }
-    $sql .= implode(',', $fields);
-    $sql .= " WHERE id = " . (int)$id ." LIMIT 1 ";
-    $statement = $this->db->prepare($sql);
-    foreach ($vals as $i=>$v) {
-    $statement->bindValue($i+1, $v);
-    }
-    $statement->execute();
-    }
+public function update($id, array $values) {
+$sql = "UPDATE users SET ";
+$fields = array_keys($values);
+$vals = array_values($values);
+foreach ($fields as $i=>$f) {
+$fields[$i] .= ' = ? ';
+}
+$sql .= implode(',', $fields);
+$sql .= " WHERE id = " . (int)$id ." LIMIT 1 ";
+$statement = $this->db->prepare($sql);
+foreach ($vals as $i=>$v) {
+$statement->bindValue($i+1, $v);
+}
+$statement->execute();
+}
 
-    ```
+```
 
 它以与*步骤 3*相同的方式准备了 MySQL `UPDATE`查询语句，并执行了该查询以更新具有给定 ID 的行中的相应列值。
 
 1.  您可以将其他实现留空，如下所示，或根据需要添加自己的代码：
 
 ```php
-    public function delete($uniqueKey) { }
+public function delete($uniqueKey) { }
 
-    ```
+```
 
 由于我们可能会在将来实现删除用户的方法，因此我们留空了`delete()`方法的主体。
 
 1.  现在，我们需要在类中编写一些额外的方法。在注册用户时，我们可以检查我们的数据库，看看表中是否已经存在该电子邮件地址。键入以下方法：
 
 ```php
-    public function useremailTaken($useremail) {
-    $statement = $this->db->prepare("SELECT id FROM users WHERE useremail = :useremail LIMIT 1 ");
-    $statement->bindParam(':useremail', $useremail);
-    $statement->execute();
-    return ($statement->rowCount() > 0 );
-    }
+public function useremailTaken($useremail) {
+$statement = $this->db->prepare("SELECT id FROM users WHERE useremail = :useremail LIMIT 1 ");
+$statement->bindParam(':useremail', $useremail);
+$statement->execute();
+return ($statement->rowCount() > 0 );
+}
 
-    ```
+```
 
 `useremailTaken()`方法接受一个电子邮件地址作为参数，以检查该电子邮件 ID 是否存在。它通过在`WHERE`子句中使用给定的电子邮件地址运行`SELECT`查询来执行该任务。如果找到任何行，则意味着该电子邮件地址已经存在，因此该方法返回`true`，否则返回`false`。通过这种方法，我们可以确保系统中一个电子邮件地址只能使用一次，并且不允许重复的电子邮件地址，因为这是一个唯一的字段。
 
 1.  为了在登录时确认用户的密码，请键入以下`checkPassConfirmation()`方法：
 
 ```php
-    public function checkPassConfirmation($useremail, $password) {
-    $statement = $this->db->prepare("SELECT password FROM users WHERE useremail = :useremail LIMIT 1 ");
-    $statement->bindParam(':useremail', $useremail);
-    $statement->execute();
-    if ($statement->rowCount() > 0) {
-    $row = $statement->fetch();
-    return ($password == $row['password']);
-    }
-    return false;
-    }
+public function checkPassConfirmation($useremail, $password) {
+$statement = $this->db->prepare("SELECT password FROM users WHERE useremail = :useremail LIMIT 1 ");
+$statement->bindParam(':useremail', $useremail);
+$statement->execute();
+if ($statement->rowCount() > 0) {
+$row = $statement->fetch();
+return ($password == $row['password']);
+}
+return false;
+}
 
-    ```
+```
 
 该方法以`$useremail`和`$password`作为参数，并选择`password`列以匹配用户的电子邮件。现在，如果找不到匹配条件的行，则意味着用户的电子邮件在表中不存在，并返回`false 1`；如果找到匹配的行，则从结果中获取数组以获得密码。最后，将从数据库中获取的密码与第二个参数中给定的密码进行比较。如果它们匹配，则返回`true`。因此，我们可以使用这个方法来确认给定对应用户的电子邮件的密码，当用户尝试使用它们登录时，可以轻松跟踪返回的布尔值的状态。
 
 1.  此外，我们已经在`users`表中添加了一个名为`userhash`的字段。该字段存储每个登录会话的哈希值（随机的字母数字字符串），因此我们希望确认`userhash`，以验证用户当前是否已登录。输入以下方法：
 
 ```php
-    public function checkHashConfirmation($useremail, $userhash) {
-    $statement = $this->db->prepare("SELECT userhash FROM users WHERE useremail = :useremail LIMIT 1");
-    $statement->bindParam(':useremail', $useremail);
-    $statement->execute();
-    if ($statement->rowCount() > 0) {
-    $row = $statement->fetch();
-    return ($userhash == $row['userhash']);
-    }
-    return false;
-    }
+public function checkHashConfirmation($useremail, $userhash) {
+$statement = $this->db->prepare("SELECT userhash FROM users WHERE useremail = :useremail LIMIT 1");
+$statement->bindParam(':useremail', $useremail);
+$statement->execute();
+if ($statement->rowCount() > 0) {
+$row = $statement->fetch();
+return ($userhash == $row['userhash']);
+}
+return false;
+}
 
-    ```
+```
 
 `checkHashConfirmation()`方法与*步骤 7*中的先前方法相同，以`$useremail`和`$useremail`作为参数，为给定的电子邮件地址获取`useremail`，并将其与给定的`useremail`进行比较。因此，可以用来比较`useremail`的方法对于会话和数据库都是相同的。如果相同，则意味着用户当前已登录，因为每次新登录都会更新表中对应的`useremail`。
 
@@ -439,29 +439,29 @@ Service 层包含用于为应用程序提供服务的类，或者简单地为应
 1.  在`Service`目录中创建一个名为`ValidatorService.php`的新 PHP 文件，并输入以下类：
 
 ```php
-    <?php
-    namespace My\Service;
-    use My\Dao\UserDao;
-    class ValidatorService {
-    private $values = array();
-    private $errors = array();
-    public $statusMsg = null;
-    public $num_errors;
-    const NAME_LENGTH_MIN = 5;
-    const NAME_LENGTH_MAX = 100;
-    const PASS_LENGTH_MIN = 8;
-    const PASS_LENGTH_MAX = 32;
-    public function __construct() {
-    }
-    public function setUserDao(UserDao $userDao){
-    $this->userDao = $userDao;
-    }
-    }
-    $validator = new \My\Service\ValidatorService;
-    $validator->setUserDao($userDao);
-    ?>
+<?php
+namespace My\Service;
+use My\Dao\UserDao;
+class ValidatorService {
+private $values = array();
+private $errors = array();
+public $statusMsg = null;
+public $num_errors;
+const NAME_LENGTH_MIN = 5;
+const NAME_LENGTH_MAX = 100;
+const PASS_LENGTH_MIN = 8;
+const PASS_LENGTH_MAX = 32;
+public function __construct() {
+}
+public function setUserDao(UserDao $userDao){
+$this->userDao = $userDao;
+}
+}
+$validator = new \My\Service\ValidatorService;
+$validator->setUserDao($userDao);
+?>
 
-    ```
+```
 
 请注意，该类位于`My\Service`命名空间下，并导入`My\Dao\UserDao`类。
 
@@ -474,32 +474,32 @@ Service 层包含用于为应用程序提供服务的类，或者简单地为应
 1.  现在，填写类构造函数，使其看起来类似于以下内容：
 
 ```php
-    public function __construct() {
-    if (isset($_SESSION['value_array']) && isset($_SESSION['error_array'])) {
-    $this->values = $_SESSION['value_array'];
-    $this->errors = $_SESSION['error_array'];
-    $this->num_errors = count($this->errors);
-    unset($_SESSION['value_array']);
-    unset($_SESSION['error_array']);
-    } else {
-    $this->num_errors = 0;
-    }
-    if (isset($_SESSION['statusMsg'])) {
-    $this->statusMsg = $_SESSION['statusMsg'];
-    unset($_SESSION['statusMsg']);
-    }
-    }
+public function __construct() {
+if (isset($_SESSION['value_array']) && isset($_SESSION['error_array'])) {
+$this->values = $_SESSION['value_array'];
+$this->errors = $_SESSION['error_array'];
+$this->num_errors = count($this->errors);
+unset($_SESSION['value_array']);
+unset($_SESSION['error_array']);
+} else {
+$this->num_errors = 0;
+}
+if (isset($_SESSION['statusMsg'])) {
+$this->statusMsg = $_SESSION['statusMsg'];
+unset($_SESSION['statusMsg']);
+}
+}
 
-    ```
+```
 
 您可以看到，`$_SESSION['value_array']`和`$_SESSION['error_array']`都已经被最初检查。如果它们有一些值设置，那么将它们分配给相应的类变量，如下例所示：
 
 ```php
-    $this->values = $_SESSION['value_array'];
-    $this->errors = $_SESSION['error_array'];
-    $this->num_errors = count($this->errors);
+$this->values = $_SESSION['value_array'];
+$this->errors = $_SESSION['error_array'];
+$this->num_errors = count($this->errors);
 
-    ```
+```
 
 还调整了`num_errors`与`errors`数组的计数。请注意，`$_SESSION['value_array']`和`$_SESSION['error_array']`中的值将由应用程序类设置，该类将使用此服务 API。立即在抓取其值后取消设置这些会话变量，以便为下一个表单提交做好准备。如果这些变量尚未设置，则`num_errors`应为`0`（零）。
 
@@ -508,98 +508,98 @@ Service 层包含用于为应用程序提供服务的类，或者简单地为应
 1.  现在，按照以下方式在类中输入表单和错误处理方法：
 
 ```php
-    public function setValue($field, $value) {
-    $this->values[$field] = $value;
-    }
-    public function getValue($field) {
-    if (array_key_exists($field, $this->values)) {
-    return htmlspecialchars(stripslashes($this->values[$field]));
-    } else {
-    return "";
-    }
-    }
-    private function setError($field, $errmsg) {
-    $this->errors[$field] = $errmsg;
-    $this->num_errors = count($this->errors);
-    }
-    public function getError($field) {
-    if (array_key_exists($field, $this->errors)) {
-    return $this->errors[$field];
-    } else {
-    return "";
-    }
-    }
-    public function getErrorArray() {
-    return $this->errors;
-    }
+public function setValue($field, $value) {
+$this->values[$field] = $value;
+}
+public function getValue($field) {
+if (array_key_exists($field, $this->values)) {
+return htmlspecialchars(stripslashes($this->values[$field]));
+} else {
+return "";
+}
+}
+private function setError($field, $errmsg) {
+$this->errors[$field] = $errmsg;
+$this->num_errors = count($this->errors);
+}
+public function getError($field) {
+if (array_key_exists($field, $this->errors)) {
+return $this->errors[$field];
+} else {
+return "";
+}
+}
+public function getErrorArray() {
+return $this->errors;
+}
 
-    ```
+```
 
 在这些类方法中，您可以看到`setValue($field, $value)`和`getValue($field)`方法分别用于设置和获取单个相应字段的值。同样，`setError($field, $errmsg)`和`getError($field)`在验证时设置和获取相应表单字段值的错误消息，同时 setError 增加`num_errors`的值。最后，`getErrorArray()`返回完整的错误消息数组。
 
 1.  现在，按照以下方式输入表单字段的值验证方法：
 
 ```php
-    public function validate($field, $value) {
-    $valid = false;
-    if ($valid == $this->isEmpty($field, $value)) {
-    $valid = true;
-    if ($field == "name")
-    $valid = $this->checkSize($field, $value, self::NAME_LENGTH_MIN, self::NAME_LENGTH_MAX);
-    if ($field == "password" || $field == "newpassword")
-    $valid = $this->checkSize($field, $value, self::PASS_LENGTH_MIN, self::PASS_LENGTH_MAX);
-    if ($valid)
-    $valid = $this->checkFormat($field, $value);
-    }
-    return $valid;
-    }
-    private function isEmpty($field, $value) {
-    $value = trim($value);
-    if (empty($value)) {
-    $this->setError($field, "Field value not entered");
-    return true;
-    }
-    return false;
-    }
-    private function checkFormat($field, $value) {
-    switch ($field) {
-    case 'useremail':
-    $regex = "/^[_+a-z0-9-]+(\.[_+a-z0-9-]+)*"
-    . "@[a-z0-9-]+(\.[a-z0-9-]{1,})*"
-    . "\.([a-z]{2,}){1}$/i";
-    $msg = "Email address invalid";
-    break;
-    case 'password':
-    case 'newpassword':
-    $regex = "/^([0-9a-z])+$/i";
-    $msg = "Password not alphanumeric";
-    break;
-    case 'name':
-    $regex = "/^([a-z ])+$/i";
-    $msg = "Name must be alphabetic";
-    break;
-    case 'phone':
-    $regex = "/^([0-9])+$/";
-    $msg = "Phone not numeric";
-    break;
-    default:;
-    }
-    if (!preg_match($regex, ( $value = trim($value)))) {
-    $this->setError($field, $msg);
-    return false;
-    }
-    return true;
-    }
-    private function checkSize($field, $value, $minLength, $maxLength) {
-    $value = trim($value);
-    if (strlen($value) < $minLength || strlen($value) > $maxLength) {
-    $this->setError($field, "Value length should be within ".$minLength." & ".$maxLength." characters");
-    return false;
-    }
-    return true;
-    }
+public function validate($field, $value) {
+$valid = false;
+if ($valid == $this->isEmpty($field, $value)) {
+$valid = true;
+if ($field == "name")
+$valid = $this->checkSize($field, $value, self::NAME_LENGTH_MIN, self::NAME_LENGTH_MAX);
+if ($field == "password" || $field == "newpassword")
+$valid = $this->checkSize($field, $value, self::PASS_LENGTH_MIN, self::PASS_LENGTH_MAX);
+if ($valid)
+$valid = $this->checkFormat($field, $value);
+}
+return $valid;
+}
+private function isEmpty($field, $value) {
+$value = trim($value);
+if (empty($value)) {
+$this->setError($field, "Field value not entered");
+return true;
+}
+return false;
+}
+private function checkFormat($field, $value) {
+switch ($field) {
+case 'useremail':
+$regex = "/^[_+a-z0-9-]+(\.[_+a-z0-9-]+)*"
+. "@[a-z0-9-]+(\.[a-z0-9-]{1,})*"
+. "\.([a-z]{2,}){1}$/i";
+$msg = "Email address invalid";
+break;
+case 'password':
+case 'newpassword':
+$regex = "/^([0-9a-z])+$/i";
+$msg = "Password not alphanumeric";
+break;
+case 'name':
+$regex = "/^([a-z ])+$/i";
+$msg = "Name must be alphabetic";
+break;
+case 'phone':
+$regex = "/^([0-9])+$/";
+$msg = "Phone not numeric";
+break;
+default:;
+}
+if (!preg_match($regex, ( $value = trim($value)))) {
+$this->setError($field, $msg);
+return false;
+}
+return true;
+}
+private function checkSize($field, $value, $minLength, $maxLength) {
+$value = trim($value);
+if (strlen($value) < $minLength || strlen($value) > $maxLength) {
+$this->setError($field, "Value length should be within ".$minLength." & ".$maxLength." characters");
+return false;
+}
+return true;
+}
 
-    ```
+```
 
 验证方法可以描述如下：
 
@@ -614,52 +614,52 @@ Service 层包含用于为应用程序提供服务的类，或者简单地为应
 1.  我们希望验证登录凭据，以检查用户电子邮件是否存在，或者密码是否属于与该用户电子邮件匹配的用户。因此，按照以下方式添加`validateCredentials()方法`：
 
 ```php
-    public function validateCredentials($useremail, $password) {
-    $result = $this->userDao->checkPassConfirmation($useremail, md5($password));
-    if ($result === false) {
-    $this->setError("password", "Email address or password is incorrect");
-    return false;
-    }
-    return true;
-    }
+public function validateCredentials($useremail, $password) {
+$result = $this->userDao->checkPassConfirmation($useremail, md5($password));
+if ($result === false) {
+$this->setError("password", "Email address or password is incorrect");
+return false;
+}
+return true;
+}
 
-    ```
+```
 
 该方法接受`$useremail`和`$password`作为登录凭据验证。您可以看到以下行使用`user Dao`来确认与`useremail`关联的密码。Dao 的`checkPassConfirmation()`方法返回`true`表示确认，返回`false`表示电子邮件地址或密码不正确。
 
 ```php
-    $result = $this->userDao->checkPassConfirmation($useremail, md5($password));
+$result = $this->userDao->checkPassConfirmation($useremail, md5($password));
 
-    ```
+```
 
 1.  当用户想要注册到我们的应用程序时，我们可以验证电子邮件地址是否已经存在。如果电子邮件地址在数据库中尚未注册，则用户可以自由注册该电子邮件。因此，输入以下方法：
 
 ```php
-    public function emailExists($useremail) {
-    if ($this->userDao->useremailTaken($useremail)) {
-    $this->setError('useremail', "Email already in use");
-    return true;
-    }
-    return false;
-    }
+public function emailExists($useremail) {
+if ($this->userDao->useremailTaken($useremail)) {
+$this->setError('useremail', "Email already in use");
+return true;
+}
+return false;
+}
 
-    ```
+```
 
 您可以看到该方法在`$this->userDao->useremailTaken($useremail);`中使用`userDao`来检查用户电子邮件是否已被使用。如果已被使用，则设置错误，并返回`true`表示该电子邮件已存在。
 
 1.  当用户想要更新当前密码时，再次需要密码确认。因此，让我们添加另一个方法来验证当前密码：
 
 ```php
-    public function checkPassword($useremail, $password) {
-    $result = $this->userDao->checkPassConfirmation($useremail, md5($password));
-    if ($result === false) {
-    $this->setError("password", "Current password incorrect");
-    return false;
-    }
-    return true;
-    }
+public function checkPassword($useremail, $password) {
+$result = $this->userDao->checkPassConfirmation($useremail, md5($password));
+if ($result === false) {
+$this->setError("password", "Current password incorrect");
+return false;
+}
+return true;
+}
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -686,39 +686,39 @@ Service 层包含用于为应用程序提供服务的类，或者简单地为应
 1.  在`Service`目录中创建一个名为`UserService.php`的新 PHP 文件，并输入以下类：
 
 ```php
-    <?php
-    namespace My\Service;
-    use My\Dao\UserDao;
-    use My\Service\ValidatorService;
-    class UserService {
-    public $useremail;
-    private $userid;
-    public $username;
-    public $userphone;
-    private $userhash;
-    private $userlevel;
-    public $logged_in;
-    const ADMIN_EMAIL = "admin@mysite.com";
-    const GUEST_NAME = "Guest";
-    const ADMIN_LEVEL = 9;
-    const USER_LEVEL = 1;
-    const GUEST_LEVEL = 0;
-    const COOKIE_EXPIRE = 8640000;
-    const COOKIE_PATH = "/";
-    public function __construct(UserDao $userDao, ValidatorService $validator) {
-    $this->userDao = $userDao;
-    $this->validator = $validator;
-    $this->logged_in = $this->isLogin();
-    if (!$this->logged_in) {
-    $this->useremail = $_SESSION['useremail'] = self::GUEST_NAME;
-    $this->userlevel = self::GUEST_LEVEL;
-    }
-    }
-    }
-    $userService = new \My\Service\UserService($userDao, $validator);
-    ?>
+<?php
+namespace My\Service;
+use My\Dao\UserDao;
+use My\Service\ValidatorService;
+class UserService {
+public $useremail;
+private $userid;
+public $username;
+public $userphone;
+private $userhash;
+private $userlevel;
+public $logged_in;
+const ADMIN_EMAIL = "admin@mysite.com";
+const GUEST_NAME = "Guest";
+const ADMIN_LEVEL = 9;
+const USER_LEVEL = 1;
+const GUEST_LEVEL = 0;
+const COOKIE_EXPIRE = 8640000;
+const COOKIE_PATH = "/";
+public function __construct(UserDao $userDao, ValidatorService $validator) {
+$this->userDao = $userDao;
+$this->validator = $validator;
+$this->logged_in = $this->isLogin();
+if (!$this->logged_in) {
+$this->useremail = $_SESSION['useremail'] = self::GUEST_NAME;
+$this->userlevel = self::GUEST_LEVEL;
+}
+}
+}
+$userService = new \My\Service\UserService($userDao, $validator);
+?>
 
-    ```
+```
 
 您可以看到该类使用`namespace My\Service;`，并且可以使用`\My\Service\UserService`来访问 Service User 类。
 
@@ -737,46 +737,46 @@ cookie（用户计算机上的文本文件）将用于将 `useremail` 存储为 
 未登录用户将是访客用户，因此 `useremail` 和 `userlevel` 分别设置为 `Guest` 和 `Guest Level 0`。
 
 ```php
-    if (!$this->logged_in) {
-    $this->useremail = $_SESSION['useremail'] = self::GUEST_NAME;
-    $this->userlevel = self::GUEST_LEVEL;
-    }
+if (!$this->logged_in) {
+$this->useremail = $_SESSION['useremail'] = self::GUEST_NAME;
+$this->userlevel = self::GUEST_LEVEL;
+}
 
-    ```
+```
 
 1.  现在，让我们创建 `isLogin()` 方法，如下所示：
 
 ```php
-    private function isLogin() {
-    if (isset($_SESSION['useremail']) && isset($_SESSION['userhash']) &&
-    $_SESSION['useremail'] != self::GUEST_NAME) {
-    if ($this->userDao->checkHashConfirmation($_SESSION['useremail'], $_SESSION['userhash']) === false) {
-    unset($_SESSION['useremail']);
-    unset($_SESSION['userhash']);
-    unset($_SESSION['userid']);
-    return false;
-    }
-    $userinfo = $this->userDao->get($_SESSION['useremail']);
-    if(!$userinfo){
-    return false;
-    }
-    $this->useremail = $userinfo['useremail'];
-    $this->userid = $userinfo['id'];
-    $this->userhash = $userinfo['userhash'];
-    $this->userlevel = $userinfo['userlevel'];
-    $this->username = $userinfo['username'];
-    $this->userphone = $userinfo['phone'];
-    return true;
-    }
-    if (isset($_COOKIE['cookname']) && isset($_COOKIE['cookid'])) {
-    $this->useremail = $_SESSION['useremail'] = $_COOKIE['cookname'];
-    $this->userhash = $_SESSION['userhash'] = $_COOKIE['cookid'];
-    return true;
-    }
-    return false;
-    }
+private function isLogin() {
+if (isset($_SESSION['useremail']) && isset($_SESSION['userhash']) &&
+$_SESSION['useremail'] != self::GUEST_NAME) {
+if ($this->userDao->checkHashConfirmation($_SESSION['useremail'], $_SESSION['userhash']) === false) {
+unset($_SESSION['useremail']);
+unset($_SESSION['userhash']);
+unset($_SESSION['userid']);
+return false;
+}
+$userinfo = $this->userDao->get($_SESSION['useremail']);
+if(!$userinfo){
+return false;
+}
+$this->useremail = $userinfo['useremail'];
+$this->userid = $userinfo['id'];
+$this->userhash = $userinfo['userhash'];
+$this->userlevel = $userinfo['userlevel'];
+$this->username = $userinfo['username'];
+$this->userphone = $userinfo['phone'];
+return true;
+}
+if (isset($_COOKIE['cookname']) && isset($_COOKIE['cookid'])) {
+$this->useremail = $_SESSION['useremail'] = $_COOKIE['cookname'];
+$this->userhash = $_SESSION['userhash'] = $_COOKIE['cookid'];
+return true;
+}
+return false;
+}
 
-    ```
+```
 
 如果 `$_SESSION` 具有 `useremail, userhash,` 和 `useremail` 不是 guest，则意味着用户已经登录到数据中。如果是这样，我们希望使用 `UserDao` 的 `checkHashConfirmation()` 方法来确认 `userhash` 和关联的 `useremail` 的安全性。如果未确认，则取消设置 `$_SESSION` 变量，并将其视为未登录，返回 false。
 
@@ -787,51 +787,51 @@ cookie（用户计算机上的文本文件）将用于将 `useremail` 存储为 
 1.  现在，为应用程序创建登录服务如下：
 
 ```php
-    public function login($values) {
-    $useremail = $values['useremail'];
-    $password = $values['password'];
-    $rememberme = isset($values['rememberme']);
-    $this->validator->validate("useremail", $useremail);
-    $this->validator->validate("password", $password);
-    if ($this->validator->num_errors > 0) {
-    return false;
-    }
-    if (!$this->validator->validateCredentials($useremail, $password)) {
-    return false;
-    }
-    $userinfo = $this->userDao->get($useremail);
-    if(!$userinfo){
-    return false;
-    }
-    $this->useremail = $_SESSION['useremail'] = $userinfo['useremail'];
-    $this->userid = $_SESSION['userid'] = $userinfo['id'];
-    $this->userhash = $_SESSION['userhash'] = md5(microtime());
-    $this->userlevel = $userinfo['userlevel'];
-    $this->username = $userinfo['username'];
-    $this->userphone = $userinfo['phone'];
-    $this->userDao->update($this->userid, array("userhash" => $this->userhash));
-    if ($rememberme == 'true') {
-    setcookie("cookname", $this->useremail, time() + self::COOKIE_EXPIRE, self::COOKIE_PATH);
-    setcookie("cookid", $this->userhash, time() + self::COOKIE_EXPIRE, self::COOKIE_PATH);
-    }
-    return true;
-    }
+public function login($values) {
+$useremail = $values['useremail'];
+$password = $values['password'];
+$rememberme = isset($values['rememberme']);
+$this->validator->validate("useremail", $useremail);
+$this->validator->validate("password", $password);
+if ($this->validator->num_errors > 0) {
+return false;
+}
+if (!$this->validator->validateCredentials($useremail, $password)) {
+return false;
+}
+$userinfo = $this->userDao->get($useremail);
+if(!$userinfo){
+return false;
+}
+$this->useremail = $_SESSION['useremail'] = $userinfo['useremail'];
+$this->userid = $_SESSION['userid'] = $userinfo['id'];
+$this->userhash = $_SESSION['userhash'] = md5(microtime());
+$this->userlevel = $userinfo['userlevel'];
+$this->username = $userinfo['username'];
+$this->userphone = $userinfo['phone'];
+$this->userDao->update($this->userid, array("userhash" => $this->userhash));
+if ($rememberme == 'true') {
+setcookie("cookname", $this->useremail, time() + self::COOKIE_EXPIRE, self::COOKIE_PATH);
+setcookie("cookid", $this->userhash, time() + self::COOKIE_EXPIRE, self::COOKIE_PATH);
+}
+return true;
+}
 
-    ```
+```
 
 这个方法接受登录详情，比如 `useremail, password,` 和 `rememberme`，并将它们传递到应用程序的 `$values` 数组中。它调用给定输入的验证，如果发现错误则返回 false，并在之后验证访问凭证的关联。如果所有情况都通过了验证，它将从 Dao 中加载用户信息。请注意，在下一行中，`md5(microtime())` 创建一个随机的包含字母数字字符的字符串，并分配给类变量。
 
 ```php
-    $this->userhash = $_SESSION['userhash'] = md5(microtime());
+$this->userhash = $_SESSION['userhash'] = md5(microtime());
 
-    ```
+```
 
 最后，为了启动新的登录会话，更新表中对应用户的 `userhash`，这将是当前会话的标识符。
 
 ```php
-    $this->userDao->update($this->userid, array("userhash" => $this->userhash));
+$this->userDao->update($this->userid, array("userhash" => $this->userhash));
 
-    ```
+```
 
 因此，`$_SESSION userhash` 和数据库 `userhash` 应该对于一个活跃的、已登录的会话是相同的。
 
@@ -840,30 +840,30 @@ cookie（用户计算机上的文本文件）将用于将 `useremail` 存储为 
 1.  现在，添加用户注册服务方法如下：
 
 ```php
-    public function register($values) {
-    $username = $values['name'];
-    $useremail = $values['useremail'];
-    $password = $values['password'];
-    $phone = $values['phone'];
-    $this->validator->validate("name", $username);
-    $this->validator->validate("useremail", $useremail);
-    $this->validator->validate("password", $password);
-    $this->validator->validate("phone", $phone);
-    if ($this->validator->num_errors > 0) {
-    return false;
-    }
-    if($this->validator->emailExists($useremail)) {
-    return false;
-    }
-    $ulevel = (strcasecmp($useremail, self::ADMIN_EMAIL) == 0) ? self::ADMIN_LEVEL : self::USER_LEVEL;
-    return $this->userDao->insert(array(
-    'useremail' => $useremail, 'password' => md5($password),
-    'userlevel' => $ulevel, 'username' => $username,
-    'phone' => $phone, 'timestamp' => time()
-    ));
-    }
+public function register($values) {
+$username = $values['name'];
+$useremail = $values['useremail'];
+$password = $values['password'];
+$phone = $values['phone'];
+$this->validator->validate("name", $username);
+$this->validator->validate("useremail", $useremail);
+$this->validator->validate("password", $password);
+$this->validator->validate("phone", $phone);
+if ($this->validator->num_errors > 0) {
+return false;
+}
+if($this->validator->emailExists($useremail)) {
+return false;
+}
+$ulevel = (strcasecmp($useremail, self::ADMIN_EMAIL) == 0) ? self::ADMIN_LEVEL : self::USER_LEVEL;
+return $this->userDao->insert(array(
+'useremail' => $useremail, 'password' => md5($password),
+'userlevel' => $ulevel, 'username' => $username,
+'phone' => $phone, 'timestamp' => time()
+));
+}
 
-    ```
+```
 
 该方法接受用户注册的详细信息，将它们传递到`$values`数组中，并对其进行验证。如果验证通过，它将用户注册详细信息打包到一个数组中，并使用 User Dao 的`insert()`方法将其保存到数据库中。
 
@@ -872,79 +872,79 @@ cookie（用户计算机上的文本文件）将用于将 `useremail` 存储为 
 1.  添加`getUser()`方法如下，以提供与给定的`useremail`参数匹配的用户信息：
 
 ```php
-    public function getUser($useremail){
-    $this->validator->validate("useremail", $useremail);
-    if ($this->validator->num_errors > 0) {
-    return false;
-    }
-    if (!$this->validator->emailExists($useremail)) {
-    return false;
-    }
-    $userinfo = $this->userDao->get($useremail);
-    if($userinfo){
-    return $userinfo;
-    }
-    return false;
-    }
+public function getUser($useremail){
+$this->validator->validate("useremail", $useremail);
+if ($this->validator->num_errors > 0) {
+return false;
+}
+if (!$this->validator->emailExists($useremail)) {
+return false;
+}
+$userinfo = $this->userDao->get($useremail);
+if($userinfo){
+return $userinfo;
+}
+return false;
+}
 
-    ```
+```
 
 请注意，在提供用户信息之前，`useremail`已经过验证。因此，每当需要用户信息时，应用程序将使用此方法。
 
 1.  现在，添加`update()`方法来修改用户的详细信息。
 
 ```php
-    public function update($values) {
-    $username = $values['name'];
-    $phone = $values['phone'];
-    $password = $values['password'];
-    $newPassword = $values['newpassword'];
-    $updates = array();
-    if($username) {
-    $this->validator->validate("name", $username);
-    $updates['username'] = $username;
-    }
-    if($phone) {
-    $this->validator->validate("phone", $phone);
-    $updates['phone'] = $phone;
-    }
-    if($password && $newPassword){
-    $this->validator->validate("password", $password);
-    $this->validator->validate("newpassword", $newPassword);
-    }
-    if ($this->validator->num_errors > 0) {
-    return false;
-    }
-    if($password && $newPassword){
-    if ($this->validator->checkPassword($this->useremail, $password)===false) {
-    return false;
-    }
-    $updates['password'] = md5($newPassword);
-    }
-    $this->userDao->update($this->userid, $updates);
-    return true;
-    }
+public function update($values) {
+$username = $values['name'];
+$phone = $values['phone'];
+$password = $values['password'];
+$newPassword = $values['newpassword'];
+$updates = array();
+if($username) {
+$this->validator->validate("name", $username);
+$updates['username'] = $username;
+}
+if($phone) {
+$this->validator->validate("phone", $phone);
+$updates['phone'] = $phone;
+}
+if($password && $newPassword){
+$this->validator->validate("password", $password);
+$this->validator->validate("newpassword", $newPassword);
+}
+if ($this->validator->num_errors > 0) {
+return false;
+}
+if($password && $newPassword){
+if ($this->validator->checkPassword($this->useremail, $password)===false) {
+return false;
+}
+$updates['password'] = md5($newPassword);
+}
+$this->userDao->update($this->userid, $updates);
+return true;
+}
 
-    ```
+```
 
 请注意，该方法首先验证给定的信息（如果有）。如果它通过了验证标准，相应的列值将通过 User Dao 更改到数据库表中。
 
 1.  `logout()`方法可以添加如下：
 
 ```php
-    public function logout() {
-    if (isset($_COOKIE['cookname']) && isset($_COOKIE['cookid'])) {
-    setcookie("cookname", "", time() - self::COOKIE_EXPIRE, self::COOKIE_PATH);
-    setcookie("cookid", "", time() - self::COOKIE_EXPIRE, self::COOKIE_PATH);
-    }
-    unset($_SESSION['useremail']);
-    unset($_SESSION['userhash']);
-    $this->logged_in = false;
-    $this->useremail = self::GUEST_NAME;
-    $this->userlevel = self::GUEST_LEVEL;
-    }
+public function logout() {
+if (isset($_COOKIE['cookname']) && isset($_COOKIE['cookid'])) {
+setcookie("cookname", "", time() - self::COOKIE_EXPIRE, self::COOKIE_PATH);
+setcookie("cookid", "", time() - self::COOKIE_EXPIRE, self::COOKIE_PATH);
+}
+unset($_SESSION['useremail']);
+unset($_SESSION['userhash']);
+$this->logged_in = false;
+$this->useremail = self::GUEST_NAME;
+$this->userlevel = self::GUEST_LEVEL;
+}
 
-    ```
+```
 
 `logout`方法取消所有 cookie 和会话变量，将`$this->logged_in`设置为`false`，用户再次成为访客用户。
 
@@ -993,37 +993,37 @@ cookie（用户计算机上的文本文件）将用于将 `useremail` 存储为 
 1.  在项目目录中创建一个名为`UserApplication.php`的新 PHP 文件，并输入以下`UserApplication`类：
 
 ```php
-    <?php
-    namespace My\Application;
-    use My\Service\UserService;
-    use My\Service\ValidatorService;
-    session_start();
-    require_once "Dao/BaseDao.php";
-    require_once "Dao/UserDao.php";
-    require_once "Service/ValidatorService.php";
-    require_once "Service/UserService.php";
-    class UserApplication {
-    public function __ construct (UserService $userService, ValidatorService $validator) {
-    $this->userService = $userService;
-    $this->validator = $validator;
-    if (isset($_POST['login'])) {
-    $this->login();
-    }
-    else if (isset($_POST['register'])) {
-    $this->register();
-    }
-    else if (isset($_POST['update'])) {
-    $this->update();
-    }
-    else if ( isset($_GET['logout']) ) {
-    $this->logout();
-    }
-    }
-    }
-    $userApp = new \My\Application\UserApplication($userService, $validator);
-    ?>
+<?php
+namespace My\Application;
+use My\Service\UserService;
+use My\Service\ValidatorService;
+session_start();
+require_once "Dao/BaseDao.php";
+require_once "Dao/UserDao.php";
+require_once "Service/ValidatorService.php";
+require_once "Service/UserService.php";
+class UserApplication {
+public function __ construct (UserService $userService, ValidatorService $validator) {
+$this->userService = $userService;
+$this->validator = $validator;
+if (isset($_POST['login'])) {
+$this->login();
+}
+else if (isset($_POST['register'])) {
+$this->register();
+}
+else if (isset($_POST['update'])) {
+$this->update();
+}
+else if ( isset($_GET['logout']) ) {
+$this->logout();
+}
+}
+}
+$userApp = new \My\Application\UserApplication($userService, $validator);
+?>
 
-    ```
+```
 
 在文件顶部，您可以看到在构造函数声明之后，PHP 会话以`session_start()`开始。API 文件已被包含，并且类构造函数已注入了`User`和`Validator Service`对象，因此这些对象在整个应用程序中都可用。
 
@@ -1042,75 +1042,75 @@ cookie（用户计算机上的文本文件）将用于将 `useremail` 存储为 
 1.  在下面键入以下`login()`方法：
 
 ```php
-    public function login() {
-    $success = $this->userService->login($_POST);
-    if ($success) {
-    $_SESSION['statusMsg'] = "Successful login!";
-    } else {
-    $_SESSION['value_array'] = $_POST;
-    $_SESSION['error_array'] = $this->validator->getErrorArray();
-    }
-    header("Location: index.php");
-    }
+public function login() {
+$success = $this->userService->login($_POST);
+if ($success) {
+$_SESSION['statusMsg'] = "Successful login!";
+} else {
+$_SESSION['value_array'] = $_POST;
+$_SESSION['error_array'] = $this->validator->getErrorArray();
+}
+header("Location: index.php");
+}
 
-    ```
+```
 
 您可以看到，该方法调用用户服务，并使用用户界面发布的登录凭据在以下行中：
 
 ```php
-    $success = $this->userService->login($_POST);
+$success = $this->userService->login($_POST);
 
-    ```
+```
 
 如果登录尝试成功，则在`$_SESSION['statusMsg']`会话变量中设置成功状态消息，如果失败，则将用户通过`$_POST`数组设置为`$_SESSION['value_array']`，并将从验证器对象中获取的错误数组设置为`$_SESSION['error_array']`。最后，它将重定向到`index.php`页面。
 
 1.  在下面键入以下`register()`方法：
 
 ```php
-    public function register() {
-    $success = $this->userService->register($_POST);
-    if ($success) {
-    $_SESSION['statusMsg'] = "Registration was successful!";
-    header("Location: index.php");
-    } else {
-    $_SESSION['value_array'] = $_POST;
-    $_SESSION['error_array'] = $this->validator->getErrorArray();
-    header("Location: register.php");
-    }
-    }
+public function register() {
+$success = $this->userService->register($_POST);
+if ($success) {
+$_SESSION['statusMsg'] = "Registration was successful!";
+header("Location: index.php");
+} else {
+$_SESSION['value_array'] = $_POST;
+$_SESSION['error_array'] = $this->validator->getErrorArray();
+header("Location: register.php");
+}
+}
 
-    ```
+```
 
 您可以看到，如果注册尝试失败，则会重置相应的会话变量，并重定向到`register.php`页面，这是用户注册页面。
 
 1.  在下面键入以下`update()`方法：
 
 ```php
-    public function update() {
-    $success = $this->userService->update($_POST);
-    if ($success) {
-    $_SESSION['statusMsg'] = "Successfully Updated!";
-    header("Location: profile.php");
-    } else {
-    $_SESSION['value_array'] = $_POST;
-    $_SESSION['error_array'] = $this->validator->getErrorArray();
-    header("Location: profileedit.php");
-    }
-    }
+public function update() {
+$success = $this->userService->update($_POST);
+if ($success) {
+$_SESSION['statusMsg'] = "Successfully Updated!";
+header("Location: profile.php");
+} else {
+$_SESSION['value_array'] = $_POST;
+$_SESSION['error_array'] = $this->validator->getErrorArray();
+header("Location: profileedit.php");
+}
+}
 
-    ```
+```
 
 您可以看到，如果用户资料更新尝试失败，则会重置相应的会话变量，并重定向到`profileedit.php`页面，这是资料编辑页面，或者在成功时重定向到`profile.php`。因此，这些页面将是我们的用户资料查看和更新页面。
 
 1.  在下面键入以下`logout()`方法，它只是调用注销服务：
 
 ```php
-    public function logout(){
-    $success = $this->userService->logout();
-    header("Location: index.php");
-    }
+public function logout(){
+$success = $this->userService->logout();
+header("Location: index.php");
+}
 
-    ```
+```
 
 ## 刚刚发生了什么？
 
@@ -1129,113 +1129,113 @@ cookie（用户计算机上的文本文件）将用于将 `useremail` 存储为 
 1.  打开`index.php`并集成`UserApplication`类，使其如下所示：
 
 ```php
-    <?php
-    require_once 'UserApplication.php';
-    ?>
-    <!DOCTYPE html>
-    <html>
-    <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title></title>
-    </head>
-    <body>
-    </body>
-    </html>
+<?php
+require_once 'UserApplication.php';
+?>
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title></title>
+</head>
+<body>
+</body>
+</html>
 
-    ```
+```
 
 所有界面代码都可以在 body 标记内。
 
 1.  现在，让我们创建一个已登录用户菜单，显示状态消息（如果有），已登录用户名，并在每个页面顶部显示菜单。创建一个名为`menu.php`的新 PHP 文件，并键入以下代码：
 
 ```php
-    <?php
-    if (isset($validator->statusMsg)) {
-    echo "<span style=\"color:#207b00;\">" . $validator->statusMsg . "</span>";
-    }
-    if ($userService->logged_in) {
-    echo "<h2>Welcome $userService->username!</h2>";
-    echo "<a href='profile.php'>My Profile</a> | "
-    . "<a href='profileedit.php'>Edit Profile</a> | "
-    . "<a href='UserApplication.php?logout=1'>Logout</a> ";
-    }
-    ?>
+<?php
+if (isset($validator->statusMsg)) {
+echo "<span style=\"color:#207b00;\">" . $validator->statusMsg . "</span>";
+}
+if ($userService->logged_in) {
+echo "<h2>Welcome $userService->username!</h2>";
+echo "<a href='profile.php'>My Profile</a> | "
+. "<a href='profileedit.php'>Edit Profile</a> | "
+. "<a href='UserApplication.php?logout=1'>Logout</a> ";
+}
+?>
 
-    ```
+```
 
 您可以看到，如果`$validator->statusMsg`可用，则我们将其显示在彩色的`span`标记内。此外，如果用户已登录，则它会在`<h2>`标记内显示用户名，并显示用于查看资料、编辑资料和注销的`anchor`标记。现在，在我们的页面中，我们将在`<body>`标记内包含此菜单，如下所示：
 
 ```php
-    include 'menu.php';
+include 'menu.php';
 
-    ```
+```
 
 1.  现在，让我们创建用户注册页面`register.php`，并键入以下代码：
 
 ```php
-    <?php
-    require_once 'UserApplication.php';
-    ?>
-    <!DOCTYPE html>
-    <html>
-    <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title></title>
-    </head>
-    <body>
-    <?php
-    include 'menu.php';
-    if (!$userService->logged_in) {
-    ?>
-    <h2>User Registration</h2><br />
-    <?php
-    if ($validator->num_errors > 0) {
-    echo "<span style=\"color:#ff0000;\">" . $validator->num_errors . " error(s) found</span>";
-    }
-    ?> **<form action="UserApplication.php" method="POST">
-    Name: <br />
-    <input type="text" name="name" value="<?= $validator->getValue("name") ?>"> <? echo "<span style=\"color:#ff0000;\">".$validator->getError("name")."</span>"; ?>
-    <br />
-    Email: <br />
-    <input type="text" name="useremail" value="<?= $validator->getValue("useremail") ?>"> <? echo "<span style=\"color:#ff0000;\">".$validator->getError("useremail")."</span>"; ?>
-    <br />
-    Password:<br />
-    <input type="password" name="password" value=""> <? echo "<span style=\"color:#ff0000;\">".$validator->getError("password")."</span>"; ?>
-    <br />
-    Phone: <br />
-    <input type="text" name="phone" value="<?= $validator->getValue("phone") ?>"> <? echo "<span style=\"color:#ff0000;\">".$validator->getError("phone")."</span>"; ?>
-    <br /><br />
-    <input type="hidden" name="register" value="1">
-    <input type="submit" value="Register">
-    </form>**
-    <br />
-    Already registered? <a href="index.php">Login here</a>
-    <?php
-    }
-    ?>
-    </body>
-    </html>
+<?php
+require_once 'UserApplication.php';
+?>
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title></title>
+</head>
+<body>
+<?php
+include 'menu.php';
+if (!$userService->logged_in) {
+?>
+<h2>User Registration</h2><br />
+<?php
+if ($validator->num_errors > 0) {
+echo "<span style=\"color:#ff0000;\">" . $validator->num_errors . " error(s) found</span>";
+}
+?> **<form action="UserApplication.php" method="POST">
+Name: <br />
+<input type="text" name="name" value="<?= $validator->getValue("name") ?>"> <? echo "<span style=\"color:#ff0000;\">".$validator->getError("name")."</span>"; ?>
+<br />
+Email: <br />
+<input type="text" name="useremail" value="<?= $validator->getValue("useremail") ?>"> <? echo "<span style=\"color:#ff0000;\">".$validator->getError("useremail")."</span>"; ?>
+<br />
+Password:<br />
+<input type="password" name="password" value=""> <? echo "<span style=\"color:#ff0000;\">".$validator->getError("password")."</span>"; ?>
+<br />
+Phone: <br />
+<input type="text" name="phone" value="<?= $validator->getValue("phone") ?>"> <? echo "<span style=\"color:#ff0000;\">".$validator->getError("phone")."</span>"; ?>
+<br /><br />
+<input type="hidden" name="register" value="1">
+<input type="submit" value="Register">
+</form>**
+<br />
+Already registered? <a href="index.php">Login here</a>
+<?php
+}
+?>
+</body>
+</html>
 
-    ```
+```
 
 您可以看到，当用户未登录时，显示了用户注册表单。如果有任何错误，则在表单之前显示`错误数量`，使用`$validator->num_errors`。
 
 在下一行中，您可以看到表单将被发布到 UserApplication.php 文件：
 
 ```php
-    <form action="UserApplication.php" method="POST">
+<form action="UserApplication.php" method="POST">
 
-    ```
+```
 
 该表单由四个输入框组成，用于姓名、电子邮件、密码和电话号码，以及一个提交按钮用于提交表单。表单带有一个隐藏的输入字段，其中包含预加载的值。这个隐藏字段的值将用于通过`UserApplication`类构造函数来识别登录任务，以便调用适当的方法。
 
 1.  现在，让我们看一个输入字段，如下所示：
 
 ```php
-    Name: <br />
-    <input type="text" name="name" value="<?= $validator-> getValue("name") ?>"> <? echo "<span style= \"color:#ff0000;\">".$validator->getError("name")."</span>"; ?>
+Name: <br />
+<input type="text" name="name" value="<?= $validator-> getValue("name") ?>"> <? echo "<span style= \"color:#ff0000;\">".$validator->getError("name")."</span>"; ?>
 
-    ```
+```
 
 您可以看到字段值已被转储（如果可用，则使用`$validator->getValue("name")`），并显示在`value`属性中。在表单验证期间，可以使用字段名称在`validator`方法中找到字段值。此外，通过使用`$validator->getError("name")`，可以显示与`name`字段相关的任何错误。因此，其余字段被设计为相似。
 
@@ -1246,36 +1246,36 @@ cookie（用户计算机上的文本文件）将用于将 `useremail` 存储为 
 1.  现在，让我们在`index.php`文件中的`<body>`标记内创建登录表单，并选择`记住我`选项，以便`body`标记包含以下代码：
 
 ```php
-    <?php
-    include 'menu.php';
-    if (!$userService->logged_in) {
-    ?>
-    <h2>User Login</h2>
-    <br />
-    <?php
-    if ($validator->num_errors > 0) {
-    echo "<span style=\"color:#ff0000;\">" . $validator->num_errors . " error(s) found</span>";
-    }
-    ?> **<form action="UserApplication.php" method="POST">
-    Email: <br />
-    <input type="text" name="useremail" value="<?= $validator->getValue("useremail") ?>"> <? echo "<span style=\"color:#ff0000;\">".$validator->getError("useremail")."</span>"; ?>
-    <br />
-    Password:<br />
-    <input type="password" name="password" value=""> <? echo "<span style=\"color:#ff0000;\">".$validator->getError("password")."</span>"; ?>
-    <br />
-    <input type="checkbox" name="rememberme" <?=($validator->getValue("rememberme") != "")?"checked":""?>>
-    <font size="2">Remember me next time </font>
-    <br />
-    <input type="hidden" name="login" value="1">
-    <input type="submit" value="Login">
-    </form>**
-    <br />
-    New User? <a href="register.php">Register here</a>
-    <?php
-    }
-    ?>
+<?php
+include 'menu.php';
+if (!$userService->logged_in) {
+?>
+<h2>User Login</h2>
+<br />
+<?php
+if ($validator->num_errors > 0) {
+echo "<span style=\"color:#ff0000;\">" . $validator->num_errors . " error(s) found</span>";
+}
+?> **<form action="UserApplication.php" method="POST">
+Email: <br />
+<input type="text" name="useremail" value="<?= $validator->getValue("useremail") ?>"> <? echo "<span style=\"color:#ff0000;\">".$validator->getError("useremail")."</span>"; ?>
+<br />
+Password:<br />
+<input type="password" name="password" value=""> <? echo "<span style=\"color:#ff0000;\">".$validator->getError("password")."</span>"; ?>
+<br />
+<input type="checkbox" name="rememberme" <?=($validator->getValue("rememberme") != "")?"checked":""?>>
+<font size="2">Remember me next time </font>
+<br />
+<input type="hidden" name="login" value="1">
+<input type="submit" value="Login">
+</form>**
+<br />
+New User? <a href="register.php">Register here</a>
+<?php
+}
+?>
 
-    ```
+```
 
 1.  查看登录表单；字段已以与注册表单相同的方式组织。表单包含一个名为`login`的隐藏字段和值设置为`1`。因此，当表单被发布时，应用程序类可以确定已提交登录表单，因此调用了应用程序登录方法。登录表单页面看起来类似于以下内容：![操作时间-创建用户界面](img/5801_07_08.jpg)
 
@@ -1286,17 +1286,17 @@ cookie（用户计算机上的文本文件）将用于将 `useremail` 存储为 
 1.  现在，创建`profile.php`个人资料页面（您可以通过选择**文件|另存为...**从菜单中的任何界面页面创建文件，并在`body`标记内进行修改），因为它应该在`body`标记内包含以下代码：
 
 ```php
-    <?php
-    include 'menu.php';
-    if ($userService->logged_in) {
-    echo '<h2>User Profile</h2>';
-    echo "Name : " . $userService->username . "<br />";
-    echo "Email: " . $userService->useremail . "<br />";
-    echo "Phone: " . $userService->userphone . "<br />";
-    }
-    ?>
+<?php
+include 'menu.php';
+if ($userService->logged_in) {
+echo '<h2>User Profile</h2>';
+echo "Name : " . $userService->username . "<br />";
+echo "Email: " . $userService->useremail . "<br />";
+echo "Phone: " . $userService->userphone . "<br />";
+}
+?>
 
-    ```
+```
 
 在此代码片段中，您可以看到已转储已登录用户的个人资料信息，看起来类似于以下内容：
 
@@ -1305,36 +1305,36 @@ cookie（用户计算机上的文本文件）将用于将 `useremail` 存储为 
 1.  现在，创建个人资料编辑页面`profileedit.php`，并键入以下代码：
 
 ```php
-    <?php
-    include 'menu.php';
-    if ($userService->logged_in) {
-    ?>
-    <h2>Edit Profile</h2><br />
-    <?php
-    if ($validator->num_errors > 0) {
-    echo "<span style=\"color:#ff0000;\">" . $validator->num_errors . " error(s) found</span>";
-    }
-    ?> **<form action="UserApplication.php" method="POST">
-    Name: <br />
-    <input type="text" name="name" value="<?= ($validator->getValue("name") != "") ? $validator->getValue("name") : $userService->username ?>"> <? echo "<span style=\"color:#ff0000;\">" . $validator->getError("name") . "</span>"; ?>
-    <br />
-    Password:<br />
-    <input type="password" name="password" value=""> <? echo "<span style=\"color:#ff0000;\">" . $validator->getError("password") . "</span>"; ?>
-    <br />
-    New Password: <font size="2">(Leave blank to remain password unchanged)</font><br />
-    <input type="password" name="newpassword" value=""> <? echo "<span style=\"color:#ff0000;\">" . $validator->getError("newpassword") . "</span>"; ?>
-    <br />
-    Phone: <br />
-    <input type="text" name="phone" value="<?= ($validator->getValue("phone") != "") ? $validator->getValue("phone") : $userService->userphone ?>"> <? echo "<span style=\"color:#ff0000;\">" . $validator->getError("phone") . "</span>"; ?>
-    <br /><br />
-    <input type="hidden" name="update" value="1">
-    <input type="submit" value="Save">
-    </form>**
-    <?php
-    }
-    ?>
+<?php
+include 'menu.php';
+if ($userService->logged_in) {
+?>
+<h2>Edit Profile</h2><br />
+<?php
+if ($validator->num_errors > 0) {
+echo "<span style=\"color:#ff0000;\">" . $validator->num_errors . " error(s) found</span>";
+}
+?> **<form action="UserApplication.php" method="POST">
+Name: <br />
+<input type="text" name="name" value="<?= ($validator->getValue("name") != "") ? $validator->getValue("name") : $userService->username ?>"> <? echo "<span style=\"color:#ff0000;\">" . $validator->getError("name") . "</span>"; ?>
+<br />
+Password:<br />
+<input type="password" name="password" value=""> <? echo "<span style=\"color:#ff0000;\">" . $validator->getError("password") . "</span>"; ?>
+<br />
+New Password: <font size="2">(Leave blank to remain password unchanged)</font><br />
+<input type="password" name="newpassword" value=""> <? echo "<span style=\"color:#ff0000;\">" . $validator->getError("newpassword") . "</span>"; ?>
+<br />
+Phone: <br />
+<input type="text" name="phone" value="<?= ($validator->getValue("phone") != "") ? $validator->getValue("phone") : $userService->userphone ?>"> <? echo "<span style=\"color:#ff0000;\">" . $validator->getError("phone") . "</span>"; ?>
+<br /><br />
+<input type="hidden" name="update" value="1">
+<input type="submit" value="Save">
+</form>**
+<?php
+}
+?>
 
-    ```
+```
 
 该表单包含用户个人资料更新字段，如姓名、密码和电话；请注意，如果任何字段（如密码）保持空白，则该字段将不会被更新。最后，在测试时，表单看起来类似于以下内容：
 
@@ -1343,9 +1343,9 @@ cookie（用户计算机上的文本文件）将用于将 `useremail` 存储为 
 1.  现在我们可以测试注销功能。查看菜单文件以获取注销的`anchor`标签，如下所示：
 
 ```php
-    <a href='UserApplication.php?logout=1'>Logout</a>
+<a href='UserApplication.php?logout=1'>Logout</a>
 
-    ```
+```
 
 您可以看到它直接将`UserApplication.php`文件与`logout=1` URL 段锚定，因此`UserApplication`构造函数发现已使用`$_GET['logout']`调用了注销，并调用应用程序注销。注销后将重定向到索引页面。
 

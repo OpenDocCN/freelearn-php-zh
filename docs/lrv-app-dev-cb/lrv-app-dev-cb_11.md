@@ -35,57 +35,57 @@ Web 应用程序通常会依赖第三方服务来帮助我们的应用程序运�
 1.  打开 Laravel 的`composer.json`文件并更新所需部分，使其类似于以下代码片段：
 
 ```php
-    "require": {
-    "laravel/framework": "4.0.*",
-    "iron-io/iron_mq": "dev-master"
-    }
-    ```
+"require": {
+"laravel/framework": "4.0.*",
+"iron-io/iron_mq": "dev-master"
+}
+```
 
 1.  在命令行窗口中，使用以下命令更新 composer 文件：
 
 ```php
-    **php composer.phar update**
+**php composer.phar update**
 
-    ```
+```
 
 1.  安装完成后，打开`routes.php`文件并创建一个命中队列的路由：
 
 ```php
-    Route::get('queueships', function() {
-    $ships = array(
-      array(
-        'name' => 'Galactica',
-        'show' => 'Battlestar Galactica'),
-        array(
-        'name' => 'Millennium Falcon',
-        'show' => 'Star Wars'),
-        array(
-        'name' => 'USS Prometheus',
-        'show' => 'Stargate SG-1')
-    );
-    $queue = Queue::push('Spaceship', array('ships' => 
-    $ships));
-      return 'Ships are queued.';
-    });
-    ```
+Route::get('queueships', function() {
+$ships = array(
+  array(
+    'name' => 'Galactica',
+    'show' => 'Battlestar Galactica'),
+    array(
+    'name' => 'Millennium Falcon',
+    'show' => 'Star Wars'),
+    array(
+    'name' => 'USS Prometheus',
+    'show' => 'Stargate SG-1')
+);
+$queue = Queue::push('Spaceship', array('ships' => 
+$ships));
+  return 'Ships are queued.';
+});
+```
 
 1.  在`app/models`目录中创建一个名为`Spaceship.php`的文件，如下面的代码所示：
 
 ```php
-    <?php
+<?php
 
-    class Spaceship extends Eloquent{
+class Spaceship extends Eloquent{
 
-      protected $table = 'spaceships';
+  protected $table = 'spaceships';
 
-      public function fire($job, $data)
-    {
-    // Could be added to database here!
-      Log::info('We can put this in the database: ' . print_r($data, TRUE));
-      $job->delete();
-    }
-    }
-    ```
+  public function fire($job, $data)
+{
+// Could be added to database here!
+  Log::info('We can put this in the database: ' . print_r($data, TRUE));
+  $job->delete();
+}
+}
+```
 
 1.  在浏览器中，转到`http://{your-url}}/public/queueships`，然后刷新几次。
 
@@ -94,9 +94,9 @@ Web 应用程序通常会依赖第三方服务来帮助我们的应用程序运�
 1.  打开命令行窗口并运行以下命令：
 
 ```php
-     **php artisan queue:listen**
+ **php artisan queue:listen**
 
-    ```
+```
 
 1.  几分钟后，查看`app/storage/logs`文件夹，并找到带有今天日期的文件。它将打印出我们添加到队列中的数组。
 
@@ -141,26 +141,26 @@ Pagoda Box 是一个流行的云托管服务，可以很容易地创建 Web 应�
 1.  在命令行窗口中，转到服务器的根目录并运行 git clone 命令。在我们的情况下，它将是：
 
 ```php
-    **git clone git@git.pagodabox.com:erratic-eladia.git pagodaapp**
+**git clone git@git.pagodabox.com:erratic-eladia.git pagodaapp**
 
-    ```
+```
 
 1.  下载所有内容后，打开`app/routes.php`文件并添加一个路由，以便我们可以根据以下代码进行测试：
 
 ```php
-    Route::get('cool', function()
-    {
-      return 'Pagoda Box is awesome!';
-    });
-    ```
+Route::get('cool', function()
+{
+  return 'Pagoda Box is awesome!';
+});
+```
 
 1.  在命令行窗口中，提交以下更改并将其发送回 Pagoda Box
 
 ```php
-     **git commit –am 'Added route'**
-     **git push origin master**
+ **git commit –am 'Added route'**
+ **git push origin master**
 
-    ```
+```
 
 1.  Pagoda Box 完成更改后，转到新路由查看是否有效。在我们的情况下，它将是[`erratic-eladia.gopagoda.com/cool`](http://erratic-eladia.gopagoda.com/cool)。
 
@@ -197,77 +197,77 @@ Pagoda Box 是一个流行的云托管服务，可以很容易地创建 Web 应�
 1.  打开应用的`composer.json`文件，并更新`require`部分以类似以下代码片段的方式进行更新：
 
 ```php
-    "require": {
-      "laravel/framework": "4.0.*",
-      "stripe/stripe-php": "dev-master"
-    },
-    ```
+"require": {
+  "laravel/framework": "4.0.*",
+  "stripe/stripe-php": "dev-master"
+},
+```
 
 1.  在命令行窗口中，使用以下命令运行 composer update：
 
 ```php
-     **php composer.phar update**
+ **php composer.phar update**
 
-    ```
+```
 
 1.  在`app/config`目录中，创建一个名为`stripe.php`的新文件，使用以下代码：
 
 ```php
-    <?php
+<?php
 
-    return array(
-      'key' => 'fakeKey-qWerTyuuIo4f5'
-    );
-    ```
+return array(
+  'key' => 'fakeKey-qWerTyuuIo4f5'
+);
+```
 
 1.  在`routes.php`文件中，添加一个`Route`到付款表单，如下所示的代码：
 
 ```php
-    Route::get('pay', function()
-    {
-      return View::make('pay');
-    });
-    ```
+Route::get('pay', function()
+{
+  return View::make('pay');
+});
+```
 
 1.  在`app/views`文件夹中，使用以下代码片段创建一个名为`pay.blade.php`的文件，用于我们的表单：
 
 ```php
-    {{ Form::open(array('url' => 'pay', 'method' => 'post')) }}
-      Card Number: {{ Form::text('cc_number', 
-        '4242424242424242') }}<br>
+{{ Form::open(array('url' => 'pay', 'method' => 'post')) }}
+  Card Number: {{ Form::text('cc_number', 
+    '4242424242424242') }}<br>
 
-      Expiration (month):
-        {{ Form::select('cc_exp_month', array(1 => '01', 2 => 
-        '02', 3 => '03', 4 => '04', 5 => '05',6 => '06', 7 => 
-        '07', 8 => '08', 9 => '09', 10 => '10', 11 
-        => '11', 12 => '12')) }}<br>
+  Expiration (month):
+    {{ Form::select('cc_exp_month', array(1 => '01', 2 => 
+    '02', 3 => '03', 4 => '04', 5 => '05',6 => '06', 7 => 
+    '07', 8 => '08', 9 => '09', 10 => '10', 11 
+    => '11', 12 => '12')) }}<br>
 
-      Expiration (year):
-        {{ Form::select('cc_exp_year', array(2013 => 2013,
-        2014 => 2014, 2015 => 2015, 2016 => 2016)) }}<br>
+  Expiration (year):
+    {{ Form::select('cc_exp_year', array(2013 => 2013,
+    2014 => 2014, 2015 => 2015, 2016 => 2016)) }}<br>
 
-      {{ Form::submit('Charge $37 to my card') }}
-      {{ Form::close() }}
-    ```
+  {{ Form::submit('Charge $37 to my card') }}
+  {{ Form::close() }}
+```
 
 1.  回到`routes.php`，创建一个`Route`来接受表单提交，并按照以下代码对卡进行收费：
 
 ```php
-    Route::post('pay', function()
-    {
-      Stripe::setApiKey(Config::get('stripe.key'));
-      $chargeCard = array(
-        'number' => Input::get('cc_number'),
-        'exp_month' => Input::get('cc_exp_month'),
-        'exp_year'  => Input::get('cc_exp_year')
-    );
-      $charge = Stripe_Charge::create(array('card' => 
-        $chargeCard, 'amount' => 3700, 'currency' => 'usd'));
+Route::post('pay', function()
+{
+  Stripe::setApiKey(Config::get('stripe.key'));
+  $chargeCard = array(
+    'number' => Input::get('cc_number'),
+    'exp_month' => Input::get('cc_exp_month'),
+    'exp_year'  => Input::get('cc_exp_year')
+);
+  $charge = Stripe_Charge::create(array('card' => 
+    $chargeCard, 'amount' => 3700, 'currency' => 'usd'));
 
-    // Save returned info here
-      var_dump($charge);
-    });
-    ```
+// Save returned info here
+  var_dump($charge);
+});
+```
 
 ## 工作原理...
 
@@ -298,55 +298,55 @@ Stripe 提供了许多易于使用的方法来管理信用卡交易，甚至订�
 1.  打开`composer.json`文件并更新`require`部分，使其看起来像以下代码片段：
 
 ```php
-    "require": {
-      "laravel/framework": "4.0.*",
-      "geoip/geoip": "dev-master"
-    },
-    ```
+"require": {
+  "laravel/framework": "4.0.*",
+  "geoip/geoip": "dev-master"
+},
+```
 
 1.  在命令行窗口中，使用以下命令运行 composer update：
 
 ```php
-     **php composer.phar update**
+ **php composer.phar update**
 
-    ```
+```
 
 1.  转到[`dev.maxmind.com/geoip/legacy/geolite/`](http://dev.maxmind.com/geoip/legacy/geolite/)并下载最新的**GeoLite Country**数据库。解压缩并将`GeoIP.dat`文件放在我们应用的根目录中。
 
 1.  在`app/config`目录中，创建一个名为`geoip.php`的文件，使用以下代码：
 
 ```php
-    <?php
+<?php
 
-    return array(
-      'path' => realpath("path/to/GeoIP.dat")
-    );
-    ```
+return array(
+  'path' => realpath("path/to/GeoIP.dat")
+);
+```
 
 1.  打开`app/filters.php`文件，并添加一个用于我们的`geoip`文件的过滤器，使用以下代码：
 
 ```php
-      Route::filter('geoip', function($route, $request, $value = NULL)
-    {
-      $ip = is_null($value) ? Request::getClientIp() : $value;
-      $gi = geoip_open(Config::get('geoip.path'), GEOIP_STANDARD);
-      $code = geoip_country_code_by_addr($gi, $ip);
-      return Redirect::to('geo/' . strtolower($code));
-    });
-    ```
+  Route::filter('geoip', function($route, $request, $value = NULL)
+{
+  $ip = is_null($value) ? Request::getClientIp() : $value;
+  $gi = geoip_open(Config::get('geoip.path'), GEOIP_STANDARD);
+  $code = geoip_country_code_by_addr($gi, $ip);
+  return Redirect::to('geo/' . strtolower($code));
+});
+```
 
 1.  在我们的`routes.php`文件中，创建一个路由来应用过滤器，并创建一个接受国家代码的路由，如下所示的代码：
 
 ```php
-    Route::get('geo', array('before' => 'geoip:80.24.24.24', function()
-    {
-    return '';
-    }));
-    Route::get('geo/{country_code}', function($country_code)
-    {
-    return 'Welcome! Your country code is: ' . $country_code;
-    });
-    ```
+Route::get('geo', array('before' => 'geoip:80.24.24.24', function()
+{
+return '';
+}));
+Route::get('geo/{country_code}', function($country_code)
+{
+return 'Welcome! Your country code is: ' . $country_code;
+});
+```
 
 ## 工作原理...
 
@@ -375,97 +375,97 @@ Stripe 提供了许多易于使用的方法来管理信用卡交易，甚至订�
 1.  打开 Laravel 的`composer.json`文件，并将 libraries 目录添加到`autoload`部分。该部分应该类似于以下代码片段：
 
 ```php
-    "autoload": {
-        "classmap": [
-        "app/commands",
-        "app/controllers",
-        "app/models",
-        "app/database/migrations",
-        "app/database/seeds",
-        "app/tests/TestCase.php",
-        "app/libraries"
-    ]
-    },
+"autoload": {
+    "classmap": [
+    "app/commands",
+    "app/controllers",
+    "app/models",
+    "app/database/migrations",
+    "app/database/seeds",
+    "app/tests/TestCase.php",
+    "app/libraries"
+]
+},
 
-    ```
+```
 
 1.  打开命令行窗口，并运行 composer 的`dump-autoload`命令，如下所示：
 
 ```php
-     **php composer.phar dump-autoload**
+ **php composer.phar dump-autoload**
 
-    ```
+```
 
 1.  在`app/config`目录中，创建一个名为`mailchimp.php`的文件，并使用以下代码：
 
 ```php
-    <?php
+<?php
 
-    return array(
-      'key' => 'mykey12345abcde-us1',
-      'list' => 'q1w2e3r4t5'
-    );
-    ```
+return array(
+  'key' => 'mykey12345abcde-us1',
+  'list' => 'q1w2e3r4t5'
+);
+```
 
 1.  要获取我们的 Mailchimp 列表，并查看它们的 ID，请打开`routes.php`文件并添加一个新的路由，如下所示：
 
 ```php
-    Route::get('lists', function()
-    {
-      $mc = new MCAPI(Config::get('mailchimp.key'));
-      $lists = $mc->lists();
+Route::get('lists', function()
+{
+  $mc = new MCAPI(Config::get('mailchimp.key'));
+  $lists = $mc->lists();
 
-      if($mc->errorCode) {
-        echo 'Error loading list: ' . $mc->errorMessage;
-      } else {
-        echo '<h1>Lists and IDs</h1><h3>Total lists: '
-        $lists['total'] . '</h3>';
-      foreach($lists['data'] as $list) {
-       echo '<strong>' . $list['name'] . ':</strong> ' .
-       $list['id'] . '<br>';
-    }
-    }
-    });
+  if($mc->errorCode) {
+    echo 'Error loading list: ' . $mc->errorMessage;
+  } else {
+    echo '<h1>Lists and IDs</h1><h3>Total lists: '
+    $lists['total'] . '</h3>';
+  foreach($lists['data'] as $list) {
+   echo '<strong>' . $list['name'] . ':</strong> ' .
+   $list['id'] . '<br>';
+}
+}
+});
 
-    ```
+```
 
 1.  在`routes.php`文件中，使用以下代码创建一个路由来显示`subscribe`表单：
 
 ```php
-    Route::get('subscribe', function()
-    {
-      return View::make('subscribe');
-    });
-    ```
+Route::get('subscribe', function()
+{
+  return View::make('subscribe');
+});
+```
 
 1.  在`app/views`目录中，创建一个名为`subscribe.blade.php`的文件，如下所示：
 
 ```php
-      {{ Form::open() }}
-      First Name: {{ Form::text('fname') }} <br>
-      Last Name: {{ Form::text('lname') }} <br>
-      Email: {{ Form::text('email') }} <br>
-      {{ Form::submit() }}
-      {{ Form::close() }}
-    ```
+  {{ Form::open() }}
+  First Name: {{ Form::text('fname') }} <br>
+  Last Name: {{ Form::text('lname') }} <br>
+  Email: {{ Form::text('email') }} <br>
+  {{ Form::submit() }}
+  {{ Form::close() }}
+```
 
 1.  在`routes.php`文件中，创建一个路由来接受和处理表单提交，如下所示：
 
 ```php
-    Route::post('subscribe', function()
-    {
-      $mc = new MCAPI(Config::get('mailchimp.key'));
+Route::post('subscribe', function()
+{
+  $mc = new MCAPI(Config::get('mailchimp.key'));
 
-      $merge_vars = array('FNAME' => Input::get('fname'), 'LNAME' => Input::get('lname'));
-      $ret = $mc->listSubscribe(Config::get('mailchimp.list'), Input::get('email'), $merge_vars);
+  $merge_vars = array('FNAME' => Input::get('fname'), 'LNAME' => Input::get('lname'));
+  $ret = $mc->listSubscribe(Config::get('mailchimp.list'), Input::get('email'), $merge_vars);
 
-    if ($mc->errorCode){
-      return 'There was an error: ' . $mc->errorMessage;
-    } else {
-      return 'Thank you for your subscription!';
-    }
-    });
-    ```
+if ($mc->errorCode){
+  return 'There was an error: ' . $mc->errorMessage;
+} else {
+  return 'Thank you for your subscription!';
+}
+});
+```
 
 ## 它是如何工作的...
 
@@ -500,104 +500,104 @@ Mailchimp 提供了一个非常广泛的 API，允许我们轻松管理我们的
 1.  打开 Laravel 的`composer.json`文件并添加亚马逊 SDK 包。要求部分应该类似于以下片段：
 
 ```php
-    "require": {
-      "laravel/framework": "4.0.*",
-      "aws/aws-sdk-php-laravel": "dev-master"
-    },
-    ```
+"require": {
+  "laravel/framework": "4.0.*",
+  "aws/aws-sdk-php-laravel": "dev-master"
+},
+```
 
 1.  打开命令行窗口，并使用 Composer 包安装包，如下所示：
 
 ```php
-     **php composer.phar update**
+ **php composer.phar update**
 
-    ```
+```
 
 1.  安装完成后，在`app/config`目录中，创建一个名为`aws.php`的文件，如下所示：
 
 ```php
-    <?php
+<?php
 
-    return array(
-      'key'    => 'MYKEY12345',
-      'secret' => 'aLongS3cretK3y1234abcdef',
-      'region' => '',
-    );
-    ```
+return array(
+  'key'    => 'MYKEY12345',
+  'secret' => 'aLongS3cretK3y1234abcdef',
+  'region' => '',
+);
+```
 
 1.  在`app/config`目录中，打开`app.php`文件。在`providers`数组的末尾，按照以下代码添加 AWS 提供程序：
 
 ```php
-      'Aws\Laravel\AwsServiceProvider',
-    ```
+  'Aws\Laravel\AwsServiceProvider',
+```
 
 1.  还在`app.php`文件中，在别名数组中，添加以下别名：
 
 ```php
-      'AWS' => 'Aws\Laravel\AwsFacade',
-    ```
+  'AWS' => 'Aws\Laravel\AwsFacade',
+```
 
 1.  在我们的`routes.php`文件中，通过创建一个列出我们的`buckets`的路由来测试一切是否正常，如下所示：
 
 ```php
-    Route::get('buckets', function()
-    {
-      $list = AWS::get('s3')->listBuckets();
-        foreach ($list['Buckets'] as $bucket) {
-        echo $bucket['Name'] . '<br>';
-    }
-    });
+Route::get('buckets', function()
+{
+  $list = AWS::get('s3')->listBuckets();
+    foreach ($list['Buckets'] as $bucket) {
+    echo $bucket['Name'] . '<br>';
+}
+});
 
-    ```
+```
 
 1.  要测试存储桶，请转到`http://{your-server}/buckets`，它应该显示我们设置的所有存储桶的列表。
 
 1.  现在让我们创建一个用户上传图像的表单。我们首先创建一个包含表单的路由，如下所示：
 
 ```php
-    Route::get('cloud', function()
-    {
-      return View::make('cloud');
-    });
-    ```
+Route::get('cloud', function()
+{
+  return View::make('cloud');
+});
+```
 
 1.  在`app/views`文件夹中，创建一个名为`cloud.blade.php`的文件，其中包含以下代码：
 
 ```php
-      {{ Form::open(array('files' => true)) }}
-      Image: {{ Form::file('my_image') }} <br>
-      {{ Form::submit() }}
-      {{ Form::close() }}
-    ```
+  {{ Form::open(array('files' => true)) }}
+  Image: {{ Form::file('my_image') }} <br>
+  {{ Form::submit() }}
+  {{ Form::close() }}
+```
 
 1.  回到`routes.php`文件，在下面的代码中创建一个路由来处理文件并将其上传到 S3：
 
 ```php
-    Route::post('cloud', function()
-    {
-      $my_image = Input::file('my_image');
-      $s3_name = date('Ymdhis') . '-' . $my_image
-        >getClientOriginalName();
-      $path = $my_image->getRealPath();
+Route::post('cloud', function()
+{
+  $my_image = Input::file('my_image');
+  $s3_name = date('Ymdhis') . '-' . $my_image
+    >getClientOriginalName();
+  $path = $my_image->getRealPath();
 
-      $s3 = AWS::get('s3');
-      $obj = array(
-        'Bucket'     => 'laravelcookbook',
-        'Key'        => $s3_name,
-        'SourceFile' => $path,
-        'ACL'        => 'public-read',
-    );
+  $s3 = AWS::get('s3');
+  $obj = array(
+    'Bucket'     => 'laravelcookbook',
+    'Key'        => $s3_name,
+    'SourceFile' => $path,
+    'ACL'        => 'public-read',
+);
 
-      if ($s3->putObject($obj)) {
-      return
-        Redirect::to('https://s3.amazonaws.com/laravelcookbook/
-        ' . $s3_name);
-    } else {
-      return 'There was an S3 error';
-    }
-    });
+  if ($s3->putObject($obj)) {
+  return
+    Redirect::to('https://s3.amazonaws.com/laravelcookbook/
+    ' . $s3_name);
+} else {
+  return 'There was an S3 error';
+}
+});
 
-    ```
+```
 
 ## 它是如何工作的…
 

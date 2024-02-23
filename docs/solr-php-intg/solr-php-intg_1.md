@@ -51,19 +51,19 @@ Solr 需要您的系统上安装有 Java。要检查系统上是否安装了 Jav
 +   对于 Windows 的安装，只需右键单击 zip 文件并将其解压缩到`C:\solr-4.3.1`文件夹中。要启动 Solr，请转到 Windows 命令提示符**开始** | **运行**。在**运行**窗口中，键入`cmd`。在 Windows 命令提示符中键入以下内容：
 
 ```php
-    **cd C:\solr-4.3.1\example**
-    **java –jar start.jar**
+**cd C:\solr-4.3.1\example**
+**java –jar start.jar**
 
-    ```
+```
 
 +   对于 Linux 的安装，只需在您的主文件夹中解压缩 zip 文件。按照以下命令在控制台中提取和运行 Solr：
 
 ```php
-    **unzip solr-4.3.1.zip**
-    **cd ~/solr-4.3.1/example**
-    **java –jar start.jar**
+**unzip solr-4.3.1.zip**
+**cd ~/solr-4.3.1/example**
+**java –jar start.jar**
 
-    ```
+```
 
 当我们使用`java –jar start.jar`选项启动 Solr 时，Solr 运行在端口 8983 上。它使用一个名为 jetty 的内置 Web 服务器。要查看 Solr 的工作情况，只需将浏览器指向以下地址：
 
