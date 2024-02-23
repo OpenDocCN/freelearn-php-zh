@@ -1,4 +1,4 @@
-# 第九章。iPhone 和 Ajax
+# 第九章：iPhone 和 Ajax
 
 在本章中，我们将涵盖：
 

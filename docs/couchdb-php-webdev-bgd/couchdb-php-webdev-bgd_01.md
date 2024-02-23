@@ -1,4 +1,4 @@
-# 第一章。CouchDB 简介
+# 第一章：CouchDB 简介
 
 > 欢迎来到 CouchDB 和 PHP Web 开发初学者指南。在这本书中，我们将学习使用 CouchDB 和 PHP 构建一个简单但功能强大的网站的方方面面。为了让你理解为什么我们在 CouchDB 中做某些事情，你首先需要了解 NoSQL 数据库的历史，并了解 CouchDB 在数据库历史中的地位是非常重要的。
 

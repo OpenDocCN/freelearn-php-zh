@@ -1,4 +1,4 @@
-# 第三章。实现自动加载器
+# 第三章：实现自动加载器
 
 在这一步中，我们将设置自动类加载。之后，当我们需要一个类文件时，我们将不需要`include`或`require`语句来为我们加载它。在继续之前，您应该查看 PHP 自动加载器的文档 - [`www.php.net/manual/en/language.oop5.autoload.php`](http://www.php.net/manual/en/language.oop5.autoload.php)。
 

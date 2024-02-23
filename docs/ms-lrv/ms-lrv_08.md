@@ -1,4 +1,4 @@
-# 第八章。使用 Eloquent ORM 查询数据库
+# 第八章：使用 Eloquent ORM 查询数据库
 
 在之前的章节中，您学习了如何构建应用程序的基本组件。在本章中，将介绍 Eloquent ORM，这是使 Laravel 如此受欢迎的最佳功能之一。
 

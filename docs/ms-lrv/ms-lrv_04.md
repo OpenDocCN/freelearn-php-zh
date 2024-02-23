@@ -1,4 +1,4 @@
-# 第四章。创建 RESTful API
+# 第四章：创建 RESTful API
 
 如果有一个单一的核心功能可以展示 Laravel 的优越性，那就是快速轻松地创建 RESTful API 的能力。随着 Laravel 5 的到来，添加了几个新功能；然而，通过 Artisan 命令行工具创建应用程序模型和控制器的能力仍然是最有用的功能。
 

@@ -1,4 +1,4 @@
-# 第八章。使用 Ajax 和 jQuery
+# 第八章：使用 Ajax 和 jQuery
 
 在本章中，我们将涵盖：
 

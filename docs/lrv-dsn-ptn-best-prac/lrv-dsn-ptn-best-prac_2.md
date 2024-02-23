@@ -1,4 +1,4 @@
-# 第二章。MVC 中的模型
+# 第二章：MVC 中的模型
 
 在本章中，我们将讨论 MVC 结构中的模型是什么，它的目的是什么，它在 SOLID 设计模式中的作用是什么，Laravel 如何定义它，以及 Laravel 的模型层和 Eloquent ORM 的优势。我们还将讨论处理数据的 Laravel 类。
 

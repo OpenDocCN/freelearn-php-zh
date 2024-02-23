@@ -1,4 +1,4 @@
-# 第一章。开始使用 Doctrine 2
+# 第一章：开始使用 Doctrine 2
 
 Doctrine 项目是一组库，提供了在 PHP 应用程序中轻松实现数据持久性的实用程序。它使得可以在很短的时间内创建与流行的 DBMS 兼容的复杂模型层，包括 SQLite、MySQL 和 PostgreSQL。为了发现和理解 Doctrine，我们将在本书中从头开始创建一个小型博客，主要使用以下 Doctrine 组件：
 

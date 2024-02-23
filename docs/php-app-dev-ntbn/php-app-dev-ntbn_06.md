@@ -1,4 +1,4 @@
-# 第六章。了解 Git，NetBeans 方式
+# 第六章：了解 Git，NetBeans 方式
 
 > 尽早提交，经常提交。
 

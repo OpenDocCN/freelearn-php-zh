@@ -1,4 +1,4 @@
-# 第一章 Laravel 入门
+# 第一章：Laravel 入门
 
 欢迎来到 Laravel 入门。本书专门为您提供了开始使用 Laravel Web 开发框架所需的所有信息。您将学习 Laravel 的基础知识，开始构建您的第一个 Web 应用程序，并发现一些使用 Laravel 的技巧和窍门。
 
