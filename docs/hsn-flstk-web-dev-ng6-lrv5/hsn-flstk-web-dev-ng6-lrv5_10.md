@@ -1,4 +1,4 @@
-# 使用 Bootstrap 4 和 NgBootstrap 的前端视图
+# 第十章：使用 Bootstrap 4 和 NgBootstrap 的前端视图
 
 在本章中，我们将看看如何使用 Angular CLI 的新`add`功能在运行的 Angular 应用程序中包含 Bootstrap 框架。
 

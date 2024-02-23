@@ -1,4 +1,4 @@
-# 使用 Angular CLI 构建渐进式 Web 应用程序
+# 第七章：使用 Angular CLI 构建渐进式 Web 应用程序
 
 正如我们在第三章中提到的，*了解 Angular 6 的核心概念*，Angular 是基于 JavaScript 开发现代 Web 应用程序的主要框架之一。
 

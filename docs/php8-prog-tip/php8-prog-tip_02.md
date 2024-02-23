@@ -1,4 +1,4 @@
-# *第一章*：介绍新的 PHP 8 OOP 特性
+# 第二章：*第一章*：介绍新的 PHP 8 OOP 特性
 
 在本章中，您将了解到针对**面向对象编程**（**OOP**）的**PHP: Hypertext Preprocessor 8**（**PHP 8**）的新特性。本章介绍了一组类，可用于生成 CAPTCHA 图像（**CAPTCHA**是**Completely Automated Public Turing test to tell Computers and Humans Apart**的缩写），清晰地说明了新的 PHP 8 特性和概念。本章对于帮助您快速将新的 PHP 8 特性纳入到您自己的实践中至关重要。这样做，您的代码将运行得更快、更高效，bug 更少。
 

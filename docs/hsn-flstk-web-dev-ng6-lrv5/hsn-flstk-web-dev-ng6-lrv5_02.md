@@ -1,4 +1,4 @@
-# TypeScript 的好处
+# 第二章：TypeScript 的好处
 
 TypeScript 使您能够编写 JavaScript 代码。它包括静态类型和其他在面向对象语言中非常常见的特性。此外，使用 TypeScript，您可以使用 ECMAScript 6 的所有特性，因为编译器将它们转换为当前浏览器可读的代码。
 

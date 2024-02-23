@@ -1038,13 +1038,13 @@ public function redirect($path = '/') {
 header('Location: ' . $this->make_route($path));
 }
 
-````
+```
 
-## `刚刚发生了什么？`
+## 刚刚发生了什么？
 
-`我们添加了一个名为`logout`的`public static`函数。我们将其设置为`public static`的原因是，我们目前登录的用户对我们来说并不重要。我们只需要执行一些简单的会话级操作。首先，我们像往常一样创建了一个`$bones`实例，但接下来的部分非常有趣，所以我们设置了`$bones->couch->login(null, null)`。通过这样做，我们将当前用户设置为匿名用户，有效地注销了他们。然后，我们调用了`session_start`和`session_destroy`。请记住，通过`session_start`，我们使我们的会话可访问，然后我们销毁它，这将删除与当前会话相关的所有数据。
+我们添加了一个名为`logout`的`public static`函数。我们将其设置为`public static`的原因是，我们目前登录的用户对我们来说并不重要。我们只需要执行一些简单的会话级操作。首先，我们像往常一样创建了一个`$bones`实例，但接下来的部分非常有趣，所以我们设置了`$bones->couch->login(null, null)`。通过这样做，我们将当前用户设置为匿名用户，有效地注销了他们。然后，我们调用了`session_start`和`session_destroy`。请记住，通过`session_start`，我们使我们的会话可访问，然后我们销毁它，这将删除与当前会话相关的所有数据。
 
-`在完成`login`函数后，我们打开了`index.php`，并调用了我们的`public static`函数，使用`User::logout()`。
+在完成`login`函数后，我们打开了`index.php`，并调用了我们的`public static`函数，使用`User::logout()`。
 
 最后，我们使用了一个重定向函数，将其添加到了`index.php`文件中。因此，我们迅速在 Bones 中添加了一个函数，这样就可以使用`make_route`将用户重定向到一个路由。
 

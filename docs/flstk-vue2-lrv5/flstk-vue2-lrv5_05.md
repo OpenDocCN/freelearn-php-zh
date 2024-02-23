@@ -1,4 +1,4 @@
-# 将 Laravel 和 Vue.js 集成到 Webpack 中
+# 第五章：将 Laravel 和 Vue.js 集成到 Webpack 中
 
 在本章中，我们将把 Vuebnb 前端原型迁移到我们的主要 Laravel 项目中，实现 Vuebnb 的第一个全栈迭代。这个完全集成的环境将包括一个 Webpack 构建步骤，允许我们在继续构建前端时整合更复杂的工具和技术。
 

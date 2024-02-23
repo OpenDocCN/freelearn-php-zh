@@ -1,4 +1,4 @@
-# 使用 Laravel 构建 RESTful API - 第 2 部分
+# 第六章：使用 Laravel 构建 RESTful API - 第 2 部分
 
 在本章中，我们将继续构建我们的 API。在 Laravel 中，我们还有很长的路要走。
 

@@ -1,4 +1,4 @@
-# 使用 Vue.js 组件组合小部件
+# 第六章：使用 Vue.js 组件组合小部件
 
 组件正在成为前端开发的一个重要方面，并且是大多数现代前端框架的一个特性，包括 Vue、React、Angular、Polymer 等。组件甚至通过一个称为**Web Components**的新标准成为 Web 的本地特性。
 
