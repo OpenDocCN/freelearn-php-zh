@@ -34,7 +34,7 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 1.  打开`docker-compose.yml`并用以下代码替换其内容：
 
-```php
+```
  version: "3.1"
  services:
      mysql:
@@ -85,7 +85,7 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 1.  将我们所做的更改添加到 Git 源代码控制中。打开您的终端窗口并输入以下命令：
 
-```php
+```
  git add .
  git commit -m "Initial commit chapter 09"
 ```
@@ -108,13 +108,13 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 1.  转到`./Client/src/app`并输入以下命令：
 
-```php
+```
  ng g class pages/auth/user
 ```
 
 1.  上一个命令将在`./app/pages/auth/auth.ts`中创建一个新文件。打开此文件并添加以下代码：
 
-```php
+```
  export  class  User {
         name?:  string;
         email?:  string;
@@ -133,13 +133,13 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 1.  仍然在您的终端中，输入以下命令：
 
-```php
+```
  ng g class pages/builders/builder
 ```
 
 1.  上一个命令将在`./app/pages/builders/builder.ts`中创建一个新文件。打开此文件并添加以下代码：
 
-```php
+```
  import { Bike } from  '../bikes/bike';
 
  export  class  Builder {
@@ -165,13 +165,13 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 1.  仍然在您的终端中，输入以下命令：
 
-```php
+```
  ng g class pages/bikes/bike
 ```
 
 1.  上一个命令将在`./app/pages/bikes/bike.ts`中创建一个新的文件。打开这个文件并添加以下代码：
 
-```php
+```
  import { User } from  './../auth/user';
  import { Builder } from  '../builders/builder';
 
@@ -212,7 +212,7 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 1.  仍然在您的终端中，输入以下命令：
 
-```php
+```
  ng g service pages/auth/_services/auth
 ```
 
@@ -220,7 +220,7 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 1.  打开`./app/pages/auth/_services/auth.service.ts`并在文件顶部添加以下导入：
 
-```php
+```
  import { HttpClient, HttpParams, HttpErrorResponse } from  '@angular/common/http';
  import { HttpHeaders } from  '@angular/common/http';
  import { Router } from  '@angular/router';
@@ -236,12 +236,12 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 1.  在导入文件后添加以下代码：
 
-```php
+```
  // Setup headers
  const httpOptions  = {
 ```
 
-```php
+```
         headers: new  HttpHeaders({
                 'Content-Type': 'application/json'
         })
@@ -252,7 +252,7 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 1.  在`AuthService`类内部，添加以下代码：
 
-```php
+```
  public  currentUser:  User;
  private  readonly  apiUrl  =  environment.apiUrl;
  private  registerUrl  =  this.apiUrl  +  '/register';
@@ -265,13 +265,13 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 1.  现在，让我们创建我们的`constructor`函数。在`constructor`函数内部，添加以下代码：
 
-```php
+```
  private  http:  HttpClient, private  router:  Router
 ```
 
 1.  `constructor`类将如下代码所示：
 
-```php
+```
      constructor(
                 private  http:  HttpClient,
                 private  router:  Router) {}
@@ -283,7 +283,7 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 让我们创建`Register`函数。在`constructor`函数之后，添加以下代码：
 
-```php
+```
      onRegister(user: User): Observable<User> {
                 const request  =  JSON.stringify(
                         { name: user.name, email: user.email, password:
@@ -326,7 +326,7 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 在`onRegister()`函数之后添加以下代码：
 
-```php
+```
      onLogin(user: User): Observable<User> {
                 const request  =  JSON.stringify(
                         { email: user.email, password: user.password }
@@ -358,7 +358,7 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 在`onLogin()`函数之后添加以下代码：
 
-```php
+```
 onLogout():  Observable<User> {
         return  this.http.post(this.apiUrl  +  '/logout',
           httpOptions).pipe(
@@ -384,7 +384,7 @@ onLogout():  Observable<User> {
 
 在`logout()`函数之后，添加以下代码块：
 
-```php
+```
 setToken(token:  string):  void {
         return  localStorage.setItem('token', token );
 }
@@ -402,7 +402,7 @@ getToken():  string {
 
 在`getToken()`函数之后添加以下代码：
 
-```php
+```
 getUser():  Observable<User> {
         return  this.http.get(this.apiUrl  +  '/me').pipe(
                 tap(
@@ -422,7 +422,7 @@ getUser():  Observable<User> {
 
 在`getUser()`函数之后添加以下代码：
 
-```php
+```
   isAuthenticated():  boolean { // get the token
   const  token:  string  =  this.getToken();
   if (token) {
@@ -439,7 +439,7 @@ getUser():  Observable<User> {
 
 在**`getUser()`**函数之后添加以下代码：
 
-```php
+```
 private  handleError(error:  HttpErrorResponse) {
         if (error.error  instanceof  ErrorEvent) {
                 // A client-side error.
@@ -462,7 +462,7 @@ private  handleError(error:  HttpErrorResponse) {
 
 1.  仍然在您的终端中，键入以下命令：
 
-```php
+```
  ng g service pages/bikes/_services/bike
 ```
 
@@ -470,7 +470,7 @@ private  handleError(error:  HttpErrorResponse) {
 
 1.  打开`./app/pages/bikes/_services/bike.service.ts`并将以下导入添加到文件顶部：
 
-```php
+```
  import { Injectable } from  '@angular/core';
  import { HttpClient, HttpParams, HttpErrorResponse } from  '@angular/common/http';
  import { HttpHeaders } from  '@angular/common/http';
@@ -484,14 +484,14 @@ private  handleError(error:  HttpErrorResponse) {
 
 1.  在`bikesService`类中，添加以下属性：
 
-```php
+```
  private  readonly  apiUrl  =  environment.apiUrl;
  private  bikesUrl  =  this.apiUrl  +  '/bikes';
 ```
 
 1.  现在，让我们创建我们的`constructor`函数。在`constructor`函数中，添加以下代码：
 
-```php
+```
  constructor(private  http:  HttpClient) {}
 ```
 
@@ -503,7 +503,7 @@ private  handleError(error:  HttpErrorResponse) {
 
 在`constructor()`函数之后添加以下代码块：
 
-```php
+```
  /** GET bikes from bikes endpoint */
  getBikes ():  Observable<Bike[]> {
         return  this.http.get<Bike[]>(this.bikesUrl)
@@ -556,12 +556,12 @@ private  handleError(error:  HttpErrorResponse) {
 
 上述代码与我们在身份验证服务中使用的内容没有特别不同，除了使用模板字符串：
 
-```php
+```
 this.bikesUrl  +  `/${id}`
 this.bikesUrl  +  `/${bike}/ratings`, {rating}
 ```
 
-这些由反引号（```php`) characters, instead of single or double quotes marks, and an expression beginning with a dollar sign.
+这些由反引号（`` ` ``）字符包围，而不是单引号或双引号，以及以美元符号开头的表达式。
 
 # Creating the voteOnBike function
 
@@ -569,27 +569,18 @@ Our service still has one more function, which we will use to send the user's vo
 
 Add the following code right after the `deleteBike()` function:
 
-```）表示
+```
+     /** Vote on bike */
+        voteOnBike (vote:  number, bike:  number):  Observable<any> {
+                const  rating  =  vote;
+                return  this.http.post(this.bikesUrl  + 
+                `/${bike}/ratings`, {rating})
+                .pipe(
+                        catchError(error  =>  this.handleError(error))
+                );
+        }
 
-/** 对自行车进行投票 */
-
-voteOnBike (vote:  number, bike:  number):  Observable<any> {
-
-const  rating  =  vote;
-
-return  this.http.post(this.bikesUrl  +
-
-`/${bike}/ratings`, {rating})
-
-.pipe(
-
-catchError(error  =>  this.handleError(error))
-
-);
-
-}
-
-```php
+```
 
 # Creating the handleError function
 
@@ -597,35 +588,21 @@ Now, let's add the error handling for the bikes service. Add the following code,
 
 ```
 
-/** Error handler */
-
-private  handleError(error:  HttpErrorResponse) {
-
-if (error.error  instanceof  ErrorEvent) {
-
-// A client-side error.
-
-console.error('An error occurred:',
-
-error.error.message);
-
-} else {
-
-// The backend error.
-
-return  throwError(error);
-
-}
-
-// return a custom error message
-
-return  throwError('Something bad happened; please try
-
-again later.');
-
-}
-
-```php
+     /** Error handler */
+        private  handleError(error:  HttpErrorResponse) {
+                if (error.error  instanceof  ErrorEvent) {
+                        // A client-side error.
+                        console.error('An error occurred:', 
+                error.error.message);
+                } else {
+                        // The backend error.
+                        return  throwError(error);
+                }
+                // return a custom error message
+                return  throwError('Something bad happened; please try
+                again later.');
+        }
+```
 
 As we can see, the `handleError()` function on the bike service is the same as the authentication service, and will be the same on the builders service. Whenever you need to write the same code more than once, it is highly recommended that you use a service for this, thereby avoiding the repetition of code.
 
@@ -641,7 +618,7 @@ Now, we will create the `builder` service with the `Create`, `Read`, `Update`, a
 
 ng g service pages/builders/_services/builder
 
-```php
+```
 
 The previous command will create a new folder and file in `./app/pages/builders/_services/builder.service.ts`. Now, let's add some pieces of code.
 
@@ -649,173 +626,101 @@ The previous command will create a new folder and file in `./app/pages/builders
 
 ```
 
-import { Injectable } from  '@angular/core';
-
-import { HttpClient, HttpParams, HttpErrorResponse } from
-
-'@angular/common/http';
-
-import { HttpHeaders } from  '@angular/common/http';
-
-import { Observable, throwError } from  'rxjs';
-
-import { catchError } from  'rxjs/operators';
-
-// App import
-
-import { environment } from
-
-'../../../../environments/environment';
-
-import { Builder } from  '../builder';
-
-@Injectable({
-
-providedIn: 'root'
-
-})
-
-export  class  BuildersService {
-
-private  readonly  apiUrl  =  environment.apiUrl;
-
-private  buildersUrl  =  this.apiUrl  +
-
-'/builders';
-
-constructor(private  http:  HttpClient) { }
-
-/** GET builders from builders endpoint */
-
-getBuilders ():  Observable<Builder[]> {
-
-return  this.http.get<Builder[]>
-
-(this.buildersUrl)
-
-.pipe(
-
-catchError(error  =>
-
-this.handleError(error))
-
-);
-
-}
-
-/** GET builder detail from builder-detail endpoint */
-
-*/
-
-getBuilderDetail (id:  number):
-
-Observable<Builder[]> {
-
-return  this.http.get<Builder[]>(this.buildersUrl  +
-
-`/${id}`)
-
-.pipe(
-
-catchError(error  =>
-
-this.handleError(error))
-
-);
-
-}
-
-/** POST builder to builders endpoint */
-
-addBuilder (builder:  Builder):  Observable<Builder>
-
-{
-
-return  this.http.post<Builder>
-
-(this.buildersUrl, builder)
-
-.pipe(
-
-catchError(error  =>
-
-this.handleError(error))
-
-);
-
-}
-
-/** PUT builder to builders endpoint */
-
-updateBuilder (builder:  Builder, id:  number):
-
-Observable<Builder> {
-
-return  this.http.put<Builder>
-
-(this.buildersUrl  +  `/${id}`, builder)
-
-.pipe(
-
-catchError(error  =>
-
-this.handleError(error))
-
-);
-
-}
-
-/** DELETE builder builder endpoint */
-
-deleteBuilder (id:  number):  Observable<Builder[]>
-
-{
-
-return  this.http.delete<Builder[]>
-
-(this.buildersUrl  +  `/${id}`)
-
-.pipe(
-
-catchError(error  =>
-
-this.handleError(error))
-
-);
-
-}
-
-/** Error handler */
-
-private  handleError(error:  HttpErrorResponse) {
-
-if (error.error  instanceof  ErrorEvent) {
-
-// A client-side error.
-
-console.error('An error occurred:',
-
-error.error.message);
-
-} else {
-
-// The backend error.
-
-return  throwError(error);
-
-}
-
-// return a custom error message
-
-return  throwError('Something bad happened;
-
-请稍后再试。');
-
-}
-
-}
-
-```php
+     import { Injectable } from  '@angular/core';
+
+        import { HttpClient, HttpParams, HttpErrorResponse } from
+       '@angular/common/http';
+        import { HttpHeaders } from  '@angular/common/http';
+        import { Observable, throwError } from  'rxjs';
+        import { catchError } from  'rxjs/operators';
+
+        // App import
+        import { environment } from
+        '../../../../environments/environment';
+        import { Builder } from  '../builder';
+        @Injectable({
+                providedIn: 'root'
+        })
+
+        export  class  BuildersService {
+                private  readonly  apiUrl  =  environment.apiUrl;
+                private  buildersUrl  =  this.apiUrl  +
+         '/builders';
+                
+                constructor(private  http:  HttpClient) { }
+
+                /** GET builders from builders endpoint */
+                getBuilders ():  Observable<Builder[]> {
+                        return  this.http.get<Builder[]>
+      (this.buildersUrl)
+                                .pipe(
+                                        catchError(error  =>
+       this.handleError(error))
+                                );
+                }
+
+                /** GET builder detail from builder-detail endpoint
+        */
+                getBuilderDetail (id:  number):
+        Observable<Builder[]> {
+                return  this.http.get<Builder[]>(this.buildersUrl  +  
+        `/${id}`)
+                        .pipe(
+                                catchError(error  => 
+        this.handleError(error))
+                        );
+                }
+
+                /** POST builder to builders endpoint */
+                addBuilder (builder:  Builder):  Observable<Builder> 
+         {
+                        return  this.http.post<Builder>
+           (this.buildersUrl, builder)
+                                .pipe(
+                                        catchError(error  =>
+           this.handleError(error))
+                                );
+                }
+
+                /** PUT builder to builders endpoint */
+                updateBuilder (builder:  Builder, id:  number):
+           Observable<Builder> {
+                        return  this.http.put<Builder>
+           (this.buildersUrl  +  `/${id}`, builder)
+                                .pipe(
+                                        catchError(error  =>
+            this.handleError(error))
+                                );
+                }
+
+                /** DELETE builder builder endpoint */
+                deleteBuilder (id:  number):  Observable<Builder[]>
+            {
+                        return  this.http.delete<Builder[]>
+            (this.buildersUrl  +  `/${id}`)
+                                .pipe(
+                                        catchError(error  =>
+            this.handleError(error))
+                                );
+                }
+
+                /** Error handler */
+                private  handleError(error:  HttpErrorResponse) {
+                        if (error.error  instanceof  ErrorEvent) {
+                                // A client-side error.
+                                console.error('An error occurred:',
+             error.error.message);
+                        } else {
+                                // The backend error.
+                                return  throwError(error);
+                        }
+                        // return a custom error message
+                        return  throwError('Something bad happened;
+             please try again later.');
+                }
+        }
+
+```
 
 The previous code is pretty much the same as the bike service, and we can note that the last function is the `handleError()` function, so it is time to learn how to create an error service.
 
@@ -833,7 +738,7 @@ As mentioned earlier in this chapter, let's create our error handler service:
 
 ng g service pages/shared/_services/httpHandleError
 
-```php
+```
 
 The previous command will create a new folder called `_services` inside the `pages/shared` folder for a simple reason: we will share this service between all services that we created inside the `bikes`, `builders`, and `auth` modules. The previous command also created a file called `http-handle-error.service.ts`.
 
@@ -842,20 +747,18 @@ The previous command will create a new folder called `_services` inside the `pag
 ```
 
 import { HttpErrorResponse } from  '@angular/common/http';
-
 import { Observable, of } from  'rxjs';
 
-```php
+```
 
 3.  Let's create an Angular `type` for our error. Add the following code right after the imports:
 
 ```
 
 export  type  HandleError  =
+        <T> (operation?:  string, result?:  T) => (error:  HttpErrorResponse) =>  Observable<T>;
 
-<T> (operation?:  string, result?:  T) => (error:  HttpErrorResponse) =>  Observable<T>;
-
-```php
+```
 
 The previous code creates a new `Type` called `HandleError`, and we will use it in the following lines.
 
@@ -865,55 +768,34 @@ Remember that Angular has many types such as array, void, any many more. We alre
 
 ```
 
-/** Pass the service name to map errors */
-
-createHandleError  = (serviceName  =  '') => <T>
-
-(operation  =  'operation', result  = {} as  T) =>
-
-this.handleError(serviceName, operation, result)
-
-handleError<T> (serviceName  =  '', operation  =
-
-'operation', result  = {} as  T) {
-
-return (response:  HttpErrorResponse):
-
-Observable<T> => {
-
-// Optionally send the error to a third part
-
-error logging service
-
-console.error(response);
-
-// Show a simple alert if error
-
-const  message  = (response.error
-
-instanceof  ErrorEvent) ?
-
-response.error.message  :
-
-`server returned code ${response.status}
-
-with body "${response.error.error}"`;
-
-// We are using alert just for example, on
-
-现实世界避免这种做法
-
-alert(message);
-
-// Keep running and returning a safe result.
-
-return  of( result );
-
-};
-
-}
-
-```php
+     /** Pass the service name to map errors */
+        createHandleError  = (serviceName  =  '') => <T>
+                (operation  =  'operation', result  = {} as  T) =>
+        this.handleError(serviceName, operation, result)
+        handleError<T> (serviceName  =  '', operation  =
+       'operation', result  = {} as  T) {
+                return (response:  HttpErrorResponse):
+                Observable<T> => {
+                        // Optionally send the error to a third part
+                      error logging service
+                        console.error(response);
+                        
+                        // Show a simple alert if error
+                        const  message  = (response.error
+                        instanceof  ErrorEvent) ?
+                        response.error.message  :
+                        `server returned code ${response.status}
+                        with body "${response.error.error}"`;
+                        
+                        // We are using alert just for example, on
+                        real world avoid this pratice
+                        alert(message);
+                        
+                        // Keep running and returning a safe result.
+                        return  of( result );
+                };
+        }
+```
 
 The previous code creates a function called `handleError` that receive three parameters—`serviceName`, `operation`, and `result`—and returns an observable type called `HandleError`.
 
@@ -935,21 +817,17 @@ Now, we need to add our service to the central module of our application. Rememb
 
 import { HttpErrorHandler } from  './shared/_services/http-handle-error.service';
 
-```php
+```
 
 2.  Still on `./Client/src/app/app.module.ts`, add the `HttpErrorHandler` property to the `providers` array after the `Title` property:
 
 ```
 
-providers: [
+ providers: [
+        Title,
+        HttpErrorHandler,
 
-标题，
-
-HttpErrorHandler,
-
-],
-
-```php
+```
 
 At the end of this step, we have the following directory structure in our app:
 
@@ -963,145 +841,87 @@ Open `./app/pages/builders/_services/builder.service.ts` and replace its content
 
 ```
 
-import { Injectable } from  '@angular/core';
-
-import { HttpClient, HttpParams, HttpErrorResponse } from
-
-'@angular/common/http';
-
-import { HttpHeaders } from  '@angular/common/http';
-
-import { Observable, throwError } from  'rxjs';
-
-import { catchError } from  'rxjs/operators';
-
-// App import
-
-import { environment } from
-
-'../../../../environments/environment';
-
-import { Builder } from  '../builder';
-
-import { HttpErrorHandler, HandleError } from
-
-'../../../shared/_services/http-handle-error.service';
-
-@Injectable({
-
-providedIn: 'root'
-
-})
-
-export  class  BuildersService {
-
-private  readonly  apiUrl  =  environment.apiUrl;
-
-private  buildersUrl  =  this.apiUrl  +
-
-'/builders';
-
-private  handleError:  HandleError;
-
-constructor(
-
-private  http:  HttpClient,
-
-httpErrorHandler:  HttpErrorHandler ) {
-
-this.handleError  =
-
-httpErrorHandler.createHandleError('BuildersService');
-
-}
-
-/** GET builders from builders endpoint */
-
-getBuilders ():  Observable<Builder[]> {
-
-return  this.http.get<Builder[]>
-
-(this.buildersUrl)
-
-.pipe(
-
-catchError(this.handleError('getBuilders', []))
-
-);
-
-}
-
-/** GET builder detail from builder-detail endpoint
-
-*/
-
-getBuilderDetail (id:  number):
-
-Observable<Builder[]> {
-
-return  this.http.get<Builder[]>
-
-(this.buildersUrl  +  `/${id}`)
-
-.pipe(
-
-catchError(this.handleError('getBuilderDetail', []))
-
-);
-
-}
-
-/** POST builder to builders endpoint */
-
-addBuilder (builder:  Builder):  Observable<Builder> {
-
-return  this.http.post<Builder>
-
-(this.buildersUrl, builder)
-
-.pipe(
-
-catchError(this.handleError('addBuilder', builder))
-
-);
-
-}
-
-/** PUT builder to builders endpoint */
-
-updateBuilder (builder:  Builder, id:  number):
-
-Observable<Builder> {
-
-return  this.http.put<Builder>(this.buildersUrl
-
-+  `/${id}`, builder).pipe(
-
-catchError(this.handleError('updateBuilder', builder))
-
-);
-
-}
-
-/** DELETE builder builder endpoint */
-
-deleteBuilder (id:  number):  Observable<Builder[]> {
-
-return  this.http.delete<Builder[]>
-
-(this.buildersUrl  +  `/${id}`)
-
-.pipe(
-
-catchError(this.handleError('deleteBuilder'))
-
-);
-
-}
-
-}
-
-```php
+     import { Injectable } from  '@angular/core';
+        import { HttpClient, HttpParams, HttpErrorResponse } from  
+        '@angular/common/http';
+        import { HttpHeaders } from  '@angular/common/http';
+        import { Observable, throwError } from  'rxjs';
+        import { catchError } from  'rxjs/operators';
+        // App import
+        import { environment } from
+        '../../../../environments/environment';
+        import { Builder } from  '../builder';
+        import { HttpErrorHandler, HandleError } from
+        '../../../shared/_services/http-handle-error.service';
+
+        @Injectable({
+                providedIn: 'root'
+        })
+
+        export  class  BuildersService {
+                private  readonly  apiUrl  =  environment.apiUrl;
+                private  buildersUrl  =  this.apiUrl  +
+                '/builders';
+                private  handleError:  HandleError;
+
+                constructor(
+                        private  http:  HttpClient,
+                        httpErrorHandler:  HttpErrorHandler ) {
+                        this.handleError  =
+  httpErrorHandler.createHandleError('BuildersService');
+                }
+                
+                /** GET builders from builders endpoint */
+                getBuilders ():  Observable<Builder[]> {
+                        return  this.http.get<Builder[]>
+                (this.buildersUrl)
+                                .pipe(
+                                         
+                catchError(this.handleError('getBuilders', []))
+                                );
+                }
+
+                /** GET builder detail from builder-detail endpoint
+                 */
+                getBuilderDetail (id:  number): 
+                Observable<Builder[]> {
+                        return  this.http.get<Builder[]>
+                (this.buildersUrl  +  `/${id}`)
+                                .pipe(
+                                 
+                catchError(this.handleError('getBuilderDetail', []))
+                                );
+                }
+
+                /** POST builder to builders endpoint */
+                addBuilder (builder:  Builder):  Observable<Builder> {
+                        return  this.http.post<Builder> 
+               (this.buildersUrl, builder)
+                                .pipe(
+                                       
+            catchError(this.handleError('addBuilder', builder))
+                                );
+                }
+
+                /** PUT builder to builders endpoint */
+                updateBuilder (builder:  Builder, id:  number):
+                Observable<Builder> {
+                        return  this.http.put<Builder>(this.buildersUrl
+           +  `/${id}`, builder).pipe(                            
+             catchError(this.handleError('updateBuilder', builder))
+                                );
+                }
+
+                /** DELETE builder builder endpoint */
+                deleteBuilder (id:  number):  Observable<Builder[]> {
+                        return  this.http.delete<Builder[]>
+                (this.buildersUrl  +  `/${id}`)
+                                .pipe(
+                          catchError(this.handleError('deleteBuilder'))
+                                );
+                }
+        }
+```
 
 In the previous code, we replaced our local error function to use the new error service. We added a new property called `handleError` and created a new handler named `BuildersService` with the following code:
 
@@ -1109,7 +929,7 @@ In the previous code, we replaced our local error function to use the new error 
 
 this.handleError = httpErrorHandler.createHandleError ('BuildersService');
 
-```php
+```
 
 Each handler received the `serviceName` as `getBuilders`, `getBuilderDetail`, `addBuilder`, `updateBuilder`, and `deleteBuilder`.
 
@@ -1123,153 +943,95 @@ Open `./app/pages/bikes/_services/bike.service.ts` and replace its contents with
 
 ```
 
-import { Injectable } from  '@angular/core';
-
-import { HttpClient, HttpParams, HttpErrorResponse } from  '@angular/common/http';
-
-import { HttpHeaders } from  '@angular/common/http';
-
-import { Observable, throwError } from  'rxjs';
-
-import { catchError } from  'rxjs/operators';
-
-// App import
-
-import { environment } from  '../../../../environments/environment';
-
-import { Bike } from  '../bike';
-
-import { HttpErrorHandler, HandleError } from  '../../../shared/_services/http-handle-error.service';
-
-@Injectable({
-
-providedIn: 'root'
-
-})
-
-export  class  BikesService {
-
-private  readonly  apiUrl  =  environment.apiUrl;
-
-private  bikesUrl  =  this.apiUrl  +  '/bikes';
-
-private  handleError:  HandleError;
-
-constructor(
-
-private  http:  HttpClient,
-
-httpErrorHandler:  HttpErrorHandler ) {
-
-this.handleError  =
-
-httpErrorHandler.createHandleError('BikesService');
-
-}
-
-/** GET bikes from bikes endpoint */
-
-getBikes ():  Observable<Bike[]> {
-
-return  this.http.get<Bike[]>(this.bikesUrl)
-
-.pipe(
-
-catchError(this.handleError('getBikes', []))
-
-);
-
-}
-
-/** GET bike detail from bike-detail endpoint */
-
-getBikeDetail (id:  number):  Observable<Bike[]> {
-
-return  this.http.get<Bike[]>(this.bikesUrl  +
-
-`/${id}`)
-
-.pipe(
-
-catchError(this.handleError('getBikeDetail', []))
-
-);
-
-}
-
-/** POST bike to bikes endpoint */
-
-addBike (bike:  Bike):  Observable<Bike> {
-
-return  this.http.post<Bike>(this.bikesUrl,
-
-bike)
-
-.pipe(
-
-catchError(this.handleError('addBike', bike))
-
-);
-
-}
-
-/** PUT bike to bikes endpoint */
-
-updateBike (bike:  Bike, id:  number):
-
-Observable<Bike> {
-
-return  this.http.put<Bike>(this.bikesUrl  +
-
-`/${id}`, bike)
-
-.pipe(
-
-catchError(this.handleError('updateBike', bike))
-
-);
-
-}
-
-/** DELETE bike bike endpoint */
-
-deleteBike (id:  number):  Observable<Bike[]> {
-
-return  this.http.delete<Bike[]>(this.bikesUrl
-
-+  `/${id}`)
-
-.pipe(
-
-catchError(this.handleError('deleteBike'))
-
-});
-
-}
-
-/** Vote on bike */
-
-voteOnBike (vote:  number, bike:  number):
-
-Observable<any> {
-
-const  rating  =  vote;
-
-return  this.http.post(this.bikesUrl  +
-
-`/${bike}/ratings`, {rating})
-
-.pipe(
-
-catchError(this.handleError('voteOnBike', []))
-
-);
-
-}
-
-}
-
-```php
+     import { Injectable } from  '@angular/core';
+        import { HttpClient, HttpParams, HttpErrorResponse } from  '@angular/common/http';
+        import { HttpHeaders } from  '@angular/common/http';
+        import { Observable, throwError } from  'rxjs';
+        import { catchError } from  'rxjs/operators';
+        // App import
+        import { environment } from  '../../../../environments/environment';
+        import { Bike } from  '../bike';
+        import { HttpErrorHandler, HandleError } from  '../../../shared/_services/http-handle-error.service';
+
+        @Injectable({
+                providedIn: 'root'
+        })
+
+        export  class  BikesService {
+                private  readonly  apiUrl  =  environment.apiUrl;
+                private  bikesUrl  =  this.apiUrl  +  '/bikes';
+                private  handleError:  HandleError;
+                
+                constructor(
+                        private  http:  HttpClient,
+                        httpErrorHandler:  HttpErrorHandler ) {
+                        this.handleError  = 
+                httpErrorHandler.createHandleError('BikesService');
+                }
+
+                /** GET bikes from bikes endpoint */
+                getBikes ():  Observable<Bike[]> {
+                        return  this.http.get<Bike[]>(this.bikesUrl)
+                                .pipe(
+                   
+                 catchError(this.handleError('getBikes', []))
+                                );
+                }
+
+                /** GET bike detail from bike-detail endpoint */
+                getBikeDetail (id:  number):  Observable<Bike[]> {
+                        return  this.http.get<Bike[]>(this.bikesUrl  +  
+                `/${id}`)
+                                .pipe(
+                                         
+                catchError(this.handleError('getBikeDetail', []))
+                                );
+                }
+
+                /** POST bike to bikes endpoint */
+                addBike (bike:  Bike):  Observable<Bike> {
+                        return  this.http.post<Bike>(this.bikesUrl, 
+                bike)
+                                .pipe(
+                                         
+               catchError(this.handleError('addBike', bike))
+                                );
+                }
+
+                /** PUT bike to bikes endpoint */
+                updateBike (bike:  Bike, id:  number):  
+                Observable<Bike> {
+                        return  this.http.put<Bike>(this.bikesUrl  +  
+                `/${id}`, bike)
+                                .pipe(
+                                        
+                catchError(this.handleError('updateBike', bike))
+                                );
+                }
+
+                /** DELETE bike bike endpoint */
+                deleteBike (id:  number):  Observable<Bike[]> {
+                        return  this.http.delete<Bike[]>(this.bikesUrl  
+                +  `/${id}`)
+                                .pipe(
+                                        
+                catchError(this.handleError('deleteBike'))
+                                );
+                }
+                
+                /** Vote on bike */
+                voteOnBike (vote:  number, bike:  number):  
+                Observable<any> {
+                        const  rating  =  vote;
+                        return  this.http.post(this.bikesUrl  +  
+                `/${bike}/ratings`, {rating})
+                                .pipe(
+                                        
+                 catchError(this.handleError('voteOnBike', []))
+                                );
+                        }
+                }
+```
 
 In the previous code, we did the same as we did in the builders service and added each handler with a `serviceName` as `getBikes`, `getBikeDetail`, `addBike`, `updateBike`, and `deleteBike`.
 
@@ -1301,7 +1063,7 @@ So, let's create the HTTP interceptor:
 
 ng g service shared/_services/http-interceptor
 
-```php
+```
 
 The previous command will generate the following file: `./Client/src/app/shared/_services/app-http-interceptor.service.ts`. Once again, we are creating a file in our `shared` directory, because we can use this service anywhere we want in our application.
 
@@ -1309,127 +1071,75 @@ The previous command will generate the following file: `./Client/src/app/shared/
 
 ```
 
-import { Injectable, Injector } from  '@angular/core';
+     import { Injectable, Injector } from  '@angular/core';
+        import { HttpEvent, HttpHeaders, HttpInterceptor, HttpHandler, HttpRequest, HttpErrorResponse, HttpResponse } from  '@angular/common/http';
+        import { Observable } from  'rxjs';
+        import { catchError, map, tap } from  'rxjs/operators';
+        import { Router } from  '@angular/router';
+        // App import
+        import { AuthService } from 
+  '../../pages/auth/_services/auth.service';
+        
+        @Injectable()
+        export  class  AppHttpInterceptorService  implements
+        HttpInterceptor {
+          
+        constructor(public  auth:  AuthService, private  router:
+        Router ) { }
 
-import { HttpEvent, HttpHeaders, HttpInterceptor, HttpHandler, HttpRequest, HttpErrorResponse, HttpResponse } from  '@angular/common/http';
-
-import { Observable } from  'rxjs';
-
-import { catchError, map, tap } from  'rxjs/operators';
-
-import { Router } from  '@angular/router';
-
-// App import
-
-import { AuthService } from
-
-'../../pages/auth/_services/auth.service';
-
-@Injectable()
-
-export  class  AppHttpInterceptorService  implements
-
-HttpInterceptor {
-
-constructor(public  auth:  AuthService, private  router:
-
-Router ) { }
-
-intercept(req:  HttpRequest<any>, next:  HttpHandler):
-
-Observable<HttpEvent<any>> {
-
-console.log('interceptor running');
-
-// Get the token from auth service.
-
-const  authToken  =  this.auth.getToken();
-
-if (authToken) {
-
-// Clone the request to add the new header.
-
-const  authReq  =  req.clone(
-
-{ headers:
-
-req.headers.set('Authorization', `Bearer ${authToken}`)}
-
-);
-
-console.log('interceptor running with new
-
-headers');
-
-// 发送新创建的请求
-
-return  next.handle(authReq).pipe(
-
-tap((event:  HttpEvent<any>) => {
-
-if (event instanceof
-
-HttpResponse) {
-
-// Response wiht
-
-HttpResponse type
-
-console.log('TAP function',
-
-event);
-
-}
-
-}, (err:  any) => {
-
-console.log(err);
-
-if (err  instanceof
-
-HttpErrorResponse) {
-
-if (err.status ===  401) {
-
-localStorage.removeItem('token');
-
-this.router.navigate(['/']);
-
-}
-
-}
-
-})
-
-);
-
-} else {
-
-console.log('interceptor without changes');
-
-```php
-
+        intercept(req:  HttpRequest<any>, next:  HttpHandler):
+        Observable<HttpEvent<any>> {
+                console.log('interceptor running');
+                
+                // Get the token from auth service.
+                const  authToken  =  this.auth.getToken();
+                if (authToken) {
+                        // Clone the request to add the new header.
+                        const  authReq  =  req.clone(
+                                { headers:
+         req.headers.set('Authorization', `Bearer ${authToken}`)}
+                        );                      
+                        console.log('interceptor running with new
+         headers');
+                        
+                        // send the newly created request
+                        return  next.handle(authReq).pipe(
+                                tap((event:  HttpEvent<any>) => {
+                                        if (event instanceof
+          HttpResponse) {
+                                        // Response wiht
+          HttpResponse type
+                                        console.log('TAP function',
+          event);
+                                        }
+                                }, (err:  any) => {
+                                console.log(err);
+                                if (err  instanceof 
+          HttpErrorResponse) {
+                                        if (err.status ===  401) {
+                                      
+          localStorage.removeItem('token');
+                                 
+          this.router.navigate(['/']);
+                                        }
+                                }
+                                })
+                        );
+                } else {
+                        console.log('interceptor without changes');
+                        return  next.handle(req);
+                }
+        }
 ```
-
-return  next.handle(req);
-
-}
-
-}
-
-```php
 
 3.  In the previous code, first we check if we have a token in `localStorage` with the `this.auth.getToken();` function from `AuthService`. So, if we have a token, we add it as a new header using the following:
 
 ```
 
-const  authReq  =  req.clone(
-
-{ headers: req.headers.set('Authorization', `Bearer ${authToken}`)}
-
-);
-
-```php
+     const  authReq  =  req.clone(
+                { headers: req.headers.set('Authorization', `Bearer ${authToken}`)}
+                );
+```
 
 4.  If the token is invalid, or if the API returned a 401 error, we send the user to the home route using the following:
 
@@ -1437,7 +1147,7 @@ const  authReq  =  req.clone(
 
 this.router.navigate(['/']);
 
-```php
+```
 
 # Adding AppHttpInterceptorService to the main module
 
@@ -1449,113 +1159,70 @@ Now that we have our interceptor configured and ready to be used, we need to add
 
 import { AppHttpInterceptorService } from  './shared/_services/app-http-interceptor.service';
 
-```php
+```
 
 2.  Add the following code, inside the `providers` array, right after the HttpErrorHandler property:
 
 ```
 
 {
+ {
+        provide: HTTP_INTERCEPTORS,
+        useClass: AppHttpInterceptorService ,
+        multi: true
+ }
 
-provide: HTTP_INTERCEPTORS,
-
-useClass: AppHttpInterceptorService ,
-
-multi: true
-
-}
-
-```php
+```
 
 3.  At the end of the previous step, our main application module will include the following code:
 
 ```
 
-import { BrowserModule, Title } from  '@angular/platform-browser';
-
-import { NgModule } from  '@angular/core';
-
-import { HttpClientModule, HTTP_INTERCEPTORS } from  '@angular/common/http';
-
-import { AppRoutingModule } from  './app-routing.module';
-
-import { ServiceWorkerModule } from  '@angular/service-worker';
-
-// 应用模块
-
-import { AppComponent } from  './app.component';
-
-import { environment } from  '../environments/environment';
-
-import { HomeModule } from  './pages/home/home.module';
-
-import { BikesModule } from  './pages/bikes/bikes.module';
-
-import { BuildersModule } from  './pages/builders/builders.module';
-
-import { AuthModule } from  './pages/auth/auth.module';
-
-import { NavComponent } from  './layout/nav/nav.component';
-
-import { HttpErrorHandler } from  './shared/_services/http-handle-error.service';
-
-import { AppHttpInterceptorService } from  './shared/_services/app-http-interceptor.service';
-
-@NgModule({
-
-declarations: [
-
-AppComponent,
-
-NavComponent
-
-],
-
-imports: [
-
-BrowserModule,
-
-AppRoutingModule,
-
-HttpClientModule,
-
-HomeModule,
-
-BikesModule,
-
-BuildersModule,
-
-AuthModule,
-
-ServiceWorkerModule.register('/ngsw-worker.js', { enabled: environment.production })
-
-],
-
-providers: [
-
-Title,
-
-HttpErrorHandler,
-
-{
-
-provide: HTTP_INTERCEPTORS,
-
-useClass: AppHttpInterceptorService ,
-
-multi: true
-
-}
-
-],
-
-bootstrap: [AppComponent]
-
-})
-
-export  class  AppModule { }
-
-```php
+     import { BrowserModule, Title } from  '@angular/platform-browser';
+        import { NgModule } from  '@angular/core';
+        import { HttpClientModule, HTTP_INTERCEPTORS } from  '@angular/common/http';
+        import { AppRoutingModule } from  './app-routing.module';
+        import { ServiceWorkerModule } from  '@angular/service-worker';
+        
+        // Application modules
+        import { AppComponent } from  './app.component';
+        import { environment } from  '../environments/environment';
+        import { HomeModule } from  './pages/home/home.module';
+        import { BikesModule } from  './pages/bikes/bikes.module';
+        import { BuildersModule } from  './pages/builders/builders.module';
+        import { AuthModule } from  './pages/auth/auth.module';
+        import { NavComponent } from  './layout/nav/nav.component';
+        import { HttpErrorHandler } from  './shared/_services/http-handle-error.service';
+        import { AppHttpInterceptorService } from  './shared/_services/app-http-interceptor.service';
+          
+        @NgModule({
+        declarations: [
+                AppComponent,
+                NavComponent
+        ],
+        imports: [
+                BrowserModule,
+                AppRoutingModule,
+                HttpClientModule,
+                HomeModule,
+                BikesModule,
+                BuildersModule,
+                AuthModule,
+                ServiceWorkerModule.register('/ngsw-worker.js', { enabled: environment.production })
+        ],
+        providers: [
+                Title,
+                HttpErrorHandler,
+                {
+                provide: HTTP_INTERCEPTORS,
+                useClass: AppHttpInterceptorService ,
+                multi: true
+                }
+        ],
+        bootstrap: [AppComponent]
+        })
+        export  class  AppModule { }
+```
 
 Note that we are separating the Angular imports from application imports. This is a good practice and helps keep your code organized.
 
@@ -1571,27 +1238,17 @@ Protecting routes is a very common task when building modern web applications, a
 
 ```
 
-/**
-
-* Protect update and delete methods, only for authenticated
-
-users.
-
-*
-
-* @return  Unauthorized
-
-*/
-
-public  function  __construct()
-
-{
-
-$this->middleware('auth:api')->except(['index']);
-
-}
-
-```php
+     /**
+        * Protect update and delete methods, only for authenticated
+        users.
+        *
+        * @return  Unauthorized
+        */
+        public  function  __construct()
+        {
+                $this->middleware('auth:api')->except(['index']);
+        }
+```
 
 The previous code says that only the index route should not be protected.
 
@@ -1614,7 +1271,7 @@ Guards are implemented as services that need to be provided, so we typically cre
 
 ng g guard pages/auth/_guards/auth
 
-```php
+```
 
 The previous code will generate the following file: `./Client/src/app/pages/auth/_guards/auth.guard.ts`.
 
@@ -1624,37 +1281,29 @@ The previous code will generate the following file: `./Client/src/app/pages/auth
 
 import { AuthService } from  '../_services/auth.service';
 
-```php
+```
 
 3.  Now, let's add `Router` and `AuthService` inside the `constructor()` function, as shown in the following code:
 
 ```
 
-constructor(
+ constructor(
+        private  router:  Router,
+        private  auth:  AuthService) {}
 
-private  router:  Router,
-
-private  auth:  AuthService) {}
-
-```php
+```
 
 4.  Add the following block of code inside the `canActivate()` function, before the `return` property:
 
 ```
 
-if (this.auth.isAuthenticated()) {
-
-// logged in so return true
-
-return  true;
-
-}
-
-// not logged in so redirect to login page with the return url
-
-this.router.navigate(['/login'], { queryParams: { returnUrl: state.url }});
-
-```php
+ if (this.auth.isAuthenticated()) {
+ // logged in so return true
+        return  true;
+ }
+ // not logged in so redirect to login page with the return url
+ this.router.navigate(['/login'], { queryParams: { returnUrl: state.url }});
+```
 
 In the previous code, we are using the `auth.isAuthenticated()` function from `AuthService` to check if the user is authenticated. This means that, if the user is not authenticated/logged-in, we will redirect them to the login screen.
 
@@ -1670,22 +1319,17 @@ The last step is to add `AuthGuard` to the `bike-detail` route.
 
 import { AuthGuard } from '../auth/_guards/auth.guard';
 
-```php
+```
 
 6.  Now, add the `canActivate` property right after the `bikeDetailComponent`, as in the following code:
 
 ```
 
-{
-
-path: ':id',
-
-component: BikeDetailComponent,
-
-canActivate: [AuthGuard]
-
-}
-
+ {
+        path: ':id',
+        component: BikeDetailComponent,
+        canActivate: [AuthGuard]
+ }
 ```
 
 看！我们的`bike-detail`路由现在受到了保护。
