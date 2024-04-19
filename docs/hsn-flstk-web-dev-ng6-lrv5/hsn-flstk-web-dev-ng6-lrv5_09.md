@@ -34,7 +34,7 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 1.  打开`docker-compose.yml`并用以下代码替换其内容：
 
-```
+```php
  version: "3.1"
  services:
      mysql:
@@ -85,7 +85,7 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 1.  将我们所做的更改添加到 Git 源代码控制中。打开您的终端窗口并输入以下命令：
 
-```
+```php
  git add .
  git commit -m "Initial commit chapter 09"
 ```
@@ -108,13 +108,13 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 1.  转到`./Client/src/app`并输入以下命令：
 
-```
+```php
  ng g class pages/auth/user
 ```
 
 1.  上一个命令将在`./app/pages/auth/auth.ts`中创建一个新文件。打开此文件并添加以下代码：
 
-```
+```php
  export  class  User {
         name?:  string;
         email?:  string;
@@ -133,13 +133,13 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 1.  仍然在您的终端中，输入以下命令：
 
-```
+```php
  ng g class pages/builders/builder
 ```
 
 1.  上一个命令将在`./app/pages/builders/builder.ts`中创建一个新文件。打开此文件并添加以下代码：
 
-```
+```php
  import { Bike } from  '../bikes/bike';
 
  export  class  Builder {
@@ -165,13 +165,13 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 1.  仍然在您的终端中，输入以下命令：
 
-```
+```php
  ng g class pages/bikes/bike
 ```
 
 1.  上一个命令将在`./app/pages/bikes/bike.ts`中创建一个新的文件。打开这个文件并添加以下代码：
 
-```
+```php
  import { User } from  './../auth/user';
  import { Builder } from  '../builders/builder';
 
@@ -212,7 +212,7 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 1.  仍然在您的终端中，输入以下命令：
 
-```
+```php
  ng g service pages/auth/_services/auth
 ```
 
@@ -220,7 +220,7 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 1.  打开`./app/pages/auth/_services/auth.service.ts`并在文件顶部添加以下导入：
 
-```
+```php
  import { HttpClient, HttpParams, HttpErrorResponse } from  '@angular/common/http';
  import { HttpHeaders } from  '@angular/common/http';
  import { Router } from  '@angular/router';
@@ -236,12 +236,12 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 1.  在导入文件后添加以下代码：
 
-```
+```php
  // Setup headers
  const httpOptions  = {
 ```
 
-```
+```php
         headers: new  HttpHeaders({
                 'Content-Type': 'application/json'
         })
@@ -252,7 +252,7 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 1.  在`AuthService`类内部，添加以下代码：
 
-```
+```php
  public  currentUser:  User;
  private  readonly  apiUrl  =  environment.apiUrl;
  private  registerUrl  =  this.apiUrl  +  '/register';
@@ -265,13 +265,13 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 1.  现在，让我们创建我们的`constructor`函数。在`constructor`函数内部，添加以下代码：
 
-```
+```php
  private  http:  HttpClient, private  router:  Router
 ```
 
 1.  `constructor`类将如下代码所示：
 
-```
+```php
      constructor(
                 private  http:  HttpClient,
                 private  router:  Router) {}
@@ -283,7 +283,7 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 让我们创建`Register`函数。在`constructor`函数之后，添加以下代码：
 
-```
+```php
      onRegister(user: User): Observable<User> {
                 const request  =  JSON.stringify(
                         { name: user.name, email: user.email, password:
@@ -326,7 +326,7 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 在`onRegister()`函数之后添加以下代码：
 
-```
+```php
      onLogin(user: User): Observable<User> {
                 const request  =  JSON.stringify(
                         { email: user.email, password: user.password }
@@ -358,7 +358,7 @@ Angular 的新版本提供了非常有用的工具来创建现代 Web 应用程�
 
 在`onLogin()`函数之后添加以下代码：
 
-```
+```php
 onLogout():  Observable<User> {
         return  this.http.post(this.apiUrl  +  '/logout',
           httpOptions).pipe(
@@ -384,7 +384,7 @@ onLogout():  Observable<User> {
 
 在`logout()`函数之后，添加以下代码块：
 
-```
+```php
 setToken(token:  string):  void {
         return  localStorage.setItem('token', token );
 }
@@ -402,7 +402,7 @@ getToken():  string {
 
 在`getToken()`函数之后添加以下代码：
 
-```
+```php
 getUser():  Observable<User> {
         return  this.http.get(this.apiUrl  +  '/me').pipe(
                 tap(
@@ -422,7 +422,7 @@ getUser():  Observable<User> {
 
 在`getUser()`函数之后添加以下代码：
 
-```
+```php
   isAuthenticated():  boolean { // get the token
   const  token:  string  =  this.getToken();
   if (token) {
@@ -439,7 +439,7 @@ getUser():  Observable<User> {
 
 在**`getUser()`**函数之后添加以下代码：
 
-```
+```php
 private  handleError(error:  HttpErrorResponse) {
         if (error.error  instanceof  ErrorEvent) {
                 // A client-side error.
@@ -462,7 +462,7 @@ private  handleError(error:  HttpErrorResponse) {
 
 1.  仍然在您的终端中，键入以下命令：
 
-```
+```php
  ng g service pages/bikes/_services/bike
 ```
 
@@ -470,7 +470,7 @@ private  handleError(error:  HttpErrorResponse) {
 
 1.  打开`./app/pages/bikes/_services/bike.service.ts`并将以下导入添加到文件顶部：
 
-```
+```php
  import { Injectable } from  '@angular/core';
  import { HttpClient, HttpParams, HttpErrorResponse } from  '@angular/common/http';
  import { HttpHeaders } from  '@angular/common/http';
@@ -484,14 +484,14 @@ private  handleError(error:  HttpErrorResponse) {
 
 1.  在`bikesService`类中，添加以下属性：
 
-```
+```php
  private  readonly  apiUrl  =  environment.apiUrl;
  private  bikesUrl  =  this.apiUrl  +  '/bikes';
 ```
 
 1.  现在，让我们创建我们的`constructor`函数。在`constructor`函数中，添加以下代码：
 
-```
+```php
  constructor(private  http:  HttpClient) {}
 ```
 
@@ -503,7 +503,7 @@ private  handleError(error:  HttpErrorResponse) {
 
 在`constructor()`函数之后添加以下代码块：
 
-```
+```php
  /** GET bikes from bikes endpoint */
  getBikes ():  Observable<Bike[]> {
         return  this.http.get<Bike[]>(this.bikesUrl)
@@ -556,20 +556,20 @@ private  handleError(error:  HttpErrorResponse) {
 
 上述代码与我们在身份验证服务中使用的内容没有特别不同，除了使用模板字符串：
 
-```
+```php
 this.bikesUrl  +  `/${id}`
 this.bikesUrl  +  `/${bike}/ratings`, {rating}
 ```
 
 这些由反引号（`` ` ``）字符包围，而不是单引号或双引号，以及以美元符号开头的表达式。
 
-# Creating the voteOnBike function
+# 创建 `voteOnBike` 函数
 
-Our service still has one more function, which we will use to send the user's votes for a specific bike. Remember, whenever you need to use the `HTTPClient` module, do this within a service. This is considered good practice in Angular development.
+我们的服务仍然有一个功能，我们将用它来发送用户对特定自行车的投票。请记住，每当需要使用 `HTTPClient` 模块时，请在服务中执行此操作。这在 Angular 开发中被认为是一个良好的实践。
 
-Add the following code right after the `deleteBike()` function:
+在 `deleteBike()` 函数之后添加以下代码：
 
-```
+```php
      /** Vote on bike */
         voteOnBike (vote:  number, bike:  number):  Observable<any> {
                 const  rating  =  vote;
@@ -582,11 +582,11 @@ Add the following code right after the `deleteBike()` function:
 
 ```
 
-# Creating the handleError function
+# 创建 `handleError` 函数
 
-Now, let's add the error handling for the bikes service. Add the following code, right after the `voteOnBike()` function:
+现在，让我们为自行车服务添加错误处理。在 `voteOnBike()` 函数之后添加以下代码：
 
-```
+```php
 
      /** Error handler */
         private  handleError(error:  HttpErrorResponse) {
@@ -604,27 +604,27 @@ Now, let's add the error handling for the bikes service. Add the following code,
         }
 ```
 
-As we can see, the `handleError()` function on the bike service is the same as the authentication service, and will be the same on the builders service. Whenever you need to write the same code more than once, it is highly recommended that you use a service for this, thereby avoiding the repetition of code.
+正如我们所看到的，在自行车服务中的 `handleError()` 函数与认证服务相同，并且在构建者服务上也是一样的。每当需要多次编写相同的代码时，强烈建议使用服务来避免代码的重复。
 
-Later, we will create a service to solve this problem, but for now we will create the service of builders.
+之后，我们将创建一个解决这个问题的服务，但现在我们将创建构建者服务。
 
-# Creating the builders service
+# 创建构建者服务
 
-Now, we will create the `builder` service with the `Create`, `Read`, `Update`, and `Delete` methods:
+现在，我们将创建 `builder` 服务，其中包括 `Create`、`Read`、`Update` 和 `Delete` 方法：
 
-1.  Still in your Terminal, type the following command:
+1.  仍然在你的终端中，输入以下命令：
 
-```
+```php
 
 ng g service pages/builders/_services/builder
 
 ```
 
-The previous command will create a new folder and file in `./app/pages/builders/_services/builder.service.ts`. Now, let's add some pieces of code.
+前述命令将在 `./app/pages/builders/_services/builder.service.ts` 中创建一个新的文件夹和文件。现在，让我们添加一些代码片段。
 
-2.  Open `./app/pages/builders/_services/builder.service.ts` and replace its code with the following block:
+1.  打开 `./app/pages/builders/_services/builder.service.ts`，并将其代码替换为以下代码块：
 
-```
+```php
 
      import { Injectable } from  '@angular/core';
 
@@ -722,51 +722,51 @@ The previous command will create a new folder and file in `./app/pages/builders
 
 ```
 
-The previous code is pretty much the same as the bike service, and we can note that the last function is the `handleError()` function, so it is time to learn how to create an error service.
+前述代码与自行车服务几乎相同，我们可以注意到最后一个函数是 `handleError()` 函数，因此现在是学习如何创建错误服务的时候了。
 
-# Dealing with the HttpErrorHandler service
+# 处理 HttpErrorHandler 服务
 
-As mentioned previously, it is not a good practice to repeat code in a modern web application, so we can use many resources to avoid this practice. In Angular development, we can use a shared service to handle the application errors in just one place.
+如前所述，在现代 Web 应用程序中重复代码并不是一个好的实践，因此我们可以使用许多资源来避免这种实践。在 Angular 开发中，我们可以使用共享服务在一个地方处理应用程序错误。
 
-# Creating a handler error service
+# 创建错误处理服务
 
-As mentioned earlier in this chapter, let's create our error handler service:
+如本章早些时候提到的，让我们创建我们的错误处理程序服务：
 
-1.  Open your Terminal window inside `./Client/src/app` and type the following command:
+1.  在 `./Client/src/app` 内打开你的终端窗口，然后输入以下命令：
 
-```
+```php
 
 ng g service pages/shared/_services/httpHandleError
 
 ```
 
-The previous command will create a new folder called `_services` inside the `pages/shared` folder for a simple reason: we will share this service between all services that we created inside the `bikes`, `builders`, and `auth` modules. The previous command also created a file called `http-handle-error.service.ts`.
+上述命令将在 `pages/shared` 文件夹内创建一个名为 `_services` 的新文件夹，原因很简单：我们将在 `bikes`、`builders` 和 `auth` 模块中创建的所有服务之间共享此服务。上述命令还创建了一个名为 `http-handle-error.service.ts` 的文件。
 
-2.  Open `./Client/src/app/shared/_services/http-handle-error.service.ts` and add the following imports:
+1.  打开 `./Client/src/app/shared/_services/http-handle-error.service.ts` 并添加以下导入：
 
-```
+```php
 
 import { HttpErrorResponse } from  '@angular/common/http';
 import { Observable, of } from  'rxjs';
 
 ```
 
-3.  Let's create an Angular `type` for our error. Add the following code right after the imports:
+1.  让我们为我们的错误创建一个 Angular `type`。在导入之后添加以下代码：
 
-```
+```php
 
 export  type  HandleError  =
         <T> (operation?:  string, result?:  T) => (error:  HttpErrorResponse) =>  Observable<T>;
 
 ```
 
-The previous code creates a new `Type` called `HandleError`, and we will use it in the following lines.
+上述代码创建了一个名为 `HandleError` 的新类型，并且我们将在接下来的行中使用它。
 
-Remember that Angular has many types such as array, void, any many more. We already saw this in Chapter 3, *Understanding the Core Concepts of Angular 6*.
+请记住，Angular 有许多类型，如数组、空、任何更多。我们在第三章 *理解 Angular 6 的核心概念* 中已经看到了这一点。
 
-4.  Let's add the error function. Add the following block of code right after the `constructor()` function:
+1.  让我们添加错误函数。在 `constructor()` 函数之后添加以下代码块：
 
-```
+```php
 
      /** Pass the service name to map errors */
         createHandleError  = (serviceName  =  '') => <T>
@@ -797,49 +797,49 @@ Remember that Angular has many types such as array, void, any many more. We alre
         }
 ```
 
-The previous code creates a function called `handleError` that receive three parameters—`serviceName`, `operation`, and `result`—and returns an observable type called `HandleError`.
+上面的代码创建了一个名为`handleError`的函数，接收三个参数——`serviceName`、`operation`和`result`——并返回一个名为`HandleError`的可观察类型。
 
-We are also using the basic built-in JavaScript function to show an alert to the user if we have an error, and a `console.log()` function with all the HTTP response.
+我们还使用基本内置的 JavaScript 函数来向用户显示警报，如果出现错误，则使用`console.log()`函数显示所有 HTTP 响应。
 
-Nowadays, it is very common to use a payed logging service to monitor web applications and issue silent errors to the user.
+如今，使用付费日志记录服务来监视 Web 应用程序并向用户发出静默错误已经非常普遍。
 
-Some private services for this, as is the case are Rollbar, TrackJS,  Bugsnag, and Sentry. All of them offer a powerful API for tracking errors in production mode and sent then to a dashboard panel easy to use, without alarm the application users or search for application logs.
+一些私人服务，例如 Rollbar、TrackJS、Bugsnag 和 Sentry。它们都提供了一个强大的 API，用于在生产模式下跟踪错误，并将其发送到一个易于使用的仪表板面板，而不会引起应用程序用户的警报或搜索应用程序日志。
 
-We also recommend, for beta and alpha applications, a free account from bugsnag at [`www.bugsnag.com/platforms/javascript/`](https://www.bugsnag.com/platforms/javascript/).
+我们还建议，对于测试版和内部测试应用程序，可以在[`www.bugsnag.com/platforms/javascript/`](https://www.bugsnag.com/platforms/javascript/)上免费注册一个 bugsnag 账户。
 
-# Importing HttpErrorHandler into app.module.ts
+# 将 HttpErrorHandler 导入到 app.module.ts
 
-Now, we need to add our service to the central module of our application. Remember that we are using a directory called `shared`; the appropriate place to put our service is directly in the `app.module.ts` file:
+现在，我们需要将我们的服务添加到应用程序的中央模块中。请记住，我们正在使用一个名为`shared`的目录；将我们的服务放在`app.module.ts`文件中的适当位置：
 
-1.  Open the `./Client/src/app/app.module.ts` file and add following code right after the `NavComponent` import:
+1.  打开`./Client/src/app/app.module.ts`文件，并在`NavComponent`导入之后添加以下代码：
 
-```
+```php
 
 import { HttpErrorHandler } from  './shared/_services/http-handle-error.service';
 
 ```
 
-2.  Still on `./Client/src/app/app.module.ts`, add the `HttpErrorHandler` property to the `providers` array after the `Title` property:
+1.  在`./Client/src/app/app.module.ts`中，将`HttpErrorHandler`属性添加到`providers`数组中的`Title`属性之后：
 
-```
+```php
 
- providers: [
+ providers: 
         Title,
         HttpErrorHandler,
 
 ```
 
-At the end of this step, we have the following directory structure in our app:
+在这一步结束时，我们的应用程序中有以下目录结构：
 
-![](img/b6df6ddc-546e-445a-b949-09adb91c523e.png)Shared services folder
+![共享服务文件夹
 
-# Refactoring the builders service
+# 重构构建者服务
 
-Now that we have created the error handling service, we need to refactor our builders and bikes services to use the new error handling.
+现在我们已经创建了错误处理服务，我们需要重构我们的构建者和自行车服务以使用新的错误处理。
 
-Open `./app/pages/builders/_services/builder.service.ts` and replace its content with the following code:
+打开`./app/pages/builders/_services/builder.service.ts`，并用以下代码替换其内容：
 
-```
+```php
 
      import { Injectable } from  '@angular/core';
         import { HttpClient, HttpParams, HttpErrorResponse } from  
@@ -923,25 +923,25 @@ Open `./app/pages/builders/_services/builder.service.ts` and replace its content
         }
 ```
 
-In the previous code, we replaced our local error function to use the new error service. We added a new property called `handleError` and created a new handler named `BuildersService` with the following code:
+在上面的代码中，我们替换了本地错误函数以使用新的错误服务。我们添加了一个名为`handleError`的新属性，并创建了一个名为`BuildersService`的新处理程序，代码如下：
 
-```
+```php
 
 this.handleError = httpErrorHandler.createHandleError ('BuildersService');
 
 ```
 
-Each handler received the `serviceName` as `getBuilders`, `getBuilderDetail`, `addBuilder`, `updateBuilder`, and `deleteBuilder`.
+每个处理程序都接收`serviceName`，如`getBuilders`、`getBuilderDetail`、`addBuilder`、`updateBuilder`和`deleteBuilder`。
 
-Now, we will do the same for the bikes service.
+现在，我们将为自行车服务执行相同的操作。
 
-# Refactoring the bikes service
+# 重构自行车服务
 
-Now, let's add the new error handling to the bikes service.
+现在，让我们为自行车服务添加新的错误处理。
 
-Open `./app/pages/bikes/_services/bike.service.ts` and replace its contents with the following code:
+打开`./app/pages/bikes/_services/bike.service.ts`，并用以下代码替换其内容：
 
-```
+```php
 
      import { Injectable } from  '@angular/core';
         import { HttpClient, HttpParams, HttpErrorResponse } from  '@angular/common/http';
@@ -1033,43 +1033,43 @@ Open `./app/pages/bikes/_services/bike.service.ts` and replace its contents with
                 }
 ```
 
-In the previous code, we did the same as we did in the builders service and added each handler with a `serviceName` as `getBikes`, `getBikeDetail`, `addBike`, `updateBike`, and `deleteBike`.
+在上面的代码中，我们与构建者服务中所做的一样，并添加了每个处理程序，其中`serviceName`为`getBikes`、`getBikeDetail`、`addBike`、`updateBike`和`deleteBike`。
 
-# How to use authorization headers
+# 如何使用授权头
 
-When we talk about authorization in the header, we are basically talking about making some modifications in the header of the application to send some kind of authorization. In our case, we are specifically talking about an authorization token generated by our API backend.
+当我们谈论头部授权时，基本上是在讨论对应用程序头部进行一些修改以发送某种授权。在我们的情况下，我们具体讨论的是由我们的 API 后端生成的授权令牌。
 
-The best way to do this is by using Angular interceptors. An interceptor, as its name suggests, allows us to simply intercept and configure requests before they are triggered to the server.
+最好的方法是使用 Angular 拦截器。拦截器正如其名称所示，允许我们简单地拦截和配置请求，然后再将其发送到服务器。
 
-This allows us to do a lot of things. An example of this would be to configure a token authentication on any request, or suddenly add custom headers that our application may need, until we handle answers before finishing the request.
+这使我们能够做很多事情。其中一个示例是在任何请求上配置令牌验证，或者突然添加我们的应用程序可能需要的自定义标头，直到我们在完成请求之前处理答案。
 
-When a JWT token is sent to the backend, remember that we are using the `jwt-auth` library on our Laravel API: it is expected to be in the authorization header of the HTTP request.
+当 JWT 令牌被发送到后端时，请记住我们在我们的 Laravel API 上使用了 `jwt-auth` 库：它预期在 HTTP 请求的授权标头中。
 
-The most common approach for adding an authorization header to an HTTP request in Angular is creating an interceptor class and having the interceptor make modifications to the requests by attaching a JWT (or other form of access token) as an authorization header with the Bearer scheme, as we explained previously.
+在 Angular 中添加授权标头到 HTTP 请求的最常见方法是创建一个拦截器类，并通过将 JWT（或其他形式的访问令牌）作为授权标头附加到请求中来让拦截器对请求进行修改，就像我们之前解释的那样。
 
-# Creating an HTTP interceptor
+# 创建一个 HTTP 拦截器。
 
-Let's take a look at how to use Angular's `HttpInterceptor` interface to make authenticated HTTP requests.
+让我们看看如何使用 Angular 的 `HttpInterceptor` 接口来进行身份验证的 HTTP 请求。
 
-When we are handling authentication in an Angular app, most of the time, it's generally best to put everything you need in a dedicated service, like we did previously.
+当我们在 Angular 应用中处理身份验证时，大多数情况下，最好将所需的一切都放在一个专用的服务中，就像我们之前做的那样。
 
-Any authentication service should have a few basic methods for allowing users to log in and log out. It should also include a method for retrieving a JSON Web Token and putting it into `localStorage` (like we did previously), on the client, and a way to determine if the user is authenticated or not, in our case, using the `isAuthenticated()` function on `auth.service.ts`.
+任何身份验证服务都应该有几个基本方法，允许用户登录和退出。它还应该包括一种获取 JSON Web Token 并将其放入 `localStorage` 中的方法（就像我们之前所做的那样），在客户端，并确定用户是否经过身份验证的方式，我们的情况下，使用 `auth.service.ts` 上的 `isAuthenticated()` 函数。
 
-So, let's create the HTTP interceptor:
+因此，让我们创建 HTTP 拦截器：
 
-1.  Open your Terminal window at `./Client/src/app` and type the following command:
+1.  在你的终端窗口中打开 `./Client/src/app`，并输入以下命令：
 
-```
+```php
 
 ng g service shared/_services/http-interceptor
 
 ```
 
-The previous command will generate the following file: `./Client/src/app/shared/_services/app-http-interceptor.service.ts`. Once again, we are creating a file in our `shared` directory, because we can use this service anywhere we want in our application.
+上一条命令将生成以下文件：`./Client/src/app/shared/_services/app-http-interceptor.service.ts`。再次，我们正在创建一个文件在我们的 `shared` 目录中，因为我们可以在应用程序中的任何地方使用这个服务。
 
-2.  Open `./Client/src/app/shared/_services/app-http-interceptor.service.ts` and add the following code:
+1.  打开 `./Client/src/app/shared/_services/app-http-interceptor.service.ts` 文件，并添加以下代码：
 
-```
+```php
 
      import { Injectable, Injector } from  '@angular/core';
         import { HttpEvent, HttpHeaders, HttpInterceptor, HttpHandler, HttpRequest, HttpErrorResponse, HttpResponse } from  '@angular/common/http';
@@ -1132,38 +1132,38 @@ The previous command will generate the following file: `./Client/src/app/shared/
         }
 ```
 
-3.  In the previous code, first we check if we have a token in `localStorage` with the `this.auth.getToken();` function from `AuthService`. So, if we have a token, we add it as a new header using the following:
+1.  在前面的代码中，首先我们检查 `localStorage` 中是否有一个令牌，使用 `AuthService` 的 `this.auth.getToken();` 函数。所以，如果我们有一个令牌，我们添加它作为一个新的标头，使用以下方式：
 
-```
+```php
 
      const  authReq  =  req.clone(
                 { headers: req.headers.set('Authorization', `Bearer ${authToken}`)}
                 );
 ```
 
-4.  If the token is invalid, or if the API returned a 401 error, we send the user to the home route using the following:
+1.  如果令牌无效，或者 API 返回了 401 错误，我们将使用以下方式将用户发送到主路由：
 
-```
+```php
 
 this.router.navigate(['/']);
 
 ```
 
-# Adding AppHttpInterceptorService to the main module
+# 将 AppHttpInterceptorService 添加到主模块中。
 
-Now that we have our interceptor configured and ready to be used, we need to add it into the main application module:
+现在我们已经配置好了拦截器，并准备好使用了，我们需要将其添加到主应用程序模块中：
 
-1.  Open `./Client/src/app/app.module.ts` and add the following import, right after the `HttpErrorHandler` import:
+1.  打开 `./Client/src/app/app.module.ts` 文件，并在 `HttpErrorHandler` 导入之后添加以下导入：
 
-```
+```php
 
 import { AppHttpInterceptorService } from  './shared/_services/app-http-interceptor.service';
 
 ```
 
-2.  Add the following code, inside the `providers` array, right after the HttpErrorHandler property:
+1.  在 `providers` 数组中添加以下代码，在 `HttpErrorHandler` 属性之后：
 
-```
+```php
 
 {
  {
@@ -1174,9 +1174,9 @@ import { AppHttpInterceptorService } from  './shared/_services/app-http-intercep
 
 ```
 
-3.  At the end of the previous step, our main application module will include the following code:
+1.  在前面的步骤结束时，我们的主应用程序模块将包含以下代码：
 
-```
+```php
 
      import { BrowserModule, Title } from  '@angular/platform-browser';
         import { NgModule } from  '@angular/core';
@@ -1224,19 +1224,19 @@ import { AppHttpInterceptorService } from  './shared/_services/app-http-intercep
         export  class  AppModule { }
 ```
 
-Note that we are separating the Angular imports from application imports. This is a good practice and helps keep your code organized.
+请注意，我们将 Angular 导入与应用程序导入分开。这是一个好的做法，有助于保持代码的组织。
 
-Congratulations! Now, we can intercept every request in our application.
+恭喜！现在，我们可以拦截应用程序中的每个请求。
 
-# How to protect application routes with route guards
+# 如何使用路由守卫保护应用程序路由
 
-In this section, we will talk about another powerful feature of the Angular framework. We call it guards, or even better, route guards.
+在本节中，我们将讨论 Angular 框架的另一个强大功能。我们称之为守卫，甚至更好地称之为路由守卫。
 
-It is available in the Angular CLI, as we will see in the following lines of code, but first let's understand a bit more about guards.
+它在 Angular CLI 中可用，正如我们将在下面的代码行中看到的那样，但首先让我们更深入地了解一下守卫。
 
-Protecting routes is a very common task when building modern web applications, as we want to prevent our users from accessing areas that they're not allowed to access, in our case, the bike details. Remember that we define the access to bike details inside `./Server/app/Http/Controllers/API/BikeController.php`:
+当构建现代 Web 应用程序时，保护路由是一项非常常见的任务，因为我们希望防止用户访问他们不被允许访问的区域，在我们的情况下是自行车的详细信息。请记住，我们在`./Server/app/Http/Controllers/API/BikeController.php`中定义了对自行车详细信息的访问：
 
-```
+```php
 
      /**
         * Protect update and delete methods, only for authenticated
@@ -1250,42 +1250,45 @@ Protecting routes is a very common task when building modern web applications, a
         }
 ```
 
-The previous code says that only the index route should not be protected.
+前面的代码表示只有索引路由不应受到保护。
 
-There are four different guard types we can use to protect our routes:
+我们可以使用四种不同的守卫类型来保护我们的路由：
 
-*   `CanActivate`: Choose if a route can be activated
-*   `CanActivateChild`: Choose if child routes of a route can be activated
-*   `CanDeactivate`: Choose if a route can be deactivated
-*   `CanLoad`: Choose if a module can be loaded lazily
++   `CanActivate`：选择是否可以激活路由
 
-In the next example, we will be using the `CanActivate` feature.
++   `CanActivateChild`：选择是否可以激活路由的子路由
 
-# Creating the route guard for bike-detail
++   `CanDeactivate`：选择是否可以停用路由
 
-Guards are implemented as services that need to be provided, so we typically create a guard class using the Angular CLI:
++   `CanLoad`：选择是否可以延迟加载模块
 
-1.  Open your Terminal window and type the following command:
+在下一个示例中，我们将使用`CanActivate`功能。
 
-```
+# 创建自行车详细信息的路由守卫
+
+守卫是作为服务实现的，因此我们通常使用 Angular CLI 创建一个守卫类：
+
+1.  打开您的终端窗口，并输入以下命令：
+
+```php
 
 ng g guard pages/auth/_guards/auth
 
 ```
 
-The previous code will generate the following file: `./Client/src/app/pages/auth/_guards/auth.guard.ts`.
+前面的代码将生成以下文件：`./Client/src/app/pages/auth/_guards/auth.guard.ts`。
 
-2.  Open the `./Client/src/app/pages/auth/_guards/auth.guard.ts` file and add the following import after the observable import:
+1.  打开`./Client/src/app/pages/auth/_guards/auth.guard.ts`文件，并在 observable 导入之后添加以下导入：
 
-```
+```php
 
 import { AuthService } from  '../_services/auth.service';
 
 ```
 
-3.  Now, let's add `Router` and `AuthService` inside the `constructor()` function, as shown in the following code:
+1.  现在，让我们在`constructor()`函数内添加`Router`和`AuthService`，如下所示的代码中：
 
-```
+```php
 
  constructor(
         private  router:  Router,
@@ -1293,9 +1296,9 @@ import { AuthService } from  '../_services/auth.service';
 
 ```
 
-4.  Add the following block of code inside the `canActivate()` function, before the `return` property:
+1.  在`return`属性之前，添加以下代码块到`canActivate()`函数内：
 
-```
+```php
 
  if (this.auth.isAuthenticated()) {
  // logged in so return true
@@ -1305,25 +1308,25 @@ import { AuthService } from  '../_services/auth.service';
  this.router.navigate(['/login'], { queryParams: { returnUrl: state.url }});
 ```
 
-In the previous code, we are using the `auth.isAuthenticated()` function from `AuthService` to check if the user is authenticated. This means that, if the user is not authenticated/logged-in, we will redirect them to the login screen.
+在上面的代码中，我们使用`AuthService`中的`auth.isAuthenticated()`函数来检查用户是否已经认证。这意味着，如果用户未经身份验证/登录，我们将重定向他们到登录屏幕。
 
-We are also using the `queryParams` and `returnUrl` functions to send the user back to where they came from.
+我们还使用`queryParams`和`returnUrl`函数将用户发送回他们来自的位置。
 
-This means that, if the user clicks to look at the bike's details and they are not logged in to the application, they will be redirected to the login screen. After logging in, the user will be redirected to the details of the bike they intended to look at.
+这意味着，如果用户点击查看自行车的详细信息，而他们没有登录到应用程序，他们将被重定向到登录屏幕。登录后，用户将被重定向到他们打算查看的自行车的详细信息。
 
-The last step is to add `AuthGuard` to the `bike-detail` route.
+最后一步是将`AuthGuard`添加到`bike-detail`路由。
 
-5.  Open `./Client/src/app/bikes/bikes-routing.module.ts` and add the following import, right after the routes import:
+1.  打开`./Client/src/app/bikes/bikes-routing.module.ts`，并在路由导入之后添加以下导入：
 
-```
+```php
 
 import { AuthGuard } from '../auth/_guards/auth.guard';
 
 ```
 
-6.  Now, add the `canActivate` property right after the `bikeDetailComponent`, as in the following code:
+1.  现在，在`bikeDetailComponent`之后添加`canActivate`属性，如下所示的代码中：
 
-```
+```php
 
  {
         path: ':id',
@@ -1334,7 +1337,7 @@ import { AuthGuard } from '../auth/_guards/auth.guard';
 
 看！我们的`bike-detail`路由现在受到了保护。
 
-# Summary
+# 总结
 
 现在，我们离看到我们的应用程序处于工作状态非常接近。然而，我们仍然需要执行一些步骤，我们将在接下来的章节中进行讨论。
 
