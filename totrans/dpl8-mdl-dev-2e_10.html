@@ -1,0 +1,1073 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Access Control</h1>
+                </header>
+            
+            <article>
+                
+<p>We've already talked about quite a few topics in the previous chapters, but we have been purposefully omitting an important aspect in many of them—access control. Much of what we covered deals in some way or another with access, but we have kept it out of our discussions to keep things more to the point. However, access control is an immensely important topic for Drupal development because it has implications in almost everything we do. So, for this purpose, we have a chapter dedicated to it in which we will cover the most important things you need to know in order to keep your application secure.</p>
+<p>When I say secure, I don't mean writing code in a secure way to avoid your site getting hacked. For that, we have an appendix at the end of the book to give you some pointers. Instead, I mean handling access control programmatically to ensure that your pages and any other resources are only accessible to the right users.</p>
+<p>In this chapter, aside from introducing new concepts that stand on their own, we'll be revisiting some of the previous topics and seeing how we can apply access control in that context. We will start by talking about how Drupal sees access restrictions at a high level, but then dive deep into more specific and complex examples. Also, as usual, we will see code in order to better understand what we're talking about.</p>
+<p>However, what exactly are we going to learn in this chapter?</p>
+<p>First, we will introduce the Drupal access system of roles and permissions and see how we can create them in our code. Even more importantly for us as module developers, we will see how we can check whether users have permissions programmatically. This is still while keeping things general.</p>
+<p>Next, we will dive into more exciting things by looking at route permissions. We have enormous flexibility here and we'll explore a number of approaches we can use to restrict access to custom and existing routes—ranging from simply permission-based access control to dynamic service-oriented access handlers.</p>
+<p>After covering routes, we will look at entities and how access control works with them. In doing so, we will work a bit on the Product entity we created in <a href="392cdb70-e52a-42d1-b782-28d6eb726810.xhtml">Chapter 7</a>, <em>Your Own Custom Entity and Plugin Types</em>. Moreover, we will also talk about the <em>Node Access Grants</em> system, which is a powerful way to control access specific to the Node entity type.</p>
+<p>Finally, we will also look at Block plugins and see how we can control access and ensure that they are rendered on the page. Blocks can have certain contextual rules that determine whether they are displayed on a certain page in the region they have been added to. So, we will talk about that a bit as well.</p>
+<p>The purpose of this chapter is to bring together all aspects related to access control that you need to get started as a Drupal 8 module developer. However, you can expect even more than that, and for this reason, this chapter can also serve as a resource for coming back and reading up on certain approaches to access control you may want to use in your own project, rather than having them scattered across the book.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Introduction to the Drupal access system</h1>
+                </header>
+            
+            <article>
+                
+<p>If you've been doing some site building in Drupal 8 or have experience with previous versions of Drupal, you may already know a thing or two about roles and permissions. If not, no need to worry, as we will talk a bit about how these work.</p>
+<p>Essentially, one of the things that makes Drupal special is the flexible access system it has out of the box, based on user roles and permissions. Roles are attributes that can be given to a user. The latter can have multiple roles assigned, but always has at least the default <em>Authenticated User </em>role. Permissions are the individual access indicators that can be assigned to roles. By the transitive property, users have all the permissions assigned to the roles they have been assigned. So, the end result is a matrix of permissions by role, and that's actually how it is visualized in the UI at <kbd>admin/people/permissions</kbd>:</p>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img src="assets/60a2b1dd-bc57-4238-ada7-44f14ad3cec6.png" style="width:58.50em;height:29.67em;"/></div>
+<p>Drupal core, by default, comes with three roles—<strong>ANONYMOUS USER</strong>, <strong>AUTHENTICATED USER</strong>, and <strong>ADMINISTRATOR</strong>. Also, by default, there are a large number of permissions already defined by Drupal core (and contributed) modules, ready to be assigned to various roles.</p>
+<p>The anonymous user role is pretty self-explanatory and can be used as a bucket for the permissions all anonymous users should have—that is, users who are not authenticated. Similarly, the authenticated user role is automatically assigned to all users upon logging in (and cannot be removed). So, it can be used as a bucket of permissions that all authenticated users should have.</p>
+<p>The super admin user (the one with the ID = 1) actually has all the permissions on the site without having to explicitly assign roles or permissions. Most of the time, it bypasses most of the access control in any given subsystem.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Roles and permissions under the hood</h1>
+                </header>
+            
+            <article>
+                
+<p>Roles are configuration entities (<kbd>user_role</kbd>) represented by the <kbd>Role</kbd> entity type class. They can be created through the UI and exported as configuration to be available on all the environments. As such, there is not much you need to do in your code to define a role, but simply create them as needed in the UI and export them to configuration. As you remember, if you want your role to be provided by your module, add the exported YAML file to the <kbd>config/install</kbd> folder (and remove the UUID). Refer to <a href="77cab458-5612-468c-8010-12385708eb81.xhtml">Chapter 6</a>, <em>Data Modeling and Storage</em>, for more information.</p>
+<p>Permissions, on the other hand, are a custom construct. In Drupal 7 they used to be defined by implementing <kbd>hook_permissions()</kbd>, but are now created using a YAML file (very similar to how we define menu links). However, they are not plugins, but a custom construct created by the core User module. The <kbd>PermissionHandler</kbd> service is responsible for reading all the YAML files and figuring out all the existing permissions on the site. This is not something you need to worry about, as you won't be interacting with this service. You'll mostly be interested in defining new permissions and checking whether a user has them, or setting those permissions in various access contexts.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Defining permissions</h1>
+                </header>
+            
+            <article>
+                
+<p>The way to create permissions in a custom module is by creating a <kbd>*.permissions.yml</kbd> file and adding the definitions in there. Consider the following example:</p>
+<pre>administer my feature: 
+  title: 'Administer my feature' 
+  restrict access: true </pre>
+<p>In this example, <kbd>administer my feature</kbd> is the machine name of the permission and actually the most important part. This is what you will use in your code to reference it. Then, we have a title that shows up on the permissions management page we saw earlier. Finally, we have a <kbd>restrict access</kbd> key by which we can specify whether we need a warning to be output on the permissions management page regarding the security implications, as follows: <em>Warning: Give to trusted roles only; this permission has security implications:</em></p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/a4867b53-2cfb-4659-a529-d15487528cfe.png" style="width:46.50em;height:14.33em;"/></p>
+<p>This is to indicate that our permission is more sensitive and administrators should pay attention to who they assign it to. This option can, however, be left out (as you will see in most cases actually).</p>
+<p>You may have noticed the static nature of this way of defining permissions. In other words, we hardcoded the permission name and only have one permission. In most cases, this will be fine. However, there can be times where you will need multiple permissions defined dynamically based on some other factors in your application. For this, we can use a permission callback.</p>
+<p>For example, the Node module defines individual permissions to manage each of its bundles, and this makes sense. Some roles should have access to some bundles while other roles should have access to other bundles. However, there is no way it can know which bundles it will have at any given point. So, it uses a permission callback:</p>
+<pre>permission_callbacks: 
+  - \Drupal\node\NodePermissions::nodeTypePermissions  </pre>
+<p>This is found in the <kbd>node.permissions.yml</kbd> file just like the statically defined ones, but it delegates the responsibility of getting the permissions to the <kbd>nodeTypePermissions</kbd> method of the <kbd>NodePermissions</kbd> class. This is the same notation we use to define Controllers in the route. As a matter of fact, the same class resolver is used to instantiate it.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Checking the user credentials</h1>
+                </header>
+            
+            <article>
+                
+<p>You can easily check whether a given user should access a certain resource as long as you have that user account at hand. Here, you can encounter two scenarios:</p>
+<ul>
+<li>You want to "interrogate" the current user.</li>
+<li>You want to "interrogate" a given user, not necessarily the current one.</li>
+</ul>
+<p>As we saw in <a href="601b4dd0-c521-459e-9342-2645a109642c.xhtml">Chapter 2</a>, <em>Creating Your First Module</em>, the current user is represented by a service that implements the <kbd>AccountProxyInterface</kbd> interface. This service can be accessed by the <kbd>current_user</kbd> key or statically with this shorthand:</p>
+<pre>$accountProxy = \Drupal::currentUser();  </pre>
+<p>From this account proxy we can request the <kbd>AccountInterface</kbd> which represents the actual logged-in user account (the <kbd>UserSession</kbd> object). It holds a reference to the User entity, with a few of its account-related data, but that is pretty much it. If we need to access its entity fields, we need to load the entity as we normally do:</p>
+<pre><span>$user </span><span>= \Drupal::</span><span>entityTypeManager</span><span>()<br/></span><span>  -&gt;</span><span>getStorage</span><span>(</span><span>'user'</span><span>)<br/></span><span>  -&gt;</span><span>load</span><span>(</span><span>$accountProxy</span><span>-&gt;</span><span>id</span><span>())</span><span>;</span></pre>
+<p>The resulting <kbd>UserInterface</kbd>, by the way, also implements the same <kbd>AccountInterface</kbd>, so these common methods can be used on both objects. So, the <kbd>User</kbd> entity type is essentially the storage facility for the <kbd>AccountInterface</kbd> that represents a user who is browsing the site. However, for the moment, the User entity is not so relevant, so we will get back to the account, which we can retrieve from the proxy, like so:</p>
+<pre>$account = $accountProxy-&gt;getAccount();  </pre>
+<p>The methods on this interface allow us to "interrogate" the account (either the current user account or the one represented by a given User entity) as to its credentials. Also, many of them are also present in the <kbd>AccountProxy</kbd>, meaning that you can ask it directly for these.</p>
+<p>Two very general but often helpful methods are the following:</p>
+<pre>$account-&gt;isAnonymous(); 
+$account-&gt;isAuthenticated();  </pre>
+<p>These check whether the account is anonymous or not, without taking any roles or permissions into account. Sometimes, your access control is solely based on this distinction.</p>
+<p>We can also get a list of roles the account has, as follows:</p>
+<pre>$account-&gt;getRoles();  </pre>
+<p>Even more important, check whether the user has a given permission:</p>
+<pre>$account-&gt;hasPermission($permission)  </pre>
+<p>Where <kbd>$permission</kbd> is a string (the machine name of the permission as we saw it defined earlier). This method is very helpful because it checks all the roles the user has for the specified permission.</p>
+<p>You can use these methods anywhere in your code when you need to check whether a user should be accessing certain parts of your functionality.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Route access</h1>
+                </header>
+            
+            <article>
+                
+<p>Now that we've seen how the access system works in Drupal 8 at a basic level and how we can define permissions and check user credentials, it's time to talk about routes.</p>
+<p>As we saw from the very first time we wrote code in this book, routes are the entry points into your application. Also, as a developer, it is one of the main things you'll be dealing with, so controlling who can access these routes is the responsibility of the access system.</p>
+<p>There are a number of ways we can ensure that routes are only accessible to the right users, so let's see what these are.</p>
+<p>The simplest way is by checking for a permission. We actually did that in <a href="601b4dd0-c521-459e-9342-2645a109642c.xhtml">Chapter 2</a>, <em>Creating Your First Module</em>, when we defined our <kbd>hello_world.hello</kbd> route:</p>
+<pre>hello_world.hello: 
+  path: '/hello' 
+  defaults: 
+    _controller: '\Drupal\hello_world\Controller\HelloWorldController::helloWorld' 
+    _title: 'Our first route' 
+  requirements: 
+    _permission: 'access content' </pre>
+<p>The <kbd>requirements</kbd> key in a route definition contains all the data that the request trying to reach this route must have. This contains mostly access-like information but also things such as the request format.</p>
+<p>The requirement in the previous example is <kbd>_permission</kbd> (all these options typically start with an underscore). It is used to specify that the user accessing this route needs to have that permission, similar to how we checked whether a user has it earlier:</p>
+<pre>$account-&gt;hasPermission($permission).   </pre>
+<p>The <kbd>access content</kbd> permission is something defined by Drupal core and is basically the one you'd use when the restrictions are very lax, meaning that all users should be able to access the resource. By default, this permission is also present on the <em>Anonymous</em> user role.</p>
+<p>Speaking of lax restrictions, there is one option that is even more open, fully open:</p>
+<pre>_access: "TRUE"  </pre>
+<p>This essentially opens up the route to basically everybody under any circumstance—not something you'll probably use often, but it's handy in some cases.</p>
+<p>Returning to permissions, we can also include multiple permissions in this requirement. For example, to check whether a user has <strong>either</strong> of two permissions, we separate them by a comma:</p>
+<pre>_permission: "my custom permission,administer site configuration"  </pre>
+<p>For checking whether the user has <strong>all</strong> the given permissions, we separate them by a plus (+) sign:</p>
+<pre>_permission: "my custom permission+my other permission"  </pre>
+<p>So, we can already see quite some flexibility.</p>
+<div class="packt_tip">The <kbd>administer site configuration</kbd> is another staple permission from Drupal core which we can use to ensure that the user is an administrator; it is typically a sensitive permission given only to these users.</div>
+<p>Next, we also have a requirement by which we can check whether the user has a given role. In a similar manner, we can include multiple roles to check, depending on whether we want to do AND or OR checking:</p>
+<pre>_role: "administrator" 
+_role: "editor,administrator" 
+_role: "editor+administrator"  </pre>
+<p>This approach is not as flexible as using permissions and it's a little "hardcody". By this I mean that you are hardcoding an access rule based on site configuration (as roles are configuration entities). If that configuration is removed, you may have broken code. Permissions, on the other hand, are also code, as they are defined in a module (or Drupal core). However, the option is there if you need it.</p>
+<p>The next type of requirement we should be covering here is <kbd>_entity_access</kbd>. However, understanding this requires us to first know a bit about entity-level access, so we will skip it now; we'll definitely come back to it later in the chapter. Instead, we will talk about the mother of all route access approaches—the custom one.</p>
+<div class="packt_tip">Route access requirements can also be stacked, which means that we can add more than one access requirement to a route and the access will be given if all of them grant access. If one denies it, access is denied to the route. This is done by simply adding multiple requirements to the route.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Custom route access</h1>
+                </header>
+            
+            <article>
+                
+<p>The previous ways of controlling routes are powerful and relatively flexible, but static. We are hardcoding the rules into a file and expect the incoming user to abide by them. However, what if things are more complicated than that, and we need a more dynamic approach? Trust me, things get complicated, fast. We can use the <kbd>_custom_access</kbd> option of the route requirements.</p>
+<p>In this subsection, we will see how these work and how we can create our custom access checkers; just something simple to demonstrate the process. Then, we will see a more advanced implementation that will have us work a bit with routes programmatically.</p>
+<p>There are two ways custom access checkers can be created and used with a route, and they both involve creating a class. The way this class is used makes the distinction: we can either reference it directly (statically) or make it into a service and reference it like so. We will see an example of both later in this chapter.</p>
+<p>To demonstrate, let's say that we want to make sure that our Hello World route is only accessible to users who don't have a specific role—<kbd>editor</kbd>. Doesn't make much sense, but it's a simple example we can run with.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Static approach</h1>
+                </header>
+            
+            <article>
+                
+<p>The static approach involves creating a method on our Controller (or somewhere else), usually called <kbd>access()</kbd>, and referencing it from the route definition. So, inside our controller we can have this:</p>
+<pre>/** 
+ * Handles the access checking. 
+ * 
+ * @param \Drupal\Core\Session\AccountInterface $account 
+ * 
+ * @return \Drupal\Core\Access\AccessResultInterface 
+ */ 
+public function access(AccountInterface $account) { 
+  return in_array('editor', $account-&gt;getRoles()) ? AccessResult::forbidden() : AccessResult::allowed(); 
+} </pre>
+<p>And the new <em>use</em> statements:</p>
+<pre>use Drupal\Core\Access\AccessResult; 
+use Drupal\Core\Session\AccountInterface;  </pre>
+<p>This method receives the current user's <kbd>AccountInterface</kbd>, which we can use to determine the roles. Moreover, if we type hint some extra parameters, Drupal will pass them to the method as well:</p>
+<ul>
+<li><kbd>\Symfony\Component\Routing\Route $route</kbd></li>
+<li><kbd>\Drupal\Core\Routing\RouteMatch $route_match</kbd></li>
+</ul>
+<p>We've already discussed the <kbd>CurrentRouteMatch</kbd> service in <a href="601b4dd0-c521-459e-9342-2645a109642c.xhtml">Chapter 2</a>, <em>Creating Your First Module</em>, and we saw that we can use it to find out things about the route that has just been accessed. In reality, that service simply uses <kbd>RouteMatch</kbd> objects underneath. So in case our access rules for this route depend on something that relates to the route, this argument can be very important. Soon, I will demonstrate why that is in further detail.</p>
+<p>Similarly, we can also type hint the actual <kbd>Route</kbd> object that contains data about the route. This plays to the same point I just made, and we can also use it in our logic. But alas, for our use case, these won't be necessary, so we will stick with the <kbd>AccountInterface</kbd>.</p>
+<p>What we are returning in this method is very important, as it needs to be an instance of <kbd>AccessResultInterface</kbd>. This is the standard interface the access system in Drupal 8 works with. The following are the three main implementations of this interface you will often encounter:</p>
+<ul>
+<li><kbd>AccessResultAllowed</kbd></li>
+<li><kbd>AccessResultNeutral</kbd></li>
+<li><kbd>AccessResultForbidden</kbd></li>
+</ul>
+<p>The gateway to these objects, however, is typically the <kbd>AccessResult</kbd> abstract base class (which all of these implementations extend as well) and its static methods. As you saw in the previous example, we used the <kbd>allowed()</kbd> and <kbd>forbidden()</kbd> methods to instantiate these objects. Of course, there is also the corresponding <kbd>neutral()</kbd> method we can use to indicate that we don't have a say in the matter. Typically, this is used when there are multiple actors involved in deciding access to a certain resource and one such actor encounters a resource for which they don't need to control access.</p>
+<p>With Drupal 8.3, the neutral and forbidden access results also support a reason. This is typically used in REST scenarios to display a message as to why the access has been denied or skipped. So for example, we can return something like this when denying access:</p>
+<pre>return AccessResult::forbidden('Editors are not allowed');</pre>
+<p>Some other built-in capabilities of the <kbd>AccessResult</kbd> base class are related to cacheability, but it also has convenience methods to achieve a bit more complex access logic. For example, the following methods can prove handy:</p>
+<ul>
+<li><kbd>allowedIf($condition)</kbd></li>
+<li><kbd>forbiddenIf($condition)</kbd></li>
+</ul>
+<p>You simply pass a Boolean to these methods and they return the right access object. Do keep in mind that these methods return an <kbd>AccessResultNeutral</kbd> object if the condition evaluates to FALSE. So, you cannot use these methods if you need to map a Boolean to an explicitly allowed or explicitly denied result.</p>
+<p>Additionally, we have methods like the following:</p>
+<ul>
+<li><kbd>allowedIfHasPermission()</kbd></li>
+<li><kbd>allowedIfHasPermissions()</kbd></li>
+</ul>
+<p>This will check whether a given account has one or more permissions and returns the right access object depending on the case.</p>
+<p>Finally, we also have the <kbd>orIf()</kbd> and <kbd>andIf()</kbd> methods with which we can build more complex access structures that combine multiple <kbd>AccessResultInterface</kbd> results.</p>
+<p>Closing the parentheses on the <kbd>AccessResultInterface</kbd>, let's reference this method in our route in order to actually make use of it. This is what the route definition looks like now:</p>
+<pre>hello_world.hello: 
+  path: '/hello' 
+  defaults: 
+    _controller: '\Drupal\hello_world\Controller\HelloWorldController::helloWorld' 
+    _title: 'Our first route' 
+  requirements: 
+    _custom_access: '\Drupal\hello_world\Controller\HelloWorldController::access' </pre>
+<p>Instead of the <kbd>_permission</kbd> requirement, we use <kbd>_custom_access</kbd> with a reference to our Controller method. After clearing the cache, our new access checker will "kick out" those pesky <kbd>editor</kbd> users.</p>
+<p>This static approach, as you can imagine, is slightly more powerful than using permission or roles-based access checking because it allows you to write PHP logic in order to determine the access. However, it falls short in a number of respects, and this is where the service-based approach can be used.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Service approach</h1>
+                </header>
+            
+            <article>
+                
+<p>The service approach involves creating a tagged service and referencing that in the route definition as a requirement. There are a number of advantages to this method compared to the one we've just seen:</p>
+<ul>
+<li>Allows you to encapsulate complex access logic in its own class</li>
+<li>Allows you to inject dependencies and make use of them in calculating the access</li>
+<li>Allows you to reuse the access checker on multiple routes</li>
+</ul>
+<p>Let's take a look at how we can implement this for our Hello World route. We will replace the previous approach, but keep the goal of denying access to editors. However, to increase a bit complexity, editors will be allowed if the Hello World salutation has not been overridden via the configuration form. If you recall, in <a href="601b4dd0-c521-459e-9342-2645a109642c.xhtml">Chapter 2</a>, <em>Creating Your First Module</em>, we created a form where the salutation message can be overridden and stored in a configuration object.</p>
+<p>First, let's create our class. Typically, access-related classes go inside the <kbd>Access</kbd> folder of the module namespace—it's not necessarily so, but it makes sense to put them there. Then, we can have something like this:</p>
+<pre>namespace Drupal\hello_world\Access; 
+ 
+use Drupal\Core\Access\AccessResult; 
+use Drupal\Core\Config\ConfigFactoryInterface; 
+use Drupal\Core\Routing\Access\AccessInterface; 
+use Drupal\Core\Session\AccountInterface; 
+ 
+/** 
+ * Access handler for the Hello World route. 
+ */ 
+class HelloWorldAccess implements AccessInterface { 
+ 
+  /** 
+   * @var \Drupal\Core\Config\ConfigFactoryInterface 
+   */ 
+  protected $configFactory; 
+ 
+  /** 
+   * HelloWorldAccess constructor. 
+   * 
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory 
+   */ 
+  public function __construct(ConfigFactoryInterface $configFactory) { 
+    $this-&gt;configFactory = $configFactory; 
+  } 
+ 
+  /** 
+   * Handles the access checking. 
+   * 
+   * @param AccountInterface $account 
+   * 
+   * @return AccessResult 
+   */ 
+  public function access(AccountInterface $account) { 
+    $salutation = $this-&gt;configFactory-&gt;get('hello_world.custom_salutation')-&gt;get('salutation'); 
+    return in_array('editor', $account-&gt;getRoles()) &amp;&amp; $salutation != "" ? AccessResult::forbidden() : AccessResult::allowed(); 
+  } 
+} </pre>
+<p>Right off the bat, I would like to mention that the <kbd>AccessInterface</kbd> we're implementing is at this point a bit up in the air. If you look inside, you'll see that it has no methods. This is because of the dynamic argument resolving we talked about earlier, by which we can get the route and route match if we type-hint them. There was an ongoing discussion at the time of writing this book on marking it deprecated and maybe eventually removing it completely (or finding another solution). So, it's something worth paying attention to in the long run.</p>
+<p>Also, since there is no interface, the <kbd>access()</kbd> method naming is not enforced. However, we will need it because that is the name being looked for by the access system when using the service. As before, we get the user making the request from which we can get the roles. Moreover, we injected the configuration factory and checked whether the salutation text had been overridden. Only if that is the case will editors be denied access. It's nothing too complicated for us at this point.</p>
+<p>Now, let's take a look at how we define this as a service to be used by our route as an access checker:</p>
+<pre><span>hello_world.access_checker: <br/></span><span>  class: </span>\Drupal\hello_world\Access\HelloWorldAccess <br/>  <span>arguments: </span>[<span>'@config.factory'</span>] <br/>  <span>tags: <br/></span><span>    </span>- { <span>name: </span>access_check, <span>applies_to: </span>_hello_world_access_check } </pre>
+<p>As you can see, tagged services are very important in Drupal 8 and are a great example of an extension point with which we can contribute our own code to an existing set of functionality. In this example, apart from tagging it for access checking, we also see another option to this tag: <kbd>applies_to</kbd>. The corresponding string is what we can now use in our route definition to target this particular access checker. So instead of the following line:</p>
+<pre>_custom_access: '\Drupal\hello_world\Controller\HelloWorldController::access'  </pre>
+<p>We have this one:</p>
+<pre>_hello_world_access_check: 'TRUE'  </pre>
+<p>The <kbd>TRUE</kbd> value we set doesn't make much of a difference. If we wanted, we could add a string value that could actually be used by the access checker internally. However, we'll use a different approach for that later. So, for now, the standard thing to do is just use <kbd>TRUE</kbd>.</p>
+<p>After clearing the cache, our new access checker will kick in and that is pretty much it.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Programmatically checking access on routes</h1>
+                </header>
+            
+            <article>
+                
+<p>If we defined routes, and users go to those routes, Drupal would check access for us automatically (according to the requirements set forth in the route definition). However, we may often need to check access to a given route programmatically, for example, to know whether we should show a link to it to the current user.</p>
+<p>In <a href="601b4dd0-c521-459e-9342-2645a109642c.xhtml">Chapter 2</a>, <em>Creating Your First Module</em>, we saw how to work with <kbd>Url</kbd> objects to create links, and we can use these very <kbd>Url</kbd> objects to check access on a given route; consider the following example:</p>
+<pre>$url = Url::fromRoute('hello_world.hello'); 
+if ($url-&gt;access()) { 
+  // Do something. 
+}  </pre>
+<p>The <kbd>access()</kbd> method on the <kbd>Url</kbd> object works only with <em>routed</em> URLs, those which have been determined to have a route behind them. It will obviously not work with things such as external URLs, so, in these cases, it will always return TRUE. Also, we can pass an <kbd>AccountInterface</kbd> to this method in case we want to check whether a specific user has access to that route. Without an argument, it defaults to the current user.</p>
+<p>Under the hood, the <kbd>Url</kbd> class uses the <kbd>AccessManager</kbd> service statically to check the access of the route. This is done statically, so if you want, you can inject the service yourself (<kbd>access_manager</kbd>) and check the route access:</p>
+<pre>$access = $accessManager()-&gt;checkNamedRoute('hello_world.hello', [], $account)  </pre>
+<p>The empty array we pass as a second argument is an array of parameters that the route needs. You remember how route parameters work from <a href="601b4dd0-c521-459e-9342-2645a109642c.xhtml">Chapter 2</a>, <em>Creating Your First Module</em>, right?</p>
+<p>I mentioned earlier that it's very important to use the account, route, and route match that are being passed to the access checker as dynamic arguments if you need them for calculating the access logic, as opposed to injecting the current user or current route match services and using those. Maybe, now, you can start to understand why. Let me break it down.</p>
+<p>One of my earlier points was that an advantage of the service-based access checking approach is that it allows us to use the same service on multiple routes. This means that we can have highly dynamic access rules by which we can check route options within the access checker and calculate access based on those, and this is quite powerful.</p>
+<p>However, if you inject the current route match service and make use of that, your access rules will work only when that route is being requested in the browser, so, basically, when the user is trying to go to that path. This is because the current route just happens to be the same as the route the access checker is using (the injected one). However, if you programmatically check access on that route from another page (as we just saw), the current route match will be of that other page instead of the one you actually want to check access to.</p>
+<p>You'll see this happen even if you don't manually check access on routes with menu links. If a given route is used in a menu link and printed on a page, Drupal will do the access checking automatically to ensure that users have access to that link. Moreover, recall from <a href="9e989509-bdf4-4a74-ace2-deeaa0c73a3b.xhtml">Chapter 5</a>, <em>Menus and Menu Links</em>, that if you want to render menu links programmatically, one of the things you'll typically do is run the menu tree through a set of manipulators. An important manipulator is that which checks whether the current user has access to that route.</p>
+<p>In these cases, you have the same problem. So, do remember to type hint your access checker with the route and/or route match objects and do not inject them. Of course, do not inject the current user service either (unless you have a very specific reason for doing so).</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Bonus—dynamic route options for access control</h1>
+                </header>
+            
+            <article>
+                
+<p>We've seen how to create a service-based access checker that we can use on our routes. Using this technique, I want to demonstrate the flexibility of using the service on multiple routes. Imagine that we have multiple routes that display some user information. However, these routes are specific to a user type, and hence accessible only for that user type. In this example, a user type will be defined based on the value of a simple text field on the user entity, and we want to specify in the route definition for which user type it should be accessible. The code we write for this demonstration will go inside a new <kbd>user_types</kbd> module.</p>
+<p>An alternative approach to checking the access inside a route for this example is to simply verify inside the Controller that the current user should access it. If not, throwing an <kbd>AccessDeniedHttpException</kbd> inside a Controller method will turn the request into a 403 (access denied). However, this is almost always the wrong approach because the route can no longer be verified for access, and we'll end up with links on our site that potentially lead to 403 pages. And we don't want that. For this reason, if the page has access rules, they belong in the access system and not in the Controller.</p>
+<p>We'll go into this example with the assumption that the user entity has a field called <kbd>field_user_type</kbd> already on it; that we have users of three types: <kbd>board_member</kbd>, <kbd>manager</kbd>, and <kbd>employee</kbd>; and that we have the following four route definitions:</p>
+<pre>user_types.board_members: 
+  path: '/board-member' 
+  defaults: 
+    _controller: '\Drupal\user_types\Controller\UserTypesController::boardMember' 
+    _title: 'Board member' 
+user_types.manager: 
+  path: '/manager' 
+  defaults: 
+    _controller: '\Drupal\user_types\Controller\UserTypesController::manager' 
+    _title: 'Manager' 
+user_types.employee: 
+  path: '/employee' 
+  defaults: 
+    _controller: '\Drupal\user_types\Controller\UserTypesController::employee' 
+    _title: 'Employee' 
+user_types.leadership: 
+  path: '/leadership' 
+  defaults: 
+    _controller: '\Drupal\user_types\Controller\UserTypesController::leadership' 
+    _title: 'Leadership' </pre>
+<p>These routes don't have any access requirements yet, as it is our job to create them now. However, you can already understand what kind of users should be able to access these routes. The <kbd>user_types.board_members</kbd> route is for board members, <kbd>user_types.manager</kbd> is for managers, <kbd>user_types.employee</kbd> is for both employees and managers (since both are actual employees), and <kbd>user_types.leadership</kbd> is for the board members and managers. So, a bit of mix and match to highlight the need for flexibility in our access checker.</p>
+<p>Obviously, we don't want to write a service for each combination of user types to handle the access here. Using the static approach is not suitable either because we need to inject a dependency, and we also don't want to duplicate the logic using different callables.</p>
+<p>So, let's define our service definition for this access checker:</p>
+<pre>user_types.access_checker: 
+  class: \Drupal\user_types\Access\UserTypesAccess 
+  arguments: ['@entity_type.manager'] 
+  tags: 
+    - { name: access_check, applies_to: _user_types_access_check } </pre>
+<p>We inject the entity type manager service so that we can load the user entity corresponding to the user whose access is being checked. As you remember, the <kbd>AccountInterface</kbd> is not enough to read field data from that user.</p>
+<p>Now, we can update our route requirements (for all four routes) to make use of this access checker:</p>
+<pre> requirements: 
+    _user_types_access_check: 'TRUE'  </pre>
+<div class="packt_infobox">Earlier, we saw the static access checker being referenced using the <kbd>_custom_access</kbd> requirement. This is the same as the one we are creating now, but provided by Drupal core and which maps to the <kbd>CustomAccessCheck</kbd> service (instead of the custom one we are now writing). This, in turn, delegates the responsibility to the class method set in the definition.</div>
+<p>Now, it's time to make the distinction between our four routes in terms of the types of users that should have access to them, and we can use <em>route options</em> for this. Options are a set of arbitrary pieces of data that we can put on a route definition and retrieve later programmatically. If you remember, in <a href="601b4dd0-c521-459e-9342-2645a109642c.xhtml">Chapter 2</a>, <em>Creating Your First Module</em>, parameter converters are such an example that can be defined as an option in the route.</p>
+<p>Let's take a look at just one of the routes as an example in full, and you'll extrapolate what the other routes will have to look like:</p>
+<pre>hello_world.employee: 
+  path: '/employee' 
+  defaults: 
+    _controller: '\Drupal\hello_world\Controller\UserTypesController::employee' 
+    _title: 'Employee' 
+  requirements: 
+    _user_types_access_check: 'TRUE' 
+  options: 
+    _user_types: 
+      - manager 
+      - employee </pre>
+<p>Route options are placed under the <kbd>options</kbd> key and are conventionally named with an underscore at the beginning (however, this is not mandatory). In a standard YAML notation, we have a sequence of string values underneath our <kbd>_user_types</kbd> option, which will be turned into a PHP array when read into the Route object.</p>
+<p>Now, we can create our access checker service and make use of all this for controlling access:</p>
+<pre>namespace Drupal\user_types\Access; 
+ 
+use Drupal\Core\Access\AccessResult; 
+use Drupal\Core\Entity\EntityTypeManager; 
+use Drupal\Core\Routing\Access\AccessInterface; 
+use Drupal\Core\Session\AccountInterface; 
+use Symfony\Component\Routing\Route; 
+ 
+/** 
+ * Access handler for the User Types routes. 
+ */ 
+class UserTypesAccess implements AccessInterface { 
+ 
+  /** 
+   * @var \Drupal\Core\Entity\EntityTypeManager 
+   */ 
+  protected $entityTypeManager; 
+ 
+  /** 
+   * UserTypesAccess constructor. 
+   * 
+   * @param \Drupal\Core\Entity\EntityTypeManager $entityTypeManager 
+   */ 
+  public function __construct(EntityTypeManager $entityTypeManager) { 
+    $this-&gt;entityTypeManager = $entityTypeManager; 
+  } 
+ 
+  /** 
+   * Handles the access checking. 
+   * 
+   * @param AccountInterface $account 
+   * @param \Symfony\Component\Routing\Route $route 
+   * 
+   * @return \Drupal\Core\Access\AccessResult 
+   */ 
+  public function access(AccountInterface $account, Route $route) { 
+    $user_types = $route-&gt;getOption('_user_types'); 
+    if (!$user_types) { 
+      return AccessResult::forbidden(); 
+    } 
+    if ($account-&gt;isAnonymous()) { 
+      return AccessResult::forbidden(); 
+    } 
+    $user = $this-&gt;entityTypeManager-&gt;getStorage('user')-&gt;load($account-&gt;id()); 
+    $type = $user-&gt;get('field_user_type')-&gt;value; 
+    return in_array($type, $user_types) ? AccessResult::allowed() : AccessResult::forbidden(); 
+  } 
+} </pre>
+<p>As per the service definition, we inject the entity type manager as a dependency. This is something we could not have done using the static approach. Then, in our <kbd>access()</kbd> method, we also type hint the route on which this service is used for evaluating access. Now comes the fun part.</p>
+<p>We inspect the route and try to retrieve our option by name. Just as a fail-safe, we deny access if the option is missing. This should never be the case, as we only use this access checker on routes that do have the option, but you never know. Additionally, we also deny access if the user is anonymous. Anonymous users are sure <span><span>not to</span></span> have any user type field value.</p>
+<p>Then, we load the user entity of the current account and simply check that field value and return access according to whether it is within the allowed ones for the route. I recommend that you inspect the Route class and see what other handy data you can make use of.</p>
+<p>This is it. Now we have a flexible access-checking service that we can use on any number of routes that need this <em>user type</em> access control.</p>
+<p>A key takeaway from this bonus technique is that you can build incredibly flexible architectures using options on routes. In this example, we used them for access, but you can also use them for other functionalities that tie to, and can be controlled from, the route.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">CSRF protection on routes</h1>
+                </header>
+            
+            <article>
+                
+<p>Drupal comes equipped with various tools for handling CSRF protection.</p>
+<div class="packt_quote">Cross Site Request Forgery (CSRF) is an attack that forces an end user to execute unwanted actions on a web application in which they're currently authenticated.<br/>
+<br/>
+—(OWASP)</div>
+<p>One such tool is for handling the addition of a CSRF token to a route built using the Drupal API automatically. Let's take a look at an example.</p>
+<p>Imagine that you have a route that is used as some sort of a callback. Hitting this route triggers a process (for logged-in users), so you need to make sure that users only end up on this route from the place they should come (part of the flow that needs to trigger that process). Tokens can be used for this, and Drupal 8 has this covered.</p>
+<p>There are two things we need to do: add a requirement to the route for CSRF protection and then build that link using the regular Drupal API we saw in <a href="601b4dd0-c521-459e-9342-2645a109642c.xhtml">Chapter 2</a>, <em>Creating Your First Module</em>. Here's the requirement:</p>
+<pre>_csrf_token: 'TRUE' </pre>
+<p>Also, note that this can go together with other access-based requirements such as the ones we've been talking about in this section.</p>
+<p>Adding the CSRF token requirement now makes the route inaccessible if simply accessed by navigating to the path in the browser. To make it accessible, we will need to print a link to it somewhere using the Drupal API:</p>
+<pre>$url = Url::fromRoute('my_module.my_route'); 
+$link = [ 
+  '#type' =&gt; 'link', 
+  '#url' =&gt; $url, 
+  '#title' =&gt; 'Protected callback' 
+];  </pre>
+<p>This is one way, but we can also use the <kbd>LinkGenerator</kbd> service or the <kbd>Link</kbd> class, as we've seen in <a href="601b4dd0-c521-459e-9342-2645a109642c.xhtml">Chapter 2</a>, <em>Creating Your First Module</em>. They will all render the link with a token appended to the URL as a query parameter. Drupal will then evaluate that token as part of the access control and make sure that it is valid. As a matter of fact, the link building actually plays no role. It is the URL generator that handles it. So, if you get the string URL this way, you will have the token on it automatically:</p>
+<pre>$path = $url-&gt;toString();  </pre>
+<p>Under the hood, to manage the creation and validation of the tokens, Drupal uses the <kbd>CsrfTokenGenerator</kbd> service, which we can also use if we need to. For example, after getting our hands on the service (<kbd>csrf_token</kbd>), we can create a token:</p>
+<pre>$token = $generator-&gt;get('my_value'); </pre>
+<p>Here, <kbd>my_value</kbd> is an optional string that the generator can use to make the token unique. It also uses the current user session and the private site key. Keep in mind that if the user is anonymous and no session has been started, the token will be unique on each request.</p>
+<p>We can then validate this token as follows:</p>
+<pre>$valid = $generator-&gt;validate($token, 'my_value');  </pre>
+<p>Here, <kbd>$generator</kbd> is the same service we used for creating it.</p>
+<p>Using the token generator manually can be handy, but as we saw, it is very easy to just put a requirement on the route, and let Drupal do the rest. Moreover, CSRF protection is embedded in the Form API, so we don't have to do anything at all when it comes to forms for additional protection.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Altering routes</h1>
+                </header>
+            
+            <article>
+                
+<p>We've seen so far how to create access rules on our own routes. However, it would not be Drupal if it wasn't also easy to alter existing routes and change their access rules to whatever we want. This is yet another small extension point with which our custom modules can contribute to an existing functionality.</p>
+<p>Altering route access is done by altering the routes themselves. Of course, access is not the only reason why routes may be altered, as you can change just about anything else on the definition. So let's see how you can alter routes for any purpose you might need.</p>
+<p>Routes can be altered by subscribing to an event, just as we've seen in <a href="601b4dd0-c521-459e-9342-2645a109642c.xhtml">Chapter 2</a>, <em>Creating Your First Module</em>, when we subscribed to the <kbd>kernel.request</kbd> event. This event is dispatched at the moment all the routes are being built and before they get cached. So the alteration will not happen dynamically (upon someone accessing the route), but only when they all get rebuilt. Let's take a look at how we can subscribe to that event.</p>
+<p>Unlike most other subscribers, the <kbd>EventSubscriberInterface</kbd> class for routes typically goes in the <kbd>Routing</kbd> namespace of the module, so that's where we'll put it. Moreover, the event we're listening to is <kbd>RoutingEvents::ALTER</kbd>. However, the routing system provides us with a base subscriber class that we can extend and that contains all this boilerplate code, leaving us to do only the alterations themselves.</p>
+<p>And these alterations can look like this:</p>
+<pre>namespace Drupal\hello_world\Routing; 
+ 
+use Drupal\Core\Routing\RouteSubscriberBase; 
+use Symfony\Component\Routing\RouteCollection; 
+ 
+/** 
+ * Subscribes to route events for the Hello World module. 
+ */ 
+class HelloWorldRouteSubscriber extends RouteSubscriberBase { 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  protected function alterRoutes(RouteCollection $collection) { 
+    $route = $collection-&gt;get('user.register'); 
+    if (!$route) { 
+      return; 
+    } 
+ 
+    // Example 1: 
+    // We deny access to the Register page in all cases. With this requirement, 
+    // it doesn't matter anymore what other access requirements exist or if they 
+    // evaluate positively. 
+    $route-&gt;setRequirement('_access', 'FALSE'); 
+ 
+    // Example 2: 
+    // We check for the presence of a specific access requirement and if it exists, 
+    // we clear all the access requirements on the route and set our own. 
+    if ($route-&gt;hasRequirement('_access_user_register')) { 
+      $route-&gt;setRequirements([]); 
+      $route-&gt;setRequirement('_user_types_access_check', 'TRUE'); 
+    } 
+  } 
+} </pre>
+<p>We extended <kbd>RouteSubscriberBase</kbd>, which subscribes to the event and provides us with the <kbd>alterRoutes()</kbd> method and a collection of all the routes on the site. I encourage you to look into the <kbd>RouteCollection</kbd> class as it's a very handy one to know when working with routes. One important feature is that we can retrieve routes based on their name, which we did in the previous example.</p>
+<p>Then, we will work with <kbd>Route</kbd> objects like we did a bit earlier. We can see two examples, all with comments I will not repeat here. The second example does not make any sense in a real-world scenario, as we cannot have logged-in users register for new accounts anyway. However, it serves to illustrate how we can add our own access checker to an existing route.</p>
+<p>Similar to how we manipulate access requirements, we can change a lot of other things: options, parameters, the controller, and even the actual route path. For this, I encourage you to familiarize yourself with the <kbd>Route</kbd> class methods and see what you can set on the new route. Couple this information with the documentation (<span class="URLPACKT"><a href="https://www.drupal.org/docs/8/api/routing-system/structure-of-routes">https://www.drupal.org/docs/8/api/routing-system/structure-of-routes</a></span>) on all the things you can add to routes for a better understanding.</p>
+<p>The only thing left for this to work is to register the subscriber as a tagged service, just like we did in <a href="601b4dd0-c521-459e-9342-2645a109642c.xhtml">Chapter 2</a>, <em>Creating Your First Module</em>:</p>
+<pre><span>hello_world.route_subscriber: <br/></span><span>  class: </span>Drupal\hello_world\Routing\HelloWorldRouteSubscriber <br/>  <span>tags: <br/></span><span>    </span>- { <span>name: </span>event_subscriber } </pre>
+<p>And with this we are done with altering our routes.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Entity access</h1>
+                </header>
+            
+            <article>
+                
+<p>Now that we've covered how access control works on routes, let's dive into the entity access system and see how we can ensure that only the right users interact with our entities. To demonstrate these, we will work with the Product entity type we created in <a href="392cdb70-e52a-42d1-b782-28d6eb726810.xhtml">Chapter 7</a>, <em>Your Own Custom Entity and Plugin Types</em>.</p>
+<p>When we created the Product entity type, the annotation we wrote had an <kbd>admin_permission</kbd> property where we referenced the general permission to be used for any interaction with the entities of this type. Since we didn't reference and implement an access control handler, this is the only access checking done on products. In many cases, this is enough. After all, entity types can be created for the sole purpose of structuring some data that nobody even needs to interact with in the UI. However, many other cases require more granular access control on operating with the entities, especially the content-oriented ones, such as Node.</p>
+<p>There are four operations for which we can control access when it comes to entities: <kbd>view</kbd>, <kbd>create</kbd>, <kbd>update</kbd>, and <kbd>delete</kbd>. The first one is clearly the most common one, but we always need to account for the rest as well. Let's first define permissions for all these operations (you remember how, right?):</p>
+<pre>view product entities: 
+  title: 'View Product entities' 
+edit product entities: 
+  title: 'Edit Product entities' 
+delete product entities: 
+  title: 'Delete Product entities' 
+add product entities: 
+  title: 'Create new Product entities'  </pre>
+<p>These are four simple permissions that map to the operations that can be performed on Product entities.</p>
+<p>Now, let's go ahead and create an access control handler for our Product entity type. You remember what these handlers are from <a href="77cab458-5612-468c-8010-12385708eb81.xhtml">Chapter 6</a>, <em>Data Modeling and Storage</em>, don't you?</p>
+<p>First, we will reference the class we build on the product annotation:</p>
+<pre>"access" = "Drupal\products\Access\ProductAccessControlHandler",  </pre>
+<p>I choose to put this handler in the <kbd>Access</kbd> namespace of the module, but feel free to put it where you want.</p>
+<p>Second, we will need the actual class:</p>
+<pre>namespace Drupal\products\Access; 
+ 
+use Drupal\Core\Entity\EntityAccessControlHandler; 
+use Drupal\Core\Entity\EntityInterface; 
+use Drupal\Core\Session\AccountInterface; 
+use Drupal\Core\Access\AccessResult; 
+use Drupal\products\Entity\ProductInterface; 
+ 
+/** 
+ * Access controller for the Product entity type. 
+ */ 
+class ProductAccessControlHandler extends EntityAccessControlHandler { 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  protected function checkAccess(EntityInterface $entity, $operation, AccountInterface $account) { 
+    /** @var ProductInterface $entity */ 
+    switch ($operation) { 
+      case 'view': 
+        return AccessResult::allowedIfHasPermission($account, 'view product entities'); 
+ 
+      case 'update': 
+        return AccessResult::allowedIfHasPermission($account, 'edit product entities'); 
+ 
+      case 'delete': 
+        return AccessResult::allowedIfHasPermission($account, 'delete product entities'); 
+    } 
+ 
+    return AccessResult::neutral(); 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  protected function checkCreateAccess(AccountInterface $account, array $context, $entity_bundle = NULL) { 
+    return AccessResult::allowedIfHasPermission($account, 'add product entities'); 
+  } 
+} </pre>
+<p>As I mentioned in <a href="77cab458-5612-468c-8010-12385708eb81.xhtml">Chapter 6</a>, <em>Data Modeling and Storage</em>, entity access control handlers need to extend the <kbd>EntityAccessControlHandler</kbd> base class. If one is not specifically provided, that is actually the handler the entity type defaults to. Also, there are two methods we will need to implement here (override):</p>
+<ul>
+<li><kbd>checkAccess()</kbd>, which is used to control access on the view, update and delete operations</li>
+<li><kbd>checkCreateAccess()</kbd>, which is used to control access on the create operation</li>
+</ul>
+<p>The reason why these are separate is that for the create operation we don't have an entity we can inspect in the process.</p>
+<p>Our access rules for the Product entity type are very simple. For each operation, we allow access if the user has the relevant permission; otherwise, access is neutral. However, what happens in this case?</p>
+<p>It's worth looking into the <kbd>EntityAccessControlHandler</kbd> base class and understanding what is going on. The main access entry points are the <kbd>access()</kbd> and <kbd>createAccess()</kbd> methods. We should never override these because the logic happening in there is quite standardized and is expected behavior by everyone. Instead, our rules go inside the two methods we saw in our own handler subclass.</p>
+<p>The <kbd>access()</kbd> and <kbd>createAccess()</kbd> methods invoke entity access hooks (we'll talk about those in a minute). If those do not come back with an access denied message, they call their respective access methods we are overriding in our own subclass, and the results of these are combined with the ones from the access hooks inside an <kbd>orIf()</kbd> access result. Remember earlier when we talked about the <kbd>AccessResult</kbd> base class and its handy <kbd>orIf()</kbd> and <kbd>andIf()</kbd> methods?</p>
+<p>It's important to note how access is determined with all these factors. If at least one of the hook implementations grants access and none deny it, the user will have access, unless we deny access in our access handler. Neutral access plays no role in this equation, except if all hook implementations and the access handler return neutral access (so no specific access being granted), then the access will be denied.</p>
+<p>In our example, we defined permissions, and the handler simply checks for these. Already this is pretty flexible because administrators can now assign these permissions to roles and control which users can perform any of these operations. However, there is nothing stopping us from adding more logic to these methods. For example, we can even inspect the entities (and/or the user account) and determine access based on some given values. Moreover, we can inject services into the access handler and make use of them in these calculations.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Injecting services into Entity handlers</h1>
+                </header>
+            
+            <article>
+                
+<p>One of the powers of using the access handler is that we can make it aware of the service container and inject whatever services we might need to determine access. However, it's not immediately clear how you can do this, so we'll break it down here.</p>
+<p>The first thing we will need is to have our access handler implement the <kbd>\Drupal\core\Entity\EntityHandlerInterface</kbd>. Note that this applies in the same way to the other types of handlers, not just access-related. This interface has one method, which will receive the container and the entity type definition: <kbd>createInstance()</kbd>.</p>
+<p>Knowing this, the rest is very similar to how we injected services into Controllers and Forms using the <kbd>create()</kbd> method, which only takes the container as argument, or into plugins, which also takes some plugin information:</p>
+<pre>/** 
+ * @var \Drupal\Core\Entity\EntityTypeManagerInterface 
+ */ 
+protected $entityTypeManager; 
+ 
+/** 
+ * ProductAccessControlHandler constructor. 
+ * 
+ * @param \Drupal\Core\Entity\EntityTypeInterface $entity_type 
+ * @param \Drupal\Core\Entity\EntityTypeManager $entityTypeManager 
+ */ 
+public function __construct(EntityTypeInterface $entity_type, EntityTypeManagerInterface $entityTypeManager) { 
+  parent::__construct($entity_type); 
+  $this-&gt;entityTypeManager = $entityTypeManager; 
+} 
+ 
+/** 
+ * {@inheritdoc} 
+ */ 
+public static function createInstance(ContainerInterface $container, EntityTypeInterface $entity_type) { 
+  return new static( 
+    $entity_type, 
+    $container-&gt;get('entity_type.manager') 
+  ); 
+} </pre>
+<p>And the new <em>use</em> statements:</p>
+<pre>use Drupal\Core\Entity\EntityTypeInterface; 
+use Drupal\Core\Entity\EntityTypeManagerInterface; 
+use Symfony\Component\DependencyInjection\ContainerInterface;  </pre>
+<p>With this, we have injected the entity type manager into the access handler, and if we want, we can use it. Of course, if we don't need it, we should not inject it in the first place.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Entity access hooks</h1>
+                </header>
+            
+            <article>
+                
+<p>As I mentioned, the core entity access handler invokes access hooks that modules that don't own the entity type can implement in order to have their say in the access to an entity. There are two sets of access hooks to speak of. The first set covers <em>create</em> operations, as follows:</p>
+<ul>
+<li><kbd>hook_entity_create_access()</kbd></li>
+<li><kbd>hook_[entity_type]_create_access()</kbd></li>
+</ul>
+<p>The second set covers <kbd>view</kbd>, <kbd>update</kbd>, and <kbd>delete</kbd> operations:</p>
+<ul>
+<li><kbd>hook_entity_access()</kbd></li>
+<li><kbd>hook_[entity_type]_access()</kbd></li>
+</ul>
+<p>For each set, we have two hooks invoked at the same time that go from generic to entity type-specific. For example, when trying to view a node, the second hook that is invoked is <kbd>hook_node_access()</kbd>.</p>
+<p>The entity access hook implementations, as you remember from our earlier discussion, also have to return an <kbd>AccessResultInterface</kbd>. This is because the result is used inside the <kbd>orIf()</kbd> combination with the access result of the access handler.</p>
+<p>So, let's take a look at how we can implement these access hooks, especially their signatures. Hence, we begin with the first set:</p>
+<pre>/** 
+ * Implements hook_entity_create_access(). 
+ */ 
+function my_module_entity_create_access(\Drupal\Core\Session\AccountInterface $account, array $context, $entity_bundle) { 
+  // Perform access check and return an AccessResultInterface instance. 
+}  </pre>
+<p>This is the generic entity create access hook. To make it specific to an entity type, we replace the word <kbd>entity</kbd> from the function name with the actual ID of the entity type. The parameters, however, remain the same—the user account being checked for access, a context (an array containing the entity type ID and the langcode of the entity being created), and the bundle of the entity being created.</p>
+<p>The second set looks like this:</p>
+<pre>function  
+my_module_entity_access(\Drupal\Core\Entity\EntityInterface $entity, $operation, \Drupal\Core\Session\AccountInterface $account)  
+{ 
+  // Perform access check and return an AccessResultInterface instance. 
+} </pre>
+<p>Again, to make it specific to an entity type, we can just replace the word <kbd>entity</kbd> with the ID of the entity type we want. Once again, the parameters remain, in essence, consistent—the entity being accessed (type-hinted with the relevant entity interface if implementing the more specific hook), the operation being attempted (one of three strings: <kbd>view</kbd>, <kbd>update</kbd>, and <kbd>delete</kbd>), and the user account being checked for access.</p>
+<p>That's pretty much it. These hooks are invoked dynamically whenever access is being checked on an entity for the given operation. Let's talk about some examples of this.</p>
+<p>First, the entity routes that come out of the box are checking access against these operations, so no need to worry there. So, if we navigate to the canonical, form, or delete URL, access will be checked.</p>
+<p>Secondly, if we programmatically load an entity and render it as we saw in <a href="77cab458-5612-468c-8010-12385708eb81.xhtml">Chapter 6</a>, <em>Data Modeling and Storage</em>, using the view builder handler, the entity access with the <kbd>view</kbd> operation gets invoked. However, if we load the entity and simply retrieve some data from it and print it within our own template, we bypass access control. If we are doing this, we will need to make sure that we always check access manually:</p>
+<pre>$access = $entity-&gt;access('view', $account);  </pre>
+<p>This will return a Boolean, unless you specify a third argument as TRUE, which will return an <kbd>AccessResultInterface</kbd> object; your call, depending on the circumstances.</p>
+<p>Thirdly, if we load an entity programmatically that we use inside a form builder and want to render the form, we again bypass the access check. So, we should perform it manually again using the <kbd>update</kbd> operation instead.</p>
+<p>When it comes to programmatically dealing with URLs and menu links to pages that have CRUD connotations with regard to entities, we will need to perform access checking ourselves, but we will discuss entity access in routes in a minute; first, a word of caution.</p>
+<p>Earlier, I made a note about extracting entity data and simply rendering field values. The same problem occurs when running entity queries—the results will contain entities that the current user may not have access to. So, we must be aware of this and handle it appropriately. This problem becomes even more prominent with Views, which makes custom database queries and will include potentially inaccessible entities in the result set. Compounded by the possibility of rendering field values with Views, this can cause quite unexpected behavior. So, keep in mind that for cases like this, the entity access hooks and access control handler do not fire. The Node module, however, has a complex grant system that takes care of all this, but, unfortunately, this is available only for node entities. We will talk about these soon as well.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Field access</h1>
+                </header>
+            
+            <article>
+                
+<p>We've seen so far how the entity-level access works. However, a very similar system also exists for the fields inside entities. If you look inside the <kbd>EntityAccessControlHandler</kbd>, you'll note that there is a <kbd>fieldAccess()</kbd> method. This is called whenever access needs to be checked on a given field. For example, the <kbd>FieldItemList::access()</kbd> method does just that and delegates to the entity handler. Inside that, a call is made to <kbd>checkFieldAccess()</kbd>, which is what we can implement in our access handler subclass to customize access rules if we need to.</p>
+<p>In a similar way, we have multiple operations that access can be checked for, but <kbd>view</kbd> will be your most common one. For example, when manually rendering an entity using the entity builder handler, as we've seen before, each field is being checked for access to the <kbd>view</kbd> operation. The same goes, <strong>this time</strong>, when an entity form is being built for the entity to edit it. Each field that is being rendered in the form gets checked for access first using the <kbd>edit</kbd> operation.</p>
+<p>Again, we also have access hooks that other modules can implement to have a say in whether or not fields should be accessible:</p>
+<ul>
+<li><kbd>hook_entity_field_access()</kbd></li>
+<li><kbd>hook_entity_field_access_alter()</kbd></li>
+</ul>
+<p>In this case, we don't have an entity type or a field type-specific hook that we can implement. However, we have an alter hook that we can use to alter the access rules proposed by other modules.</p>
+<p>Similar to the entity-level access handler, the field-level one takes its input from multiple sources—subclass and hook implementations. However, the order and combination of these are different. First, the access handler subclass is called (via the <kbd>checkFieldAccess()</kbd> method). Then, all the <kbd>hook_entity_field_access()</kbd> hooks are invoked to provide their input. Both of these in turn are then alterable by implementing <kbd>hook_entity_field_access_alter()</kbd>. Finally, the resulting access rules are combined into an <kbd>orIf()</kbd> and returned. So, the same principles are available as we saw at the entity level, but in a different order.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Entity access in routes</h1>
+                </header>
+            
+            <article>
+                
+<p>Now that we understand how entity-level access control works, let's return to routes for a moment. If you remember, I mentioned the <kbd>_entity_access</kbd> route requirement and how we would talk about it once we had covered entity access.</p>
+<p>The <kbd>_entity_access</kbd> route requirement is nothing more than a service-based access checker, much like the one we wrote ourselves. However, it is created by the entity system in order to control access to routes based on dynamic entity parameters in those routes. Let's see a quick example of a route definition that can use the <kbd>_entity_access</kbd> requirement:</p>
+<pre>products.view_product: 
+  path: '/our-products/{product}' 
+  defaults: 
+    _controller: '\Drupal\products\Controller\ProductsController::showProduct' 
+  requirements: 
+    _entity_access: 'product.view' 
+  options: 
+    parameters: 
+      product: 
+        type: 'entity:product' </pre>
+<p>This route has a dynamic parameter called <kbd>product</kbd>. In the options, we map this parameter to the Product entity type, so that our Controller method (<kbd>showProduct()</kbd>) already receives the loaded product entity instead of just the ID. An added benefit of this is that if the product is not found, a 404 is thrown for us. Since this route is clearly dependent on that particular product, we also want to make sure that it can be accessible only if the user has access to view that product.</p>
+<p>One way we can ensure access is to add a permission requirement that matches the one for viewing the Product entities. However, this is not a good idea for two reasons:</p>
+<ul>
+<li>If we change the permission used by the Product entity, we have to change it in this definition as well.</li>
+<li>Even more importantly, if the entity access logic depends on something more, such as dynamic data from the user or entity, this won't work anymore.</li>
+</ul>
+<p>An alternative way to counter these problems is to implement an access checker service and check for the access on the entity inside that service:</p>
+<pre>$access = $entity-&gt;access('view', $account);  </pre>
+<p>However, there's a lot of boilerplate setup involved for just this line of code. We'd have to do so for all entity types and operations.</p>
+<p>Instead, we use the built-in <kbd>_entity_access</kbd> access checker as in the example route definition. Instead of <kbd>TRUE</kbd> (what we've been using for our access checker), this one actually expects a value it will make use of, and that is a string with two parts separated by a period (<kbd>.</kbd>). The first part is the entity type, whereas the second is the operation. Under the hood, <kbd>EntityAccessCheck</kbd> will look in the route parameters and check for the found entity's access using the provided operation. Easy peasy.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Node access grants</h1>
+                </header>
+            
+            <article>
+                
+<p>Earlier I warned about the entity access controls we've been talking about not being taken into account during queries (either written by us or Views). This is something to pay attention to. For example, if you make a listing of entities, you will need to ensure that users have access to these entities before printing the results out. The problem here occurs when using the built-in paging capabilities of either the entity query or database API. That's because the pager information will reflect all the query results. So, if you don't print the inaccessible entities, there will be a mismatch between the pager information and visible results.</p>
+<p>If you remember, in <a href="77cab458-5612-468c-8010-12385708eb81.xhtml">Chapter 6</a>, <em>Data Modeling and Storage</em>, I mentioned that when it comes to nodes, the entity query takes access into account. If you want to avoid that, you should use the <kbd>accessCheck(FALSE)</kbd> method on the query builder. Let's elaborate a bit on this.</p>
+<p>First, this method is available on all entity types, not just nodes. However, it is really useful only for those that have defined a <kbd>status</kbd> field to denote that entities can be either published or unpublished (or/off, enabled/disabled, however you prefer). The query will simply add a condition to that field and only return the ones with the status that equals 1. Passing FALSE to this method simply removes that condition.</p>
+<p>Second, the Node entity type has a much more powerful built-in access system called <em>access grants</em>. These have been there from previous versions of Drupal and this is why we have it available in D8 as well. Unfortunately, it is not there for other entity types. However, if you really need it, you could technically write it yourself now that you know how the entity access system works in general, and can look into how the node access grants are built. But what is this system about?</p>
+<p>The node access grants system is a granular way by which we can control access to any of the operations on a node. This is done using a combination of <em>realms</em> and <em>grants</em>. When a node is saved, we have the opportunity to create <em>access records</em> for that node that contain the following information:</p>
+<ul>
+<li><em>realm</em> (string): A category for our access records. Typically, this is used to denote specific functionality under which the access control happens.</li>
+<li><em>gid (grant ID)</em> (int): The ID of the grant by which we can verify the user trying to access the node. Typically, this will map to either a role or a custom-defined "group" that users belong to. For example, a <em>manager</em> user type (from the earlier example) can map to the grant ID 1. You'll understand this in a moment.</li>
+<li><em>grant_view</em>, <em>grant_update</em>, <em>grant_delete</em> (int): Boolean indicating whether this access record is for this operation.</li>
+<li><em>langcode</em> (string): The language of the node this access record should apply to.</li>
+</ul>
+<p>Then, we can return grant records for a given user when they try to access the node. For a given user, we can return multiple grants as part of multiple realms.</p>
+<p>The node access records get stored inside the <kbd>node_access</kbd> table and it's a good idea to keep checking that table while you are developing and preparing your access records. By default, if there are no modules that provide access records, there will be only one row in that table referencing the Node ID 0 and the realm <kbd>all</kbd>. This means that basically the node access grants system is not used, and all nodes are accessible for viewing in all realms. That is to say, default access rules apply. Once a module creates records, as we will see, this row is deleted.</p>
+<p>To better understand how this system works, let's see a practical code example. For this, we'll get back to our User Types module and create some node access restrictions based on these user types. We'll start with an easy example and then expand on it to make it more complex (and more useful).</p>
+<p>To begin with, we want to make sure that Article nodes are only viewable by users of all three types (so there are still some restrictions, as users need to have a type). Page nodes, on the other hand, are restricted to managers and board members. So let's get it done.</p>
+<p>All the work we do now takes place inside the <kbd>.module</kbd> file of the module. First, let's create a rudimentary mapping function to which we can provide a user type string (as we've seen before) and that returns a corresponding grant ID. We will then use this consistently to get the grant ID of a given user type:</p>
+<pre>/** 
+ * Returns the access grant ID for a given user type. 
+ * 
+ * @param $type 
+ * 
+ * @return int 
+ */ 
+function user_types_grant_mapping($type) { 
+  $map = [ 
+    'employee' =&gt; 1, 
+    'manager' =&gt; 2, 
+    'board_member' =&gt; 3 
+  ]; 
+ 
+  if (!isset($map[$type])) { 
+    throw new InvalidArgumentException('Wrong user type provided'); 
+  } 
+ 
+  return $map[$type]; 
+} </pre>
+<p>It's nothing too complicated. We have our three user types that map to simple integers. Also, we throw an exception if a wrong user type is passed. Now comes the fun part.</p>
+<p>Working with node access grants restrictions involves the implementation of two hooks: one for creating the access records of the nodes and one to provide the grants of the current user. Let's first implement <kbd>hook_node_access_records()</kbd>:</p>
+<pre>/** 
+ * Implements hook_node_access_records(). 
+ */ 
+function user_types_node_access_records(\Drupal\node\NodeInterface $node) { 
+  $bundles = ['article', 'page']; 
+  if (!in_array($node-&gt;bundle(), $bundles)) { 
+    return []; 
+  } 
+ 
+  $map = [ 
+    'article' =&gt; [ 
+      'employee', 
+      'manager', 
+      'board_member', 
+    ], 
+    'page' =&gt; [ 
+      'manager', 
+      'board_member' 
+    ] 
+  ]; 
+ 
+  $user_types = $map[$node-&gt;bundle()]; 
+  $grants = []; 
+ 
+  foreach ($user_types as $user_type) { 
+    $grants[] = [ 
+      'realm' =&gt; 'user_type', 
+      'gid' =&gt; user_types_grant_mapping($user_type), 
+      'grant_view' =&gt; 1, 
+      'grant_update' =&gt; 0, 
+      'grant_delete' =&gt; 0, 
+    ]; 
+  } 
+ 
+  return $grants; 
+} </pre>
+<p>This hook is invoked whenever a node is being saved and it needs to return an array of access records for that node. As expected, the parameter is the node entity.</p>
+<p>The first thing we do is simply return an empty array if the node is not one of the ones we are interested in. If we return no access records, this node will be given one single record for the realm <kbd>all</kbd> with the grant ID of 1 for the <kbd>view</kbd> operation. This means that it is accessible in accordance with the default node access rules.</p>
+<p>Then, we will create a simple map of the user types we want viewing our node bundles. Also, for each user type that corresponds to the current bundle, we create an access record for the <kbd>user_type</kbd> realm with the grant ID that maps to that user type, and with permission to view this node.</p>
+<p>There are two ways we can trigger this hook and persist the access records. We can edit and save a node, which will create the records for that node. Or we can rebuild the permissions that will do so for all the nodes on the site. The link to do this can be found on the status report page.</p>
+<p>It's a good idea to rebuild the permissions while developing to make sure that your changes get applied to all the nodes. Once we do this, our nodes now become inaccessible to basically anyone (except the super user with the ID of 1). That's because we need to specify the grants a given user should have by implementing <kbd>hook_node_grants()</kbd>:</p>
+<pre>/** 
+ * Implements hook_node_grants(). 
+ */ 
+function user_types_node_grants(\Drupal\Core\Session\AccountInterface $account, $op) { 
+  if ($account-&gt;isAnonymous()) { 
+    return []; 
+  } 
+ 
+  if ($op !== 'view') { 
+    return []; 
+  } 
+ 
+  $user = \Drupal::entityTypeManager()-&gt;getStorage('user')-&gt;load($account-&gt;id()); 
+  $user_type = $user-&gt;get('field_user_type')-&gt;value; 
+  if (!$user_type) { 
+    return []; 
+  } 
+ 
+  try { 
+    $gid = user_types_grant_mapping($user_type); 
+  } 
+  catch (InvalidArgumentException $e) { 
+    return []; 
+  } 
+ 
+  return ['user_type' =&gt; [$gid]]; 
+} </pre>
+<p>This hook is invoked by the node access system every time access is being checked on a given node (for a given operation). Moreover, it is also invoked when running entity queries against the node entity type and the access check has not been disabled. Finally, it is also invoked in database API queries when the <kbd>node_access</kbd> tag is used. Remember the query alters based on tags that we talked about in <a href="c20b297a-3a37-46ff-a80c-bf83a21bbd5d.xhtml">Chapter 8</a>, <em>The Database API</em>?</p>
+<p>As an argument, it receives the user account for which access needs to be checked (the grants that it has within the node access grants system of the given operation). So what we do here is start by returning an empty array (no grants) if the user is anonymous or the operation they are attempting to do is not <kbd>view</kbd>—they have not been granted access. The same thing happens if the user entity does not have any value in the <kbd>field_user_type</kbd> field. If they do, however, we get the corresponding grant ID and return an array of access grants keyed by the realm. For each realm, we can include more than one grant ID. In this case, though, it is only one since the user can only be of one type. We can also return multiple realms if needed, and, of course, other modules may do so as well, the results being centralized and used in the access logic.</p>
+<p>With this in place, all our page nodes are now available for viewing only to board member and manager users, whereas articles are available for viewing to employees as well. If users don't have any type, they don't have access. The great thing is that these restrictions are now being taken into account also when running queries. So, we can automatically exclude from query results the nodes to which users don't have access. This works with Views as well.</p>
+<p>Let's now enhance this solution with the following changes:</p>
+<ul>
+<li>Unpublished article nodes are only available to managers and board members.</li>
+<li>Managers also have access to update and delete articles and pages.</li>
+</ul>
+<p>The first one is easy. After we define our internal map inside <kbd>user_types_node_access_records()</kbd>, we can unset the <kbd>employee</kbd> from the array in case the node is unpublished:</p>
+<pre>if (!$node-&gt;isPublished()) { 
+  unset($map['article'][0]); 
+}</pre>
+<p>This was a very simple example, but one meant to draw your attention to an important but often forgotten point. If you create access records for a node, you will need to account for the node status yourself. This means that if you grant access to someone to view a node, they will have access to view that node regardless of the status. More often than not, this is not something you want. So just make sure that you consider this point when implementing access grants.</p>
+<p>Now, let's see how we can alter our logic to allow managers to update and delete nodes (both articles and pages). This is how <kbd>user_types_node_access_records()</kbd> looks like now:</p>
+<pre>$bundles = ['article', 'page']; 
+if (!in_array($node-&gt;bundle(), $bundles)) { 
+  return []; 
+} 
+ 
+$view_map = [ 
+  'article' =&gt; [ 
+    'employee', 
+    'manager', 
+    'board_member', 
+  ], 
+  'page' =&gt; [ 
+    'manager', 
+    'board_member' 
+  ] 
+]; 
+ 
+if (!$node-&gt;isPublished()) { 
+  unset($view_map['article'][0]); 
+} 
+ 
+$manage_map = [ 
+  'article' =&gt; [ 
+    'manager', 
+  ], 
+  'page' =&gt; [ 
+    'manager', 
+  ] 
+]; 
+ 
+$user_types = $view_map[$node-&gt;bundle()]; 
+$manage_user_types = $manage_map[$node-&gt;bundle()]; 
+$grants = []; 
+ 
+foreach ($user_types as $user_type) { 
+  $grants[] = [ 
+    'realm' =&gt; 'user_type', 
+    'gid' =&gt; user_types_grant_mapping($user_type), 
+    'grant_view' =&gt; 1, 
+    'grant_update' =&gt; in_array($user_type, $manage_user_types) ? 1 : 0, 
+    'grant_delete' =&gt; in_array($user_type, $manage_user_types) ? 1 : 0, 
+  ]; 
+} 
+ 
+return $grants; </pre>
+<p>What we are doing differently is, first, we rename the <kbd>$map</kbd> variable to <kbd>$view_map</kbd> in order to reflect the actual grant associations. Then, we create a <kbd>$manage_map</kbd> to hold the user types that can edit and delete the nodes. Based on this map, we can then set the <kbd>grant_update</kbd> and <kbd>grant_delete</kbd> values to 1 for the user types that are allowed. Otherwise, they stay as they were.</p>
+<p>All we need to do now is go back to the <kbd>hook_node_grants()</kbd> implementation and remove the following:</p>
+<pre>if ($op !== 'view') { 
+  return []; 
+}  </pre>
+<p>We are now interested in all operations so users should be provided all the possible grants. After rebuilding the permissions, manager user types will be able to update and delete articles and pages, while the other user types won't have these permissions. This doesn't have many implications for queries because those use the <kbd>view</kbd> operation.</p>
+<p>Before closing the topic on the node access grants, you should also know that there is an alter hook available that can be used to modify the access records created by other modules—<kbd>hook_node_access_records_alter()</kbd>. This is invoked after all the modules provide their records for a given node, and you can use it to alter whatever they provided before being stored.</p>
+<p>The access grants system, as mentioned, is limited to the node entity type. It has been there since previous versions of Drupal and it didn't quite make it to become standard across the entity system. There is talk, however, of doing this, but it's quite incipient.</p>
+<p>To better understand how it works under the hood in case you want to write your own such system, I encourage you to explore the <kbd>NodeAccessControlHandler</kbd>. You'll note that its <kbd>checkAccess()</kbd> method delegates to the <kbd>NodeGrantDatabaseStorage</kbd> service responsible for invoking the grant hooks we've seen before. Moreover, you can also check out the <kbd>node_query_node_access_alter</kbd> implementation of <kbd>hook_query_QUERY_TAG_alter()</kbd> in which the Node module uses the same grant service to alter the query in order to take into account the access records. It's not the easiest system to dissect, especially if you are a beginner, but it's well worth going through to learn more.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Block access</h1>
+                </header>
+            
+            <article>
+                
+<p>Another major area where you will deal with access is when trying to control access to a custom block. If you remember in <a href="601b4dd0-c521-459e-9342-2645a109642c.xhtml">Chapter 2</a>, <em>Creating Your First Module</em>, we created the <kbd>HelloWorldSalutationBlock</kbd> plugin so that our salutation can also be rendered using a block. Now that block can be placed in a region and even configured to show up only on certain pages, for certain user roles, or even on node pages restricted by bundle. This is all done in the UI:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/9f181fd7-14a1-4147-b687-1278c15b4e82.png" style="width:40.50em;height:26.83em;"/></p>
+<p>However, this is oftentimes not enough, and you will want to have a block placed in a region and control yourself under what circumstances it should show up. Enter block access.</p>
+<p>Inside the <kbd>BlockBase</kbd> plugin base class, there is the <kbd>blockAccess()</kbd> method which always returns positively. This is because, by default, all blocks will be rendered once they are placed in a region. Unless, of course, they are configured to only show in certain cases, in which case a system of visibility based on the available contexts kicks in to control that. However, if we override this method in our block plugin class, we can control whether or not the block is shown. So we can leave the visibility options empty when placing the block in a region and then handle everything we want regarding its visibility inside the <kbd>blockAccess()</kbd> method. Neat, isn't it?</p>
+<p>Also, as expected, the method has one parameter, namely the account being checked, and needs to return an <kbd>AccessResultInterface</kbd>. Since we can inject services into our block plugin (by implementing the <kbd>ContainerFactoryPluginInterface</kbd> as we saw in <a href="601b4dd0-c521-459e-9342-2645a109642c.xhtml">Chapter 2</a>, <em>Creating Your First Module</em>), we can use what we want to check whether the given user should see the block. If we deny access, the block is simply not rendered.</p>
+<p>That is pretty much all there is to the block access control.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Summary</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we talked about many access-related topics and techniques. In doing so, we covered what you need to know when starting Drupal 8 module development. Of course, as you progress, you'll dive deeper into the code and learn more subtle aspects and advanced concepts that you can employ in your modules. However, what we covered should set you well on your way. So, what exactly did we talk about?</p>
+<p>We started by introducing the high-level Drupal 8 access system which is made up of the matrix between roles and permissions. In doing so, we've seen how we can define permissions in code and also how we can check whether a user has those permissions. Of course, we looked at other ways we can check a user's credentials and saw how we can use the <kbd>AccountInterface</kbd> for this.</p>
+<p>Then, we moved on to routes and saw all the various ways we can ensure access control on these. In doing so, we covered simple checks such as permissions and roles, but also went into more advanced examples of using custom access checkers. We saw that these can be both static and service-based to make access checking fully dynamic. To demonstrate these concepts, we also looked at a case study of using route options to basically configure the access checker used on a group of similar routes.</p>
+<p>Another major topic we covered was access on entities. We saw how we can create our own access control handler and check access for all the operations specific to entities. The access hooks invoked by the base access handler also go hand in hand with this, which allows other modules to have a say in the access to a given entity. Moreover, we also saw how we can use entity access checks on routes that have entity parameters.</p>
+<p>Finally, we briefly covered the block access by which we can control the visibility of blocks based on whatever rules we want, including user credentials.</p>
+<p>Apply these lessons in your code, and do not take access issues lightly. If there is one thing you should know a great deal about from the beginning, it is access. So, this chapter also serves as a reference point for when you are doing development; feel free to come back to it as many times as you need.</p>
+<p>In the next chapter, we will look at caching and how to ensure that our application is performant.</p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

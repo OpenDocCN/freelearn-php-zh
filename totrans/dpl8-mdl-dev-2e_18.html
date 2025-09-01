@@ -1,0 +1,162 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Drupal 8 Security</h1>
+                </header>
+            
+            <article>
+                
+<p>Writing secure code is an important aspect of any web application. Preventing ever-so-creative hacking techniques can be really daunting, and this is partly the reason why we, as developers, sometimes choose a well-established framework with solid and up-to-date security measures baked right in.</p>
+<p>Drupal is a CMS that takes security very seriously. The community has a dedicated security team that is always on the lookout for vulnerabilities and advises core contributors and module developers on ways to fix potential vectors of attack. It is also responsible for the fast mitigation of any such issue and disseminating the correct information to the affected parties.</p>
+<p>When it comes to out-of-the-box installation, Drupal 8 has come a long way in addressing many security concerns present in previous versions, to the point where much of what Drupal 7 developers had to worry about can now be taken for granted. For this reason, in this annex, we will talk about some of the most prominent security features that Drupal 8 comes with out of the box and that are directly related to our work as module developers. Moreover, we will take a look at some tips for ensuring that the modules we write respect the security standards Drupal prides itself on.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Cross-Site Scripting (XSS)</h1>
+                </header>
+            
+            <article>
+                
+<p>Drupal 7 was not inherently vulnerable to XSS attacks but made it easy for novice developers to open such vulnerabilities. The PHP-based templating system, in particular, made it easy for developers to forget to properly sanitize user input and any other kind of data before outputting it. Moreover, it allowed novice developers to perform all kinds of business logic directly in the template. Apart from not keeping a separation of concerns (business logic versus presentation), this also meant that third-party themes were much more difficult to validate and could easily include security holes.</p>
+<p>Most of these concerns have been addressed in Drupal 8, in principal with the adoption of Twig as the templating system. There are two main consequences of this adoption. The first one addresses the need for separating presentation from business logic. In other words, themers and developers can no longer directly access Drupal's APIs, nor can they run SQL queries from templates. To expose any such functionality, Twig extensions and filters can be used, but they require the logic to be encapsulated inside a module.</p>
+<p>The second consequence is in the form of Twig auto-escaping. This means that any string not specifically marked as safe will be escaped by Twig using the native PHP <kbd>htmlspecialchars()</kbd> function. This provides a level of safety that previously had to be actively sought manually by themers and developers using functions such as <kbd>check_plain()</kbd>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Sanitization methods in Drupal 8</h1>
+                </header>
+            
+            <article>
+                
+<p>Twig auto-escapes any string that is output using the normal notation, as follows:</p>
+<pre>{{ variable_name }}  </pre>
+<p>However, there are cases in which the variable has already been marked safe, and Twig no longer escapes it. This is usually in the case of <kbd>MarkupInterface</kbd> objects, such as <kbd>FilteredMarkup</kbd> or <kbd>FormattableMarkup</kbd>. In these cases, Twig assumes that the strings they wrap have already been sanitized and that they can be output as they are. Of course, it is then up to us, as module developers, to ensure that we don't use any such objects with strings that contain unsanitized user input.</p>
+<p>Let's look at a popular example of such an object we use all the time, and then we will talk about the different ways we can sanitize our user input.</p>
+<p>If you remember, throughout this book we used the <kbd>t()</kbd> function (and the <kbd>StringTranslationTrait</kbd> method) which returns a <kbd>TranslatableMarkup</kbd> object used for translating strings. Printing such an object inside Twig will prevent auto-escaping because Twig already considers it safe. Moreover, if you remember, this applies to the main string only, as any placeholders we use do get escaped:</p>
+<pre>$object = t('This does not get escaped but this does: @safe', ['@safe' =&gt; 'This can be unsafe as it will be escaped'])  </pre>
+<p>Even if there were no security implications, we should not be passing user input or variables to <kbd>TranslatableMarkup</kbd>, as that hinders the actual purpose of these objects—to translate the string. However, for other <kbd>MarkupInterface</kbd> objects, there are a few ways we can treat user input or strings of a dubious origin in order to prepare them for Twig:</p>
+<ul>
+<li><kbd>Drupal\Component\Utility\Html::escape()</kbd>: This is the strictest sanitization function used to print plain text. It uses PHP's <kbd>htmlspecialchars()</kbd> to convert special characters to HTML entities.</li>
+<li><kbd>Drupal\Component\Utility\Xss::filter()</kbd>: This filters HTML to prevent XSS attacks. It allows a few basic HTML elements.</li>
+<li><kbd>Drupal\Component\Utility\Xss::filterAdmin()</kbd>: This is a very permissive XSS filter that allows through most HTML elements apart from things like <kbd>&lt;script&gt;</kbd> or <kbd>&lt;style&gt;</kbd>. It should be used only for known and safe sources of input.</li>
+<li><kbd>Drupal\Component\Utility\UrlHelper::filterBadProtocol()</kbd>: This strips dangerous protocols from URLs. It should be used before printing the HTML attribute value when the URLs are obtained from user input or unsafe sources.</li>
+</ul>
+<p>So, depending on the case, using one of the previous sanitization methods will prevent XSS attacks when dealing with markup that Twig doesn't escape.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Double escaping</h1>
+                </header>
+            
+            <article>
+                
+<p>Since Twig already does much of the work for us, it's also important not to go overboard with escaping. Veteran Drupal 7 developers may have a tendency to escape things like there is no tomorrow, but this can have unintended consequences. For example, imagine the following scenario:</p>
+<pre>return [ 
+  '#theme' =&gt; 'my_custom_theme', 
+  '#title' =&gt; 'The cow\'s got milk.', 
+];  </pre>
+<p>Since Twig is auto-escaping, the following string will be printed:</p>
+<pre>The cow's got milk.  </pre>
+<p>So there is no visible change as the string was safe. However, imagine that we were overzealous with our sanitization and did this:</p>
+<pre>return [ 
+  '#theme' =&gt; 'my_custom_theme', 
+  '#title' =&gt; Html::escape('The cow\'s got milk.'), 
+];  </pre>
+<p>Then, we would get the following title:</p>
+<pre>The cow's got milk.  </pre>
+<p>That is because the first time it is escaped, Drupal turns the apostrophe into an HTML entity (<kbd>'</kbd>). However, the browser renders it correctly, so we don't actually see it. The second escaping turns the individual characters from that HTML entity into <em>their</em> respective HTML entities. In this case, the <kbd>&amp;</kbd> character gets turned into <kbd>&amp;amp;</kbd>. So, the entire string is no longer properly readable by the browser.</p>
+<p>I now draw your attention for a moment to <a href="feada4d1-f255-4dd6-83b5-8d66bab5f852.xhtml">Chapter 4</a>, <em>Theming</em>. In that chapter, we saw that the <kbd>#markup</kbd> and <kbd>#plain_text</kbd> properties already serve to sanitize the user input passed through them. The first uses the <kbd>Xss::filterAdmin()</kbd> method, whereas the latter uses the <kbd>Html::escape()</kbd> method. So, keep in mind that if you use those as part of your render arrays, you may not need further sanitization.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">SQL Injection</h1>
+                </header>
+            
+            <article>
+                
+<p>SQL Injection still remains a very popular vector attack on vulnerable applications that incorrectly make use of database drivers. Luckily, by using the Drupal 8 database abstraction layer, we go a long way toward ensuring protection against such vulnerabilities. All we have to do is use it correctly.</p>
+<p>When it comes to Entity queries, there isn't much we can do wrong. However, when using the Database API directly, as we did in <a href="c20b297a-3a37-46ff-a80c-bf83a21bbd5d.xhtml">Chapter 8</a>, <em>The Database API</em>, we have to pay attention.</p>
+<p>Most of the time, vulnerabilities have to do with improper placeholder management. For example, we should never do things like this:</p>
+<pre>$database-&gt;query('SELECT column FROM {table} t WHERE t.name = ' . $variable);  </pre>
+<p>This is regardless of what <kbd>$variable</kbd> is<span>—</span>direct user input or otherwise. Because by using that direct concatenation, malicious users may inject their own instructions and complete the statement in a different way than intended. Instead, we should use code like we did in <a href="c20b297a-3a37-46ff-a80c-bf83a21bbd5d.xhtml">Chapter 8</a>, <em>The Database API</em>:</p>
+<pre>$database-&gt;query("SELECT column FROM {table} t WHERE t.name = :name", [':name' =&gt; $variable]);  </pre>
+<p>In other words, use placeholders that will then be sanitized by the API to ensure that no characters are allowed to form malicious statements.</p>
+<p>Drupal 8 comes with an additional security improvement when it comes to SQL injection vulnerabilities<span>—</span>single statement executions. Up until recently, the PHP PDO driver (which Drupal extended since Drupal 7) did not have a flag in place to inform MySQL to execute only a single statement at a time. Theoretically, vulnerabilities caused by appending multiple statements were possible (with one painful example of an attack that marked the Drupal community forever<span>—</span>SA-CORE-2014-005). However, this has been changed, and Drupal now sends this flag via PDO to the database engine to prevent multiple statements from being executed at once. So, we get this extra bit of protection.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Cross-Site Request Forgery (CSRF)</h1>
+                </header>
+            
+            <article>
+                
+<p>CSRF attacks are another popular way that applications can be overtaken, by forcing a user with elevated privileges to execute unwanted actions on their own site. Usually this happens when certain URLs on the application trigger a process simply by being accessed through the browser (and by being authenticated): for example, deleting a resource.</p>
+<p>The most important thing to consider in this respect is to never have such actions happening simply by accessing a URL. To help with this, we have the powerful Form API, which already had token-based CSRF protection embedded from previous versions of Drupal. So basically you can create forms whose submit handlers perform the potentially damaging actions (as we learned in <a href="601b4dd0-c521-459e-9342-2645a109642c.xhtml">Chapter 2</a>, <em>Creating Your First Module</em>) or even add a second layer using a confirmation form (as we saw in <a href="77cab458-5612-468c-8010-12385708eb81.xhtml">Chapter 6</a>, <em>Data Modeling and Storage</em>, and <a href="392cdb70-e52a-42d1-b782-28d6eb726810.xhtml">Chapter 7</a>, <em>Your Own Custom Entity and Plugin Types</em>, when talking about entities). The latter is actually recommended for when the action is irreversible or has greater implications.</p>
+<p>Although the Form API should account for most use cases, we may also encounter the need to declare a callback URL that directly handles the process. And, to protect ourselves from CSRF attacks, we can use the CSRF token system as we saw in <a href="bb49e98d-7db0-4969-95fc-a2bad6d4f1db.xhtml">Chapter 10</a>, <em>Access Control</em>, when we talked about the various types of access control. I recommend that you check out that chapter for more information on this topic.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Summary</h1>
+                </header>
+            
+            <article>
+                
+<p>Drupal 8 has come a long way with locking down its APIs to attack vulnerabilities. Of course, this does not mean it's perfect, nor that a bad developer cannot create security holes. For this reason, it's extremely important to pay attention to the security implications of all the code you write, follow the standards (including the OWASP checklist), and be aware of what contributed modules you use (to at least be covered by the Drupal security team). Moreover, it's also very important to keep up to date with security announcements from the Drupal security team as new vulnerabilities may be discovered and updates required to remedy them. These are more time-sensitive in some cases than others, but it's always good to stay up to date as quickly as possible (by following the communication from the Drupal security team). Luckily, though, historically speaking, Drupal has not had many security crises<span>—</span>at least not compared to other open source frameworks out there. So from a security standpoint, it has a good reputation. However, do not take this to mean that you, as a module developer, are unburdened by the heavy responsibility for keeping your application safe.</p>
+<p>In this chapter, we discussed three transitional vulnerabilities web applications usually face, how Drupal 8 stands against these, and what we as module developers can, and should, do to protect ourselves from them: XSS, SQL Injection, and CSRF. Of course, there are many more things that we can do from an application and server maintenance point of view. However, these fall outside the scope of what this book focuses on. I strongly encourage you, though, to read all the available documentation on security in Drupal 8 and keep yourself informed.</p>
+<p class="NormalPACKT"><span>Wow. Can you believe you just finished the last chapter of this book and you can finally go play ping pong? Yes, do take that needed break as it was not an easy journey, although I hope a productive one. Once you are done, and back in front of the keyboard, I strongly encourage you to revisit the sections that seemed more complicated to you. Do this while checking and navigating the Drupal core code to understand and see for yourself the concepts in action. No resource will ever be better than the code itself, and the main goal of this book was to point you in the right directions. There are so many more cool things to learn and this process never stops. If you are interested, you will learn every day. I do.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

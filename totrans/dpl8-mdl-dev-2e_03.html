@@ -1,0 +1,495 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Logging and Mailing</h1>
+                </header>
+            
+            <article>
+                
+<p>In the previous chapter, we learned about some of the more common things most Drupal 8 module developers will have to know, starting with the basics, that is, creating a Drupal module.</p>
+<p>In this chapter, we will take things further and cover some other important tasks a developer will have to perform<span><span>:</span></span></p>
+<ul>
+<li>We will take a look at how logging works in Drupal 8. In doing so, we will cover some examples by expanding on our <em>Hello World</em> module.</li>
+<li>We will look at the Mail API in Drupal 8, namely, how we can send emails with the default setup (PHP mail). However, more than that, I will show you how to create your own email system to integrate with your (perhaps external) mail service; remember plugins? This will be yet another good example of using a plugin to extend existing capabilities.</li>
+<li>At the end of the chapter, we will also look at the Drupal 8 token system. We'll do so in the context of us replacing certain <em>tokens</em> with contextual data so that the emails we send out are a bit more dynamic.</li>
+</ul>
+<p>By the end of this chapter, you should be able to add logging to your Drupal 8 module and feel comfortable sending emails programmatically. Additionally, you'll understand how tokens work, and as a bonus, see how you can define your own tokens.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Logging</h1>
+                </header>
+            
+            <article>
+                
+<p>The main logging mechanism in Drupal is a database log by which client code can use an API to save messages into the <kbd>watchdog</kbd> table. The messages in there are cleared after they reach a certain number, but meanwhile they can be viewed in the browser via a handy interface (at <kbd>admin/reports/dblog</kbd>):</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/41268aad-d89f-4f11-9970-7c5f2698a59a.png" style="width:51.25em;height:27.67em;"/></p>
+<p>Alternatively, a core module that is disabled by default, Syslog, can be used to complement/replace this logging mechanism with the Syslog of the server the site is running on. For the purpose of this book, we will focus on how logging works with any mechanism, but we will also take a look at how we can implement our own logging system in Drupal 8.</p>
+<p>Drupal 7 developers are very familiar with the <kbd>watchdog()</kbd> function they use for logging their messages. This is a procedural API for logging that exposes a simple function that takes some parameters: <kbd>$type</kbd> (the category of the message), <kbd>$message</kbd>, <kbd>$variables</kbd> (an array of values to replace placeholders found in the message), <kbd>$severity</kbd> (a constant), and <kbd>$link</kbd> (a link to where the message should link to from the UI). It's pretty obvious that this solution is a very Drupal-specific one and not really common to the wider PHP community.</p>
+<p>In Drupal 8, this has changed. The Database Logging module remains, the table for storing the messages is still called <kbd>watchdog</kbd>, but this logging destination is just one possible implementation that can be done. This is because the logging framework in Drupal 8 has been refactored to be object-oriented and PSR-3 compliant. And in this context, database logging is just the default implementation.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The Drupal 8 logging theory</h1>
+                </header>
+            
+            <article>
+                
+<p>Before going ahead with our example, let's cover some theoretical notions regarding the logging framework in Drupal 8. In doing so, we'll try to understand the key <em>players</em> we will need to interact with.</p>
+<p>First, we have <kbd>LoggerChannel</kbd>, which represents a category of logged messages. They resemble the former <kbd>$type</kbd> argument to the Drupal 7 <kbd>watchdog()</kbd> function. A key difference, however, is that they are objects through which we do the actual logging via the logger plugins themselves. In this respect, they are used by our second main <em>player</em>, <kbd>LoggerChannelFactory</kbd>, a service that is normally our main <em>contact</em> with the logging framework as a client code.</p>
+<p>To understand these things better, let's consider the following example of a simple usage:</p>
+<pre>\Drupal::logger('hello_world')-&gt;error('This is my error message'); </pre>
+<p>That's it. We just used the available registered loggers to log an error message through the <kbd>hello_world</kbd> channel. This is our own custom channel that we just came up with on the fly and that simply categorizes this message as belonging to the <kbd>hello_world</kbd> category (the module we started in the preceding chapter). Moreover, you'll see that I used the static call. Under the hood, the logger factory service is loaded, a channel is requested from it, and the <kbd>error()</kbd> method is called on that channel:</p>
+<pre>\Drupal::service('logger.factory')-&gt;get('hello_world')-&gt;error('This is my error message');</pre>
+<p>When you request a channel from <kbd>LoggerChannelFactory</kbd>, you give it a name, and based on that name, it creates a new instance of <kbd>LoggerChannel</kbd>, which is the default channel class. It will then pass to that channel all the available loggers so that when we call any of the <kbd>RfcLoggerTrait</kbd> logging methods on it, it will delegate to them.</p>
+<p>We also have the option of creating our own channel. An advantage of doing this is that we can inject it directly into our classes instead of the entire factory from where we can request the channel. Also, we can do it in a way in which we don't even require the creation of a new class, but will inherit from the default one. We'll see how to do that in the next section.</p>
+<p>The third main player is the <kbd>LoggerInterface</kbd> implementation, which follows the PSR-3 standard. If we look at the <kbd>DbLog</kbd> class, which is the database logging implementation we mentioned earlier, we note that it also uses the <kbd>RfcLoggerTrait</kbd> which takes care of all the necessary methods so that the actual <kbd>LoggerInterface</kbd> implementation only has to handle the main <kbd>log()</kbd> method. This class is then registered as a service with the <kbd>logger</kbd> tag, which in turn registers it with <kbd>LoggerChannelFactory</kbd> (which also acts as a service collector).</p>
+<p>As we saw in <span class="MsoHyperlink"><a href="601b4dd0-c521-459e-9342-2645a109642c.xhtml">Chapter 2</a>, </span><em>Creating Your First Module</em>, tags can be used to categorize service definitions and we can have them collected by another service for a specific purpose. In this case, all services tagged with <kbd>logger</kbd> have a purpose, and they are gathered and used by <kbd>LoggerChannelFactory</kbd>.</p>
+<p>I know it's been quite a lot of theory, but these are some important concepts to understand. However, don't worry; as usual, we will go through some examples.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Our own logger channel</h1>
+                </header>
+            
+            <article>
+                
+<p>I mentioned earlier how we can define our own logger channel so that we don't have to always inject the entire factory. So, let's take a look at how to create one for the <em>Hello World</em> module we're now writing.</p>
+<p>Most of the time, all we have to do is add such a definition to the services definition file:</p>
+<pre>hello_world.logger.channel.hello_world:<br/>  parent: logger.channel_base<br/>  arguments: ['hello_world']</pre>
+<p>Before talking about the actual logger channel, let's see what this weird service definition actually means, because this is not something we've seen before. I mean, where's the class?</p>
+<p>The <kbd>parent</kbd> key means that our service will inherit the definition from another service. In our case, the parent key is <kbd>logger.channel_base</kbd>, and this means that the class used will be <kbd>Drupal\Core\Logger\LoggerChannel</kbd> (the default). If we look closely at the <kbd>logger.channel_base</kbd> service definition in <kbd>core.services.yml</kbd>, we also see a <kbd>factory</kbd> key. This means that this service class is not being instantiated by the service container but by another service, namely the <kbd>logger.factory</kbd> service's <kbd>get()</kbd> method.</p>
+<p>The <kbd>arguments</kbd> key is also slightly different. First of all, we don't have the <kbd>@</kbd> sign. That is because this sign is used to denote a service name, whereas our argument is a simple string. As a bonus tidbit, if the string is preceded and followed by a <kbd>%</kbd>, it denotes a parameter that can be defined in any <kbd>*.services.yml</kbd> file.</p>
+<p>Getting back to our example then, if you remember the logger theory, this service definition will mean that requesting this service will perform, under the hood, the following task:</p>
+<pre>\Drupal::service('logger.factory')-&gt;get('hello_world'); </pre>
+<p>It uses the logger factory to load a channel with a certain argument. So, now we can inject our <kbd>hello_world.logger.channel.hello_world</kbd> service and call any of the <kbd>LoggerInterface</kbd> methods on it directly in our client code.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Our own logger</h1>
+                </header>
+            
+            <article>
+                
+<p>Now that we have a channel for our module, let's assume that we also want to log messages elsewhere. They are fine to be stored in the database, but let's also send an email whenever we encounter an error log. In this section, we will only cover the logging architecture needed for this and defer the actual mailing implementation to the second part of this chapter when we discuss mailing.</p>
+<p>The first thing that we will need to create is the <kbd>LoggerInterface</kbd> implementation, which typically goes in the <kbd>Logger</kbd> folder of our namespace. So, let's call ours <kbd>MailLogger</kbd>. And it can look like this:</p>
+<pre><span>namespace </span><span>Drupal\hello_world\Logger</span><span>;<br/></span><span><br/></span><span>use </span><span>Drupal\Core\Logger\RfcLoggerTrait</span><span>;<br/></span><span>use </span><span>Psr\Log\LoggerInterface</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * A logger that sends an email when the log type is "error".<br/></span><span> */<br/></span><span>class </span><span>MailLogger </span><span>implements </span><span>LoggerInterface {<br/></span><span><br/></span><span>  </span><span>use </span><span>RfcLoggerTrait</span><span>;<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * {</span><span>@inheritdoc</span><span>}<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>log</span><span>(</span><span>$level</span><span>, </span><span>$message</span><span>, </span><span>array </span><span>$context </span><span>= </span><span>array</span><span>()) {<br/></span><span>    </span><span>// Log our message to the logging system.<br/></span><span>  </span><span>}<br/></span><span>}</span></pre>
+<p>The first thing to note is that we are implementing the PSR-3 <kbd>LoggerInterface</kbd>. This will require a bunch of methods, but we will take care of most of them via <kbd>RfcLoggerTrait</kbd>. The only one left to implement is the <kbd>log()</kbd> method, which will be responsible for doing the actual logging. For now, we will keep it empty.</p>
+<p>By itself, having this class does nothing. We will need to register it as a tagged service so that <kbd>LoggingChannelFactory</kbd> picks it up and passes it to the logging channel when something needs to be logged. Let's take a look at what that definition looks like:</p>
+<pre>hello_world.logger.hello_world:<br/>  class: Drupal\hello_world\Logger\MailLogger<br/>  tags:<br/>    - { name: logger }</pre>
+<p>As it stands, our logger doesn't need any dependencies. However, note the property called <kbd>tags</kbd> with which we tag this service with the <kbd>logger</kbd> tag. This will register it as a specific service that another service (called a collector) looks for. Just like we discussed in the previous chapter. In this case, the collector is <kbd>LoggingChannelFactory</kbd>.</p>
+<p>Clearing the cache should enable our logger. This means that when a message is being logged, via any channel, our logger is also used, together with any other enabled loggers (by default, the database one). So, if we want our logger to be the only one, we will need to disable the DB Log module from Drupal core.</p>
+<p>We will continue working on this class later in this chapter when we will cover sending out emails programmatically.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Logging for Hello World</h1>
+                </header>
+            
+            <article>
+                
+<p>Now that we have all the tools at our disposal, and more importantly, understand how logging works in Drupal 8, let's add some logging to our module.</p>
+<p>There is one place where we can log an action that may prove helpful. Let's log an info message when an administrator changes the greeting message via the form we wrote. This should naturally happen in the submit handler of <kbd>SalutationConfigurationForm</kbd>.</p>
+<p>If you remember my rant in the previous chapter, there is no way we should use a service statically if we can instead inject it, and we can easily inject services into our form. So, let's do this now.</p>
+<p>First of all, <kbd>FormBase</kbd> already implements <kbd>ContainerInjectionInterface</kbd>, so we don't need to implement it in our class, as we are extending from it somewhere down the line. Second of all, the <kbd>ConfigFormBase</kbd> class we are directly extending already has <kbd>config.factory</kbd> injected, so this complicates things for us a bit—well, not really. All we need to do is copy over the constructor and <kbd>create()</kbd> method, add our own service, store it in a property, and pass the services the parent needs to the parent constructor call. It will look like this:</p>
+<pre><span>/**<br/></span><span> * </span><span>@var </span><span>\Drupal\Core\Logger\LoggerChannelInterface<br/></span><span> */<br/></span><span>protected </span><span>$logger</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * SalutationConfigurationForm constructor.<br/></span><span> *<br/></span><span> * </span><span>@param </span><span>\Drupal\Core\Config\ConfigFactoryInterface $config_factory<br/></span><span> *   The factory for configuration objects.<br/></span><span> * </span><span>@param </span><span>\Drupal\Core\Logger\LoggerChannelInterface $logger<br/></span><span> *   The logger.<br/></span><span> */<br/></span><span>public function </span><span>__construct</span><span>(ConfigFactoryInterface </span><span>$config_factory</span><span>, </span><span>LoggerChannelInterface </span><span>$logger</span><span>) {<br/></span><span>  </span><span>parent</span><span>::</span><span>__construct</span><span>(</span><span>$config_factory</span><span>)</span><span>;<br/></span><span>  </span><span>$this</span><span>-&gt;</span><span>logger </span><span>= </span><span>$logger</span><span>;<br/></span><span>}<br/></span><span><br/></span><span>/**<br/></span><span> * {</span><span>@inheritdoc</span><span>}<br/></span><span> */<br/></span><span>public static function </span><span>create</span><span>(ContainerInterface </span><span>$container</span><span>) {<br/></span><span>  </span><span>return new static</span><span>(<br/></span><span>    </span><span>$container</span><span>-&gt;</span><span>get</span><span>(</span><span>'config.factory'</span><span>)</span><span>,<br/></span><span>    </span><span>$container</span><span>-&gt;</span><span>get</span><span>(</span><span>'hello_world.logger.channel.hello_world'</span><span>)<br/></span><span>  )</span><span>;<br/></span><span>}</span></pre>
+<p>And the relevant <em>use</em> statements at the top:</p>
+<pre>use Drupal\Core\Config\ConfigFactoryInterface;<br/>use Drupal\Core\Logger\LoggerChannelInterface;<br/>use Symfony\Component\DependencyInjection\ContainerInterface;</pre>
+<p>As you can see, we get all the services that any of the parents need, plus the one we want (the logger channel) via the <kbd>create()</kbd> method. Also, in our constructor, we store the channel as a property and then pass the parent arguments to the parent constructor. Now, we have our <kbd>hello_world</kbd> logger channel available in our configuration form class. So, let's use it.</p>
+<p>At the end of the <kbd>submitForm()</kbd> method, let's add the following line:</p>
+<pre>$this-&gt;logger-&gt;info('The Hello World salutation has been changed to @message.', ['@message' =&gt; $form_state-&gt;getValue('salutation')]);</pre>
+<p>We are logging a regular information message. However, since we also want to log the message that has been set, we use the second argument, which represents an array of context values. Under the hood, the database logger will extract the context variables that start with <kbd>@</kbd>, <kbd>!</kbd>, or <kbd>%</kbd> with the values from the entire context array. This is done using the <kbd>LogMessageParser</kbd> service but we'll see more of this in a later chapter when we discuss internationalization. If you implement your own logger plugin, you will have to handle this yourself as well—but we'll see that in action soon.</p>
+<p>And now we are done with logging a message when the salutation configuration form is saved.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Logging summary</h1>
+                </header>
+            
+            <article>
+                
+<p>In this first section, we saw how logging works in Drupal 8. Specifically, we covered a bit of theory so that you understand how things play together and you don't just mindlessly use the logger factory without actually having a clue what goes on under the hood.</p>
+<p>As examples, we created our own logging channel, which allows us to inject it wherever we need without always having to go through the factory. We will use this channel going forward for the <em>Hello World</em> module. Additionally, we created our own logger implementation. It won't do much at the moment, except getting registered, but we will use it in the next section to send emails when errors get logged to the site.</p>
+<p>Finally, we used the logging framework (and our channel) in the salutation configuration form to log a message whenever the form is submitted. In doing so, we also passed the message that was saved so that it also gets included in the log. This should already work with the database log so go ahead and save the configuration form and then check the logging UI for that information message.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Mail API</h1>
+                </header>
+            
+            <article>
+                
+<p>Now that we know how to log things in our application, let's turn our attention to the Drupal 8 Mail API. Our goal for this section is to see how we can send emails programmatically in Drupal 8. In achieving this goal, we will explore the default mail system that comes with the core installation (which uses PHP mail), and also create our own system that can theoretically use an external API to send mails. We won't go all the way with the latter because it's beyond the scope of this book. We will stop after covering what needs to be done from a Drupal point of view.</p>
+<p>In the next and final section, we will look at tokens so that we can make our mailings a bit more dynamic. However, before we do that, let's get into the Mail API in Drupal 8.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The theory of the Mail API</h1>
+                </header>
+            
+            <article>
+                
+<p>Like before, let's first cover this API from a theoretical point of view. It's important to understand the architecture before diving into examples.</p>
+<p>Sending emails programmatically in Drupal is a two-part job. The first thing we need to do is define something of a <em>template</em> for the email in our module. This is not a template in the traditional sense, but rather a procedural data wrapper for the email you want to send. It's referred to in code as the <em>key</em> or <em>message ID</em>, but I believe that <em>template</em> is a better word to describe it. And you guessed it, it works by implementing a hook.</p>
+<p>The second thing that we will need to do is use the Drupal mail manager to send the email using one of the defined <em>templates</em> and specifying the module that defines it. If this sounds confusing, don't worry, it will become clear with the example that follows its explanation later on.</p>
+<p>The <em>template</em> is created by implementing <kbd>hook_mail()</kbd>. This hook is a special one, as it does not work like most others. It gets called by the mail manager when a client (some code) is trying to send an email for the module that implements it.</p>
+<p>The <kbd>MailManager</kbd> is actually a plugin manager that is also responsible for sending the emails using a mail system (plugin). The default mail system is <kbd>PhpMail</kbd>, which uses PHP's native <kbd>mail()</kbd> function to send out emails. If we create our own mail system, that will mean creating a new plugin. Also, the plugin itself is the one actually delivering the emails, the manager simply deferring to it. As you can see, we can't go even a chapter ahead without creating plugins.</p>
+<p>Each mail plugin needs to implement <kbd>MailInterface</kbd>, which exposes two methods—<kbd>format()</kbd> and <kbd>mail()</kbd>. The first one does the initial preparation of the mail content (message concatenation and so on), whereas the latter finalizes and does the sending.</p>
+<p>However, how does the mail manager know which plugin to use? It checks a configuration object called <kbd>system.mail</kbd> which stores the default plugin (<kbd>PhpMail</kbd>) and can also store overrides for each individual module and any module and <em>template</em> ID combination. So, we can have multiple mail plugins each used for different things. A quirky thing about this configuration object is that there is no admin form where you can specify which plugin does what. You have to adjust this configuration object programmatically as needed. One way you can manipulate this is via <kbd>hook_install()</kbd> and <kbd>hook_uninstall()</kbd> hooks. These hooks are used to perform some tasks whenever a module is installed/uninstalled. So, this is where we will change the configuration object to add our own mail plugin a bit later.</p>
+<p>However, now that we have looked at a few bits of theory, let's take a look at how we can use the default mail system to send out an email programmatically. You remember our unfinished logger from the preceding section? That is where we will send our email whenever the logged message is an error.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Implementing hook_mail()</h1>
+                </header>
+            
+            <article>
+                
+<p>As I mentioned earlier, the first step for sending mails in Drupal 8 is implementing <kbd>hook_mail()</kbd>. In our case, it can look something like this:</p>
+<pre><span>/**<br/></span><span> * Implements hook_mail().<br/></span><span> */<br/></span><span>function </span><span>hello_world_mail</span><span>(</span><span>$key</span><span>, </span><span>&amp;</span><span>$message</span><span>, </span><span>$params</span><span>) {<br/></span><span>  </span><span>switch </span><span>(</span><span>$key</span><span>) {<br/></span><span>    </span><span>case </span><span>'hello_world_log'</span><span>:<br/></span><span>      </span><span>$message</span><span>[</span><span>'from'</span><span>] = \Drupal::</span><span>config</span><span>(</span><span>'system.site'</span><span>)-&gt;</span><span>get</span><span>(</span><span>'mail'</span><span>)</span><span>;<br/></span><span>      </span><span>$message</span><span>[</span><span>'subject'</span><span>] = t(</span><span>'There is an error on your website'</span><span>)</span><span>;<br/></span><span>      </span><span>$message</span><span>[</span><span>'body'</span><span>][] = </span><span>$params</span><span>[</span><span>'message'</span><span>]</span><span>;<br/></span><span><br/></span><span>      </span><span>break</span><span>;<br/></span><span>  </span><span>}<br/></span><span>}</span></pre>
+<p>This hook receives three parameters:</p>
+<ul>
+<li>the message key (template) that is used to send the mail</li>
+<li>the message of the email that needs to be filled in</li>
+<li>an array of parameters passed from the client code</li>
+</ul>
+<p>As you can see, we are defining a key (or <em>template</em>) named <kbd>hello_world_log</kbd>, which has a simple static subject, and as a body, it will have whatever comes from the <kbd>$parameters</kbd> array in its message key. Since the email <em>From</em> is always the same, we will use the site-wide email address that can be found in the <kbd>system.site</kbd> configuration object. You'll note that we are not in a context where we can inject the configuration factory as we did when we built the form. Instead, we can use the static helper to load it.</p>
+<p>Additionally, you'll note that the body is itself an array. This is because we can build (if we want) multiple items in that array that can be later imploded as paragraphs in the mail plugin's <kbd>format()</kbd> method. This is in any case what the default mail plugin does, so here we need to build an array.</p>
+<p>Another useful key in the <kbd>$message</kbd> array is the <kbd>header</kbd> key, which you can use to add some custom headers to the mail. In this case, we don't need to because the default <kbd>PhpMail</kbd> plugin adds all the necessary headers. So if we write our own mail plugin, we can then add our headers in there as well—and all other keys of the <kbd>$message</kbd> array for that matter. This is because the latter is passed around as a reference, so it keeps getting built up in the process from the client call to the <kbd>hook_mail()</kbd> implementation to the plugin.</p>
+<p>That is about all we need to do with <kbd>hook_mail()</kbd>. Let's now see how to use this in order to send out an email.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Sending emails</h1>
+                </header>
+            
+            <article>
+                
+<p>We wanted to use our <kbd>MailLogger</kbd> to send out an email whenever we are logging an error. So let's go back to our class and add this logic.</p>
+<p>This is what our <kbd>log()</kbd> method can look like now:</p>
+<pre><span>/**<br/></span><span> * {</span><span>@inheritdoc</span><span>}<br/></span><span> */<br/></span><span>public function </span><span>log</span><span>(</span><span>$level</span><span>, </span><span>$message</span><span>, </span><span>array </span><span>$context </span><span>= </span><span>array</span><span>()) {<br/></span><span>  </span><span>if </span><span>(</span><span>$level </span><span>!== RfcLogLevel::</span><span>ERROR</span><span>) {<br/></span><span>    </span><span>return</span><span>;<br/></span><span>  </span><span>}<br/></span><span><br/></span><span>  </span><span>$to </span><span>= </span><span>$this</span><span>-&gt;</span><span>configFactory</span><span>-&gt;</span><span>get</span><span>(</span><span>'system.site'</span><span>)-&gt;</span><span>get</span><span>(</span><span>'mail'</span><span>)</span><span>;<br/></span><span>  </span><span>$langcode </span><span>= </span><span>$this</span><span>-&gt;</span><span>configFactory</span><span>-&gt;</span><span>get</span><span>(</span><span>'system.site'</span><span>)-&gt;</span><span>get</span><span>(</span><span>'langcode'</span><span>)</span><span>;<br/></span><span>  </span><span>$variables </span><span>= </span><span>$this</span><span>-&gt;</span><span>parser</span><span>-&gt;</span><span>parseMessagePlaceholders</span><span>(</span><span>$message</span><span>, </span><span>$context</span><span>)</span><span>;<br/></span><span>  </span><span>$markup </span><span>= </span><span>new </span><span>FormattableMarkup(</span><span>$message</span><span>, </span><span>$variables</span><span>)</span><span>;<br/></span><span>  </span><span>\Drupal::</span><span>service</span><span>(</span><span>'plugin.manager.mail'</span><span>)-&gt;</span><span>mail</span><span>(</span><span>'hello_world'</span><span>, </span><span>'hello_world_log'</span><span>, </span><span>$to</span><span>, </span><span>$langcode</span><span>, </span><span>[</span><span>'message' </span><span>=&gt; </span><span>$markup</span><span>])</span><span>;<br/></span><span>}</span></pre>
+<p>First of all, we said that we only want to send mails for errors, so in the first lines, we check whether the attempted log is of that level and return early otherwise. In other words, we don't do anything if we're not dealing with an error and rely on other registered loggers for those.</p>
+<p>Next, we determine who we want the email to be sent to and the langcode to send it in (both are mandatory arguments to the mail manager's <kbd>mail()</kbd> method). We opt to use the site-wide email address (just as we did for the <em>From</em> value). We also use the same configuration object as we used earlier in the <kbd>hook_mail()</kbd> implementation. Don't worry we will shortly take care of injecting the config factory into the class.</p>
+<div class="packt_infobox">When we talk about langcode, we refer to the machine name of a language object. In this case, that is what is being stored for the site-wide default language. Also, we'll default to that for our emails. In a later chapter, we will cover more aspects regarding internationalization in Drupal 8.</div>
+<p>Then, we prepare the message that is being sent out. For this, we use the <kbd>FormattableMarkup</kbd> helper class to which we pass the message string and an array of variable values that can be used to replace the placeholders in our message. We can retrieve these values using the <kbd>LogMessageParser</kbd> service the same way as the <kbd>DbLog</kbd> logger does. So with this, we are basically extracting the placeholder variables from the entire context array of the logged message.</p>
+<p>Lastly, we use the mail manager plugin to send the email. The first parameter to its <kbd>mail()</kbd> method is the module we want to use for the mailing. The second is the key (or <em>template</em>) we want to use for it (which we defined in <kbd>hook_mail()</kbd>). The third and fourth are self-explanatory, while the fifth is the <kbd>$params</kbd> array we encountered in <kbd>hook_mail()</kbd>. If you look back at that, you'll note that we used the <kbd>message</kbd> key as the body. Here, we populate that key with our markup object, which has a <kbd>_toString()</kbd> method that renders it with all the placeholders replaced.</p>
+<p>You may wonder why I did not inject the Drupal mail manager as I did the rest of the dependencies. Unfortunately, the core mail manager uses the logger channel factory itself, which in turn depends on our <kbd>MailLogger</kbd> service. So if we make the mail manager a dependency of the latter, we find ourselves in a circular loop. So when the container gets rebuilt, a big fat error is thrown. It might still work, but it's not alright. So, I opted to use it statically, because, in any case, this method is very small and would be difficult to test due to its expected result being difficult to assert (it sends an email). Sometimes, you have to make these choices, as the alternative would have been to inject the entire service container just to trick it. However, that is a code smell and would not have helped anyway had I wanted to write a test for this class.</p>
+<p>Even if I did not inject the mail manager, I did inject the rest. So, let's take a look at what we need now at the top of the class:</p>
+<pre><span>/**<br/></span><span> * </span><span>@var </span><span>\Drupal\Core\Logger\LogMessageParserInterface<br/></span><span> */<br/></span><span>protected </span><span>$parser</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * </span><span>@var </span><span>\Drupal\Core\Config\ConfigFactoryInterface<br/></span><span> */<br/></span><span>protected </span><span>$configFactory</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * MailLogger constructor.<br/></span><span> *<br/></span><span> * </span><span>@param </span><span>\Drupal\Core\Logger\LogMessageParserInterface $parser<br/></span><span> * </span><span>@param </span><span>\Drupal\Core\Config\ConfigFactoryInterface $config_factory<br/></span><span> */<br/></span><span>public function </span><span>__construct</span><span>(LogMessageParserInterface </span><span>$parser</span><span>, </span><span>ConfigFactoryInterface </span><span>$config_factory</span><span>) {<br/></span><span>  </span><span>$this</span><span>-&gt;</span><span>parser </span><span>= </span><span>$parser</span><span>;<br/></span><span>  </span><span>$this</span><span>-&gt;</span><span>configFactory </span><span>= </span><span>$config_factory</span><span>;<br/></span><span>}</span></pre>
+<p>And finally, all the relevant <em>use</em> statements that we were missing:</p>
+<pre>use Drupal\Core\Logger\LogMessageParserInterface;<br/>use Drupal\Core\Config\ConfigFactoryInterface;<br/>use Drupal\Component\Render\FormattableMarkup;<br/>use Drupal\Core\Logger\RfcLogLevel;</pre>
+<p>Finally, let's quickly also adjust the service definition of our mail logger:</p>
+<pre><span>hello_world.logger.hello_world:<br/></span><span>  class: </span>Drupal\hello_world\Logger\MailLogger<br/>  <span>arguments: </span>[<span>'@logger.log_message_parser'</span>, <span>'@config.factory'</span>]<br/>  <span>tags:<br/></span><span>    </span>- { <span>name: </span>logger }</pre>
+<p>We simply have two new arguments—nothing new to you by now.</p>
+<p>Clearing the caches and logging an error should send the logged message (with the placeholders replaced) to the site email address (and from the same address) using the PHP native <kbd>mail()</kbd> function. Congratulations! You just sent out your first email programmatically in Drupal 8.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Altering someone else's emails</h1>
+                </header>
+            
+            <article>
+                
+<p>Drupal is powerful not only because it allows us to add our own functionality but also because it allows us to alter existing functionality. An important vector for doing this is the <em>alter</em> hooks system. Remember these from <a href="601b4dd0-c521-459e-9342-2645a109642c.xhtml"><span class="MsoHyperlink">Chapter 2</span></a>, <em>Creating Your First Module</em>? These are hooks that are used to change the value of an array or object before it is used for whatever purpose it was going to be used for. When it comes to sending mails, we have an alter hook that allows us to change things on the mail definition before it goes out: <kbd>hook_mail_alter()</kbd>. For our module, we don't need to implement this hook. However, for the sake of making it complete, let's take a look at how we could use this hook to, for example, change the header of an existing outgoing email:</p>
+<pre><span>/**<br/></span><span> * Implements hook_mail_alter().<br/></span><span> */<br/></span><span>function </span><span>hello_world_mail_alter</span><span>(&amp;</span><span>$message</span><span>) {<br/></span><span>  </span><span>switch </span><span>(</span><span>$message</span><span>[</span><span>'key'</span><span>]) {<br/></span><span>    </span><span>case </span><span>'hello_world_log'</span><span>:<br/></span><span>      </span><span>$message</span><span>[</span><span>'headers'</span><span>][</span><span>'Content-Type'</span><span>] = </span><span>'text/html; charset=UTF-8; format=flowed; delsp=yes'</span><span>;<br/></span><span>      </span><span>break</span><span>;<br/></span><span>  </span><span>}<br/></span><span>}</span></pre>
+<p>So, what is going on here? First of all, this hook implementation gets called in each module it is implemented in. It's not like <kbd>hook_mail()</kbd> in this respect as it allows us to alter mails sent from any module. However, in our example, we will just alter the mail we defined earlier.</p>
+<p>The only parameter (passed by reference as it is usual with alter hooks) is the <kbd>$message</kbd> array, which contains all the things we built in <kbd>hook_mail()</kbd>, as well as the key (<em>template</em>) and other things added by the mail manager itself, such as the headers. So, in our example, we are setting an HTML header so that whatever is getting sent out <em>could be</em> rendered as HTML. After this hook is invoked, the mail system formatter is also called, which, in the case of the <kbd>PhpMail</kbd> plugin, transforms all HTML tags into plain text, essentially canceling out our header. However, if we implement our own plugin, we can prevent that and successfully send out HTML emails with proper tags and everything.</p>
+<p>So, that is basically all there is to altering existing outgoing mails. Next, we will take a look at how we can create our own mail plugin that uses a custom external mail system. We won't go into detail here, but we will prepare the architecture that will allow us to bring in the API we need and use it easily.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Custom mail plugins</h1>
+                </header>
+            
+            <article>
+                
+<p>In the previous section, we saw how we can use the Drupal 8 mail API to send emails programmatically in Drupal 8. In doing so, we used the default PHP mailer, which although is good enough for our example, might not be so for our application. For example, we might want to use an external service via an API.</p>
+<p>In this section, we will see how this works. To this end, we will write our own mail plugin that does just that, and then simply tell Drupal to use that system instead of the default one. Yet another plugin-based, non-invasive, extension point.</p>
+<p>Before we start, I would like to mention that we won't go into any kind of detail related to the potential external API. Instead, we will stop at the Drupal 8-specific parts, so the code you will find in the repository won't do much—it will be used as an example only. It's up to you to use this technique if you need to.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The mail plugin</h1>
+                </header>
+            
+            <article>
+                
+<p>So let's start by creating our <kbd>Mail</kbd> plugin class, and if you remember, plugins go inside the <kbd>Plugin</kbd> folder of our module namespace. Mail plugins belong inside a <kbd>Mail</kbd> folder. So this is what a simple skeleton mail plugin class can look like:</p>
+<pre><span>namespace </span><span>Drupal\hello_world\Plugin\Mail</span><span>;<br/></span><span><br/></span><span>use </span><span>Drupal\Core\Mail\MailFormatHelper</span><span>;<br/></span><span>use </span><span>Drupal\Core\Mail\MailInterface</span><span>;<br/></span><span>use </span><span>Drupal\Core\Plugin\ContainerFactoryPluginInterface</span><span>;<br/></span><span>use </span><span>Symfony\Component\DependencyInjection\ContainerInterface</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * Defines the Hello World mail backend.<br/></span><span> *<br/></span><span> * </span><span>@Mail</span><span>(<br/></span><span> *   id = "hello_world_mail",<br/></span><span> *   label = </span><span>@Translation</span><span>("Hello World mailer"),<br/></span><span> *   description = </span><span>@Translation</span><span>("Sends an email using an external API specific to our Hello World module.")<br/></span><span> * )<br/></span><span> */<br/></span><span>class </span><span>HelloWorldMail </span><span>implements </span><span>MailInterface</span><span>, </span><span>ContainerFactoryPluginInterface {<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * {</span><span>@inheritdoc</span><span>}<br/></span><span>   */<br/></span><span>  </span><span>public static function </span><span>create</span><span>(ContainerInterface </span><span>$container</span><span>, </span><span>array </span><span>$configuration</span><span>, </span><span>$plugin_id</span><span>, </span><span>$plugin_definition</span><span>) {<br/></span><span>    </span><span>return new static</span><span>()</span><span>;<br/></span><span>  </span><span>}<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * {</span><span>@inheritdoc</span><span>}<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>format</span><span>(</span><span>array </span><span>$message</span><span>) {<br/></span><span>    </span><span>// Join the body array into one string.<br/></span><span>    </span><span>$message</span><span>[</span><span>'body'</span><span>] = implode(</span><span>"</span><span>\n\n</span><span>"</span><span>, </span><span>$message</span><span>[</span><span>'body'</span><span>])</span><span>;<br/></span><span>    </span><span>// Convert any HTML to plain-text.<br/></span><span>    </span><span>$message</span><span>[</span><span>'body'</span><span>] = MailFormatHelper::</span><span>htmlToText</span><span>(</span><span>$message</span><span>[</span><span>'body'</span><span>])</span><span>;<br/></span><span>    </span><span>// Wrap the mail body for sending.<br/></span><span>    </span><span>$message</span><span>[</span><span>'body'</span><span>] = MailFormatHelper::</span><span>wrapMail</span><span>(</span><span>$message</span><span>[</span><span>'body'</span><span>])</span><span>;<br/></span><span><br/></span><span>    </span><span>return </span><span>$message</span><span>;<br/></span><span>  </span><span>}<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * {</span><span>@inheritdoc</span><span>}<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>mail</span><span>(</span><span>array </span><span>$message</span><span>) {<br/></span><span>    </span><span>// Use the external API to send the email based on the $message array<br/></span><span>    // constructed via the `hook_mail()` implementation.<br/></span><span>  </span><span>}<br/></span><span>}</span></pre>
+<p>As you can see, we have a relatively easy plugin annotation; no unusual arguments there. Then, you will note that we implemented the mandatory <kbd>MailInterface</kbd>, which comes with the two methods implemented in the class.</p>
+<p>I mentioned the <kbd>format()</kbd> method earlier and said that it's responsible for doing certain processing before the message is ready to be sent. The previous implementation is a copy from the <kbd>PhpMail</kbd> plugin to exemplify just what kind of task would go there. However, you can do whatever you want in here, for example, allowing HTML tags. Imploding the body is something you will probably want to do anyway, as it is kind of expected that the mail body is constructed as an array by <kbd>hook_mail()</kbd>.</p>
+<p>The <kbd>mail()</kbd> method, on the other hand, is left empty. This is because it's up to you to use the external API to send the email. For this, you can use the <kbd>$message</kbd> array we encountered in the <kbd>hook_mail()</kbd> implementation.</p>
+<p>Lastly, note that <kbd>ContainerFactoryPluginInterface</kbd> is another interface that our class implements. If you remember, that is what plugins need to implement in order for them to become container aware (for the dependencies to be injectable). Since this was only example code, it doesn't have any dependencies, so I did not include a constructor and left the <kbd>create()</kbd> method empty. Most likely, you will have to inject something, such as a PHP client library that works with your external API. So, it doesn't hurt to see this again.</p>
+<p>That is pretty much it for our plugin class. Now, let's take a look at how we can use it because for the moment, our <kbd>hello_world_log</kbd> emails are still being sent with the default PHP mailer.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using mail plugins</h1>
+                </header>
+            
+            <article>
+                
+<p>As I mentioned earlier, there is no UI in Drupal to select which plugin the mail manager should use for sending emails programmatically. It figures it out inside the <kbd>getInstance()</kbd> method by checking the <kbd>system.mail</kbd> configuration object, and more specifically, the <kbd>interface</kbd> key inside that (which is an array).</p>
+<p>By default, this array contains only one record, that is, <kbd>'default' =&gt; 'php_mail'</kbd>. That means that, by default, all emails are sent with the <kbd>php_mail</kbd> plugin ID. In order to get our plugin in the mix, we have a few options:</p>
+<ul>
+<li>We can replace this value with our plugin ID, which means that all emails will be sent with our plugin</li>
+<li>We can add a new record with the key in the <kbd>module_name_key_name</kbd> format, which means that all emails sent for a module with a specific key (or <em>template</em>) will use that plugin</li>
+<li>We can add a new record with the key in the <kbd>module_name</kbd> format, which means that all emails sent for a module will use that plugin (regardless of their key)</li>
+</ul>
+<p>For our example, we will set all emails sent from the <kbd>hello_world</kbd> module to use our new plugin. We can do this using the <kbd>hook_install()</kbd> implementation that runs whenever the module is installed.</p>
+<p>Install (and uninstall) hooks need to go inside a <kbd>.install</kbd> PHP file in the root of our module. So this next function goes inside a new <kbd>hello_world.install</kbd> file. Also, if our module has already <span>been </span>enabled, we will need to first uninstall it and then install it again to get this function to fire:</p>
+<pre><span>/**<br/></span><span> * Implements hook_install().<br/></span><span> */<br/></span><span>function </span><span>hello_world_install</span><span>() {<br/></span><span>  </span><span>$config </span><span>= \Drupal::</span><span>configFactory</span><span>()-&gt;</span><span>getEditable</span><span>(</span><span>'system.mail'</span><span>)</span><span>;<br/></span><span>  </span><span>$mail_plugins </span><span>= </span><span>$config</span><span>-&gt;</span><span>get</span><span>(</span><span>'interface'</span><span>)</span><span>;<br/></span><span>  </span><span>if </span><span>(in_array(</span><span>'hello_world'</span><span>, </span><span>array_keys(</span><span>$mail_plugins</span><span>))) {<br/></span><span>    </span><span>return</span><span>;<br/></span><span>  </span><span>}<br/></span><span><br/></span><span>  </span><span>$mail_plugins</span><span>[</span><span>'hello_world'</span><span>] = </span><span>'hello_world_mail'</span><span>;<br/></span><span>  </span><span>$config</span><span>-&gt;</span><span>set</span><span>(</span><span>'interface'</span><span>, </span><span>$mail_plugins</span><span>)-&gt;</span><span>save</span><span>()</span><span>;<br/></span><span>}</span></pre>
+<p>As you can see, we load the configuration object as editable (so we can change it), and if we don't yet have a record with <kbd>hello_world</kbd> in the array of mail plugins we set it and map our plugin ID to it. Lastly, we save the object.</p>
+<p>The opposite of this function is <kbd>hook_uninstall()</kbd>, which goes in the same file and—expectedly—gets fired whenever the module is uninstalled. Since we don't want to change a site-wide configuration object and tie it to our module's plugin, we should implement this hook as well. Otherwise, if our module gets uninstalled, the mail system will fail because it will try to use a nonexistent plugin. So, let's tie up our loose ends:</p>
+<pre><span><br/></span><span>/**<br/></span><span> * Implements hook_uninstall().<br/></span><span> */<br/></span><span>function </span><span>hello_world_uninstall</span><span>() {<br/></span><span>  </span><span>$config </span><span>= \Drupal::</span><span>configFactory</span><span>()-&gt;</span><span>getEditable</span><span>(</span><span>'system.mail'</span><span>)</span><span>;<br/></span><span>  </span><span>$mail_plugins </span><span>= </span><span>$config</span><span>-&gt;</span><span>get</span><span>(</span><span>'interface'</span><span>)</span><span>;<br/></span><span>  </span><span>if </span><span>(!in_array(</span><span>'hello_world'</span><span>, </span><span>array_keys(</span><span>$mail_plugins</span><span>))) {<br/></span><span>    </span><span>return</span><span>;<br/></span><span>  </span><span>}<br/></span><span><br/></span><span>  </span><span>unset</span><span>(</span><span>$mail_plugins</span><span>[</span><span>'hello_world'</span><span>])</span><span>;<br/></span><span>  </span><span>$config</span><span>-&gt;</span><span>set</span><span>(</span><span>'interface'</span><span>, </span><span>$mail_plugins</span><span>)-&gt;</span><span>save</span><span>()</span><span>;<br/></span><span>}</span></pre>
+<p>As you can see, what we did here is basically the opposite. If the record we set previously exists, we unset it and save the configuration object.</p>
+<p>So now, any mails sent programmatically for the <kbd>hello_world</kbd> module will use this plugin. Easy, right? However, since the plugin we wrote is not ready, the code you find in the repository will have the relevant line from the <kbd>hook_install()</kbd> implementation commented out so that we don't actually use it.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Tokens</h1>
+                </header>
+            
+            <article>
+                
+<p>The last thing we will cover in this chapter is the Token API in Drupal 8. We will cover a few bits of theory and, as usual, demonstrate them via examples on our existing <em>Hello World</em> module code. We will do this in the context of the mails we are sending out for error logs.</p>
+<p>It would be nice if we could include some personalized information in the mail text without having to hardcode it in the module code or configuration. For example, in our case, we might want to include in the email the username of the current user that is triggering the error log that is being emailed.</p>
+<p>Let's first understand how the Token API works, before going into our <em>Hello World</em> module.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The Token API</h1>
+                </header>
+            
+            <article>
+                
+<p>Tokens in Drupal are a standard formatted placeholder, which can be found inside a string and replaced by a real value extracted from a related object. The format tokens use is <kbd>type:token</kbd>, where <kbd>type</kbd> is the machine-readable name of a token type (a group of related tokens), and <kbd>token</kbd> is the machine-readable name of a token within this group.</p>
+<p>The power of the Token API in Drupal is not only given by its flexibility but also by the fact that it is already a popular API. It is flexible because you can define groups which contain related tokens, linked by the data object that contains their value (for example, a Node object or User object). It is popular because in previous versions of Drupal, it was the contributed module many others were dependent on to define their own tokens, and it is now available in Drupal 8 core with many tokens already defined out of the box. So, you'll find many existing tokens that you can use in your code, and if not, you can define your own.</p>
+<p>There are three main components of this API—at least from the point of view of a Drupal 8 module developer. These components are two hooks—<kbd>hook_token_info()</kbd> and <kbd>hook_tokens()</kbd>—and the <kbd>Token</kbd> service, which is used to perform the replacement.</p>
+<p>The first hook is used to define one or more token types and tokens. It essentially registers them with the system. The second is fired at the moment a token is found inside a string (a replacement is attempted by the service) and is used to do the replacement of the tokens based on the data that is passed to it from the service. For example, the User module defines two token types and a number of tokens inside <kbd>user_token_info()</kbd>. With <kbd>user_tokens()</kbd>, it checks whether the token is one of its own and tries to replace it with the contextual data (either a User object or the currently logged-in User object). To read the documentation related to each of these in detail and to see an extended example, you can find them either on the Drupal.org API page or inside the <kbd>token.api.php</kbd> file. There, you will also find <em>alter</em> hooks that correspond to these two and can be used to alter either the defined token information or logic to replace these tokens written by other modules or Drupal core.</p>
+<p>The Token service is what we can use as module developers if we have to replace tokens found inside a string. We will see how this is used in the next section.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using tokens</h1>
+                </header>
+            
+            <article>
+                
+<p>To quickly demonstrate how we can use tokens, let's include in our <kbd>hello_world_log</kbd> mails some information about the current user at the time the email is being sent out. This will naturally coincide with the user that is signed in at the time the error is being logged.</p>
+<p>For this, we will need to alter our <kbd>hook_mail()</kbd> implementation. In there, we will ask the <kbd>current_user</kbd> service for the <kbd>AccountProxy</kbd> of the current user, add another string to our mail body and, of course, replace a token:</p>
+<pre><span>/**<br/></span><span> * Implements hook_mail().<br/></span><span> */<br/></span><span>function </span><span>hello_world_mail</span><span>(</span><span>$key</span><span>, </span><span>&amp;</span><span>$message</span><span>, </span><span>$params</span><span>) {<br/></span><span>  </span><span>switch </span><span>(</span><span>$key</span><span>) {<br/></span><span>    </span><span>case </span><span>'hello_world_log'</span><span>:<br/></span><span>      </span><span>$message</span><span>[</span><span>'from'</span><span>] = \Drupal::</span><span>config</span><span>(</span><span>'system.site'</span><span>)-&gt;</span><span>get</span><span>(</span><span>'mail'</span><span>)</span><span>;<br/></span><span>      </span><span>$message</span><span>[</span><span>'subject'</span><span>] = t(</span><span>'There is an error on your website'</span><span>)</span><span>;<br/></span><span>      </span><span>$message</span><span>[</span><span>'body'</span><span>][] = </span><span>$params</span><span>[</span><span>'message'</span><span>]</span><span>;<br/></span><span>      </span><span>$user_message </span><span>= </span><span>'The user that was logged in: [current-user:name].'</span><span>;<br/></span><span>      </span><span>$message</span><span>[</span><span>'body'</span><span>][] = \Drupal::</span><span>token</span><span>()-&gt;</span><span>replace</span><span>(</span><span>$user_message</span><span>, </span><span>[</span><span>'current-user' </span><span>=&gt; \Drupal::</span><span>currentUser</span><span>()])</span><span>;<br/></span><span><br/></span><span>      </span><span>break</span><span>;<br/></span><span>  </span><span>}<br/></span><span>}</span></pre>
+<p>As you can see, we are adding a new "paragraph" to our email. This is a simple string that informs us about the user that was logged in. However, in doing so, we use the <kbd>token</kbd> service (statically) to replace that piece of string with the token value. The <kbd>replace()</kbd> method of the service takes a string and optionally an array of data objects keyed by the type (group) of the tokens they should be used for.</p>
+<p>The choice of token and type in this case is important. The User module defines the <kbd>user</kbd> and <kbd>current-user</kbd> types. The difference between the two, if you check inside <kbd>user_tokens()</kbd>, is that the latter simply delegates to the former after it loads a full user entity. We could, alternatively, have done that ourselves and then passed the <kbd>user</kbd> type, but why should we? If somebody has done that for us already, we should not have to do it again. And what we pass to the <kbd>current-user</kbd> token type as a data object to be used in the replacement process is the <kbd>AccountProxy</kbd> (current user session).</p>
+<p>So, that's it. Now, the email message will get an extra line that contains the dynamically generated username of the currently logged-in user at the time the error happened. Under the hood, the token service scans the string, extracts the token, and calls all <kbd>hook_tokens()</kbd> implementations. The User module is the one that can return the replacement for this token based on the User object it receives.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Defining new tokens</h1>
+                </header>
+            
+            <article>
+                
+<p>We just saw how we can programmatically use existing tokens inside our strings and get them replaced with minimal effort. All we need is the token service and the data object that can be used to replace the token. Keep in mind that there are tokens that don't even require any data objects due to their global nature. The <kbd>hook_tokens()</kbd> implementation will take care of that—let's see how.</p>
+<p>In the previous chapter, we created functionalities for a dynamic <em>Hello World</em> message: either calculated on the fly or loaded from a configuration object. How about we expose that message as a token? This would make its usage more flexible because our string becomes exposed to the entire token system.</p>
+<p>As mentioned earlier, we will start with the <kbd>hook_token_info()</kbd> implementation:</p>
+<pre><span>/**<br/></span><span> * Implements hook_token_info().<br/></span><span> */<br/></span><span>function </span><span>hello_world_token_info</span><span>() {<br/></span><span>  </span><span>$type </span><span>= [<br/></span><span>    </span><span>'name' </span><span>=&gt; t(</span><span>'Hello World'</span><span>)</span><span>,<br/></span><span>    </span><span>'description' </span><span>=&gt; t(</span><span>'Tokens related to the Hello World module.'</span><span>)</span><span>,<br/></span><span>  </span><span>]</span><span>;<br/></span><span><br/></span><span>  </span><span>$tokens</span><span>[</span><span>'salutation'</span><span>] = [<br/></span><span>    </span><span>'name' </span><span>=&gt; t(</span><span>'Salutation'</span><span>)</span><span>,<br/></span><span>    </span><span>'description' </span><span>=&gt; t(</span><span>'The Hello World salutation value.'</span><span>)</span><span>,<br/></span><span>  </span><span>]</span><span>;<br/></span><span><br/></span><span>  </span><span>return </span><span>[<br/></span><span>    </span><span>'types' </span><span>=&gt; [</span><span>'hello_world' </span><span>=&gt; </span><span>$type</span><span>]</span><span>,<br/></span><span>    </span><span>'tokens' </span><span>=&gt; [</span><span>'hello_world' </span><span>=&gt; </span><span>$tokens</span><span>]</span><span>,<br/></span><span>  </span><span>]</span><span>;<br/></span><span>}</span></pre>
+<p>In here, we will need to define two things—the types and the tokens. In our case, we are defining one of each. The type is <kbd>hello_world</kbd> and comes with a human-readable name and description in case it needs to be rendered somewhere in the UI. The token is <kbd>salutation</kbd> and belongs to the <kbd>hello_world</kbd> type. It also gets a name and description. At the end, we return an array that contains both.</p>
+<p>What follows is the <kbd>hook_tokens()</kbd> implementation in which we handle the replacement of our token:</p>
+<pre><span>/**<br/></span><span> * Implements hook_tokens().<br/></span><span> */<br/></span><span>function </span><span>hello_world_tokens</span><span>(</span><span>$type</span><span>, </span><span>$tokens</span><span>, </span><span>array </span><span>$data</span><span>, </span><span>array </span><span>$options</span><span>, </span><span>\Drupal\Core\Render\BubbleableMetadata </span><span>$bubbleable_metadata</span><span>) {<br/></span><span>  </span><span>$replacements </span><span>= []</span><span>;<br/></span><span>  </span><span>if </span><span>(</span><span>$type </span><span>== </span><span>'hello_world'</span><span>) {<br/></span><span>    </span><span>foreach </span><span>(</span><span>$tokens </span><span>as </span><span>$name </span><span>=&gt; </span><span>$original</span><span>) {<br/></span><span>      </span><span>switch </span><span>(</span><span>$name</span><span>) {<br/></span><span>        </span><span>case </span><span>'salutation'</span><span>:<br/></span><span>          </span><span>$replacements</span><span>[</span><span>$original</span><span>] = \Drupal::</span><span>service</span><span>(</span><span>'hello_world.salutation'</span><span>)-&gt;</span><span>getSalutation</span><span>()</span><span>;<br/></span><span>          </span><span>$config </span><span>= \Drupal::</span><span>config</span><span>(</span><span>'hello_world.custom_salutation'</span><span>)</span><span>;<br/></span><span>          </span><span>$bubbleable_metadata</span><span>-&gt;</span><span>addCacheableDependency</span><span>(</span><span>$config</span><span>)</span><span>;<br/></span><span>          </span><span>break</span><span>;<br/></span><span><br/></span><span>      </span><span>}<br/></span><span>    }<br/></span><span>  }<br/></span><span><br/></span><span>  </span><span>return </span><span>$replacements</span><span>;<br/></span><span>}</span></pre>
+<p>There is a bit more going on here, but I'll explain everything. This hook gets fired whenever a replacement of tokens is attempted on a string. And it's fired for each type that has been found inside that string, <kbd>$type</kbd> being the first argument. Inside <kbd>$tokens</kbd>, we get an array of tokens located in that string, which belong to <kbd>$type</kbd>. The <kbd>$data</kbd> array contains the objects needed to replace the tokens (and passed to the <kbd>replace()</kbd> method), keyed by the type. This array can be empty (as it will be in our case).</p>
+<p>Inside the function, we loop through each token of this group and try to replace it. We only know of one, and we use our <kbd>HelloWorldSalutation</kbd> service to determine the replacement string.</p>
+<p>Finally, the function needs to return an array of all replacements found (which can be multiple if multiple tokens of the same type are found inside a string).</p>
+<p>The <kbd>bubbleable_metadata</kbd> parameter is a special cache metadata object that describes this token in the cache system. It is needed because tokens get cached, so if any dependent object changes, the cache needs to be invalidated for this token as well. By default, all objects inside the <kbd>$data</kbd> array are read and included in this object. However, in our case, it is empty, yet we still depend on a configuration object that can change—the one that stores the overridden salutation message. So, we will need to add a dependency on that configuration object even if the actual value for the salutation we compute uses the same <kbd>HelloWorldSalutation</kbd> service we used before. So, we have a simple example here, but with a complex twist. We will talk more about caching later in the book.</p>
+<p>That's all there is to defining our token. It can now also be used inside strings and replaced using the <kbd>Token</kbd> service. Something like this:</p>
+<pre>$final_string = \Drupal::token()-&gt;replace('The salutation text is: [hello_world:salutation]'); </pre>
+<p>As you can see, we pass no other parameters. If our token was dependent on an entity object, for example, we would have passed it in the second parameter array and have made use of it inside <kbd>hook_tokens()</kbd> to compute the replacement.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Token summary</h1>
+                </header>
+            
+            <article>
+                
+<p>The token system is an important part of Drupal because it allows us to easily transform raw data into useful values using placeholder strings. It is a widely used and flexible system that many contributed modules build (and will build) upon. The great thing about tokens is the UI component. There are modules that will allow users to define strings in the UI but make it possible to fill them up with various tokens that it will replace. Also, this is something you can do as a module developer.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Summary</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we discussed many things. We saw how logging works in Drupal 8, how the mail API can be used programmatically (and extended), and how the token system can be employed to make our text more dynamic.</p>
+<p>While going through this chapter, we also enriched our <em>Hello World</em> module. So, apart from understanding the theory about logging, we created our own logging channel service and logger plugin. For the latter, we decided to send out emails when log messages were of the type <em>error</em>. In doing this, we took a look at the mail API and how we can use it programmatically. We saw that, by default, PHP's native <kbd>mail()</kbd> function is used to send out emails, but we can create our own plugin very easily to use whatever external service we want—yet another great example of extensibility via plugins.</p>
+<p>Lastly, we looked at tokens in Drupal 8. We saw what components make up the API, how we can programmatically use existing tokens (replace them with the help of contextual data), and how we can define our own tokens for others to use. These are the main tenets of extensibility (and sharing)—using something someone else has exposed to you, and exposing something for someone else to use.</p>
+<p>In the next chapter, we will look at another great topic—theming. Even though you may think that this falls within the purview of a frontend developer, module developers play an important role. Yes, much of the styling, client-side scripting, and visual architecture can be, and is, done by what we call <em>themers</em>. However, module developers need to understand and use theming tools to ensure that their data is rendered in the proper way. So, in the next chapter, we will focus on that.</p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

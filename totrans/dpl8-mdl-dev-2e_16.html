@@ -1,0 +1,1177 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Working with Files and Images</h1>
+                </header>
+            
+            <article>
+                
+<p>Drupal comes with many capabilities for handling and manipulating files and images and has been adding to its toolset more and more with recent versions. Of course, this is not to say that media management has not been always a pain point for Drupal developers. In Drupal 7, a complicated suite of contributed modules was needed to achieve a basic level of functionality, something that users of "competitors" like WordPress enjoy out of the box. In Drupal 8, there is more emphasis placed on media management, and with each release Media capabilities have gone into core. The Media (entity) module, with its essential source plugins for supporting Images, Files, Remote Videos (Oembed) and Audio, as well as the experimental Media library, make for great advancements in the area. And together with popular contributed modules such as Entity Browser, a lot of this gap has been filled.</p>
+<p>In this chapter, we will look at how we can work with files and images in Drupal, supported by the core features. Although the Media module allows developers to provide new Source plugins to expose media entities to all sorts of types of media, we won't be going into this quite advanced topic. Instead, we'll focus on lower-level tools that can be used for working with files. And we will see some examples along the way. So, what are we going to discuss?</p>
+<p>First, we are going to get an understanding of the Drupal <em>filesystems</em>. Developers from previous versions of Drupal should already be familiar with these in theory, and we will see how these work in Drupal 8. Related to this, we're going to talk about <em>stream wrappers</em> and how Drupal handles native PHP file operations. We will even create our own custom stream wrapper a bit later in the chapter.</p>
+<p>Then, we will talk a bit about the different ways to handle files in Drupal, namely, <em>managed</em> (tracked) and <em>unmanaged</em> files. In exemplifying the work with <em>managed</em> files, we will add an image field to our Product entity type and have images imported from a fictional remote environment. We will also create a brand-new CSV-based importer by which the product data is imported from a CSV file we read. In this process, we will note the Entity CRUD hooks, a very important extension point in Drupal 8, and see how we can use those in our example context.</p>
+<p>We will end the chapter by seeing how we can work with various APIs that deal specifically with images<span><span>,</span></span> especially for manipulating them via image toolkits and working with image styles. So let's get to it.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The filesystem</h1>
+                </header>
+            
+            <article>
+                
+<p>Drupal defines four main types of file storage for any given site: the <em>public</em>, the <em>private,</em> the <em>temporary</em> and the <em>translation</em> filesystems. When installing Drupal, the folders that map to these filesystems are created automatically. In case that fails—most likely due to permission issues<span>—</span>we have to create them ourselves and give them the correct permissions. Drupal takes care of the rest (for example, adds relevant <kbd>.htaccess</kbd> files for security reasons). Make sure you check out the documentation on <a href="https://www.drupal.org/">Drupal.org</a> for how to successfully install Drupal 8 if you are unsure how this works.</p>
+<p>Public files are available to the world at large for viewing or downloading. This is where things such as image content, logos, and anything that can be downloaded are stored. Your public file directory must exist somewhere under Drupal's root, and it must be readable and writeable by whatever <em>user</em> your web server is running under. Public files have no access restrictions. Anyone, at any time, can navigate directly to a public file and view or download it. This also means that accessing these files does not require Drupal to bootstrap.</p>
+<p>We can configure the path to the public filesystem in our <kbd>settings.php</kbd> file:</p>
+<pre>$settings['file_public_path'] = 'sites/default/files';  </pre>
+<p>Private files, on the other hand, are not available to the world for general download. Therefore, the private files' directory must not be accessible via the web. However, it still has to be writeable by the web server user. Isolating private files this way allows developers to control who can and can't access them. For instance, we could write a module that only allows users who have a specific role to access PDFs in the private filesystem.</p>
+<p>We can configure the path to the private filesystem in our <kbd>settings.php</kbd> file:</p>
+<pre>$settings['file_private_path'] = 'sites/default/private';  </pre>
+<p>Temporary file storage is typically only used by Drupal for internal operations. When files are first saved by Drupal, they are initially written into the temporary filesystem so they can be checked for security issues. After they have been deemed safe, they are written to their final location.</p>
+<p>We can configure the path to the temporary filesystem through the UI:</p>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img src="assets/b23acfd3-953c-4d02-a981-50e876c256fc.png"/></div>
+<p>On the same configuration screen, we can also specify the default file download method for the site. By default, this is set to the public filesystem.</p>
+<p>Finally, the translation file storage is used by Drupal for storing the <kbd>.po</kbd> files that contain string translation values that can be imported into the system in bulk. As with the temporary file storage, we can configure the location of translation files through the UI.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Stream wrappers</h1>
+                </header>
+            
+            <article>
+                
+<p>If you've been writing PHP for a long time, you may have needed to work with local or remote files at some point. The following PHP code is a common way to read a file into a variable that you can do something with:</p>
+<pre>$contents = ''; 
+$handle = fopen("/local/path/to/file/image.jpg", "rb"); 
+while (!feof($handle)) { 
+ $contents .= fread($handle, 8192); 
+} 
+fclose($handle);  </pre>
+<p>This is pretty straightforward. We get a handle to a local file using <kbd>fopen()</kbd> and read 8 KB chunks of the file using <kbd>fread()</kbd> until <kbd>feof()</kbd> indicates that we've reached the end of the file. At that point, we use <kbd>fclose()</kbd> to close the handle. The contents of the file are now in the <kbd>$contents</kbd> variable.</p>
+<p>In addition to local files, we can also access remote ones through <kbd>fopen()</kbd> in the exact same way but by specifying the actual remote path instead of the local one we saw before (starting with <kbd>http(s)://</kbd>).</p>
+<p>Data that we can access this way is streamable, meaning we can open it, close it, or seek to a specific place in it.</p>
+<p><em>Stream wrappers</em> are an abstraction layer on top of these streams that tell PHP how to handle specific types of data. When using a stream wrapper, we refer to the file just like a traditional URL—<kbd>scheme://target</kbd>. As a matter of fact, the previous example uses one of PHP's built-in stream wrappers: the <kbd>file://</kbd> wrapper for accessing files on local storage. It is actually the default scheme when none is specified, so that is why we got away with omitting it and just adding the file path. Had the file been on a remote location, we would have used something like <kbd>http://example.com/file/path/image.jpg</kbd>. That is another PHP built-in stream wrapper: <kbd>http://</kbd> (for the HTTP protocol).</p>
+<p>If that's not enough, PHP also allows us to define our own wrappers for schemes that PHP does not handle out of the box; the Drupal File API was built to take advantage of this. This is where we link back to the different types of file storage we talked about earlier, as they all have their own stream wrappers defined by Drupal.</p>
+<p>The public filesystem uses the rather known <kbd>public://</kbd> stream wrapper, the private one uses <kbd>private://</kbd>, the temporary one <kbd>temporary://</kbd> and the translation one <kbd>translations://</kbd>. These map to the local file paths that we defined in the <kbd>settings.php</kbd> (or UI). Later in the chapter we will see how we can define our own stream wrapper and what some of the things that go into it are. First, though, let's talk a bit about the different ways we can manage files in Drupal 8.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Managed versus unmanaged files</h1>
+                </header>
+            
+            <article>
+                
+<p>The Drupal File API allows us to handle files in two different ways. Files essentially boil down to two categories: they are either <em>managed</em> or <em>unmanaged</em>. The difference between the two lies in the way the files are used.</p>
+<p><em>Managed</em> files work hand in hand with the Entity system and are, in fact, tied to File entities. So whenever we create a <em>managed</em> file, an entity gets created for it as well, which we can use in all sorts of ways. And the table where these records are stored is called <kbd>file_managed</kbd>. Moreover, a key aspect of <em>managed</em> files is the fact that their usage is tracked. This means that if we reference them on an entity or even manually indicate that we use them, this usage is tracked in a secondary table called <kbd>file_usage</kbd>. This way, we can see where each file is used and how many times, and Drupal even provides a way to delete "orphaned" files after a specific time in case they are no longer needed.</p>
+<p>A notable example of using <em>managed</em> files is the simple <kbd>Image</kbd> field type that we can add to an entity type. Using these fields, we can upload a file and <em>attach</em> it to the respective entity. This attachment is nothing more than a special (tracked) entity reference between the two entities.</p>
+<p>By understanding how <em>managed</em> files are used, it's not difficult to anticipate what <em>unmanaged</em> files are. The latter are the files we upload to make use of for various reasons but that, of course, do not need to be <em>attached</em> to any entity or have their usage tracked.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using the File and Image fields</h1>
+                </header>
+            
+            <article>
+                
+<p>In order to demonstrate how to work with <em>managed</em> files, we will go back to our product entity importer and bring in some images for each product. However, in order to store them, we need to create a field on the Product entity. This will be an <em>image</em> field.</p>
+<p>Instead of creating this field through the UI and attaching it to a bundle, let's do it the programmatic way and make it a base field (available on all bundles). We won't need to do anything complex; for now we are only interested in a basic field that we can use to store the images we bring in from the remote API. It can look something like this:</p>
+<pre>$fields['image'] = BaseFieldDefinition::create('image') 
+  -&gt;setLabel(t('Image')) 
+  -&gt;setDescription(t('The product image.')) 
+  -&gt;setDisplayOptions('form', array( 
+    'type' =&gt; 'image_image', 
+    'weight' =&gt; 5, 
+  ));  </pre>
+<p>If you remember from <a href="77cab458-5612-468c-8010-12385708eb81.xhtml">Chapter 6</a>, <em>Data Modeling and Storage</em>, and <a href="392cdb70-e52a-42d1-b782-28d6eb726810.xhtml">Chapter 7</a>, <em>Your Own Custom Entity and Plugin Types</em>, we are creating a base field definition that, in this case, is of the type <kbd>image</kbd>. This is the <kbd>FieldType</kbd> plugin ID of the <kbd>ImageItem</kbd> field type. So that is where we need to look and see what kind of field and storage options we may have. For example, we can have a file extension limitation (which by default contains <kbd>png</kbd>, <kbd>gif</kbd>, <kbd>jpg</kbd>, and <kbd>jpeg</kbd>) and things like <kbd>alt</kbd> and <kbd>title</kbd> attributes, as well as image dimension configuration. Do check out <kbd>ImageItem</kbd> to get an idea of the possible storage and field settings. However, we are fine with the defaults in this case so we don't even have any field settings.</p>
+<p>Another interesting thing to notice is that <kbd>ImageItem</kbd> extends the <kbd>FileItem</kbd> field type, which is a standalone <kbd>FieldType</kbd> plugin that we can use. However, it is more generic and lends itself for use with any kind of file upload situation. Since we are dealing with images, we might as well take advantage of the specific field type.</p>
+<p>For the moment, we do not configure our image field to have any kind of display. We'll look into that a bit later. However, we do specify the widget it should use on the entity form, namely the <kbd>FieldWidget</kbd> plugin with the ID of <kbd>image_image</kbd>. This maps to the default <kbd>ImageWidget</kbd> field widget. But again, we are fine with the setting defaults, so we don't specify anything extra.</p>
+<p>With this, our field definition is done. To have Drupal create the necessary database tables, we need to run the Drush command:</p>
+<pre>drush entity-update  </pre>
+<p>Now let's create the interface methods for easily accessing and setting the images:</p>
+<pre>/** 
+ * Gets the Product image. 
+ * 
+ * @return \Drupal\file\FileInterface 
+ */ 
+public function getImage(); 
+ 
+/** 
+ * Sets the Product image. 
+ * 
+ * @param int $image 
+ * 
+ * @return \Drupal\products\Entity\ProductInterface 
+ *   The called Product entity. 
+ */ 
+public function setImage($image);  </pre>
+<p>The getter method is supposed to return a <kbd>FileInterface</kbd> object (which is the actual File entity), while the setter is supposed to receive the ID (<kbd>fid</kbd>) of the File entity to save. As for the implementations, it should not be anything new to us:</p>
+<pre>/** 
+ * {@inheritdoc} 
+ */ 
+public function getImage() { 
+  return $this-&gt;get('image')-&gt;entity; 
+} 
+ 
+/** 
+ * {@inheritdoc} 
+ */ 
+public function setImage($image) { 
+  $this-&gt;set('image', $image); 
+  return $this; 
+}  </pre>
+<p>With this, we are ready to proceed with the import of images from the remote API.</p>
+<div class="packt_tip">For taking advantage of the media management power in Drupal 8, instead of Image or File fields, you'd create entity reference fields to Media entities. And on the latter you'd create these fields. As such, Media entities basically wrap the File entities to provide some additional functionality and expose them to all the goodies of media management. For now, we work directly with these field types to learn about low-level file handling without the overhead of Media.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Working with managed files</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we will look at two examples of working with managed files. First, we will see how we can import product images from our fictional remote JSON-based API. Second, we will see how to create a custom form element that allows us to upload a file and use it in a brand new CSV-based importer.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Attaching managed files to entities</h1>
+                </header>
+            
+            <article>
+                
+<p>Now that we have our product image field in place and we can store images, let's revisit our JSON response that contains the product data and assume it looks something like this now:</p>
+<pre>{ 
+  "products" : [ 
+    { 
+      "id" : 1, 
+      "name": "TV", 
+      "number": 341, 
+      "image": "tv.jpg" 
+    }, 
+    { 
+      "id" : 2, 
+      "name": "VCR", 
+      "number": 123, 
+      "image": "vcr.jpg" 
+    } 
+  ] 
+}  </pre>
+<p>What's new is the addition of the <kbd>image</kbd> key for each product, which simply references a filename for the image that goes with the respective product. The actual location of the images is at some other path we need to include in the code.</p>
+<p>Going back to our <kbd>JsonImporter::persistProduct()</kbd> method, let's delegate the handling of the image import to a helper method called <kbd>handleProductImage()</kbd>. We need to call this method both if we are creating a new Product entity and if we are updating an existing one (right before saving):</p>
+<pre>$this-&gt;handleProductImage($data, $product);  </pre>
+<p>And this is what the actual method looks like:</p>
+<pre>/** 
+ * Imports the image of the product and adds it to the Product entity. 
+ * 
+ * @param $data 
+ * @param \Drupal\products\Entity\ProductInterface $product 
+ */ 
+private function handleProductImage($data, ProductInterface $product) { 
+  $name = $data-&gt;image; 
+  // This needs to be hardcoded for the moment. 
+  $image_path = ''; 
+  $image = file_get_contents($image_path . '/' . $name); 
+  if (!$image) { 
+    // Perhaps log something. 
+    return; 
+  } 
+ 
+  /** @var \Drupal\file\FileInterface $file */ 
+  $file = file_save_data($image, 'public://product_images/' . $name, FileSystemInterface::EXISTS_REPLACE); 
+  if (!$file) { 
+    // Something went wrong, perhaps log it. 
+    return; 
+  } 
+ 
+  $product-&gt;setImage($file-&gt;id()); 
+}  </pre>
+<p>And the new <em>use</em> statement at the top:</p>
+<pre>use Drupal\products\Entity\ProductInterface; 
+use Drupal\Core\File\FileSystemInterface;  </pre>
+<p>First, we get the name of the image. Then we construct the path to where the product images are stored. In this example, it's left blank, but if the example were to work, we'd have to add a real path there. I leave that up to you for now. If you want to test it out, create a local folder with some images and reference that.</p>
+<p>Using the native <kbd>file_get_contents()</kbd> function, we load the data of the image from the remote environment into a string. We then pass this string to the <kbd>file_save_data()</kbd> function which saves a new <em>managed</em> file to the public filesystem. This function takes three parameters: the data to be saved, the URI of the destination, and a flag indicating what to do if a file with the same name already exists. You'll notice that we used the Drupal <kbd>public://</kbd> stream wrapper to build the URI and we already know which folder this maps to.</p>
+<p>As for the third parameter, we chose to replace the file in case one already exists. The alternative would have been to either use the <kbd>EXISTS_RENAME</kbd> or <kbd>EXISTS_ERROR</kbd> constants of the same interface. The first would have created a new file whose name would have gotten a number appended until the name became unique. The second would have simply not done anything and returned FALSE.</p>
+<p>If all goes well, this function returns a <kbd>File</kbd> entity (that implements <kbd>FileInterface</kbd>) whose ID we can use in the Product image setter method. With that in place, we can synchronize also the individual product images.</p>
+<div class="packt_tip">If you run into issues after this, make sure you create the destination folder and have all the permissions in order in the public filesystem to allow the copy to take place properly. In the next section you'll learn about some helper functions you can use to better prepare with the destination folder.</div>
+<p>Moreover, in our database, a record is created in the <kbd>file_usage</kbd> table to indicate that this file is being used on the respective Product entity.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Helpful functions for dealing with managed files</h1>
+                </header>
+            
+            <article>
+                
+<p>Apart from the staple <kbd>file_save_data()</kbd> function, we have a few other ones that can come in handy if we are dealing with <em>managed</em> files. Here's a few of them.</p>
+<p>If we want to copy a file from one place to another while making sure a new database record is created, we can use <kbd>file_copy()</kbd>. It takes three parameters:</p>
+<ul>
+<li>The <kbd>FileInterface</kbd> entity that needs to be copied</li>
+<li>The destination URI where it should go</li>
+<li>The flag indicating what to do in case a file with the same name exists</li>
+</ul>
+<p>The parameters are the same as for <kbd>file_save_data()</kbd>.</p>
+<p>Apart from the actual copying, this function also invokes <kbd>hook_file_copy()</kbd> which allows modules to respond to files being copied.</p>
+<p>Very similar to <kbd>file_copy()</kbd>, we also have <kbd>file_move()</kbd> which takes the same set of parameters but instead performs a file move. The database entry of the File entity gets updated to reflect the new file path. And <kbd>hook_file_move()</kbd> is invoked to allow modules to respond to this action.</p>
+<p>Not strictly related to <em>managed</em> files, but rather useful in all cases, we also have the <kbd>\Drupal\Core\File\FileSystem</kbd> service (accessible via the <kbd>file_system</kbd> service name), which contains all sorts of useful methods for dealing with files. We'll see some of them when we talk about <em>unmanaged</em> files. But one that is useful also for <em>managed</em> files is <kbd>::prepareDirectory()</kbd> which we can use to ensure the file destination is correct. It takes two arguments: the directory (a string representation of the path or stream URI) and a flag indicating what to do about the folder (constants on the interface):</p>
+<ul>
+<li><kbd>FileSystemInterface::CREATE_DIRECTORY</kbd> : Will create the directory if it doesn't already exist</li>
+<li><kbd>FileSystemInterface::MODIFY_PERMISSION</kbd> : Will make the directory writable if it is found to be read-only</li>
+</ul>
+<p>This function returns <kbd>TRUE</kbd> if the folder is good to go as a destination or <kbd>FALSE</kbd> if something went wrong or the folder doesn't exist.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Managed file uploads</h1>
+                </header>
+            
+            <article>
+                
+<p>Next, we are going to look at how we can work with <em>managed</em> files using a custom form element. And to demonstrate this, we are finally going to create another Product importer plugin. This time, instead of a remote JSON resource, we will allow users to upload a CSV file that contains product data and imports that into Product entities. This is what the example CSV data looks like:</p>
+<pre>id,name,number 
+1,Car,45345 
+2,Motorbike,54534  </pre>
+<p>It basically has the same kind of data as the JSON resource we've been looking at so far but without the image reference. So let's get going with our new plugin class.</p>
+<p>Here is our starting point:</p>
+<pre>namespace Drupal\products\Plugin\Importer; 
+ 
+use Drupal\Core\StringTranslation\StringTranslationTrait; 
+   use Drupal\products\Plugin\ImporterBase; 
+ 
+/** 
+ * Product importer from a CSV format. 
+ * 
+ * @Importer( 
+ *   id = "csv", 
+ *   label = @Translation("CSV Importer") 
+ * ) 
+ */ 
+class CsvImporter extends ImporterBase { 
+ 
+  use StringTranslationTrait; 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function import() { 
+    $products = $this-&gt;getData(); 
+    if (!$products) { 
+      return FALSE; 
+    } 
+ 
+    foreach ($products as $product) { 
+      $this-&gt;persistProduct($product); 
+    } 
+ 
+    return TRUE; 
+  } 
+}  </pre>
+<p>We start by extending from the <kbd>ImporterBase</kbd> class and implement the obligatory <kbd>import()</kbd> method. Like before, we delegate to <kbd>getData()</kbd> to retrieve the product information, but in this case we simply loop over the resulting records and use the <kbd>persistProduct()</kbd> method to save the Product entities. So no batch operations. Apart from no longer saving images, this latter method looks exactly like the one from the <kbd>JsonImporter</kbd>, so I won't be copying it over again. But it makes for a good homework assignment to try to move it to the base class and abstract away the dynamic portions.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Managed file form element</h1>
+                </header>
+            
+            <article>
+                
+<p>The other obligatory method we need to implement is <kbd>getConfigurationForm()</kbd>, by which we define the form elements needed to configure this particular plugin. Here, we will create the <kbd>file</kbd> field allowing users to upload the CSV file:</p>
+<pre>/** 
+ * {@inheritdoc} 
+ */ 
+public function getConfigurationForm(\Drupal\products\Entity\ImporterInterface $importer) { 
+  $form = []; 
+  $config = $importer-&gt;getPluginConfiguration(); 
+  $form['file'] = [ 
+    '#type' =&gt; 'managed_file', 
+    '#default_value' =&gt; isset($config['file']) ? $config['file'] : '', 
+    '#title' =&gt; $this-&gt;t('File'), 
+    '#description' =&gt; $this-&gt;t('The CSV file containing the product records.'), 
+    '#required' =&gt; TRUE, 
+  ]; 
+ 
+  return $form; 
+}  </pre>
+<p>The form element type is called <kbd>managed_file</kbd> (implemented by the <kbd>ManagedFile</kbd> form element class). The rest of the definition is straightforward. However, there are a couple of problems.</p>
+<p>First, by default, using this form element, files are uploaded to the <kbd>temporary://</kbd> filesystem of Drupal. Since we don't want that, we need to specify an upload location:</p>
+<pre>'#upload_location' =&gt; 'public://'  </pre>
+<p>The root of our public files folder will suffice for this example as we assume the file does not contain any sensitive information. If so, we could upload it to the <kbd>private://</kbd> one and control who gets access. We'll talk about how that works later in the chapter.</p>
+<p>Second, by default, using this form element, the <em>allowed</em> file extensions for upload are limited to <kbd>jpg jpeg gif png txt doc xls pdf ppt pps odt ods odp</kbd>. So if we want to allow CSV files, we need to specify the extension in a list of allowed upload extensions. And we do this by overriding the default upload validators:</p>
+<pre>'#upload_validators' =&gt; [ 
+  'file_validate_extensions' =&gt; ['csv'], 
+],  </pre>
+<p>This is an array of validator callbacks we want Drupal to run when the file is uploaded. And allowing only CSV files is enough for our purposes. But another handy validator we could use is <kbd>file_validate_size()</kbd>. Moreover, we can implement <kbd>hook_file_validate()</kbd> ourselves and perform any custom validation to the files being uploaded. So that's also something to keep in mind when dealing with validation files that don't belong to your modules.</p>
+<p>With this, our plugin configuration form is in place; it looks something like this:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/0495cf38-f200-4e96-8fd7-f8a98bc4c7b0.png" style="width:25.83em;height:19.25em;"/></p>
+<p>However, there is still something we need to do in order for the uploaded file to be <em>managed</em> properly. When using this form element, the file gets correctly uploaded and a record is added to the <kbd>file_managed</kbd> table. So we get our <kbd>File</kbd> entity. However, its status is not permanent because it doesn't have any usages. There are no records for it in the <kbd>file_usage</kbd> table. How could there be? So what we need to do is handle that ourselves and basically tell Drupal that the file uploaded in this form is <em>used</em> by the respective Importer configuration entity. And to do this, we need to know when the file is saved onto the entity, changed, and deleted.</p>
+<p>With this, we can also learn about something very important that we skipped in <a href="77cab458-5612-468c-8010-12385708eb81.xhtml">Chapter 6</a>, <em>Data Modeling and Storage</em>, and <a href="392cdb70-e52a-42d1-b782-28d6eb726810.xhtml">Chapter 7</a>, <em>Your Own Custom Entity and Plugin Types<span><span>:</span></span></em> <span><span>e</span></span>ntity CRUD hooks. But right before we jump into that, let's not forget about the configuration schema of this new configuration item—the <kbd>file</kbd> key of the plugin configuration:</p>
+<pre>products.importer.plugin.csv: 
+  type: mapping 
+  label: Plugin configuration for the CSV importer plugin 
+  mapping: 
+    file: 
+      type: sequence 
+      label: File IDs 
+      sequence: 
+        type: integer 
+        label: CSV File ID  </pre>
+<p>We are doing the same as we did for the <kbd>url</kbd> key of the JSON importer but, in this case, we need to account for the fact that <kbd>file</kbd> is actually an array. So we define it as a sequence whose individual items are integers. Feel free to check <a href="77cab458-5612-468c-8010-12385708eb81.xhtml"/><a href="77cab458-5612-468c-8010-12385708eb81.xhtml">Chapter 6</a>, <em>Data Modeling and Storage</em>, for more information on configuration schemas whenever you need a reminder.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Entity CRUD hooks</h1>
+                </header>
+            
+            <article>
+                
+<p>Whenever entities are created, updated, or deleted, a set of hooks are fired that allow us to act on this information. We can use these hooks simply to perform some actions whenever this happens or even make changes to the entity being saved. So let's see what we have.</p>
+<p>A very useful one is <kbd>hook_entity_presave()</kbd>, which gets fired during the saving process of an entity (both content and configuration). This applies to both when the entity is first created, as well as when it is being updated. Moreover, it allows us to inspect the original entity and detect changes made to it. And finally, since the entity has not yet been persisted, it allows us to make changes to it ourselves. So very powerful stuff.</p>
+<p>Since Drupal 8 is very flexible, we also have the <kbd>hook_ENTITY_TYPE_presave()</kbd> version which allows us to specifically target any entity type we want. We've already discussed the benefit of using more specific hooks to keep our code more organized as well as a little bit more performant. And this applies to all the entity CRUD hooks we are going to talk about next.</p>
+<p>Then we have <kbd>hook_entity_insert()</kbd> and <kbd>hook_entity_update()</kbd>, which get fired after an entity is created for the first time and after an entity is updated, respectively. We cannot make changes to the entity itself as it has already been saved, but they can come in handy at other times. The latter also give us access to the original entity if we want to compare any changes. And similarly, we have <kbd>hook_entity_delete()</kbd>, which gets fired when an entity is deleted.</p>
+<p>Finally, we also have <kbd>hook_entity_load()</kbd> which allows us to perform actions whenever an entity is loaded. For example, we can tack on additional information if we want. So keep in mind these hooks, as they are going to be a very important tool in your module developer arsenal.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Managed file usage service</h1>
+                </header>
+            
+            <article>
+                
+<p>Now that we have an idea of the available entity CRUD hooks, we can implement three of them to handle our <em>managed</em> file problem<span><span>. Because, </span></span>if you remember, <em>managed</em> files are actually represented by the <kbd>File</kbd> entity type, so the Entity CRUD hooks get fired for these as well.</p>
+<p>To mark a file as being used by <em>something,</em> we can use the <kbd>DatabaseFileUsageBackend</kbd> service (<kbd>file.usage</kbd>), which is an implementation of the <kbd>FileUsageInterface</kbd>. This has a few handy methods that allow us to add a usage or delete it. That is actually what we are going to do next.</p>
+<p>What we want to do first is add a file usage whenever a new Importer entity gets created (and a file uploaded with it):</p>
+<pre>/** 
+ * Implements hook_ENTITY_TYPE_insert() for the Importer config entity type. 
+ */ 
+function products_importer_insert(\Drupal\Core\Entity\EntityInterface $entity) { 
+  if ($entity-&gt;getPluginId() != 'csv') { 
+    return; 
+  } 
+ 
+  // Mark the current File as being used. 
+  $fid = _products_importer_get_fid_from_entity($entity); 
+  $file = Drupal::entityTypeManager()-&gt;getStorage('file')-&gt;load($fid); 
+  \Drupal::service('file.usage')-&gt;add($file, 'products', 'config:importer', $entity-&gt;id()); 
+}  </pre>
+<p>We are implementing the specific version of <kbd>hook_entity_insert()</kbd> for our own entity type, and the first thing we are checking is <span><span>whether</span></span> we are looking at one using the CSV plugin. We're not interested in any importers that don't have a CSV file upload. If we are, we get the File entity ID from the importer using a private helper function:</p>
+<pre>/** 
+ * Given an Importer entity using the CSV plugin, return the File ID of the CSV 
+ * file. 
+ * 
+ * @param \Drupal\Core\Entity\EntityInterface $entity 
+ * 
+ * @return int 
+ */ 
+function _products_importer_get_fid_from_entity(\Drupal\Core\Entity\EntityInterface $entity) { 
+  $fids = $entity-&gt;getPluginConfiguration()['file']; 
+  $fid = reset($fids); 
+  return $fid; 
+}  </pre>
+<p>You'll notice that the <kbd>file</kbd> key in our plugin configuration array is an array of File IDs, even if we only uploaded one single file. That is just something we need to account for here (we did so also in our configuration schema earlier on).</p>
+<p>Then, we load the File entity based on this ID and use the <kbd>file.usage</kbd> service to add a usage to it. The first parameter of the <kbd>add()</kbd> method is the File entity itself, the second is the module name that marks this usage, the third is the type of <em>thing</em> the file is used by, while the fourth is the ID of this <em>thing</em>. The latter two depend on the use case; we choose to go with our own notation (<kbd>config:importer</kbd>) to make it clear that we are talking about a configuration entity of the type <kbd>importer</kbd>. Of course, we used the ID of the entity.</p>
+<p>With this, a new record will get created in the <kbd>file_usage</kbd> table whenever we save such an Importer entity for the first time. Now let's handle the case in which we delete this entity—we don't want this file usage lingering around, do we?</p>
+<pre>/** 
+ * Implements hook_ENTITY_TYPE_delete() for the Importer config entity type. 
+ */ 
+function products_importer_delete(\Drupal\Core\Entity\EntityInterface $entity) { 
+  if ($entity-&gt;getPluginId() != 'csv') { 
+    return; 
+  } 
+ 
+  $fid = _products_importer_get_fid_from_entity($entity); 
+  $file = Drupal::entityTypeManager()-&gt;getStorage('file')-&gt;load($fid); 
+  \Drupal::service('file.usage')-&gt;delete($file, 'products', 'config:importer', $entity-&gt;id()); 
+}  </pre>
+<p>Most of what we are doing in this specific version of <kbd>hook_entity_delete()</kbd> is the same as before. However, we are using the <kbd>delete()</kbd> method of the <kbd>file.usage</kbd> service but passing the same arguments. These <kbd>$type</kbd> and <kbd>$id</kbd> parameters are actually optional, so we can "un-use" multiple files at once. Moreover, we have an optional fifth parameter (the count) whereby we can specifically choose to remove more than one usage from this file. By default, this is 1, and that makes sense for us.</p>
+<p>Finally, we also want to account for the cases in which the user edits the importer entity and changes the CSV file. We want to make sure the old one is no longer marked as used for this Importer. And we can do this with <kbd>hook_entity_update()</kbd>:</p>
+<pre>/** 
+ * Implements hook_ENTITY_TYPE_update() for the Importer config entity type. 
+ */ 
+function products_importer_update(\Drupal\Core\Entity\EntityInterface $entity) { 
+  if ($entity-&gt;getPluginId() != 'csv') { 
+    return; 
+  } 
+ 
+  /** @var \Drupal\products\Entity\ImporterInterface $original */ 
+  $original = $entity-&gt;original; 
+  $original_fid = _products_importer_get_fid_from_entity($original); 
+  if ($original_fid !== _products_importer_get_fid_from_entity($entity)) { 
+    $original_file = Drupal::entityTypeManager()-&gt;getStorage('file')-&gt;load($original_fid); 
+    \Drupal::service('file.usage')-&gt;delete($original_file, 'products', 'config:importer', $entity-&gt;id()); 
+  } 
+}  </pre>
+<p>We are using the specific variant of this hook that only gets fired for Importer entities. Just like we've been doing so far. And as I mentioned, we can access the original entity (before the changes have been made to it) like so:</p>
+<pre>$original = $entity-&gt;original;  </pre>
+<p>And if the File ID that was on the original entity is not the same as the one we are currently saving with it (meaning the file was changed), we can delete the usage of that old File ID.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Processing the CSV file</h1>
+                </header>
+            
+            <article>
+                
+<p>Now that our plugin configuration works—and uploaded files are properly managed and marked as used<span>—</span>it's time to implement the <kbd>getData()</kbd>method by which we process the CSV file of the Importer entity. The result needs to be an array of product information as expected by the <kbd>import()</kbd> method we saw earlier. So we can have something like this:</p>
+<pre>/** 
+ * Loads the product data from the remote URL. 
+ * 
+ * @return array 
+ */ 
+private function getData() { 
+  /** @var \Drupal\products\Entity\ImporterInterface $importer_config */ 
+  $importer_config = $this-&gt;configuration['config']; 
+  $config = $importer_config-&gt;getPluginConfiguration(); 
+  $fids = isset($config['file']) ? $config['file'] : []; 
+  if (!$fids) {       
+    return NULL; 
+  } 
+ 
+  $fid = reset($fids); 
+  /** @var \Drupal\file\FileInterface $file */ 
+  $file = $this-&gt;entityTypeManager-&gt;getStorage('file')-&gt;load($fid); 
+  $wrapper = $this-&gt;streamWrapperManager-&gt;getViaUri($file-&gt;getFileUri()); 
+  if (!$wrapper) { 
+    return NULL; 
+  } 
+ 
+  $url = $wrapper-&gt;realpath(); 
+  $spl = new \SplFileObject($url, 'r'); 
+  $data = []; 
+  while (!$spl-&gt;eof()) { 
+    $data[] = $spl-&gt;fgetcsv(); 
+  } 
+ 
+  $products = []; 
+  $header = []; 
+  foreach ($data as $key =&gt; $row) { 
+    if ($key == 0) { 
+      $header = $row; 
+      continue; 
+    } 
+ 
+    if ($row[0] == "") { 
+      continue; 
+    } 
+ 
+    $product = new \stdClass(); 
+    foreach ($header as $header_key =&gt; $label) { 
+      $product-&gt;{$label} = $row[$header_key]; 
+    } 
+    $products[] = $product; 
+  } 
+ 
+  return $products; 
+}  </pre>
+<p>First, quite expectedly, we check for the existence of the File ID in the Importer entity and load the corresponding File entity based on that. To do this, we use the entity manager we injected into the plugin base class. But then comes something new.</p>
+<p>Once we have the File entity, we can ask it its URI, which will return something like this: <kbd>public://products.csv</kbd>. This is what is stored in the database. But in order to turn that into something useful, we need to use the <em>stream wrapper</em> that defines this filesystem. And to get that, we use the <kbd>StreamWrapperManager</kbd> service (<kbd>stream_wrapper_manager</kbd>) which has a handy method of returning the <em>stream wrapper</em> instance responsible for a given URI<span>—</span><kbd>getViaUri()</kbd>. And once we have our <kbd>StreamWrapperInterface</kbd>, we can use its <kbd>realpath()</kbd> method to get the local path of the resource. We will come back to <em>stream wrappers</em> a bit later in this chapter and it will make more sense. But for the moment, it's enough to understand that we are translating a URI in the <kbd>scheme://target</kbd> <span>format </span>into a useful path that we can use to create a new PHP-native <kbd>SplFileObject</kbd> instance, which, in turn, we can use to process the CSV file easily.</p>
+<div class="packt_infobox">When creating the <kbd>SplFileObject</kbd>, we used the external URL of the file. This worked just fine and we were able to also demonstrate how we can get our hands on the external URL if we ever need to. But, as we will see in the next chapter, it will also work directly with the stream URI, and we will switch to this approach instead.</div>
+<p>With three lines of code we are basically done getting all the rows from the CSV into the <kbd>$data</kbd> array. However, we also want to make this data look a bit more like what the JSON resource looked like<span>—</span>a map where the keys are the field names and the values are the respective product data. And we also want this map to contain PHP standard objects instead of arrays. Therefore, we loop through the data, establish the CSV header values, and use those as the keys in each row of a new <kbd>$products</kbd> array of objects. Our end result will look exactly like the product information coming from the decoded JSON response.</p>
+<p>And with this we are done. Well, not quite. We still need to inject the <kbd>StreamWrapperManager</kbd> service into our plugin. And to do that, we need to make sure we are injecting also all the things that the parent class needs and passing them along:</p>
+<pre>/** 
+ * @var \Drupal\Core\StreamWrapper\StreamWrapperManagerInterface 
+ */ 
+protected $streamWrapperManager; 
+ 
+/** 
+ * {@inheritdoc} 
+ */ 
+public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entityTypeManager, ClientInterface $httpClient, StreamWrapperManagerInterface $streamWrapperManager) { 
+  parent::__construct($configuration, $plugin_id, $plugin_definition, $entityTypeManager, $httpClient); 
+  $this-&gt;streamWrapperManager = $streamWrapperManager; 
+} 
+ 
+/** 
+ * {@inheritdoc} 
+ */ 
+public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) { 
+  return new static( 
+    $configuration, 
+    $plugin_id, 
+    $plugin_definition, 
+    $container-&gt;get('entity_type.manager'), 
+    $container-&gt;get('http_client'), 
+    $container-&gt;get('stream_wrapper_manager') 
+  ); 
+}  </pre>
+<p>And the new <em>use</em> statements at the top:</p>
+<pre>use Drupal\Core\Entity\EntityTypeManagerInterface; 
+use Drupal\Core\StreamWrapper\StreamWrapperManagerInterface; 
+use GuzzleHttp\ClientInterface; 
+use Symfony\Component\DependencyInjection\ContainerInterface;  </pre>
+<p>Nothing we don't yet know how to do. However, there is one thing I'd like to point out here. In <a href="392cdb70-e52a-42d1-b782-28d6eb726810.xhtml">Chapter 7</a>, <em>Your Own Custom Entity and Plugin Types</em>, I mentioned how, at the time, I believed the Guzzle HTTP Client is a service that would be useful to all Importer plugins. Well, I was clearly wrong, as the CSV-based one we just created now doesn't need it. So there is no reason why it should be injected into it. What we need to do here is remove this dependency from the base plugin class and only use it in the JSON importer. However, I leave this up to you as homework.</p>
+<p>Our CSV Importer plugin is now complete. If we did everything correctly, we can now create a new Importer entity that uses it, upload a correct CSV file, and import some Product entities via our Drush command. How neat.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Our own stream wrapper</h1>
+                </header>
+            
+            <article>
+                
+<p>At the beginning of this chapter, we briefly talked about stream wrappers and what they are used for. We saw that Drupal comes with four mainstream wrappers that map to the various types of file storage it needs. Now it's time to see how we can create our own. And the main reason why we would want to implement one is to expose resources at a specific location to PHP's native filesystem functions.</p>
+<p>In this example, we will create a very simple stream wrapper that can basically only read the data from the resource. Just to keep things simple. And the data resource will be the product images hosted remotely (the ones we are importing via the JSON Importer). So there will be some rework there to use the new stream wrapper instead of the absolute URLs. Moreover, we will also learn how to use the site-wide settings service by which we can have environment-specific configurations set in the <kbd>settings.php</kbd> file and then read by our code.</p>
+<p>The native way of registering a stream wrapper in PHP is by using the <kbd>stream_wrapper_register()</kbd> function. However, in Drupal 8, we have an abstraction layer on top of that in the form of services. So a stream wrapper is a simple tagged service, albeit with many potential methods. Let's see its definition, which we add to the <kbd>products.services.yml</kbd> file:</p>
+<pre>products.images_stream_wrapper: 
+  class: Drupal\products\StreamWrapper\ProductsStreamWrapper 
+  tags: 
+    - { name: stream_wrapper, scheme: products }  </pre>
+<p>Nothing too complicated. The service is tagged with <kbd>stream_wrapper</kbd> and we use the <kbd>scheme</kbd> key to indicate the scheme of the wrapper. So the URIs will be in this format:</p>
+<pre>products://target  </pre>
+<p>One important thing to note about stream wrapper services is that we cannot pass dependencies to them. The reason is that they are not instantiated the normal way (by the container) but arbitrarily by PHP whenever some of its methods need to be called. So if we need to use some services, we'll have to use the static way of loading them.</p>
+<p>The stream wrapper service class needs to implement <kbd>StreamWrapperInterface</kbd> which comes with a lot of methods. There are many possible filesystem interactions that PHP can do and these methods need to account for them all. However, we will only be focusing on a few specific ones that have to do with reading data. After all, our resources are remote and we don't even have a clue how to make changes to them over there. So for the rest of the methods, we will be returning FALSE to indicate that the operation cannot be performed.</p>
+<p>Let's see this big class then:</p>
+<pre>namespace Drupal\products\StreamWrapper; 
+ 
+use Drupal\Component\Utility\UrlHelper; 
+use Drupal\Core\StreamWrapper\StreamWrapperInterface; 
+use Drupal\Core\StringTranslation\StringTranslationTrait; 
+ 
+/** 
+ * Stream wrapper for the remote product image paths used by the JSON Importer. 
+ */ 
+class ProductsStreamWrapper implements StreamWrapperInterface { 
+ 
+  use StringTranslationTrait; 
+ 
+  /** 
+   * The Stream URI 
+   * 
+   * @var string 
+   */ 
+  protected $uri; 
+ 
+  /** 
+   * @var \Drupal\Core\Site\Settings 
+   */ 
+  protected $settings; 
+ 
+  /** 
+   * Resource handle 
+   * 
+   * @var resource 
+   */ 
+  protected $handle; 
+ 
+  /** 
+   * ProductsStreamWrapper constructor. 
+   */ 
+  public function __construct() { 
+    // Dependency injection does not work with stream wrappers. 
+    $this-&gt;settings = \Drupal::service('settings'); 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function getName() { 
+    return $this-&gt;t('Product images stream wrapper'); 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function getDescription() { 
+    return $this-&gt;t('Stream wrapper for the remote location where product images can be found by the JSON Importer.'); 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public static function getType() { 
+    return StreamWrapperInterface::HIDDEN; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function setUri($uri) { 
+    $this-&gt;uri = $uri; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function getUri() { 
+    return $this-&gt;uri; 
+  } 
+ 
+  /** 
+   * Helper method that returns the local writable target of the resource within the stream. 
+   * 
+   * @param null $uri 
+   * 
+   * @return string 
+   */ 
+  public function getTarget($uri = NULL) { 
+    if (!isset($uri)) { 
+      $uri = $this-&gt;uri; 
+    } 
+ 
+    list($scheme, $target) = explode('://', $uri, 2); 
+    return trim($target, '\/'); 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function getExternalUrl() { 
+    $path = str_replace('\\', '/', $this-&gt;getTarget()); 
+    return $this-&gt;settings-&gt;get('product_images_path') . '/' . UrlHelper::encodePath($path); 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function realpath() { 
+    return $this-&gt;getTarget(); 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function stream_open($path, $mode, $options, &amp;$opened_path) { 
+    $allowed_modes = array('r', 'rb'); 
+    if (!in_array($mode, $allowed_modes)) { 
+      return FALSE; 
+    } 
+    $this-&gt;uri = $path; 
+    $url = $this-&gt;getExternalUrl(); 
+    $this-&gt;handle = ($options &amp;&amp; STREAM_REPORT_ERRORS) ? fopen($url, $mode) : @fopen($url, $mode); 
+    return (bool) $this-&gt;handle; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function dir_closedir() { 
+    return FALSE; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function dir_opendir($path, $options) { 
+    return FALSE; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function dir_readdir() { 
+    return FALSE; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function dir_rewinddir() { 
+    return FALSE; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function mkdir($path, $mode, $options) { 
+    return FALSE; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function rename($path_from, $path_to) { 
+    return FALSE; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function rmdir($path, $options) { 
+    return FALSE; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function stream_cast($cast_as) { 
+    return FALSE; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function stream_close() { 
+    return fclose($this-&gt;handle); 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function stream_eof() { 
+    return feof($this-&gt;handle); 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function stream_flush() { 
+    return FALSE; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function stream_lock($operation) { 
+    return FALSE; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function stream_metadata($path, $option, $value) { 
+    return FALSE; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function stream_read($count) { 
+    return fread($this-&gt;handle, $count); 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function stream_seek($offset, $whence = SEEK_SET) { 
+    return FALSE; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function stream_set_option($option, $arg1, $arg2) { 
+    return FALSE; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function stream_stat() { 
+    return FALSE; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function stream_tell() { 
+    return FALSE; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function stream_truncate($new_size) { 
+    return FALSE; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function stream_write($data) { 
+    return FALSE; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function unlink($path) { 
+    return FALSE; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function url_stat($path, $flags) { 
+    return FALSE; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function dirname($uri = NULL) { 
+    return FALSE; 
+  } 
+}  </pre>
+<p>The first thing to look at is the constructor in which we statically load the <kbd>Settings</kbd> service and store it as a class property. And speaking of which, we also define a <kbd>$uri</kbd> property to hold the actual URI this wrapper <em>wraps</em> and a <kbd>$handle</kbd> property to hold a generic PHP resource handle.</p>
+<p>The <kbd>getName()</kbd> and <kbd>getDescription()</kbd> methods are pretty straightforward and are used for identifying the stream wrapper, while the <kbd>getType()</kbd> method returns the type of stream. We'll go with the hidden type because we don't want it visible in the UI. It's strictly for programmatic use so that we can read our product images. Do check out the available types and their meanings by looking at the <kbd>StreamWrapperInterface</kbd> constants.</p>
+<p>Then, we have a getter and setter for the <kbd>$uri</kbd> property by which the Drupal <kbd>StreamWrapperManager</kbd> can create an instance of our wrapper based on a given URI. The <kbd>getTarget()</kbd> method is actually not in the interface but is a helper to extract a clean target from the URI (the target being the second part of the URI that comes after <kbd>scheme://</kbd>). And we use this method in <kbd>getExternalUrl()</kbd>, which is quite an important method responsible for returning an absolute URL to the resource in question. But here we also use our <kbd>Settings</kbd> service to get the <kbd>product_images_path</kbd> key. If you remember in the beginning of the chapter, we saw that the path to the public filesystem is defined in the <kbd>settings.php</kbd> file like so:</p>
+<pre>$settings['file_public_path'] = 'sites/default/files';  </pre>
+<p>That <kbd>$settings</kbd> variable is the data array that is wrapped by the <kbd>Settings</kbd> service. So we want to do the same for defining our own remote path to the product images:</p>
+<pre>$settings['product_images_path'] = 'http://path/to/the/remote/product/images'; </pre>
+<p>This way we are not committing to Git the actual remote URL and we can also change it later if we want. And this is the URL we are reading inside the <kbd>getExternalUrl()</kbd> method.</p>
+<p>The other pillar of our read-only stream wrapper is the ability to open a file handle to the resource and allow us to read the data from it. And the <kbd>stream_open()</kbd> method does this as it gets called when we run either <kbd>file_get_contents()</kbd> or <kbd>fopen()</kbd> on our URI. Using the <kbd>$mode</kbd> parameter, we ensure that the operation is read-only and return <kbd>FALSE</kbd> otherwise<span>—</span>we do not support <em>write</em> or other flags.</p>
+<div class="packt_tip">Any mode can have <kbd>b</kbd> appended to it to indicate that the file should be opened in binary mode. So, where <kbd>r</kbd> indicates read-only, <kbd>rb</kbd> indicates read-only in binary mode.</div>
+<p>The third argument is a bitmask of options defined by PHP. The one we're dealing with here is <kbd>STREAM_REPORT_ERRORS</kbd>, which indicates whether or not PHP errors should be suppressed (for instance, if a file is not found). The second is <kbd>STREAM_USE_PATH</kbd>, which indicates whether PHP's include path should be checked if a file is not found. This is not relevant to us, so we ignore it. If a file is found on the include path, then the fourth argument, (<kbd>$opened_url)</kbd>), should be set with the file's real path.</p>
+<p>What we do then is translate the URI into the absolute URL of the external resource so that we can open a file handle on it. And in doing so, we make use of the <kbd>STREAM_REPORT_ERRORS</kbd> option to either prepend the <kbd>@</kbd> to the <kbd>fopen()</kbd> function or not (doing so suppresses errors). Finally, we store the reference to the resource handle and return a Boolean based on it to indicate whether the operation succeeded.</p>
+<p>Finally, we also implement the <kbd>stream_read()</kbd>, <kbd>stream_eof()</kbd>, and <kbd>stream_close()</kbd> methods so that we can actually also stream the resources if we want to. As for the rest of the methods, as already mentioned, we return <kbd>FALSE</kbd>.</p>
+<p>All we have to do now is clear the cache and make use of our stream. As long as we have a valid URL declared in the <kbd>settings.php</kbd> file, our stream should work fine. And here are the kinds of things we could do with a URI like this:</p>
+<pre>$uri = 'products://tv.jpg'; </pre>
+<p>To get the entire file content into a string, we can do this:</p>
+<pre>$contents = file_get_contents($uri);  </pre>
+<p>Or we can use the example from the beginning of the chapter and stream the file bit by bit:</p>
+<pre>$handle = fopen($uri, 'r'); 
+$contents = ''; 
+while (!feof($handle)) { 
+  $contents .= fread($handle, 8192); 
+} 
+fclose($handle);  </pre>
+<p>All these file operations, such as opening, reading, checking the end of a file and closing, are possible due to our <kbd>stream_*()</kbd> method implementations from the wrapper.</p>
+<p>And finally, maybe now it's also a bit clearer what we did when writing the CSV Importer and using the <kbd>StreamWrapperManager</kbd> to identify the stream wrapper responsible for a given URI, and based on that, the real path of the URI.</p>
+<p>To end the section on stream wrappers, let's do some clean-up work by refactoring a bit our <kbd>JsonImporter::handleProductImage()</kbd> method. Our logic there involved hardcoding the URL to the remote API, which is really not a good idea. Instead, now that we have our stream wrapper, we can go ahead and use it. We can replace this:</p>
+<pre>// This needs to be hardcoded for the moment. 
+$image_path = ''; 
+$image = file_get_contents($image_path . '/' . $name);  </pre>
+<p>With this:</p>
+<pre>$image = file_get_contents('products://' . $name);  </pre>
+<p>It's that simple. And now we can control the remote URL from outside the Git repository and, if it changes, we don't even have to alter our code. Granted, solely for this purpose, implementing a stream wrapper seems a bit excessive. After all, you can simply inject the <kbd>Settings</kbd> service and use the URL in the Importer plugin itself allowing for the same kind of flexibility. But we used the opportunity to learn about stream wrappers and how to create our own. And we even managed to find a small use case in the process.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Working with unmanaged files</h1>
+                </header>
+            
+            <article>
+                
+<p>Working with <em>unmanaged</em> files is actually pretty similar to doing so with <em>managed</em> files, except that they are not tracked in the database using the File entity type. There is a set of helper functions similar to what we've seen for <em>managed</em> files that can be accessed through the <kbd>FileSystem</kbd> service I mentioned earlier. Let's see some examples.</p>
+<p>To save a new file, we do almost like we did before with <em>managed</em> files:</p>
+<pre>$image = file_get_contents('products://tv.jpg'); 
+// Load the service statically for quick demonstration. 
+$file_system = \Drupal::service('file_system'); 
+$path = $file_system-&gt;saveData($image, 'public://tv.jpg', FileSystemInterface::EXISTS_REPLACE);  </pre>
+<p>We load the file data from wherever and use the <kbd>saveData()</kbd> method on the service the same way as we did <kbd>file_save_data()</kbd>. The difference is that the file is going to be saved but no database record is created. So the only way to use it is to rely on the path it is saved at and either try to access it from the browser or use it for whatever purpose we need. This method returns the URI of where the file is now saved or <kbd>FALSE</kbd> if there was a problem with the operation. So if all went well with the previous example, <kbd>$path</kbd> would now be <kbd>public://tv.jpg</kbd>.</p>
+<p>And just like with the <em>managed</em> files, we also have a few other helpful methods in that service, such as <kbd>move()</kbd>, <kbd>copy()</kbd>, and <kbd>delete()</kbd>. I recommend you inspect that service to get more details on how these work.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Private filesystem</h1>
+                </header>
+            
+            <article>
+                
+<p>The private filesystem is used whenever we want to control access to the files being downloaded. Using the default public storage, users can get to the files simply by pointing to them in the browser, thereby bypassing Drupal completely. However, <kbd>.htaccess</kbd> rules prevent users from directly accessing any files in the private storage, making it necessary to create a route that delivers the requested file. It goes without saying that the latter is a hell of a lot less performant, as Drupal needs to be loaded for each file. Therefore, it's important to only use it when files should be restricted based on certain criteria.</p>
+<p>Drupal already comes with a route and Controller ready to download private files, but we can create one as well if we really need to. For example, the image module does so in order to control the creation and download of image styles<span>—</span><kbd>ImageStyleDownloadController</kbd>.</p>
+<p>The route definition for the default Drupal path looks like this:</p>
+<pre>system.files: 
+  path: '/system/files/{scheme}' 
+  defaults: 
+    _controller: 'Drupal\system\FileDownloadController::download' 
+    scheme: private 
+  requirements: 
+    _access: 'TRUE'  </pre>
+<p>This is a bit of an odd route definition. We have a <kbd>{scheme}</kbd> parameter but which will be the actual file path requested for download. The URI scheme itself defaults to <kbd>private</kbd>, as illustrated by the signature of <kbd>FileDownloadController::download()</kbd>. Moreover, access is allowed at all times as Drupal delegates this check to other modules<span>—</span>as we will see in a minute.</p>
+<p>If we look inside <kbd>FileDownloadController::download()</kbd>, we can see that it isn't actually much that it is doing itself. However, we also note that in the first line, it looks for the query parameter called <kbd>file</kbd> in order to get the URI of the requested file:</p>
+<pre>$target = $request-&gt;query-&gt;get('file');</pre>
+<p>But based on the route definition, we don't even have this parameter. This is where <em>Path Processors</em> come into play, more specifically, implementations of <kbd>InboundPathProcessorInterface</kbd>. These are tagged services that get invoked by the routing system when building up the routes by the requested path. And essentially, they allow the alteration of a given path as it comes in. For Drupal 7 veterans, these can be likened to implementations of <kbd>hook_url_inbound_alter()</kbd>.</p>
+<p>The core <em>System</em> module implements its own path processor for the purpose of handling the download of private files:</p>
+<pre>path_processor.files: 
+  class: Drupal\system\PathProcessor\PathProcessorFiles 
+  tags: 
+    - { name: path_processor_inbound, priority: 200 }  </pre>
+<p>It's a simple tagged service definition whose class needs to implement the correct interface that has one method. In the case of <kbd>PathProcessorFiles</kbd>, it looks like this:</p>
+<pre>/** 
+ * {@inheritdoc} 
+ */ 
+public function processInbound($path, Request $request) { 
+  if (strpos($path, '/system/files/') === 0 &amp;&amp; !$request-&gt;query-&gt;has('file')) { 
+    $file_path = preg_replace('|^\/system\/files\/|', '', $path); 
+    $request-&gt;query-&gt;set('file', $file_path); 
+    return '/system/files'; 
+  } 
+  return $path; 
+}  </pre>
+<p>The goal of this method is to return a path that can be the same as the one requested or changed for whatever reason. And what Drupal does here is checks whether the path is the one defined earlier (starts with <kbd>/system/files/</kbd>) and extracts the requested file path that comes as the first argument after that. It takes that and adds it to the current request parameter keyed by <kbd>file</kbd>. Finally, it returns a cleaner path called simply <kbd>/system/files</kbd>. So this is why the <kbd>FileDownloadController::download()</kbd> method looks there for the file path.</p>
+<p>Turning back to the Controller, we see that it essentially checks for the file and, if it is not found, throws a 404 (<kbd>NotFoundHttpException</kbd>). Otherwise, it invokes <kbd>hook_file_download()</kbd> which allows all modules to control access to the file. And these can do so in two ways: either by returning <kbd>-1</kbd>, which denies access, or by returning an array of headers to control the download for that specific file. By default, files in the private filesystem cannot be downloaded unless a specific module allows this to happen.</p>
+<p>So what does this mean? If we have a file in the private filesystem, we need to implement <kbd>hook_file_download()</kbd> and control access to it. Let's see an example of how this might work by assuming we have a folder called <kbd>/pdfs</kbd> whose files we want to make accessible to users that have the <kbd>administer site configuration</kbd> permission:</p>
+<pre>/** 
+ * Implements hook_file_download(). 
+ */ 
+function module_name_file_download($uri) { 
+  $file_system = \Drupal::service('file_system'); 
+  $dir = $file_system-&gt;dirname($uri); 
+  if ($dir !== 'private://pdfs') { 
+    return NULL; 
+  } 
+ 
+  if (!\Drupal::currentUser()-&gt;hasPermission('administer site configuration')) { 
+    return -1; 
+  } 
+ 
+  return [ 
+    'Content-type' =&gt; 'application/pdf', 
+  ]; 
+}  </pre>
+<p>This hook receives as an argument the URI of the file being requested. And based on that, we try to get the folder name it's in. To do this, we use the <kbd>file_system</kbd> service again.</p>
+<p>If the file is not in the private filesystem inside the <kbd>/pdfs</kbd> folder, we simply return <kbd>NULL</kbd> to signify that we don't control the access to this file. Other modules may do so (and if none do, access is denied). If it is our file, we check for the permission we want and return <kbd>-1</kbd> if the user doesn't have it. This will deny access. Finally, if access is allowed, we return an array of headers we want to use in the file delivery. In our case, we simply use the PDF-specific headers that facilitate the display of the PDF file in the browser. If we wanted to trigger a file download, we could do something like this instead:</p>
+<pre>$name = $file_system-&gt;basename($uri); 
+return [ 
+  'Content-Disposition' =&gt; "attachment;filename='$name'" 
+];  </pre>
+<p>We use the filesystem service to determine the file name being requested and adjust our headers accordingly to treat it like an attachment that has to be downloaded.</p>
+<p class="mce-root"/>
+<p>And that is all there is to it. If we want more control (or a different path to download the files), we can implement our own route and follow the same approach. Without, of course, the need to invoke a hook, but simply handling the download inside the controller method. For example, this is what <kbd>FileDownloadController::download()</kbd> does to handle the actual response:</p>
+<pre>return new BinaryFileResponse($uri, 200, $headers, $scheme !== 'private');  </pre>
+<p>This type of response is used when we want to deliver files to the browser and it comes straight from Symfony.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Images</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we are going a bit deeper into the world of images in Drupal 8 while keeping the focus on module developers.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Image toolkits</h1>
+                </header>
+            
+            <article>
+                
+<p>The Drupal 8 Image toolkits provide an abstraction layer over the most common operations used for manipulating images. By default, Drupal uses the GD image management library that is included with PHP. However, it also offers the ability to switch to a different library if needed by using the <kbd>ImageToolkit</kbd> plugins:</p>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/d7b498c0-1ae6-48cc-9948-62bd42895e6d.png" style="width:50.00em;height:19.75em;"/></div>
+<p>For instance, a contributed module could implement the <kbd>ImageMagick</kbd> library for developers who need support for additional image types such as TIFF, which GD does not support. However, only one library can be used at a time as it needs to be configured site-wide.</p>
+<p>Programmatically manipulating images using a toolkit involves instantiating an <kbd>ImageInterface</kbd> object that wraps an image file. This interface (implemented by the <kbd>Image</kbd> class) contains all the needed methods for applying the common manipulations to images, as well as saving the resulting image to the filesystem. And to get our hands on such an object, we use the <kbd>ImageFactory</kbd> service:</p>
+<pre>$factory = \Drupal::service('image.factory');  </pre>
+<p>The role of this factory is to create instances of <kbd>Image</kbd> using a given toolkit. And it works like this:</p>
+<pre>$image = $factory-&gt;get($uri);  </pre>
+<p>The second parameter to this method is the <kbd>ImageToolkit</kbd> plugin ID we want the <kbd>Image</kbd> object to work with. By default, it uses the default toolkit configured for the entire application.</p>
+<p>And now we can use the manipulation methods on the <kbd>ImageInterface</kbd> to change the file:</p>
+<pre>$image-&gt;scale(50, 50); 
+$image-&gt;save('public://thumbnail.jpg');  </pre>
+<p>In this example, we scale the image to 50 x 50 and save it to a new path. Omitting the destination in the <kbd>save()</kbd> method would mean overwriting the original file with the changed version. If you need to perform such manipulations manually, I encourage you to explore the <kbd>ImageInterface</kbd> for all the available options.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Image styles</h1>
+                </header>
+            
+            <article>
+                
+<p>Even though, as we've seen, we can handle image manipulations programmatically ourselves, typically this is done as part of <em>Image Styles</em> which can be created and configured via the UI. These work similarly to how they did in Drupal 7 and involve the application of several possible <em>Image Effects</em> in order to create image variations used in different places. Drupal 8 comes with the same three default image styles as did Drupal 7:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/e58c25de-664b-465b-97fd-078f54173c04.png" style="width:26.00em;height:14.17em;"/></p>
+<p>The image styles themselves are configuration entities that store configuration specific to the <em>ImageEffect</em> plugins they work with. Once they are created in the UI, we can make use of them in various ways. The most typical way is to use the image style in the <em>display</em> configuration of an entity field or even in Views when rendering an image field.</p>
+<p>If you remember, in the beginning of the chapter we created the image field on the product entity but we did not configure a display. So for the moment, the imported images do not show up on the main product page. But we can add some display configuration to our base field definition so that images are shown with a specific image style:</p>
+<pre>-&gt;setDisplayOptions('view', array( 
+  'type' =&gt; 'image', 
+  'weight' =&gt; 10, 
+  'settings' =&gt; [ 
+    'image_style' =&gt; 'large' 
+  ] 
+))  </pre>
+<p>In this example, we are using the default <kbd>image</kbd> field formatter plugin which can be configured to use an image style. So under the <kbd>settings</kbd> key, we reference the <kbd>large</kbd> image style configuration entity which actually comes with Drupal core. Omitting this would simply just render the original image. Make sure you check back to <a href="392cdb70-e52a-42d1-b782-28d6eb726810.xhtml">Chapter 7</a>, <em>Your Own Custom Entity and Plugin Types</em>, and <a href="f58fb5b9-3f39-4575-872d-c2ab9985828d.xhtml">Chapter 9</a>, <em>Custom Fields</em>, if you are a bit fuzzy on the base field definitions.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Rendering images</h1>
+                </header>
+            
+            <article>
+                
+<p>In <a href="feada4d1-f255-4dd6-83b5-8d66bab5f852.xhtml">Chapter 4</a>, <em>Theming</em>, we talked about theme hooks and how we use them in render arrays to build output. And we also saw a few examples of theme hooks that come with Drupal core and that can be used for common things (such as links or tables). But images are also something we'll often end up rendering and there are two ways we can do so (both using theme hooks defined by Drupal core).</p>
+<p>First, we can use the <kbd>image</kbd> theme hook to simply render an image. And it's pretty simple to use it:</p>
+<pre>return [ 
+  '#theme' =&gt; 'image', 
+  '#uri' =&gt; 'public://image.jpg', 
+];  </pre>
+<p>And this will render the image as is. We can also pass some more options like the <em>alt</em>, <em>title</em>, <em>width</em> or <em>height,</em> all of which being applied to the image tag as attributes, as well as an array of any other kinds of attributes we may want. Check out <kbd>template_preprocess_image()</kbd> for more information on how this works.</p>
+<p>Alternatively, the <em>Image</em> module defines the <kbd>image_style</kbd> theme hook which we can use to render the image using a given image style:</p>
+<pre>return [ 
+  '#theme' =&gt; 'image_style', 
+  '#uri' =&gt; 'public://image.jpg', 
+  '#style_name' =&gt; 'large', 
+];  </pre>
+<p>This theme hook works pretty much the same way, except that it has an extra parameter for the ID of the <kbd>ImageStyle</kbd> entity we want to use. And the rest of the parameters we find on the <kbd>image</kbd> theme hook can also be found here. In fact, <kbd>image_style</kbd> delegates to the <kbd>image</kbd> theme hook under the hood.</p>
+<p>Finally, we may also find ourselves in a situation in which we need to get our hands on the URL of an image using a given image style. We need to work with the <kbd>ImageStyle</kbd> configuration entity for this:</p>
+<pre>$style = \Drupal::entityTypeManager()-&gt;getStorage('image_style')-&gt;load('thumbnail'); 
+$url = $style-&gt;buildUrl('public://image.jpg');  </pre>
+<p>Once we load the image style we want, we simply call its <kbd>buildUrl()</kbd> method to which we pass the URI of the file for which we want the URL. The first time this URL is accessed, the image variation gets created and stored to disk. Future requests will load it directly from there for improved performance.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Summary</h1>
+                </header>
+            
+            <article>
+                
+<p>We are closing this chapter after covering a lot of different topics that have to do with working with files in Drupal 8.</p>
+<p>We started with a couple of introductory sections in which we outlined some general concepts such as the various filesystems (storages) that Drupal 8 uses, as well as how stream wrappers come into play for working with them. We also introduced the different ways to work with files: <em>managed</em> versus <em>unmanaged</em>.</p>
+<p>Next, we dove into working with <em>managed files</em> and created an image field on our Product entity type so that we could import images into it. The other example of working with <em>managed</em> files had us create a new Product importer based on a CSV file of data and we also saw how to upload, read and process such a file, as well as manually track its usage. As a parenthesis, we introduced a very powerful feature of Drupal 8 that allows us to hook into the entity CRUD operations and perform actions whenever these are fired. This is a majorly important technique module developers typically use in Drupal.</p>
+<p>We then switched gears and implemented our own stream wrapper to serve our imaginary remote API that stored the product images. Moreover, we talked about working with <em>unmanaged</em> files and some of the functions we can use for this<span>—</span>things similar to <em>managed</em> files except the function names are different and there are no File entities or usage tracking them.</p>
+<p>We then continued with the private filesystem and a talk about what this serves and how we can work with it to control access to our own files. As opposed to allowing users to bypass Drupal and download files from the public filesystem.</p>
+<p>Finally, we finished the chapter with a look at the APIs surrounding images and how we can use toolkits to process images, both manually and as part of image styles. And even more useful, we saw how we can render images in all sorts of ways in Drupal 8 and get our hands on image style URLs.</p>
+<p>In the next and final chapter, we will look at automated testing and how we can ensure that our code works and that we don't introduce regressions along the way.</p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

@@ -1,0 +1,727 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Views</h1>
+                </header>
+            
+            <article>
+                
+<p>Views has always been a staple module for any Drupal site. It was so popular and needed that it ended up being incorporated into Drupal 8 core. So now, each new Drupal site ships with Views out of the box, fully integrated with the rest of the system and powering a great number of core features.</p>
+<p>Essentially, Views is a tool for creating and displaying lists of data. This data can be almost anything, but we mostly use Drupal entities as they are now so robust. It provides the architecture to build and manipulate complex queries through the UI as well as many different ways of outputting the resulting data. From a module developer's point of View (yes, pun intended), much of this power has been broken down into multiple layers of building blocks, abstracted as plugins. Moreover, in keeping with tradition, there are also a multitude of hooks that are fired at different stages with which we can programmatically contribute to, or influence, Views.</p>
+<p>In this chapter, we will look at the Views ecosystem from a module developer's perspective. As such, we won't be spending that much time with its site-building capabilities as you can easily argue an entire book could be dedicated just to that. Instead, we will focus on what we, as module developers, can do to empower site builders to have even more capabilities at their finger-tips, as well as manipulating Views to behave the way our functionality needs them to.</p>
+<p>So, what will we actually do in this chapter? We will first start with integrating our Product entity type with Views. The entity system and Views can work very closely together, and all we need to do is point them to one another. Then, we will switch gears and expose our own custom player and team data (from <a href="c20b297a-3a37-46ff-a80c-bf83a21bbd5d.xhtml">Chapter 8</a>, <em>The Database API</em>) to Views so our site builders can build Views that list this information, complete with filters, sorts, arguments, and the <em>whole shebang</em>. From there, we will look at how we can also alter data that has been exposed to Views by other modules, like entity data such as Nodes.</p>
+<p>Next, we will learn how to create your own <kbd>ViewsField</kbd>, <kbd>ViewsFilter</kbd>, and <kbd>ViewsArgument</kbd> plugins to account for those occasional requirements for which the existing ones are a bit lacking. Finally, we will talk a little bit about theming Views and the main components that play a role in this, just to get you going in the right direction, and applying the lessons from <a href="feada4d1-f255-4dd6-83b5-8d66bab5f852.xhtml">Chapter 4</a>, <em>Theming</em>.</p>
+<p>By the end of this chapter, you will get a pretty good understanding of how to leverage Views on top of your own data, as well as modifying or contributing to how other modules leverage it. You should also get a pretty good understanding of the Views plugin ecosystem, even if quite a bit of work will have to be done on your own, studying the available plugins of all types.</p>
+<p>So, let's get to it.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Entities in Views</h1>
+                </header>
+            
+            <article>
+                
+<p>Even in Drupal 7, Views had a pretty good integration with the entity system. But seeing as there was no robust entity API to speak of, this integration was not so organic. It required more contributed modules and some custom code to make an entity type work with Views.</p>
+<p>In Drupal 8, however, the two are very closely linked and it's a breeze to expose new content entities to Views. If you've followed along with <a href="392cdb70-e52a-42d1-b782-28d6eb726810.xhtml">Chapter 7</a>, <em>Your Own Custom Entity and Plugin Types</em>, and have the Product entity type set up, you'll notice that if you try to create a View, you will have no option to make it based on products. That is because, in the entity type definition, we did not specify that it should be exposed to Views. That's all there is to it, actually. We just have to reference a new handler:</p>
+<pre>"views_data" = "Drupal\views\EntityViewsData"</pre>
+<p>That's it. Clearing the cache, we are now able to create Views with products that can show any of the fields, can filter and sort by them, and can even render them using view modes. All of these work consistently with the other entity types (at least fundamentally, as we will see in a moment).</p>
+<p>You'll notice that we referenced the <kbd>EntityViewsData</kbd> data handler which ensures basic logic for entities of all types. If we want to, we can extend this class and add some of our own specificities to the data that is being exposed to Views (or alter the existing ones). This is done inside the <kbd>getViewsData()</kbd> method, and we will see an example later on. But if you already want to see an example, check out the <kbd>NodeViewsData</kbd> handler for the Node entity type, as it has quite a lot of extra stuff in there. Much of it probably won't make a lot of sense quite yet, so let's slowly get into how Views works by exposing our own custom data to it.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Exposing custom data to Views</h1>
+                </header>
+            
+            <article>
+                
+<p>To get a better understanding of how Views works, we are going to look at an example of totally custom data and how we can expose it to Views. Based on that, we will begin to understand the role of various plugins and can begin to create our own. Additionally, we'll be able to expand on our product entity type data to enrich its Views interaction.</p>
+<p>To exemplify all of this, we are going to revisit our sports module in which we declared the <kbd>players</kbd> and <kbd>teams</kbd> tables of data and which we will now be exposing to Views. The goal is to allow site builders to create dynamic listings of this data as they see fit. The lessons learned from this example can be applied to other data sources as well, even things such as remote APIs (with some extra work).</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Views data</h1>
+                </header>
+            
+            <article>
+                
+<p>Whenever we want to expose data to Views, we need to define this data in a way Views can understand it. That is actually what <kbd>EntityViewsData::getViewsData()</kbd> does for content entities. However, since we are dealing with something custom, we can do so by implementing <kbd>hook_views_data()</kbd>. A lot can go into it, but we'll start things simple.</p>
+<p>Let's implement this hook and simply describe our first table (that of the players) and only one field, namely, the player ID, to start with.</p>
+<div class="packt_infobox">In Views lingo, the term <kbd>field</kbd> does not have to relate necessarily to entity fields or anything like that, but rather to an individual piece of data from a data source (real or not). A typical example to consider is a column in a table, but it can also be something like a property from a remote API resource. Moreover, the same term is used to describe the <em>responsibility</em> of that piece of data of being somehow output. Other such responsibilities it can have are <kbd>filter</kbd>, <kbd>sort</kbd>, <kbd>relationship</kbd>, and more. Each of these responsibilities are handled by a specific type of Views plugin (also known as a handler in older versions of Views).</div>
+<p>So, the basic implementation can look like this:</p>
+<pre>/** 
+ * Implements hook_views_data(). 
+ */ 
+function sports_views_data() { 
+  $data = []; 
+ 
+  // Players table 
+  $data['players'] = []; 
+  $data['players']['table']['group'] = t('Sports'); 
+  $data['players']['table']['base'] = array( 
+    'field' =&gt; 'id', 
+    'title' =&gt; t('Players'), 
+    'help' =&gt; t('Holds player data.'), 
+  ); 
+ 
+  // Player fields 
+  $data['players']['id'] = array( 
+    'title' =&gt; t('ID'), 
+    'help' =&gt; t('The unique player ID.'), 
+    'field' =&gt; array( 
+      'id' =&gt; 'numeric', 
+    ), 
+  ); 
+ 
+  return $data; 
+}  </pre>
+<p>This hook needs to return a multi-dimensional associative array that describes various things, the most important being the table and its fields. The table doesn't have to be an actual database table, but can also mean something similar to an external resource. Of course, Views already knows how to query the database table, which makes things easy for us. Otherwise, we'd also have to create the logic for querying that external resource (by implementing a <kbd>ViewsQuery</kbd> plugin).</p>
+<p>So, we start by defining the <kbd>players</kbd> table, which goes into the <kbd>Sports</kbd> group. This label can be found in the Views admin as the prefix to the fields we want to add. Next, we define our first <em>base</em> table called <kbd>players</kbd> (mapping to the actual database table with the same name). The <em>base</em> table is the one used for <em>basing</em> a View on when creating it. In other words, whatever you select in the following screen text:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/71b2315c-ca88-4d4f-b8f9-c22fd1515a5c.png" style="width:28.67em;height:4.17em;"/></p>
+<p>The base table definition contains some information, such as the <kbd>field</kbd> that refers to the column that contains the unique identifier for the records. <kbd>title</kbd> and <kbd>help</kbd>, both mandatory, are used in the UI. Moreover, it can also contain <kbd>query_id</kbd>, which references the plugin ID of a <kbd>ViewsQuery</kbd> plugin responsible for returning the data from the source in an intelligible way. Since, in our case, we are using the database (hence SQL), omitting this property will make it default to the <kbd>views_query</kbd> plugin (the <kbd>Sql</kbd> class if you want to check it out).</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Views fields</h1>
+                </header>
+            
+            <article>
+                
+<p>But in order to actually use this table, we need to define one or more fields that can output some of its data. So, we start with a simple one: the player IDs. Anything that comes under the <kbd>$data['table_name']</kbd> array (that is not keyed by <kbd>table</kbd>, as we've seen) is responsible for defining Views fields. The keys are their machine names. <kbd>title</kbd> and <kbd>help</kbd> are there again and are used in the UI when we try to add the respective fields:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/5e0b696c-6a4e-41f7-9d72-c938fd9c46c8.png" style="width:36.08em;height:9.42em;"/></p>
+<p>The most important part of this definition, however, is the <kbd>field</kbd> key, which basically says that, for this piece of data, we want a Views field that uses the <kbd>ViewsField</kbd> plugin with the ID <kbd>numeric</kbd> (<kbd>NumericField</kbd>). So, we don't actually have to write our own plugin because Views already has a good one for us and it will treat our IDs according to the type of data they are. Of course, when defining Views fields (or any other types of data responsibilities, that is, plugins or handlers), we can have more options than just the ID of the plugin to use.</p>
+<div class="packt_tip">You can check out all of the existing Views plugins defined by the module itself (which are quite a lot and fit many many use cases) by looking at the <kbd>Drupal\views\Plugin\views</kbd> namespace. There are many plugin types that handle different responsibilities, but it's good to know where you can look because, more often than not, one will already exist for your needs.</div>
+<p>With this, we are done. Clearing the cache, we can now go into the Views UI and create our first View that shows player data. To it, we can add the ID field, which will then naturally just show a list of IDs. Not more, as we haven't defined anything else. So, let's go ahead and expose the player name in the same way:</p>
+<pre>$data['players']['name'] = array( 
+  'title' =&gt; t('Name'), 
+  'help' =&gt; t('The name of the player.'), 
+  'field' =&gt; array( 
+    'id' =&gt; 'standard', 
+  ), 
+);  </pre>
+<p>This time, we are using the <kbd>standard</kbd> plugin, which is the simplest one we can use. It essentially just outputs the data as it is found in the data source (with the proper sanitization in place). In the case of our player names, that is enough. Now we can add this new field to the View as well.</p>
+<p>If you remember, the other column on our <kbd>players</kbd> table is one that can store arbitrary data in a serialized way. Obviously, this cannot be used for filtering or sorting, but we can still output some of that data as a field. There are two ways we can go about doing this, depending on our data and what we want accomplished. First, we can use the existing <kbd>Serialized</kbd> plugin which allows us to display the serialized data or even a given key from the resulting array (depending on the field configuration). But for more complex situations (especially when the data is arbitrary), we can write our own field plugin.</p>
+<p>Let's start by creating a simple <kbd>data</kbd> field that can output a printed version of our serialized data since we cannot rely on the actual data being stored:</p>
+<pre>$data['players']['data'] = array( 
+  'title' =&gt; t('Data'), 
+  'help' =&gt; t('The player data.'), 
+  'field' =&gt; array( 
+    'id' =&gt; 'serialized', 
+  ), 
+);  </pre>
+<p>In the field configuration, we then have these options to choose from:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/d30290d1-da25-41b8-bc8c-9dafcbe365bc.png" style="width:18.25em;height:13.00em;"/></p>
+<p>With this, you should already get a picture of how to define fields for output in Views. Let's now see how we can bring our teams into the loop and show some data about the teams the players belong to.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Views relationships</h1>
+                </header>
+            
+            <article>
+                
+<p>The data about the teams our players belong to is stored in a different table. This means that, at a database level, a join will have to be created to pull them together. In Views lingo this is a <em>relationship</em> in the sense that one table relates to another and the way these are declared is directional from a field to another from the joined table. So, let's see how we can define the <kbd>team_id</kbd> field from the <kbd>players</kbd> table to join with the <kbd>teams</kbd> table on its <kbd>id</kbd> field:</p>
+<pre>$data['players']['team_id'] = array( 
+  'title' =&gt; t('Team ID'), 
+  'help' =&gt; t('The unique team ID of the player.'), 
+  'field' =&gt; array( 
+    'id' =&gt; 'numeric', 
+  ), 
+  'relationship' =&gt; array( 
+    'base' =&gt; 'teams', 
+    'base field' =&gt; 'id', 
+    'id' =&gt; 'standard', 
+    'label' =&gt; t('Player team'), 
+  ), 
+);  </pre>
+<p>First of all, we define it to Views as a field. Then, because we also might want to display the team ID, we can define it as a <kbd>field</kbd> as well using the <kbd>numeric</kbd> plugin, the same way we defined the ID of the player records themselves. But here comes another <em>responsibility</em> of this field in the form of a <kbd>relationship</kbd>, which requires four pieces of information:</p>
+<ul>
+<li><kbd>base</kbd>: The name of the table we are joining</li>
+<li><kbd>base field</kbd>: The name of the field on the table we are joining that will be used to join</li>
+<li><kbd>id</kbd>: The <kbd>ViewsRelationship</kbd> plugin ID to use for the relationship</li>
+<li><kbd>label</kbd>: How this relationship will be labeled in the UI</li>
+</ul>
+<p>Usually, the <kbd>standard</kbd> relationship plugin will suffice, but we can always create one ourselves if we need to. It's doubtful you will ever need to though.</p>
+<p>This definition now allows us to add a relationship to the <kbd>teams</kbd> table in Views. However, even if the database engine joins the two tables, we haven't achieved anything as we also want to output some fields from the new table. So for that, we first have to define the table itself, as we did for the players:</p>
+<pre>// Teams table 
+$data['teams'] = []; 
+$data['teams']['table']['group'] = t('Sports');  </pre>
+<p>Note that it is not mandatory to define it as a <kbd>base</kbd> table if we don't want to create Views that are basing themselves on this table. In our case, it can be secondary to player information. Then, just as we did before, we can define a couple of team fields:</p>
+<pre>// Teams fields 
+$data['teams']['name'] = array( 
+  'title' =&gt; t('Name'), 
+  'help' =&gt; t('The name of the team.'), 
+  'field' =&gt; array( 
+    'id' =&gt; 'standard', 
+  ), 
+); 
+ 
+$data['teams']['description'] = array( 
+  'title' =&gt; t('Description'), 
+  'help' =&gt; t('The description of the team.'), 
+  'field' =&gt; array( 
+    'id' =&gt; 'standard', 
+  ), 
+);  </pre>
+<p>There is nothing new here, just the basic data output for our two columns. But now, we can go to the View in the UI, add a relationship to the teams table and then include the name and description of the teams our players belong to. Neat.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Views sorts and filters</h1>
+                </header>
+            
+            <article>
+                
+<p>Let's go ahead and enrich the <em>responsibilities</em> of the team name field by making our list of players filterable and sortable by it; for example, to only show the players of a given team or sort the players alphabetically by the team name. It could not be easier. We just have to add these to the team name field definition (like we added the <kbd>relationship</kbd> to the players' <kbd>team_id</kbd> field):</p>
+<pre>'sort' =&gt; array( 
+  'id' =&gt; 'standard', 
+), 
+'filter' =&gt; array( 
+  'id' =&gt; 'string', 
+),  </pre>
+<p>So basically, we are using the <kbd>Standard</kbd> sort plugin for sorting (which basically defaults to whatever MySQL can do). As for the filter, we are using the <kbd>StringFilter</kbd> plugin, which is quite configurable from the Views UI. It even allows us various filtering possibilities like partial matching. With this, we can now sort and filter by the team name.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Views arguments</h1>
+                </header>
+            
+            <article>
+                
+<p>The last type of <em>responsibility</em> a View field can have is to be used as an argument (or a contextual filter for Drupal veterans). In other words, configuring the View to be filterable by a parameter that is dynamically passed to it. Let's face it<span><span>;</span></span> most of the time, if we want to filter by a team, we won't rely on the actual string name as that can change. Instead, we tie everything to the record (by its ID). So that means we'll add the <kbd>argument</kbd> key to the <kbd>team_id</kbd> field of the <kbd>players</kbd> table (which also means that the query won't require a join so it will be more performant):</p>
+<pre>'argument' =&gt; array( 
+  'id' =&gt; 'numeric', 
+),  </pre>
+<p>In this case, we use the <kbd>NumericArgument</kbd> plugin which does pretty much all we need for our data type—it filters by what is expected to be a numerical data type. And we are finished with that as well. We can now dynamically filter our players view by the ID of the teams they belong to.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Altering Views data</h1>
+                </header>
+            
+            <article>
+                
+<p>We saw how we can expose to Views our own data that is totally custom. However, we can also alter existing data definitions provided by Drupal core or other modules by implementing <kbd>hook_views_data_alter()</kbd>. The <kbd>$data</kbd> parameter passed by reference will contain everything that has been defined and can be changed as needed.</p>
+<p>Moreover, we can also use this implementation to create some new Views fields or filters on other tables that do not "belong" to us. This is actually more common than exposing totally custom tables or other kinds of resources. For example, we may want to create a new Views field that shows something related to the Node in the results. So, let's look at an example.</p>
+<p>Do you remember in <a href="77cab458-5612-468c-8010-12385708eb81.xhtml">Chapter 6</a>, <em>Data Modeling and Storage</em>, we saw how to create a <em>pseudo field,</em> which outputs a disclaimer message at the bottom of each Node? If our View is configured to render Node entities, that will work. However, if it's using fields, it cannot do that. So, let's see how we could expose this message also as a Views field. We won't include this in the final code, but let's just see how we could get it done if we wanted to.</p>
+<p>First, we'd need to implement <kbd>hook_views_data_alter()</kbd> and define a new field on the Node entity type data table:</p>
+<pre>/** 
+ * Implements hook_views_data_alter(). 
+ */ 
+function module_name_views_data_alter(&amp;$data) { 
+  $data['node_field_data']['disclaimer'] = [ 
+    'title' =&gt; t('Disclaimer'), 
+    'help' =&gt; t('Shows a disclaimer message'), 
+    'field' =&gt; [ 
+      'id' =&gt; 'custom', 
+    ], 
+  ]; 
+}  </pre>
+<p>In this example, we are adding our new Views field onto the Node data table (<kbd>node_field_data</kbd>). But then, we have a choice as to what plugin to use to render our message. We can, of course, create one ourselves (as we will do in the next section). This is actually very simple, especially since it doesn't even need to use any of the information from the resulting Nodes. However, if that's the case, we might as well use the existing <kbd>Custom</kbd> plugin, which has two main advantages. For one, we don't have to write any more code. Second, it allows the site builder to specify (and modify as needed) the disclaimer message through the UI. Because basically, this plugin exposes a configuration form that we can use to add the text we want displayed for each row:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/534627ad-2050-42b1-a076-6e32678a6d64.png" style="width:33.75em;height:16.42em;"/></p>
+<p>Of course, there are some drawbacks to this approach as well. If we wanted to ensure consistency between the message here and the one we used in the pseudo field, we would probably want to write our own plugin and get the message from this unique place. The same applies if we wanted the message to be strictly in code, especially if we needed some sort of data from the Node in the View results. So, the choice depends on the actual use case, but it's good to look into the existing Views plugins and see what already exists before creating your own.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Custom Views field</h1>
+                </header>
+            
+            <article>
+                
+<p>Now that we have seen how data is exposed to Views, we can start understanding the <kbd>NodeViewsData</kbd> handler I mentioned earlier (even if not quite everything) a bit better. But this also provides a good segue back to our <kbd>Product</kbd> entity type's <kbd>views_data</kbd> handler, where we can now see what the responsibility of <kbd>getViewsData()</kbd> is. It needs to return the definition for all of the tables and fields, as well as what they can do. Luckily for us, the base class already provides everything we need to turn our product data into Views fields, filters, sorts, arguments, and potentially relationships, all out of the box.</p>
+<p>But let's say we want to add some more Views fields that make sense to us in the context of our product-related functionality. For example, each product has a <kbd>source</kbd> field that is populated by the Importer entity from its own <kbd>source</kbd> field. This is just to keep track of where they come from. So we may want to create a Views field that simply renders the name of the Importer that has imported the product.</p>
+<p>You'll be quick to ask: <em>But hey, that is not a column on the products table! What gives?</em> As we will see, we can define Views fields that render whatever data we want (that can relate to the record or not). Of course, this also means that the resulting data cannot be used inside a sort or filter because MySQL doesn't have access to it when building the query. So we are a bit less flexible there, but it makes sense.</p>
+<p>In this section, you will learn two things. First, we'll see how to create our own <kbd>views_data</kbd> handler for our Product entity type. By now, you should be quite familiar with this process. More importantly though, we'll use this handler to create a new Views field for our products that renders something no existing <kbd>ViewsField</kbd> plugin can offer: the name of the related Importer entity. That means our own custom plugin. How exciting, so let's get going!</p>
+<p>There are two quick steps to create our own <kbd>views_data</kbd> handler. First, we need the class:</p>
+<pre>namespace Drupal\products\Entity; 
+ 
+use Drupal\views\EntityViewsData; 
+ 
+/** 
+ * Provides Views data for Product entities. 
+ */ 
+class ProductViewsData extends EntityViewsData { 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function getViewsData() { 
+    $data = parent::getViewsData(); 
+    // Add stuff. 
+    return $data; 
+  } 
+}  </pre>
+<p>As you can see, we are extending the base <kbd>EntityViewsData</kbd> class we had been referencing in the Product entity type annotation before. Inside, we are overriding the <kbd>getViewsData()</kbd> method to add our own definitions (which will go where you can see the comment).</p>
+<p>Second, we need to change the handler reference to this new class in the entity type annotation:</p>
+<pre>"views_data" = "Drupal\products\Entity\ProductViewsData", </pre>
+<p>That's it. We can now define our own custom fields and we can start with the views data definition:</p>
+<pre>$data['product']['importer'] = [ 
+  'title' =&gt; t('Importer'), 
+  'help' =&gt; t('Information about the Product importer.'), 
+  'field' =&gt; array( 
+    'id' =&gt; 'product_importer', 
+  ), 
+]; </pre>
+<p>Simple stuff, like we did with the players. Except in this case, we are adding it to the <kbd>product</kbd> table and we are using a <kbd>ViewsField</kbd> plugin that doesn't exist. Yet. So, let's create it.</p>
+<p>As you may have noticed if you checked some of the existing ones, Views plugins go in the <kbd>Plugin\views\[plugin_type]</kbd> namespace of the modules, where <kbd>[plugin_type]</kbd> in this case is <kbd>field</kbd>, as we are creating a <kbd>ViewsField</kbd> plugin. So, we can start with the plugin class scaffolding:</p>
+<pre>namespace Drupal\products\Plugin\views\field; 
+ 
+use Drupal\views\Plugin\views\field\FieldPluginBase; 
+use Drupal\views\ResultRow; 
+ 
+/** 
+ * Field plugin that renders data about the Importer that imported the Product. 
+ * 
+ * @ViewsField("product_importer") 
+ */ 
+class ProductImporter extends FieldPluginBase { 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function render(ResultRow $values) { 
+    // Render something more meaningful. 
+    return ''; 
+  } 
+}  </pre>
+<p>Just like any other field plugin, we are extending the <kbd>FieldPluginBase</kbd> class which provides all the common defaults and base functionalities the fields need. Of course, you notice the admittedly small annotation, which simply contains the plugin ID. Our main job is to work in the <kbd>render()</kbd> method and output something, preferably using the <kbd>$values</kbd> object that contains all the data in the respective row.</p>
+<div class="packt_tip">Inside the <kbd>ResultRow</kbd> object, we can find the values from the Views row which can contain multiple fields. In case it's a View that lists entities, we also have an <kbd>_entity</kbd> key that references the entity object itself.</div>
+<p>Clearing the cache, we will now be able to add the new <em>Product Importer</em> field to a View for products. But if we do, we will notice an error. Views is trying to add to the query the <kbd>product_importer</kbd> field we defined but which doesn't actually exist on the table. That isn't right! This happens because, even though Views can be made to work with any data source, it still has a preference for the SQL database, so we can encounter these issues every once in a while. Not to worry though, as we can simply tell our plugin not to include the field in any query—it will show totally custom data. We do so by overriding the <kbd>query()</kbd> method:</p>
+<pre>/** 
+ * {@inheritdoc} 
+ */ 
+public function query() { 
+  // Leave empty to avoid a query on this field. 
+}  </pre>
+<p>That's it. Now, our field is going to render an empty string:<kbd>''</kbd>. Let's change it to look for the related Importer entity and show its label. But in order to do that, we'll need the <kbd>EntityTypeManager</kbd> service to use for querying. Let's inject it:</p>
+<pre>/** 
+ * @var \Drupal\Core\Entity\EntityTypeManager 
+ */ 
+protected $entityTypeManager; 
+ 
+/** 
+ * Constructs a ProductImporter object. 
+ * 
+ * @param array $configuration 
+ *   A configuration array containing information about the plugin instance. 
+ * @param string $plugin_id 
+ *   The plugin_id for the plugin instance. 
+ * @param mixed $plugin_definition 
+ *   The plugin implementation definition. 
+ * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager 
+ */ 
+public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entityTypeManager) { 
+  parent::__construct($configuration, $plugin_id, $plugin_definition); 
+  $this-&gt;entityTypeManager = $entityTypeManager; 
+} 
+ 
+/** 
+ * {@inheritdoc} 
+ */ 
+public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) { 
+  return new static( 
+    $configuration, 
+    $plugin_id, 
+    $plugin_definition, 
+    $container-&gt;get('entity_type.manager') 
+  ); 
+}  </pre>
+<p>Since we are operating inside a plugin, we need to make sure we are implementing the <kbd>ContainerFactoryPluginInterface</kbd> in order to make use of the <kbd>create()</kbd> method. But luckily, a parent class does so already, namely <kbd>Drupal\views\Plugin\views\PluginBase</kbd>, so we're good.</p>
+<p>We do, however, have to also add the new <em>use</em> statements at the top:</p>
+<pre>use Drupal\Core\Entity\EntityTypeManagerInterface; 
+use Symfony\Component\DependencyInjection\ContainerInterface; </pre>
+<p>We can now proceed with the <kbd>render()</kbd> method:</p>
+<pre>public function render(ResultRow $values) { 
+  /** @var \Drupal\products\Entity\ProductInterface $product */ 
+  $product = $values-&gt;_entity; 
+  $source = $product-&gt;getSource(); 
+  $importers = $this-&gt;entityTypeManager-&gt;getStorage('importer')-&gt;loadByProperties(['source' =&gt; $source]); 
+  if (!$importers) { 
+    return NULL; 
+  } 
+ 
+  // We'll assume one importer per source. 
+  /** @var \Drupal\products\Entity\ImporterInterface $importer */ 
+  $importer = reset($importers); 
+  return $this-&gt;sanitizeValue($importer-&gt;label()); 
+}  </pre>
+<p>We simply get the Product entity of the current row and then query for the Importer configuration entities that have the source referenced on the product. We assume there is only one (even if we did not do a proper job ensuring this is the case to save some space) and simply return its label. We also pass it through the helper <kbd>sanitizeValue()</kbd> method which takes care of ensuring that the output is safe against XSS attacks and such. So now our products View can show, for each product, the name of the Importer that brought them into application.</p>
+<div class="packt_tip">If we take a step back and try to understand what is going on, a word of caution becomes evident. Views performs one big query that returns a list of product entities and some data. But then, when that data is output, we perform a query for the Importer entity corresponding to each product in the result set (and we load those entities). So if we have 100 products returned, that means 100 more queries. Try to keep this in mind when creating custom fields to ensure you are not getting a huge performance hit, which might often not even be worth it.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Field configuration</h1>
+                </header>
+            
+            <article>
+                
+<p>We got our field working, but let's say we want to make it a bit more dynamic. At the moment it's called <em>Product Importer</em> and we are showing the title of the Importer entity. But let's make it configurable so that we can choose which title to show—that of the entity or that of the actual Importer plugin—in the UI.</p>
+<p>There are a few simple steps for making the field plugin configurable. These work similarly to other Views plugin types. They are also quite similar in concept to what we did in <a href="f58fb5b9-3f39-4575-872d-c2ab9985828d.xhtml">Chapter 9</a>, <em>Custom Fields</em>, when we made the entity fields configurable.</p>
+<p>First, we need to define some default options by overriding a method:</p>
+<pre>/** 
+ * {@inheritdoc} 
+ */ 
+protected function defineOptions() { 
+  $options = parent::defineOptions(); 
+  $options['importer'] = array('default' =&gt; 'entity'); 
+ 
+  return $options; 
+}  </pre>
+<p>As you can see, we are adding to the options defined by the parent class (which are quite a few) our own <kbd>importer</kbd> one. And we set its default to the string <kbd>entity</kbd>. Our choice.</p>
+<p>Second, we need to define the form element for our new option and we can do this with another method override:</p>
+<pre>/** 
+ * {@inheritdoc} 
+ */ 
+public function buildOptionsForm(&amp;$form, FormStateInterface $form_state) { 
+ 
+  $form['importer'] = array( 
+    '#type' =&gt; 'select', 
+    '#title' =&gt; $this-&gt;t('Importer'), 
+    '#description' =&gt; $this-&gt;t('Which importer label to use?'), 
+    '#options' =&gt; [ 
+      'entity' =&gt; $this-&gt;t('Entity'), 
+      'plugin' =&gt; $this-&gt;t('Plugin') 
+    ], 
+    '#default_value' =&gt; $this-&gt;options['importer'], 
+  ); 
+ 
+  parent::buildOptionsForm($form, $form_state); 
+} </pre>
+<p>And the <em>use</em> statement:</p>
+<pre>use Drupal\Core\Form\FormStateInterface;  </pre>
+<p>Nothing special here<span><span>;</span></span> we are simply defining a select list form element on the main options form. We can see that the <kbd>$options</kbd> class property contains all the plugin options and there we can check for the default value of our <kbd>importer</kbd> one. Finally, we of course add to the form all the other elements from the parent definition.</p>
+<p>Next, inside the <kbd>render()</kbd> method, once we get our hands on the importer entity, we can make a change to this effect:</p>
+<pre>// If we want to show the entity label. 
+if ($this-&gt;options['importer'] == 'entity') { 
+  return $this-&gt;sanitizeValue($importer-&gt;label()); 
+} 
+ 
+// Otherwise we show the plugin label. 
+$definition = $this-&gt;importerManager-&gt;getDefinition($importer-&gt;getPluginId()); 
+return $this-&gt;sanitizeValue($definition['label']);  </pre>
+<p>Pretty simple. We either show the entity label or that of the plugin. But of course—and we skipped this—the Importer plugin manager also needs to be injected into the class. I'll let you handle that on your own as you already know how to do this.</p>
+<p>Finally, one last thing we need to do is define the configuration schema. Since our View (which is a configuration entity) is now being saved with an extra option, we need to define the schema for the latter. We can do this inside a new <kbd>products.schema.yml</kbd> file (in the <kbd>config/schema</kbd> folder of our module):</p>
+<pre>views.field.product_importer: 
+  type: views_field 
+  label: 'Product Importer' 
+  mapping: 
+    importer: 
+      type: string 
+      label: 'Which importer label to use: entity or plugin' </pre>
+<p>This should already be familiar to you, including the dynamic nature of defining configuration schemas. We pretty much did the same in <a href="f58fb5b9-3f39-4575-872d-c2ab9985828d.xhtml">Chapter 9</a>, <em>Custom Fields</em>, for the options on our field type, widget, and formatter plugins. This time, though, the type is <kbd>views_field</kbd>, from which we basically inherit a bunch of definitions and to which we add our own (the <kbd>importer</kbd> string). That's it. If we configure our new Views field, we should see this new option:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/8fd7a929-eeb1-45bf-8714-cc9fdebcab72.png" style="width:25.58em;height:16.75em;"/></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Custom Views filter</h1>
+                </header>
+            
+            <article>
+                
+<p>In a previous section we exposed our <kbd>players</kbd> and <kbd>teams</kbd> tables to Views, as well as made the team name a possible string filter to limit the resulting players by team. But this was not the best way we could have accomplished this because site builders may not necessarily know all the teams that are in the database, nor their exact names. So we can create our own <kbd>ViewsFilter</kbd> to turn it into a selection of teams the user can choose from. Kind of like a taxonomy term filter. So let's see how it's done.</p>
+<p>First, we need to alter our data definition for the team name field to change the plugin ID that will be used for the filtering (inside <kbd>hook_views_data()</kbd>):</p>
+<pre>'filter' =&gt; array( 
+  'id' =&gt; 'team_filter', 
+),  </pre>
+<p>Now we just have to create that plugin. And naturally, it goes in the <kbd>Plugin/views/filter</kbd> namespace of our module:</p>
+<pre>namespace Drupal\sports\Plugin\views\filter; 
+ 
+use Drupal\Core\Database\Connection; 
+use Drupal\views\Plugin\views\filter\InOperator; 
+use Drupal\views\ViewExecutable; 
+use Drupal\views\Plugin\views\display\DisplayPluginBase; 
+use Symfony\Component\DependencyInjection\ContainerInterface; 
+ 
+/** 
+ * Filter class which filters by the available teams. 
+ * 
+ * @ViewsFilter("team_filter") 
+ */ 
+class TeamFilter extends InOperator { 
+ 
+  /** 
+   * @var \Drupal\Core\Database\Connection 
+   */ 
+  protected $database; 
+  /** 
+   * Constructs a TeamFilter plugin object. 
+   * 
+   * @param array $configuration 
+   *   A configuration array containing information about the plugin instance. 
+   * @param string $plugin_id 
+   *   The plugin_id for the plugin instance. 
+   * @param mixed $plugin_definition 
+   *   The plugin implementation definition. 
+   * @param \Drupal\Core\Database\Connection $database 
+   *   The database connection. 
+   */ 
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, Connection $database) { 
+    parent::__construct($configuration, $plugin_id, $plugin_definition); 
+    $this-&gt;database = $database; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) { 
+    return new static( 
+      $configuration, 
+      $plugin_id, 
+      $plugin_definition, 
+      $container-&gt;get('database') 
+    ); 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function init(ViewExecutable $view, DisplayPluginBase $display, array &amp;$options = NULL) { 
+    parent::init($view, $display, $options); 
+    $this-&gt;valueTitle = t('Teams'); 
+    $this-&gt;definition['options callback'] = [$this, 'getTeams']; 
+  } 
+ 
+  /** 
+   * Generates the list of teams that can be used in the filter. 
+   */ 
+  public function getTeams() { 
+    $result = $this-&gt;database-&gt;query("SELECT name FROM {teams}")-&gt;fetchAllAssoc('name'); 
+    if (!$result) { 
+      return []; 
+    } 
+ 
+    $teams = array_keys($result); 
+    return array_combine($teams, $teams); 
+  } 
+}  </pre>
+<p>First and foremost, we see the annotation is in place to make this a plugin. Similar to the Views fields. Then, we use dependency injection to get our hands on the database connection service. Nothing new so far. However, you will notice that we extend from the <kbd>InOperator</kbd> class which provides the base functionality for a Views filter that allows an <kbd>IN</kbd> type of filter. For example, <kbd>... WHERE name IN(name1, name2)</kbd>. So we extend from there to inherit much of this logic that applies to Views.</p>
+<p>Then, we override the <kbd>init()</kbd> method (which initializes the plugin) in order to set the available values that site builders can choose from (the team names) and a title for the resulting form element. But we do so by specifying an <kbd>options callback</kbd> that will be used to retrieve the options at the right moment. This callback is a method on our class called <kbd>getTeams()</kbd> which returns an array of all the team names. This array needs to be keyed by the value to use in the query filter. And that is pretty much it. We don't need to worry about the options form or anything like that. The base class does it all for us.</p>
+<p>Now, site builders can add this filter and choose a team (or more) to filter by, in an inclusive way. For example, to show the players that belong to a respective team:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/f2a78867-c57d-4de7-ae88-a618a1760539.png" style="width:35.33em;height:17.00em;"/></p>
+<div class="packt_tip">Instead of using the <kbd>options callback</kbd>, we could have also directly overridden the <kbd>getValueOptions()</kbd> method of the parent (which in fact calls the options callback itself). The only caution here is that to prevent performance leaks, the values should be stored in the local <kbd>valueOptions</kbd> class property. Like this, they can be read multiple times.</div>
+<p>Even if it's not that obvious, one last thing we need to do is define the configuration schema for our filter. You may be wondering why we are not creating any custom options. The answer is that when the user adds the filter and chooses a team to filter by, Drupal doesn't know what data type that value is. So, we need to tell it that it's a string. Inside our <kbd>sports.schema.yml</kbd> file, we can have this:</p>
+<pre>views.filter.team_filter: 
+  type: views_filter 
+  label: 'The teams to filter by' 
+  mapping: 
+    value: 
+      type: sequence 
+      label: 'Teams' 
+      sequence: 
+        type: string 
+        label: 'Team' </pre>
+<p>Similar to the Views field, we have a dynamic schema definition for the filter, of the type <kbd>views_filter</kbd>. In the mapping we override the <kbd>value</kbd> field (which has already been defined by the <kbd>views_filter</kbd> data type). In our case, this is a sequence (an array with unimportant keys) whose individual values are strings.</p>
+<p>Another way we can achieve the same (or similar) is like this:</p>
+<pre>views.filter_value.team_filter: 
+  type: sequence 
+  label: 'Teams' 
+  sequence: 
+    type: string 
+    label: 'Team' </pre>
+<p>This is because, in the definition of the <kbd>value</kbd> key found in the <kbd>views_filter</kbd> schema, the type is set to <kbd>views.filter_value.[%parent.plugin_id]</kbd>. This means that we can simply define the <kbd>views.filter_value.team_filter</kbd> data type ourselves for it to use. If you remember, this is very similar to what we did ourselves in <a href="ca6e92fc-24fa-41b4-bd57-c3884f9d16b1.xhtml">Chapter 12</a>, <em>JavaScript and Ajax API</em>. So, we can just define that missing bit as our sequence, rather than overriding the entire thing to change one small bit.</p>
+<p>The existing Views filter classes provide a great deal of capability for either using them directly for custom data or extending to complement our own specificities. So I recommend you check out all the existent filter plugins. However, the main concept of a filter is the alteration of the query being run by Views, which can be done inside the <kbd>query()</kbd> method of the plugin class. There, we can add extra conditions to the query based on what we need. You can check out this method on the <kbd>FilterPluginBase</kbd> class which simply adds a condition (using the <kbd>addWhere()</kbd> method on the query object) based on the configured value and operator.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Custom Views argument</h1>
+                </header>
+            
+            <article>
+                
+<p>When we first exposed the player and team data to Views, we used an argument plugin so that we could have a contextual filter on the team ID a player belongs to. To do this, we used the existing <kbd>numeric</kbd> plugin on the actual <kbd>team_id</kbd> field of the <kbd>players</kbd> table. But what if we wanted an argument that works on more levels? For example, we don't exactly know what kind of data we'll receive, but we want to be able to handle nicely both a numeric one (team ID) and a textual one (team name). All in one argument. To achieve this, we can create a simple <kbd>ViewsArgument</kbd> plugin to handle this for us.</p>
+<p>First thing, like always, is to define this field. We don't want to mess with the <kbd>team_id</kbd> field onto which we added the earlier argument as that can still be used. Instead, we'll create a new field, this time on the <kbd>teams</kbd> table, which we will simply call <kbd>team</kbd>:</p>
+<pre>$data['teams']['team'] = array( 
+  'title' =&gt; t('Team'), 
+  'help' =&gt; t('The team (either an ID or a team name).'), 
+  'argument' =&gt; array( 
+    'id' =&gt; 'team', 
+  ), 
+); </pre>
+<p>This time, though, we don't create a <em>field</em> for it as we don't need this to display anything. Rather, we stick just to the <kbd>argument</kbd> responsibility, which will be handled by our new <kbd>team</kbd> plugin. You may also note that the <kbd>team</kbd> column doesn't actually exist in the database table.</p>
+<p>So, let's see the plugin:</p>
+<pre>namespace Drupal\sports\Plugin\views\argument; 
+ 
+use Drupal\views\Plugin\views\argument\ArgumentPluginBase; 
+ 
+/** 
+ * Argument for filtering by a team. 
+ * 
+ * @ViewsArgument("team") 
+ */ 
+class Team extends ArgumentPluginBase { 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function query($group_by = FALSE) { 
+    $this-&gt;ensureMyTable(); 
+    $field = is_numeric($this-&gt;argument) ? 'id' : 'name'; 
+    $this-&gt;query-&gt;addWhere(0, "$this-&gt;tableAlias.$field", $this-&gt;argument); 
+  } 
+}  </pre>
+<p>As usual, we are extending from the base plugin class of its type and adding the proper annotation. Inside, we only deal with the <kbd>query()</kbd> method, which we override. Arguments are very similar to filters in the sense that they aim to restrict the result set via the query. The main difference is the actual value used to filter, which, in this case, is dynamic and can be found on the <kbd>$argument</kbd> property of the (parent) class. And what we do is simply add a query condition to the right field on the <kbd>teams</kbd> table (since that is the base table), depending on the type of data we are dealing with. But before we do that, we call the <kbd>ensureMyTable()</kbd> method which simply ensures that the table our plugin needs is included in the query by Views.</p>
+<p>That's it. We can now add our newly created argument to the View and, regardless of what we passed as a contextual filter (ID or name), it will filter accordingly. Of course, we can also have options like most other Views plugin types, but I'll let you explore those on your own. There are also a lot more we can override from the parent class in order to integrate with Views. But that's a bit more advanced and it's unlikely you'll need to deal with that for a good while. I definitely recommend exploring the code behind it.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Views theming</h1>
+                </header>
+            
+            <article>
+                
+<p>Frontend developers felt a lot of pain in Drupal 7 and much of it was also related to theming Views output. Luckily, Drupal 8 has made things much easier to handle. We will look at a bit of that here in order to nudge you in the right direction when applying what you learned in <a href="feada4d1-f255-4dd6-83b5-8d66bab5f852.xhtml">Chapter 4</a>, <em>Theming</em>.</p>
+<p>Views is very complex and is made up of many pluggable layers. A View has a <em>display</em> (such as a Page or Block), which can render its content using a given <em>style</em> (such as an Unformatted list or Table). Styles can decide whether to control the rendering of a given result item (row) themselves or delegate this to a <em>row</em> plugin (such as Fields or Entity). Most, in fact, do the latter. The two most common scenarios for using <em>row</em> plugins is either using the <kbd>EntityRow</kbd> one, which renders the resulting entities using a specified view mode, or the <kbd>Fields</kbd> plugin, which uses individual <kbd>ViewField</kbd> plugins to render each field that is added to the View.</p>
+<p>If we wanted to theme a View, there are all these points we can look at. Want the View to output a slideshow? Perhaps create a new <em>style</em> plugin. Want to do something crazy with each entity in the result set? Maybe create a new <em>row</em> plugin, or even just create a new <em>field</em> plugin (as we did) to render one piece of data in any way you want. These techniques are more oriented toward module developers taking control over Views. But we also have the theming aspects we can play with.</p>
+<p>Again, from the top, <em>style</em> plugins are nothing more than glorified wrappers over a theme hook. For example, the <em>Unformatted list</em> plugin uses the <kbd>views_view_unformatted</kbd> theme hook, which means a few things: it can be overridden by a theme (or even module) and it can be preprocessed by a theme or module. Take a look at the default <kbd>template_preprocess_views_view_unformatted()</kbd> preprocessor and <kbd>views-view-unformatted.html.twig</kbd> template file for more information. Don't forget about the theme hook suggestions, as Views defines quite a lot of them. All you need to do is enable theme (Twig) debugging and you'll see for each View <em>layer</em> which template is being used.</p>
+<p>The <em>style</em> theme, however, only gets us to the wrapper around all the results. To go a bit deeper, we need to know what kind of <em>row</em> plugin it uses. If entities are being rendered, it's the same thing as controlling how entities are built. See <a href="77cab458-5612-468c-8010-12385708eb81.xhtml">Chapter 6</a>, <em>Data Modeling and Storage</em>, for a refresher on that. If the <em>row</em> plugin uses <em>field</em> plugins, we have some options. First of all, this is also a wrapper over a theme hook, namely <kbd>views_view_fields</kbd>, which renders together all the <em>field</em> plugins added to the View.</p>
+<p>So we can override that using the already known theming methods. But we can also override the default theme hook for each <kbd>field</kbd> plugin itself, namely <kbd>views_view_field</kbd>, responsible for wrapping the output of the plugin. This takes us to the <em>field</em> plugins themselves and whatever they end up rendering, which can differ from one plugin to another. So, make sure you check that.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Views hooks</h1>
+                </header>
+            
+            <article>
+                
+<p>Views also comes with a lot of hooks. We've already seen an important one that allowed us to expose our own data to Views. But there are many more, and you should check out the <kbd>views.api.php</kbd> file for more information.</p>
+<p>Quite a few exist for altering plugin information for all sorts of plugin types. But there are also some important ones that deal with Views execution at runtime. The most notable of these is <kbd>hook_views_query_alter()</kbd> which allows us to make alterations to the final query that is going to be run. There is also <kbd>hook_views_post_render()</kbd> and <kbd>hook_views_pre_render()</kbd>, which allow us to make alterations to the View results. For example, to change the order of the items or something like that.</p>
+<p>I recommend you check out their respective documentation and make yourself aware of what you can do with these hooks. At times they can be helpful, even if, with Drupal 8, most of the action happens in plugins and you can easily now write your own to handle your specific requirements. This is why we won't be going into great detail about these.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Summary</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we looked at Views from all sorts of module developer-oriented angles. We saw how we can expose our product entity type to Views. That was a breeze. But then, we also saw how our custom player and team data from <a href="c20b297a-3a37-46ff-a80c-bf83a21bbd5d.xhtml">Chapter 8</a>, <em>The Database API</em>, can be exposed to Views. Even if we did have to write some code for that, much of it was quite boilerplate, as we were able to leverage the existing Views plugin ecosystem for almost everything we wanted. However, since these are all plugins, we also saw how we can create our own field, filter, and argument plugins to handle those exceptional cases in which what exists may not be enough.</p>
+<p>Closely tied to this, we also talked a bit about altering the way other modules expose their data to Views. The most notable example here was the ability to easily add more fields (and plugins) to entity-based Views in order to enrich them with custom functionalities.</p>
+<p>Finally, we talked a bit about how we can approach the theming aspect of Views. We saw the different layers that make one up, starting from the display all the way down to the <em>field</em>. We closed the chapter with a shout-out to the existing hooks the Views module invokes at various times, and via which we can also make changes to its normal operation.</p>
+<p>In the next chapter, we are going to see how we can work with files and images in Drupal 8.</p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

@@ -1,0 +1,805 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Your Own Custom Entity and Plugin Types</h1>
+                </header>
+            
+            <article>
+                
+<p>I am sure that you are looking forward to applying some of the knowledge gained from the previous chapters and doing something practical and fun. As promised, in this chapter, we will do just that. Also, apart from implementing our own entity types, we will cover some new things as well. So, here's the game plan.</p>
+<p>The premise is that we want to have products on our site that hold some basic product information, such as an ID, a name, and a product number. However, these products need to somehow get onto our site. One way will be manual entry. Another, more important way will be through an import from multiple external sources (such as a JSON endpoint). Now, things will be kept simple. For all intents and purposes, these products aren't going to do much, so don't expect an e-commerce solution being laid out for you. Instead, we will practice modeling data and functionality in Drupal 8.</p>
+<p>First, we will create a simple content entity type to represent our products. In doing so, we will make sure that we can use the UI to create, edit, and delete these products with ease by taking advantage of many Entity API benefits available out of the box.</p>
+<p>Second, we will model our importing functionality. One side of the coin will be a simple configuration entity type to represent the configuration needed for our various importers. Again, we will make use of the Entity API for quick scaffolding and entity management. The other side will be a custom plugin type that will actually perform the import based on the configuration found in the entities. As such, these will be linked from the direction of the config entities, which will choose to use one plugin or another.</p>
+<p>So these are the highlights. In building all this, we will see much of what is needed to define a content and configuration entity type with fields to hold data and configuration, as well as a plugin type to encapsulate logic. When defining these things, we will take the manual, more tedious, route to make sure that we understand what each component does and we are comfortable with what we are doing. Once you know all that, you'll be able to greatly speed up these processes using the Drupal Console to automatically generate much of the boilerplate code.</p>
+<p>The code we write in this chapter will go inside a new module called <kbd>products</kbd>. Since we have learned how to create a module from scratch, I will not cover the initial steps needed for getting started with it.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Custom content entity type</h1>
+                </header>
+            
+            <article>
+                
+<p>As we saw in the previous chapter, when looking at the Node and NodeType entity types, entity type definitions belong inside the <kbd>Entity</kbd> folder of our module's namespace. In there, we will create a class called <kbd>Product</kbd>, which will have an annotation at the top to tell Drupal this is a content entity type. This is the most important part in defining a new entity type:</p>
+<pre><span>namespace </span><span>Drupal\products\Entity</span><span>;<br/></span><span><br/></span><span>use </span><span>Drupal\Core\Entity\ContentEntityBase</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * Defines the Product entity.<br/></span><span> *<br/></span><span> * </span><span>@ContentEntityType</span><span>(<br/></span><span> *   id = "product",<br/></span><span> *   label = </span><span>@Translation</span><span>("Product"),<br/></span><span> *   handlers = {<br/></span><span> *     "view_builder" = "Drupal\Core\Entity\EntityViewBuilder",<br/></span><span> *     "list_builder" = "Drupal\products\ProductListBuilder",<br/></span><span> *<br/></span><span> *     "form" = {<br/></span><span> *       "default" = "Drupal\products\Form\ProductForm",<br/></span><span> *       "add" = "Drupal\products\Form\ProductForm",<br/></span><span> *       "edit" = "Drupal\products\Form\ProductForm",<br/></span><span> *       "delete" = "Drupal\Core\Entity\ContentEntityDeleteForm",<br/></span><span> *     },<br/></span><span> *    "route_provider" = {<br/></span><span> *      "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider"<br/></span><span> *    }<br/></span><span> *   },<br/></span><span> *   base_table = "product",<br/></span><span> *   admin_permission = "administer site configuration",<br/></span><span> *   entity_keys = {<br/></span><span> *     "id" = "id",<br/></span><span> *     "label" = "name",<br/></span><span> *     "uuid" = "uuid",<br/></span><span> *   },<br/></span><span> *   links = {<br/></span><span> *     "canonical" = "/admin/structure/product/{product}",<br/></span><span> *     "add-form" = "/admin/structure/product/add",<br/></span><span> *     "edit-form" = "/admin/structure/product/{product}/edit",<br/></span><span> *     "delete-form" = "/admin/structure/product/{product}/delete",<br/></span><span> *     "collection" = "/admin/structure/product",<br/></span><span> *   }<br/></span><span> * )<br/></span><span> */<br/></span><span>class </span><span>Product </span><span>extends </span><span>ContentEntityBase </span><span>implements </span><span>ProductInterface {}</span></pre>
+<p>In the above code block, I omitted the actual contents of the class to first focus on the annotation and some other aspects. We will see the rest of it shortly. However, the entire working code can be found in the accompanying repository.</p>
+<p>If you remember from the previous chapter, we have the <kbd>ContentEntityType</kbd> annotation with the entity type plugin definition. Our example is relatively barebones compared to Node, for example, because I wanted to keep things simple. It has no bundles and is not revisionable, nor translatable. Also, for some of its handlers, we fall back to Entity API defaults.</p>
+<p>The entity type ID and label are immediately visible, so no need to explain that; we can instead skip to the "handlers" section.</p>
+<p>For the view builder handler, we choose to default to the basic <kbd>EntityViewBuilder</kbd> because there is nothing specific our products need to be rendered. Many times, this will be enough, but you can also extend this class and create your own.</p>
+<p>For the list builder, although still keeping things simple, we needed our own implementation in order to take care of things such as the list headers. We will see this class soon. The form handler for creating and editing products is our own implementation found inside the <kbd>Form</kbd> namespace of our module, and we will see it soon to get a better understanding. We rely on Drupal 8 to help us out with the delete form, though.</p>
+<p>Finally, for the route provider, we used the default <kbd>AdminHtmlRouteProvider</kbd>, which takes care of all the routes necessary for an entity type to be managed in the admin UI. This means that we no longer need to do anything for routing the links referenced in the <kbd>links</kbd> section of the annotation. Speaking of links, it makes sense to place them under the <kbd>admin/structure</kbd> section of our administration for our example, but you can choose another place if you want.</p>
+<p>The database table our products will be stored in is <kbd>products</kbd>, and the permission needed for users to manage them is <kbd>administer site configuration</kbd>. I have deliberately omitted creating permissions specific to this entity type because we will cover this topic in a chapter dedicated to access. So we will use this permission that comes with Drupal core.</p>
+<p>Finally, we also have some basic entity keys to map to the respective fields.</p>
+<p>Our <kbd>Product</kbd> class extends the <kbd>ContentEntityBase</kbd> class to inherit all the necessary stuff from the API and implements our very own <kbd>ProductInterface</kbd>, which will contain all the methods used to access relevant field values. Let's create this interface real quick in the same <kbd>Entity</kbd> folder:</p>
+<pre><span>namespace </span><span>Drupal\products\Entity</span><span>;<br/></span><span><br/></span><span>use </span><span>Drupal\Core\Entity\ContentEntityInterface</span><span>;<br/></span><span>use </span><span>Drupal\Core\Entity\EntityChangedInterface</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * Represents a Product entity.<br/></span><span> */<br/></span><span>interface </span><span>ProductInterface </span><span>extends </span><span>ContentEntityInterface</span><span>, </span><span>EntityChangedInterface {<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * Gets the Product name.<br/></span><span>   *<br/></span><span>   * </span><span>@return </span><span>string<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>getName</span><span>()</span><span>;<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * Sets the Product name.<br/></span><span>   *<br/></span><span>   * </span><span>@param </span><span>string $name<br/></span><span>   *<br/></span><span>   * </span><span>@return </span><span>\Drupal\products\Entity\ProductInterface<br/></span><span>   *   The called Product entity.<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>setName</span><span>(</span><span>$name</span><span>)</span><span>;<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * Gets the Product number.<br/></span><span>   *<br/></span><span>   * </span><span>@return </span><span>int<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>getProductNumber</span><span>()</span><span>;<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * Sets the Product number.<br/></span><span>   *<br/></span><span>   * </span><span>@param </span><span>int $number<br/></span><span>   *<br/></span><span>   * </span><span>@return </span><span>\Drupal\products\Entity\ProductInterface<br/></span><span>   *   The called Product entity.<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>setProductNumber</span><span>(</span><span>$number</span><span>)</span><span>;<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * Gets the Product remote ID.<br/></span><span>   *<br/></span><span>   * </span><span>@return </span><span>string<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>getRemoteId</span><span>()</span><span>;<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * Sets the Product remote ID.<br/></span><span>   *<br/></span><span>   * </span><span>@param </span><span>string $id<br/></span><span>   *<br/></span><span>   * </span><span>@return </span><span>\Drupal\products\Entity\ProductInterface<br/></span><span>   *   The called Product entity.<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>setRemoteId</span><span>(</span><span>$id</span><span>)</span><span>;<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * Gets the Product source.<br/></span><span>   *<br/></span><span>   * </span><span>@return </span><span>string<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>getSource</span><span>()</span><span>;<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * Sets the Product source.<br/></span><span>   *<br/></span><span>   * </span><span>@param </span><span>string $source<br/></span><span>   *<br/></span><span>   * </span><span>@return </span><span>\Drupal\products\Entity\ProductInterface<br/></span><span>   *   The called Product entity.<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>setSource</span><span>(</span><span>$source</span><span>)</span><span>;<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * Gets the Product creation timestamp.<br/></span><span>   *<br/></span><span>   * </span><span>@return </span><span>int<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>getCreatedTime</span><span>()</span><span>;<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * Sets the Product creation timestamp.<br/></span><span>   *<br/></span><span>   * </span><span>@param </span><span>int $timestamp<br/></span><span>   *<br/></span><span>   * </span><span>@return </span><span>\Drupal\products\Entity\ProductInterface<br/></span><span>   *   The called Product entity.<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>setCreatedTime</span><span>(</span><span>$timestamp</span><span>)</span><span>;<br/></span><span>}</span></pre>
+<p>As you can see, we are extending the obligatory <kbd>ContentEntityInterface</kbd> but also the <kbd>EntityChangedInterface</kbd>, which provides some handy methods to manage the last changed date of the entities. Those method implementations will be added to our <kbd>Product</kbd> class via the <kbd>EntityChangedTrait</kbd>:</p>
+<pre>use EntityChangedTrait; </pre>
+<p>The methods on the <kbd>ProductInterface</kbd> are relatively self-explanatory. We will have a product name, number, remote ID, and source field, so it's nice to have getters and setters for those. If you remember, the Entity API provides the <kbd>get()</kbd> and <kbd>set()</kbd> methods with which we can consistently access and store field values across all entity types. However, I find that using an interface with well-defined methods makes code much clearer, not to mention that IDE autocompletion is a great time-saver. We also have a getter and setter for the <kbd>created</kbd> date field, which is a typical field that content entities have.</p>
+<p>Now, we can take a look at the <kbd>baseFieldDefinitions()</kbd> method of our <kbd>Product</kbd> entity type and see how we actually defined our fields:</p>
+<pre><span>public static function </span><span>baseFieldDefinitions</span><span>(EntityTypeInterface </span><span>$entity_type</span><span>) {<br/></span><span>  </span><span>$fields </span><span>= </span><span>parent</span><span>::</span><span>baseFieldDefinitions</span><span>(</span><span>$entity_type</span><span>)</span><span>;<br/></span><span><br/></span><span>  </span><span>$fields</span><span>[</span><span>'name'</span><span>] = BaseFieldDefinition::</span><span>create</span><span>(</span><span>'string'</span><span>)<br/></span><span>    -&gt;</span><span>setLabel</span><span>(t(</span><span>'Name'</span><span>))<br/></span><span>    -&gt;</span><span>setDescription</span><span>(t(</span><span>'The name of the Product.'</span><span>))<br/></span><span>    -&gt;</span><span>setSettings</span><span>([<br/></span><span>      </span><span>'max_length' </span><span>=&gt; </span><span>255</span><span>,<br/></span><span>      </span><span>'text_processing' </span><span>=&gt; </span><span>0</span><span>,<br/></span><span>    </span><span>])<br/></span><span>    -&gt;</span><span>setDefaultValue</span><span>(</span><span>''</span><span>)<br/></span><span>    -&gt;</span><span>setDisplayOptions</span><span>(</span><span>'view'</span><span>, </span><span>[<br/></span><span>      </span><span>'label' </span><span>=&gt; </span><span>'hidden'</span><span>,<br/></span><span>      </span><span>'type' </span><span>=&gt; </span><span>'string'</span><span>,<br/></span><span>      </span><span>'weight' </span><span>=&gt; -</span><span>4</span><span>,<br/></span><span>    </span><span>])<br/></span><span>    -&gt;</span><span>setDisplayOptions</span><span>(</span><span>'form'</span><span>, </span><span>[<br/></span><span>      </span><span>'type' </span><span>=&gt; </span><span>'string_textfield'</span><span>,<br/></span><span>      </span><span>'weight' </span><span>=&gt; -</span><span>4</span><span>,<br/></span><span>    </span><span>])<br/></span><span>    -&gt;</span><span>setDisplayConfigurable</span><span>(</span><span>'form'</span><span>, </span><span>TRUE</span><span>)<br/></span><span>    -&gt;</span><span>setDisplayConfigurable</span><span>(</span><span>'view'</span><span>, </span><span>TRUE</span><span>)</span><span>;<br/></span><span><br/></span><span>  </span><span>$fields</span><span>[</span><span>'number'</span><span>] = BaseFieldDefinition::</span><span>create</span><span>(</span><span>'integer'</span><span>)<br/></span><span>    -&gt;</span><span>setLabel</span><span>(t(</span><span>'Number'</span><span>))<br/></span><span>    -&gt;</span><span>setDescription</span><span>(t(</span><span>'The Product number.'</span><span>))<br/></span><span>    -&gt;</span><span>setSettings</span><span>([<br/></span><span>      </span><span>'min' </span><span>=&gt; </span><span>1</span><span>,<br/></span><span>      </span><span>'max' </span><span>=&gt; </span><span>10000<br/></span><span>    </span><span>])<br/></span><span>    -&gt;</span><span>setDefaultValue</span><span>(</span><span>NULL</span><span>)<br/></span><span>    -&gt;</span><span>setDisplayOptions</span><span>(</span><span>'view'</span><span>, </span><span>[<br/></span><span>      </span><span>'label' </span><span>=&gt; </span><span>'above'</span><span>,<br/></span><span>      </span><span>'type' </span><span>=&gt; </span><span>'number_unformatted'</span><span>,<br/></span><span>      </span><span>'weight' </span><span>=&gt; -</span><span>4</span><span>,<br/></span><span>    </span><span>])<br/></span><span>    -&gt;</span><span>setDisplayOptions</span><span>(</span><span>'form'</span><span>, </span><span>[<br/></span><span>      </span><span>'type' </span><span>=&gt; </span><span>'number'</span><span>,<br/></span><span>      </span><span>'weight' </span><span>=&gt; -</span><span>4</span><span>,<br/></span><span>    </span><span>])<br/></span><span>    -&gt;</span><span>setDisplayConfigurable</span><span>(</span><span>'form'</span><span>, </span><span>TRUE</span><span>)<br/></span><span>    -&gt;</span><span>setDisplayConfigurable</span><span>(</span><span>'view'</span><span>, </span><span>TRUE</span><span>)</span><span>;<br/></span><span><br/></span><span>  </span><span>$fields</span><span>[</span><span>'remote_id'</span><span>] = BaseFieldDefinition::</span><span>create</span><span>(</span><span>'string'</span><span>)<br/></span><span>    -&gt;</span><span>setLabel</span><span>(t(</span><span>'Remote ID'</span><span>))<br/></span><span>    -&gt;</span><span>setDescription</span><span>(t(</span><span>'The remote ID of the Product.'</span><span>))<br/></span><span>    -&gt;</span><span>setSettings</span><span>([<br/></span><span>      </span><span>'max_length' </span><span>=&gt; </span><span>255</span><span>,<br/></span><span>      </span><span>'text_processing' </span><span>=&gt; </span><span>0</span><span>,<br/></span><span>    </span><span>])<br/></span><span>    -&gt;</span><span>setDefaultValue</span><span>(</span><span>''</span><span>)</span><span>;<br/></span><span><br/></span><span>  </span><span>$fields</span><span>[</span><span>'source'</span><span>] = BaseFieldDefinition::</span><span>create</span><span>(</span><span>'string'</span><span>)<br/></span><span>    -&gt;</span><span>setLabel</span><span>(t(</span><span>'Source'</span><span>))<br/></span><span>    -&gt;</span><span>setDescription</span><span>(t(</span><span>'The source of the Product.'</span><span>))<br/></span><span>    -&gt;</span><span>setSettings</span><span>([<br/></span><span>      </span><span>'max_length' </span><span>=&gt; </span><span>255</span><span>,<br/></span><span>      </span><span>'text_processing' </span><span>=&gt; </span><span>0</span><span>,<br/></span><span>    </span><span>])<br/></span><span>    -&gt;</span><span>setDefaultValue</span><span>(</span><span>''</span><span>)</span><span>;<br/></span><span><br/></span><span>  </span><span>$fields</span><span>[</span><span>'created'</span><span>] = BaseFieldDefinition::</span><span>create</span><span>(</span><span>'created'</span><span>)<br/></span><span>    -&gt;</span><span>setLabel</span><span>(t(</span><span>'Created'</span><span>))<br/></span><span>    -&gt;</span><span>setDescription</span><span>(t(</span><span>'The time that the entity was created.'</span><span>))</span><span>;<br/></span><span><br/></span><span>  </span><span>$fields</span><span>[</span><span>'changed'</span><span>] = BaseFieldDefinition::</span><span>create</span><span>(</span><span>'changed'</span><span>)<br/></span><span>    -&gt;</span><span>setLabel</span><span>(t(</span><span>'Changed'</span><span>))<br/></span><span>    -&gt;</span><span>setDescription</span><span>(t(</span><span>'The time that the entity was last edited.'</span><span>))</span><span>;<br/></span><span><br/></span><span>  </span><span>return </span><span>$fields</span><span>;<br/></span><span>}</span></pre>
+<p>First and foremost, we will need to inherit the base fields of the parent class. This includes things such as the ID and UUID fields.</p>
+<p>Second, we define our own fields, starting with the product name field, which is of the <kbd>string</kbd> type. This <kbd>string</kbd> type is nothing more than a <kbd>FieldType</kbd> plugin I mentioned in the previous chapter. If you remember, this plugin extends a <kbd>TypedData</kbd> class itself. Apart from the obvious label and description, it has some settings, most notably a maximum length for the value, which is 255 characters. The <kbd>view</kbd> and <kbd>form</kbd> display options reference <kbd>FieldFormatter</kbd> and <kbd>FieldWidget</kbd> plugins, respectively, which together with the <kbd>FieldType</kbd> make up a field. Lastly, with the <kbd>setDisplayConfigurable()</kbd>, we specify that some of the options on this field should be configurable through the UI. For example, we can change the label in the UI.</p>
+<p>Then, we have the <kbd>number</kbd> field which is of the <kbd>integer</kbd> type and, for this example, is restricted to a number between 1 and 10,000. This restriction setting turns into a constraint under the hood. The rest of the options are similar to the name field.</p>
+<p>Next, we have the <kbd>remote_id</kbd> string field, but it doesn't have any widget or display settings because we don't necessarily want to display or edit this value. It is mostly for internal use to keep track of the product ID of the remote source it came from. Similarly, the <kbd>source</kbd> string field is not displayed or configurable either because we want to use it to store the source of the product, where it has been imported from, and also to keep track of it programmatically.</p>
+<p>Finally, the <kbd>created</kbd> and <kbd>changed</kbd> fields are special fields that store the timestamps for when the entity is created and modified. Not much more than that needs to be done because these fields automatically set the current timestamps as the field values.</p>
+<p>By now, we can also see the rest of the class content, which is mostly made up of the methods required by the <kbd>ProductInterface</kbd>:</p>
+<pre><span>use </span><span>EntityChangedTrait</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * {</span><span>@inheritdoc</span><span>}<br/></span><span> */<br/></span><span>public function </span><span>getName() {<br/></span><span>  </span><span>return </span><span>$this</span><span>-&gt;</span><span>get</span><span>(</span><span>'name'</span><span>)-&gt;</span><span>value</span><span>;<br/></span><span>}<br/></span><span><br/></span><span>/**<br/></span><span> * {</span><span>@inheritdoc</span><span>}<br/></span><span> */<br/></span><span>public function </span><span>setName(</span><span>$name</span><span>) {<br/></span><span>  </span><span>$this</span><span>-&gt;</span><span>set</span><span>(</span><span>'name'</span><span>, </span><span>$name</span><span>)</span><span>;<br/></span><span>  </span><span>return </span><span>$this</span><span>;<br/></span><span>}<br/></span><span><br/></span><span>/**<br/></span><span> * {</span><span>@inheritdoc</span><span>}<br/></span><span> */<br/></span><span>public function </span><span>getProductNumber() {<br/></span><span>  </span><span>return </span><span>$this</span><span>-&gt;</span><span>get</span><span>(</span><span>'number'</span><span>)-&gt;</span><span>value</span><span>;<br/></span><span>}<br/></span><span><br/></span><span>/**<br/></span><span> * {</span><span>@inheritdoc</span><span>}<br/></span><span> */<br/></span><span>public function </span><span>setProductNumber(</span><span>$number</span><span>) {<br/></span><span>  </span><span>$this</span><span>-&gt;</span><span>set</span><span>(</span><span>'number'</span><span>, </span><span>$number</span><span>)</span><span>;<br/></span><span>  </span><span>return </span><span>$this</span><span>;<br/></span><span>}<br/></span><span><br/></span><span>/**<br/></span><span> * {</span><span>@inheritdoc</span><span>}<br/></span><span> */<br/></span><span>public function </span><span>getRemoteId() {<br/></span><span>  </span><span>return </span><span>$this</span><span>-&gt;</span><span>get</span><span>(</span><span>'remote_id'</span><span>)-&gt;</span><span>value</span><span>;<br/></span><span>}<br/></span><span><br/></span><span>/**<br/></span><span> * {</span><span>@inheritdoc</span><span>}<br/></span><span> */<br/></span><span>public function </span><span>setRemoteId(</span><span>$id</span><span>) {<br/></span><span>  </span><span>$this</span><span>-&gt;</span><span>set</span><span>(</span><span>'remote_id'</span><span>, </span><span>$id</span><span>)</span><span>;<br/></span><span>  </span><span>return </span><span>$this</span><span>;<br/></span><span>}<br/></span><span><br/></span><span>/**<br/></span><span> * {</span><span>@inheritdoc</span><span>}<br/></span><span> */<br/></span><span>public function </span><span>getSource() {<br/></span><span>  </span><span>return </span><span>$this</span><span>-&gt;</span><span>get</span><span>(</span><span>'source'</span><span>)-&gt;</span><span>value</span><span>;<br/></span><span>}<br/></span><span><br/></span><span>/**<br/></span><span> * {</span><span>@inheritdoc</span><span>}<br/></span><span> */<br/></span><span>public function </span><span>setSource(</span><span>$source</span><span>) {<br/></span><span>  </span><span>$this</span><span>-&gt;</span><span>set</span><span>(</span><span>'source'</span><span>, </span><span>$source</span><span>)</span><span>;<br/></span><span>  </span><span>return </span><span>$this</span><span>;<br/></span><span>}<br/></span><span><br/></span><span>/**<br/></span><span> * {</span><span>@inheritdoc</span><span>}<br/></span><span> */<br/></span><span>public function </span><span>getCreatedTime() {<br/></span><span>  </span><span>return </span><span>$this</span><span>-&gt;</span><span>get</span><span>(</span><span>'created'</span><span>)-&gt;</span><span>value</span><span>;<br/></span><span>}<br/></span><span><br/></span><span>/**<br/></span><span> * {</span><span>@inheritdoc</span><span>}<br/></span><span> */<br/></span><span>public function </span><span>setCreatedTime(</span><span>$timestamp</span><span>) {<br/></span><span>  </span><span>$this</span><span>-&gt;</span><span>set</span><span>(</span><span>'created'</span><span>, </span><span>$timestamp</span><span>)</span><span>;<br/></span><span>  </span><span>return </span><span>$this</span><span>;<br/></span><span>}</span></pre>
+<p>As promised, we are making use of the <kbd>EntityChangedTrait</kbd> to handle the <kbd>changed</kbd> field and implement simple getters and setters for the values found in the fields we defined as base fields. If you remember the <kbd>TypedData</kbd> section, the way we access a value (since the cardinality is always 1 for these fields) is by running the following command:</p>
+<pre>$this-&gt;get('field_name')-&gt;value </pre>
+<p>Before we finish off with our Product entity class, let's ensure we <em>use</em> all the remaining classes at the top:</p>
+<pre>use Drupal\Core\Entity\EntityChangedTrait; 
+use Drupal\Core\Entity\EntityTypeInterface; 
+use Drupal\Core\Field\BaseFieldDefinition; </pre>
+<p>Let's now move through the entity type plugin annotation and create the handlers we've been referencing there. We can start with the list builder, which we can place at the root of our namespace:</p>
+<pre><span>namespace </span><span>Drupal\products</span><span>;<br/></span><span><br/></span><span>use </span><span>Drupal\Core\Entity\EntityInterface</span><span>;<br/></span><span>use </span><span>Drupal\Core\Entity\EntityListBuilder</span><span>;<br/></span><span>use </span><span>Drupal\Core\Link</span><span>;<br/></span><span>use </span><span>Drupal\Core\Url</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * EntityListBuilderInterface implementation responsible for the Product entities.<br/></span><span> */<br/></span><span>class </span><span>ProductListBuilder </span><span>extends </span><span>EntityListBuilder {<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * {</span><span>@inheritdoc</span><span>}<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>buildHeader</span><span>() {<br/></span><span>    </span><span>$header</span><span>[</span><span>'id'</span><span>] = </span><span>$this</span><span>-&gt;</span><span>t</span><span>(</span><span>'Product ID'</span><span>)</span><span>;<br/></span><span>    </span><span>$header</span><span>[</span><span>'name'</span><span>] = </span><span>$this</span><span>-&gt;</span><span>t</span><span>(</span><span>'Name'</span><span>)</span><span>;<br/></span><span>    </span><span>return </span><span>$header </span><span>+ </span><span>parent</span><span>::</span><span>buildHeader</span><span>()</span><span>;<br/></span><span>  </span><span>}<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * {</span><span>@inheritdoc</span><span>}<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>buildRow</span><span>(EntityInterface </span><span>$entity</span><span>) {<br/></span><span>    </span><span>/* </span><span>@var </span><span>$entity \Drupal\products\Entity\Product */<br/></span><span>    </span><span>$row</span><span>[</span><span>'id'</span><span>] = </span><span>$entity</span><span>-&gt;</span><span>id</span><span>()</span><span>;<br/></span><span>    </span><span>$row</span><span>[</span><span>'name'</span><span>] = Link::</span><span>fromTextAndUrl</span><span>(<br/></span><span>      </span><span>$entity</span><span>-&gt;</span><span>label</span><span>()</span><span>,<br/></span><span>      </span><span>new </span><span>Url(<br/></span><span>        </span><span>'entity.product.canonical'</span><span>, </span><span>[<br/></span><span>          </span><span>'product' </span><span>=&gt; </span><span>$entity</span><span>-&gt;</span><span>id</span><span>()</span><span>,<br/></span><span>        </span><span>]<br/></span><span>      )<br/></span><span>    )</span><span>;<br/></span><span>    </span><span>return </span><span>$row </span><span>+ </span><span>parent</span><span>::</span><span>buildRow</span><span>(</span><span>$entity</span><span>)</span><span>;<br/></span><span>  </span><span>}<br/></span><span><br/></span><span>}</span></pre>
+<p>The purpose of this handler is to build the administration page that lists the available entities. On this page, we will then have some info about them, as well as operation links to edit and delete and whatever else we might need. For our products, we simply extend from the default <kbd>EntityListBuilder</kbd> class, but override the <kbd>buildHeader()</kbd> and <kbd>builderRow()</kbd> methods to add some information specific to our products. The names of these methods are self-explanatory, but one thing to keep in mind is that keys from the <kbd>$header</kbd> array we return need to match the keys from the <kbd>$row</kbd> array we return. Also, of course, the arrays need to have the same number of records so that the table header matches the individual rows. If you look inside <kbd>EntityListBuilder</kbd>, you can note some other handy methods you might want to override, such as the one that builds the query and the one that loads the entities. For us, this is enough.</p>
+<p>Our products list builder will have, for now, only two columns: the ID and the name. For the latter, each row will actually be a link to the product canonical URL (the main URL for this entity in Drupal). Finally, you remember, from <a href="601b4dd0-c521-459e-9342-2645a109642c.xhtml">Chapter 2</a>, <em>Creating Your First Module</em>, how to build links with the <kbd>Link</kbd> class, right?</p>
+<div class="packt_infobox">The construct for the entity canonical route is in the format: <kbd>entity.[entity_type].canonical</kbd>. Other useful entity links can be built by replacing the word <kbd>canonical</kbd> with the keys from the <kbd>links</kbd> definition of the Entity type plugin annotation.</div>
+<p>That is pretty much it for the list builder, and we can move on to the form handler. Since creating and editing an entity share so much in terms of what we need in the form, we use the same <kbd>ProductForm</kbd> for both those operations. Let's create that form class now inside the <em>Form</em> directory of the module namespace:</p>
+<pre><span>use </span><span>Drupal\Core\Entity\ContentEntityForm</span><span>;<br/></span><span>use </span><span>Drupal\Core\Form\FormStateInterface</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * Form for creating/editing Product entities.<br/></span><span> */<br/></span><span>class </span><span>ProductForm </span><span>extends </span><span>ContentEntityForm {<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * {</span><span>@inheritdoc</span><span>}<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>save</span><span>(</span><span>array </span><span>$form</span><span>, </span><span>FormStateInterface </span><span>$form_state</span><span>) {<br/></span><span>    </span><span>$entity </span><span>= &amp;</span><span>$this</span><span>-&gt;</span><span>entity</span><span>;<br/></span><span><br/></span><span>    </span><span>$status </span><span>= </span><span>parent</span><span>::</span><span>save</span><span>(</span><span>$form</span><span>, </span><span>$form_state</span><span>)</span><span>;<br/></span><span><br/></span><span>    </span><span>switch </span><span>(</span><span>$status</span><span>) {<br/></span><span>      </span><span>case </span><span>SAVED_NEW</span><span>:<br/></span><span>        drupal_set_message(</span><span>$this</span><span>-&gt;</span><span>t</span><span>(</span><span>'Created the %label Product.'</span><span>, </span><span>[<br/></span><span>          </span><span>'%label' </span><span>=&gt; </span><span>$entity</span><span>-&gt;</span><span>label</span><span>()</span><span>,<br/></span><span>        </span><span>]))</span><span>;<br/></span><span>        </span><span>break</span><span>;<br/></span><span><br/></span><span>      </span><span>default</span><span>:<br/></span><span>        drupal_set_message(</span><span>$this</span><span>-&gt;</span><span>t</span><span>(</span><span>'Saved the %label Product.'</span><span>, </span><span>[<br/></span><span>          </span><span>'%label' </span><span>=&gt; </span><span>$entity</span><span>-&gt;</span><span>label</span><span>()</span><span>,<br/></span><span>        </span><span>]))</span><span>;<br/></span><span>    </span><span>}<br/></span><span>    </span><span>$form_state</span><span>-&gt;</span><span>setRedirect</span><span>(</span><span>'entity.product.canonical'</span><span>, </span><span>[</span><span>'product' </span><span>=&gt; </span><span>$entity</span><span>-&gt;</span><span>id</span><span>()])</span><span>;<br/></span><span>  </span><span>}<br/></span><span><br/></span><span>}</span></pre>
+<p>We extend <kbd>ContentEntityForm</kbd>, which is a specialized form class for content entities. It itself extends <kbd>EntityForm</kbd>, which then subclasses the <kbd>FormBase</kbd> we've already encountered in <a href="601b4dd0-c521-459e-9342-2645a109642c.xhtml">Chapter 2</a>, <em>Creating Your First Module</em>. However, the former two give us a lot of functionalities needed to manage our entities without writing much code ourselves.</p>
+<p>The only thing we actually want to do is override the <kbd>save()</kbd> method in order to write a message to the user informing them that the product has either been created or updated. We know what happened because the <kbd>EntityInterface::save()</kbd> method returns a specific constant to denote the type of operation that occurred.</p>
+<p>We also want to redirect to the canonical URL of the product entity when the save happens. This we do with a very handy method on the <kbd>FormStateInterface</kbd> object with which we can specify a route (and any necessary parameters), and it will make sure that when the form is submitted, the user will be redirected to that route. Neat, isn't it?</p>
+<div class="packt_infobox">You can see we use the deprecated <kbd>drupal_set_message()</kbd> global function to print the message to the user. I did this on purpose to keep things short. However, as we saw in <a href="601b4dd0-c521-459e-9342-2645a109642c.xhtml">Chapter 2</a>, <em>Creating Your First Module</em>, you should instead inject the <kbd>Messenger</kbd> service and use that. Do refer back to that chapter also for a recap on how to inject services if you are unsure.</div>
+<p>As I mentioned, for the delete operation, we just use the <kbd>ContentEntityDeleteForm</kbd>, which does all we need: it presents a confirmation form where we submit and trigger the delete operation. This is a typical flow for deleting resources in Drupal. As we will see a bit later, for configuration entities, there will be some methods we will need to write ourselves for this same process to happen.</p>
+<p>All our handlers are done now, and our product entity type is operational. However, in order to be able to work with it, let's create some links in the admin menu to be able to easily manage them.</p>
+<p>First, create the <kbd>products.links.menu.yml</kbd> file:</p>
+<pre><span># Product entity menu items<br/></span><span>entity.product.collection:<br/></span><span>  title: </span><span>'Product list'<br/></span><span>  </span><span>route_name: </span>entity.product.collection<br/>  <span>description: </span><span>'List Product entities'<br/></span><span>  </span><span>parent: </span>system.admin_structure<br/>  <span>weight: </span>100</pre>
+<p>This defines a menu link under the <span class="packt_screen">Structure</span> link for the product list (the page built with our list builder handler).</p>
+<p>Next, let's create some local tasks (tabs) so that we get handy links on the product page to edit and delete the product entity. So, inside the <kbd>products.links.task.yml</kbd> file:</p>
+<pre><span># Product entity task items<br/></span><span>entity.product.canonical:<br/></span><span>  route_name: </span>entity.product.canonical<br/>  <span>base_route: </span>entity.product.canonical<br/>  <span>title: </span><span>'View'<br/></span><span><br/></span><span>entity.product.edit_form:<br/></span><span>  route_name: </span>entity.product.edit_form<br/>  <span>base_route: </span>entity.product.canonical<br/>  <span>title: </span><span>'Edit'<br/></span><span><br/></span><span>entity.product.delete_form:<br/></span><span>  route_name: </span>entity.product.delete_form<br/>  <span>base_route: </span>entity.product.canonical<br/>  <span>title: </span>Delete<br/>  <span>weight: </span>10</pre>
+<p>You remember this from <a href="9e989509-bdf4-4a74-ace2-deeaa0c73a3b.xhtml">Chapter 5</a>, <em>Menus and Menu Links</em>, don't you? The base route is always the canonical route for the entity, which essentially groups the tabs together. Then, the routes we use for the other two tasks are the <kbd>edit_form</kbd> and <kbd>delete_form</kbd> links of the entity type. You can refer to the <em>links</em> section of the Entity type plugin annotation to understand where these come from. The reason we don't need to specify any parameters here (since those routes do require a product ID) is because the base route has that parameter in the URL already. So, the tasks will use that one. And this is very handy.</p>
+<p>Finally, we also want an action link to create a new product entity, which will be on the product list page. So, inside the <kbd>products.links.action.yml</kbd> file:</p>
+<pre><span>entity.product.add_form:<br/></span><span>  route_name: </span>entity.product.add_form<br/>  <span>title: </span><span>'Add Product'<br/></span><span>  </span><span>appears_on:<br/></span><span>    </span>- entity.product.collection</pre>
+<p>Again, none of this should be new, as we covered it in detail in <a href="9e989509-bdf4-4a74-ace2-deeaa0c73a3b.xhtml">Chapter 5</a>, <em>Menus and Menu Links.</em> We are finally done.</p>
+<p>If the <kbd>products</kbd> module was enabled on your site before writing all the entity code, you will need to run the <kbd>drush entity-updates</kbd> command in order for all the necessary tables to be created in the database. Otherwise, installing the module will do that automatically. However, keep the first point in mind for when you add new content entity types and fields or even change existing fields on an entity type. The underlying storage might need to be changed to accommodate your modifications. Moreover, another thing to keep in mind is that, in some cases, changing fields that already have data in them will not be okay with Drupal and will prevent you from making those changes. So, you might need to delete existing entities.</p>
+<div class="packt_infobox"><span>At the time of writing, the <kbd>entity-update</kbd> Drush command was being eliminated in favor of updating entities using update hooks. See the related change record on <a href="https://www.drupal.org/node/3034742">Drupal.org</a>. This means that the command might not work anymore when you try to use it. If that's the case, check out the change record for information as to which contrib module this command can be found in for use during development.</span></div>
+<p>Now that we've done that, we can go to <kbd>admin/structure/product</kbd> and take a look at our (empty) product entity list:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/924991b6-82d9-42aa-b845-89f6a655e596.png" style="width:28.92em;height:13.58em;"/></p>
+<p>We can now create new products, edit them, and finally, delete them. Remember, due to our field configuration, the manual product creation/edit does not permit the <kbd>remote_id</kbd> and <kbd>source</kbd> fields to be managed. For our purpose, we want those to be only programmatically available since any manual products will be considered as not needing that data. For example, if we want to make the source field show up as a form widget, all we have to do is change its base field definition to this:</p>
+<pre><span>$fields</span><span>[</span><span>'source'</span><span>] = BaseFieldDefinition::</span><span>create</span><span>(</span><span>'string'</span><span>)<br/></span><span>  -&gt;</span><span>setLabel</span><span>(t(</span><span>'Source'</span><span>))<br/></span><span>  -&gt;</span><span>setDescription</span><span>(t(</span><span>'The source of the Product.'</span><span>))<br/></span><span>  -&gt;</span><span>setSettings</span><span>([<br/></span><span>    </span><span>'max_length' </span><span>=&gt; </span><span>255</span><span>,<br/></span><span>    </span><span>'text_processing' </span><span>=&gt; </span><span>0</span><span>,<br/></span><span>  </span><span>])<br/></span><span>  -&gt;</span><span>setDefaultValue</span><span>(</span><span>''</span><span>)<br/></span><span>  -&gt;</span><span>setDisplayOptions</span><span>(</span><span>'form'</span><span>, </span><span>[<br/></span><span>    </span><span>'type' </span><span>=&gt; </span><span>'string_textfield'</span><span>,<br/></span><span>    </span><span>'weight' </span><span>=&gt; -</span><span>4</span><span>,<br/></span><span>  </span><span>])</span><span>;</span></pre>
+<p>Also, we'd need to clear the cache. This would make the form element for the source field show up, but the value would still not be displayed on the canonical page of the entity because we have not set any <kbd>view</kbd> display options. In other words, we have not chosen a formatter.</p>
+<p>However, in our case, the product entity is ready to store data, and all the TypedData APIs we practised in the previous chapter with the Node entity type will work just as well with this one. So, we can now turn to writing our importer logic to get some remote products onto our website.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Custom plugin type</h1>
+                </header>
+            
+            <article>
+                
+<p>Since pretty much the second page of this book you've been reading about how important plugins are and how widely they are used in Drupal 8. I have backed that claim with references to "this or that" being a plugin in basically every chapter. However, I have not really explained how you can create your own custom plugin type. However, since our importer logic is a perfect candidate for plugins, I will do so here, and to exemplify the theory, we will implement an <kbd>Importer</kbd> plugin type.</p>
+<p>The very first thing a plugin type needs is a manager service. This is responsible for bringing together two critical aspects of plugins (but not only): discovery and factory (instantiation). For these two tasks, it delegates to specialized objects. The most common <span><span>method</span></span> of discovery is through annotations (<kbd>AnnotatedClassDiscovery</kbd>), and the most common factory is the container-aware one—<kbd>ContainerFactory</kbd>. So, essentially, the manager is the central player that finds and processes all the plugin definitions and instantiates plugins. Also, it does so with the help of those other guys.</p>
+<p>Many plugin types in Drupal 8, since they follow the defaults I mentioned before, use the <kbd>DefaultPluginManager</kbd>, or should I say, they extend this class. It provides them with the annotated discovery and container-aware factory. So that is what we will do as well and see how simple it is to create a plugin type manager.</p>
+<p>Typically, it lives in the <kbd>Plugin</kbd> namespace of the module, so ours can look like this:</p>
+<pre><span>namespace </span><span>Drupal\products\Plugin</span><span>;<br/></span><span><br/></span><span>use </span><span>Drupal\Core\Plugin\DefaultPluginManager</span><span>;<br/></span><span>use </span><span>Drupal\Core\Cache\CacheBackendInterface</span><span>;<br/></span><span>use </span><span>Drupal\Core\Extension\ModuleHandlerInterface</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * Provides the Importer plugin manager.<br/></span><span> */<br/></span><span>class </span><span>ImporterManager </span><span>extends </span><span>DefaultPluginManager {<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * ImporterManager constructor.<br/></span><span>   *<br/></span><span>   * </span><span>@param </span><span>\Traversable $namespaces<br/></span><span>   *   An object that implements \Traversable which contains the root paths<br/></span><span>   *   keyed by the corresponding namespace to look for plugin implementations.<br/></span><span>   * </span><span>@param </span><span>\Drupal\Core\Cache\CacheBackendInterface $cache_backend<br/></span><span>   *   Cache backend instance to use.<br/></span><span>   * </span><span>@param </span><span>\Drupal\Core\Extension\ModuleHandlerInterface $module_handler<br/></span><span>   *   The module handler to invoke the alter hook with.<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>__construct</span><span>(\Traversable </span><span>$namespaces</span><span>, </span><span>CacheBackendInterface </span><span>$cache_backend</span><span>, </span><span>ModuleHandlerInterface </span><span>$module_handler</span><span>) {<br/></span><span>    </span><span>parent</span><span>::</span><span>__construct</span><span>(</span><span>'Plugin/Importer'</span><span>, </span><span>$namespaces</span><span>, </span><span>$module_handler</span><span>, </span><span>'Drupal\products\Plugin\ImporterInterface'</span><span>, </span><span>'Drupal\products\Annotation\Importer'</span><span>)</span><span>;<br/></span><span><br/></span><span>    </span><span>$this</span><span>-&gt;</span><span>alterInfo</span><span>(</span><span>'products_importer_info'</span><span>)</span><span>;<br/></span><span>    </span><span>$this</span><span>-&gt;</span><span>setCacheBackend</span><span>(</span><span>$cache_backend</span><span>, </span><span>'products_importer_plugins'</span><span>)</span><span>;<br/></span><span>  </span><span>}<br/></span><span>}</span></pre>
+<p>Aside from extending the <kbd>DefaultPluginManager</kbd>, we will need to override the constructor and re-call the parent constructor with some parameters specific to our plugins. This is the most important part, and in order, these are the following (omitting the ones that are simply passed through):</p>
+<ul>
+<li>The relative namespace where plugins of this type will be found—in this case, in the <kbd>Plugin/Importer</kbd> folder</li>
+<li>The interface each plugin of this type needs to implement—in our case, the <kbd>Drupal\products\Plugin\ImporterInterface</kbd> (which we have to create)</li>
+<li>The <kbd>annotation</kbd> class used by our plugin type (the one whose class properties map to the possible annotation properties found in the DocBlock above the plugin class)—in our case, <kbd>Drupal\products\Annotation\Importer</kbd> (which we have to create)</li>
+</ul>
+<p>In addition to calling the parent constructor with these options, we will need to provide the "alter" hook for the available definitions. This will make it possible for other modules to implement this hook and alter the found plugin definitions. The resulting hook in our case is <kbd>hook_products_importer_info_alter</kbd>.</p>
+<p>Lastly, we also provide a specific cache key for the backend responsible for caching the plugin definitions. This is for increased performance: as you should already know by now, creating a new plugin requires clearing the cache.</p>
+<p>That's it with our manager. However, since this is a service, we will need to register it as such inside the <kbd>products.services.yml</kbd> file:</p>
+<pre><span>services:<br/></span><span>  products.importer_manager:<br/></span><span>    class: </span>Drupal\products\Plugin\ImporterManager<br/>    <span>parent: </span>default_plugin_manager</pre>
+<p>As you can see, we inherit the dependencies (arguments) from the <kbd>default_plugin_manager</kbd> service instead of duplicating them here again. If you remember from <a href="360802d2-dd46-4d08-b478-9351d56ed2a0.xhtml">Chapter 3</a>, <em>Logging and Mailing</em>, this is a neat little trick in Drupal 8.</p>
+<p>Now, since we referenced some classes in the manager, we will need to create them. Let's start with the annotation class:</p>
+<pre><span>namespace </span><span>Drupal\products\Annotation</span><span>;<br/></span><span><br/></span><span>use </span><span>Drupal\Component\Annotation\Plugin</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * Defines an Importer item annotation object.<br/></span><span> *<br/></span><span> * </span><span>@see </span><span>\Drupal\products\Plugin\ImporterManager<br/></span><span> *<br/></span><span> * </span><span>@Annotation<br/></span><span> </span><span>*/<br/></span><span>class </span><span>Importer </span><span>extends </span><span>Plugin {<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * The plugin ID.<br/></span><span>   *<br/></span><span>   * </span><span>@var </span><span>string<br/></span><span>   */<br/></span><span>  </span><span>public </span><span>$id</span><span>;<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * The label of the plugin.<br/></span><span>   *<br/></span><span>   * </span><span>@var </span><span>\Drupal\Core\Annotation\Translation<br/></span><span>   *<br/></span><span>   * </span><span>@ingroup </span><span>plugin_translatable<br/></span><span>   */<br/></span><span>  </span><span>public </span><span>$label</span><span>;<br/></span><span>}</span></pre>
+<p>This class needs to extend <kbd>Drupal\Component\Annotation\Plugin</kbd>, which is the base class for annotations and already implements <kbd>AnnotationInterface</kbd>.</p>
+<p>For our purpose, we keep it simple. All we need is a plugin ID and a label. If we wanted to, we could add more properties to this class and describe them. It's a standard practice to do so because otherwise there is no clear way to know which properties a plugin annotation can contain.</p>
+<p>Next, let's also write the interface the plugins are required to implement:</p>
+<pre><span>namespace </span><span>Drupal\products\Plugin</span><span>;<br/></span><span><br/></span><span>use </span><span>Drupal\Component\Plugin\PluginInspectionInterface</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * Defines an interface for Importer plugins.<br/></span><span> */<br/></span><span>interface </span><span>ImporterInterface </span><span>extends </span><span>PluginInspectionInterface {<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * Performs the import. Returns TRUE if the import was successful or FALSE otherwise.<br/></span><span>   *<br/></span><span>   * </span><span>@return </span><span>bool<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>import</span><span>()</span><span>;<br/></span><span>}</span></pre>
+<p>Again, we keep it simple. For now, our importer will have only one method specific to it: <kbd>import()</kbd>. However, it will have other methods specific to plugins, which can be found in the <kbd>PluginInspectionInterface</kbd> we are extending. These are <kbd>getPluginId()</kbd> and <kbd>getPluginDefinition()</kbd> and are also quite important as the system expects to be able to get this info from the plugins.</p>
+<p>Next, plugins of any type need to extend <kbd>PluginBase</kbd> because it contains a host of mandatory implemented methods (such as the ones I mentioned before). However, it is also a best practice for the module that introduces a plugin type to also provide a base plugin class that plugins can extend. Its goal is to extend <kbd>PluginBase</kbd> and also provide all the necessary logic needed by all the plugins of this type. For example, when we create a new block, we extend <kbd>BlockBase</kbd>, which, somewhere down the line, extends <kbd>PluginBase</kbd>.</p>
+<p>In our case, this base (abstract) class can look something like this:</p>
+<pre><span>namespace </span><span>Drupal\products\Plugin</span><span>;<br/></span><span><br/></span><span>use </span><span>Drupal\Component\Plugin\Exception\PluginException</span><span>;<br/></span><span>use </span><span>Drupal\Component\Plugin\PluginBase</span><span>;<br/></span><span>use </span><span>Drupal\Core\Entity\EntityTypeManager</span><span>;<br/></span><span>use </span><span>Drupal\Core\Plugin\ContainerFactoryPluginInterface</span><span>;<br/></span><span>use </span><span>Drupal\products\Entity\ImporterInterface</span><span>;<br/></span><span>use </span><span>Drupal\products\Plugin\ImporterInterface </span><span>as </span><span>ImporterPluginInterface</span><span>;<br/></span><span>use </span><span>GuzzleHttp\Client</span><span>;<br/></span><span>use </span><span>Symfony\Component\DependencyInjection\ContainerInterface</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * Base class for Importer plugins.<br/></span><span> */<br/></span><span>abstract class </span><span>ImporterBase </span><span>extends </span><span>PluginBase </span><span>implements </span><span>ImporterPluginInterface</span><span>, </span><span>ContainerFactoryPluginInterface {<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * </span><span>@var </span><span>\Drupal\Core\Entity\EntityTypeManager<br/></span><span>   */<br/></span><span>  </span><span>protected </span><span>$entityTypeManager</span><span>;<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * </span><span>@var </span><span>\GuzzleHttp\Client<br/></span><span>   */<br/></span><span>  </span><span>protected </span><span>$httpClient</span><span>;<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * {</span><span>@inheritdoc</span><span>}<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>__construct</span><span>(</span><span>array </span><span>$configuration</span><span>, </span><span>$plugin_id</span><span>, </span><span>$plugin_definition</span><span>, </span><span>EntityTypeManager </span><span>$entityTypeManager</span><span>, </span><span>Client </span><span>$httpClient</span><span>) {<br/></span><span>    </span><span>parent</span><span>::</span><span>__construct</span><span>(</span><span>$configuration</span><span>, </span><span>$plugin_id</span><span>, </span><span>$plugin_definition</span><span>)</span><span>;<br/></span><span>    </span><span>$this</span><span>-&gt;</span><span>entityTypeManager </span><span>= </span><span>$entityTypeManager</span><span>;<br/></span><span>    </span><span>$this</span><span>-&gt;</span><span>httpClient </span><span>= </span><span>$httpClient</span><span>;<br/></span><span><br/></span><span>    </span><span>if </span><span>(!</span><span>isset</span><span>(</span><span>$configuration</span><span>[</span><span>'config'</span><span>])) {<br/></span><span>      </span><span>throw new </span><span>PluginException(</span><span>'Missing Importer configuration.'</span><span>)</span><span>;<br/></span><span>    </span><span>}<br/></span><span><br/></span><span>    </span><span>if </span><span>(!</span><span>$configuration</span><span>[</span><span>'config'</span><span>] </span><span>instanceof </span><span>ImporterInterface) {<br/></span><span>      </span><span>throw new </span><span>PluginException(</span><span>'Wrong Importer configuration.'</span><span>)</span><span>;<br/></span><span>    </span><span>}<br/></span><span>  }<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * {</span><span>@inheritdoc</span><span>}<br/></span><span>   */<br/></span><span>  </span><span>public static function </span><span>create</span><span>(ContainerInterface </span><span>$container</span><span>, </span><span>array </span><span>$configuration</span><span>, </span><span>$plugin_id</span><span>, </span><span>$plugin_definition</span><span>) {<br/></span><span>    </span><span>return new static</span><span>(<br/></span><span>      </span><span>$configuration</span><span>,<br/></span><span>      </span><span>$plugin_id</span><span>,<br/></span><span>      </span><span>$plugin_definition</span><span>,<br/></span><span>      </span><span>$container</span><span>-&gt;</span><span>get</span><span>(</span><span>'entity_type.manager'</span><span>)</span><span>,<br/></span><span>      </span><span>$container</span><span>-&gt;</span><span>get</span><span>(</span><span>'http_client'</span><span>)<br/></span><span>    )</span><span>;<br/></span><span>  </span><span>}<br/></span><span>}</span></pre>
+<p>We implement <kbd>ImporterInterface</kbd> (renamed to prevent collision) to require subclasses to have the <kbd>import()</kbd> method. However, we also make the plugins container aware and already inject some helpful services. One is the <kbd>EntityTypeManager</kbd> because we expect all importers to need it. The other is the Guzzle HTTP Client that we use in Drupal 8 to make PSR-7 requests to external resources.</p>
+<p>Adding this here is a judgment call. We can imagine more than one plugin needing external requests, but if it turns out they don't, we should surely remove it and add it only in that specific plugin. The opposite also holds true. If in the third plugin implementation we identify another common service, we can remove it from the plugins and inject it here. All while watching out for backwards compatibility.</p>
+<p>Before talking about those exceptions we're throwing in the constructor, it's important to know how the plugin manager creates a new instance of a plugin. It uses its <kbd>createInstance()</kbd> method, which takes a plugin ID as a first parameter and an optional array of plugin configuration as a second parameter. The relevant factory then passes that array of configuration to the plugin constructor itself as the second parameter. Oftentimes, this is empty. However, for our plugin type, we will need configuration to be passed to the plugin in the form of a configuration entity (which we have to create next). Without such an entity, we want the plugins to fail because they cannot work without the instructions found in this entity. So, in the constructor, we check whether <kbd>$configuration['config']</kbd> is an instance of <kbd>Drupal\products\Entity\ImporterInterface</kbd>, which will be the interface our configuration entity will implement. Otherwise, we throw the exception because this plugin cannot work without it.</p>
+<p>Our plugin type is complete for now. Obviously, we don't have any plugins yet, and before we create one, let's create the configuration entity type first.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Custom configuration entity type</h1>
+                </header>
+            
+            <article>
+                
+<p>If you remember <kbd>NodeType</kbd> from the previous chapter, you know the essentials of creating custom configuration entity types. So, let's create our <kbd>Importer</kbd> type now. Like before, we start with the annotation part, which this time is a <kbd>ConfigEntityType</kbd>:</p>
+<pre><span>namespace </span><span>Drupal\products\Entity</span><span>;<br/></span><span><br/></span><span>use </span><span>Drupal\Core\Config\Entity\ConfigEntityBase</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * Defines the Importer entity.<br/></span><span> *<br/></span><span> * </span><span>@ConfigEntityType</span><span>(<br/></span><span> *   id = "importer",<br/></span><span> *   label = </span><span>@Translation</span><span>("Importer"),<br/></span><span> *   handlers = {<br/></span><span> *     "list_builder" = "Drupal\products\ImporterListBuilder",<br/></span><span> *     "form" = {<br/></span><span> *       "add" = "Drupal\products\Form\ImporterForm",<br/></span><span> *       "edit" = "Drupal\products\Form\ImporterForm",<br/></span><span> *       "delete" = "Drupal\products\Form\ImporterDeleteForm"<br/></span><span> *     },<br/></span><span> *     "route_provider" = {<br/></span><span> *       "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider",<br/></span><span> *     },<br/></span><span> *   },<br/></span><span> *   config_prefix = "importer",<br/></span><span> *   admin_permission = "administer site configuration",<br/></span><span> *   entity_keys = {<br/></span><span> *     "id" = "id",<br/></span><span> *     "label" = "label",<br/></span><span> *     "uuid" = "uuid"<br/></span><span> *   },<br/></span><span> *   links = {<br/></span><span> *     "add-form" = "/admin/structure/importer/add",<br/></span><span> *     "edit-form" = "/admin/structure/importer/{importer}/edit",<br/></span><span> *     "delete-form" = "/admin/structure/importer/{importer}/delete",<br/></span><span> *     "collection" = "/admin/structure/importer"<br/></span><span> *   },<br/></span><span> *   config_export = { <br/></span><span> *     "id",<br/></span><span> *     "label",<br/></span><span> *     "url",<br/></span><span> *     "plugin",<br/></span><span> *     "update_existing",<br/></span><span> *     "source",<br/></span><span> *     "bundle"<br/></span><span> *   }<br/></span><span> * )<br/></span><span> */<br/></span><span>class </span><span>Importer </span><span>extends </span><span>ConfigEntityBase </span><span>implements </span><span>ImporterInterface {}</span></pre>
+<p>As with the <kbd>Product</kbd> entity, we will need to create a list builder handler, as well as form handlers. In this case, though, we also need to create a form handler for the <kbd>delete</kbd> operation as we will soon see why. Finally, since we have a configuration entity, we also specify the <kbd>config_export</kbd> and <kbd>config_prefix</kbd> keys to be used for the exporting. If you remember from the previous chapter, the first one denotes the names of the fields that should be persisted (we'll see them in a minute), while the second denotes the prefix the configuration names should get when stored. One thing you'll note is that we don't have a canonical link because we don't really need one—our entities don't need a details page, hence no canonical link to it needs to be defined.</p>
+<p>Now, it's time to create the <kbd>ImporterInterface</kbd> that the entities implement. It is named the same as the plugin interface we created earlier, but it resides in a different namespace:</p>
+<pre><span>namespace </span><span>Drupal\products\Entity</span><span>;<br/></span><span><br/></span><span>use </span><span>Drupal\Core\Config\Entity\ConfigEntityInterface</span><span>;<br/></span><span>use </span><span>Drupal\Core\Url</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * Importer configuration entity.<br/></span><span> */<br/></span><span>interface </span><span>ImporterInterface </span><span>extends </span><span>ConfigEntityInterface {<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * Returns the Url where the import can get the data from.<br/></span><span>   *<br/></span><span>   * </span><span>@return </span><span>Url<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>getUrl</span><span>()</span><span>;<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * Returns the Importer plugin ID to be used by this importer.<br/></span><span>   *<br/></span><span>   * </span><span>@return </span><span>string<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>getPluginId</span><span>()</span><span>;<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * Whether or not to update existing products if they have already been imported.<br/></span><span>   *<br/></span><span>   * </span><span>@return </span><span>bool<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>updateExisting</span><span>()</span><span>;<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * Returns the source of the products.<br/></span><span>   *<br/></span><span>   * </span><span>@return </span><span>string<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>getSource</span><span>()</span><span>;<br/></span><span>}</span></pre>
+<p>In these configuration entities, we want to store, for now, a URL to the resource where the products can be retrieved from, the ID of the importer plugin to use, whether we want existing products to be updated if they had already been imported, and the source of the products. For all these fields, we create some getter methods. You'll note that <kbd>getUrl()</kbd> needs to return a <kbd>Url</kbd> instance. Again, we create a well-defined interface for the public API of the entity type as we did with the product entity type.</p>
+<p>And this is what the <kbd>Importer</kbd> class body that implements this interface looks like:</p>
+<pre><span>/**<br/></span><span> * The Importer ID.<br/></span><span> *<br/></span><span> * </span><span>@var </span><span>string<br/></span><span> */<br/></span><span>protected </span><span>$id</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * The Importer label.<br/></span><span> *<br/></span><span> * </span><span>@var </span><span>string<br/></span><span> */<br/></span><span>protected </span><span>$label</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * The URL from where the import file can be retrieved.<br/></span><span> *<br/></span><span> * </span><span>@var </span><span>string<br/></span><span> */<br/></span><span>protected </span><span>$url</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * The plugin ID of the plugin to be used for processing this import.<br/></span><span> *<br/></span><span> * </span><span>@var </span><span>string<br/></span><span> */<br/></span><span>protected </span><span>$plugin</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * Whether or not to update existing products if they have already been imported.<br/></span><span> *<br/></span><span> * </span><span>@var </span><span>bool<br/></span><span> */<br/></span><span>protected </span><span>$update_existing </span><span>= TRUE</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * The source of the products.<br/></span><span> *<br/></span><span> * </span><span>@var </span><span>string<br/></span><span> */<br/></span><span>protected </span><span>$source</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * {</span><span>@inheritdoc</span><span>}<br/></span><span> */<br/></span><span>public function </span><span>getUrl() {<br/></span><span>  </span><span>return </span><span>$this</span><span>-&gt;</span><span>url </span><span>? Url::</span><span>fromUri</span><span>(</span><span>$this</span><span>-&gt;</span><span>url</span><span>) : </span><span>NULL</span><span>;<br/></span><span>}<br/></span><span><br/></span><span>/**<br/></span><span> * {</span><span>@inheritdoc</span><span>}<br/></span><span> */<br/></span><span>public function </span><span>getPluginId() {<br/></span><span>  </span><span>return </span><span>$this</span><span>-&gt;</span><span>plugin</span><span>;<br/></span><span>}<br/></span><span><br/></span><span>/**<br/></span><span> * {</span><span>@inheritdoc</span><span>}<br/></span><span> */<br/></span><span>public function </span><span>updateExisting() {<br/></span><span>  </span><span>return </span><span>$this</span><span>-&gt;</span><span>update_existing</span><span>;<br/></span><span>}<br/></span><span><br/></span><span>/**<br/></span><span> * {</span><span>@inheritdoc</span><span>}<br/></span><span> */<br/></span><span>public function </span><span>getSource() {<br/></span><span>  </span><span>return </span><span>$this</span><span>-&gt;</span><span>source</span><span>;<br/></span><span>}</span></pre>
+<p>If you remember from the previous chapter, defining fields on a configuration entity type is as simple as defining properties on the class itself. Moreover, you may recall the <kbd>config_export</kbd> key on the annotation, which lists which of these properties need to be exported and persisted. We omitted that because we will simply rely on the configuration schema (which we will create soon). Lastly, the interface methods are implemented next, and there is no rocket science involved in that. The <kbd>getUrl()</kbd>, as expected, will try to create an instance of <kbd>Url</kbd> from the value.</p>
+<p>Let's not forget the <em>use</em> statement for it at the top:</p>
+<pre>use Drupal\Core\Url;  </pre>
+<p>Since we talked about the configuration schema, let's define that as well. If you remember, it goes inside the <kbd>config/schema</kbd> folder of our module in a <kbd>*.schema.yml</kbd> file. This can be named after the module and contains the schema definitions of all configurations of the module. Alternatively, it can be named after the individual configuration entity type, so, in our case, <kbd>importer.schema.yml</kbd> (to keep things neatly organized):</p>
+<pre><span>products.importer.*:<br/></span><span>  type: </span>config_entity<br/>  <span>label: </span><span>'Importer config'<br/></span><span>  </span><span>mapping:<br/></span><span>   id:<br/></span><span>     type: </span>string<br/>     <span>label: </span><span>'ID'<br/></span><span>   </span><span>label:<br/></span><span>     type: </span>label<br/>     <span>label: </span><span>'Label'<br/></span><span>   </span><span>uuid:<br/></span><span>     type: </span>string<br/>   <span>url:<br/></span><span>     type: </span>uri<br/>     <span>label: </span>Uri<br/>   <span>plugin:<br/></span><span>     type: </span>string<br/>     <span>label: </span>Plugin ID<br/>   <span>update_existing:<br/></span><span>     type: </span>boolean<br/>     <span>label: </span>Whether to update existing products<br/>   <span>source:<br/></span><span>     type: </span>string<br/>     <span>label: </span>The source of the products</pre>
+<p>If you recall, the wildcard is used to apply the schema to all configuration items that match the prefix. So, in our case, it will match all <kbd>importer</kbd> configuration entities. Next, we have the <kbd>config_entity</kbd> schema with a mapping of the fields we defined. Apart from the default fields each entity type comes with, we are using a <kbd>uri</kbd>, <kbd>string</kbd>, and <kbd>boolean</kbd> schema type (which under the hood maps to the corresponding <kbd>TypedData</kbd> data type plugins). This schema now helps the system understand our entities.</p>
+<p>Now, let's go ahead and create the list builder handler that will take care of the admin entity listing:</p>
+<pre><span>namespace </span><span>Drupal\products</span><span>;<br/></span><span><br/></span><span>use </span><span>Drupal\Core\Config\Entity\ConfigEntityListBuilder</span><span>;<br/></span><span>use </span><span>Drupal\Core\Entity\EntityInterface</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * Provides a listing of Importer entities.<br/></span><span> */<br/></span><span>class </span><span>ImporterListBuilder </span><span>extends </span><span>ConfigEntityListBuilder {<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * {</span><span>@inheritdoc</span><span>}<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>buildHeader</span><span>() {<br/></span><span>    </span><span>$header</span><span>[</span><span>'label'</span><span>] = </span><span>$this</span><span>-&gt;</span><span>t</span><span>(</span><span>'Importer'</span><span>)</span><span>;<br/></span><span>    </span><span>$header</span><span>[</span><span>'id'</span><span>] = </span><span>$this</span><span>-&gt;</span><span>t</span><span>(</span><span>'Machine name'</span><span>)</span><span>;<br/></span><span>    </span><span>return </span><span>$header </span><span>+ </span><span>parent</span><span>::</span><span>buildHeader</span><span>()</span><span>;<br/></span><span>  </span><span>}<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * {</span><span>@inheritdoc</span><span>}<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>buildRow</span><span>(EntityInterface </span><span>$entity</span><span>) {<br/></span><span>    </span><span>$row</span><span>[</span><span>'label'</span><span>] = </span><span>$entity</span><span>-&gt;</span><span>label</span><span>()</span><span>;<br/></span><span>    </span><span>$row</span><span>[</span><span>'id'</span><span>] = </span><span>$entity</span><span>-&gt;</span><span>id</span><span>()</span><span>;<br/></span><span>    </span><span>return </span><span>$row </span><span>+ </span><span>parent</span><span>::</span><span>buildRow</span><span>(</span><span>$entity</span><span>)</span><span>;<br/></span><span>  </span><span>}<br/></span><span>}</span></pre>
+<p>This time we are extending the <kbd>ConfigEntityListBuilder</kbd>, which provides some functionalities specific to configuration entities. However, we are essentially doing the same as with the products listing—setting up the table header and the individual row data, nothing major. I recommend that you inspect <kbd>ConfigEntityListBuilder</kbd> and see what else you can do in the subclass.</p>
+<p>Now, we can finally take care of the form handler and start with the default create/edit form:</p>
+<pre>namespace Drupal\products\Form; 
+ 
+use Drupal\Core\Entity\EntityForm; 
+use Drupal\Core\Form\FormStateInterface; 
+use Drupal\Core\Messenger\MessengerInterface; 
+use Drupal\Core\Url; 
+use Drupal\products\Plugin\ImporterManager; 
+use Symfony\Component\DependencyInjection\ContainerInterface; 
+ 
+/** 
+ * Form for creating/editing Importer entities. 
+ */ 
+class ImporterForm extends EntityForm { 
+ 
+  /** 
+   * @var \Drupal\products\Plugin\ImporterManager 
+   */ 
+  protected $importerManager; 
+ 
+  /** 
+   * ImporterForm constructor. 
+   * 
+   * @param \Drupal\products\Plugin\ImporterManager $importerManager 
+   * @param \Drupal\Core\Messenger\MessengerInterface $messenger 
+   */ 
+  public function __construct(ImporterManager $importerManager, MessengerInterface $messenger) { 
+    $this-&gt;importerManager = $importerManager; 
+    $this-&gt;messenger = $messenger; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public static function create(ContainerInterface $container) { 
+    return new static( 
+      $container-&gt;get('products.importer_manager'), 
+      $container-&gt;get('messenger') 
+    ); 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function form(array $form, FormStateInterface $form_state) { 
+    $form = parent::form($form, $form_state); 
+ 
+    /** @var \Drupal\products\Entity\Importer $importer */ 
+    $importer = $this-&gt;entity; 
+ 
+    $form['label'] = [ 
+      '#type' =&gt; 'textfield', 
+      '#title' =&gt; $this-&gt;t('Name'), 
+      '#maxlength' =&gt; 255, 
+      '#default_value' =&gt; $importer-&gt;label(), 
+      '#description' =&gt; $this-&gt;t('Name of the Importer.'), 
+      '#required' =&gt; TRUE, 
+    ]; 
+ 
+    $form['id'] = [ 
+      '#type' =&gt; 'machine_name', 
+      '#default_value' =&gt; $importer-&gt;id(), 
+      '#machine_name' =&gt; [ 
+        'exists' =&gt; '\Drupal\products\Entity\Importer::load', 
+      ], 
+      '#disabled' =&gt; !$importer-&gt;isNew(), 
+    ]; 
+ 
+    $form['url'] = [ 
+      '#type' =&gt; 'url', 
+      '#default_value' =&gt; $importer-&gt;getUrl() instanceof Url ? $importer-&gt;getUrl()-&gt;toString() : '', 
+      '#title' =&gt; $this-&gt;t('Url'), 
+      '#description' =&gt; $this-&gt;t('The URL to the import resource'), 
+      '#required' =&gt; TRUE, 
+    ]; 
+ 
+    $definitions = $this-&gt;importerManager-&gt;getDefinitions(); 
+    $options = []; 
+    foreach ($definitions as $id =&gt; $definition) { 
+      $options[$id] = $definition['label']; 
+    } 
+ 
+    $form['plugin'] = [ 
+      '#type' =&gt; 'select', 
+      '#title' =&gt; $this-&gt;t('Plugin'), 
+      '#default_value' =&gt; $importer-&gt;getPluginId(), 
+      '#options' =&gt; $options, 
+      '#description' =&gt; $this-&gt;t('The plugin to be used with this importer.'), 
+      '#required' =&gt; TRUE, 
+    ]; 
+ 
+    $form['update_existing'] = [ 
+      '#type' =&gt; 'checkbox', 
+      '#title' =&gt; $this-&gt;t('Update existing'), 
+      '#description' =&gt; $this-&gt;t('Whether to update existing products if already imported.'), 
+      '#default_value' =&gt; $importer-&gt;updateExisting(), 
+    ]; 
+ 
+    $form['source'] = [ 
+      '#type' =&gt; 'textfield', 
+      '#title' =&gt; $this-&gt;t('Source'), 
+      '#description' =&gt; $this-&gt;t('The source of the products.'), 
+      '#default_value' =&gt; $importer-&gt;getSource(), 
+    ]; 
+ 
+    return $form; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function save(array $form, FormStateInterface $form_state) { 
+    /** @var \Drupal\products\Entity\Importer $importer */ 
+    $importer = $this-&gt;entity; 
+    $status = $importer-&gt;save(); 
+ 
+    switch ($status) { 
+      case SAVED_NEW: 
+        $this-&gt;messenger-&gt;addMessage($this-&gt;t('Created the %label Importer.', [ 
+          '%label' =&gt; $importer-&gt;label(), 
+        ])); 
+        break; 
+ 
+      default: 
+        $this-&gt;messenger-&gt;addMessage($this-&gt;t('Saved the %label Importer.', [ 
+          '%label' =&gt; $importer-&gt;label(), 
+        ])); 
+    } 
+     
+    $form_state-&gt;setRedirectUrl($importer-&gt;toUrl('collection')); 
+  } 
+ 
+} </pre>
+<p>We are directly extending <kbd>EntityForm</kbd> in this case because configuration entities don't have a specific form class like content entities do. For this reason, we also have to implement the form elements for all our fields inside the <kbd>form()</kbd> method.</p>
+<p>But first things first. We know we want the configuration entity to select a plugin to use, so, for this reason, we inject the <kbd>ImporterManager</kbd> we created earlier. We will use it to get all the existing definitions. And we also inject the <kbd>Messenger</kbd> service to use it later to print a message to the user.</p>
+<p>Inside the <kbd>form()</kbd> method, we define all the form elements for the fields. We use a <kbd>textfield</kbd> for the label and a <kbd>machine_name</kbd> field for the ID of the entity. The latter is a special JavaScript-powered field that derives its value from a "source" field (which defaults to the field <kbd>label</kbd> if one is not specified). It is also disabled if we are editing the form and is using a dynamic callback to try to load an entity by the provided ID and will fail validation if it exists. This is useful to ensure that IDs do not repeat. Next, we have a <kbd>url</kbd> form element, which does some URL-specific validation and handling to ensure that a proper URL is added. Then, we create an array of <kbd>select</kbd> element options of all the available importer plugin definitions. For this, we use the plugin manager's <kbd>getDefinitions()</kbd>, from which we can get the IDs and labels. A plugin definition is an array that primarily contains the data found in the annotation and some other data processed and added by the manager (in our case, only defaults). At this stage, our plugins are not yet instantiated. And we use those options on the select list. Finally, we have the simple <kbd>checkbox</kbd> and <kbd>textfield</kbd> elements for the last two fields, as we want to store the <kbd>update_existing</kbd> field as a Boolean and the <kbd>source</kbd> as a string.</p>
+<p>The <kbd>save()</kbd> method is pretty much like it was in the Product entity form; we are simply displaying a message and redirecting the user to the entity listing page (using the handy <kbd>toUrl()</kbd> method on the entity to build the URL). Since we named the form elements exactly the same as the fields, we don't need to do any mapping of the form values to the field names. That is taken care of.</p>
+<p>Let's now write the delete form handler:</p>
+<pre>namespace Drupal\products\Form; 
+ 
+use Drupal\Core\Entity\EntityConfirmFormBase; 
+use Drupal\Core\Form\FormStateInterface; 
+use Drupal\Core\Messenger\MessengerInterface; 
+use Drupal\Core\Url; 
+use Symfony\Component\DependencyInjection\ContainerInterface; 
+ 
+/** 
+ * Form for deleting Importer entities. 
+ */ 
+class ImporterDeleteForm extends EntityConfirmFormBase { 
+ 
+  /** 
+   * ImporterDeleteForm constructor. 
+   * 
+   * @param \Drupal\Core\Messenger\MessengerInterface $messenger 
+   */ 
+  public function __construct(MessengerInterface $messenger) { 
+    $this-&gt;messenger = $messenger; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public static function create(ContainerInterface $container) { 
+    return new static( 
+      $container-&gt;get('messenger') 
+    ); 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function getQuestion() { 
+    return $this-&gt;t('Are you sure you want to delete %name?', ['%name' =&gt; $this-&gt;entity-&gt;label()]); 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function getCancelUrl() { 
+    return new Url('entity.importer.collection'); 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function getConfirmText() { 
+    return $this-&gt;t('Delete'); 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function submitForm(array &amp;$form, FormStateInterface $form_state) { 
+    $this-&gt;entity-&gt;delete(); 
+ 
+    $this-&gt;messenger-&gt;addMessage($this-&gt;t('Deleted @entity importer.', ['@entity' =&gt; $this-&gt;entity-&gt;label()])); 
+ 
+    $form_state-&gt;setRedirectUrl($this-&gt;getCancelUrl()); 
+  } 
+   
+} </pre>
+<p>As I mentioned earlier, for configuration entities, we will need to implement this form handler ourselves. However, it's not a big deal because we can extend <kbd>EntityConfirmFormBase</kbd> and just implement some simple methods:</p>
+<ul>
+<li><span>I</span>n <kbd>getQuestion()</kbd> we return the string to be used as the question for the confirmation form.</li>
+<li><span>I</span>n <kbd>getConfirmText()</kbd> we return the label of the delete button.</li>
+<li><span>I</span>n <kbd>getCancelUrl()</kbd> we provide the redirect URL for the user after either a cancellation or a successful delete.</li>
+<li><span>I</span>n <kbd>submitForm()</kbd> we delete the entity, print a success message, and redirect to the URL we set in the <kbd>getCancelUrl()</kbd>.</li>
+</ul>
+<p>And with this, we are done with our configuration entity type. The last thing we might want to do is create some menu links to be able to navigate to the relevant pages (the same as we did for the product entity type). For the entity list page, we can have this in our <kbd>products.links.menu.yml</kbd> file:</p>
+<pre><span># Importer entity menu items<br/></span><span>entity.importer.collection:<br/></span><span>  title: </span><span>'Importer list'<br/></span><span>  </span><span>route_name: </span>entity.importer.collection<br/>  <span>description: </span><span>'List Importer entities'<br/></span><span>  </span><span>parent: </span>system.admin_structure<br/>  <span>weight: </span>99</pre>
+<p>There's nothing new here. We can also create the action link to add a new entity inside the <kbd>products.links.action.yml</kbd> file:</p>
+<pre><span>entity.importer.add_form:<br/></span><span>  route_name: </span><span>'entity.importer.add_form'<br/></span><span>  </span><span>title: </span><span>'Add Importer'<br/></span><span>  </span><span>appears_on:<br/></span><span>    </span>- entity.importer.collection</pre>
+<p>We do the same thing here as we did with the products. However, we won't create local tasks because we don't have a canonical route for the configuration entities, so we don't really need it.</p>
+<p>Now, if we clear our cache and go to <kbd>admin/structure/importer</kbd>, we should see the empty importer entity listing:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/e3cd04d8-1769-4e92-b783-d7fe15157f9b.png" style="width:31.17em;height:14.67em;"/></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The Importer plugin</h1>
+                </header>
+            
+            <article>
+                
+<p>Alright, since all of our setup is in place, we can now go ahead and create our first importer plugin. As we defined it in the manager, these need to go in the <kbd>Plugin/Importer</kbd> namespace of modules. So, let's start with a simple <kbd>JsonImporter</kbd> which will use a remote URL resource to import products. This is an example JSON file that will be processed by this plugin, just for testing purposes:</p>
+<pre>{<br/>   "products" : [<br/>     {<br/>       "id" : 1,<br/>       "name": "TV",<br/>       "number": 341<br/>     },<br/>     {<br/>       "id" : 2,<br/>       "name": "VCR",<br/>       "number": 123<br/>     },<br/>     {<br/>       "id" : 3,<br/>       "name": "Stereo",<br/>       "number": 234<br/>     }<br/>   ]<br/> }</pre>
+<p>I know, VCR right? We have an ID, a name, and a product number. This is all totally made-up information about products just to illustrate the process. So, let's create our <kbd>JsonImporter</kbd>:</p>
+<pre>namespace Drupal\products\Plugin\Importer; 
+ 
+use Drupal\products\Plugin\ImporterBase; 
+ 
+/** 
+ * Product importer from a JSON format. 
+ * 
+ * @Importer( 
+ *   id = "json", 
+ *   label = @Translation("JSON Importer") 
+ * ) 
+ */ 
+class JsonImporter extends ImporterBase { 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function import() { 
+    $data = $this-&gt;getData(); 
+    if (!$data) { 
+      return FALSE; 
+    } 
+ 
+    if (!isset($data-&gt;products)) { 
+      return FALSE; 
+    } 
+ 
+    $products = $data-&gt;products; 
+    foreach ($products as $product) { 
+      $this-&gt;persistProduct($product); 
+    } 
+    return TRUE; 
+  } 
+ 
+  /** 
+   * Loads the product data from the remote URL. 
+   * 
+   * @return \stdClass 
+   */ 
+  private function getData() { 
+    /** @var \Drupal\products\Entity\ImporterInterface $config */ 
+    $config = $this-&gt;configuration['config']; 
+    $request = $this-&gt;httpClient-&gt;get($config-&gt;getUrl()-&gt;toString()); 
+    $string = $request-&gt;getBody()-&gt;getContents(); 
+    return json_decode($string); 
+  } 
+ 
+  /** 
+   * Saves a Product entity from the remote data. 
+   * 
+   * @param \stdClass $data 
+   */ 
+  private function persistProduct($data) { 
+    /** @var \Drupal\products\Entity\ImporterInterface $config */ 
+    $config = $this-&gt;configuration['config']; 
+ 
+    $existing = $this-&gt;entityTypeManager-&gt;getStorage('product')-&gt;loadByProperties(['remote_id' =&gt; $data-&gt;id, 'source' =&gt; $config-&gt;getSource()]); 
+    if (!$existing) { 
+      $values = [ 
+        'remote_id' =&gt; $data-&gt;id, 
+        'source' =&gt; $config-&gt;getSource() 
+      ]; 
+      /** @var \Drupal\products\Entity\ProductInterface $product */ 
+      $product = $this-&gt;entityTypeManager-&gt;getStorage('product')-&gt;create($values); 
+      $product-&gt;setName($data-&gt;name); 
+      $product-&gt;setProductNumber($data-&gt;number); 
+      $product-&gt;save(); 
+      return; 
+    } 
+ 
+    if (!$config-&gt;updateExisting()) { 
+      return; 
+    } 
+ 
+    /** @var \Drupal\products\Entity\ProductInterface $product */ 
+    $product = reset($existing); 
+    $product-&gt;setName($data-&gt;name); 
+    $product-&gt;setProductNumber($data-&gt;number); 
+    $product-&gt;save(); 
+  } 
+} </pre>
+<p>You can immediately spot the plugin annotation where we specify an ID and a label. Next, by extending <kbd>ImporterBase</kbd>, we inherit the dependent services and ensure that the required interface is implemented. Speaking of which, we basically just have to implement the <kbd>import()</kbd> method. So, let's break down what we are doing:</p>
+<ol>
+<li>Inside the <kbd>getData()</kbd> method, we retrieve the product information from the remote resource. We do so by getting the URL from the <kbd>Importer</kbd> configuration entity and using Guzzle to make a request to that URL. We expect that to be JSON, so we just decode it as such. Of course, error handling is virtually nonexistent in this example, and that is not good.</li>
+<li>We loop through the resulting product data and call the <kbd>persistProduct()</kbd> method on each item. In there, we first check whether we already have the product entity. We do so using the simple <kbd>loadByProperties()</kbd> method on the product entity storage and try to find products that have the specific source and remote ID. If one doesn't exist, we create it. This should all be familiar from the previous chapter when we looked at manipulating entities. If the product already exists, we first check whether according to configuration, we can update it and only do so if that allows us to. The <kbd>loadByProperties()</kbd> method always returns an array of entities, but since we only expect to have a single product with the same remote ID and source combination, we simply <kbd>reset()</kbd> this array to get to that one entity. Then, we just set the name and product number on the entity.</li>
+</ol>
+<p>As you can see, instead of using the Entity API/Typed Data <kbd>set()</kbd> method to update the entity field values, we use our own interface methods. I find that this is much cleaner, more modern, and an IDE-friendly way because everything is very explicit.</p>
+<p>One thing you might notice is the error handling in this import process or more precisely, a lack thereof. This is because I kept things simple for the purpose of focusing on the current topic. Normally, you would want to maybe throw and catch some exceptions and definitely log some messages (both error and success). You know how to do the latter from <a href="360802d2-dd46-4d08-b478-9351d56ed2a0.xhtml">Chapter 3</a>, <em>Logging and Mailing</em>.</p>
+<p>And that is pretty much it. We can now create our first importer entity and make it use this importer plugin (after clearing the cache of course):</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/3b4e1b8f-82ef-4454-8dc5-f9efd3cb2511.png" style="width:44.33em;height:34.33em;"/></p>
+<p>The URL in the previous screenshot is just a local URL where the example JSON file is found, and we can see the only plugin available to choose, as well as the other entity fields we created form elements for. By saving this new entity, we can make use of it programmatically (assuming that the <kbd>products.json</kbd> file referenced in the URL exists):</p>
+<pre><span>$config </span><span>= \Drupal::</span><span>entityTypeManager</span><span>()<br/></span><span>  -&gt;</span><span>getStorage</span><span>(</span><span>'importer'</span><span>)<br/></span><span>  -&gt;</span><span>load</span><span>(</span><span>'my_json_product_importer'</span><span>)</span><span>;<br/></span><span>$plugin </span><span>= \Drupal::</span><span>service</span><span>(</span><span>'products.importer_manager'</span><span>)<br/></span><span>  -&gt;</span><span>createInstance</span><span>(</span><span>$config</span><span>-&gt;</span><span>getPluginId</span><span>()</span><span>, </span><span>[</span><span>'config' </span><span>=&gt; </span><span>$config</span><span>])</span><span>;<br/></span><span>$plugin</span><span>-&gt;</span><span>import</span><span>()</span><span>;</span></pre>
+<p>We first load the importer entity by ID. Then, we use the <kbd>ImporterManager</kbd> service to create a new instance of a plugin using the <kbd>createInstance()</kbd> method. Only one parameter is required for it—the ID of the plugin—but as I said earlier, we want to pass the configuration entity to it because it depends on it. So we do just that. Then, we call the <kbd>import()</kbd> method on the plugin. After running this code, the product entity listing will show some shiny new products.</p>
+<p>Let's, however, improve things a bit. Since the configuration entities and plugins are so tightly connected, let's use the plugin manager to do this entire thing rather than having to first load an entity and request the plugin from it. In other words, let's add a method to the plugin manager where we can pass the configuration entity ID, and it returns an instance of the relevant plugin; something like this:</p>
+<pre><span>/**<br/></span><span> * Creates an instance of ImporterInterface plugin based on the ID of a<br/></span><span> * configuration entity.<br/></span><span> *<br/></span><span> * </span><span>@param </span><span>$id<br/></span><span> *   Configuration entity ID<br/></span><span> *<br/></span><span> * </span><span>@return </span><span>null|\Drupal\products\Plugin\ImporterInterface<br/></span><span> */<br/></span><span>public function </span><span>createInstanceFromConfig</span><span>(</span><span>$id</span><span>) {<br/></span><span>  </span><span>$config </span><span>= </span><span>$this</span><span>-&gt;</span><span>entityTypeManager</span><span>-&gt;</span><span>getStorage</span><span>(</span><span>'importer'</span><span>)-&gt;</span><span>load</span><span>(</span><span>$id</span><span>)</span><span>;<br/></span><span>  </span><span>if </span><span>(!</span><span>$config </span><span>instanceof </span><span>\Drupal\products\Entity\ImporterInterface) {<br/></span><span>    </span><span>return NULL</span><span>;<br/></span><span>  </span><span>}<br/></span><span><br/></span><span>  </span><span>return </span><span>$this</span><span>-&gt;</span><span>createInstance</span><span>(</span><span>$config</span><span>-&gt;</span><span>getPluginId</span><span>()</span><span>, </span><span>[</span><span>'config' </span><span>=&gt; </span><span>$config</span><span>])</span><span>;<br/></span><span>}</span></pre>
+<p>Here, we essentially do the same thing as before, but we return <kbd>NULL</kbd> if there is no configuration entity found. You can choose to throw an exception if you want instead. However, as you may have <span>correctly </span>noticed, we also need to inject the <kbd>EntityTypeManager</kbd> into this class, so our constructor changes as well to take it as a last parameter and set it as a class property. You should be able to do that on your own. But we also need to alter the service definition for the plugin manager to add the <kbd>EntityTypeManager</kbd> as a dependency:</p>
+<pre><span>products.importer_manager:<br/></span><span>  class: </span>Drupal\products\Plugin\ImporterManager<br/>  <span>parent: </span>default_plugin_manager<br/>  <span>arguments: </span>[<span>'@entity_type.manager'</span>]</pre>
+<p>As you can see, we keep the <kbd>parent</kbd> inheritance key so that all the parent arguments are taken in. On top, however, we add our own regular <kbd>arguments</kbd> key which will append arguments to the ones that come from the parent.</p>
+<p>And with this we have simplified things for the client code:</p>
+<pre><span>$plugin </span><span>= \Drupal::</span><span>service</span><span>(</span><span>'products.importer_manager'</span><span>)<br/></span><span>  -&gt;</span><span>createInstanceFromConfig</span><span>(</span><span>'my_json_product_importer'</span><span>)</span><span>;<br/></span><span>$plugin</span><span>-&gt;</span><span>import</span><span>()</span><span>;</span></pre>
+<p>All we have to interact with is the plugin manager, and we can directly run the import. This is in some ways better because our configuration entities are not something we designed for being used by anyone else. They are simple configuration storage used by our importer plugins.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Content entity bundles</h1>
+                </header>
+            
+            <article>
+                
+<p>We have written a neat little piece of functionality. There are still improvements that we can, and will make, but those are for later chapters when we cover other topics that we will need to learn about. Now, however, let's take a step back to our content entity type and extend our products a bit by enabling bundles. We want to have more than one type of product that can be imported. And this will be a bundle which will be an option to choose when creating an Importer configuration. However, first, let's make the product entity type "bundleable".</p>
+<p>We start by adjusting our Product entity plugin annotation:</p>
+<pre><span>/**<br/></span><span> * Defines the Product entity.<br/></span><span> *<br/></span><span> * </span><span>@ContentEntityType</span><span>(<br/></span><span> *   ...<br/></span><span> *   label = </span><span>@Translation</span><span>("Product"),<br/></span><span> *   bundle_label = </span><span>@Translation</span><span>("Product type"),<br/></span><span> *   handlers = {<br/></span><span> *   ...<br/></span><span> *   entity_keys = {<br/></span><span> *     ...<br/></span><span> *     "bundle" = "type",<br/></span><span> *   },<br/></span><span> *   ...<br/></span><span> *   bundle_entity_type = "product_type",<br/></span><span> *   field_ui_base_route = "entity.product_type.edit_form"<br/></span></pre>
+<pre><span> * )<br/></span><span> */</span></pre>
+<p>We add a <kbd>bundle_label</kbd> for our bundle, an entity key for it that will map to the <kbd>type</kbd> field, the <kbd>bundle_entity_type</kbd> reference to the configuration entity type that will act as a bundle for the products, and a <kbd>field_ui_base_route</kbd>. This latter option is something we could have added before but was not necessary. Now, we can (and should) add it because we need a route where we can configure our product entities from the point of view of managing UI fields and the bundles. We'll see these a bit later on.</p>
+<p>Moreover, we also need to change something about the links. First, we will need to alter the <kbd>add-form</kbd> link:</p>
+<pre>"add-form" = "/admin/structure/product/add/{product_type}",  </pre>
+<p>This will now take a product type in the URL to know which bundle we are creating. If you remember from the previous chapter when we were creating entities programmatically, the bundle is a required value from the beginning if the entity type has bundles.</p>
+<p>Then, we add a new link, as follows:</p>
+<pre>"add-page" = "/admin/structure/product/add",  </pre>
+<p>This will go to the initial <kbd>add-form</kbd> path but will list options of available bundles to select for creating a new product. Clicking on one of those will take us to the <kbd>add-form</kbd> link.</p>
+<p>Since we made these changes, we also need to make a quick alteration to the product entity action link to use <kbd>add-page</kbd> instead of the <kbd>add-form</kbd> route:</p>
+<pre><span>entity.product.add_page:<br/></span><span>  route_name: </span>entity.product.add_page<br/>  <span>title: </span><span>'Add Product'<br/></span><span>  </span><span>appears_on:<br/></span><span>    </span>- entity.product.collection</pre>
+<p>This is required because, on the product entity list page (collection URL), we don't have a product type in context, so we cannot build a path to <kbd>add-form</kbd>; nor would it be logical to do so as we don't know what type of product the user wants to create. As a quick bonus, if there is only one bundle, Drupal will redirect the user to the <kbd>add-form</kbd> link of that particular bundle.</p>
+<p>The good thing is that since we specified an entity key for the bundle, we don't have to define the field that will reference the bundle configuration entity. It will be done for us by the parent <kbd>ContentEntityType::baseFieldDefinitions()</kbd>. So, what is left to do is to create the <kbd>ProductType</kbd> configuration entity type that will serve as product bundles. We already know more or less how this works. Inside our <kbd>Entity</kbd> namespace we start our class like so:</p>
+<pre><span>namespace </span><span>Drupal\products\Entity</span><span>;<br/></span><span><br/></span><span>use </span><span>Drupal\Core\Config\Entity\ConfigEntityBundleBase</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * Product type configuration entity type.<br/></span><span> *<br/></span><span> * </span><span>@ConfigEntityType</span><span>(<br/></span><span> *   id = "product_type",<br/></span><span> *   label = </span><span>@Translation</span><span>("Product type"),<br/></span><span> *   handlers = {<br/></span><span> *     "list_builder" = "Drupal\products\ProductTypeListBuilder",<br/></span><span> *     "form" = {<br/></span><span> *       "add" = "Drupal\products\Form\ProductTypeForm",<br/></span><span> *       "edit" = "Drupal\products\Form\ProductTypeForm",<br/></span><span> *       "delete" = "Drupal\products\Form\ProductTypeDeleteForm"<br/></span><span> *     },<br/></span><span> *     "route_provider" = {<br/></span><span> *       "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider",<br/></span><span> *     },<br/></span><span> *   },<br/></span><span> *   config_prefix = "product_type",<br/></span><span> *   admin_permission = "administer site configuration",<br/></span><span> *   bundle_of = "product",<br/></span><span> *   entity_keys = {<br/></span><span> *     "id" = "id",<br/></span><span> *     "label" = "label",<br/></span><span> *     "uuid" = "uuid"<br/></span><span> *   },<br/></span><span> *   links = {<br/></span><span> *     "canonical" = "/admin/structure/product_type/{product_type}",<br/></span><span> *     "add-form" = "/admin/structure/product_type/add",<br/></span><span> *     "edit-form" = "/admin/structure/product_type/{product_type}/edit",<br/></span><span> *     "delete-form" = "/admin/structure/product_type/{product_type}/delete",<br/></span><span> *     "collection" = "/admin/structure/product_type"<br/></span><span> *   },<br/></span><span> *   config_export = { <br/></span><span> *     "id",<br/></span><span> *     "label"<br/></span><span> *   }<br/></span><span> * )<br/></span><span> */<br/></span><span>class </span><span>ProductType </span><span>extends </span><span>ConfigEntityBundleBase </span><span>implements </span><span>ProductTypeInterface  {<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * The Product type ID.<br/></span><span>   *<br/></span><span>   * </span><span>@var </span><span>string<br/></span><span>   */<br/></span><span>  </span><span>protected </span><span>$id</span><span>;<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * The Product type label.<br/></span><span>   *<br/></span><span>   * </span><span>@var </span><span>string<br/></span><span>   */<br/></span><span>  </span><span>protected </span><span>$label</span><span>;<br/></span><span>}</span></pre>
+<p>Much of this is exactly the same as when we created the importer configuration entity type. The only difference is that we have the <kbd>bundle_of</kbd> key in the annotation, which denotes the content entity type this serves as a bundle for. Also, we don't really need any other fields. Because of that, the <kbd>ProductTypeInterface</kbd> can look as simple as this:</p>
+<pre><span>namespace </span><span>Drupal\products\Entity</span><span>;<br/></span><span><br/></span><span>use </span><span>Drupal\Core\Config\Entity\ConfigEntityInterface</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * Product bundle interface.<br/></span><span> */<br/></span><span>interface </span><span>ProductTypeInterface </span><span>extends </span><span>ConfigEntityInterface {}</span></pre>
+<p>Let's quickly take a look at the individual handlers, which will seem very familiar by now as well. The list builder looks almost the same as for the Importer:</p>
+<pre><span>namespace </span><span>Drupal\products</span><span>;<br/></span><span><br/></span><span>use </span><span>Drupal\Core\Config\Entity\ConfigEntityListBuilder</span><span>;<br/></span><span>use </span><span>Drupal\Core\Entity\EntityInterface</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * List builder for ProductType entities.<br/></span><span> */<br/></span><span>class </span><span>ProductTypeListBuilder </span><span>extends </span><span>ConfigEntityListBuilder {<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * {</span><span>@inheritdoc</span><span>}<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>buildHeader</span><span>() {<br/></span><span>    </span><span>$header</span><span>[</span><span>'label'</span><span>] = </span><span>$this</span><span>-&gt;</span><span>t</span><span>(</span><span>'Product type'</span><span>)</span><span>;<br/></span><span>    </span><span>$header</span><span>[</span><span>'id'</span><span>] = </span><span>$this</span><span>-&gt;</span><span>t</span><span>(</span><span>'Machine name'</span><span>)</span><span>;<br/></span><span>    </span><span>return </span><span>$header </span><span>+ </span><span>parent</span><span>::</span><span>buildHeader</span><span>()</span><span>;<br/></span><span>  </span><span>}<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * {</span><span>@inheritdoc</span><span>}<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>buildRow</span><span>(EntityInterface </span><span>$entity</span><span>) {<br/></span><span>    </span><span>$row</span><span>[</span><span>'label'</span><span>] = </span><span>$entity</span><span>-&gt;</span><span>label</span><span>()</span><span>;<br/></span><span>    </span><span>$row</span><span>[</span><span>'id'</span><span>] = </span><span>$entity</span><span>-&gt;</span><span>id</span><span>()</span><span>;<br/></span><span>    </span><span>return </span><span>$row </span><span>+ </span><span>parent</span><span>::</span><span>buildRow</span><span>(</span><span>$entity</span><span>)</span><span>;<br/></span><span>  </span><span>}<br/></span><span>}</span></pre>
+<p>The create/edit form handler also looks very similar, albeit much simpler due to not having many fields on the configuration entity type:</p>
+<pre><span>namespace </span><span>Drupal\products\Form</span><span>;<br/></span><span><br/></span><span>use </span><span>Drupal\Core\Entity\EntityForm</span><span>;<br/></span><span>use </span><span>Drupal\Core\Form\FormStateInterface</span><span>;<br/></span><span><br/></span><span>/**<br/></span><span> * Form handler for creating/editing ProductType entities<br/></span><span> */<br/></span><span>class </span><span>ProductTypeForm </span><span>extends </span><span>EntityForm {<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * {</span><span>@inheritdoc</span><span>}<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>form</span><span>(</span><span>array </span><span>$form</span><span>, </span><span>FormStateInterface </span><span>$form_state</span><span>) {<br/></span><span>    </span><span>$form </span><span>= </span><span>parent</span><span>::</span><span>form</span><span>(</span><span>$form</span><span>, </span><span>$form_state</span><span>)</span><span>;<br/></span><span><br/></span><span>    </span><span>/** </span><span>@var </span><span>\Drupal\products\Entity\ProductTypeInterface $product_type */<br/></span><span>    </span><span>$product_type </span><span>= </span><span>$this</span><span>-&gt;</span><span>entity</span><span>;<br/></span><span>    </span><span>$form</span><span>[</span><span>'label'</span><span>] = [<br/></span><span>      </span><span>'#type' </span><span>=&gt; </span><span>'textfield'</span><span>,<br/></span><span>      </span><span>'#title' </span><span>=&gt; </span><span>$this</span><span>-&gt;</span><span>t</span><span>(</span><span>'Label'</span><span>)</span><span>,<br/></span><span>      </span><span>'#maxlength' </span><span>=&gt; </span><span>255</span><span>,<br/></span><span>      </span><span>'#default_value' </span><span>=&gt; </span><span>$product_type</span><span>-&gt;</span><span>label</span><span>()</span><span>,<br/></span><span>      </span><span>'#description' </span><span>=&gt; </span><span>$this</span><span>-&gt;</span><span>t</span><span>(</span><span>'Label for the Product type.'</span><span>)</span><span>,<br/></span><span>      </span><span>'#required' </span><span>=&gt; </span><span>TRUE</span><span>,<br/></span><span>    </span><span>]</span><span>;<br/></span><span><br/></span><span>    </span><span>$form</span><span>[</span><span>'id'</span><span>] = [<br/></span><span>      </span><span>'#type' </span><span>=&gt; </span><span>'machine_name'</span><span>,<br/></span><span>      </span><span>'#default_value' </span><span>=&gt; </span><span>$product_type</span><span>-&gt;</span><span>id</span><span>()</span><span>,<br/></span><span>      </span><span>'#machine_name' </span><span>=&gt; [<br/></span><span>        </span><span>'exists' </span><span>=&gt; </span><span>'\Drupal\products\Entity\ProductType::load'</span><span>,<br/></span><span>      </span><span>]</span><span>,<br/></span><span>      </span><span>'#disabled' </span><span>=&gt; !</span><span>$product_type</span><span>-&gt;</span><span>isNew</span><span>()</span><span>,<br/></span><span>    </span><span>]</span><span>;<br/></span><span><br/></span><span>    </span><span>return </span><span>$form</span><span>;<br/></span><span>  </span><span>}<br/></span><span><br/></span><span>  </span><span>/**<br/></span><span>   * {</span><span>@inheritdoc</span><span>}<br/></span><span>   */<br/></span><span>  </span><span>public function </span><span>save</span><span>(</span><span>array </span><span>$form</span><span>, </span><span>FormStateInterface </span><span>$form_state</span><span>) {<br/></span><span>    </span><span>$product_type </span><span>= </span><span>$this</span><span>-&gt;</span><span>entity</span><span>;<br/></span><span>    </span><span>$status </span><span>= </span><span>$product_type</span><span>-&gt;</span><span>save</span><span>()</span><span>;<br/></span><span><br/></span><span>    </span><span>switch </span><span>(</span><span>$status</span><span>) {<br/></span><span>      </span><span>case </span><span>SAVED_NEW</span><span>:<br/></span><span>        drupal_set_message(</span><span>$this</span><span>-&gt;</span><span>t</span><span>(</span><span>'Created the %label Product type.'</span><span>, </span><span>[<br/></span><span>          </span><span>'%label' </span><span>=&gt; </span><span>$product_type</span><span>-&gt;</span><span>label</span><span>()</span><span>,<br/></span><span>        </span><span>]))</span><span>;<br/></span><span>        </span><span>break</span><span>;<br/></span><span><br/></span><span>      </span><span>default</span><span>:<br/></span><span>        drupal_set_message(</span><span>$this</span><span>-&gt;</span><span>t</span><span>(</span><span>'Saved the %label Product type.'</span><span>, </span><span>[<br/></span><span>          </span><span>'%label' </span><span>=&gt; </span><span>$product_type</span><span>-&gt;</span><span>label</span><span>()</span><span>,<br/></span><span>        </span><span>]))</span><span>;<br/></span><span>    </span><span>}<br/></span><span>    </span><span>$form_state</span><span>-&gt;</span><span>setRedirectUrl</span><span>(</span><span>$product_type</span><span>-&gt;</span><span>toUrl</span><span>(</span><span>'collection'</span><span>))</span><span>;<br/></span><span>  </span><span>}<br/></span><span>}</span></pre>
+<p>Again, in this form, I used the global <kbd>drupal_set_message()</kbd> function to save some space. You should instead inject the <kbd>Messenger</kbd> service to print messages to the user.</p>
+<p>Since we created the form for saving field values, we mustn't forget about the configuration schema for this entity type:</p>
+<pre><span>products.product_type.*:<br/></span><span>  type: </span>config_entity<br/>  <span>label: </span><span>'Product type config'<br/></span><span>  </span><span>mapping:<br/></span><span>  id:<br/></span><span>  type: </span>string<br/>  <span>label: </span><span>'ID'<br/></span><span>  </span><span>label:<br/></span><span>  type: </span>label<br/>  <span>label: </span><span>'Label'<br/></span><span>  </span><span>uuid:<br/></span><span>  type: </span>string</pre>
+<p>Next, we should also quickly write the form handler for deleting product types:</p>
+<pre>namespace Drupal\products\Form; 
+ 
+use Drupal\Core\Entity\EntityConfirmFormBase; 
+use Drupal\Core\Form\FormStateInterface; 
+use Drupal\Core\Messenger\MessengerInterface; 
+use Drupal\Core\Url; 
+use Symfony\Component\DependencyInjection\ContainerInterface; 
+ 
+/** 
+ * Form handler for deleting ProductType entities. 
+ */ 
+class ProductTypeDeleteForm extends EntityConfirmFormBase { 
+ 
+  /** 
+   * ProductTypeDeleteForm constructor. 
+   * 
+   * @param \Drupal\Core\Messenger\MessengerInterface $messenger 
+   */ 
+  public function __construct(MessengerInterface $messenger) { 
+    $this-&gt;messenger = $messenger; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public static function create(ContainerInterface $container) { 
+    return new static( 
+      $container-&gt;get('messenger') 
+    ); 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function getQuestion() { 
+    return $this-&gt;t('Are you sure you want to delete %name?', ['%name' =&gt; $this-&gt;entity-&gt;label()]); 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function getCancelUrl() { 
+    return new Url('entity.product_type.collection'); 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function getConfirmText() { 
+    return $this-&gt;t('Delete'); 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function submitForm(array &amp;$form, FormStateInterface $form_state) { 
+    $this-&gt;entity-&gt;delete(); 
+ 
+    $this-&gt;messenger-&gt;addMessage($this-&gt;t('Deleted @entity product type.', ['@entity' =&gt; $this-&gt;entity-&gt;label()])); 
+ 
+    $form_state-&gt;setRedirectUrl($this-&gt;getCancelUrl()); 
+  } 
+ 
+} </pre>
+<p>You should already be familiar with what we're doing here as it's the same as with the Importer entities.</p>
+<p>Finally, we should create the menu link to the <kbd>ProductType</kbd> entity list URL, just like we did for the other two entity types inside <kbd>products.links.menu.yml</kbd>:</p>
+<pre># Product type entity menu items 
+entity.product_type.collection: 
+  title: 'Product types' 
+  route_name: entity.product_type.collection 
+  description: 'List Product bundles' 
+  parent: system.admin_structure 
+  weight: 99 <br/></pre>
+<p>And the same for the action link used to create a new product bundle, inside <kbd>products.links.action.yml</kbd>:</p>
+<pre>entity.product_type.add_form: 
+  route_name: 'entity.product_type.add_form' 
+  title: 'Add Product type' 
+  appears_on: 
+    - entity.product_type.collection </pre>
+<p>Now, we are done. We can clear the caches and run the <kbd>drush entity-updates</kbd> command because Drupal needs to create the <kbd>type</kbd> field on the product entities. Once that is done, we can go the UI at <kbd>admin/structure/product_type</kbd> and see our changes.</p>
+<p>We now have a Product type entity listing where we can create Product bundles. Moreover, we also have some extra operations since this entity type is used as a bundle: we can manage fields and displays (both for viewing and for the forms) for each individual bundle:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/a8a44fc0-8d3c-4f9b-875d-8d4c5a8e5ea7.png" style="width:37.17em;height:18.67em;"/></p>
+<p>Managing fields and displays would have been possible before creating the bundle had we provided the <kbd>field_ui_base_route</kbd> to the Product entity type and created a menu link for it.</p>
+<p>Now we can add fields to our individual bundles and can distinguish between our product types—for example, we can have a bundle for goods and one for services. We can well imagine that the two types might require a different set of fields and/or they are being pulled from different external resources. So, let's just update our importing logic to allow the selection of a bundle because now it is actually mandatory to specify one when attempting to create a Product.</p>
+<p>We start by adding a new field to the Importer entity type. First, for the interface change:</p>
+<pre><span>/**<br/></span><span> * Returns the Product type that needs to be created.<br/></span><span> *<br/></span><span> * </span><span>@return </span><span>string<br/></span><span> */<br/></span><span>public function </span><span>getBundle()</span><span>;</span></pre>
+<p>Then, we will take a look at the implementation in the class:</p>
+<pre><span>/**<br/></span><span> * The product bundle.<br/></span><span> *<br/></span><span> * </span><span>@var </span><span>string<br/></span><span> */<br/></span><span>protected </span><span>$bundle</span><span>;<br/></span><span>...<br/></span><span>/**<br/></span><span> * {</span><span>@inheritdoc</span><span>}<br/></span><span> */<br/></span><span>public function </span><span>getBundle</span><span>() {<br/></span><span>  </span><span>return </span><span>$this</span><span>-&gt;</span><span>bundle</span><span>;<br/></span><span>}<br/></span></pre>
+<p>Next, we must include the new field in the configuration schema:</p>
+<pre>...<br/>bundle:<br/>  type: string<br/>  label: The product bundle </pre>
+<p>The last thing we will need to do on the Importer entity type is add the form element for choosing a bundle:</p>
+<pre><span>$form</span><span>[</span><span>'bundle'</span><span>] = [<br/></span><span>  </span><span>'#type' </span><span>=&gt; </span><span>'entity_autocomplete'</span><span>,<br/></span><span>  </span><span>'#target_type' </span><span>=&gt; </span><span>'product_type'</span><span>,<br/></span><span>  </span><span>'#title' </span><span>=&gt; </span><span>$this</span><span>-&gt;</span><span>t</span><span>(</span><span>'Product type'</span><span>)</span><span>,<br/></span><span>  </span><span>'#default_value' </span><span>=&gt; </span><span>$importer</span><span>-&gt;</span><span>getBundle</span><span>() ? </span><span>$this</span><span>-&gt;</span><span>entityTypeManager</span><span>-&gt;</span><span>getStorage</span><span>(</span><span>'product_type'</span><span>)-&gt;</span><span>load</span><span>(</span><span>$importer</span><span>-&gt;</span><span>getBundle</span><span>()) : </span><span>NULL</span><span>,<br/></span><span>  </span><span>'#description' </span><span>=&gt; </span><span>$this</span><span>-&gt;</span><span>t</span><span>(</span><span>'The type of products that need to be created.'</span><span>)</span><span>,  </span><span>'#required' </span><span>=&gt; </span><span>TRUE</span><span>,<br/></span><span>]</span><span>;</span></pre>
+<p>Here, we use an <kbd>entity_autocomplete</kbd> form element which gives us the option to use an autocomplete text field to look up an existing entity and select one of the found ones. The ID of the selected entity will then be submitted in the form as the value. This field definition requires choosing a <kbd>#target_type</kbd>, which is the entity type we want to autocomplete. One thing to note is that, even if the submitted value is only the ID (in our case, a string), the <kbd>#default_value</kbd> requires the full entity object itself (or an array of entity objects). This is because the field shows more information about the referenced entity than just the ID.</p>
+<p>In order to load the referenced entity for the default value, we need to inject the <kbd>EntityTypeManger</kbd>. You should already know how to do this injection, so I'm not going show it again here. We simply tack on the dependency to the <kbd>Messenger</kbd> service which is already being injected.</p>
+<p>That should be it for the Importer entity type alterations. The one last thing we need to do is handle the bundle inside the <kbd>JsonImporter</kbd> plugin we wrote. However, this is as simple as adding the <kbd>type</kbd> value when creating the product entity:</p>
+<pre><span>if </span><span>(!</span><span>$existing</span><span>) {<br/></span><span>  </span><span>$values </span><span>= [<br/></span><span>    </span><span>'remote_id' </span><span>=&gt; </span><span>$data</span><span>-&gt;</span><span>id</span><span>,<br/></span><span>    </span><span>'source' </span><span>=&gt; </span><span>$config</span><span>-&gt;</span><span>getSource</span><span>()</span><span>,<br/></span><span>    </span><span>'type' </span><span>=&gt; </span><span>$config</span><span>-&gt;</span><span>getBundle</span><span>()</span><span>,<br/></span><span>  </span><span>]</span><span>;<br/></span><span>  </span><span>/** </span><span>@var </span><span>\Drupal\products\Entity\ProductInterface $product */<br/></span><span>  </span><span>$product </span><span>= </span><span>$this</span><span>-&gt;</span><span>entityTypeManager</span><span>-&gt;</span><span>getStorage</span><span>(</span><span>'product'</span><span>)-&gt;</span><span>create</span><span>(</span><span>$values</span><span>)</span><span>;<br/></span><span>  </span><span>...</span></pre>
+<p>And there we have it. Running the import code will now create products of the bundle specified in the Importer configuration.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Drush command</h1>
+                </header>
+            
+            <article>
+                
+<p>So, our logic is in place, but we will need to create a handy way we can trigger the imports. One option is to create an administration form where we go and press a button. However, a more typical example is a command that can be added to the crontab and that can be run at specific intervals automatically. So that's what we are going to do now, and we will do so using Drush.</p>
+<p>The Drush command we are going to write will take an optional parameter for the ID of the Importer configuration entity we want to process. This will allow the use of the command for more than just one importer. Alternatively, passing no options will process each importer (in case this is something we want to do later on). One thing to note is that we won't focus on performance in this example. This means the command will work just fine for smaller sets of data (as big as one request can process) but it would be better to use a queue and/or batch processing for larger sets. Also, we will have a chapter dedicated to these subsystems later on, but, for now, let's get on with our example.</p>
+<p>Before we actually write our new Drush command, let's make some alterations to our logic as they will make sense in the context of what we want to do.</p>
+<p>First, let's add a getter method to the Importer plugins to retrieve the corresponding configuration entities. We start with the interface like so:</p>
+<pre><span>/**<br/></span><span> * Returns the Importer configuration entity.<br/></span><span> *<br/></span><span> * </span><span>@return </span><span>\Drupal\products\Entity\ImporterInterface<br/></span><span> */<br/></span><span>public function </span><span>getConfig()</span><span>;</span></pre>
+<p>Then, to the <kbd>ImporterBase</kbd> class, we can add the implementation (it will be the same for all individual plugin instances):</p>
+<pre><span>/**<br/></span><span> * {</span><span>@inheritdoc</span><span>}<br/></span><span> */<br/></span><span>public function </span><span>getConfig</span><span>() {<br/></span><span>  </span><span>return </span><span>$this</span><span>-&gt;</span><span>configuration</span><span>[</span><span>'config'</span><span>]</span><span>;<br/></span><span>}</span></pre>
+<p>As you can see, it's not rocket science.</p>
+<p>Second, let's add a <kbd>createInstanceFromAllConfigs()</kbd> method to the <kbd>ImporterManager</kbd> which will return an array of plugin instances for each existing Importer configuration entity:</p>
+<pre><span>/**<br/></span><span> * Creates an array of importer plugins from all the existing Importer<br/></span><span> * configuration entities.<br/></span><span> *<br/></span><span> * </span><span>@return </span><span>\Drupal\products\Plugin\ImporterInterface[]<br/></span><span> */<br/></span><span>public function </span><span>createInstanceFromAllConfigs</span><span>() {<br/></span><span>  </span><span>$configs </span><span>= </span><span>$this</span><span>-&gt;</span><span>entityTypeManager</span><span>-&gt;</span><span>getStorage</span><span>(</span><span>'importer'</span><span>)-&gt;</span><span>loadMultiple</span><span>()</span><span>;<br/></span><span>  </span><span>if </span><span>(!</span><span>$configs</span><span>) {<br/></span><span>    </span><span>return </span><span>[]</span><span>;<br/></span><span>  </span><span>}<br/></span><span>  </span><span>$plugins </span><span>= []</span><span>;<br/></span><span>  </span><span>foreach </span><span>(</span><span>$configs </span><span>as </span><span>$config</span><span>) {<br/></span><span>    </span><span>$plugin </span><span>= </span><span>$this</span><span>-&gt;</span><span>createInstanceFromConfig</span><span>(</span><span>$config</span><span>-&gt;</span><span>id</span><span>())</span><span>;<br/></span><span>    </span><span>if </span><span>(!</span><span>$plugin</span><span>) {<br/></span><span>      </span><span>continue</span><span>;<br/></span><span>    </span><span>}<br/></span><span><br/></span><span>    </span><span>$plugins</span><span>[] = </span><span>$plugin</span><span>;<br/></span><span>  </span><span>}<br/></span><span><br/></span><span>  </span><span>return </span><span>$plugins</span><span>;<br/></span><span>}</span></pre>
+<p>Here, we use the <kbd>loadMultiple()</kbd> method on the entity storage handler, which, if we use without any arguments, will load all existing entities. If we get any results, we use our existing <kbd>createInstanceFromConfig()</kbd> method to instantiate the plugins based on each configuration entity. That's it; we can now go ahead and create our Drush command.</p>
+<p>With newer versions of Drush (9 and up), commands are no longer declared in procedural code. So let's see how we can create our command using OOP. There are a few steps we need to take.</p>
+<p>We need to create a <em>composer.json</em> file for our module. It can look very barebones:</p>
+<pre>{ 
+  "name": "drupal/products", 
+  "description": "Importing products like a boss.", 
+  "type": "drupal-module", 
+  "autoload": { 
+    "psr-4": { 
+      "Drupal\\products\\": "src/" 
+    } 
+  }, 
+  "extra": { 
+    "drush": { 
+      "services": { 
+        "drush.services.yml": "^9" 
+      } 
+    } 
+  } 
+} </pre>
+<p>Apart from the normal boilerplate package and autoloader information, we have an <kbd>extras</kbd> section where we specify a YAML file where Drush can find the service definition that contains the commands. And since the latest version of Drush at the time of writing is 9, we specify that as well.</p>
+<div class="packt_infobox">With Drush 9, this is not technically needed. Simply having the <kbd>drush.services.yml</kbd> file in the module root will be enough for Drush to load it. However, with Drush 10 this becomes mandatory, so you might as well use the correct approach already.</div>
+<p>Now that we have referenced the Drush-specific services file, let's go ahead and create it. It looks exactly like our other services files we're used to:</p>
+<pre>services: 
+  products.commands: 
+    class: Drupal\products\Commands\ProductCommands 
+    arguments: ['@products.importer_manager'] 
+    tags: 
+      - { name: drush.command } 
+ </pre>
+<p>As you can see, we have another tagged service ( <kbd>drush.command</kbd>) whose class should contain some Drush commands. And I already know we will need the plugin manager so we are already adding it as an argument.</p>
+<p>So, let's see how we can start the command class which should go in the <em>Commands</em> namespace of our module:</p>
+<pre>namespace Drupal\products\Commands; 
+ 
+use Drush\Commands\DrushCommands; 
+use Symfony\Component\Console\Input\InputOption; 
+use Drupal\products\Plugin\ImporterManager; 
+ 
+/** 
+ * Drush commands for products. 
+ */ 
+class ProductCommands extends DrushCommands { 
+ 
+  /** 
+   * @var \Drupal\products\Plugin\ImporterManager 
+   */ 
+  protected $importerManager; 
+ 
+  /** 
+   * ProductCommands constructor. 
+   * 
+   * @param \Drupal\products\Plugin\ImporterManager $importerManager 
+   */ 
+  public function __construct(ImporterManager $importerManager) { 
+    $this-&gt;importerManager = $importerManager; 
+  } 
+ 
+  /** 
+   * Imports the Products 
+   * 
+   * @option importer 
+   *   The importer config ID to use. 
+   * 
+   * @command products-import-run 
+   * @aliases pir 
+   * 
+   * @param array $options 
+   *   The command options. 
+   */ 
+  public function import($options = ['importer' =&gt; InputOption::VALUE_OPTIONAL]) { 
+    // ... add the logic here. 
+  } 
+ 
+} </pre>
+<p>We are extending the <kbd>DrushCommands</kbd> base class to inherit all the things necessary or useful for Drush commands. And we have a single method that maps to a single command. What makes this an actual command is the annotation at the top which describes all the things related to it:</p>
+<ul>
+<li>The <kbd>@command</kbd> is the most important and specifies the actual Drush command name.</li>
+<li>The <kbd>@alias</kbd> specifies other aliases for the command.</li>
+<li>The <kbd>@param</kbd> is simple documentation of what input arguments the command takes. In our case, we don't have any mandatory arguments. We do have optional arguments though. If we wanted mandatory arguments, we could have simply added more method parameters without defaults.</li>
+<li>The <kbd>@option</kbd> specifies the name of the option that can be passed; this is found inside the <kbd>$options</kbd> array parameter as one of its keys. And since it's mandatory, we use a constant to denote that.</li>
+</ul>
+<p>With this definition, we can already use the command. After we clear the cache we can run the command like in the following examples:</p>
+<pre>drush products-import-run 
+drush products-import-run —importer=my_json_product_importer </pre>
+<p>Obviously, nothing will happen if we run these because the callback method is empty. So let's flesh it out:</p>
+<pre><span>$importer </span><span>= </span><span>$options</span><span>[</span><span>'importer'</span><span>]</span><span>;<br/></span><span><br/></span><span>if </span><span>(!is_null(</span><span>$importer</span><span>)) {<br/></span><span>  </span><span>$plugin </span><span>= </span><span>$this</span><span>-&gt;</span><span>importerManager</span><span>-&gt;</span><span>createInstanceFromConfig</span><span>(</span><span>$importer</span><span>)</span><span>;<br/></span><span>  </span><span>if </span><span>(is_null(</span><span>$plugin</span><span>)) {<br/></span><span>    </span><span>$this</span><span>-&gt;</span><span>logger</span><span>()-&gt;</span><span>log</span><span>(</span><span>'error'</span><span>, </span><span>t(</span><span>'The specified importer does not exist.'</span><span>))</span><span>;<br/></span><span>    </span><span>return</span><span>;<br/></span><span>  </span><span>}<br/></span><span><br/></span><span>  </span><span>$this</span><span>-&gt;</span><span>runPluginImport</span><span>(</span><span>$plugin</span><span>)</span><span>;<br/></span><span>  </span><span>return</span><span>;<br/></span><span>}<br/></span><span><br/></span><span>$plugins </span><span>= </span><span>$this</span><span>-&gt;</span><span>importerManager</span><span>-&gt;</span><span>createInstanceFromAllConfigs</span><span>()</span><span>;<br/></span><span>if </span><span>(!</span><span>$plugins</span><span>) {<br/></span><span>  </span><span>$this</span><span>-&gt;</span><span>logger</span><span>()-&gt;</span><span>log</span><span>(</span><span>'error'</span><span>, </span><span>t(</span><span>'There are no importers to run.'</span><span>))</span><span>;<br/></span><span>  </span><span>return</span><span>;<br/></span><span>}<br/></span><span><br/></span><span>foreach </span><span>(</span><span>$plugins </span><span>as </span><span>$plugin</span><span>) {<br/></span><span>  </span><span>$this</span><span>-&gt;</span><span>runPluginImport</span><span>(</span><span>$plugin</span><span>)</span><span>;<br/></span><span>}</span></pre>
+<p>What is happening here? First, we check for the importer ID, if one was passed with the command. If yes, we simply use our importer manager to create an instance of the corresponding plugin and delegate to a helper method to run the import on that plugin. Otherwise we use the built-in Drush logger to log an error. On the contrary, if no importer ID has been passed, we use our new <kbd>createInstanceFromAllConfigs()</kbd> method on the plugin manager to create plugin instances from all existing configuration entities. We then loop through each and, again, delegate to our helper method to run them.</p>
+<p>Before we conclude, let's see that helper method as well:</p>
+<pre>/** 
+ * Runs an individual Importer plugin. 
+ * 
+ * @param \Drupal\products\Plugin\ImporterInterface $plugin 
+ */ 
+protected function runPluginImport(\Drupal\products\Plugin\ImporterInterface $plugin) { 
+  $result = $plugin-&gt;import(); 
+  $message_values = ['@importer' =&gt; $plugin-&gt;getConfig()-&gt;label()]; 
+  if ($result) { 
+    $this-&gt;logger()-&gt;log('status', t('The "@importer" importer has been run.', $message_values)); 
+    return; 
+  } 
+ 
+  $this-&gt;logger()-&gt;log('error', t('There was a problem running the "@importer" importer.', $message_values)); 
+}­ </pre>
+<p>This method is mostly used for logging the result of the plugin import: a different message depending on the success of the process. And in doing so, we use the actual Importer label rather than the ID that was passed. Makes it nicer to read.</p>
+<p>Now if we clear the caches, we can run the command again (with or without an importer ID) and see that it correctly imports the products and prints the message to the terminal. Better yet, we can now add it to our crontab and have it run at specific intervals, once a day, for example.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Summary</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we got to implement some fun stuff. We created our very own content and configuration entity types as well as a custom plugin type to handle our logic.</p>
+<p>What we built was a Product entity type that holds some product-like data in various types of fields. We even created a bundle configuration entity type so that we can have multiple types of products with the possibility of different fields per bundle—a great data model.</p>
+<p>We wanted to be able to import products from all sorts of external resources. For this reason, we created the Importer plugin type which is responsible for doing the actual imports—a great functional model. However, these only work based on a set of configurations, which we represented via a configuration entity type. These can then be created in the UI and exported into YAML files like any other configuration.</p>
+<p>Finally, to use the importers, we created a Drush command, which can process either a single Importer or all the existing ones. This can be used inside a crontab for automatic imports.</p>
+<p>There are still some shortcomings in the way we constructed the importing functionality. For example, we added the URL field on the Importer configuration entity as if all imports need to happen from an external resource. What if we want an import to be from a CSV file? The URL field would be superfluous, and we'd need a file upload field on the configuration entity. This very much points to the differences between generic Importer configuration values and the plugin-specific ones. In future chapters, we'll come back to our module and make some adjustments in this respect.</p>
+<p>In the next chapter, we will look at the Database API and how we can directly interact with the underlying storage engine.</p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

@@ -1,0 +1,629 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Theming</h1>
+                </header>
+            
+            <article>
+                
+<p>The most obvious part of Drupal's theming system is the <span class="packt_screen">Appearance</span> admin page found at <kbd>admin/appearance</kbd>, which lists all the themes installed on your website<span><span>:</span></span></p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/a712eb41-b703-4971-8b92-94f30d4e407d.png"/></p>
+<p>When you choose a theme from the <span class="packt_screen">Appearance</span> page, you are applying a specific graphic design to your website's data and functionality. However, the applied theme is in reality only a small part of the entire theming layer.</p>
+<p>This book focuses mostly on building modules that encapsulate chunks of functionality. However, since we're ultimately building a web application, everything output by our functionality will need to be marked up with HTML. In Drupal, this process of wrapping data in HTML and CSS is called theming.</p>
+<p>In this chapter, we will discuss how our module integrates with the theme layer. We will talk about the architecture of the system, theme templates, hooks, render arrays, and others. Then, we will provide some practical examples.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Business logic versus presentation logic</h1>
+                </header>
+            
+            <article>
+                
+<p>We start this chapter by discussing an important architectural choice that modern applications make: how to turn data into presentation.</p>
+<p>So, what would be the best way to get our data and functionality marked up? Do we simply wrap each piece of data in HTML and return the whole as a giant string, as shown in the following example?</p>
+<pre>return '&lt;div class="wrapper"&gt;' . $data . '&lt;/div&gt;';</pre>
+<p>No, we don't. Like all other well-designed applications, Drupal separates its business logic from its presentation logic. It's true, previous versions of Drupal did use this kind of approach, especially when it came to theme functions, but even so, they were easily overridable. So, constructs like these were not found smack in the middle of business logic but were encapsulated in a special theming function that was called by the client code. So, the separation of business logic from presentation logic was clearly there, if at times, not so much one between PHP and HTML code.</p>
+<p>Traditionally, the primary motivations for this separation of concerns were as follows:</p>
+<ul>
+<li>To make the code easier to maintain</li>
+<li>To make it possible to easily swap out one layer's implementation without having to rewrite the other layers</li>
+</ul>
+<p>As we will see, Drupal takes the "swapability" aspect quite far. You may think that the theme you select on the Appearance page is responsible for applying the HTML and CSS for the website. This is true, but only to some extent. There are thousands of contributed modules on Drupal.org. Also, you can write a bunch of your own. Should the theme be responsible for marking up all of those modules' data? Obviously not.</p>
+<p>Since a module is most intimately familiar with its own data and functionality, it is its own responsibility to provide the default theme implementation—that initial look and feel that is independent of design and that should display the data correctly regardless of the theme. However, as long as the module uses the theme system properly, a theme will be able to override any HTML and/or CSS by swapping the module's implementation with its own.</p>
+<p>In other words, after data is retrieved and manipulated inside the module (the business logic), it will need to provide the default theme implementation to wrap it inside its markup. Sometimes, a particular theme will need to override this implementation in order for it to achieve a specific design goal. If the theme provides its own implementation, Drupal will use that theme implementation instead of the module's default implementation. This is usually called <em>overriding</em>. Otherwise, the default fallback will still be there. The theme also provides the option of applying styling via CSS only and leaving the markup provided by the module intact.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Twig</h1>
+                </header>
+            
+            <article>
+                
+<p>Theme engines are responsible for doing the actual output via template files. Although previous versions of Drupal were capable of using different theme engines, one stood out and was used 99.9 percent of the time (statistic made up by me on the spot): <kbd>PHPTemplate</kbd>. This theme engine used PHP files with the <kbd>.tpl.php</kbd> extension and contained both markup and PHP. Seasoned Drupal developers grew accustomed to this practice, but it was always more difficult for frontend developers to use and theme against.</p>
+<p>In Drupal 8, it was abandoned in favor of the Twig templating engine created by SensioLabs (the people responsible for the Symfony project). As mentioned, theme functions were also deprecated in favor of outputting everything through a <kbd>Twig</kbd> file. This brought about many improvements to the theme system and quite some joy to the frontend community. For example, it has improved security and readability, and has made it much less important to be actually versed in PHP to be able to take part in the theming of a Drupal site.</p>
+<p>All Twig template files in Drupal 8 have the <kbd>.html.twig</kbd> extension.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Theme hooks</h1>
+                </header>
+            
+            <article>
+                
+<p>Since we have covered some of the principles behind the Drupal theme system—most notably, the separation of concerns—let's go a bit deeper and take a look at how they are actually put into practice. This all starts with the theme hooks. Yes, Drupal always loves to call things <em>hooks</em>.</p>
+<p>Theme hooks define how a specific piece of data should be rendered. They are registered with the theme system by modules (and themes) using <kbd>hook_theme()</kbd>. In doing so, they get a name, a list of variables they output (the data that needs to be wrapped with markup), and other options.</p>
+<p>The modules and themes that register theme hooks also need to provide an implementation (one that will be used by default). In Drupal 7, this was done in the following two ways: either via a PHP function that returned a string (markup) or a <kbd>PHPTemplate</kbd> template file. Both were equally important, but the latter was always more "correct" in my (and many people's) opinion. This is also supported by the fact that the function approach has been completely ditched in Drupal 8 in favor of <kbd>Twig</kbd> templates. Also, together with a complete overhaul of the theme system, almost everything is now output via a Twig template file, which is great.</p>
+<p>As an example, let's take a look at two common ways of registering a theme hook we'll often find. For this, we will use Drupal core examples that already exist:</p>
+<pre><span>function </span><span>hook_theme</span><span>(</span><span>$existing</span><span>, </span><span>$type</span><span>, </span><span>$theme</span><span>, </span><span>$path</span><span>) {<br/></span><span>  </span><span>return </span><span>[<br/></span><span>    </span><span>'item_list' </span><span>=&gt; </span><span>array</span><span>(<br/></span><span>      </span><span>'variables' </span><span>=&gt; </span><span>array</span><span>(</span><span>'items' </span><span>=&gt; </span><span>array</span><span>()</span><span>, </span><span>'title' </span><span>=&gt; </span><span>''</span><span>, </span><span>'list_type' </span><span>=&gt; </span><span>'ul'</span><span>, </span><span>'wrapper_attributes' </span><span>=&gt; </span><span>array</span><span>()</span><span>, </span><span>'attributes' </span><span>=&gt; </span><span>array</span><span>()</span><span>, </span><span>'empty' </span><span>=&gt; </span><span>NULL</span><span>, </span><span>'context' </span><span>=&gt; </span><span>array</span><span>())</span><span>,<br/></span><span>    </span><span>)</span><span>,<br/></span><span>    </span><span>'select' </span><span>=&gt; </span><span>array</span><span>(<br/></span><span>      </span><span>'render element' </span><span>=&gt; </span><span>'element'</span><span>,<br/></span><span>    </span><span>)</span><span>,<br/></span><span>  </span><span>]</span><span>;<br/></span><span>}</span></pre>
+<p>In the preceding <kbd>hook_theme()</kbd> example, I included two theme hooks from Drupal core. One is based on variables, whereas the other is based on a render element. There are, of course, many more options that can be defined here, and I strongly encourage you to read the Drupal.org API documentation page for this hook.</p>
+<p>However, right off the bat you can see how easy it is to register a theme hook. In the first case, we have <kbd>item_list</kbd>, which, by default (if not otherwise specified), will map to the <kbd>item-list.html.twig</kbd> file for outputting the variables. In its definition we find the variables it uses, with some handy defaults in case they are not passed in from the client. The second theme hook is <kbd>select</kbd>, which doesn't use variables but a render element (which we will discuss soon). Also, its template file is easy to determine based on the name: <kbd>select.html.twig</kbd>. I encourage you to check out both these template files in the core code (provided by the System module).</p>
+<p>In addition to the actual implementation, the modules and themes that register a theme hook can also provide a default template preprocessor. The responsibility of this is to "preprocess" (that is, prepare) data before being sent to the template. For example, if a theme hook receives an entity (a complex data object) as its only variable, a preprocessor can be used to break that entity into tiny pieces that are needed to be output in the template (such as title and description).</p>
+<p>Template preprocessors are simple procedural functions that follow a naming pattern and are called by the theme system before the template is rendered. As I mentioned earlier, the modules and themes that register a theme hook can also provide a default preprocessor. So, for a theme hook named <kbd>component_box</kbd>, the default preprocessor function would look like this:</p>
+<pre><span>function </span><span>template_preprocess_component_box</span><span>(&amp;</span><span>$variables</span><span>) {<br/></span><span>  </span><span>// Prepare variables.<br/></span><span>}</span></pre>
+<p>The function name starts with the word <kbd>template</kbd> to denote that it is the original preprocessor for this theme hook, then follows the conventional <kbd>preprocess</kbd> word, and ends with the name of the theme hook. The argument is always an array passed as a reference and contains some info regarding that theme hook, and more importantly, the data variables that were defined with the theme hook and passed to it from the calling code. That is what we are usually working with in this function. Also, since it's passed by a reference, we don't return anything in this function, but we always manipulate the values directly in the <kbd>$variables</kbd> array. In the end, the template file <span><span>can</span></span> print out variables named after the keys in this array. The values will be, of course, the values that map to those keys.</p>
+<p>Another module (or theme) can override this preprocessor function by implementing its own. However, in its naming, it needs to replace the word <kbd>template</kbd> with the module name (to avoid collisions). If one such override exists, both preprocessors will be called in a specific order. The first is always the default one, followed by the ones defined by modules and then the ones defined by themes. This is another great extension point of Drupal because altering data or options found inside the preprocessor can go a long way in customizing the existing functionality to your liking.</p>
+<p>As an alternative to following the previous naming convention, you also have the option to register the preprocessor function names in the <kbd>hook_theme()</kbd> definition when you register it. However, I recommend that you stick to the default naming convention because it's much easier to spot what the purpose of the function is. As you become more advanced, you'll, in turn, appreciate being able to quickly understand these <em>convention</em> functions at a quick glance.</p>
+<p>I mentioned a bit earlier that modules and themes can also override theme hooks defined by other modules and themes. There are two ways to do this. The most common one is for a theme to override the theme hook. This is because of the rationale I was talking about earlier—a module defines a default implementation for its data, but a theme can then take over its presentation with ease. Also, the way themes can override a theme hook is by simply creating a new Twig file with the same name as the original and placing it somewhere in its <kbd>templates</kbd> folder. If that theme is enabled, it will be used instead. A less common but definitely valid use case is for a module to override a theme hook defined by another module. For example, this might be because you need to change how data is rendered by a popular contributed module. To achieve this, you will need to implement <kbd>hook_theme_registry_alter()</kbd> and change the template file used by the existing theme hook. It's also worth adding that you can change the entire theme hook definition using this hook if you want, not just the template. Also, since we mentioned this hook, note that theme hooks, upon definition, are stored and cached in a theme <em>registry</em> for optimized performance, and that registry is what we are altering with this hook. This also means that we regularly need to clear the cache when we make changes to the theme registry.</p>
+<p>All this is good and fine, but the business logic still has to interact with the theme system to tell it which particular theme hook to use. In Drupal 7, we had the <kbd>theme()</kbd> function which took the hook name as an argument and was responsible for everything: determining which template file (or function) to use, calling the preprocessors, processors, and so on. In Drupal 8, the <kbd>theme()</kbd> function no longer exists and has been replaced with a more robust system based on render arrays, which contain the theme hook information, the variables, and any other metadata on how that component needs to be rendered. We will also talk about render arrays in this chapter.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Theme hook suggestions</h1>
+                </header>
+            
+            <article>
+                
+<p>A great thing about theme hooks is that they are reusable. However, one problem you'll encounter is that theme hook templates lose context when a theme hook is reused. For example, the <kbd>item_list</kbd> theme hook, whose definition we saw in the previous section, has no idea what list it is theming. And this makes it difficult to style differently depending on what that content is. Fortunately, we can provide context to the theme system by using a theme hook pattern instead of the original theme hook name, and this pattern looks something like this:</p>
+<pre>base_theme_hook__some_context </pre>
+<p>The parts of the pattern are separated with a double underscore and together they are called a <em>theme hook suggestion</em>. But how does this work?</p>
+<p>Client code (the render arrays, as we will soon see), when using a theme hook to render a piece of data, can append the context to the theme hook, turning it into a suggestion. The theme system will then check for the following:</p>
+<ul>
+<li>If there is a template file that matches that suggestion (inside a theme), it uses it instead of the original theme hook template</li>
+<li>Alternatively, if there is a theme hook registered that has that actual name it uses that instead</li>
+<li>Alternatively, it checks for the base theme hook and uses that instead (the fallback)</li>
+</ul>
+<p>In this case, the caller (the render array) is responsible for "proposing" a suggestion. For example, consider the following render array:</p>
+<pre>return [<br/>  '#theme' =&gt; 'item_list__my_list',<br/>  '#items' =&gt; $items,<br/>];</pre>
+<p>The base theme hook is <kbd>item_list</kbd>, which is rendered using the <kbd>item-list.html.twig</kbd> template file provided by Drupal core. If there is no <kbd>item-list—my-list.html.twig</kbd> template file in the theme, and there is no <kbd>item_list__my_list</kbd> theme hook registered, the default <kbd>item_list</kbd> theme hook will be used. Otherwise, we will follow the order that I mentioned before. A module can register that suggestion as a hook, which will be used instead. However, a theme can override that further by just creating the template file with that name.</p>
+<p>And all this is done so that when rendering something with a reusable theme hook, we give the possibility to themers and manipulators to determine what exactly is being themed. However, the example we saw just now is static in the sense that we hardcoded <kbd>my_list</kbd> as the theme hook suggestion. We can do better than that.</p>
+<p>A module that registers a theme hook can also provide a list of suggestions that should go with that theme hook automatically. It does so by implementing <kbd>hook_theme_suggestions_HOOK()</kbd>, where <kbd>HOOK</kbd> is the theme hook name. This hook is fired at runtime by the theme system, trying to determine how a certain render array needs to be rendered. It receives the same <kbd>$variables</kbd> array as an argument as the template preprocessors do. This means that we can make use of those variables and dynamically provide theme hook suggestions. We will see an example of this later in the chapter.</p>
+<p>Moreover, as module developers, we can also provide a list of theme hook suggestions to theme hooks registered by other modules or Drupal core. We can do so by implementing <kbd>hook_theme_suggestions_HOOK_alter()</kbd>, where we receive the available suggestions for that theme hook in addition to the variables.</p>
+<p>In summary, theme hook suggestions are a powerful way of adding some context to the generic theme hooks that are responsible for rendering multiple things.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Render arrays</h1>
+                </header>
+            
+            <article>
+                
+<p>Render arrays also existed in the previous versions of Drupal and they were important to the theme system. In Drupal 8, however, they have become <em>the</em> thing—a core part of the Render API which is responsible for transforming markup <em>representations</em> into actual markup.</p>
+<p>Acknowledging my limits as a writer, I will defer to the definition found in the Drupal.org documentation that best describes what render arrays are:</p>
+<div class="packt_quote">... a hierarchical associative array containing data to be rendered and properties describing how the data should be rendered.</div>
+<p>Simple, but powerful.</p>
+<p>One of the principal reasons behind having render arrays is that they allow Drupal to delay the actual rendering of something into markup to the very last moment. What do I mean by this? For example, in Drupal 7, oftentimes as module developers we would call the actual rendering service (the <kbd>theme()</kbd> function) inside a preprocessor to "render" some data in order to print the resulting string (markup) in the template. However, this made it impossible to change that data later in the pipeline, for example, in another preprocessor that comes after the one that did this rendering.</p>
+<p>For this reason, in Drupal 8, we no longer have to/should render anything manually (except in very specific circumstances). We work with render arrays at all times. Drupal will know how to turn them into markup. This way, modules and themes can intercept render arrays at various levels in the process and make alterations.</p>
+<p>We will now talk about render arrays and the different aspects of working with them.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The structure of a render array</h1>
+                </header>
+            
+            <article>
+                
+<p>Render arrays are rendered by the <kbd>renderer</kbd> service (<kbd>RendererInterface</kbd>), which traverses the array and recursively renders each level. Each level of the array can have one or more elements, which can be of two types: properties or children. The properties are the ones whose keys are preceded by a <kbd>#</kbd> sign, whereas children are the ones that are not. The children can themselves be an array with properties and children. However, each level needs to have at least one property in order to be considered a level because it is responsible for telling the render system how that level needs to be rendered. As such, property names are specific to the Render API and to the actual thing they need to render, while the names of children can be flexible. In addition to these two types (yes, I lied, there can be more than two), we can also have the variables defined by a theme hook, which are also preceded by the <kbd>#</kbd> sign. They are not properties per se but are known by the theme system because they have been registered inside <kbd>hook_theme()</kbd>.</p>
+<p>There are many properties the Render API uses to process a render array. Some of them are quite important, such as <kbd>#cache</kbd> and <kbd>#attached</kbd>. However, there are a few that are mandatory in order for a render array to make sense, in that they define its core responsibility. The following are the properties that describe what the render array should do and each render array should have one of these.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">#type</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>#type</kbd> property specifies that the array contains data that needs to be rendered using a particular <em>render element</em>. Render elements are plugins (yes, plugins) that encapsulate a defined renderable component. They essentially wrap another render array, which can use a theme hook or a more complex render array to process the data they are responsible for rendering. You can think of them as essentially standardized render arrays.</p>
+<p>There are two types of render elements: generic and form input elements. Both have their respective plugin types, annotations and interfaces. They are similar in that they both render a standardized piece of HTML; however, form input elements have the complexity of having to deal with form processing, validation, data mapping, and so on. Remember, when we defined our form in <span class="MsoHyperlink"><a href="601b4dd0-c521-459e-9342-2645a109642c.xhtml">Chapter 2</a></span>, <em>Creating Your First Module,</em> we encountered arrays with <kbd>#</kbd> signs. These were (form) render elements with different options (properties).</p>
+<p>To find examples of these two types of render elements, look for plugins that implement the <kbd>ElementInterface</kbd> and <kbd>FormElementInterface</kbd> interfaces.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">#theme</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>#theme</kbd> property ties in strongly with what we've been talking about earlier in this chapter—theme hooks. It specifies that the render array needs to render some kind of data using one of the theme hooks defined. Together with this property, you will usually encounter other properties that map to the name of the variables the theme hook has registered in <kbd>hook_theme()</kbd>. These are the variables the theme system uses to render the template.</p>
+<p>This is the property you will use in your business logic to convey that your data needs to be rendered using a specific theme hook. If you thought that you can only use theme hooks you registered, you'd be incorrect. There are many theme hooks that have been already registered by Drupal core and also contributed modules that make the life of a Drupal developer much easier. Just look inside <kbd>drupal_common_theme()</kbd> for a bunch of common theme hooks that you can perhaps use.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">#markup</h1>
+                </header>
+            
+            <article>
+                
+<p>Sometimes, registering a theme hook and a template for outputting some data can be overkill. Imagine that all you have is a string you need to wrap in a <kbd>&lt;span&gt;</kbd> tag or something. In this case, you can use the <kbd>#markup</kbd> property, which specifies that the array directly provides the HTML string that needs to be output. Note, however, that the provided HTML string is run through <kbd>\Drupal\Component\Utility\Xss::filterAdmin</kbd> for sanitization (mostly, XSS protection). This is perfectly fine because if the HTML you are trying to include here is stripped out, it's a good indication that you are overusing the <kbd>#markup</kbd> property and should instead be registering a theme hook.</p>
+<p>Going a bit further than just simple markup is the <kbd>#plain_text</kbd> property via which you can specify that the text provided by this render array needs to be escaped completely. So basically if you need to output some simple text, you have the choice between these two for very fast output.</p>
+<p>Now, if you remember in <span class="MsoHyperlink"><a href="601b4dd0-c521-459e-9342-2645a109642c.xhtml">Chapter 2</a></span>, <em>Creating Your First Module</em>, at some point our controller returned this array:</p>
+<pre>return [<br/> '#markup' =&gt; $this-&gt;t('Hello World')<br/>];</pre>
+<p>This is the simplest render array you'll ever see. It has only one element, a tiny string output using the <kbd>#markup</kbd> property. Later in this chapter we will adjust this and use a render array provided by our <kbd>HelloWorldSalutation</kbd> service in order to make things a bit more themeable. That will be the section where we put into practice many of the things we learn here.</p>
+<p>However, as small as you see this array here, it is only part of a larger hierarchical render array that builds up the entire Drupal page and that contains all sorts of blocks and other components. Also, responsible for building this entire big thing is the Drupal render pipeline.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The render pipeline</h1>
+                </header>
+            
+            <article>
+                
+<p>In <a href="5c4ab442-1596-40ca-b305-d72b6c47ed59.xhtml"><span class="MsoHyperlink">Chapter 1</span></a>, <em>Developing for Drupal 8</em>, when we outlined a high-level example of how Drupal 8 handles a user request in order to turn it into a response, we touched on the notion of a render pipeline. So let's see what this is about, as there are essentially two render pipelines to speak of: the Symfony render pipeline and the Drupal one.</p>
+<p>As you know, Drupal 8 uses many Symfony components, one of which being the HTTPKernel component (<span class="MsoHyperlink"><a href="http://symfony.com/doc/current/components/http_kernel.html">http://symfony.com/doc/current/components/http_kernel.html</a></span>). Its main role is to turn a user request (built from PHP super globals into a Request object) into a standardized response object that gets sent back to the user. These objects are defined in the Symfony HTTP Foundation component <span class="MsoHyperlink"><a href="http://symfony.com/components/HttpFoundation">(http://symfony.com/components/HttpFoundation)</a></span>. To assist in this process, it uses the Event Dispatcher component to dispatch events meant to handle the workload on multiple layers. As we saw, this is what happens in Drupal 8 as well.</p>
+<p>Controllers in Drupal 8 can return one of two things—either a Response object directly or a render array. If they return the first, the job is almost done, as the Symfony render pipeline knows exactly what to do with that (assuming the response is correct). However, if they return a render array, the Drupal render pipeline kicks in at a lower level to try to turn that into a Response. We always need a Response.</p>
+<p>The <kbd>kernel.view</kbd> event is triggered in order to determine who can take care of this render array. Drupal 8 comes with the <kbd>MainContentViewSubscriber</kbd> which listens to this event and checks the request format and whether the controller has returned a render array. Based on the former, it instantiates a <kbd>MainContentRendererInterface</kbd> object (which, by default—and most of the time—will be the HTML-based <kbd>HtmlRenderer</kbd><span class="packtscreen">) and asks it to turn the render array into a Response. Then, it sets the Response onto the event so that the Symfony render pipeline can continue on its merry way.</span></p>
+<p><span class="packtscreen">In addition to the HTML renderer, Drupal 8 comes with a few others that need to handle different types of requests:</span></p>
+<ul>
+<li>The <kbd>AjaxRenderer</kbd> handles Ajax requests and integrates with the Ajax framework. We'll see examples of Ajax-powered functionalities later in the book.</li>
+<li>The <kbd>DialogRenderer</kbd> handles requests meant to open up a dialog on the screen.</li>
+<li>The <kbd>ModalRenderer</kbd> handles requests meant to open up a modal on the screen.</li>
+</ul>
+<p>Returning to the HTML renderer, let's see what <em>it</em> does to turn our render arrays into actual relevant HTML on a Response object. Without going into too much detail, here is the high-level of what it does:</p>
+<ul>
+<li>Its first goal is to build a render array that has the <kbd>#type =&gt; 'page'</kbd> as a property because this is the render element responsible for the entire page. Meaning that if the Controller returned it, it doesn't have to do much. However, usually controllers don't include that so it dispatches an event to determine who can build this render array.</li>
+<li>By default, the <kbd>SimplePageVariant</kbd> plugin is used for building up the page array, but with the Block module enabled, the <kbd>BlockPageVariant</kbd> plugin is used, taking things even further down some levels in the render pipeline. The main content area gets wrapped with blocks in the sidebar, header, footer, and so on.</li>
+<li>Once it has the page render array, it wraps it into yet another render element which is the <kbd>#type =&gt; 'html'</kbd> (responsible for things such as the <kbd>&lt;head&gt;</kbd> elements).</li>
+<li>Once it has the main render array of the entire page, it uses the <kbd>Renderer</kbd> service to traverse it and do the actual rendering at each level (and there can be many). It does so by translating render elements (<kbd>#type</kbd>), theme hooks (<kbd>#theme</kbd>), simply marked-up text bits (<kbd>#markup</kbd>), or plain text bits (<kbd>#plain_text</kbd>) into their respective HTML representations.</li>
+</ul>
+<p>So, as you see, the render pipeline starts at Symfony level, goes down into Drupal territory when it encounters render arrays, but continues going down to build each component found on a page around the main content returned by the Controller. Then, it comes back up those levels, all the way until a great render array is created and can be turned into HTML. Also, as it goes back up, various metadata can bubble up to the main render array.</p>
+<p>I purposefully left out caching from this equation, which although very important, we will cover in a later chapter. However, suffice it to say, cache metadata is one such example that bubbles up from the lower levels all the way to the top and is gathered to determine page-level caching. But more on that later.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Assets and libraries</h1>
+                </header>
+            
+            <article>
+                
+<p>Now that we know more about render arrays, how they are structured, and the pipeline they go through, we can talk a bit about asset management from a module development perspective. Because even though it is usually a theme responsibility, module developers often have to add and use CSS and JS files to their modules, and it all happens in render arrays.</p>
+<p>Working with CSS and JS files has become standardized in Drupal 8 compared to its previous version where we had more than one way to do things. Libraries are now key, so let's see how they work by going through some examples of making use of some CSS or JS files.</p>
+<p>There are three steps to adding assets to your page:</p>
+<ul>
+<li>Creating your CSS/JS file</li>
+<li>Creating a library that includes them</li>
+<li>Attaching that library to a render array</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Libraries</h1>
+                </header>
+            
+            <article>
+                
+<p>Assuming that you already have the CSS/JS files, libraries are defined inside a <kbd>module_name.libraries.yml</kbd> file in the module root folder. A simple example of a library definition inside this file would look like this:</p>
+<pre><span>my-library:<br/></span><span> version: </span>1.x<br/> <span>css:<br/></span><span>   theme:<br/></span><span>     css/my_library.css: </span>{}<br/> <span>js:<br/></span><span>   js/my_library.js: </span>{}</pre>
+<p>This is a standard YAML notation by which we define a library called <kbd>my-library</kbd> and provide some information about it. We can specify a version number and then add as many CSS and JS file references as we need. The file paths are relative to the module folder this library definition is in, and we can add some options between the curly braces (more advanced, but we will see an example in a moment).</p>
+<p>Additionally, you'll note that the CSS file has an extra level key called <kbd>theme</kbd>. This is to indicate the type of CSS to be included and can be one of the following (based on SMACSS (<span class="MsoHyperlink"><a href="https://smacss.com/">https://smacss.com/</a></span>) standards):</p>
+<ul>
+<li><kbd>base</kbd>: Usually contains CSS reset/normalizers and HTML element styling</li>
+<li><kbd>layout</kbd>: High-level page styling, such as grid systems</li>
+<li><kbd>component</kbd>: UI elements and reusable components</li>
+<li><kbd>state</kbd>: Styles used in client-side changes to components</li>
+<li><kbd>theme</kbd>: Visual styling of components</li>
+</ul>
+<p>The choice here is also reflected in the weighting of the CSS file inclusion, the latter being the "heaviest"—it will be included last.</p>
+<p>Another important aspect of using libraries in any application is the ability to include externally hosted files (usually from a CDN) for better performance. Let's take a look at an example library definition that uses externally hosted files:</p>
+<pre><span>angular.angularjs:<br/></span><span>   remote: </span>https://github.com/angular/angular.js<br/>   <span>version: </span>1.4.4<br/>   <span>license:<br/></span><span>     name: </span>MIT<br/>     <span>url: </span>https://github.com/angular/angular.js/blob/master/LICENSE<br/>     <span>gpl-compatible: </span>true<br/>   <span>js:<br/></span><span>     https://ajax.googleapis.com/ajax/libs/angularjs/1.4.4/angular.min.js: </span>{ <span>type: </span>external, <span>minified: </span>true }</pre>
+<p>This example is taken from Drupal.org (<span class="MsoHyperlink"><a href="https://www.drupal.org/docs/8/creating-custom-modules/adding-stylesheets-css-and-javascript-js-to-a-drupal-8-module">https://www.drupal.org/docs/8/creating-custom-modules/adding-stylesheets-css-and-javascript-js-to-a-drupal-8-module</a></span>) on defining libraries in Drupal 8. However, as you can see, the structure is the same as our previous example, except that it has some more meta information regarding the external library. And instead of a local path reference, we have a remote URL to the actual resource. Moreover, we also see some options within the curly braces with which we can specify that the file is actually externally located and minified.</p>
+<p>An important change when it comes to JS in Drupal 8 is that Drupal no longer includes all libraries such as jQuery by default. It does so only where and when it's needed. This has, therefore, brought the concept of library dependencies to the forefront, as certain scripts require other libraries to be loaded for them to work.</p>
+<p>Let's assume that <kbd>my-library</kbd> depends on jQuery and specify it as a dependency. All we need to add to our library definition is the following:</p>
+<pre>dependencies:<br/>  - core/jquery</pre>
+<p>Keep in mind that the <kbd>dependencies</kbd> key is at the same YML level as <kbd>css</kbd> and <kbd>js</kbd>.</p>
+<p>With this, we declare the Drupal core jQuery library to be required by our library. This means that if we use our library <span>somewhere </span>and jQuery is not included, Drupal will process the dependencies and include them all. A side-benefit of this is that dependencies are always included before our scripts, so we can also control that.</p>
+<p>The <kbd>core/jquery</kbd> notation indicates that the extension (module or theme) that defines the <kbd>jquery</kbd> library is Drupal core. If it had been a module or theme, <kbd>core</kbd> would have been replaced by the module or theme machine name. So, for example, to use our new library somewhere, it would be referenced as <kbd>module_name/my-library</kbd>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Attaching libraries</h1>
+                </header>
+            
+            <article>
+                
+<p>The most common way you'll be libraries is attaching them to your render arrays. This approach implies that the library is needed for the rendering of that component so that if said component is missing from the page, the library assets are no longer included.</p>
+<p>Here is what a render array would look like with the previous library we defined attached to it:</p>
+<pre>return [<br/>  '#theme' =&gt; 'some_theme_hook',<br/>  '#some_variable' =&gt; $some_variable,<br/>  '#attached' =&gt; [<br/>    'library' =&gt; [<br/>      'my_module/my-library',<br/>     ],<br/>  ],<br/>];</pre>
+<p>The <kbd>#attached</kbd> property is important here, and it signifies that we are essentially attaching something to the render array, which in our case happens to be a library. In Drupal 7, we could attach CSS and JS files directly, but we now have a standardized libraries API to do so in a more robust way.</p>
+<p>However, you may have cases in which the library you need is not linked to a specific render array (a component on the page) but to the entire page itself—all pages or a subset. To attach libraries on an entire page, you can implement <kbd>hook_page_attachments()</kbd>. Consider the following example:</p>
+<pre><span>function </span><span>hook_page_attachments</span><span>(</span><span>array </span><span>&amp;</span><span>$attachments</span><span>) {<br/></span><span>  </span><span>$attachments</span><span>[</span><span>'#attached'</span><span>][</span><span>'library'</span><span>][] = </span><span>'my_module/my-library'</span><span>;<br/></span><span>}</span></pre>
+<p>This hook is called on each page, so you can also attach libraries contextually (for example, if the user has a specific role or something like that). Moreover, there is also the <kbd>hook_page_attachments_alter()</kbd> hook that you can use to alter any existing attachments (for example, to remove attachments from the page).</p>
+<p>Another way you can attach libraries is inside a preprocess function. We talked about preprocess functions earlier in this chapter; it's simple to achieve:</p>
+<pre><span>function </span><span>my_module_preprocess_theme_hook</span><span>(&amp;</span><span>$variables</span><span>) {<br/></span><span>  </span><span>$variables</span><span>[</span><span>'#attached'</span><span>][</span><span>'library'</span><span>][] =  </span><span>'my_module/my_library'</span><span>;<br/></span><span>}</span></pre>
+<p>All you have to do is add the <kbd>#attached</kbd> key (if it doesn't already exist) to the variables array.</p>
+<p>These three methods of attaching libraries are the most common ones you'll encounter and use yourself. However, there are a few other ways and places attachments can be added—you can alter an existing render element definition and you can attach libraries directly in a Twig file. I recommend that you read the Drupal.org documentation (<span class="MsoHyperlink"><a href="https://www.drupal.org/docs/8/creating-custom-modules/adding-stylesheets-css-and-javascript-js-to-a-drupal-8-module">https://www.drupal.org/docs/8/creating-custom-modules/adding-stylesheets-css-and-javascript-js-to-a-drupal-8-module</a></span>) for more information on these methods.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Common theme hooks</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we will look at three common theme hooks that come with Drupal core that you are likely to use quite often. The best way to understand them is, of course, by referring to an example of how to use them. So, let's get to it.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Lists</h1>
+                </header>
+            
+            <article>
+                
+<p>One of the most common HTML constructs are lists (ordered or unordered), and any web application ends up having many of them, either for listing items or for components that do not even look like lists, but for the purposes of marking up, an <kbd>ul</kbd> or <kbd>ol</kbd> fits the bill best. Luckily, Drupal has always had the <kbd>item_list</kbd> theme hook which is flexible enough to allow us to use it in almost all cases.</p>
+<p>The <kbd>item_list</kbd> theme hook is defined inside <kbd>drupal_common_theme()</kbd>, is preprocessed (by default) in <kbd>template_preprocess_item_list()</kbd>, uses the <kbd>item-list.html.twig</kbd> template by default, and has no default theme hook suggestions (because it's so generic and registered outside the context of any business logic). If we inspect its definition, we'll note that it takes a number of variables that build up its flexibility. Let's take a look at an example of how to use it.</p>
+<p>Imagine that we have the following array of items:</p>
+<pre><span>$items </span><span>= [<br/></span><span>  </span><span>'Item 1'</span><span>,<br/></span><span>  </span><span>'Item 2'<br/></span><span>]</span><span>;</span></pre>
+<p>The simplest way we can render this as an <kbd>&lt;ul&gt;</kbd> is as follows:</p>
+<pre><span>return </span><span>[<br/></span><span>  </span><span>'#theme' </span><span>=&gt; </span><span>'item_list'</span><span>,<br/></span><span>  </span><span>'#items' </span><span>=&gt; </span><span>$items<br/></span><span>]</span><span>;</span></pre>
+<p>Do note that the respective <kbd>&lt;ul&gt;</kbd> is wrapped in a <kbd>&lt;div class="item_list"&gt;</kbd> and that the items in our array can also render arrays themselves.</p>
+<p>If we want to change the list into an <kbd>&lt;ol&gt;</kbd>, we set the <kbd>#list_type</kbd> variable to <kbd>ol</kbd>. We can even have a title heading (<kbd>&lt;h3&gt;</kbd>) before the list if we set the <kbd>#title</kbd> variable. Moreover, we can add more attributes on the <kbd>&lt;div&gt;</kbd> wrapper. For more information on how the other options work, I suggest that you inspect the template file and preprocessor function. However, these are the ones you'll most often use.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Links</h1>
+                </header>
+            
+            <article>
+                
+<p>In <a href="601b4dd0-c521-459e-9342-2645a109642c.xhtml"><span class="MsoHyperlink">Chapter 2</span></a>, <em>Creating Your First Module,</em> we briefly looked at how we can work with links programmatically and how to build and render them in two different ways. We also noted that it's better to use the <kbd>#link</kbd> render element (and we now understand what this is) if we want the link to be alterable somewhere down the line. Now, let's take a look at how we can build a list of links using the helpful <kbd>links</kbd> theme hook.</p>
+<p>The <kbd>links</kbd> theme hook takes an array of links to be rendered, optional attributes, an optional heading, and a flag to set the active class dynamically. It then uses the <kbd>links.html.twig</kbd> template to construct a <kbd>&lt;ul&gt;</kbd>, much like the <kbd>item_list</kbd> hook.</p>
+<p>The most important variable here is the array of links, as it needs to contain individual arrays with the following keys: <kbd>title</kbd> (the link text), <kbd>url</kbd> (a <kbd>Url</kbd> object), and <kbd>attributes</kbd> (an array of attributes to add to each link item). If you look inside the <kbd>template_preprocess_links</kbd> preprocessor, you'll see that it takes each of these items and transforms them into a render array with the <kbd>#type =&gt; 'link'</kbd> (the render element).</p>
+<p>In addition to the array of links, we can also pass a heading (just like with <kbd>item_list</kbd>) and a flag for setting the active class—<kbd>set_active_class</kbd>. The latter will make it add an <kbd>is-active</kbd> class onto the <kbd>&lt;li&gt;</kbd> item in the list and the link itself if the link matches the current route. Handy stuff, isn't it? However, for more information, check out the documentation above the <kbd>template_preprocess_links()</kbd> implementation. Now, let's see a quick example of using this in practice:</p>
+<pre><span>$links </span><span>= [<br/></span><span>  [<br/></span><span>    </span><span>'title' </span><span>=&gt; </span><span>'Link 1'</span><span>,<br/></span><span>    </span><span>'url' </span><span>=&gt; Url::</span><span>fromRoute</span><span>(</span><span>'&lt;front&gt;'</span><span>)</span><span>,<br/></span><span>  </span><span>]</span><span>,<br/></span><span>  </span><span>[<br/></span><span>    </span><span>'title' </span><span>=&gt; </span><span>'Link 1'</span><span>,<br/></span><span>    </span><span>'url' </span><span>=&gt; Url::</span><span>fromRoute</span><span>(</span><span>'hello_world.hello'</span><span>)</span><span>,<br/></span><span>  </span><span>]<br/></span><span>]</span><span>;<br/></span><span><br/></span><span>return </span><span>[<br/></span><span>  </span><span>'#theme' </span><span>=&gt; </span><span>'links'</span><span>,<br/></span><span>  </span><span>'#links' </span><span>=&gt; </span><span>$links</span><span>,<br/></span><span>  </span><span>'#set_active_class' </span><span>=&gt; </span><span>true</span><span>,<br/></span><span>]</span><span>;</span></pre>
+<p>That is all. We build an array of link data and then construct the render array using the <kbd>links</kbd> theme hook. We also use the <kbd>set_active_class</kbd> option just for kicks. This means that the <kbd>is-active</kbd> class will be present on the first link if this is rendered on the home page or on the second link if rendered on the <em>Hello World</em> page. As simple as that.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Tables</h1>
+                </header>
+            
+            <article>
+                
+<p>The last common theme hook we will look at now will help you build tables. It has always been a Drupal best practice to use the theme hook when building tables rather than creating the markup yourself. This is also, in part, because it has always been very flexible. So, let's take a look.</p>
+<p>The <kbd>table</kbd> theme hook takes a bunch of variables, many of them optional. The most important, however, are the <kbd>header</kbd> (an array of header definitions) and <kbd>rows</kbd> (a multidimensional array of row definitions). It's not worth repeating all the possible options you have for building tables here because they are all very well documented above the <kbd>template_preprocess_table()</kbd> preprocessor function. So, do check there for more information. Instead, we'll focus on a simple use case of rendering a table, and we'll do so via an example:</p>
+<pre>$header = ['Column 1', 'Column 2'];<br/>$rows = [<br/>  ['Row 1, Column 1', 'Row 1, Column 2'],<br/>  ['Row 2, Column 1', 'Row 2, Column 2']<br/>];<br/><br/>return [<br/>  '#theme' =&gt; 'table',<br/>  '#header' =&gt; $header,<br/>  '#rows' =&gt; $rows,<br/>];</pre>
+<p>So, as you can see, we have the two critical variables. We have the list of header items and the rows (whose cells are in the array in the same order as the header). Of course, you have many more options, including attributes at all levels of the table, handy sorting capability that makes it easy to integrate with a database query, and more. I strongly encourage you to explore these options in the documentation.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Attributes</h1>
+                </header>
+            
+            <article>
+                
+<p>In the previous three examples of theme hooks we encountered the concept of <kbd>attributes</kbd> in the context of using them to render HTML elements. Attributes here are understood in the same way as with HTML. For example, <kbd>class</kbd>, <kbd>id</kbd>, <kbd>style</kbd>, and <kbd>href</kbd> are all HTML element attributes. Why is this important?</p>
+<p>The reusability of theme hooks makes it so that we cannot hardcode all our HTML attributes in the Twig template files. We can have some, including classes, but we will always need to allow business logic to inform the theme hook of certain attribute values it needs printed on the HTML element. For example, an <kbd>active</kbd> class on a link. This is why we have this concept of attributes.</p>
+<p>Most theme hooks you'll see have attributes in some form or another, with the variable usually being called <kbd>$attributes</kbd>, <kbd>$wrapper_attributes</kbd>, or something of that nature. Also, this variable always needs to be a multidimensional array with the attribute data you want passed. The keys in this array are the name of the attribute, whereas the value is the attribute value. If the value can have multiple items, such as classes, it will also be an array. Consider the following example:</p>
+<pre><span>$attributes </span><span>= [<br/></span><span>  </span><span>'id' </span><span>=&gt; </span><span>'my-id'</span><span>,<br/></span><span>  </span><span>'class' </span><span>=&gt; [</span><span>'class-one'</span><span>, </span><span>'class-two'</span><span>]</span><span>,<br/></span><span>  </span><span>'data-custom' </span><span>=&gt; </span><span>'my custom data value'<br/></span><span>]</span><span>;</span></pre>
+<p>As you can see, we have some common attributes, but you can also make up your own as needed (usually in the form of data attributes). However, in no way is this mandatory, and you can add only the ones you actually need. Do always, though, read the documentation on the theme hook to see how they are used and which elements are actually going to get them.</p>
+<p>From an API point of view, Drupal handles attributes via a handy class called <kbd>Attribute</kbd>. You'll note that many template preprocessors will take that array and construct a new <kbd>Attribute</kbd> object for manipulating them with more ease. Additionally, such an object is also renderable because it implements the <kbd>MarkupInterface</kbd> and Twig will know directly how to transform it into a string.</p>
+<p>So, keep that in mind if you are writing your own theme hooks and need to handle attributes with more class (pun intended).</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Layouts</h1>
+                </header>
+            
+            <article>
+                
+<p>As part of the Drupal 8 release cycle, the Layouts API has been introduced in order to provide contributed modules with a unified approach for defining layouts. For example, modules like Panels and Layout Builder make use of this API to define layouts that contain regions and that can render content and all sorts of things inside.</p>
+<p>Layouts have been introduced in version 8.3 of Drupal as an experimental module (called <span class="packt_screen">Layout Discovery</span>) and marked stable in version 8.4. At the same time, a new experimental module has been introduced, called Layout Builder, which uses this API to provide site builders a way to build layouts for regular content.</p>
+<p>We won't be using layouts going forward in this book but it's important you know how to work with them in case you need them. So let's quickly talk about how you, as a module developer, can define and make use of layouts programmatically.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Defining layouts</h1>
+                </header>
+            
+            <article>
+                
+<p>Simply put, layouts are plugins. But unlike the plugins we've seen before, these are defined in YAML files instead of annotations above a class. One of the reasons for this is that layouts are more <em>definition</em> than functionality, so they don't necessarily require classes. They can be simply defined in a few lines inside a <kbd>YAML</kbd> file.</p>
+<p>Although not necessarily, YAML-based plugins are typically defined inside a file named <kbd>module_name.plugin_type_name.yml</kbd> found in the root of the module defining the plugin. So in the case of layouts, this would be <kbd>module_name.layouts.yml</kbd>. But what does a definition contain?</p>
+<p>Let's imagine we want to define a two-column layout with a left and right region. Our simplest definition could look like this:</p>
+<pre>two_column: 
+  label: 'Two column' 
+  category: 'My Layouts' 
+  template: templates/two-column 
+  regions: 
+    left: 
+      label: Left region 
+    right: 
+      label: Right region </pre>
+<p>So what do we learn from this definition?</p>
+<ul>
+<li>First, we have a name and category, which are mandatory. These can be used in whatever UI to show information about the layout.</li>
+<li>Second, we specify the template that should render this layout. The corresponding theme hook gets defined under the hood. In the case above, the template file would be in the <kbd>templates</kbd> folder and would be called <kbd>two-column.html.twig</kbd>.</li>
+<li>Lastly, we define the regions of the layout with a label for each. The <kbd>left</kbd> and <kbd>right</kbd> keys are important as they are the machine names of the regions.</li>
+<li>As a bonus, if we wanted to attach a library, we could add another line to this definition, like so:</li>
+</ul>
+<pre style="padding-left: 60px">library: my_module/my_library</pre>
+<p>Before the layout registration was complete, we'd <span>also </span>need to create the template file we referenced. And it could look like this:</p>
+<pre>&lt;div class="two-column"&gt; 
+  &lt;div class="left-region"&gt; 
+    {{ content.left }} 
+  &lt;/div&gt; 
+  &lt;div class="right-region"&gt; 
+    {{ content.right }} 
+  &lt;/div&gt; 
+&lt;/div&gt;</pre>
+<p>In the template we have access to the <kbd>content</kbd> variable on which we can access the values of the regions we can print.</p>
+<p>And that's pretty much it. Clearing the cache (and enabling the Layout Discovery module) would register this layout with the system.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Rendering a layout</h1>
+                </header>
+            
+            <article>
+                
+<p>OK, but registering a layout doesn't help us with much. Unless, of course, we use Layout Builder or some contributed module that uses layouts for various things. In which case we'd already be providing great value. But what if we want to use this layout ourselves? In other words, render stuff with it.</p>
+<p>The simplest way of rendering something with this layout could look like this:</p>
+<pre>$layoutPluginManager = \Drupal::service('plugin.manager.core.layout'); 
+$layout = $layoutPluginManager-&gt;createInstance('two_column'); 
+ 
+$regions = [ 
+  'left' =&gt; [ 
+    '#markup' =&gt; 'my left content', 
+  ], 
+  'right' =&gt; [ 
+    '#markup' =&gt; 'my right content', 
+  ], 
+]; 
+ 
+return $layout-&gt;build($regions); </pre>
+<p>Without going into too much detail about the plugin system (yet), but with the above we use the Layout plugin manager to create a new instance of the layout we defined (whose machine name is <kbd>two_column</kbd>). Then we prepare the data to print inside the layout in the <kbd>$regions</kbd> array. As you can see, the array construct mirrors the regions in the layout. Finally, we build the layout by passing the regions data. And that is it. The resulting render array would render the template with the content printed in the corresponding regions.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Theming our Hello World module</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>HelloWorldController</kbd> we built in <a href="601b4dd0-c521-459e-9342-2645a109642c.xhtml"><span class="MsoHyperlink">Chapter 2</span></a>, <em>Creating Your First Module</em>, currently uses a service to retrieve the string to be used as the salutation and then returns a simple markup render array with it. Let's imagine now that we want to output this message but wrap it in our own specific markup. To make an easy thing complicated, we want to break up the salutation string into parts so that they can be styled slightly differently. Additionally, we want to allow others to override our theme using suggestions that depend on whether or not the salutation has been overridden via the configuration form. So, let's see how we can do these things.</p>
+<p>To get things started, this is the markup we are after:</p>
+<pre>&lt;div class="salutation"&gt;<br/>  Good morning &lt;span class="salutation—target"&gt;world&lt;/span&gt;<br/>&lt;/div&gt;</pre>
+<p>The first thing we need to do is to define our own theme hook capable of outputting this. To this end, we implement <kbd>hook_theme()</kbd>:</p>
+<pre><span>/**<br/></span><span> * Implements hook_theme().<br/></span><span> */<br/></span><span>function </span><span>hello_world_theme</span><span>(</span><span>$existing</span><span>, </span><span>$type</span><span>, </span><span>$theme</span><span>, </span><span>$path</span><span>) {<br/></span><span>  </span><span>return </span><span>[<br/></span><span>    </span><span>'hello_world_salutation' </span><span>=&gt; [<br/></span><span>      </span><span>'variables' </span><span>=&gt; [</span><span>'salutation' </span><span>=&gt; </span><span>NULL</span><span>, </span><span>'target' </span><span>=&gt; </span><span>NULL</span><span>, </span><span>'overridden' </span><span>=&gt; </span><span>FALSE</span><span>]</span><span>,<br/></span><span>    </span><span>]</span><span>,<br/></span><span>  </span><span>]</span><span>;<br/></span><span>}</span></pre>
+<p>For now, we only return one theme hook called <kbd>hello_world_salutation</kbd>, which takes the variables you can see. Each of them has a default value in case one is not passed from the client (render array). The first two are obvious, but we also want to have a flag on whether or not the salutation has been overridden. This will help with the theme hook suggestions.</p>
+<p>By default, if we don't specify a template filename, this theme hook will look for a Twig template with the name <kbd>hello-world-salutation.html.twig</kbd> inside the <kbd>/templates</kbd> folder of our module. Since this is good enough for us, let's go ahead and create it:</p>
+<pre>&lt;div {{ attributes }}&gt;<br/>  {{ salutation }}<br/>  {% if target %}<br/>    &lt;span class="salutation—target"&gt;{{ target }}&lt;/span&gt;<br/>  {% endif %}<br/>&lt;/div&gt;</pre>
+<p>Twig notation is easy to understand. The <kbd>{{ }}</kbd> means that we are printing a variable with that name (which can even be a render array) and <kbd>{% %}</kbd> refers to control structures, such as <em>if statements</em> or <em>loops</em>. Do check out the Twig documentation (<span class="MsoHyperlink"><a href="https://twig.symfony.com/">https://twig.symfony.com/</a></span>) for more information if you are unsure.</p>
+<div class="packt_tip">There are some great ways to debug what values end up being printed in the Twig template. You can use the native Twig <kbd>dump()</kbd> function which will output things using the PHP <kbd>var_dump()</kbd> or you can install the Devel module and use the <kbd>kint()</kbd> function which will format things in a more readable way.</div>
+<p>We wrapped the <kbd>target</kbd> variable in an <em>if</em> statement so that if by any chance it's missing, we don't print an empty span tag. It's best practice to have your template mirror the possibilities of the theme hook being called with the defaults.</p>
+<p>Finally, we also have an <kbd>attributes</kbd> array we are printing on the wrapper. We did not define this, but each theme hook comes with it. The variable is an <kbd>Attribute</kbd> object, as we discussed earlier, which gets printed into a string of the individual attributes.</p>
+<p>Now, instead of printing the class we want directly in the template, we will use the preprocessor to make things more dynamic.</p>
+<p>So let's implement the preprocessor next:</p>
+<pre><span>/**<br/></span><span> * Default preprocessor function for the hello_world_salutation theme hook.<br/></span><span> */<br/></span><span>function </span><span>template_preprocess_hello_world_salutation</span><span>(&amp;</span><span>$variables</span><span>) {<br/></span><span>  </span><span>$variables</span><span>[</span><span>'attributes'</span><span>] = [<br/></span><span>    </span><span>'class' </span><span>=&gt; [</span><span>'salutation'</span><span>]</span><span>,<br/></span><span>  </span><span>]</span><span>;<br/></span><span>}</span></pre>
+<p>As I mentioned earlier, at this stage we are still working with an array of attributes. The theme system will turn it into the <kbd>Attribute</kbd> object before rendering the template, which in turn will know how to handle that.</p>
+<p>Other modules or themes can now implement this preprocessor themselves and change the classes (or any other wrapper attributes) as they need. Had we hardcoded the class in the template file, they would have had to override the entire template—which, although still a viable option, is overkill if you just need to add a class.</p>
+<p>Now, let's allow themers to have different implementations for our salutation message depending on whether or not it is overridden by an admin. I know this particular example is quite a stretch in terms of usefulness, but it allows us to demonstrate the approach. Which is very useful.</p>
+<p>So, as we discussed, we can define a suggestion for our theme hook:</p>
+<pre><span>/**<br/></span><span> * Implements hook_theme_suggestions_HOOK().<br/></span><span> */<br/></span><span>function </span><span>hello_world_theme_suggestions_hello_world_salutation</span><span>(</span><span>$variables</span><span>) {<br/></span><span>  </span><span>$suggestions </span><span>= []</span><span>;<br/></span><span><br/></span><span>  </span><span>if </span><span>(</span><span>$variables</span><span>[</span><span>'overridden'</span><span>] == </span><span>TRUE</span><span>) {<br/></span><span>    </span><span>$suggestions</span><span>[] = </span><span>'hello_world_salutation__overridden'</span><span>;<br/></span><span>  </span><span>}<br/></span><span><br/></span><span>  </span><span>return </span><span>$suggestions</span><span>;<br/></span><span>}</span></pre>
+<p>If you remember, our theme hook had the <kbd>overridden</kbd> variable which can be used for this flag. So, in our theme hook suggestion implementation we check for it, and if it's true, we add our suggestion. This function gets called on the fly at the time of rendering and the most specific suggestion encountered is used if, of course, the salutation is overridden. If that is the case, it will try <kbd>hello_world_salutation__overridden</kbd>, and if not found, it will fall back to <kbd>hello_world_salutation</kbd>, which exists.</p>
+<p>Themes can now have two different templates that render the salutation in two different ways, depending on whether or not the message has been overridden:</p>
+<ul>
+<li><kbd>hello-world-salutation.html.twig</kbd></li>
+<li><kbd>hello-world-salutation—overridden.html.twig</kbd></li>
+</ul>
+<p>Okay, our theme hook is now ready for use. Let's use it.</p>
+<p>Since our theme template breaks our salutation message up into pieces, and can even receive the <kbd>overridden</kbd> flag, it will not be enough to just use this theme hook in the <kbd>HelloWorldController</kbd>. Instead, we will need to go back to our service and have it return the render array responsible for outputting the salutation. After all, business logic knows the structural aspects of how a certain component needs to be rendered. Theming just needs to style and alter that based on the flexibility offered by a good functional implementation.</p>
+<p>However, let's not override the <kbd>getSalutation()</kbd> method on the service, but instead create a new one called <kbd>getSalutationComponent()</kbd>. This will then return the render array which can output the whole thing:</p>
+<pre><span>/**<br/></span><span> * Returns the Salutation render array.<br/></span><span> */<br/></span><span>public function </span><span>getSalutationComponent</span><span>() {<br/></span><span>  </span><span>$render </span><span>= [<br/></span><span>    </span><span>'#theme' </span><span>=&gt; </span><span>'hello_world_salutation'</span><span>,<br/></span><span>  </span><span>]</span><span>;<br/></span><span><br/></span><span>  </span><span>$config </span><span>= </span><span>$this</span><span>-&gt;</span><span>configFactory</span><span>-&gt;</span><span>get</span><span>(</span><span>'hello_world.custom_salutation'</span><span>)</span><span>;<br/></span><span>  </span><span>$salutation </span><span>= </span><span>$config</span><span>-&gt;</span><span>get</span><span>(</span><span>'salutation'</span><span>)</span><span>;<br/></span><span><br/></span><span>  </span><span>if </span><span>(</span><span>$salutation </span><span>!= </span><span>""</span><span>) {<br/></span><span>    </span><span>$render</span><span>[</span><span>'#salutation'</span><span>] = </span><span>$salutation</span><span>;<br/></span><span>    </span><span>$render</span><span>[</span><span>'#overridden'</span><span>] = </span><span>TRUE</span><span>;<br/></span><span>    </span><span>return </span><span>$render</span><span>;<br/></span><span>  </span><span>}<br/></span><span><br/></span><span>  </span><span>$time </span><span>= </span><span>new </span><span>\DateTime()</span><span>;<br/></span><span>  </span><span>$render</span><span>[</span><span>'#target'</span><span>] = </span><span>$this</span><span>-&gt;</span><span>t</span><span>(</span><span>'world'</span><span>)</span><span>;<br/></span><span><br/></span><span>  </span><span>if </span><span>((int) </span><span>$time</span><span>-&gt;</span><span>format</span><span>(</span><span>'G'</span><span>) &gt;= </span><span>00 </span><span>&amp;&amp; (int) </span><span>$time</span><span>-&gt;</span><span>format</span><span>(</span><span>'G'</span><span>) &lt; </span><span>12</span><span>) {<br/></span><span>    </span><span>$render</span><span>[</span><span>'#salutation'</span><span>] = </span><span>$this</span><span>-&gt;</span><span>t</span><span>(</span><span>'Good morning'</span><span>)</span><span>;<br/></span><span>    </span><span>return </span><span>$render</span><span>;<br/></span><span>  </span><span>}<br/></span><span><br/></span><span>  </span><span>if </span><span>((int) </span><span>$time</span><span>-&gt;</span><span>format</span><span>(</span><span>'G'</span><span>) &gt;= </span><span>12 </span><span>&amp;&amp; (int) </span><span>$time</span><span>-&gt;</span><span>format</span><span>(</span><span>'G'</span><span>) &lt; </span><span>18</span><span>) {<br/></span><span>    </span><span>$render</span><span>[</span><span>'#salutation'</span><span>] = </span><span>$this</span><span>-&gt;</span><span>t</span><span>(</span><span>'Good afternoon'</span><span>)</span><span>;<br/></span><span>    </span><span>return </span><span>$render</span><span>;<br/></span><span>  </span><span>}<br/></span><span><br/></span><span>  </span><span>if </span><span>((int) </span><span>$time</span><span>-&gt;</span><span>format</span><span>(</span><span>'G'</span><span>) &gt;= </span><span>18</span><span>) {<br/></span><span>    </span><span>$render</span><span>[</span><span>'#salutation'</span><span>] = </span><span>$this</span><span>-&gt;</span><span>t</span><span>(</span><span>'Good evening'</span><span>)</span><span>;<br/></span><span>    </span><span>return </span><span>$render</span><span>;<br/></span><span>  </span><span>}<br/></span><span>}</span></pre>
+<p>This is how it will look. We start by creating the render array that uses our new theme hook. Then, we look in the configuration object and if there is a message stored in there, we use that, set the <kbd>overridden</kbd> flag to true, and return the render array. You'll note that we didn't set a <kbd>target</kbd>, which means that it won't get printed in the template file (as expected). If, however, it is not overridden, we proceed with our previous logic and set the message dynamically while keeping the <kbd>target</kbd> the same. You can easily see how this now maps to what the theme hook and template expect for the different cases.</p>
+<p>A couple of points to be made before going forward. First, I want to reiterate the warning that due to things such as caching, the dynamic salutation message won't actually work as expected. We'd need to set some cache metadata to prevent this render array from being cached in order for it to work. However, we will see more on that in <a href="13739cad-2542-40b4-ae42-9a7f9e159716.xhtml"><span class="MsoHyperlink">Chapter 11</span></a>, <em>Caching</em>. Second, you will have noted that the variables we defined in the theme hook show up preceded by a <kbd>#</kbd> sign, as if they were properties known to the render system. As I said earlier, they are in fact not properties, but they are known by the theme system as variables because we defined them as such. So, it's important to be able to distinguish these kinds of things when reading code that you didn't write yourself. There are, of course, many properties you don't know off the top of your head (I certainly don't know most), but with experience, you'll be able to read the code, figure out the source, and understand what it means. In this, the difference between a good developer and a great one is the ability of the latter to figure things out by reading the source code rather than relying on documentation.</p>
+<p>Now, we have a service that can return a string representation of our message, and a fully-fledged renderable component. It follows that we edit our Controller and have it return this component instead of its own render array:</p>
+<pre><span>/**<br/></span><span> * Hello World.<br/></span><span> *<br/></span><span> * </span><span>@return </span><span>array<br/></span><span> */<br/></span><span>public function </span><span>helloWorld</span><span>() {<br/></span><span>  </span><span>return </span><span>$this</span><span>-&gt;</span><span>salutation</span><span>-&gt;</span><span>getSalutationComponent</span><span>()</span><span>;<br/></span><span>}</span></pre>
+<p>You'll note that we don't need the <kbd>#markup</kbd> property anymore, as we have our own render array. For the <kbd>salutation</kbd> token and the block we created, let's not use this component but rely on the string version. This way we keep both options in the code for you to see.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Summary</h1>
+                </header>
+            
+            <article>
+                
+<p>The Drupal 8 theming system is complex and flexible and thus impossible to cover fully in one chapter of a module development book. However, we did go through the basics necessary to get you started—understanding the core tenets of the theme system, some of its most important Drupal specificities and practical use cases.</p>
+<p>We started this chapter by discussing the abstract principle of separating business from presentation logic—a principle that is used by many modern web applications. We saw why it is critical for flexible and dynamic theming. Next, we discussed a great deal about how Drupal does this separation—the mighty theme hooks that act as a bridge between the two layers. Here, we also covered some of the highly used practices surrounding them—preprocessor functions and theme hook suggestions for added flexibility. Then, we covered how the business logic can actually use theme hooks—the render arrays (perhaps one of the most important Drupal constructs). Also, since we were on the subject, we outlined the Drupal and Symfony render pipeline to get a better understanding of the process that builds the entire page render array. Next, we discussed libraries and how we can "attach" them to render arrays. We will definitely see some more examples later in the book when we talk about JavaScript.</p>
+<p>Finally, we started transitioning into the practical aspects of theming a module by exemplifying a few common theme hooks found in Drupal 8 core. In doing so, we also encountered the topic of Attributes, an important one to understand when dealing with making theme hooks more dynamic. We ended the chapter with an overhaul of our <em>Hello World</em> salutation message to create a themable component. We did so by putting into practice much of what we learned about theme hooks earlier on: we defined a theme hook and corresponding template, a preprocess function, as well as a theme hook suggestion and built a render array dynamically to fire them all. Not a bad day in the life of a Drupal 8 module developer.</p>
+<p>In the next chapter, we will look at menus and the different types of menu links in Drupal 8. What kind of web application would it be without any menu links in it?</p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>
