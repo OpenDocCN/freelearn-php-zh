@@ -1,0 +1,333 @@
+<html><head></head><body>
+<div id="_idContainer042">
+<h1 class="chapter-number" id="_idParaDest-86"><a id="_idTextAnchor093"/><span class="koboSpan" id="kobo.1.1">5</span></h1>
+<h1 id="_idParaDest-87"><a id="_idTextAnchor094"/><span class="koboSpan" id="kobo.2.1">Reducing Latency and Managing Data with an Asynchronous Approach</span></h1>
+<p><span class="koboSpan" id="kobo.3.1">In the previous chapter, we created a new Laravel Octane application, and we applied some features provided by Laravel Octane to improve performance and reduce the response time of </span><span class="No-Break"><span class="koboSpan" id="kobo.4.1">our application.</span></span></p>
+<p><span class="koboSpan" id="kobo.5.1">In this chapter, we will try to optimize more things, such as access to a database and changing and improving the caching strategy. </span><span class="koboSpan" id="kobo.5.2">To improve and make queries to data faster, we will explain the benefit that comes from indexing columns. </span><span class="koboSpan" id="kobo.5.3">For caching, we will also take a look at a </span><span class="No-Break"><span class="koboSpan" id="kobo.6.1">cache-only approach.</span></span></p>
+<p><span class="koboSpan" id="kobo.7.1">For example, in the previous chapter, we executed queries in parallel. </span><span class="koboSpan" id="kobo.7.2">Now, we will optimize a query because parallelizing something fast is better than parallelizing something slower. </span><span class="koboSpan" id="kobo.7.3">Query optimization allows code to retrieve data from databases faster, reducing the latency that normally occurs when reading data from any source (a file, database, </span><span class="No-Break"><span class="koboSpan" id="kobo.8.1">or network).</span></span></p>
+<p><span class="koboSpan" id="kobo.9.1">Then, we will show how to make the query process faster using a caching mechanism. </span><span class="koboSpan" id="kobo.9.2">We will use a </span><em class="italic"><span class="koboSpan" id="kobo.10.1">cache-only</span></em><span class="koboSpan" id="kobo.11.1"> approach, which means that the code will always retrieve data from a cache. </span><span class="koboSpan" id="kobo.11.2">There is a task that performs queries and stores the result in the cache. </span><span class="koboSpan" id="kobo.11.3">Therefore, the pre-caching mechanism is totally independent of the code that needs data. </span><span class="koboSpan" id="kobo.11.4">For this reason, we will refer to this approach as asynchronous because the running code that needs data has not had to wait for the process that retrieves data and then fill </span><span class="No-Break"><span class="koboSpan" id="kobo.12.1">the cache.</span></span></p>
+<p><span class="koboSpan" id="kobo.13.1">The goal of this chapter is to reduce HTTP request response times. </span><span class="koboSpan" id="kobo.13.2">To achieve a reduction in response issues, we will see how to implement information retrieval through query optimization and a caching mechanism that separates cache retrieval times from cache </span><span class="No-Break"><span class="koboSpan" id="kobo.14.1">fill times.</span></span></p>
+<p><span class="koboSpan" id="kobo.15.1">In this chapter, we will cover the </span><span class="No-Break"><span class="koboSpan" id="kobo.16.1">following topics:</span></span></p>
+<ul>
+<li><span class="koboSpan" id="kobo.17.1">Optimizing the queries </span><span class="No-Break"><span class="koboSpan" id="kobo.18.1">with indexes</span></span></li>
+<li><span class="koboSpan" id="kobo.19.1">Making the cache </span><span class="No-Break"><span class="koboSpan" id="kobo.20.1">mechanism asynchronous</span></span></li>
+</ul>
+<h1 id="_idParaDest-88"><a id="_idTextAnchor095"/><span class="koboSpan" id="kobo.21.1">Technical requirements</span></h1>
+<p><span class="koboSpan" id="kobo.22.1">We will assume that you have the application set up from the </span><span class="No-Break"><span class="koboSpan" id="kobo.23.1">previous chapter.</span></span></p>
+<p><span class="koboSpan" id="kobo.24.1">You need to set up your Laravel Octane application with the event migration and event seeder required for this chapter. </span><span class="koboSpan" id="kobo.24.2">The requirement for the current chapter is to have PHP 8 installed or, if you want to use a container approach, you have to install Docker Desktop (</span><a href="https://www.docker.com/products/docker-desktop/"><span class="koboSpan" id="kobo.25.1">https://www.docker.com/products/docker-desktop/</span></a><span class="koboSpan" id="kobo.26.1">) or a similar tool to run the </span><span class="No-Break"><span class="koboSpan" id="kobo.27.1">Docker images.</span></span></p>
+<p class="callout-heading"><span class="koboSpan" id="kobo.28.1">Source code</span></p>
+<p class="callout"><span class="koboSpan" id="kobo.29.1">You can find the source code of the examples used in this chapter in the official GitHub repository of this </span><span class="No-Break"><span class="koboSpan" id="kobo.30.1">book: </span></span><a href="https://github.com/PacktPublishing/High-Performance-with-Laravel-Octane/tree/main/octane-ch05"><span class="No-Break"><span class="koboSpan" id="kobo.31.1">https://github.com/PacktPublishing/High-Performance-with-Laravel-Octane/tree/main/octane-ch05</span></span></a><span class="No-Break"><span class="koboSpan" id="kobo.32.1">.</span></span></p>
+<h1 id="_idParaDest-89"><a id="_idTextAnchor096"/><span class="koboSpan" id="kobo.33.1">Optimizing queries with indexes</span></h1>
+<p><span class="koboSpan" id="kobo.34.1">In the previous chapter, we made queries </span><span class="No-Break"><span class="koboSpan" id="kobo.35.1">in parallel.</span></span></p>
+<p><span class="koboSpan" id="kobo.36.1">What</span><a id="_idIndexMarker289"/><span class="koboSpan" id="kobo.37.1"> if the parallelized queries were slow? </span><span class="koboSpan" id="kobo.37.2">Most </span><a id="_idIndexMarker290"/><span class="koboSpan" id="kobo.38.1">of the time, implementing an optimization means acting on multiple aspects. </span><span class="koboSpan" id="kobo.38.2">In the previous chapter, we saw how to parallelize queries. </span><span class="koboSpan" id="kobo.38.3">This approach, as we saw, brings great benefits, but there is something more we can do. </span><span class="koboSpan" id="kobo.38.4">What we want to achieve is to further reduce the latency of each individual parallelized task when </span><span class="No-Break"><span class="koboSpan" id="kobo.39.1">retrieving data.</span></span></p>
+<p><span class="koboSpan" id="kobo.40.1">To do just that, what we are going to do now is optimize each query that we parallelized in the previous chapter and explore the reasoning behind </span><span class="No-Break"><span class="koboSpan" id="kobo.41.1">each one.</span></span></p>
+<p><span class="koboSpan" id="kobo.42.1">We are going to analyze what the characteristics of the query are and what fields are involved in the rows selection phase and the </span><span class="No-Break"><span class="koboSpan" id="kobo.43.1">sorting phase.</span></span></p>
+<p><span class="koboSpan" id="kobo.44.1">Let’s start with the following </span><span class="No-Break"><span class="koboSpan" id="kobo.45.1">example query:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.46.1">
+return $query-&gt;where('type', $type)
+    -&gt;where('description', 'LIKE', '%something%')
+    -&gt;orderBy('date')-&gt;limit(5);</span></pre>
+<p><span class="koboSpan" id="kobo.47.1">We can</span><a id="_idIndexMarker291"/><span class="koboSpan" id="kobo.48.1"> see that in the query, we are performing some operations on some columns (filtering by type, filtering by </span><span class="No-Break"><span class="koboSpan" id="kobo.49.1">description, etc.).</span></span></p>
+<p><span class="koboSpan" id="kobo.50.1">To make</span><a id="_idIndexMarker292"/><span class="koboSpan" id="kobo.51.1"> the query faster, on the columns involved in the query, we are going to create indexes. </span><span class="koboSpan" id="kobo.51.2">Indexes in a database are a data structure used by the database engine when a query </span><span class="No-Break"><span class="koboSpan" id="kobo.52.1">is executed.</span></span></p>
+<p><span class="koboSpan" id="kobo.53.1">To use an analogy to explain indexes, it’s as if you want to look up a word in a dictionary. </span><span class="koboSpan" id="kobo.53.2">Starting on the first page and scrolling down each successive page, you get to the term you are looking for. </span><span class="koboSpan" id="kobo.53.3">The time it takes to find the term depends on the number of words and the placement of the word. </span><span class="koboSpan" id="kobo.53.4">Just think what it is like to find a word that begins with the letter </span><em class="italic"><span class="koboSpan" id="kobo.54.1">z</span></em><span class="koboSpan" id="kobo.55.1"> in a vocabulary of thousands and thousands </span><span class="No-Break"><span class="koboSpan" id="kobo.56.1">of words.</span></span></p>
+<p><span class="koboSpan" id="kobo.57.1">An index in a database is like having an index in a dictionary, where each letter has a page number. </span><span class="koboSpan" id="kobo.57.2">Using an index, the access to a term is much more immediate. </span><span class="koboSpan" id="kobo.57.3">Nowadays, various databases have a very complex and performant index system, so the aforementioned analogy is straightforward compared to reality. </span><span class="koboSpan" id="kobo.57.4">Still, it allows us to understand how much the existence of an index on a field used for searching or sorting is crucial </span><span class="No-Break"><span class="koboSpan" id="kobo.58.1">for performance.</span></span></p>
+<p><span class="koboSpan" id="kobo.59.1">In Laravel, if you want to create an index, you can do it in a migration file. </span><span class="koboSpan" id="kobo.59.2">A migration file is a file where you can define the structure of your database table. </span><span class="koboSpan" id="kobo.59.3">In the migration file, you can list the columns of your table and define the type of the columns (string, integer, date, </span><span class="No-Break"><span class="koboSpan" id="kobo.60.1">time, etc.).</span></span></p>
+<p><span class="koboSpan" id="kobo.61.1">In </span><a href="B17728_04.xhtml#_idTextAnchor065"><span class="No-Break"><em class="italic"><span class="koboSpan" id="kobo.62.1">Chapter 4</span></em></span></a><span class="koboSpan" id="kobo.63.1">, </span><em class="italic"><span class="koboSpan" id="kobo.64.1">Building a Laravel Octane Application</span></em><span class="koboSpan" id="kobo.65.1">, we already created the structure of the </span><strong class="source-inline"><span class="koboSpan" id="kobo.66.1">events</span></strong><span class="koboSpan" id="kobo.67.1"> table (the table used for our examples). </span><span class="koboSpan" id="kobo.67.2">The goal now is to analyze which columns could benefit from index creation, and we will see how to create indexes in the </span><span class="No-Break"><span class="koboSpan" id="kobo.68.1">migration file.</span></span></p>
+<p><span class="koboSpan" id="kobo.69.1">In the migration file created in the previous chapter (in the </span><strong class="source-inline"><span class="koboSpan" id="kobo.70.1">database/migrations/</span></strong><span class="koboSpan" id="kobo.71.1"> directory), we created a table with </span><span class="No-Break"><span class="koboSpan" id="kobo.72.1">some fields:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.73.1">
+Schema::create('events', function (Blueprint $table) {
+    $table-&gt;id();
+    $table-&gt;foreignIdFor(User::class)-&gt;index();
+    $table-&gt;string('type', 30);
+    $table-&gt;string('description', 250);
+    $table-&gt;integer('value');
+    $table-&gt;dateTime('date');
+    $table-&gt;timestamps();
+});</span></pre>
+<p><span class="koboSpan" id="kobo.74.1">Some</span><a id="_idIndexMarker293"/><span class="koboSpan" id="kobo.75.1"> of these fields were used for filtering </span><span class="No-Break"><span class="koboSpan" id="kobo.76.1">the rows.</span></span></p>
+<p><span class="koboSpan" id="kobo.77.1">For example, in the model file in </span><strong class="source-inline"><span class="koboSpan" id="kobo.78.1">app/Models</span></strong><span class="koboSpan" id="kobo.79.1">, we implemented the </span><span class="No-Break"><span class="koboSpan" id="kobo.80.1">following query:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.81.1">
+return $query-&gt;where('type', $type)
+    -&gt;where('description', 'LIKE', '%something%')
+    -&gt;orderBy('date')-&gt;limit(5);</span></pre>
+<p><span class="koboSpan" id="kobo.82.1">This </span><a id="_idIndexMarker294"/><span class="koboSpan" id="kobo.83.1">means the fields used in the query for filtering are </span><strong class="source-inline"><span class="koboSpan" id="kobo.84.1">'type'</span></strong><span class="koboSpan" id="kobo.85.1"> and </span><strong class="source-inline"><span class="koboSpan" id="kobo.86.1">'description'</span></strong><span class="koboSpan" id="kobo.87.1">. </span><span class="koboSpan" id="kobo.87.2">The field used for sorting is the </span><strong class="source-inline"><span class="koboSpan" id="kobo.88.1">'</span></strong><span class="No-Break"><strong class="source-inline"><span class="koboSpan" id="kobo.89.1">date'</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.90.1"> field.</span></span></p>
+<p><span class="koboSpan" id="kobo.91.1">Therefore, we are going to create three indexes (one for the </span><strong class="source-inline"><span class="koboSpan" id="kobo.92.1">'type'</span></strong><span class="koboSpan" id="kobo.93.1"> column, one for the </span><strong class="source-inline"><span class="koboSpan" id="kobo.94.1">'description'</span></strong><span class="koboSpan" id="kobo.95.1">  column, and one for the </span><strong class="source-inline"><span class="koboSpan" id="kobo.96.1">'date'</span></strong><span class="koboSpan" id="kobo.97.1"> column) in </span><span class="No-Break"><span class="koboSpan" id="kobo.98.1">one migration.</span></span></p>
+<p><span class="koboSpan" id="kobo.99.1">Before creating the indexes, let’s look at the response time of the dashboard controller, just to have a baseline value so that we can later check the improvement in terms of time saved. </span><span class="koboSpan" id="kobo.99.2">The dashboard controller is the place where the query is called via the </span><span class="No-Break"><strong class="source-inline"><span class="koboSpan" id="kobo.100.1">ofType()</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.101.1"> method:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.102.1">
+$count = Event::count();
+$eventsInfo = Event::ofType('INFO')-&gt;get();
+$eventsWarning = Event::ofType('WARNING')-&gt;get();
+$eventsAlert = Event::ofType('ALERT')-&gt;get();</span></pre>
+<p><span class="koboSpan" id="kobo.103.1">To show the response time of the dashboard controller with all of these queries, you can start Laravel Octane via the </span><span class="No-Break"><span class="koboSpan" id="kobo.104.1">following command:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.105.1">
+php artisan octane:start</span></pre>
+<p><span class="koboSpan" id="kobo.106.1">Then, you can access it with your web browser at </span><strong class="source-inline"><span class="koboSpan" id="kobo.107.1">http://127.0.0.1:8000/dashboard</span></strong><span class="koboSpan" id="kobo.108.1"> and see the response time in </span><span class="No-Break"><span class="koboSpan" id="kobo.109.1">the console.</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer039">
+<span class="koboSpan" id="kobo.110.1"><img alt="" src="image/Figure_5.01_B17728.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.111.1">Figure 5.1: The response time of the dashboard controller without the index usage</span></p>
+<p><span class="koboSpan" id="kobo.112.1">As</span><a id="_idIndexMarker295"/><span class="koboSpan" id="kobo.113.1"> you </span><a id="_idIndexMarker296"/><span class="koboSpan" id="kobo.114.1">can see, the response time is more than </span><span class="No-Break"><span class="koboSpan" id="kobo.115.1">200 milliseconds.</span></span></p>
+<p><span class="koboSpan" id="kobo.116.1">Now, we are going to create indexes, and we will see the new </span><span class="No-Break"><span class="koboSpan" id="kobo.117.1">response time.</span></span></p>
+<h2 id="_idParaDest-90"><a id="_idTextAnchor097"/><span class="koboSpan" id="kobo.118.1">Creating indexes</span></h2>
+<p><span class="koboSpan" id="kobo.119.1">We can create a </span><a id="_idIndexMarker297"/><span class="koboSpan" id="kobo.120.1">new migration with the </span><span class="No-Break"><strong class="source-inline"><span class="koboSpan" id="kobo.121.1">make:migration</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.122.1"> command:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.123.1">
+php artisan make:migration create_event_indexes</span></pre>
+<p><span class="koboSpan" id="kobo.124.1">Then, in the </span><strong class="source-inline"><span class="koboSpan" id="kobo.125.1">yyyy_mm_dd_hhMMss _create_event_indexes.php</span></strong><span class="koboSpan" id="kobo.126.1"> file, created in the </span><strong class="source-inline"><span class="koboSpan" id="kobo.127.1">database/migrations/</span></strong><span class="koboSpan" id="kobo.128.1"> directory, with the </span><strong class="source-inline"><span class="koboSpan" id="kobo.129.1">up()</span></strong><span class="koboSpan" id="kobo.130.1"> method, we are going to use the </span><strong class="source-inline"><span class="koboSpan" id="kobo.131.1">index()</span></strong><span class="koboSpan" id="kobo.132.1"> method to create an index for </span><span class="No-Break"><span class="koboSpan" id="kobo.133.1">each column:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.134.1">
+Schema::table('events', function (Blueprint $table) {
+    $table-&gt;index('type', 'event_type_index');
+    $table-&gt;index('description',
+                  'event_description_index');
+    $table-&gt;index('date', 'event_date_index');
+});</span></pre>
+<p><span class="koboSpan" id="kobo.135.1">The </span><a id="_idIndexMarker298"/><span class="koboSpan" id="kobo.136.1">first parameter of the </span><strong class="source-inline"><span class="koboSpan" id="kobo.137.1">index()</span></strong><span class="koboSpan" id="kobo.138.1"> method is the column name; the second one is the index name. </span><span class="koboSpan" id="kobo.138.2">The index name is useful when, for example, you want to drop the column in the </span><strong class="source-inline"><span class="koboSpan" id="kobo.139.1">down()</span></strong><span class="koboSpan" id="kobo.140.1"> method. </span><span class="koboSpan" id="kobo.140.2">The </span><strong class="source-inline"><span class="koboSpan" id="kobo.141.1">down()</span></strong><span class="koboSpan" id="kobo.142.1"> method is used in case </span><span class="No-Break"><span class="koboSpan" id="kobo.143.1">of rollback:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.144.1">
+Schema::table('events', function (Blueprint $table) {
+    $table-&gt;dropIndex('event_type_index');
+    $table-&gt;dropIndex('event_description_index');
+    $table-&gt;dropIndex('event_date_index');
+});</span></pre>
+<p><span class="koboSpan" id="kobo.145.1">To apply the newly created indexes, you have to run the migration via the </span><span class="No-Break"><strong class="source-inline"><span class="koboSpan" id="kobo.146.1">migrate</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.147.1"> command:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.148.1">
+php artisan migrate</span></pre>
+<p><span class="koboSpan" id="kobo.149.1">If you want to check whether everything is fine, you can use the </span><strong class="source-inline"><span class="koboSpan" id="kobo.150.1">db:table</span></strong><span class="koboSpan" id="kobo.151.1"> command and see whether the new indexes </span><span class="No-Break"><span class="koboSpan" id="kobo.152.1">are listed:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.153.1">
+php artisan db:table events</span></pre>
+<p><span class="koboSpan" id="kobo.154.1">If the indexes are created, you will see them listed in the </span><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.155.1">Index</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.156.1"> section:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer040">
+<span class="koboSpan" id="kobo.157.1"><img alt="" src="image/Figure_5.02_B17728.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.158.1">Figure 5.2: Executing db:table can show the new indexes</span></p>
+<p><span class="koboSpan" id="kobo.159.1">Now </span><a id="_idIndexMarker299"/><span class="koboSpan" id="kobo.160.1">that the indexes are created, we are going to analyze the query already implemented that uses the following fields: </span><strong class="source-inline"><span class="koboSpan" id="kobo.161.1">type</span></strong><span class="koboSpan" id="kobo.162.1">, </span><strong class="source-inline"><span class="koboSpan" id="kobo.163.1">description</span></strong><span class="koboSpan" id="kobo.164.1">, and </span><strong class="source-inline"><span class="koboSpan" id="kobo.165.1">date</span></strong><span class="koboSpan" id="kobo.166.1"> for filtering and sorting. </span><span class="koboSpan" id="kobo.166.2">The query that we are going to use is the query implemented in the </span><strong class="source-inline"><span class="koboSpan" id="kobo.167.1">scopeOfType()</span></strong><span class="koboSpan" id="kobo.168.1"> method in the </span><strong class="source-inline"><span class="koboSpan" id="kobo.169.1">Event</span></strong><span class="koboSpan" id="kobo.170.1"> model (in the </span><span class="No-Break"><strong class="source-inline"><span class="koboSpan" id="kobo.171.1">app/Models/Event.php</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.172.1"> file):</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.173.1">
+public function scopeOfType($query, $type)
+{
+    return $query-&gt;where('type', $type)
+    -&gt;where('description', 'LIKE', 'something%')
+    -&gt;orderBy('date')-&gt;limit(5);
+}</span></pre>
+<p><span class="koboSpan" id="kobo.174.1">To see the different response times with the index usage, after you have created the indexes, with your web browser again, you can access the dashboard controller via </span><strong class="source-inline"><span class="koboSpan" id="kobo.175.1">http://127.0.0.1:8000/dashboard</span></strong><span class="koboSpan" id="kobo.176.1"> and see the results in </span><span class="No-Break"><span class="koboSpan" id="kobo.177.1">the console:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer041">
+<span class="koboSpan" id="kobo.178.1"><img alt="" src="image/Figure_5.03_B17728.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.179.1">Figure 5.3: The response time of the dashboard controller with database indexes</span></p>
+<p><span class="koboSpan" id="kobo.180.1">If you </span><a id="_idIndexMarker300"/><span class="koboSpan" id="kobo.181.1">want to obtain more analytical metrics from the benefit of index usage, you can use some tools provided directly by the database. </span><span class="koboSpan" id="kobo.181.2">For example, in the case of MySQL, you can access MySQL Command Prompt (with </span><strong class="source-inline"><span class="koboSpan" id="kobo.182.1">php artisan db</span></strong><span class="koboSpan" id="kobo.183.1">, as explained in the next few lines), execute the query, and retrieve the </span><strong class="source-inline"><span class="koboSpan" id="kobo.184.1">Last_query_cost</span></strong><span class="koboSpan" id="kobo.185.1"> value. </span><span class="koboSpan" id="kobo.185.2">You will obtain a value representing the query execution cost, based on the number of </span><span class="No-Break"><span class="koboSpan" id="kobo.186.1">operations performed.</span></span></p>
+<p><span class="koboSpan" id="kobo.187.1">In order to compare the last query costs, we are going to execute a query with indexes first and then without. </span><span class="koboSpan" id="kobo.187.2">In the example, we are going to extract the </span><span class="No-Break"><strong class="source-inline"><span class="koboSpan" id="kobo.188.1">Last_query_cost</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.189.1"> metric.</span></span></p>
+<p><span class="koboSpan" id="kobo.190.1">This is how we </span><span class="No-Break"><span class="koboSpan" id="kobo.191.1">do it:</span></span></p>
+<ol>
+<li><span class="koboSpan" id="kobo.192.1">Make sure that you are using the latest version of </span><span class="No-Break"><span class="koboSpan" id="kobo.193.1">your migration:</span></span><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.194.1">php artisan migrate</span></strong></pre></li>
+<li><span class="koboSpan" id="kobo.195.1">Then, open the MySQL command line with the </span><span class="No-Break"><strong class="source-inline"><span class="koboSpan" id="kobo.196.1">db</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.197.1"> command:</span></span><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.198.1">php artisan db</span></strong></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.199.1">The </span><strong class="source-inline"><span class="koboSpan" id="kobo.200.1">db</span></strong><span class="koboSpan" id="kobo.201.1"> command executes the MySQL client according to Laravel configuration (database name, username, password, and </span><span class="No-Break"><span class="koboSpan" id="kobo.202.1">table name).</span></span></p>
+<ol>
+<li value="3"><span class="koboSpan" id="kobo.203.1">In MySQL Command Prompt, you can execute the query on the </span><span class="No-Break"><strong class="source-inline"><span class="koboSpan" id="kobo.204.1">events</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.205.1"> table:</span></span><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.206.1">SELECT * FROM events WHERE description LIKE 'something%';</span></strong></pre></li>
+<li><span class="koboSpan" id="kobo.207.1">Once you complete the query, the result will </span><span class="No-Break"><span class="koboSpan" id="kobo.208.1">be shown.</span></span></li>
+<li><span class="koboSpan" id="kobo.209.1">Then, execute </span><span class="No-Break"><span class="koboSpan" id="kobo.210.1">the following:</span></span><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.211.1">SHOW STATUS LIKE 'Last_query_cost';</span></strong></pre></li>
+<li><span class="koboSpan" id="kobo.212.1">You will </span><a id="_idIndexMarker301"/><span class="koboSpan" id="kobo.213.1">now see the metrics that represent the query costs (dependent on the number of operations performed by the query on </span><span class="No-Break"><span class="koboSpan" id="kobo.214.1">the data):</span></span><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.215.1">mysql&gt; SHOW STATUS LIKE 'Last_query_cost';</span></strong></pre><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.216.1">+-----------------+----------+</span></strong></pre><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.217.1">| Variable_name   | Value    |</span></strong></pre><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.218.1">+-----------------+----------+</span></strong></pre><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.219.1">| Last_query_cost | 5.209000 |</span></strong></pre><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.220.1">+-----------------+----------+</span></strong></pre><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.221.1">1 row in set (0.00 sec)</span></strong></pre></li>
+<li><span class="koboSpan" id="kobo.222.1">If you now try to drop the indexes, a rollback on the migration will occur (because the latest step of our migration is index creation via the </span><span class="No-Break"><span class="koboSpan" id="kobo.223.1">rollback command):</span></span><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.224.1">php artisan migrate:rollback --step=1</span></strong></pre></li>
+<li><span class="koboSpan" id="kobo.225.1">Then, in the MySQL command prompt, execute the </span><span class="No-Break"><span class="koboSpan" id="kobo.226.1">following again:</span></span><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.227.1">SELECT * FROM events WHERE description LIKE 'something%';</span></strong></pre></li>
+<li><span class="koboSpan" id="kobo.228.1">And then, </span><span class="No-Break"><span class="koboSpan" id="kobo.229.1">execute this:</span></span><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.230.1">SHOW STATUS LIKE 'Last_query_cost';</span></strong></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.231.1">You will see </span><span class="No-Break"><span class="koboSpan" id="kobo.232.1">the following:</span></span></p>
+<pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.233.1">mysql&gt; SHOW STATUS LIKE 'Last_query_cost';</span></strong>
+<strong class="bold"><span class="koboSpan" id="kobo.234.1">+-----------------+-------------+</span></strong>
+<strong class="bold"><span class="koboSpan" id="kobo.235.1">| Variable_name   | Value       |</span></strong>
+<strong class="bold"><span class="koboSpan" id="kobo.236.1">+-----------------+-------------+</span></strong>
+<strong class="bold"><span class="koboSpan" id="kobo.237.1">| Last_query_cost | 1018.949000 |</span></strong>
+<strong class="bold"><span class="koboSpan" id="kobo.238.1">+-----------------+-------------+</span></strong>
+<strong class="bold"><span class="koboSpan" id="kobo.239.1">1 row in set (0.01 sec)</span></strong></pre>
+<p><span class="koboSpan" id="kobo.240.1">As you can see, without indexes, you have higher </span><span class="No-Break"><span class="koboSpan" id="kobo.241.1">query costs.</span></span></p>
+<p><span class="koboSpan" id="kobo.242.1">Without </span><a id="_idIndexMarker302"/><span class="koboSpan" id="kobo.243.1">indexes, things get worse if you perform more complex queries like the query we have in your </span><strong class="source-inline"><span class="koboSpan" id="kobo.244.1">Event</span></strong><span class="koboSpan" id="kobo.245.1"> model, which is filtering using the type and description fields and sorting </span><span class="No-Break"><span class="koboSpan" id="kobo.246.1">by date.</span></span></p>
+<p><span class="koboSpan" id="kobo.247.1">Let’s try to execute the </span><span class="No-Break"><span class="koboSpan" id="kobo.248.1">following query:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.249.1">
+SELECT * FROM events WHERE type='ALERT' AND description LIKE 'something%' ORDER BY date;</span></pre>
+<p><span class="koboSpan" id="kobo.250.1">And then, after you have executed the query, you ask MySQL to show the </span><strong class="source-inline"><span class="koboSpan" id="kobo.251.1">Last_query_cost</span></strong><span class="koboSpan" id="kobo.252.1"> metric </span><span class="No-Break"><span class="koboSpan" id="kobo.253.1">without indexes:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.254.1">
+mysql&gt; SHOW STATUS LIKE 'Last_query_cost';
++-----------------+--------------+
+| Variable_name   | Value        |
++-----------------+--------------+
+| Last_query_cost | 10645.949000 |
++-----------------+--------------+</span></pre>
+<p><span class="koboSpan" id="kobo.255.1">Then, you ask MySQL to show the </span><strong class="source-inline"><span class="koboSpan" id="kobo.256.1">Last_query_cost</span></strong><span class="koboSpan" id="kobo.257.1"> metric </span><span class="No-Break"><span class="koboSpan" id="kobo.258.1">with indexes:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.259.1">
+mysql&gt; SHOW STATUS LIKE 'Last_query_cost';
++-----------------+-----------+
+| Variable_name   | Value     |
++-----------------+-----------+
+| Last_query_cost | 16.209000 |
++-----------------+-----------+</span></pre>
+<p><span class="koboSpan" id="kobo.260.1">As you can see, the differences </span><span class="No-Break"><span class="koboSpan" id="kobo.261.1">are enormous.</span></span></p>
+<p><span class="koboSpan" id="kobo.262.1">We have now compared the queries with and without indexes. </span><span class="koboSpan" id="kobo.262.2">With the acquired knowledge, we can improve the response time of the query by fine-tuning the types of indexes we </span><span class="No-Break"><span class="koboSpan" id="kobo.263.1">are using.</span></span></p>
+<p><span class="koboSpan" id="kobo.264.1">In the </span><a id="_idIndexMarker303"/><span class="koboSpan" id="kobo.265.1">query, we are filtering the rows with the </span><strong class="source-inline"><span class="koboSpan" id="kobo.266.1">description</span></strong><span class="koboSpan" id="kobo.267.1"> column that starts with a specific word. </span><span class="koboSpan" id="kobo.267.2">In the query, we are filtering all the descriptions that start with the word </span><strong class="source-inline"><span class="koboSpan" id="kobo.268.1">something</span></strong><span class="koboSpan" id="kobo.269.1">. </span><span class="koboSpan" id="kobo.269.2">But what if we want to filter all the rows with the </span><strong class="source-inline"><span class="koboSpan" id="kobo.270.1">description</span></strong><span class="koboSpan" id="kobo.271.1"> column that includes the word </span><strong class="source-inline"><span class="koboSpan" id="kobo.272.1">something</span></strong><span class="koboSpan" id="kobo.273.1">? </span><span class="koboSpan" id="kobo.273.2">In our model in our previous chapter, in order to select all the descriptions that include a specific word, we used the </span><strong class="source-inline"><span class="koboSpan" id="kobo.274.1">LIKE</span></strong><span class="koboSpan" id="kobo.275.1"> operator with </span><span class="No-Break"><span class="koboSpan" id="kobo.276.1">a wildcard:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.277.1">
+description LIKE '%something%'</span></pre>
+<p><span class="koboSpan" id="kobo.278.1">However, if we want to optimize the query in order to reduce its response time, specifically for text, we have another powerful database feature for filtering and searching text – </span><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.279.1">full-text indexes</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.280.1">.</span></span></p>
+<h2 id="_idParaDest-91"><a id="_idTextAnchor098"/><span class="koboSpan" id="kobo.281.1">Creating full-text indexes</span></h2>
+<p><span class="koboSpan" id="kobo.282.1">What </span><a id="_idIndexMarker304"/><span class="koboSpan" id="kobo.283.1">we are going to do is to change the standard </span><a id="_idIndexMarker305"/><span class="koboSpan" id="kobo.284.1">index for the </span><strong class="source-inline"><span class="koboSpan" id="kobo.285.1">description</span></strong><span class="koboSpan" id="kobo.286.1"> column to a full-text index, and we will see how it performs. </span><span class="koboSpan" id="kobo.286.2">This is how we </span><span class="No-Break"><span class="koboSpan" id="kobo.287.1">do it:</span></span></p>
+<ol>
+<li value="1"><span class="koboSpan" id="kobo.288.1">Create a </span><span class="No-Break"><span class="koboSpan" id="kobo.289.1">new migration:</span></span><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.290.1">php artisan make:migration create_event_fulltext_index</span></strong></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.291.1">In the </span><strong class="source-inline"><span class="koboSpan" id="kobo.292.1">yyyy_mm_dd_hhMMss_create_event_fulltext_index.php</span></strong><span class="koboSpan" id="kobo.293.1"> file, in the </span><strong class="source-inline"><span class="koboSpan" id="kobo.294.1">database/migrations/</span></strong><span class="koboSpan" id="kobo.295.1"> directory, in the </span><strong class="source-inline"><span class="koboSpan" id="kobo.296.1">up()</span></strong><span class="koboSpan" id="kobo.297.1"> method, we are going to drop the previous index and create a new </span><span class="No-Break"><span class="koboSpan" id="kobo.298.1">full text.</span></span></p>
+<ol>
+<li value="2"><span class="koboSpan" id="kobo.299.1">In the </span><strong class="source-inline"><span class="koboSpan" id="kobo.300.1">up()</span></strong><span class="koboSpan" id="kobo.301.1"> method, we have to drop the previous index on the </span><strong class="source-inline"><span class="koboSpan" id="kobo.302.1">description</span></strong><span class="koboSpan" id="kobo.303.1"> column and then create a full-text index via the </span><span class="No-Break"><strong class="source-inline"><span class="koboSpan" id="kobo.304.1">fullText()</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.305.1"> method:</span></span></li>
+</ol>
+<pre class="source-code"><span class="koboSpan" id="kobo.306.1">
+Schema::table('events', function (Blueprint $table) {
+    $table-&gt;dropIndex('event_description_index');
+    $table-&gt;fullText('description', 'event_description_fulltext_index');
+});</span></pre>
+<p><span class="koboSpan" id="kobo.307.1">Regarding </span><a id="_idIndexMarker306"/><span class="koboSpan" id="kobo.308.1">which method is faster, the </span><strong class="source-inline"><span class="koboSpan" id="kobo.309.1">LIKE</span></strong><span class="koboSpan" id="kobo.310.1"> operator used to filter the description column that starts with a specific term (</span><strong class="source-inline"><span class="koboSpan" id="kobo.311.1">'something%'</span></strong><span class="koboSpan" id="kobo.312.1">) is faster than a full-text search, but it only covers filtering a column that starts with a specific word. </span><span class="koboSpan" id="kobo.312.2">Full-text execution is quicker than a </span><strong class="source-inline"><span class="koboSpan" id="kobo.313.1">LIKE</span></strong><span class="koboSpan" id="kobo.314.1"> approach that searches</span><a id="_idIndexMarker307"/><span class="koboSpan" id="kobo.315.1"> with wildcards and is more powerful, especially if you want to search for one more term. </span><span class="koboSpan" id="kobo.315.2">Let’s try to use the </span><strong class="source-inline"><span class="koboSpan" id="kobo.316.1">whereFullText()</span></strong><span class="koboSpan" id="kobo.317.1"> method in </span><span class="No-Break"><span class="koboSpan" id="kobo.318.1">the query:</span></span></p>
+<pre class="source-code">
+<strong class="source-inline"><span class="koboSpan" id="kobo.319.1">public function scopeOfType($query, $type)</span></strong>
+<strong class="source-inline"><span class="koboSpan" id="kobo.320.1">{</span></strong>
+<strong class="source-inline"><span class="koboSpan" id="kobo.321.1">    return $query-&gt;where('type', $type)</span></strong>
+<strong class="source-inline"><span class="koboSpan" id="kobo.322.1">        //-&gt;where('description', 'LIKE', '%something%')</span></strong>
+<strong class="source-inline"><span class="koboSpan" id="kobo.323.1">        -&gt;whereFullText('description', 'something other')</span></strong>
+<strong class="source-inline"><span class="koboSpan" id="kobo.324.1">        -&gt;orderBy('date')-&gt;limit(5);</span></strong>
+<strong class="source-inline"><span class="koboSpan" id="kobo.325.1">}</span></strong></pre>
+<p><span class="koboSpan" id="kobo.326.1">The </span><strong class="source-inline"><span class="koboSpan" id="kobo.327.1">whereFullText()</span></strong><span class="koboSpan" id="kobo.328.1"> method is used with two parameters; the first one is the </span><strong class="source-inline"><span class="koboSpan" id="kobo.329.1">description</span></strong><span class="koboSpan" id="kobo.330.1"> parameter, which is the column name to filter, and the second parameter is the string to </span><span class="No-Break"><span class="koboSpan" id="kobo.331.1">search for.</span></span></p>
+<p><span class="koboSpan" id="kobo.332.1">Now that we have a full-text search in place, we can add another improvement – caching the result of </span><span class="No-Break"><span class="koboSpan" id="kobo.333.1">the queries.</span></span></p>
+<h2 id="_idParaDest-92"><a id="_idTextAnchor099"/><span class="koboSpan" id="kobo.334.1">Optimized queries and caching</span></h2>
+<p><span class="koboSpan" id="kobo.335.1">At </span><a id="_idIndexMarker308"/><span class="koboSpan" id="kobo.336.1">this point, we have seen how to optimize queries through parallel execution, the use of a cache, and by applying indexes on </span><span class="No-Break"><span class="koboSpan" id="kobo.337.1">search fields.</span></span></p>
+<p><span class="koboSpan" id="kobo.338.1">However, if we optimize queries by caching the result, the first query, or queries for which the cached result is obsolete or deleted, will have to deal with the cost of loading data from the database to update and refresh </span><span class="No-Break"><span class="koboSpan" id="kobo.339.1">the cache.</span></span></p>
+<p><span class="koboSpan" id="kobo.340.1">With the caching strategy we are about to discuss, we will try to prevent cache refresh times from affecting the response time of </span><span class="No-Break"><span class="koboSpan" id="kobo.341.1">our application.</span></span></p>
+<p><span class="koboSpan" id="kobo.342.1">This</span><a id="_idIndexMarker309"/><span class="koboSpan" id="kobo.343.1"> scenario can be optimized by changing the caching strategy to having queries in a request using only the values coming from a cache (a cache-only approach), and creating a process that takes care of the retrieval of the results and their caching. </span><span class="koboSpan" id="kobo.343.2">This process operates asynchronously and is decoupled from the queries generated by </span><span class="No-Break"><span class="koboSpan" id="kobo.344.1">the requests.</span></span></p>
+<p><span class="koboSpan" id="kobo.345.1">This approach allows for improved performance because it tends to eliminate slow queries, and that should take care of data retrieval because the periodic refresh of the cache is done through an external command. </span><span class="koboSpan" id="kobo.345.2">We can add the external command that is executed every </span><em class="italic"><span class="koboSpan" id="kobo.346.1">n </span></em><span class="koboSpan" id="kobo.347.1">second and retrieves new data, and then fill the cache. </span><span class="koboSpan" id="kobo.347.2">All requests get data from the cache. </span><span class="koboSpan" id="kobo.347.3">To execute the interval command, we can use another Octane functionality, the </span><strong class="source-inline"><span class="koboSpan" id="kobo.348.1">tick()</span></strong><span class="koboSpan" id="kobo.349.1"> method. </span><span class="koboSpan" id="kobo.349.2">Let’s </span><span class="No-Break"><span class="koboSpan" id="kobo.350.1">see how.</span></span></p>
+<h1 id="_idParaDest-93"><a id="_idTextAnchor100"/><span class="koboSpan" id="kobo.351.1">Making the cache mechanism asynchronous</span></h1>
+<p><span class="koboSpan" id="kobo.352.1">In </span><a href="B17728_03.xhtml#_idTextAnchor048"><span class="No-Break"><em class="italic"><span class="koboSpan" id="kobo.353.1">Chapter 3</span></em></span></a><span class="koboSpan" id="kobo.354.1">, </span><em class="italic"><span class="koboSpan" id="kobo.355.1">Configuring the Swoole Application Server</span></em><span class="koboSpan" id="kobo.356.1">, we explored the </span><span class="No-Break"><strong class="source-inline"><span class="koboSpan" id="kobo.357.1">Octane::tick()</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.358.1"> method.</span></span></p>
+<p><span class="koboSpan" id="kobo.359.1">The </span><strong class="source-inline"><span class="koboSpan" id="kobo.360.1">tick()</span></strong><span class="koboSpan" id="kobo.361.1"> method allows you to execute a function every </span><span class="No-Break"><em class="italic"><span class="koboSpan" id="kobo.362.1">n</span></em></span><span class="No-Break"><span class="koboSpan" id="kobo.363.1"> seconds.</span></span></p>
+<p><span class="koboSpan" id="kobo.364.1">The </span><a id="_idIndexMarker310"/><span class="koboSpan" id="kobo.365.1">caching strategy could be reviewed by delegating data loading to a specific function. </span><span class="koboSpan" id="kobo.365.2">This specific function is responsible for retrieving data with the query from the database (and not from the cache), and once the data is retrieved, the function stores the results in the cache. </span><span class="koboSpan" id="kobo.365.3">The function is called via the </span><strong class="source-inline"><span class="koboSpan" id="kobo.366.1">Octane::tick()</span></strong><span class="koboSpan" id="kobo.367.1"> method and executed – for example, maybe every 60 seconds, fresh data from the database is retrieved, and it fills the cache. </span><span class="koboSpan" id="kobo.367.2">All the requests retrieve the data from </span><span class="No-Break"><span class="koboSpan" id="kobo.368.1">the cache.</span></span></p>
+<p><span class="koboSpan" id="kobo.369.1">With the asynchronous caching strategy, all the requests retrieve data from </span><span class="No-Break"><span class="koboSpan" id="kobo.370.1">the cache.</span></span></p>
+<p><span class="koboSpan" id="kobo.371.1">The cache is refreshed by the task called </span><span class="No-Break"><span class="koboSpan" id="kobo.372.1">via </span></span><span class="No-Break"><strong class="source-inline"><span class="koboSpan" id="kobo.373.1">tick()</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.374.1">.</span></span></p>
+<p><span class="koboSpan" id="kobo.375.1">To</span><a id="_idIndexMarker311"/><span class="koboSpan" id="kobo.376.1"> implement the asynchronous caching strategy, we are doing </span><span class="No-Break"><span class="koboSpan" id="kobo.377.1">the following:</span></span></p>
+<ol>
+<li value="1"><span class="koboSpan" id="kobo.378.1">Implementing the </span><strong class="source-inline"><span class="koboSpan" id="kobo.379.1">tick()</span></strong><span class="koboSpan" id="kobo.380.1"> function in the application </span><span class="No-Break"><span class="koboSpan" id="kobo.381.1">service provider</span></span></li>
+<li><span class="koboSpan" id="kobo.382.1">Storing</span><a id="_idIndexMarker312"/><span class="koboSpan" id="kobo.383.1"> the result in the </span><span class="No-Break"><span class="koboSpan" id="kobo.384.1">Octane Cache</span></span></li>
+<li><span class="koboSpan" id="kobo.385.1">Implementing the controller that reads </span><span class="No-Break"><span class="koboSpan" id="kobo.386.1">the cache</span></span></li>
+<li><span class="koboSpan" id="kobo.387.1">Implementing </span><span class="No-Break"><span class="koboSpan" id="kobo.388.1">the routing</span></span></li>
+</ol>
+<h2 id="_idParaDest-94"><a id="_idTextAnchor101"/><span class="koboSpan" id="kobo.389.1">Implementing the tick() function in the application service provider</span></h2>
+<p><span class="koboSpan" id="kobo.390.1">In </span><a id="_idIndexMarker313"/><span class="koboSpan" id="kobo.391.1">order to launch the caching task when the framework is bootstrapped, we can set the </span><strong class="source-inline"><span class="koboSpan" id="kobo.392.1">tick()</span></strong><span class="koboSpan" id="kobo.393.1"> method in the </span><a id="_idIndexMarker314"/><span class="koboSpan" id="kobo.394.1">App Service Provider. </span><span class="koboSpan" id="kobo.394.2">The App Service Provider is a file called while the framework is instanced. </span><span class="koboSpan" id="kobo.394.3">So, in the </span><strong class="source-inline"><span class="koboSpan" id="kobo.395.1">app/Providers/AppServiceProvider.php</span></strong><span class="koboSpan" id="kobo.396.1"> file, in the </span><strong class="source-inline"><span class="koboSpan" id="kobo.397.1">boot()</span></strong><span class="koboSpan" id="kobo.398.1"> method, you have to implement the </span><span class="No-Break"><strong class="source-inline"><span class="koboSpan" id="kobo.399.1">Octane::tick()</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.400.1"> function:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.401.1">
+// including these classes
+use Illuminate\Support\Facades\Log;
+use Laravel\Octane\Facades\Octane;
+use App\Models\Event;
+use Illuminate\Support\Facades\Cache;
+// in the boot() method
+Octane::tick('caching-query', function () {
+    Log::info('caching-query.', ['timestamp' =&gt; now()]);
+    $time = hrtime(true);
+    $count = Event::count();
+    $eventsInfo = Event::ofType('INFO')-&gt;get();
+    $eventsWarning = Event::ofType('WARNING')-&gt;get();
+    $eventsAlert = Event::ofType('ALERT')-&gt;get();
+    $time = (hrtime(true) - $time) / 1_000_000;
+    $result = ['count' =&gt; $count,
+        'eventsInfo'=&gt; $eventsInfo,
+        'eventsWarning' =&gt; $eventsWarning,
+        'eventsAlert'=&gt; $eventsAlert,
+    ];
+    Cache::store('octane')-&gt;put('cached-result-tick', $result);
+})
+-&gt;seconds(60)
+-&gt;immediate();</span></pre>
+<p><span class="koboSpan" id="kobo.402.1">In </span><a id="_idIndexMarker315"/><span class="koboSpan" id="kobo.403.1">the </span><strong class="source-inline"><span class="koboSpan" id="kobo.404.1">tick()</span></strong><span class="koboSpan" id="kobo.405.1"> function, we are going to execute all queries and then store the result in the Octane Cache (specifying the </span><strong class="source-inline"><span class="koboSpan" id="kobo.406.1">octane</span></strong> <span class="No-Break"><span class="koboSpan" id="kobo.407.1">store): </span></span><span class="No-Break"><strong class="source-inline"><span class="koboSpan" id="kobo.408.1">Cache::store('octane')-&gt;put()</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.409.1">.</span></span></p>
+<p><span class="koboSpan" id="kobo.410.1">The two essential methods are </span><strong class="source-inline"><span class="koboSpan" id="kobo.411.1">seconds()</span></strong><span class="koboSpan" id="kobo.412.1">, where we can define the cadence, the interval in seconds, and </span><strong class="source-inline"><span class="koboSpan" id="kobo.413.1">immediate()</span></strong><span class="koboSpan" id="kobo.414.1">, which sets an immediate execution of the </span><span class="No-Break"><strong class="source-inline"><span class="koboSpan" id="kobo.415.1">tick()</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.416.1"> function.</span></span></p>
+<p><span class="koboSpan" id="kobo.417.1">Every 60 seconds, the queries are executed automatically, and the result is stored in </span><span class="No-Break"><span class="koboSpan" id="kobo.418.1">the cache.</span></span></p>
+<h2 id="_idParaDest-95"><a id="_idTextAnchor102"/><span class="koboSpan" id="kobo.419.1">Implementing the controller that reads the cache</span></h2>
+<p><span class="koboSpan" id="kobo.420.1">Now that we</span><a id="_idIndexMarker316"/><span class="koboSpan" id="kobo.421.1"> have implemented the </span><strong class="source-inline"><span class="koboSpan" id="kobo.422.1">tick()</span></strong><span class="koboSpan" id="kobo.423.1"> event that fills the cache, we can focus on the controller, where we can load data from </span><span class="No-Break"><span class="koboSpan" id="kobo.424.1">the cache.</span></span></p>
+<p><span class="koboSpan" id="kobo.425.1">The method for retrieving data from the cache is </span><strong class="source-inline"><span class="koboSpan" id="kobo.426.1">Cache::store('octane')-&gt;get()</span></strong><span class="koboSpan" id="kobo.427.1">. </span><span class="koboSpan" id="kobo.427.2">With the </span><strong class="source-inline"><span class="koboSpan" id="kobo.428.1">Cache::store('octane')</span></strong><span class="koboSpan" id="kobo.429.1"> method, you retrieve the </span><strong class="source-inline"><span class="koboSpan" id="kobo.430.1">Cache</span></strong><span class="koboSpan" id="kobo.431.1"> instance provided by Octane. </span><span class="koboSpan" id="kobo.431.2">With the </span><strong class="source-inline"><span class="koboSpan" id="kobo.432.1">get()</span></strong><span class="koboSpan" id="kobo.433.1"> method, you will retrieve the value stored in the cache. </span><span class="koboSpan" id="kobo.433.2">Here’s the code that retrieves the value from the cache in the </span><span class="No-Break"><strong class="source-inline"><span class="koboSpan" id="kobo.434.1">app/Http/Controllers/DashboardController.php</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.435.1"> file:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.436.1">
+use Illuminate\Support\Facades\Cache;
+use Exception;
+public function indexTickCached()
+{
+    $time = hrtime(true);
+    try {
+        $result = Cache::store('octane')-&gt;get(
+          'cached-result-tick');
+    } catch (Exception $e) {
+        return 'Error: '.$e-&gt;getMessage();
+    }
+    $time = (hrtime(true) - $time) / 1_000_000;
+    $result['time'] = $time;
+    return view('dashboard.index', $result);
+}</span></pre>
+<p><span class="koboSpan" id="kobo.437.1">In the controller, as </span><a id="_idIndexMarker317"/><span class="koboSpan" id="kobo.438.1">you can see, there is an asynchronous approach because there are no more pending operations that depend on the databases, and we are delegating loading from the database to an external function. </span><span class="koboSpan" id="kobo.438.2">The only dependency in the controller is with </span><span class="No-Break"><span class="koboSpan" id="kobo.439.1">the cache.</span></span></p>
+<h2 id="_idParaDest-96"><a id="_idTextAnchor103"/><span class="koboSpan" id="kobo.440.1">Implementing routing</span></h2>
+<p><span class="koboSpan" id="kobo.441.1">In</span><a id="_idIndexMarker318"/><span class="koboSpan" id="kobo.442.1"> the </span><strong class="source-inline"><span class="koboSpan" id="kobo.443.1">routes/web.php</span></strong><span class="koboSpan" id="kobo.444.1"> file, you can add a </span><span class="No-Break"><span class="koboSpan" id="kobo.445.1">new route:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.446.1">
+use Laravel\Octane\Facades\Octane;
+use App\Http\Controllers\DashboardController;
+use Illuminate\Http\Response;
+Octane::route('GET', '/dashboard-tick-cached', function () {
+    return new Response((new DashboardController)-&gt;
+                        indexTickCached());
+});</span></pre>
+<p><span class="koboSpan" id="kobo.447.1">As already shown in previous chapters, we can optimize the routing loading with </span><strong class="source-inline"><span class="koboSpan" id="kobo.448.1">Octane::route()</span></strong><span class="koboSpan" id="kobo.449.1">, which helps to reduce the response time. </span><span class="koboSpan" id="kobo.449.2">As you can see, we are using </span><strong class="source-inline"><span class="koboSpan" id="kobo.450.1">Octane::route()</span></strong><span class="koboSpan" id="kobo.451.1"> for performance reasons, and then we set the path as </span><strong class="source-inline"><span class="koboSpan" id="kobo.452.1">/dashboard-tick-cached</span></strong><span class="koboSpan" id="kobo.453.1"> and call the </span><span class="No-Break"><strong class="source-inline"><span class="koboSpan" id="kobo.454.1">indexTickCached()</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.455.1"> method.</span></span></p>
+<h2 id="_idParaDest-97"><a id="_idTextAnchor104"/><span class="koboSpan" id="kobo.456.1">Showing the results</span></h2>
+<p><span class="koboSpan" id="kobo.457.1">If we </span><a id="_idIndexMarker319"/><span class="koboSpan" id="kobo.458.1">open the browser to the initial dashboard route, where the queries were not optimized and not cached, and then open the browser to the new route, where the queries are cached, we can see a massive difference in terms of </span><span class="No-Break"><span class="koboSpan" id="kobo.459.1">response time:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.460.1">
+  200    GET /dashboard ............ </span><span class="koboSpan" id="kobo.460.2">19.71 mb 66.60 ms
+  200    GET /dashboard ............ </span><span class="koboSpan" id="kobo.460.3">19.83 mb 42.31 ms
+  200    GET /dashboard ............ </span><span class="koboSpan" id="kobo.460.4">19.83 mb 37.31 ms
+  200    GET /dashboard ............ </span><span class="koboSpan" id="kobo.460.5">19.83 mb 30.07 ms
+  200    GET /dashboard ............ </span><span class="koboSpan" id="kobo.460.6">19.83 mb 42.25 ms
+  200    GET /dashboard-tick-cached . </span><span class="koboSpan" id="kobo.460.7">19.89 mb 7.51 ms
+  200    GET /dashboard-tick-cached . </span><span class="koboSpan" id="kobo.460.8">19.89 mb 4.32 ms
+  200    GET /dashboard-tick-cached . </span><span class="koboSpan" id="kobo.460.9">19.89 mb 4.96 ms</span></pre>
+<p><span class="koboSpan" id="kobo.461.1">As you can see, the dashboard path has a response time of 30–40 milliseconds. </span><span class="koboSpan" id="kobo.461.2">The </span><strong class="source-inline"><span class="koboSpan" id="kobo.462.1">dashboard-tick-cached</span></strong><span class="koboSpan" id="kobo.463.1"> route is around </span><span class="No-Break"><span class="koboSpan" id="kobo.464.1">5 milliseconds.</span></span></p>
+<p><span class="koboSpan" id="kobo.465.1">It is a</span><a id="_idIndexMarker320"/><span class="koboSpan" id="kobo.466.1"> significant improvement, and again, when you think about performance, you have to think in terms of the impact of this improvement on thousands </span><span class="No-Break"><span class="koboSpan" id="kobo.467.1">of requests.</span></span></p>
+<p><span class="koboSpan" id="kobo.468.1">This brings us to the end of </span><span class="No-Break"><span class="koboSpan" id="kobo.469.1">the chapter.</span></span></p>
+<h1 id="_idParaDest-98"><a id="_idTextAnchor105"/><span class="koboSpan" id="kobo.470.1">Summary</span></h1>
+<p><span class="koboSpan" id="kobo.471.1">In this chapter, we have seen how combining the caching mechanism, routing optimization, an asynchronous approach, and query optimization can benefit information retrieval. </span><span class="koboSpan" id="kobo.471.2">The caching mechanism combined with the asynchronous approach helps us reduce the data retrieval response time for every request (even if the cache is outdated). </span><span class="koboSpan" id="kobo.471.3">The query optimization reduces the time spent retrieving fresh data to fill a cache. </span><span class="koboSpan" id="kobo.471.4">The routing optimization helps us to save more milliseconds when the frameworks resolve the routes, reducing </span><span class="No-Break"><span class="koboSpan" id="kobo.472.1">response time.</span></span></p>
+<p><span class="koboSpan" id="kobo.473.1">In the next chapter, we will try to address situations where we need to perform a time-consuming task – that is, operations that take some time to complete but where we cannot use </span><span class="No-Break"><span class="koboSpan" id="kobo.474.1">caching mechanisms.</span></span></p>
+<p><span class="koboSpan" id="kobo.475.1">Caching mechanisms can be beneficial when retrieving information. </span><span class="koboSpan" id="kobo.475.2">On the other hand, if we need to perform a task such as writing, sending, or transforming data, we most likely will need to use some other tool. </span><span class="koboSpan" id="kobo.475.3">In the next chapter, we will </span><span class="No-Break"><span class="koboSpan" id="kobo.476.1">see how.</span></span></p>
+</div>
+<div>
+<div class="Content" id="_idContainer043">
+</div>
+</div>
+
+
+<div class="Content" id="_idContainer044">
+<h1 id="_idParaDest-99"><a id="_idTextAnchor106"/><span class="koboSpan" id="kobo.1.1">Part 4: Speeding Up</span></h1>
+<p><span class="koboSpan" id="kobo.2.1">This part shows how to configure tools to support Laravel Octane in a performant architecture. </span><span class="koboSpan" id="kobo.2.2">Tools such as queues and how to set up the system for the production environment are explained through practical examples. </span><span class="koboSpan" id="kobo.2.3">This part comprises the </span><span class="No-Break"><span class="koboSpan" id="kobo.3.1">following chapters:</span></span></p>
+<ul>
+<li><a href="B17728_06.xhtml#_idTextAnchor107"><em class="italic"><span class="koboSpan" id="kobo.4.1">Chapter 6</span></em></a><span class="koboSpan" id="kobo.5.1">, </span><em class="italic"><span class="koboSpan" id="kobo.6.1">Using Queues to Apply the Asynchronous Approach in Your Application</span></em></li>
+<li><a href="B17728_07.xhtml#_idTextAnchor121"><em class="italic"><span class="koboSpan" id="kobo.7.1">Chapter 7</span></em></a><span class="koboSpan" id="kobo.8.1">, </span><em class="italic"><span class="koboSpan" id="kobo.9.1">Configuring the Laravel Octane Application for the Production Environment</span></em></li>
+</ul>
+</div>
+<div>
+<div id="_idContainer045">
+</div>
+</div>
+<div>
+<div id="_idContainer046">
+</div>
+</div>
+</body></html>

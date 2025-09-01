@@ -1,0 +1,550 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;3.&#xA0;Using Phalcon Models, Views, and Controllers"><div class="titlepage"><div><div><h1 class="title"><a id="ch03"/>Chapter 3. Using Phalcon Models, Views, and Controllers</h1></div></div></div><p>Now we will start building a functional blog application. Using Phalcon Developer Tools, we will generate our models, controllers, and views, and then examine the code in sufficient detail so that we can write it ourselves if we have to. We will also learn about forms in Phalcon, which are in the arsenal of view helpers that are components we can use repeatedly in our application. There is no need to reinvent the wheel here. We will also look at the Volt template engine, which is built into Phalcon.</p><p>In this chapter, the following topics will be covered:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The basics of the Model-View-Controller pattern</li><li class="listitem" style="list-style-type: disc">Creating a Phalcon model</li><li class="listitem" style="list-style-type: disc">Creating a Phalcon controller</li><li class="listitem" style="list-style-type: disc">Creating a Phalcon view</li><li class="listitem" style="list-style-type: disc">Using the Volt template engine</li><li class="listitem" style="list-style-type: disc">Using Phalcon view helpers</li></ul></div><div class="section" title="Introducing MVC"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec23"/>Introducing MVC</h1></div></div></div><p>PHP has changed a lot over the years. In the beginning, it wasn't even object-oriented. But that was added in PHP 3, and has improved in the PHP versions since then. These changes led the way for PHP-based frameworks. And most of these frameworks use the MVC pattern, which was made <a id="id80" class="indexterm"/>popular by both Python's Django and Ruby's Ruby on Rails, for use in web frameworks. Let's briefly review each part of the MVC pattern.</p><div class="section" title="View"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec16"/>View</h2></div></div></div><p>The view outputs the user interface. This is its only job. Sometimes, a view includes a template engine such as<a id="id81" class="indexterm"/> Smarty or Phalcon's own built-in template engine, Volt. <a id="id82" class="indexterm"/>We will be using Volt in our blog project. But the truth is that since you can mix <code class="literal">PHP</code> and <code class="literal">HTML</code> in the same file, PHP itself acts like a template engine.</p></div><div class="section" title="Controller"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec17"/>Controller</h2></div></div></div><p>Controllers are the switchboard operators of <a id="id83" class="indexterm"/>our application. The actions in a controller pass parameters to the view to display and respond to user input. When we fill out a blog form in our application and click on the <span class="strong"><strong>Save</strong></span> button, the data we posted is<a id="id84" class="indexterm"/> sent through our controller. As we are creating a blog post, the controller uses its <code class="literal">createAction</code> function to create a new post instance in our model. When this is done, it sends a message back to our view stating that our post was successful.</p></div><div class="section" title="Model"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec18"/>Model</h2></div></div></div><p>Most of the logic of our application should reside in the model. It should know that each one of our blog posts has a user that posted it, and that these two things are related. It should also know that each blog post can have one or many tags. If we have a database connected to <a id="id85" class="indexterm"/>our application,<a id="id86" class="indexterm"/> the model should handle the changes to the database. When we create a new post in our application, our controller simply passes the data we posted in our form to the correct action. Our model should handle the creation of the new post's record in the database as well as any records that relate to the user who posted it or the tags we added to it.</p></div></div></div>
+<div class="section" title="Creating a database"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec24"/>Creating a database</h1></div></div></div><p>Before we can get Phalcon Developer Tools to generate any more files for us, we need a database. The<a id="id87" class="indexterm"/> project skeleton was the easy part. We now need to generate the model, controller, and view files. So, let's create our database. For the purpose of this book, I am going to give examples using raw SQL queries, so you can execute them via the command line or your chosen database tool, and examples using phpMyAdmin, which can be downloaded for free from <a class="ulink" href="http://www.phpmyadmin.net">http://www.phpmyadmin.net</a>. This also requires that you have MySQL installed on your machine, which can be downloaded for free from <a class="ulink" href="http://www.mysql.com">http://www.mysql.com</a>.</p><p>First we need our database. The following is the command to create the database we need for our project:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>CREATE DATABASE phalconblog;</strong></span>
+</pre></div><p>In phpMyAdmin, you could just click on the <span class="strong"><strong>Databases</strong></span> tab, enter <code class="literal">phalconblog</code> in the <span class="strong"><strong>Create new database</strong></span> <a id="id88" class="indexterm"/>section of the page, and click on the <span class="strong"><strong>Create</strong></span> button, as shown in the following screenshot:</p><div class="mediaobject"><img src="graphics/7673OS_03_01.jpg" alt="Creating a database"/></div><p>Now, we just need to create the table for our blog posts. We will worry about the other tables later. The following is the SQL code for our blog <code class="literal">posts</code> table:</p><div class="informalexample"><pre class="programlisting">DROP TABLE IF EXISTS `posts`;
+CREATE TABLE `posts` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `title` text,
+  `body` text,
+  `excerpt` text,
+  `published` datetime DEFAULT NULL,
+  `updated` datetime DEFAULT NULL,
+  `pinged` text,
+  `to_ping` text,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;</pre></div><p>If you are using phpMyAdmin, browse to your <code class="literal">phalconblog</code> database, click on the <span class="strong"><strong>SQL</strong></span> tab, and paste the previous SQL code. Then click on the <span class="strong"><strong>Go</strong></span> button and your table will be ready.</p><div class="mediaobject"><img src="graphics/7673OS_03_02.jpg" alt="Creating a database"/></div><p>We now have a simple table to hold our blog posts. It has a unique ID that autoincrements a title field for the title of our post, a body field to hold the body, an excerpt field to<a id="id89" class="indexterm"/> hold the summary of our post for pages such as our home page and category pages, a published date field, an updated date field, and two fields to hold the ping status of our post.</p><p>Now that we have a table in place, we can use Phalcon Developer Tools to create a model file for our blog posts.</p></div>
+<div class="section" title="Creating a model"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec25"/>Creating a model</h1></div></div></div><p>Open <code class="literal">http://localhost/phalconBlog/webtools.php</code> in your browser if that is where your project is running. If not, browse to the index page of your project and add <code class="literal">/webtools.php</code> to the<a id="id90" class="indexterm"/> URL. The <code class="literal">webtools.php</code> file is located in the same folder as the bootstrap file. You should see a page in your browser that looks something like the following screenshot:</p><div class="mediaobject"><img src="graphics/7673OS_03_03.jpg" alt="Creating a model"/></div><p>We are going to generate a model file for our <code class="literal">posts</code> table. Phalcon Developer Tools connect to our database using the setting we put in our <code class="literal">Ini</code> file and then load all the table names in the <span class="strong"><strong>Table name</strong></span> select list. So, select the <code class="literal">posts</code> table from the select list and click on the <a id="id91" class="indexterm"/>
+<span class="strong"><strong>Generate</strong></span> button. You also have the options to add setters and getters to your class, set foreign keys for related tables, and define relations. You can also force web tools to generate the model file even if it already exists.</p><p>The other option <a id="id92" class="indexterm"/>is to use the command-line developer tools. You will need to open a terminal instance, navigate to your <code class="literal">phalconBlog</code> project folder, and type the following command:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>phalcon model posts</strong></span>
+</pre></div><p>Here, <code class="literal">posts</code> is the name of the table for which a model file is being generated. The command line in the Phalcon Developer Tools also has options. In fact, there are more options available here than on the web interface. You can list all these options by calling the command without a table name, as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>phalcon model</strong></span>
+</pre></div><p>The previous command should print out options as shown in the following screenshot:</p><div class="mediaobject"><img src="graphics/7673OS_03_04.jpg" alt="Creating a model"/></div><p>Any one of the commands will print out a similar list of options if called without any options.</p><p>Once this is done, <a id="id93" class="indexterm"/>we should find the <code class="literal">Posts.php</code> file in our <code class="literal">models</code> folder in <code class="literal">app</code>, and we will find the following code in it:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+class Posts extends \Phalcon\Mvc\Model
+{
+    /**
+     *
+     * @var integer
+     */
+    public $id;     
+    /**
+     *
+     * @var string
+     */
+    public $title;     
+    /**
+     *
+     * @var string
+     */
+    public $body;     
+    /**
+     *
+     * @var string
+     */
+    public $excerpt;     
+    /**
+     *
+     * @var string
+     */
+    public $published;     
+    /**
+     *
+     * @var string
+     */
+    public $updated;     
+    /**
+     *
+     * @var string
+     */
+    public $pinged;     
+    /**
+     *
+     * @var string
+     */
+    public $to_ping;     
+}</pre></div><p>We went through all of that and really didn't get much, but it was better than typing out all these variables<a id="id94" class="indexterm"/> manually. Phalcon extracted the column names out of our <code class="literal">posts</code> table, created a <code class="literal">Posts model</code> class, and turned these names into member variables in our class. It's a start. We can also create a controller using web tools.</p></div>
+<div class="section" title="Creating a controller"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec26"/>Creating a controller</h1></div></div></div><p>You can also create <a id="id95" class="indexterm"/>your controller with web tools. Just click on the <span class="strong"><strong>Controllers</strong></span> tab on the Phalcon web tools menu and then enter your controller name in the <span class="strong"><strong>Controller name</strong></span> field of the form, which in our case is <code class="literal">Posts</code>, as shown in the following screenshot:</p><div class="mediaobject"><img src="graphics/7673OS_03_05.jpg" alt="Creating a controller"/></div><p>As with the model we created, we can use the following command-line tools to create our controller:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>phalcon controller posts</strong></span>
+</pre></div><p>The result<a id="id96" class="indexterm"/> of this will be a new <code class="literal">PostsController.php</code> file located at <code class="literal">app/controllers</code> as shown in the following code:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+class PostsController extends \Phalcon\Mvc\Controller
+{
+    public function indexAction()
+    {
+
+    }</pre></div><p>There is not much to this file, just our <code class="literal">PostsController</code> class with one <code class="literal">indexAction</code> function. But things are about to get a lot more interesting. Let's build the CRUD functions for our Posts model.</p></div>
+<div class="section" title="Creating CRUD scaffolding"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec27"/>Creating CRUD scaffolding</h1></div></div></div><p>CRUD<a id="id97" class="indexterm"/> stands for create, read, update, and delete, which are the four basic functions our application should do with our blog post records. <a id="id98" class="indexterm"/>Phalcon web tools will also help us<a id="id99" class="indexterm"/> to get these built. Click on the <span class="strong"><strong>Scaffold</strong></span> tab<a id="id100" class="indexterm"/> on the web tools page and you will see a page as shown in the following screenshot:</p><div class="mediaobject"><img src="graphics/7673OS_03_06.jpg" alt="Creating CRUD scaffolding"/></div><p>Select <code class="literal">posts</code> from the <span class="strong"><strong>Table name</strong></span> list and <code class="literal">volt</code> from the <span class="strong"><strong>Template engine</strong></span> list, and check <span class="strong"><strong>Force</strong></span> this time, because we are going to force our new files to overwrite the old model and <a id="id101" class="indexterm"/>controller files that we just generated. Click on the <span class="strong"><strong>Generate</strong></span> button and some magic should happen.</p><p>Browse to <code class="literal">http://localhost/phalconBlog/posts</code> and you will see a page like the following screenshot:</p><div class="mediaobject"><img src="graphics/7673OS_03_07.jpg" alt="Creating CRUD scaffolding"/></div><p>We finally have some functionality we can use. We have no posts, but we can create some. Click on the <span class="strong"><strong>Create posts</strong></span> link and you will see a page similar to the one we were just at. The form will look nearly the same, but it will have a <span class="strong"><strong>Create posts</strong></span> heading. Fill out the <span class="strong"><strong>Title</strong></span>, <span class="strong"><strong>Body</strong></span>, and <span class="strong"><strong>Excerpt</strong></span> fields and click on the <span class="strong"><strong>Save</strong></span> button. The form will post, and you will get a message stating that the post was created successfully.</p><p>This will <a id="id102" class="indexterm"/>take you back to the post's index page. Now you should be able to search for and find the post you just created. If you forgot what you posted, you can click on <span class="strong"><strong>Search</strong></span> without entering anything in the fields, and you should see a page like the following screenshot:</p><div class="mediaobject"><img src="graphics/7673OS_03_08.jpg" alt="Creating CRUD scaffolding"/></div><p>This is not a very pretty or user-friendly blog application. But it got us started, and that's all we need. The next time we start a Phalcon project, it should only take a few minutes to go through these steps. Now we will look over our generated code, and as we do, modify it to make it more blog-like.</p></div>
+<div class="section" title="Examining our Posts model"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec28"/>Examining our Posts model</h1></div></div></div><p>If you open up <code class="literal">Posts.php</code> file located at <code class="literal">app/model</code>, you may notice that it has not changed since we generated it the first time. <a id="id103" class="indexterm"/>Even with our new CRUD scaffolding, it still just contains our Posts model class and our database column names as member variables. There is no SQL involved on the PHP side.</p><p>The <code class="literal">Phalcon\MVC\Model</code> path is the base class of all models that your application will use. All the SQL code that is involved happens inside of the Phalcon PHP extension. There will be times when we have to make SQL queries, but for now, we have given our Posts model CRUD capabilities, search capabilities, and the ability to relate to other models without even knowing what database software our application is going to use. We could modify our <code class="literal">services.php</code> file located at <code class="literal">app/config</code> to use another database adapter if we decide that we no longer want to use MySQL and want to use Oracle instead. The code for our application would work the same as long as our database tables are structured the same.</p><p>Our Posts model currently<a id="id104" class="indexterm"/> does everything we need it to do with minimum code, so we won't be modifying it in this chapter. Now let's look at our controller.</p></div>
+<div class="section" title="Examining our Posts controller"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec29"/>Examining our Posts controller</h1></div></div></div><p>Now let's open <code class="literal">PostsController.php</code> file located at <code class="literal">app/controllers</code> in our editor. There is definitely a<a id="id105" class="indexterm"/> lot going on in this file. There are seven methods in our <code class="literal">PostsController</code> class suffixed with actions. Each of these actions handles requests and creates responses in our application. Each corresponds to a URI in our application: <code class="literal">http://localhost/phalconBlog/[model]/[action]</code>. When we browse to <code class="literal">http://www.localhost/phalconBlog/posts/</code>, by default, the <code class="literal">indexAction</code> function is called.</p><p>Let's take a look at each of these actions and modify them if we need to.</p><div class="section" title="Create"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec19"/>Create</h2></div></div></div><p>Let's take a look at the <code class="literal">createAction</code> function, which saves our new blog posts for us.</p><p>First, we should learn<a id="id106" class="indexterm"/> a little about <code class="literal">Phalcon\Mvc\Dispatcher</code>. The dispatcher is another one of the services that was loaded in our Dependency Injection container. The dispatcher takes the request object and instantiates a controller based on the attributes of that object. When a controller is instantiated, it acts as a listener for dispatcher events. Since everything in the Dependency Injection container <a id="id107" class="indexterm"/>can be accessed as a property of the controller, we can access the dispatcher in a controller with <code class="literal">$this-&gt;dispatcher</code>.</p><p>Another object in our Dependency Injection container that we should know about is the request object, which stores details about the HTTP request and is passed between the dispatcher and the controller. The code is as follows:</p><div class="informalexample"><pre class="programlisting">public function createAction()
+{
+
+    if (!$this-&gt;request-&gt;isPost()) {
+        return $this-&gt;dispatcher-&gt;forward(array(
+            "controller" =&gt; "posts",
+            "action" =&gt; "index"
+        ));
+    }
+
+    $post = new Posts();
+
+    $post-&gt;id = $this-&gt;request-&gt;getPost("id");
+    $post-&gt;title = $this-&gt;request-&gt;getPost("title");
+    $post-&gt;body = $this-&gt;request-&gt;getPost("body");
+    $post-&gt;excerpt = $this-&gt;request-&gt;getPost("excerpt");
+    $post-&gt;published = $this-&gt;request-&gt;getPost("published");
+    $post-&gt;updated = $this-&gt;request-&gt;getPost("updated");
+    $post-&gt;pinged = $this-&gt;request-&gt;getPost("pinged");
+    $post-&gt;to_ping = $this-&gt;request-&gt;getPost("to_ping");
+    
+
+    if (!$post-&gt;save()) {
+        foreach ($post-&gt;getMessages() as $message) {
+            $this-&gt;flash-&gt;error($message);
+        }
+        return $this-&gt;dispatcher-&gt;forward(array(
+            "controller" =&gt; "posts",
+            "action" =&gt; "new"
+        ));
+    }
+
+    $this-&gt;flash-&gt;success("post was created successfully");
+    return $this-&gt;dispatcher-&gt;forward(array(
+        "controller" =&gt; "posts",
+        "action" =&gt; "index"
+    ));
+
+}</pre></div><p>First, our method checks if the request is a post by querying the request object from our dispatcher container. If the<a id="id108" class="indexterm"/> request is not a post, <code class="literal">$this-&gt;dispatcher-&gt;forward</code> is called, and our dispatcher forwards the requests to the <code class="literal">indexAction</code> function in<a id="id109" class="indexterm"/> our posts controller, where the dispatch loop starts up again.</p><p>If we are posting a new blog post, then the method continues executing and a post object is created. We can access the data we posted in our form with <code class="literal">$this-&gt;request-&gt;getPost()</code>, and our code assigns each parameter from this request object to an attribute of our <code class="literal">$post</code> instance. In many cases, it would be easier to replace this series of assignments with one line of code as follows:</p><div class="informalexample"><pre class="programlisting">$post-&gt;save($_POST);</pre></div><p>But we will be setting some of these variables in our controller later in the book, so we will leave them as they are. Since Phalcon is handling all the details about our database behind the scenes, we can just call <code class="literal">$this-&gt;post-&gt;save()</code> to save our post to the database; there is no need for SQL.</p><p>Next, the code<a id="id110" class="indexterm"/> checks if our post has been saved, and if it hasn't, it uses the flashing messages' service that is embedded in Phalcon to store the error message <a id="id111" class="indexterm"/>with <code class="literal">$this-&gt;flash-&gt;error</code>, while the application forwards us back to the form. If the post was successfully created, we are forwarded to the index with a successful message as <code class="literal">$this-&gt;flash-&gt;success</code>. The flashing messages' service provides our application with the ability to give users notification of the status of their actions. There are four message types in the flashing messages' services:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Error</li><li class="listitem" style="list-style-type: disc">Success</li><li class="listitem" style="list-style-type: disc">Notice</li><li class="listitem" style="list-style-type: disc">Warning</li></ul></div><p>If we want to set custom classes for our messages when they are served by our view, we can add the following code to the <code class="literal">services.php</code> file in <code class="literal">config</code>:</p><div class="informalexample"><pre class="programlisting">$di-&gt;set('flash', function(){
+    return new \Phalcon\Flash\Direct(array(
+        'error' =&gt; 'alert alert-error',
+        'success' =&gt; 'alert alert-success',
+        'notice' =&gt; 'alert alert-info',
+    ));
+});</pre></div><p>From then on, any error message served by our application will be given both the alert and alert-error classes. The <code class="literal">Phalcon\Flash\Direct</code> is a variant of <code class="literal">Phalcon\Flash</code>, which immediately outputs the messages passed to it. Another variant is <code class="literal">Phalcon\Flash\Session</code>, which temporarily stores the messages in the user's session to be output in the next request.</p></div><div class="section" title="Search"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec20"/>Search</h2></div></div></div><p>Now let's take a<a id="id112" class="indexterm"/> look at our <code class="literal">searchAction</code> function<a id="id113" class="indexterm"/>:</p><div class="informalexample"><pre class="programlisting">public function searchAction()
+{
+
+    $numberPage = 1;
+    if ($this-&gt;request-&gt;isPost()) {
+        $query = Criteria::fromInput($this-&gt;di, "Posts", $_POST);
+        $this-&gt;persistent-&gt;parameters = $query-&gt;getParams();
+    } else {
+        $numberPage = $this-&gt;request-&gt;getQuery("page", "int");
+    }
+
+    $parameters = $this-&gt;persistent-&gt;parameters;
+    if (!is_array($parameters)) {
+        $parameters = array();
+    }
+    $parameters["order"] = "id";
+
+    $posts = Posts::find($parameters);
+    if (count($posts) == 0) {
+        $this-&gt;flash-&gt;notice("The search did not find any posts");
+        return $this-&gt;dispatcher-&gt;forward(array(
+            "controller" =&gt; "posts",
+            "action" =&gt; "index"
+        ));
+    }
+
+    $paginator = new Paginator(array(
+        "data" =&gt; $posts,
+        "limit"=&gt; 10,
+        "page" =&gt; $numberPage
+    ));
+
+    $this-&gt;view-&gt;page = $paginator-&gt;getPaginate();
+}</pre></div><p>At the beginning of our function, we set a <code class="literal">$numberPage</code> variable to <code class="literal">1</code>. This is because we use the Phalcon <a id="id114" class="indexterm"/>paginator that we loaded into our Phalcon services container in our bootstrap file. We will be using that variable to tell the paginator what page of results will be loaded, and if <a id="id115" class="indexterm"/>there is no <code class="literal">page</code> parameter, then we want to load the first page of results.</p><p>After that, our code checks if there is a POST request, and if there is, we use the <code class="literal">fromInput</code> function in <code class="literal">Phalcon\Mvc\Model\Criteria</code> to change the parameters in our post into an array that we can use to query our Posts model. We persist the parameters in the session by creating a variable parameter in <code class="literal">$this-&gt;persist</code>, which is a Phalcon class that persists variables between sessions. This enables our code to load a second page of results from a search query without adding parameters to the URL. The only parameter needed to load a second page of search results is <code class="literal">page</code>. If there is no post, we set the <code class="literal">$numberPage</code> variable to the <code class="literal">page</code> parameter from the GET request with <code class="literal">getQuery</code>.</p><p>Then, we set a local <code class="literal">$parameters</code> variable to our persistent parameters, and we will use this variable to query our Posts model using the <code class="literal">find</code> function, storing the results in <code class="literal">$posts</code>. Then, the code checks if the post has any results and sets a flash message to tell us when there are no posts in our <code class="literal">posts</code> table.</p><p>Then, we<a id="id116" class="indexterm"/> finally get to the paginator we mentioned at the beginning of this section. We create it by setting the <code class="literal">data</code> parameter to the <code class="literal">$posts</code> variable, setting the <code class="literal">limit</code> parameter to the count of records we want for each page, which in this case is <code class="literal">10</code>, and<a id="id117" class="indexterm"/> then set the <code class="literal">page</code> parameter to our <code class="literal">$numberPage</code> variable. Then, we set the <code class="literal">page</code> variable of our <code class="literal">view</code> object to the <code class="literal">page</code> object that our paginator returns, which holds the paginated blog post's results.</p></div><div class="section" title="Index"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec21"/>Index</h2></div></div></div><p>Our <a id="id118" class="indexterm"/>
+<code class="literal">indexAction</code> function currently doesn't do much. The index view shows the user a search form. We are going to change that because we want it to show a list of our most<a id="id119" class="indexterm"/> recent posts, as shown in the following code:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+use Phalcon\Mvc\Model\Criteria,
+    Phalcon\Paginator\Adapter\Model as Paginator;
+
+class PostsController extends ControllerBase
+{
+
+    /**
+     * Index action
+     */
+    public function indexAction()
+    {
+        $this-&gt;persistent-&gt;parameters = null;
+    }</pre></div><p>We are going to change it to the following code:</p><div class="informalexample"><pre class="programlisting">public function indexAction()
+    {
+        $numberPage = $this-&gt;request-&gt;getQuery("page", "int", 1);
+
+        $posts = Posts::find();
+
+
+
+        $paginator = new Paginator(array(
+            "data" =&gt; $posts,
+            "limit"=&gt; 10,
+            "page" =&gt; $numberPage
+        ));
+
+        $this-&gt;view-&gt;page = $paginator-&gt;getPaginate();
+    }</pre></div><p>You will notice a difference in the <code class="literal">PostsController</code> class that we generated compared to the one we wrote from scratch at the beginning of the chapter. Phalcon Developer Tools generated a <code class="literal">ControllerBase</code> class for us so that we can add universal variables and functionality to it. We can then extend this class to create the controllers for our application.</p><p>Here, we are<a id="id120" class="indexterm"/> using part of the functionality we saw in the <code class="literal">searchAction</code> function. We set the page number for the paginator by using the <code class="literal">getQuery</code> function of <code class="literal">Phalcon\Http\Request</code>. The first <code class="literal">page</code> parameter is the GET variable we want, the second parameter is the type we expect this parameter to be, for example, an integer, and the third parameter<a id="id121" class="indexterm"/> is the default value, which we set to <code class="literal">1</code> for the first page. Then, we instantiate the paginator and set the <code class="literal">view page</code> variable to the results from our paginator. But we use the static <code class="literal">query</code> function from <code class="literal">Phalcon\MVC\Model</code> to execute our query in an object-oriented manner, ordering our posts by the published date (which we have not yet set, but we will do so). We will learn more about interacting with Phalcon models and databases in the next chapter.</p></div><div class="section" title="New"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec22"/>New</h2></div></div></div><p>There is nothing in the<a id="id122" class="indexterm"/> new action method, literally. The<a id="id123" class="indexterm"/> action is still called and the view that holds our new post form will be served:</p><div class="informalexample"><pre class="programlisting">public function newAction()
+{
+
+}</pre></div></div><div class="section" title="Edit"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec23"/>Edit</h2></div></div></div><p>The next method<a id="id124" class="indexterm"/> we will examine is our <code class="literal">editAction</code> function:</p><div class="informalexample"><pre class="programlisting">public function editAction($id)
+{
+
+    if (!$this-&gt;request-&gt;isPost()) {
+
+        $post = Posts::findFirstByid($id);
+        if (!$post) {
+            $this-&gt;flash-&gt;error("post was not found");
+            return $this-&gt;dispatcher-&gt;forward(array(
+                "controller" =&gt; "posts",
+                "action" =&gt; "index"
+            ));
+        }
+
+        $this-&gt;view-&gt;id = $post-&gt;id;
+
+        $this-&gt;tag-&gt;setDefault("id", $post-&gt;id);
+        $this-&gt;tag-&gt;setDefault("title", $post-&gt;title);
+        $this-&gt;tag-&gt;setDefault("body", $post-&gt;body);
+        $this-&gt;tag-&gt;setDefault("excerpt", $post-&gt;excerpt);
+        $this-&gt;tag-&gt;setDefault("published", $post-&gt;published);
+        $this-&gt;tag-&gt;setDefault("updated", $post-&gt;updated);
+        $this-&gt;tag-&gt;setDefault("pinged", $post-&gt;pinged);
+        $this-&gt;tag-&gt;setDefault("to_ping", $post-&gt;to_ping);
+        
+    }
+}</pre></div><p>You will notice the <code class="literal">$id</code> parameter in this function. Any additional URI parameters after the parameter for the action are action parameters. They are assigned in the same order that the route passes<a id="id125" class="indexterm"/> them in. First, our action checks if the request was a post. If not, it skips the rest of the functionality and loads the view. If it is a post, we create an instance of our Posts object and use its <code class="literal">findFirstByid</code> method to load our blog post into the <code class="literal">$post</code> variable. We check if our <code class="literal">$post</code> variable contains data and then set our view's ID variable to the ID <a id="id126" class="indexterm"/>of the blog post. If we want, we can also replace these multiple assignments that Phalcon Developer Tools generated for us with the following loop.</p><p>The <code class="literal">Phalcon\Tag</code> is a view helper class that will generate HTML for our application. By calling <code class="literal">$this-&gt;tag-&gt;setDefault</code> in our action, we can set the default value of a form element with the attribute of the same name. So, by calling <code class="literal">$this-&gt;tag-&gt;setDefault("id", $post-&gt;id)</code>, we set the default ID form input to the ID of our post instance.</p></div><div class="section" title="Save"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec24"/>Save</h2></div></div></div><p>Now, let's check out our <a id="id127" class="indexterm"/>
+<code class="literal">saveAction</code> function using the following <a id="id128" class="indexterm"/>code:</p><div class="informalexample"><pre class="programlisting">public function saveAction()
+{
+
+    if (!$this-&gt;request-&gt;isPost()) {
+        return $this-&gt;dispatcher-&gt;forward(array(
+            "controller" =&gt; "posts",
+            "action" =&gt; "index"
+        ));
+    }
+
+    $id = $this-&gt;request-&gt;getPost("id");
+
+    $post = Posts::findFirstByid($id);
+    if (!$post) {
+        $this-&gt;flash-&gt;error("post does not exist " . $id);
+        return $this-&gt;dispatcher-&gt;forward(array(
+            "controller" =&gt; "posts",
+            "action" =&gt; "index"
+        ));
+    }
+
+    $post-&gt;id = $this-&gt;request-&gt;getPost("id");
+    $post-&gt;title = $this-&gt;request-&gt;getPost("title");
+    $post-&gt;body = $this-&gt;request-&gt;getPost("body");
+    $post-&gt;excerpt = $this-&gt;request-&gt;getPost("excerpt");
+    $post-&gt;published = $this-&gt;request-&gt;getPost("published");
+    $post-&gt;updated = $this-&gt;request-&gt;getPost("updated");
+    $post-&gt;pinged = $this-&gt;request-&gt;getPost("pinged");
+    $post-&gt;to_ping = $this-&gt;request-&gt;getPost("to_ping");
+
+        if (!$post-&gt;save()) {
+            foreach ($post-&gt;getMessages() as $message) {
+                $this-&gt;flash-&gt;error($message);
+            }
+            $this-&gt;flash-&gt;error("post was not saved");
+            $this-&gt;view-&gt;pick('posts/edit');
+            $this-&gt;view-&gt;post = $post;
+        } else {
+            $this-&gt;flash-&gt;success("post was updated successfully");
+            return $this-&gt;dispatcher-&gt;forward(
+                array(
+                    "controller" =&gt; "posts",
+                    "action" =&gt; "index"
+                )
+            );
+        }
+}</pre></div><p>This method is very similar to the create method. This one is called when we are saving a post that we are editing. This is another place where, if we wish, we can replace the multiple lines<a id="id129" class="indexterm"/> of assignments with a loop, like we did in the <code class="literal">createAction</code> function. The only real difference in this method is that when a post is not saved successfully, we pick the view that we want to show using <code class="literal">$this-&gt;view-&gt;pick()</code>, and then we set the <code class="literal">$post</code> variable in the view to the one just created. This way, the content is still saved in the browser if the new post fails to save. If we were to simply forward it to<a id="id130" class="indexterm"/> the <code class="literal">editAction</code> function, it would again look up the post by its <code class="literal">id</code> and wipe out our changes. We use the same view, we just bypass the action.</p></div><div class="section" title="Delete"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec25"/>Delete</h2></div></div></div><p>The following<a id="id131" class="indexterm"/> function is the <a id="id132" class="indexterm"/>
+<code class="literal">deleteAction</code> function in our controller:</p><div class="informalexample"><pre class="programlisting">public function deleteAction($id)
+{
+
+    $post = Posts::findFirstByid($id);
+    if (!$post) {
+        $this-&gt;flash-&gt;error("post was not found");
+        return $this-&gt;dispatcher-&gt;forward(array(
+            "controller" =&gt; "posts",
+            "action" =&gt; "index"
+        ));
+    }
+
+    if (!$post-&gt;delete()) {
+
+        foreach ($post-&gt;getMessages() as $message){
+            $this-&gt;flash-&gt;error($message);
+        }
+
+        return $this-&gt;dispatcher-&gt;forward(array(
+            "controller" =&gt; "posts",
+            "action" =&gt; "search"
+        ));
+    }
+
+    $this-&gt;flash-&gt;success("post was deleted successfully");
+    return $this-&gt;dispatcher-&gt;forward(array(
+        "controller" =&gt; "posts",
+        "action" =&gt; "index"
+    ));
+}</pre></div><p>There's nothing<a id="id133" class="indexterm"/> fancy happening here. The method tries to delete the post by calling <code class="literal">$post-&gt;delete</code>, and<a id="id134" class="indexterm"/> gives us an error message if it wasn't deleted and a success message if it was.</p></div><div class="section" title="Show"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec26"/>Show</h2></div></div></div><p>We are going to have to <a id="id135" class="indexterm"/>add an action to our controller to view each post by itself. This will be easy because our <code class="literal">editAction</code> function does some of the same things that we need our <code class="literal">showAction</code> function to do. <a id="id136" class="indexterm"/>We need our controller to pass a post instance to our view based on a post ID. The following is our code:</p><div class="informalexample"><pre class="programlisting">public function showAction($id)
+    {
+
+        if (!$this-&gt;request-&gt;isPost()) {
+
+            $post = Posts::findFirstByid($id);
+            if (!$post) {
+                $this-&gt;flashSession-&gt;error("post was not found");
+                $response = new \Phalcon\Http\Response();
+                $response-&gt;setStatusCode(404, "Not Found");
+                $response-&gt;redirect("posts/index");          
+            }
+
+        }
+
+        $this-&gt;view-&gt;post = $post;
+    }</pre></div><p>There is not really much to this method. It takes in our post ID and checks if our post is valid. If it is, we set the <code class="literal">view</code> variable's post to our <code class="literal">$post</code> object so we can use it in our view. But if there is no post, we want to at least set a 404 status code. So, we create a new instance of <code class="literal">Phalcon\Http\Response</code> and set the status code, and with that same response, we are redirected back to the index of our posts. Notice that instead of using <code class="literal">$this-&gt;flash</code>, we<a id="id137" class="indexterm"/> are using <code class="literal">$this-&gt;flashSession</code>, because we are using a true HTTP redirect rather than an internal forward, so we need to store the message in the user's session.</p><p>Now that our controller is doing everything we want it to do, let's take a look at our views.</p></div></div>
+<div class="section" title="Examining our Post views"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec30"/>Examining our Post views</h1></div></div></div><p>Well, we didn't do any manual edits on our model, and we only made a few changes to our controller. But we are going to make a lot of changes to our views. They need a lot of work. So, we are not going to compare much of our generated code with our final code.</p><p>Fortunately, when <a id="id138" class="indexterm"/>we installed Phalcon web tools in our application, it installed Twitter Bootstrap for us. And as it is already there, we are going to use it. As this is a book on the Phalcon framework and not Twitter Bootstrap, I won't be explaining much of what we are doing with it. We will just use it. Twitter Bootstrap is a frontend framework that makes styling easier. You can read more about it at <a class="ulink" href="http://getbootstrap.com/">http://getbootstrap.com/</a>.</p><p>We know from <a class="link" href="ch02.html" title="Chapter 2. Setting Up a Phalcon Project">Chapter 2</a>, <span class="emphasis"><em>Setting Up a Phalcon Project</em></span>, that every request in our application uses the <code class="literal">index.volt</code> file located at <code class="literal">app/views</code> to wrap the content returned from our views. If we want to add JavaScript or CSS globally to our application, this would be where we would want to include it. The code is as follows:</p><div class="informalexample"><pre class="programlisting">&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;title&gt;Phalcon Blog&lt;/title&gt;
+    &lt;link rel="stylesheet" href="/phalconBlog/css/bootstrap/bootstrap.min.css" type="text/css" /&gt;
+        &lt;link rel="stylesheet" href="/phalconBlog/css/bootstrap/bootstrap-responsive.min.css" type="text/css" /&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+      &lt;div class="navbar"&gt;
+            &lt;div class="navbar-inner"&gt;
+                &lt;div class="container"&gt;
+                    &lt;a data-target=".nav-collapse" data-toggle="collapse" class="btn btn-navbar"&gt;
+                        &lt;span class="icon-bar"&gt;&lt;/span&gt;
+                        &lt;span class="icon-bar"&gt;&lt;/span&gt;
+                        &lt;span class="icon-bar"&gt;&lt;/span&gt;
+                    &lt;/a&gt;
+                    &lt;a href="/phalconBlog" class="brand"&gt;Phalcon Blog&lt;/a&gt;
+                    &lt;div class="nav-collapse"&gt;
+                        &lt;ul class="nav"&gt;
+                            &lt;li&gt;{{ link_to("posts/", "Posts") }}&lt;/li&gt;
+                            &lt;li&gt;{{ link_to("posts/search", "Advanced Search") }}&lt;/li&gt;
+                            &lt;li&gt;{{ link_to("posts/new", "Create posts") }}&lt;/li&gt;
+                            &lt;li&gt;&lt;a href="/phalconBlog/webtools.php?_url=/index"&gt;Webtools&lt;/a&gt;&lt;/li&gt;
+                        &lt;/ul&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+        &lt;div id="content" class="container-fluid"&gt;
+            &lt;div class="row-fluid"&gt;
+                &lt;div class="span3"&gt;
+                    &lt;div class="well"&gt;
+                        {{ form("posts/search", "method":"post", "autocomplete" : "off", "class" : "form-inline") }}
+                            &lt;div class="input-append"&gt;
+                                {{ text_field("body", "class" : "input-medium") }}
+                                {{ submit_button("Search", "class" : "btn") }}
+                            &lt;/div&gt;
+                       {{ end_form() }}
+                    &lt;/div&gt;
+                &lt;/div&gt;
+            &lt;div class="span9 well"&gt;
+            {{ content() }}
+            &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;script src="/phalconBlog/js/jquery/jquery.min.js" type="text/javascript"&gt;&lt;/script&gt;
+        &lt;script src="/phalconBlog/js/bootstrap/bootstrap.min.js" type="text/javascript"&gt;&lt;/script&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</pre></div><p>Well, we added quite a bit of markup to support Twitter Bootstrap. We included the <code class="literal">css</code> files that we need in order to use Bootstrap in the header and the JavaScript in the footer. In the <code class="literal">navbar</code> div, we have links to the main parts of our site. We have a search form in the sidebar that currently searches only the body field, but we will be changing that later. Then, we output our content. <a id="id139" class="indexterm"/>We now have a responsive layout for our blog using Phalcon's own built-in Volt template engine.</p><p>Volt uses {{…}} to print variables to the template, and {%...%} to assign variables or execute loops. The variables and function calls in Volt are very similar to the underlying PHP code, only without dollar signs. In the main part of our page, we use <code class="literal">content()</code>, which is a template tag for <code class="literal">$this-&gt;getContent()</code>. This tag is used here in the main layout. But you will also notice it in the controller layout as well as in the action views. The output of each view is served by the next one in the hierarchy using this variable.</p><p>There are three levels in this view hierarchy. The action view only renders when the action of a specific controller is called. The controller layout view will be shown for every action in the controller. And finally, the main layout view will be shown for every controller and action in the application.</p><p>For the links, we use the <code class="literal">link_to()</code> tag<a id="id140" class="indexterm"/>, which represents the <code class="literal">linkTo</code> view helper function of <code class="literal">Phalcon\Tag</code>. The first parameter is the path in our application, and the second is the anchor text we will use for the link.</p><p>For the search form, we use the <code class="literal">form()</code> template tag, which builds the first HTML form tag for our form thanks to Phalcon's view helpers. To close the form, we use Volt's <code class="literal">end_form()</code> template tag. The first parameter we pass to this tag is the action attribute. The second parameter is the set of key-value pairs that translate into attributes in the HTML form tag. We add the <code class="literal">input-medium</code> class to our field to apply Twitter Bootstrap styles.</p><p>For the search form field, we again use another Volt tag that represents a Phalcon view helper. The <code class="literal">text_field()</code> tag<a id="id141" class="indexterm"/> accepts the name of our field as its first parameter. And the second parameter is again a key-value pair that translates to HTML tag attributes. We add the <code class="literal">btn</code> class to our submit button.</p><div class="section" title="Posts layout"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec27"/>Posts layout</h2></div></div></div><p>The layout that wraps the results of every action in the Posts controller is loacted in the <code class="literal">posts.volt</code> file at <code class="literal">app/views/layouts</code>. There is not much in this file. If we wanted to add markup to every view that our <a id="id142" class="indexterm"/>Posts model uses, we would do it here. We are going to remove the <code class="literal">align="center"</code> attribute from the <code class="literal">div</code>, so it looks like the<a id="id143" class="indexterm"/> following code:</p><div class="informalexample"><pre class="programlisting">&lt;div&gt;
+    {{ content() }}
+&lt;/div&gt;</pre></div></div><div class="section" title="Index action view"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec28"/>Index action view</h2></div></div></div><p>The view for index action is in the <code class="literal">index.volt</code> file located at <code class="literal">app/views/posts</code>. This page originally held a search form. But we changed the <code class="literal">indexAction</code> function in our controller to list the most recent blog posts. We<a id="id144" class="indexterm"/> are going to have to make a lot of<a id="id145" class="indexterm"/> changes to this file, which will actually result in less overall markup as follows:</p><div class="informalexample"><pre class="programlisting">{{ content() }}
+
+{% if page.items is defined %}
+{% for post in page.items %}
+    &lt;article&gt;
+        &lt;h2&gt;{{ post.title }}&lt;/h2&gt;
+        &lt;div&gt;{{ post.excerpt }}&lt;/div&gt;
+        &lt;div&gt;{{ link_to("posts/show/"~post.id, "Show") }}&lt;/div&gt;
+    &lt;/article&gt;
+{% endfor %}
+&lt;ul class="pager"&gt;
+    &lt;li&gt;{{ link_to("posts/index", "First") }}&lt;/li&gt;
+    &lt;li&gt;{{ link_to("posts/index?page="~page.before, "Previous") }}&lt;/li&gt;
+    &lt;li&gt;{{ link_to("posts/index?page="~page.next, "Next") }}&lt;/li&gt;
+    &lt;li&gt;{{ link_to("posts/index?page="~page.last, "Last") }}&lt;/li&gt;
+    &lt;li&gt;{{ page.current~"/"~page.total_pages }}&lt;/li&gt;
+&lt;/ul&gt;
+{% endif %}</pre></div><p>In Volt, we use {%...%} to represent loops and control structures. In this view, we wrap everything in an <code class="literal">if</code> tag, which checks if our <code class="literal">page</code> object generated by the paginator in our controller contains any items. The results in the <code class="literal">page</code> object are stored in this <code class="literal">item</code> variable. If we have items, we loop through them, setting the <code class="literal">post</code> object to what we find. We can access the variables in this <code class="literal">post</code> object using the dot syntax. To print out the post excerpt, we use <code class="literal">post.excerpt</code>.</p><p>And finally, we have the paginator part of our paginator. Along with the items, our paginator object contains details about the results. We can use <code class="literal">page.before</code> to access the page number of the current page, <code class="literal">page.next</code> for the next page number, and <code class="literal">past.last</code> for the last<a id="id146" class="indexterm"/> page. At the end of the links, we print the current page number and the total number of pages.</p></div><div class="section" title="Search action view"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec29"/>Search action view</h2></div></div></div><p>Now, we will take a look at the view for the search action in the <code class="literal">search.volt</code> file located at <code class="literal">app/views/posts</code>. The code is as follows:</p><div class="informalexample"><pre class="programlisting">{{ form("post<a id="id147" class="indexterm"/>s/search", "method":<a id="id148" class="indexterm"/>"post") }}
+{{ content() }}
+
+&lt;div align="center"&gt;
+    &lt;h1&gt;Search Posts&lt;/h1&gt;
+&lt;/div&gt;
+
+&lt;table align="center"&gt;
+    &lt;tr&gt;
+        &lt;td align="right"&gt;
+            &lt;label for="id"&gt;Id&lt;/label&gt;
+        &lt;/td&gt;
+        &lt;td align="left"&gt;
+            {{ text_field("id") }}
+        &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+        &lt;td align="right"&gt;
+            &lt;label for="title"&gt;Title&lt;/label&gt;
+        &lt;/td&gt;
+        &lt;td align="left"&gt;
+                {{ text_field("title") }}
+        &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+        &lt;td align="right"&gt;
+            &lt;label for="body"&gt;Body&lt;/label&gt;
+        &lt;/td&gt;
+        &lt;td align="left"&gt;
+                {{ text_field("body") }}
+        &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+        &lt;td align="right"&gt;
+            &lt;label for="excerpt"&gt;Excerpt&lt;/label&gt;
+        &lt;/td&gt;
+        &lt;td align="left"&gt;
+                {{ text_field("excerpt") }}
+        &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+        &lt;td align="right"&gt;
+            &lt;label for="published"&gt;Published&lt;/label&gt;
+        &lt;/td&gt;
+        &lt;td align="left"&gt;
+            {{ text_field("published", "size" : 30) }}
+        &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+        &lt;td align="right"&gt;
+            &lt;label for="updated"&gt;Updated&lt;/label&gt;
+        &lt;/td&gt;
+        &lt;td align="left"&gt;
+            {{ text_field("updated", "size" : 30) }}
+        &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+        &lt;td align="right"&gt;
+            &lt;label for="pinged"&gt;Pinged&lt;/label&gt;
+        &lt;/td&gt;
+        &lt;td align="left"&gt;
+                {{ text_field("pinged", "type" : "date") }}
+        &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+        &lt;td align="right"&gt;
+            &lt;label for="to_ping"&gt;To Of Ping&lt;/label&gt;
+        &lt;/td&gt;
+        &lt;td align="left"&gt;
+                {{ text_field("to_ping", "type" : "date") }}
+        &lt;/td&gt;
+    &lt;/tr&gt;
+
+    &lt;tr&gt;
+        &lt;td&gt;&lt;/td&gt;
+        &lt;td&gt;{{ submit_button("Search", "class" : "btn") }}&lt;/td&gt;
+    &lt;/tr&gt;
+&lt;/table&gt;
+
+{{ end_form() }}
+
+{% if page.items is defined %}
+{% for post in page.items %}
+    &lt;article&gt;
+        &lt;h2&gt;{{ post.title }}&lt;/h2&gt;
+        &lt;div&gt;{{ post.excerpt }}&lt;/div&gt;
+        &lt;div&gt;{{ link_to("posts/show/"~post.id, "Show") }}&lt;/div&gt;
+    &lt;/article&gt;
+{% endfor %}
+&lt;ul class="pager"&gt;
+    &lt;li&gt;{{ link_to("posts/search", "First") }}&lt;/li&gt;
+    &lt;li&gt;{{ link_to("posts/search?page="~page.before, "Previous") }}&lt;/li&gt;
+    &lt;li&gt;{{ link_to("posts/search?page="~page.next, "Next") }}&lt;/li&gt;
+    &lt;li&gt;{{ link_to("posts/search?page="~page.last, "Last") }}&lt;/li&gt;
+    &lt;li&gt;{{ page.current~"/"~page.total_pages }}&lt;/li&gt;
+&lt;/ul&gt;
+{% else %}
+{{ form("posts/search", "method":"post", "autocomplete" : "off") }}
+{% endif %}</pre></div><p>Here, we have much of what we have seen in the other views. The form has more fields, so that each field in<a id="id149" class="indexterm"/> our posts can be searched. Then, we have a loop to print out the results of our searches, similar to the index action view, and at<a id="id150" class="indexterm"/> the end, we have our pager to browse the results.</p></div><div class="section" title="Edit action view"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec30"/>Edit action view</h2></div></div></div><p>Next, we have the <a id="id151" class="indexterm"/>view for the edit action <a id="id152" class="indexterm"/> in the <code class="literal">edit.volt</code> file located at <code class="literal">app/views/posts</code>.</p><div class="informalexample"><pre class="programlisting">{{ form("posts/edit", "method":"post") }}
+
+{{ content() }}
+
+&lt;div align="center"&gt;
+    &lt;h1&gt;Edit Post&lt;/h1&gt;
+&lt;/div&gt;
+
+&lt;table&gt;
+    &lt;tr&gt;
+        &lt;td align="right"&gt;
+            &lt;label for="title"&gt;Title&lt;/label&gt;
+        &lt;/td&gt;
+        &lt;td align="left"&gt;
+                {{ text_field("title") }}
+        &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+        &lt;td align="right"&gt;
+            &lt;label for="body"&gt;Body&lt;/label&gt;
+        &lt;/td&gt;
+        &lt;td align="left"&gt;
+                {{ text_area("body") }}
+        &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+        &lt;td align="right"&gt;
+            &lt;label for="excerpt"&gt;Excerpt&lt;/label&gt;
+        &lt;/td&gt;
+        &lt;td align="left"&gt;
+                {{ text_area("excerpt") }}
+        &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+        &lt;td&gt;{{ hidden_field("id") }}&lt;/td&gt;
+        &lt;td&gt;{{ submit_button("Save", "class" : "btn") }}&lt;/td&gt;
+    &lt;/tr&gt;
+&lt;/table&gt;
+
+&lt;/form&gt;</pre></div><p>Here, we again have<a id="id153" class="indexterm"/> the <code class="literal">content</code> tag and <code class="literal">form</code> tags for all the fields that we need to edit in our post. And at the end, we have our submit button; <a id="id154" class="indexterm"/>everything that we will need to edit a post.</p></div><div class="section" title="New action view"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec31"/>New action view</h2></div></div></div><p>Last but not least, the view for the new<a id="id155" class="indexterm"/> action<a id="id156" class="indexterm"/> in the <code class="literal">new.volt</code> file located at <code class="literal">app/views/posts</code> which uses the same template tags we covered in the other action views. The code for our view is as follows:</p><div class="informalexample"><pre class="programlisting">{{ form("posts/create", "method":"post") }}
+
+{{ content() }}
+
+&lt;div align="center"&gt;
+    &lt;h1&gt;Create Post&lt;/h1&gt;
+&lt;/div&gt;
+
+&lt;table&gt;
+    &lt;tr&gt;
+        &lt;td align="right"&gt;
+            &lt;label for="title"&gt;Title&lt;/label&gt;
+        &lt;/td&gt;
+        &lt;td align="left"&gt;
+                {{ text_field("title", "type" : "date") }}
+        &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+        &lt;td align="right"&gt;
+            &lt;label for="body"&gt;Body&lt;/label&gt;
+        &lt;/td&gt;
+        &lt;td align="left"&gt;
+                {{ text_area("body", "type" : "date") }}
+        &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+        &lt;td align="right"&gt;
+            &lt;label for="excerpt"&gt;Excerpt&lt;/label&gt;
+        &lt;/td&gt;
+        &lt;td align="left"&gt;
+                {{ text_area("excerpt", "type" : "date") }}
+        &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+        &lt;td&gt;&lt;/td&gt;
+        &lt;td&gt;{{ submit_button("Save", "class" : "btn") }}&lt;/td&gt;
+    &lt;/tr&gt;
+&lt;/table&gt;
+
+&lt;/form&gt;</pre></div></div></div>
+<div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec31"/>Summary</h1></div></div></div><p>In this chapter, we worked<a id="id157" class="indexterm"/> on the model, view, and controller for the posts in our blog. To do this, we used Phalcon web tools to generate our CRUD scaffolding for us. Then, we modified this generated code so it would do what we need it to do. We can now add posts. We also learned about the Volt template engine.</p><p>In the next chapter, we will create more models and take a look at the various ways Phalcon handles data, including session data, relationships between models, filtering and sanitizing data, PHQL, and Phalcon's Object-Document Mapper.</p></div></body></html>

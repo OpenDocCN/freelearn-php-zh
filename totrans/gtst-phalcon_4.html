@@ -1,0 +1,265 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;4.&#xA0;Handling Data in Phalcon"><div class="titlepage"><div><div><h1 class="title"><a id="ch04"/>Chapter 4. Handling Data in Phalcon</h1></div></div></div><p>Unless you are building an application that retrieves all of its data via APIs, you are most likely going to need a database in the application. Phalcon gives you a few ways to access data from PHP. In the previous chapter, we didn't interact directly with our MySQL database. We could create blog posts and store them in our database, but Phalcon models did all of the dirty work for us. All we did was add the database connection details to our configuration file.</p><p>There are a few more features our models can handle before we have to start using more of the available Phalcon features. But even the simplest application will grow to the point where unique database queries come into play. However, databases are not the only way to handle data in your application.</p><p>In this chapter, you will learn the following topics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">How to use the more advanced features of Phalcon models</li><li class="listitem" style="list-style-type: disc">How to store session data in a Phalcon application</li><li class="listitem" style="list-style-type: disc">How to filter and sanitize our data</li><li class="listitem" style="list-style-type: disc">How to replace our MySQL database with another database system</li><li class="listitem" style="list-style-type: disc">How to access databases with Phalcon Query Language (PHQL)</li><li class="listitem" style="list-style-type: disc">How to use Phalcon's Object-Document Mapper (ODM)</li><li class="listitem" style="list-style-type: disc">How to handle database migrations</li></ul></div><div class="section" title="Adding models"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec32"/>Adding models</h1></div></div></div><p>Currently, our blog application<a id="id158" class="indexterm"/> doesn't do much. We can create and view posts, but that's about it. We need to think about what other tables we need in our blog.</p><div class="section" title="Creating the database tables"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec32"/>Creating the database tables</h2></div></div></div><p>We will have users, and each user will be able to write multiple posts. So, we need a <code class="literal">users</code> table, and we need<a id="id159" class="indexterm"/> to add a <code class="literal">users_id</code> field to our <code class="literal">posts</code> table so that each post is related to a user. The following is the SQL code for our <code class="literal">users</code> table:</p><div class="informalexample"><pre class="programlisting">CREATE TABLE IF NOT EXISTS `phalconblog`.`users` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT ,
+  `username` VARCHAR(16) NOT NULL ,
+  `password` VARCHAR(255) NOT NULL ,
+  `name` VARCHAR(255) NOT NULL ,
+  `email` TEXT NOT NULL ,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `username` (`username`)
+);</pre></div><p>Run this SQL snippet on your MySQL database. If you need help using <code class="literal">phpMyAdmin</code>, refer to <a class="link" href="ch03.html" title="Chapter 3. Using Phalcon Models, Views, and Controllers">Chapter 3</a>, <span class="emphasis"><em>Using Phalcon Models, Views, and Controllers</em></span>, for how to execute this code. Now, you have a table where you can store a minimal amount of data about your users, including their chosen username and password, their name, and their e-mail address. We create a unique key on the <code class="literal">username</code> column because we don't want two users to have the same username.</p><p>Also, a blog is not really a blog without comments. We want visitors to be able to comment on our blog applications. The following is the SQL code that we need to run on our database to create a home for our comments:</p><div class="informalexample"><pre class="programlisting">CREATE TABLE IF NOT EXISTS `comments` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `post_id` int(11) NOT NULL,
+  `body` text NOT NULL,
+  `name` text NOT NULL,
+  `email` text NOT NULL,
+  `url` text NOT NULL,
+  `submitted` datetime NOT NULL,
+  `publish` tinyint(1) NOT NULL,
+  `posts_id` int(11) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fk_comments_posts1` (`posts_id`)
+);</pre></div><p>We need to relate each comment to a specific post, so we have a <code class="literal">post_id</code> field. To store the commenter's details, we have <code class="literal">name</code>, <code class="literal">email</code>, and <code class="literal">url</code>. We have a <code class="literal">submitted</code> date so that we can sort our comments. And, we have a <code class="literal">publish</code> field that we will set to <code class="literal">0</code> when a comment is submitted, and <code class="literal">1</code> when we approve the comment.</p><p>We might possibly need to organize our posts. We have a few options for doing this. We could use categories, where each post must fit into a specific category. Our categories can have child categories, <a id="id160" class="indexterm"/>or we can use tags, where each tag can be freely applied to any post, and each post can have more than one tag. Or we can do both, like most blogging applications. For our application, we are going to use tags only for simplicity. Run the following SQL code to create the <code class="literal">tags</code> table:</p><div class="informalexample"><pre class="programlisting">CREATE TABLE IF NOT EXISTS `tags` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `tag` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `tag` (`tag`)
+);</pre></div><p>There is not much to this table, just an <code class="literal">id</code> and <code class="literal">tag</code> column. That's because we have to use an intermediate table to relate our <code class="literal">posts</code> table to our <code class="literal">tags</code> table due to the many-to-many relationship between posts and tags. However, we do want each tag to be unique, so we make the <code class="literal">tag</code> column a unique key. We are going to call this table <code class="literal">post_tags</code>, and the following is the SQL code you need to run to create it:</p><div class="informalexample"><pre class="programlisting">CREATE TABLE IF NOT EXISTS `post_tags` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `posts_id` int(11) NOT NULL,
+  `tags_id` int(11) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fk_post_tags_tags1` (`tags_id`),
+  KEY `fk_post_tags_posts1` (`posts_id`)
+);</pre></div><p>This is just a table of IDs. A record in this table will have its own unique ID, a post ID, and a tag ID.</p><p>Now, we need to modify our <code class="literal">posts</code> table. It needs a user ID. The following is the SQL code we need to run to delete and recreate our <code class="literal">posts</code> table:</p><div class="informalexample"><pre class="programlisting">DROP TABLE `posts`;
+CREATE TABLE IF NOT EXISTS `posts` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `users_id` int(11) NOT NULL,
+  `title` text,
+  `body` text,
+  `excerpt` text,
+  `published` datetime DEFAULT NULL,
+  `updated` datetime DEFAULT NULL,
+  `pinged` text,
+  `to_ping` text,
+  PRIMARY KEY (`id`),
+  KEY `fk_posts_users` (`users_id`)
+);</pre></div><p>The last step in our process is to create the foreign key relationships between our tables. Run the following SQL<a id="id161" class="indexterm"/> code to add the foreign key constraints to our database:</p><div class="informalexample"><pre class="programlisting">ALTER TABLE `comments`
+  ADD CONSTRAINT `fk_comments_posts1` FOREIGN KEY (`posts_id`) REFERENCES `posts` (`id`);
+ALTER TABLE `posts`
+  ADD CONSTRAINT `fk_posts_users` FOREIGN KEY (`users_id`) REFERENCES `users` (`id`);
+ALTER TABLE `post_tags`
+  ADD CONSTRAINT `fk_post_tags_tags1` FOREIGN KEY (`tags_id`) REFERENCES `tags` (`id`),
+  ADD CONSTRAINT `fk_post_tags_posts1` FOREIGN KEY (`posts_id`) REFERENCES `posts` (`id`);</pre></div><p>The following screenshot represents a diagram showing the relationships in our database:</p><div class="mediaobject"><img src="graphics/7673OS_04_01.png.jpg" alt="Creating the database tables"/></div><p>The preceding screenshot was made from the EER diagram tool in MySQL Workbench, which you can download for free at <a class="ulink" href="http://www.mysql.com/products/workbench/">http://www.mysql.com/products/workbench/</a>. This tool is really <a id="id162" class="indexterm"/>handy for designing databases. I created all the tables and relationships for this blog with drag-and-drop and fill in the blanks.</p></div><div class="section" title="Generating the models"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec33"/>Generating the models</h2></div></div></div><p>Now, let's use Phalcon<a id="id163" class="indexterm"/> web tools to create all of our new models at once. Browse to <code class="literal">http://localhost/phalconBlog/webtools.php?_url=/models/index</code> and you will see the following screen:</p><div class="mediaobject"><img src="graphics/7673OS_04_02.png.jpg" alt="Generating the models"/></div><p>This time, we are going to select the <span class="strong"><strong>Table name</strong></span> as <span class="strong"><strong>All</strong></span> and make sure we check <span class="strong"><strong>Set Foreign Keys</strong></span>, <span class="strong"><strong>Define Relations</strong></span>, and <span class="strong"><strong>Force</strong></span>. This way, web tools will set up the necessary relationships in our models. This will create the following files in our <code class="literal">models</code> folder located at <code class="literal">app</code>:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">Comments.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">PostTags.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">Tags.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">Users.php</code></li></ul></div><p>We will take a look at these files as we continue to refactor our blog project throughout the rest of this chapter. But, to understand a little bit about what we just did, let's take a look at how relationships are handled by Phalcon. The Phalcon model's manager handles the relationships between models, and<a id="id164" class="indexterm"/> these relationships must be set up in the <code class="literal">initialize</code> function of these models. By having Phalcon web tools define relationships, we can simply have it generate the <code class="literal">initialize</code> function for us.</p><p>In the <code class="literal">initialize</code> function of the <code class="literal">Users.php</code> file, you will find the following line of code:</p><div class="informalexample"><pre class="programlisting">$this-&gt;hasMany("id", "Posts", "users_id");</pre></div><p>This line of code sets up the relationships between the posts and the users in our application. A user will have many posts. This is one of four methods. The other three methods are as follows:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">hasOne()</code><a id="id165" class="indexterm"/></li><li class="listitem" style="list-style-type: disc"><code class="literal">belongsTo()</code><a id="id166" class="indexterm"/></li><li class="listitem" style="list-style-type: disc"><code class="literal">hasManyToMany()</code><a id="id167" class="indexterm"/></li></ul></div><p>The first parameter is the field of the local model that is a key in the relationship. The second parameter is the model being referenced. The third parameter is the remote model's key. And since posts belong to users, we will find the following line of code in the <code class="literal">initialize</code> function of the Posts model:</p><div class="informalexample"><pre class="programlisting">$this-&gt;belongsTo("users_id", "Users", "id");</pre></div><p>For the most part, you can forget about the relationships and foreign keys in your database and just treat your records as objects.</p></div></div></div>
+<div class="section" title="Storing session data in Phalcon"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec33"/>Storing session data in Phalcon</h1></div></div></div><p>First, we are going to give ourselves the ability to log in to our blog and store our user information in our session. <a id="id168" class="indexterm"/>We are going to wait to encrypt our passwords and set up permissions for our user until the next chapter. For now, we only want to be able to save a user<a id="id169" class="indexterm"/> ID when a user saves a blog post.</p><p>We made our changes to the model, but that doesn't mean everything is going to work. Browse to <code class="literal">http://localhost/phalconBlog/posts/create</code> and try to create a new post. You will not be able to. Instead, you will see the following error message in your browser because we just created a rule that our database requires every post to have a user ID:</p><div class="mediaobject"><img src="graphics/7673OS_04_03.png.jpg" alt="Storing session data in Phalcon"/></div><p>Another problem is that in order to have a user ID, we need a user in the <code class="literal">users</code> table to reference. Therefore,<a id="id170" class="indexterm"/> we need to be able to add users to our database with our application. So, go back to <code class="literal">http://localhost/phalconBlog/webtools.php?_url=/scaffold</code> and generate the scaffolding for your <a id="id171" class="indexterm"/>
+<code class="literal">users</code> table. We are going to cut a lot out of it and change some things, but again, it is a good place to start.</p><p>Once you have generated the scaffolding for your <code class="literal">users</code> table, browse to <code class="literal">http://localhost/phalconBlog/users/new</code> and create your user as shown in the following screenshot:</p><div class="mediaobject"><img src="graphics/7673OS_04_04.png.jpg" alt="Storing session data in Phalcon"/></div><p>Now that we have a user, let's make sure that when we create a new blog post, the user ID gets related to it. We are going to set a <code class="literal">user_id</code> variable in the user's session. First, we need a form to log in, and <a id="id172" class="indexterm"/>we might as well put this in the <code class="literal">indexAction</code> function's template so we can log in there. Open up the <code class="literal">index.volt</code> file located <code class="literal">at app/views/users</code> that you generated with Phalcon web tools and modify it to look<a id="id173" class="indexterm"/> like the following code snippet:</p><div class="informalexample"><pre class="programlisting">{{ content() }}
+
+{{ form("users/login", "method":"post", "autocomplete" : "off") }}
+
+&lt;h1&gt;Users&lt;/h1&gt;
+
+&lt;div&gt;
+    &lt;label for="username"&gt;Username&lt;/label&gt;
+    {{ text_field("username", "size" : 30) }}
+&lt;/div&gt;
+
+&lt;div&gt;
+    &lt;label for="password"&gt;Password&lt;/label&gt;
+    {{ password_field("password", "size" : 30) }}
+&lt;/div&gt;
+
+{{ submit_button("Login", "class" : "btn") }}
+
+{{ end_form() }}</pre></div><p>What we have left is a <code class="literal">username</code> and <code class="literal">password</code> field and a <span class="strong"><strong>submit</strong></span> button. Also, we have modified the original search form that web tools built for us to post to an action that doesn't exist yet in our controller, that is, the <code class="literal">loginAction</code> function<a id="id174" class="indexterm"/>.</p><p>Now, let's create a <code class="literal">loginAction</code> function in the <code class="literal">UsersController.php</code> file located at <code class="literal">app/controllers</code>. The method we will be adding is the following code snippet:</p><div class="informalexample"><pre class="programlisting">public function loginAction() {
+
+    if ($this-&gt;request-&gt;isPost() &amp;&amp; isset($_POST('username') &amp;&amp; isset($_POST('password')) {
+        $query = Criteria::fromInput($this-&gt;di, "Users", $_POST);
+        $this-&gt;persistent-&gt;parameters = $query-&gt;getParams();
+        $parameters = $this-&gt;persistent-&gt;parameters;
+        if (!is_array($parameters)) {
+            $parameters = array();
+        }
+        $users = Users::findFirst($parameters);
+        if (count($users) == 1) {
+            $user = $users-&gt;getFirst();
+            $this-&gt;session-&gt;set("user_id", $user-&gt;id);
+            $this-&gt;flash-&gt;success("Welcome " . $user-&gt;name);
+        } else {
+            $this-&gt;flash-&gt;error("Username and Password combination not found");
+        }
+    }
+    return $this-&gt;dispatcher-&gt;forward(
+        array(
+            "controller" =&gt; "posts",
+            "action" =&gt; "index"
+        )
+    );
+}</pre></div><p>This method is pretty simple. It checks that there is a <code class="literal">POST</code> variable, and if so, sets <code class="literal">$parameters</code> to the <code class="literal">POST</code> variable. Then, we set the <code class="literal">$users</code> variable to the result of the Phalcon model's <code class="literal">Find</code> method. Since we made the <code class="literal">username</code> column a unique key in our database, we should either get one or no records. If we get no records, we set a flash message to tell the user <a id="id175" class="indexterm"/>that what they entered was incorrect. If we get <a id="id176" class="indexterm"/>one record, we call <code class="literal">$users-&gt;getFirst()</code> to get the first and only result from our query. And then, we set the session variable <code class="literal">user_id</code> to the <code class="literal">id</code> instance in our <code class="literal">$user</code> object. We started the session when our bootstrap file loaded the <code class="literal">services.php</code> file located at <code class="literal">app/config</code>, so it is available here in this controller.</p><p>While we have this file open, we should also create an action to log out. This method is even easier to write. We just call <code class="literal">$this-&gt;session-&gt;remove($var)</code>, where <code class="literal">$var</code> is the variable we want to remove from the session. Here is what the code looks like:</p><div class="informalexample"><pre class="programlisting">public function logoutAction(){
+        $this-&gt;session-&gt;remove("user_id");
+        $this-&gt;flash-&gt;success("You have been logged out");
+        return $this-&gt;dispatcher-&gt;forward(
+            array(
+                "controller" =&gt; "users",
+                "action" =&gt; "index"
+            )
+        );
+    }</pre></div><p>We are going to make one last change to this file. We have already set the <code class="literal">indexAction</code> function's view to display the login form when the <code class="literal">indexAction</code> function is called. But, if a user is already logged in, let's show them a list of users. To do this, we will change the <code class="literal">indexAction</code> function so that it looks like the following code snippet:</p><div class="informalexample"><pre class="programlisting">public function indexAction() {
+        $this-&gt;persistent-&gt;parameters = null;
+        if ($this-&gt;session-&gt;has("user_id")) {
+            return $this-&gt;dispatcher-&gt;forward(
+                array(
+                    "controller" =&gt; "users",
+                    "action" =&gt; "search"
+                )
+            );
+        }
+    }</pre></div><p>Here, we simply check if there is a user ID in the session, and if so, we forward the user to the search controller, which displays a list of all users when no search parameters are posted.</p><p>We still can't create a post yet<a id="id177" class="indexterm"/> until we set this user ID in it. So, open<a id="id178" class="indexterm"/> up the <code class="literal">PostsController.php</code> file located at <code class="literal">app/controllers</code>. We only have to worry about setting this ID when the blog post is created, so we are only going to modify the <code class="literal">createAction</code> function. Right before we instantiate the new post with <code class="literal">$post = new Posts()</code>, we are going to add the following code snippet:</p><div class="informalexample"><pre class="programlisting">if (!$this-&gt;session-&gt;has("user_id")) {
+            $this-&gt;flash-&gt;error("Please log in to create a post");
+            return $this-&gt;dispatcher-&gt;forward(
+                array(
+                    "controller" =&gt; "users",
+                    "action" =&gt; "index"
+                )
+            );
+        }</pre></div><p>To check whether the session has a user ID in it or not, forward the user to the login page. If there is an ID, the code creates the new post, and we need to add the following line of code to add our user ID to the <code class="literal">post</code> object:</p><div class="informalexample"><pre class="programlisting">$post-&gt;users_id = $this-&gt;session-&gt;get("user_id");</pre></div><p>And finally, we need a way to log out. We have created the <code class="literal">action</code> method already, but there is no way to get to it. So, open up the <code class="literal">search.volt</code> file located at <code class="literal">app/views/users</code> and add the following code snippet right after the <code class="literal">{{ content() }}</code> tag:</p><div class="informalexample"><pre class="programlisting">{{ link_to("users/logout/", "Logout", "class" : "btn") }}</pre></div><p>This will add a button to the top of the list of users that will log us out. Now, we can log in and create a post<a id="id179" class="indexterm"/> without any issues.</p></div>
+<div class="section" title="Filtering and sanitizing data"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec34"/>Filtering and sanitizing data</h1></div></div></div><p>To prevent unauthorized<a id="id180" class="indexterm"/> access, SQL injection, and other malicious attacks on our application, we need to filter and sanitize user input. We can use the <code class="literal">Phalcon\Filter</code> component to do this for us. This component supplies wrappers for the PHP filter extension.</p><p>Securing your application<a id="id181" class="indexterm"/> is beyond the scope of this book, but we can take a look at a filter that Phalcon development tools already added for us when we named one of our user field's e-mail. In the <code class="literal">UsersControllers.php</code> file located at <code class="literal">app/controller</code>, you will find that the <code class="literal">createAction</code> function has the following line of code:</p><div class="informalexample"><pre class="programlisting">$user-&gt;email = $this-&gt;request-&gt;getPost("email", "email");</pre></div><p>The filter object is accessed through the Phalcon request object. The first parameter is the name of the variable we are accessing, and the second optional parameter is our filter. Phalcon has the following built-in filters:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Name</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Description</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p><code class="literal">string</code><a id="id182" class="indexterm"/></p>
+</td><td style="text-align: left" valign="top">
+<p>Strips tags<a id="id183" class="indexterm"/></p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p><code class="literal">email</code><a id="id184" class="indexterm"/></p>
+</td><td style="text-align: left" valign="top">
+<p>Removes all characters except letters,<a id="id185" class="indexterm"/> digits, and special characters such as !, #, $, %, &amp;, *, +, -, /, =, ?, ^, _, ', {, |, }, ~, @, and []</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p><code class="literal">int</code><a id="id186" class="indexterm"/></p>
+</td><td style="text-align: left" valign="top">
+<p>Removes all characters<a id="id187" class="indexterm"/> except digits, dots, plus, and minus</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p><code class="literal">float</code><a id="id188" class="indexterm"/></p>
+</td><td style="text-align: left" valign="top">
+<p>Removes all characters <a id="id189" class="indexterm"/>except digits, dots, plus, and minus</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p><code class="literal">alphanum</code><a id="id190" class="indexterm"/></p>
+</td><td style="text-align: left" valign="top">
+<p>Removes all characters except a-z, A-Z,<a id="id191" class="indexterm"/> and 0-9</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p><code class="literal">striptags</code><a id="id192" class="indexterm"/></p>
+</td><td style="text-align: left" valign="top">
+<p>Applies the <code class="literal">strip_tags</code> function<a id="id193" class="indexterm"/></p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p><code class="literal">trim</code><a id="id194" class="indexterm"/></p>
+</td><td style="text-align: left" valign="top">
+<p>Applies the <code class="literal">trim</code> function <a id="id195" class="indexterm"/></p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p><code class="literal">lower</code><a id="id196" class="indexterm"/></p>
+</td><td style="text-align: left" valign="top">
+<p>Applies the <code class="literal">strtolower</code><a id="id197" class="indexterm"/> function</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p><code class="literal">upper</code><a id="id198" class="indexterm"/></p>
+</td><td style="text-align: left" valign="top">
+<p>Applies<a id="id199" class="indexterm"/> the <code class="literal">strtoupper</code> function</p>
+</td></tr></tbody></table></div><p>You can also write your own filters. You can read more about doing that at <a class="ulink" href="http://docs.phalconphp.com/en/latest/reference/filter.html#creating-your-own-filters">http://docs.phalconphp.com/en/latest/reference/filter.html#creating-your-own-filters</a>.</p></div>
+<div class="section" title="Phalcon models revisited"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec35"/>Phalcon models revisited</h1></div></div></div><p>Another thing we need to fix in our application is the fact that our dates don't mean anything. We have published and updated dates in our <code class="literal">posts</code> table, which we are not using. Let's make sure we're setting those dates. Let's open up the <code class="literal">Posts.php</code> file located at <code class="literal">app/model</code>. We are going to add more code to <a id="id200" class="indexterm"/>the <code class="literal">initialize</code> function of our Posts model, and we are going to use a behavior on our date fields. First, add this line of code after the first PHP tag:</p><div class="informalexample"><pre class="programlisting">use Phalcon\Mvc\Model\Behavior\Timestampable;</pre></div><p>Then, add the following lines of code to the <code class="literal">initialize</code> function<a id="id201" class="indexterm"/> in this model:</p><div class="informalexample"><pre class="programlisting">        $this-&gt;addBehavior(new Timestampable(
+            array(
+                'beforeCreate' =&gt; array(
+                    'field' =&gt; 'published',
+                    'format' =&gt; 'Y-m-d H:i:s'
+                )
+            )
+        ));
+        $this-&gt;addBehavior(new Timestampable(
+            array(
+                'beforeUpdate' =&gt; array(
+                    'field' =&gt; 'updated',
+                    'format' =&gt; 'Y-m-d H:i:s'
+                )
+            )
+        ));</pre></div><p>We can use the <code class="literal">Timestamable</code> behavior to handle the setting of our published and updated dates for us. The first parameter is the event we are attaching this behavior to, the next parameter is the field, and the third is the date format. So, the published date will now be set when a new record is created, as will the updated date when it is updated, without having to set the date manually whenever we modify data in our controller.</p><p>Now let's add tags to <a id="id202" class="indexterm"/>our posts. The first thing we need to do is go back to Phalcon web tools in the browser or Phalcon Developer Tools in the command line and generate the models for both the <code class="literal">tags</code> table and the <code class="literal">post_tags</code> table. Then, we regenerate the model for our <code class="literal">posts</code> table. Make sure to choose <span class="strong"><strong>Set Foreign Keys</strong></span> and <span class="strong"><strong>Define Relations</strong></span>. For the <code class="literal">posts</code> table, you will have to set the <span class="strong"><strong>Forced</strong></span> option.</p><p>Open your newly generated files. You will find them in the <code class="literal">models</code> folder located at <code class="literal">app</code>. At the bottom of the <code class="literal">Posts.php</code> file, you will find the following new code:</p><div class="informalexample"><pre class="programlisting">public function initialize() {
+    $this-&gt;hasMany("id", "PostTags", "posts_id", NULL);
+    $this-&gt;belongsTo("users_id", "Users", "id", array("foreignKey" =&gt; true));
+  }</pre></div><p>At the bottom of <code class="literal">Tags.php</code>, you will also find an <code class="literal">initialize</code> function:</p><div class="informalexample"><pre class="programlisting">public function initialize() {
+        $this-&gt;hasMany("id", "PostTags", "tags_id", NULL);
+    }</pre></div><p>At the bottom of the <code class="literal">PostTags.php</code> file, you will find the following lines of code:</p><div class="informalexample"><pre class="programlisting">public function initialize() {
+        $this-&gt;belongsTo("posts_id", "Posts", "id");
+        $this-&gt;belongsTo("tags_id", "Tags", "id");
+    }</pre></div><p>The code in the <code class="literal">initialize</code> functions of these models relate these models based on the foreign keys we created in our database and allow us to create, read, update, and delete our records as objects. <a id="id203" class="indexterm"/>However, we still have to write a little bit of code to actually save our tags when we save a post.</p><p>Next, let's create a new method in our <code class="literal">Posts.php</code> file.</p><div class="informalexample"><pre class="programlisting">public function addTags($tags) {
+        foreach ($tags as $t) {
+            $t = trim($t);
+            $tag = Tags::findFirst(array("tag = '$t'"));
+            if (!$tag) {
+                $tag = new Tags();
+                $tag-&gt;tag = $t;
+                $tag-&gt;save();
+            }
+            $postTag = PostTags::findFirst(
+                array(
+                    "conditions" =&gt; "$this-&gt;id = ?1 AND tags_id = ?2",
+                    "bind" =&gt; array(
+                        1 =&gt; $this-&gt;id,
+                        2 =&gt; $tag-&gt;id
+                    )
+                )
+            );
+            if (!$postTag) {
+                $postTag = new PostTags();
+                $postTag-&gt;posts_id = $this-&gt;id;
+                $postTag-&gt;tags_id = $tag-&gt;id;
+                $postTag-&gt;save();
+            }
+            unset($tag);
+            unset($postTag);
+        }</pre></div><p>Our function accepts an array of tags as the first parameter and the ID of a post as the second. Here, we loop through the tags. Using <code class="literal">findFirst</code>, we check if the tag already exists. In this example, we use an array that simply holds what would be the <code class="literal">WHERE</code> clause of our SQL. If there is a tag, it is loaded in the <code class="literal">$tag</code> variable. If not, <code class="literal">$tag</code> will be false, and then we create a new tag and save it. Next, we check if there is a record in the <code class="literal">post_tag</code> table that relates the current tag to the post ID. If there is, we load it, and if not, we create it and save it.</p><p>We have the model handled, so let's move to the controllers. Open up the <code class="literal">PostsController.php</code> file located at <code class="literal">app/controllers</code>. Find the following line of code in both the <code class="literal">createAction</code> and <code class="literal">saveAction</code> functions:</p><div class="informalexample"><pre class="programlisting">$success = $post-&gt;save;</pre></div><p>This is the<a id="id204" class="indexterm"/> point where the post gets saved to the database after being created or edited. The <code class="literal">$post</code> object will now have an ID attached to it. After each post, add the following lines of code:</p><div class="informalexample"><pre class="programlisting">  $tags = explode(",", $this-&gt;request-&gt;getPost("tags", "lower"));
+  $post-&gt;addTags($tags);</pre></div><p>Here, we are assuming that when we get to creating our form, we will be accepting comma delimited tags. So, we turn this string of tags into an array with <code class="literal">explode</code> after setting the string to lowercase letters in order to ensure a bit more uniqueness. Then, we use the <code class="literal">addTags</code> method<a id="id205" class="indexterm"/> that we just added to our <code class="literal">Post</code> model in order to save the tags to our database.</p><p>Now, we need to modify the <code class="literal">editAction</code> function so that we can send tags to our edit form. Locate the following line of code in that function:</p><div class="informalexample"><pre class="programlisting">$this-&gt;view-&gt;id = $post-&gt;id;</pre></div><p>Add the following code after it:</p><div class="informalexample"><pre class="programlisting"> $tagArray = array();
+ foreach ($post-&gt;postTags as $postTag) {
+       $tagArray[] = $postTag-&gt;tags-&gt;tag;
+ }
+$this-&gt;tag-&gt;setDefault("tags", implode(",", $tagArray));</pre></div><p>Now, all we have to do is modify our post views. The <code class="literal">edit.volt</code> and <code class="literal">new.volt</code> files located at <code class="literal">app/view/post</code> just need a field added to our form for tags at the bottom of the table, before the button markup.</p><div class="informalexample"><pre class="programlisting">&lt;tr&gt;
+        &lt;td align="right"&gt;
+            &lt;label for="tags"&gt;Tags&lt;/label&gt;
+        &lt;/td&gt;
+        &lt;td align="left"&gt;
+                {{ text_field("tags") }}
+        &lt;/td&gt;
+    &lt;/tr&gt;</pre></div><p>In the <code class="literal">show.volt</code> file located at <code class="literal">app/view/post</code>, find the following line of code:</p><div class="informalexample"><pre class="programlisting">   {{ post.body }}</pre></div><p>Insert the following<a id="id206" class="indexterm"/> code snippet below the previous code snippet:</p><div class="informalexample"><pre class="programlisting"> &lt;div&gt;
+    {% for posttag in post.postTags %}
+        {{ posttag.tags.tag }},
+    {% endfor %}
+ &lt;/div&gt;</pre></div><p>Now we can browse to <code class="literal">http://localhost/phalconBlog/posts/new</code> and create a post that has tags.</p></div>
+<div class="section" title="Using PHQL"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec36"/>Using PHQL</h1></div></div></div><p><span class="strong"><strong>Phalcon Query Language</strong></span> (<span class="strong"><strong>PHQL</strong></span>) is a high-level SQL dialect that standardizes SQL queries for the database systems that<a id="id207" class="indexterm"/> Phalcon supports. However, this is not the only feature of PHQL. It also has the following features:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">It uses bound parameters to<a id="id208" class="indexterm"/> secure your application</li><li class="listitem" style="list-style-type: disc">It treats tables as models and fields as class attributes</li><li class="listitem" style="list-style-type: disc">It allows data manipulation statements to prevent data loss</li><li class="listitem" style="list-style-type: disc">It allows only one query per call to prevent SQL injection</li></ul></div><p>We are going to use PHQL for the search form in our sidebar. Currently, it is actually pretty useless. We will cut it down to search only the body field just to make things easy. Now, we are going to make it work a little bit better. We can make the value from this one search field do a little more work by searching not only the body, but the title and the excerpt as well. So, we need to edit the <code class="literal">searchAction</code> function in the <code class="literal">PostsController.php</code> file located at <code class="literal">app/controllers</code>. The following code snippet tells us how we need to edit the file:</p><div class="informalexample"><pre class="programlisting">if ($this-&gt;request-&gt;isPost()) {
+            //$query = Criteria::fromInput($this-&gt;di, "Posts", $_POST);
+            //$this-&gt;persistent-&gt;parameters = $query-&gt;getParams();
+            $this-&gt;persistent-&gt;parameters = $this-&gt;request-&gt;getPost();
+        } else {
+            $numberPage = $this-&gt;request-&gt;getQuery("page", "int");
+        }
+
+        $parameters = $this-&gt;persistent-&gt;parameters;
+        if (!is_array($parameters)) {
+            $parameters = array();
+        }
+        //$parameters["order"] = "id";
+        $query = $parameters['body'];
+
+        //$posts = Posts::find($parameters);
+        $phql = "SELECT * FROM Posts WHERE body LIKE '%$query%' OR
+            excerpt LIKE '%$query%' OR title LIKE '%$query%' ORDER BY id";
+        $posts = $this-&gt;modelsManager-&gt;executeQuery($phql);</pre></div><p>The lines of code that have been commented out in the previous code snippet are old code. The important part<a id="id209" class="indexterm"/> of the code is at the end where we create the PHQL query. Notice that instead of selecting from a table, we select from the actual model. Then, we set the <code class="literal">$posts</code> variable to the results returned by <code class="literal">$this-&gt;modelsManager-&gt;executeQuery()</code>. <code class="literal">modelsManager</code> is a service that was loaded into our Dependency Injection container.</p><p>Another thing that PHQL can help us out with is joins. Since we already defined the relationships between our models, we can use a PHQL query like the following line of code to get a list of posts with the users' names:</p><div class="informalexample"><pre class="programlisting">SELECT Posts.title, Users.name FROM Posts JOIN Users ORDER BY Users.name</pre></div><p>Note that we don't have to specify the predicates for the join operation. Here, an <code class="literal">INNER JOIN</code> operation is assumed, but any type of join can be used.</p><p>If you don't feel like writing the PHQL statements, there is a query builder available which is similar to the query builder in other PHP frameworks such as Zend and Yii. We could build the previous query with the following lines of code, as well as execute it and return the records:</p><div class="informalexample"><pre class="programlisting">$posts = $this-&gt;modelsManager-&gt;createBuilder()
+    -&gt;from('Posts')
+    -&gt;join('Users')
+    -&gt;orderBy('Users.name')
+    -&gt;getQuery()
+    -&gt;execute();</pre></div><p>PHQL is a powerful language, and the scope of this book and application don't really do it justice. To learn more than what this book can teach you about PHQL, visit <a class="ulink" href="http://docs.phalconphp.com/en/latest/reference/phql.html">http://docs.phalconphp.com/en/latest/reference/phql.html</a>.</p></div>
+<div class="section" title="Switching databases in Phalcon"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec37"/>Switching databases in Phalcon</h1></div></div></div><p>We have used a MySQL <a id="id210" class="indexterm"/>database<a id="id211" class="indexterm"/> in our application. If we wanted to change the database software midstream, it would not be too hard, as long as we have the same data structure in our new database. Currently, Phalcon supports the <a id="id212" class="indexterm"/>following relational <a id="id213" class="indexterm"/>database backends:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>MySQL</strong></span>: This is the <a id="id214" class="indexterm"/>world's most used relational database<a id="id215" class="indexterm"/> management system available at <a class="ulink" href="https://phalcon-php-framework-documentation.readthedocs.org/en/latest/api/Phalcon_Db_Dialect_Mysql.html">https://phalcon-php-framework-documentation.readthedocs.org/en/latest/api/Phalcon_Db_Dialect_Mysql.html</a></li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>PostgreSQL</strong></span>: This is a powerful,<a id="id216" class="indexterm"/> reliable, and<a id="id217" class="indexterm"/> open source database management system available at <a class="ulink" href="https://phalcon-php-framework-documentation.readthedocs.org/en/latest/api/Phalcon_Db_Dialect_Postgresql.html">https://phalcon-php-framework-documentation.readthedocs.org/en/latest/api/Phalcon_Db_Dialect_Postgresql.html</a></li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>SQLite</strong></span>: This is a self-contained<a id="id218" class="indexterm"/>, server-less database<a id="id219" class="indexterm"/> engine available at <a class="ulink" href="https://phalcon-php-framework-documentation.readthedocs.org/en/latest/api/Phalcon_Db_Dialect_Sqlite.html">https://phalcon-php-framework-documentation.readthedocs.org/en/latest/api/Phalcon_Db_Dialect_Sqlite.html</a></li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Oracle</strong></span>: This is an <a id="id220" class="indexterm"/>object-relational<a id="id221" class="indexterm"/> database management system produced by the Oracle corporation available at <a class="ulink" href="https://phalcon-php-framework-documentation.readthedocs.org/en/latest/api/Phalcon_Db_Dialect_Oracle.html">https://phalcon-php-framework-documentation.readthedocs.org/en/latest/api/Phalcon_Db_Dialect_Oracle.html</a></li></ul></div><p>Our application sets the database adapter by importing it in the <code class="literal">services.php</code> file located at <code class="literal">app/config</code> with the following line of code:</p><div class="informalexample"><pre class="programlisting">use Phalcon\Db\Adapter\Pdo\Mysql as DbAdapter;</pre></div><p>If we wanted to use a <a id="id222" class="indexterm"/>different database system, we would just include a different adapter here. Each adapter handles most of the proprietary quirks of its respective database.</p></div>
+<div class="section" title="Phalcon's Object-Document Mapper and MongoDB"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec38"/>Phalcon's Object-Document Mapper and MongoDB</h1></div></div></div><p>Relational databases aren't the only type of database you can use in Phalcon. You can also use Phalcon's <span class="strong"><strong>Object-Document Mapper</strong></span> (<span class="strong"><strong>ODM</strong></span>) to connect to <a id="id223" class="indexterm"/>MongoDB. Phalcon's ODM offers CRUD functionality, validation, events, and other useful services.</p><p>You start by adding a<a id="id224" class="indexterm"/> connection from your MongoDB database to your Dependency<a id="id225" class="indexterm"/> Injection container, <a id="id226" class="indexterm"/>as in the following code snippet:</p><div class="informalexample"><pre class="programlisting">$di-&gt;set('mongo', function() {
+    $mongo = new Mongo();
+    return $mongo-&gt;selectDb("blog");}, true);</pre></div><p>This will be a connection to the default localhost MongoDB instance running on the default port.</p><p>We can now add models just as we add models when our application uses a standard relational database, but instead, we extend <code class="literal">\Phalcon\Mvc\Collection</code>.</p><div class="informalexample"><pre class="programlisting">class Pages extends \Phalcon\Mvc\Collection{
+
+}</pre></div><p>And really, that is all<a id="id227" class="indexterm"/> you need in your model file. This assumes we will be using a collection called <code class="literal">pages</code> in our <code class="literal">blog</code> database to hold the data. This may seem a little confusing,<a id="id228" class="indexterm"/> but it is a standard convention to use lowercase names for MongoDB collections. This class has the same functionality as that of the MongoDB PHP extension. So, if we want to find a page by its ID, we would use the same function name.</p><div class="informalexample"><pre class="programlisting">$page = Pages::findById("5087358f2d42b8c3d15ec4e2");</pre></div><p>Each collection is an object with the flexibility of a MongoDB record. Once you have the <code class="literal">page</code> object, it can be modified and saved again.</p><div class="informalexample"><pre class="programlisting">$page-&gt;title = "New Title";
+
+$page-&gt;adhoc = "Adhoc value just in this record";
+$page-&gt;save();</pre></div><p>You can read more about the ODM at <a class="ulink" href="http://docs.phalconphp.com/en/latest/reference/odm.html">http://docs.phalconphp.com/en/latest/reference/odm.html</a>.</p></div>
+<div class="section" title="Migrating databases"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec39"/>Migrating databases</h1></div></div></div><p>Another tool that both<a id="id229" class="indexterm"/> Phalcon Developer Tools and Phalcon web tools provide is one that manages database changes between your various software environments. To generate a database migration, you would run the following command in your project directory:</p><div class="informalexample"><pre class="programlisting">phalcon migration generate</pre></div><p>This command will simply dump every object from your database in migration classes. In our application, these classes will be stored inside a folder named after the current migration version in the <code class="literal">migrations</code> folder located at <code class="literal">app</code>. Let's say you just changed the data model in the local version of your application and you have created a migration for it. Then, you would just upload the migration to your development server and run the following command to execute the changes to your database on this server:</p><div class="informalexample"><pre class="programlisting">phalcon migration run</pre></div><p>To list the configuration options available, run the following command:</p><div class="informalexample"><pre class="programlisting">phalcon migration</pre></div><p>To use web tools, we would just browse to <code class="literal">http://localhost/phalconBlog/webtools.php?_url=/migrations/index</code> in our current application, <a id="id230" class="indexterm"/>and we will see the following screen:</p><div class="mediaobject"><img src="graphics/7673OS_04_05.png.jpg" alt="Migrating databases"/></div><p>You can learn more about Phalcon database migrations<a id="id231" class="indexterm"/> at <a class="ulink" href="http://docs.phalconphp.com/en/latest/reference/migrations.html">http://docs.phalconphp.com/en/latest/reference/migrations.html</a>.</p></div>
+<div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec40"/>Summary</h1></div></div></div><p>In this chapter, we fleshed out our blog application a little by adding relationships between our models. We can now log in, create our own posts that have updated and created dates, and add tags to our posts. During the process of refactoring our application to do these things, we learned various ways to handle data in Phalcon. However, our application is far from complete.</p><p>In the next chapter, we will fill in some of the missing gaps in our application, including the ability to comment on posts, hiding content and functionality from visitors who aren't logged in, encrypting users' passwords, generating RSS feeds, and pinging sites when we create posts.</p></div></body></html>
