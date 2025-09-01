@@ -1,46 +1,66 @@
 - en: Theming
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 主题化
 - en: 'The most obvious part of Drupal''s theming system is the Appearance admin page
     found at `admin/appearance`, which lists all the themes installed on your website:'
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: Drupal主题系统最明显的部分是位于`admin/appearance`的“外观”管理页面，它列出了您网站上安装的所有主题：
 - en: '![](img/a712eb41-b703-4971-8b92-94f30d4e407d.png)'
+  id: totrans-2
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](img/a712eb41-b703-4971-8b92-94f30d4e407d.png)'
 - en: When you choose a theme from the Appearance page, you are applying a specific
     graphic design to your website's data and functionality. However, the applied
     theme is in reality only a small part of the entire theming layer.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你在外观页面上选择一个主题时，你实际上是在为你的网站数据和功能应用一个特定的图形设计。然而，实际应用的主题只是整个主题层的一小部分。
 - en: This book focuses mostly on building modules that encapsulate chunks of functionality.
     However, since we're ultimately building a web application, everything output
     by our functionality will need to be marked up with HTML. In Drupal, this process
     of wrapping data in HTML and CSS is called theming.
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 本书主要关注构建封装功能块模块。然而，由于我们最终是在构建一个网络应用程序，我们功能输出的所有内容都需要用HTML进行标记。在Drupal中，将数据包裹在HTML和CSS中的这个过程被称为主题化。
 - en: In this chapter, we will discuss how our module integrates with the theme layer.
     We will talk about the architecture of the system, theme templates, hooks, render
     arrays, and others. Then, we will provide some practical examples.
+  id: totrans-5
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们将讨论我们的模块如何与主题层集成。我们将讨论系统的架构、主题模板、钩子、渲染数组等内容，并提供一些实际示例。
 - en: Business logic versus presentation logic
+  id: totrans-6
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 业务逻辑与展示逻辑
 - en: 'We start this chapter by discussing an important architectural choice that
     modern applications make: how to turn data into presentation.'
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们从讨论现代应用程序做出的一个重要架构选择开始这一章：如何将数据转换为展示。
 - en: So, what would be the best way to get our data and functionality marked up?
     Do we simply wrap each piece of data in HTML and return the whole as a giant string,
     as shown in the following example?
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: 那么，获取我们的数据和功能标记的最佳方法是什么？我们是否简单地用HTML包裹每一块数据，然后返回一个巨大的字符串，如下面的示例所示？
 - en: '[PRE0]'
+  id: totrans-9
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: No, we don't. Like all other well-designed applications, Drupal separates its
     business logic from its presentation logic. It's true, previous versions of Drupal
     did use this kind of approach, especially when it came to theme functions, but
@@ -49,37 +69,49 @@
     function that was called by the client code. So, the separation of business logic
     from presentation logic was clearly there, if at times, not so much one between
     PHP and HTML code.
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 不，我们不是这样做的。像所有其他设计良好的应用程序一样，Drupal将业务逻辑与其展示逻辑分开。确实，Drupal的早期版本曾使用过这种方法，尤其是在主题函数方面，但即便如此，它们也容易被覆盖。因此，这些结构并不是直接位于业务逻辑的中间，而是封装在由客户端代码调用的特殊主题函数中。因此，业务逻辑与展示逻辑的分离是明显的，尽管有时PHP和HTML代码之间的界限并不那么清晰。
 - en: 'Traditionally, the primary motivations for this separation of concerns were
     as follows:'
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 传统上，这种关注点分离的主要动机如下：
 - en: To make the code easier to maintain
+  id: totrans-12
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 为了使代码更容易维护
 - en: To make it possible to easily swap out one layer's implementation without having
     to rewrite the other layers
+  id: totrans-13
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 为了能够轻松地替换一层实现，而无需重写其他层
 - en: As we will see, Drupal takes the "swapability" aspect quite far. You may think
     that the theme you select on the Appearance page is responsible for applying the
     HTML and CSS for the website. This is true, but only to some extent. There are
     thousands of contributed modules on Drupal.org. Also, you can write a bunch of
     your own. Should the theme be responsible for marking up all of those modules'
     data? Obviously not.
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如我们将看到的，Drupal在“可替换性”方面做得相当彻底。你可能认为你在外观页面上选择的主题负责应用网站的HTML和CSS。这是真的，但只到一定程度。Drupal.org上有数千个贡献模块。你也可以编写大量的自定义模块。主题是否应该负责标记所有这些模块的数据？显然不是。
 - en: Since a module is most intimately familiar with its own data and functionality,
     it is its own responsibility to provide the default theme implementation—that
     initial look and feel that is independent of design and that should display the
     data correctly regardless of the theme. However, as long as the module uses the
     theme system properly, a theme will be able to override any HTML and/or CSS by
     swapping the module's implementation with its own.
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于模块最熟悉自己的数据和功能，因此它有责任提供默认的主题实现——这种独立于设计的初始外观和感觉，并且无论主题如何都应该正确显示数据。然而，只要模块正确使用主题系统，主题就可以通过交换模块的实现与自己的实现来覆盖任何HTML和/或CSS。
 - en: In other words, after data is retrieved and manipulated inside the module (the
     business logic), it will need to provide the default theme implementation to wrap
     it inside its markup. Sometimes, a particular theme will need to override this
@@ -88,12 +120,16 @@
     of the module's default implementation. This is usually called *overriding*. Otherwise,
     the default fallback will still be there. The theme also provides the option of
     applying styling via CSS only and leaving the markup provided by the module intact.
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 换句话说，在模块（业务逻辑）内部检索和处理数据之后，它需要提供默认的主题实现来将其包裹在其标记内。有时，特定的主题可能需要覆盖这个实现以达到特定的设计目标。如果主题提供了自己的实现，Drupal将使用该主题实现而不是模块的默认实现。这通常被称为*覆盖*。否则，默认的回退仍然存在。主题还提供了仅通过CSS应用样式并保持模块提供的标记不变的选择。
 - en: Twig
+  id: totrans-17
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: Twig
 - en: 'Theme engines are responsible for doing the actual output via template files.
     Although previous versions of Drupal were capable of using different theme engines,
     one stood out and was used 99.9 percent of the time (statistic made up by me on
@@ -101,8 +137,10 @@
     extension and contained both markup and PHP. Seasoned Drupal developers grew accustomed
     to this practice, but it was always more difficult for frontend developers to
     use and theme against.'
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 主题引擎负责通过模板文件进行实际输出。尽管Drupal的早期版本能够使用不同的主题引擎，但有一个引擎脱颖而出，并且被99.9%的时间使用（我现场编造的统计数据）：`PHPTemplate`。这个主题引擎使用具有`.tpl.php`扩展名的PHP文件，并包含标记和PHP。经验丰富的Drupal开发者习惯了这种做法，但这对前端开发者来说使用和主题化总是更困难。
 - en: In Drupal 8, it was abandoned in favor of the Twig templating engine created
     by SensioLabs (the people responsible for the Symfony project). As mentioned,
     theme functions were also deprecated in favor of outputting everything through
@@ -110,27 +148,37 @@
     some joy to the frontend community. For example, it has improved security and
     readability, and has made it much less important to be actually versed in PHP
     to be able to take part in the theming of a Drupal site.
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 在Drupal 8中，它被放弃，转而使用由SensioLabs（负责Symfony项目的人）创建的Twig模板引擎。正如所提到的，主题函数也被弃用，转而通过`Twig`文件输出所有内容。这为主题系统带来了许多改进，也让前端社区感到非常高兴。例如，它提高了安全性，增强了可读性，并且使得实际上掌握PHP知识以参与Drupal站点的主题设计变得不那么重要。
 - en: All Twig template files in Drupal 8 have the `.html.twig` extension.
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: Drupal 8中所有的Twig模板文件都有`.html.twig`扩展名。
 - en: Theme hooks
+  id: totrans-21
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 主题钩子
 - en: Since we have covered some of the principles behind the Drupal theme system—most
     notably, the separation of concerns—let's go a bit deeper and take a look at how
     they are actually put into practice. This all starts with the theme hooks. Yes,
     Drupal always loves to call things *hooks*.
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于我们已经介绍了一些Drupal主题系统背后的原则——最值得注意的是，关注点的分离——让我们更深入地了解一下它们是如何实际应用的。这一切都始于主题钩子。是的，Drupal总是喜欢把事物称为*钩子*。
 - en: Theme hooks define how a specific piece of data should be rendered. They are
     registered with the theme system by modules (and themes) using `hook_theme()`.
     In doing so, they get a name, a list of variables they output (the data that needs
     to be wrapped with markup), and other options.
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 主题钩子定义了特定数据应该如何渲染。它们通过使用`hook_theme()`由模块（和主题）注册到主题系统中。这样做时，它们获得一个名称，一个它们输出的变量列表（需要用标记包裹的数据），以及其他选项。
 - en: 'The modules and themes that register theme hooks also need to provide an implementation
     (one that will be used by default). In Drupal 7, this was done in the following
     two ways: either via a PHP function that returned a string (markup) or a `PHPTemplate`
@@ -139,22 +187,32 @@
     function approach has been completely ditched in Drupal 8 in favor of `Twig` templates.
     Also, together with a complete overhaul of the theme system, almost everything
     is now output via a Twig template file, which is great.'
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: 注册主题钩子的模块和主题还需要提供一个实现（默认情况下将使用的实现）。在Drupal 7中，这是通过以下两种方式完成的：要么是通过返回字符串（标记）的PHP函数，要么是通过`PHPTemplate`模板文件。两者都很重要，但后者在我的（以及许多人的）观点中总是更“正确”。这也得到了事实的支持，即函数方法在Drupal
+    8中被完全抛弃，转而使用`Twig`模板。此外，与主题系统的全面重写相结合，现在几乎所有输出都是通过Twig模板文件完成的，这真是太好了。
 - en: 'As an example, let''s take a look at two common ways of registering a theme
     hook we''ll often find. For this, we will use Drupal core examples that already
     exist:'
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 作为例子，让我们看看两种常见的注册主题钩子的方式，我们经常能找到。为此，我们将使用Drupal核心中已经存在的示例：
 - en: '[PRE1]'
+  id: totrans-26
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: In the preceding `hook_theme()` example, I included two theme hooks from Drupal
     core. One is based on variables, whereas the other is based on a render element.
     There are, of course, many more options that can be defined here, and I strongly
     encourage you to read the Drupal.org API documentation page for this hook.
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 在先前的`hook_theme()`示例中，我包括了Drupal核心中的两个主题钩子。一个是基于变量的，而另一个是基于渲染元素的。当然，这里可以定义的选项还有很多，我强烈建议你阅读Drupal.org
+    API文档页面以了解这个钩子。
 - en: 'However, right off the bat you can see how easy it is to register a theme hook.
     In the first case, we have `item_list`, which, by default (if not otherwise specified),
     will map to the `item-list.html.twig` file for outputting the variables. In its
@@ -164,26 +222,34 @@
     file is easy to determine based on the name: `select.html.twig`. I encourage you
     to check out both these template files in the core code (provided by the System
     module).'
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，一开始你就能看到注册主题钩子是多么简单。在第一种情况下，我们有`item_list`，默认情况下（如果没有其他指定），它将映射到`item-list.html.twig`文件以输出变量。在其定义中，我们可以找到它使用的变量，如果客户端没有传递，还有一些方便的默认值。第二个主题钩子是`select`，它不使用变量，而是一个渲染元素（我们很快会讨论）。此外，其模板文件很容易确定，基于名称：`select.html.twig`。我鼓励你检查这两个模板文件在核心代码（由系统模块提供）中的情况。
 - en: In addition to the actual implementation, the modules and themes that register
     a theme hook can also provide a default template preprocessor. The responsibility
     of this is to "preprocess" (that is, prepare) data before being sent to the template.
     For example, if a theme hook receives an entity (a complex data object) as its
     only variable, a preprocessor can be used to break that entity into tiny pieces
     that are needed to be output in the template (such as title and description).
+  id: totrans-29
   prefs: []
   type: TYPE_NORMAL
+  zh: 除了实际实现之外，注册主题钩子的模块和主题还可以提供一个默认模板预处理器。这个责任是“预处理”（即准备）在发送到模板之前的数据。例如，如果一个主题钩子只接收一个实体（一个复杂的数据对象）作为其唯一变量，预处理器可以用来将这个实体分解成在模板中需要输出的小块（如标题和描述）。
 - en: 'Template preprocessors are simple procedural functions that follow a naming
     pattern and are called by the theme system before the template is rendered. As
     I mentioned earlier, the modules and themes that register a theme hook can also
     provide a default preprocessor. So, for a theme hook named `component_box`, the
     default preprocessor function would look like this:'
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 模板预处理器是简单的程序性函数，遵循命名模式，并在模板渲染之前由主题系统调用。正如我之前提到的，注册主题钩子的模块和主题也可以提供一个默认预处理器。因此，对于一个名为`component_box`的主题钩子，默认预处理器函数看起来可能如下所示：
 - en: '[PRE2]'
+  id: totrans-31
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: The function name starts with the word `template` to denote that it is the original
     preprocessor for this theme hook, then follows the conventional `preprocess` word,
     and ends with the name of the theme hook. The argument is always an array passed
@@ -194,8 +260,10 @@
     we always manipulate the values directly in the `$variables` array. In the end,
     the template file can print out variables named after the keys in this array.
     The values will be, of course, the values that map to those keys.
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 函数名以单词`template`开头，表示它是此主题钩子的原始预处理器，然后跟随传统的`preprocess`单词，并以主题钩子的名称结尾。参数始终是一个作为引用传递的数组，包含有关该主题钩子的某些信息，更重要的是，与主题钩子一起定义并从调用代码传递给它的数据变量。这就是我们通常在这个函数中处理的内容。由于它是通过引用传递的，所以在这个函数中我们不返回任何内容，但我们总是直接在`$variables`数组中操作值。最后，模板文件可以打印出以该数组键命名的变量。当然，这些值将是映射到这些键的值。
 - en: Another module (or theme) can override this preprocessor function by implementing
     its own. However, in its naming, it needs to replace the word `template` with
     the module name (to avoid collisions). If one such override exists, both preprocessors
@@ -204,16 +272,20 @@
     great extension point of Drupal because altering data or options found inside
     the preprocessor can go a long way in customizing the existing functionality to
     your liking.
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一个模块（或主题）可以通过实现自己的来覆盖此预处理器函数。然而，在其命名中，它需要用模块名称替换单词`template`（以避免冲突）。如果存在这样的覆盖，则将按特定顺序调用两个预处理器。第一个始终是默认的，然后是模块定义的，然后是主题定义的。这是Drupal的另一个优秀扩展点，因为更改预处理器内部发现的数据或选项可以在很大程度上定制现有功能以满足你的需求。
 - en: As an alternative to following the previous naming convention, you also have
     the option to register the preprocessor function names in the `hook_theme()` definition
     when you register it. However, I recommend that you stick to the default naming
     convention because it's much easier to spot what the purpose of the function is.
     As you become more advanced, you'll, in turn, appreciate being able to quickly
     understand these *convention* functions at a quick glance.
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: 作为遵循先前命名约定的替代方案，你还可以在注册`hook_theme()`时注册预处理器函数名称。然而，我建议你坚持使用默认的命名约定，因为它更容易发现函数的目的。随着你变得更加高级，你也会反过来欣赏能够快速理解这些*约定*函数的能力。
 - en: I mentioned a bit earlier that modules and themes can also override theme hooks
     defined by other modules and themes. There are two ways to do this. The most common
     one is for a theme to override the theme hook. This is because of the rationale
@@ -232,8 +304,10 @@
     optimized performance, and that registry is what we are altering with this hook.
     This also means that we regularly need to clear the cache when we make changes
     to the theme registry.
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 我之前提到过，模块和主题也可以覆盖其他模块和主题定义的主题钩子。这有两种方法。最常见的一种是一个主题覆盖主题钩子。这是因为之前提到的理由——模块为其数据定义了一个默认实现，但主题可以轻松地接管其展示。此外，主题覆盖主题钩子的方式是简单地创建一个与原始文件同名的新的Twig文件，并将其放置在其`templates`文件夹中的某个位置。如果启用该主题，它将被使用。一个不太常见但绝对有效的用例是一个模块覆盖另一个模块定义的主题钩子。例如，这可能是因为你需要更改一个流行的贡献模块的数据渲染方式。为了实现这一点，你需要实现`hook_theme_registry_alter()`并更改现有主题钩子使用的模板文件。还值得一提的是，如果你想改变整个主题钩子定义，可以使用这个钩子，而不仅仅是模板。此外，既然我们提到了这个钩子，请注意，主题钩子一旦定义，就会存储和缓存在一个主题*注册表*中，以优化性能，而这个注册表就是我们通过这个钩子来更改的。这也意味着当我们对主题注册表进行更改时，我们需要定期清理缓存。
 - en: 'All this is good and fine, but the business logic still has to interact with
     the theme system to tell it which particular theme hook to use. In Drupal 7, we
     had the `theme()` function which took the hook name as an argument and was responsible
@@ -243,12 +317,17 @@
     arrays, which contain the theme hook information, the variables, and any other
     metadata on how that component needs to be rendered. We will also talk about render
     arrays in this chapter.'
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有这些都很好，但是业务逻辑仍然需要与主题系统交互，以告诉它使用哪个特定的主题钩子。在Drupal 7中，我们有一个`theme()`函数，它接受钩子名称作为参数，并负责一切：确定使用哪个模板文件（或函数），调用预处理器、处理器等等。在Drupal
+    8中，`theme()`函数不再存在，已被一个基于渲染数组的更健壮的系统所取代，该数组包含主题钩子信息、变量以及任何其他关于如何渲染该组件的元数据。我们也会在本章中讨论渲染数组。
 - en: Theme hook suggestions
+  id: totrans-37
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 主题钩子建议
 - en: 'A great thing about theme hooks is that they are reusable. However, one problem
     you''ll encounter is that theme hook templates lose context when a theme hook
     is reused. For example, the `item_list` theme hook, whose definition we saw in
@@ -256,42 +335,60 @@
     to style differently depending on what that content is. Fortunately, we can provide
     context to the theme system by using a theme hook pattern instead of the original
     theme hook name, and this pattern looks something like this:'
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: 主题钩子的一个优点是它们是可重用的。然而，你可能会遇到的一个问题是，当主题钩子被重用时，主题钩子模板会丢失上下文。例如，我们在上一节中看到的`item_list`主题钩子，它不知道它正在为主题哪个列表。这使得根据内容的不同来不同地样式化变得困难。幸运的是，我们可以通过使用主题钩子模式而不是原始的主题钩子名称来为主题系统提供上下文，这个模式看起来像这样：
 - en: '[PRE3]'
+  id: totrans-39
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: The parts of the pattern are separated with a double underscore and together
     they are called a *theme hook suggestion*. But how does this work?
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: 模式的一部分由双下划线分隔，合在一起称为*主题钩子建议*。但它是如何工作的呢？
 - en: 'Client code (the render arrays, as we will soon see), when using a theme hook
     to render a piece of data, can append the context to the theme hook, turning it
     into a suggestion. The theme system will then check for the following:'
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 客户端代码（即将看到的渲染数组），当使用主题钩子渲染数据片段时，可以将上下文附加到主题钩子，将其转换为建议。主题系统随后将检查以下内容：
 - en: If there is a template file that matches that suggestion (inside a theme), it
     uses it instead of the original theme hook template
+  id: totrans-42
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 如果存在匹配该建议的模板文件（在主题内部），则使用它而不是原始的主题钩子模板
 - en: Alternatively, if there is a theme hook registered that has that actual name
     it uses that instead
+  id: totrans-43
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 或者，如果已注册具有该实际名称的主题钩子，则使用该钩子
 - en: Alternatively, it checks for the base theme hook and uses that instead (the
     fallback)
+  id: totrans-44
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 或者，它会检查基本主题钩子并使用它（回退）
 - en: 'In this case, the caller (the render array) is responsible for "proposing"
     a suggestion. For example, consider the following render array:'
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这种情况下，调用者（渲染数组）负责“提出”一个建议。例如，考虑以下渲染数组：
 - en: '[PRE4]'
+  id: totrans-46
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: The base theme hook is `item_list`, which is rendered using the `item-list.html.twig`
     template file provided by Drupal core. If there is no `item-list—my-list.html.twig`
     template file in the theme, and there is no `item_list__my_list` theme hook registered,
@@ -299,14 +396,18 @@
     order that I mentioned before. A module can register that suggestion as a hook,
     which will be used instead. However, a theme can override that further by just
     creating the template file with that name.
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 基本主题钩子是`item_list`，它使用Drupal核心提供的`item-list.html.twig`模板文件进行渲染。如果主题中没有`item-list—my-list.html.twig`模板文件，并且没有注册`item_list__my_list`主题钩子，则将使用默认的`item_list`主题钩子。否则，我们将遵循之前提到的顺序。一个模块可以将该建议注册为钩子，然后将其用作替代。然而，主题可以通过仅创建具有该名称的模板文件来进一步覆盖它。
 - en: And all this is done so that when rendering something with a reusable theme
     hook, we give the possibility to themers and manipulators to determine what exactly
     is being themed. However, the example we saw just now is static in the sense that
     we hardcoded `my_list` as the theme hook suggestion. We can do better than that.
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有这些操作都是为了在渲染可重用的主题钩子时，给主题设计师和操作者提供确定具体主题内容的机会。然而，我们刚才看到的例子在某种程度上是静态的，因为我们硬编码了`my_list`作为主题钩子建议。我们可以做得更好。
 - en: A module that registers a theme hook can also provide a list of suggestions
     that should go with that theme hook automatically. It does so by implementing
     `hook_theme_suggestions_HOOK()`, where `HOOK` is the theme hook name. This hook
@@ -315,39 +416,55 @@
     as the template preprocessors do. This means that we can make use of those variables
     and dynamically provide theme hook suggestions. We will see an example of this
     later in the chapter.
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 注册主题钩子的模块还可以提供与该主题钩子自动关联的建议列表。它是通过实现`hook_theme_suggestions_HOOK()`来实现的，其中`HOOK`是主题钩子名称。此钩子在主题系统运行时触发，试图确定某个渲染数组需要如何渲染。它接收与模板预处理器相同的`$variables`数组作为参数。这意味着我们可以利用这些变量并动态提供主题钩子建议。我们将在本章后面看到这个例子。
 - en: Moreover, as module developers, we can also provide a list of theme hook suggestions
     to theme hooks registered by other modules or Drupal core. We can do so by implementing
     `hook_theme_suggestions_HOOK_alter()`, where we receive the available suggestions
     for that theme hook in addition to the variables.
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: 此外，作为模块开发者，我们还可以为其他模块或Drupal核心注册的主题钩子提供一系列主题钩子建议。我们可以通过实现`hook_theme_suggestions_HOOK_alter()`来实现这一点，在那里我们除了接收变量外，还接收该主题钩子的可用建议。
 - en: In summary, theme hook suggestions are a powerful way of adding some context
     to the generic theme hooks that are responsible for rendering multiple things.
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 总结来说，主题钩子建议是向负责渲染多个内容的通用主题钩子添加一些上下文的一种强大方式。
 - en: Render arrays
+  id: totrans-52
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 渲染数组
 - en: Render arrays also existed in the previous versions of Drupal and they were
     important to the theme system. In Drupal 8, however, they have become *the* thing—a
     core part of the Render API which is responsible for transforming markup *representations*
     into actual markup.
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 渲染数组也存在于Drupal的先前版本中，并且对于主题系统来说非常重要。然而，在Drupal 8中，它们已经成为了*核心*——渲染API的核心部分，负责将标记表示转换为实际的标记。
 - en: 'Acknowledging my limits as a writer, I will defer to the definition found in
     the Drupal.org documentation that best describes what render arrays are:'
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: 承认我作为一个作家的局限性，我将参考 Drupal.org 文档中的定义，该定义最好地描述了渲染数组是什么：
 - en: '... a hierarchical associative array containing data to be rendered and properties
     describing how the data should be rendered.'
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: '...一个包含要渲染的数据及其渲染方式的属性的分层关联数组。'
 - en: Simple, but powerful.
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 简单，但强大。
 - en: One of the principal reasons behind having render arrays is that they allow
     Drupal to delay the actual rendering of something into markup to the very last
     moment. What do I mean by this? For example, in Drupal 7, oftentimes as module
@@ -356,22 +473,31 @@
     (markup) in the template. However, this made it impossible to change that data
     later in the pipeline, for example, in another preprocessor that comes after the
     one that did this rendering.
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: 拥有渲染数组的一个主要原因是它们允许 Drupal 将实际将某物渲染为标记的过程推迟到最后一刻。我这是什么意思呢？例如，在 Drupal 7 中，我们作为模块开发者通常会调用实际的渲染服务（`theme()`
+    函数）在预处理器内部来“渲染”一些数据，以便在模板中打印出结果字符串（标记）。然而，这使得在管道中的后续步骤中更改这些数据变得不可能，例如，在执行此渲染的预处理器之后的另一个预处理器。
 - en: For this reason, in Drupal 8, we no longer have to/should render anything manually
     (except in very specific circumstances). We work with render arrays at all times.
     Drupal will know how to turn them into markup. This way, modules and themes can
     intercept render arrays at various levels in the process and make alterations.
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，在 Drupal 8 中，我们不再需要/应该手动渲染任何内容（除非在非常特定的情况下）。我们始终与渲染数组一起工作。Drupal 将知道如何将它们转换为标记。这样，模块和主题可以在处理过程中的不同级别拦截渲染数组并进行修改。
 - en: We will now talk about render arrays and the different aspects of working with
     them.
+  id: totrans-59
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们现在将讨论渲染数组以及与之一起工作的不同方面。
 - en: The structure of a render array
+  id: totrans-60
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 渲染数组的结构
 - en: 'Render arrays are rendered by the `renderer` service (`RendererInterface`),
     which traverses the array and recursively renders each level. Each level of the
     array can have one or more elements, which can be of two types: properties or
@@ -385,27 +511,38 @@
     can be more than two), we can also have the variables defined by a theme hook,
     which are also preceded by the `#` sign. They are not properties per se but are
     known by the theme system because they have been registered inside `hook_theme()`.'
+  id: totrans-61
   prefs: []
   type: TYPE_NORMAL
+  zh: 渲染数组由 `renderer` 服务（`RendererInterface`）渲染，它遍历数组并递归渲染每个级别。数组的每个级别可以有一个或多个元素，这些元素可以是两种类型之一：属性或子元素。属性是键前面带有
+    `#` 符号的那些，而子元素则不是。子元素本身也可以是一个包含属性和子元素的数组。但是，每个级别至少需要有一个属性才能被视为一个级别，因为它负责告诉渲染系统该级别应该如何渲染。因此，属性名称特定于
+    Render API 和它们需要渲染的实际事物，而子元素的名称可以灵活。除了这两种类型（是的，我撒谎了，可以有多于两种）之外，我们还可以有由主题钩子定义的变量，它们也以
+    `#` 符号开头。它们本身不是属性，但主题系统知道它们，因为它们已在 `hook_theme()` 内部注册。
 - en: There are many properties the Render API uses to process a render array. Some
     of them are quite important, such as `#cache` and `#attached`. However, there
     are a few that are mandatory in order for a render array to make sense, in that
     they define its core responsibility. The following are the properties that describe
     what the render array should do and each render array should have one of these.
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: Render API 使用了许多属性来处理渲染数组。其中一些属性非常重要，例如 `#cache` 和 `#attached`。然而，还有一些属性是强制性的，因为它们定义了渲染数组的核心职责。以下是一些描述渲染数组应该做什么的属性，每个渲染数组都应该具有其中之一。
 - en: '#type'
+  id: totrans-63
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: '#type'
 - en: The `#type` property specifies that the array contains data that needs to be
     rendered using a particular *render element*. Render elements are plugins (yes,
     plugins) that encapsulate a defined renderable component. They essentially wrap
     another render array, which can use a theme hook or a more complex render array
     to process the data they are responsible for rendering. You can think of them
     as essentially standardized render arrays.
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: '`#type` 属性指定数组包含需要使用特定 *渲染元素* 渲染的数据。渲染元素是封装了定义的可渲染组件的插件（是的，插件）。它们本质上包装了另一个渲染数组，该数组可以使用主题钩子或更复杂的渲染数组来处理它们负责渲染的数据。你可以把它们看作是标准化的渲染数组。'
 - en: 'There are two types of render elements: generic and form input elements. Both
     have their respective plugin types, annotations and interfaces. They are similar
     in that they both render a standardized piece of HTML; however, form input elements
@@ -413,36 +550,51 @@
     and so on. Remember, when we defined our form in [Chapter 2](601b4dd0-c521-459e-9342-2645a109642c.xhtml),
     *Creating Your First Module,* we encountered arrays with `#` signs. These were
     (form) render elements with different options (properties).'
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: 渲染元素有两种类型：通用和表单输入元素。它们各自都有相应的插件类型、注解和接口。它们在渲染标准化的HTML片段方面相似；然而，表单输入元素需要处理表单处理、验证、数据映射等问题。记住，当我们定义我们的表单在第2章中时——*创建你的第一个模块*，我们遇到了带有
+    `#` 符号的数组。这些是（表单）具有不同选项（属性）的渲染元素。
 - en: To find examples of these two types of render elements, look for plugins that
     implement the `ElementInterface` and `FormElementInterface` interfaces.
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: 要找到这两种类型渲染元素的示例，请查找实现了 `ElementInterface` 和 `FormElementInterface` 接口的插件。
 - en: '#theme'
+  id: totrans-67
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: '#theme'
 - en: The `#theme` property ties in strongly with what we've been talking about earlier
     in this chapter—theme hooks. It specifies that the render array needs to render
     some kind of data using one of the theme hooks defined. Together with this property,
     you will usually encounter other properties that map to the name of the variables
     the theme hook has registered in `hook_theme()`. These are the variables the theme
     system uses to render the template.
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: '`#theme` 属性与本章前面讨论的主题紧密相关——主题钩子。它指定渲染数组需要使用定义的主题钩子之一来渲染某种类型的数据。与这个属性一起，你通常会遇到其他映射到主题钩子在
+    `hook_theme()` 中注册的变量名称的属性。这些是主题系统用来渲染模板的变量。'
 - en: This is the property you will use in your business logic to convey that your
     data needs to be rendered using a specific theme hook. If you thought that you
     can only use theme hooks you registered, you'd be incorrect. There are many theme
     hooks that have been already registered by Drupal core and also contributed modules
     that make the life of a Drupal developer much easier. Just look inside `drupal_common_theme()`
     for a bunch of common theme hooks that you can perhaps use.
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是你在业务逻辑中使用的属性，用于传达你的数据需要使用特定的主题钩子进行渲染。如果你认为你只能使用你注册的主题钩子，那么你就错了。有许多主题钩子已经被Drupal核心和贡献的模块注册，这使得Drupal开发者的生活变得更加容易。只需查看
+    `drupal_common_theme()`，你可能会发现一些常见的主题钩子可以使用。
 - en: '#markup'
+  id: totrans-70
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: '#markup'
 - en: Sometimes, registering a theme hook and a template for outputting some data
     can be overkill. Imagine that all you have is a string you need to wrap in a `<span>`
     tag or something. In this case, you can use the `#markup` property, which specifies
@@ -452,45 +604,64 @@
     HTML you are trying to include here is stripped out, it's a good indication that
     you are overusing the `#markup` property and should instead be registering a theme
     hook.
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 有时，注册一个主题钩子和一个用于输出某些数据的模板可能是过度设计。想象一下，你只有一段需要用 `<span>` 标签包裹的字符串。在这种情况下，你可以使用
+    `#markup` 属性，该属性指定数组直接提供需要输出的HTML字符串。注意，然而，提供的HTML字符串会通过 `\Drupal\Component\Utility\Xss::filterAdmin`
+    进行清理（主要是XSS保护）。这是完全可以接受的，因为如果你试图在这里包含的HTML被删除，这通常意味着你过度使用了 `#markup` 属性，而应该注册一个主题钩子。
 - en: Going a bit further than just simple markup is the `#plain_text` property via
     which you can specify that the text provided by this render array needs to be
     escaped completely. So basically if you need to output some simple text, you have
     the choice between these two for very fast output.
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: 除了简单的标记之外，还有`#plain_text`属性，你可以通过它指定由这个渲染数组提供的文本需要完全转义。所以基本上，如果你需要输出一些简单的文本，你可以在这两个之间选择，以实现非常快速的输出。
 - en: 'Now, if you remember in [Chapter 2](601b4dd0-c521-459e-9342-2645a109642c.xhtml),
     *Creating Your First Module*, at some point our controller returned this array:'
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，如果你记得在[第二章](601b4dd0-c521-459e-9342-2645a109642c.xhtml)，*创建你的第一个模块*中，我们的控制器在某个时候返回了这个数组：
 - en: '[PRE5]'
+  id: totrans-74
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: This is the simplest render array you'll ever see. It has only one element,
     a tiny string output using the `#markup` property. Later in this chapter we will
     adjust this and use a render array provided by our `HelloWorldSalutation` service
     in order to make things a bit more themeable. That will be the section where we
     put into practice many of the things we learn here.
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是你将见到的最简单的渲染数组。它只有一个元素，使用`#markup`属性输出的一个小字符串。在本章的后面部分，我们将调整这个数组，并使用我们的`HelloWorldSalutation`服务提供的渲染数组，以便使事情更具主题性。那将是我们将在这里学到的许多东西付诸实践的部分。
 - en: However, as small as you see this array here, it is only part of a larger hierarchical
     render array that builds up the entire Drupal page and that contains all sorts
     of blocks and other components. Also, responsible for building this entire big
     thing is the Drupal render pipeline.
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，尽管这个数组看起来很小，但它只是更大层次渲染数组的一部分，它构建了整个Drupal页面，并包含所有各种块和其他组件。同时，负责构建这个整个大东西的是Drupal渲染管道。
 - en: The render pipeline
+  id: totrans-77
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 渲染管道
 - en: 'In [Chapter 1](5c4ab442-1596-40ca-b305-d72b6c47ed59.xhtml), *Developing for
     Drupal 8*, when we outlined a high-level example of how Drupal 8 handles a user
     request in order to turn it into a response, we touched on the notion of a render
     pipeline. So let''s see what this is about, as there are essentially two render
     pipelines to speak of: the Symfony render pipeline and the Drupal one.'
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: 在[第一章](5c4ab442-1596-40ca-b305-d72b6c47ed59.xhtml)，*为Drupal 8开发*中，当我们概述了Drupal
+    8如何处理用户请求并将其转换为响应的高级示例时，我们提到了渲染管道的概念。所以让我们看看这个是什么，因为实际上有两个渲染管道需要讨论：Symfony渲染管道和Drupal渲染管道。
 - en: As you know, Drupal 8 uses many Symfony components, one of which being the HTTPKernel
     component ([http://symfony.com/doc/current/components/http_kernel.html](http://symfony.com/doc/current/components/http_kernel.html)).
     Its main role is to turn a user request (built from PHP super globals into a Request
@@ -499,16 +670,22 @@
     To assist in this process, it uses the Event Dispatcher component to dispatch
     events meant to handle the workload on multiple layers. As we saw, this is what
     happens in Drupal 8 as well.
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: 如你所知，Drupal 8使用了许多Symfony组件，其中之一就是HTTPKernel组件([http://symfony.com/doc/current/components/http_kernel.html](http://symfony.com/doc/current/components/http_kernel.html))。它的主要作用是将用户请求（从PHP超级全局变量构建成请求对象）转换成一个标准化的响应对象，并将其发送回用户。这些对象定义在Symfony
+    HTTP Foundation组件[(http://symfony.com/components/HttpFoundation)](http://symfony.com/components/HttpFoundation)中。为了协助这个过程，它使用了事件分发器组件来分发旨在处理多层工作负载的事件。正如我们所看到的，这在Drupal
+    8中也是如此。
 - en: Controllers in Drupal 8 can return one of two things—either a Response object
     directly or a render array. If they return the first, the job is almost done,
     as the Symfony render pipeline knows exactly what to do with that (assuming the
     response is correct). However, if they return a render array, the Drupal render
     pipeline kicks in at a lower level to try to turn that into a Response. We always
     need a Response.
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: Drupal 8中的控制器可以返回两种东西之一——直接返回一个响应对象，或者返回一个渲染数组。如果它们返回第一个，那么工作几乎就完成了，因为Symfony渲染管道知道如何处理这个响应（假设响应是正确的）。然而，如果它们返回一个渲染数组，Drupal渲染管道就会在较低级别启动，试图将其转换为响应。我们始终需要一个响应。
 - en: The `kernel.view` event is triggered in order to determine who can take care
     of this render array. Drupal 8 comes with the `MainContentViewSubscriber` which
     listens to this event and checks the request format and whether the controller
@@ -516,161 +693,229 @@
     object (which, by default—and most of the time—will be the HTML-based `HtmlRenderer`)
     and asks it to turn the render array into a Response. Then, it sets the Response
     onto the event so that the Symfony render pipeline can continue on its merry way.
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了确定谁可以处理这个渲染数组，会触发`kernel.view`事件。Drupal 8附带了一个`MainContentViewSubscriber`，它监听这个事件并检查请求格式以及控制器是否返回了一个渲染数组。根据前者，它实例化一个`MainContentRendererInterface`对象（默认情况下，并且大多数时候，这将是一个基于HTML的`HtmlRenderer`），并要求它将渲染数组转换为响应。然后，它将响应设置到事件上，以便Symfony渲染管道可以继续其愉快的旅程。
 - en: 'In addition to the HTML renderer, Drupal 8 comes with a few others that need
     to handle different types of requests:'
+  id: totrans-82
   prefs: []
   type: TYPE_NORMAL
+  zh: 除了HTML渲染器之外，Drupal 8还附带了一些其他需要处理不同类型请求的渲染器：
 - en: The `AjaxRenderer` handles Ajax requests and integrates with the Ajax framework.
     We'll see examples of Ajax-powered functionalities later in the book.
+  id: totrans-83
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`AjaxRenderer`处理Ajax请求并与Ajax框架集成。我们将在本书的后面看到Ajax功能的示例。'
 - en: The `DialogRenderer` handles requests meant to open up a dialog on the screen.
+  id: totrans-84
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`DialogRenderer`处理旨在在屏幕上打开对话框的请求。'
 - en: The `ModalRenderer` handles requests meant to open up a modal on the screen.
+  id: totrans-85
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`ModalRenderer`处理旨在在屏幕上打开模态的请求。'
 - en: 'Returning to the HTML renderer, let''s see what *it* does to turn our render
     arrays into actual relevant HTML on a Response object. Without going into too
     much detail, here is the high-level of what it does:'
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: 回到HTML渲染器，让我们看看它是如何将我们的渲染数组转换为实际相关的HTML并在响应对象上实现的。不深入细节，以下是它所做的高层次概述：
 - en: Its first goal is to build a render array that has the `#type => 'page'` as
     a property because this is the render element responsible for the entire page.
     Meaning that if the Controller returned it, it doesn't have to do much. However,
     usually controllers don't include that so it dispatches an event to determine
     who can build this render array.
+  id: totrans-87
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它的第一个目标是构建一个具有`#type => 'page'`属性的渲染数组，因为这是负责整个页面的渲染元素。这意味着如果控制器返回它，它就不需要做太多。然而，通常控制器不包括这一点，因此它触发一个事件来确定谁可以构建这个渲染数组。
 - en: By default, the `SimplePageVariant` plugin is used for building up the page
     array, but with the Block module enabled, the `BlockPageVariant` plugin is used,
     taking things even further down some levels in the render pipeline. The main content
     area gets wrapped with blocks in the sidebar, header, footer, and so on.
+  id: totrans-88
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 默认情况下，使用`SimplePageVariant`插件来构建页面数组，但启用Block模块后，将使用`BlockPageVariant`插件，将渲染管道中的某些级别进一步向下。主要内容区域被侧边栏、页眉、页脚等处的块所包裹。
 - en: Once it has the page render array, it wraps it into yet another render element
     which is the `#type => 'html'` (responsible for things such as the `<head>` elements).
+  id: totrans-89
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 一旦有了页面渲染数组，它就会将其包装成另一个渲染元素，即`#type => 'html'`（负责诸如`<head>`元素等事物）。
 - en: Once it has the main render array of the entire page, it uses the `Renderer`
     service to traverse it and do the actual rendering at each level (and there can
     be many). It does so by translating render elements (`#type`), theme hooks (`#theme`),
     simply marked-up text bits (`#markup`), or plain text bits (`#plain_text`) into
     their respective HTML representations.
+  id: totrans-90
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 一旦它有了整个页面的主要渲染数组，它就使用`Renderer`服务来遍历它并在每个级别（可能有多个）进行实际渲染。它是通过将渲染元素（`#type`）、主题钩子（`#theme`）、简单标记的文本片段（`#markup`）或纯文本片段（`#plain_text`）转换为它们各自的HTML表示来做到这一点的。
 - en: So, as you see, the render pipeline starts at Symfony level, goes down into
     Drupal territory when it encounters render arrays, but continues going down to
     build each component found on a page around the main content returned by the Controller.
     Then, it comes back up those levels, all the way until a great render array is
     created and can be turned into HTML. Also, as it goes back up, various metadata
     can bubble up to the main render array.
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，正如你所看到的，渲染管道从Symfony级别开始，当遇到渲染数组时进入Drupal领域，但继续向下构建控制器返回的页面上找到的每个组件。然后，它回到这些级别，直到创建了一个巨大的渲染数组并可以将其转换为HTML。此外，在它返回的过程中，各种元数据可以冒泡到主渲染数组中。
 - en: I purposefully left out caching from this equation, which although very important,
     we will cover in a later chapter. However, suffice it to say, cache metadata is
     one such example that bubbles up from the lower levels all the way to the top
     and is gathered to determine page-level caching. But more on that later.
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: 我故意省略了缓存这个因素，尽管它非常重要，我们将在后面的章节中介绍。但是，可以说，缓存元数据就是这样一种从底层向上冒泡的例子，一直到达顶层，并用于确定页面级缓存。但关于这一点，我们稍后再说。
 - en: Assets and libraries
+  id: totrans-93
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 资产和库
 - en: Now that we know more about render arrays, how they are structured, and the
     pipeline they go through, we can talk a bit about asset management from a module
     development perspective. Because even though it is usually a theme responsibility,
     module developers often have to add and use CSS and JS files to their modules,
     and it all happens in render arrays.
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们对渲染数组有了更多的了解，包括它们的结构以及它们所经过的流程，我们可以从模块开发的角度谈谈资产管理的相关内容。因为尽管这通常是一个主题责任，模块开发者通常需要向他们的模块中添加和使用
+    CSS 和 JS 文件，而这些操作都是在渲染数组中完成的。
 - en: Working with CSS and JS files has become standardized in Drupal 8 compared to
     its previous version where we had more than one way to do things. Libraries are
     now key, so let's see how they work by going through some examples of making use
     of some CSS or JS files.
+  id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: 与 CSS 和 JS 文件一起工作在 Drupal 8 中已经标准化了，与之前的版本相比，我们当时有不止一种方法可以做到这一点。库现在是关键，让我们通过一些使用
+    CSS 或 JS 文件的示例来了解它们是如何工作的。
 - en: 'There are three steps to adding assets to your page:'
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 将资产添加到你的页面有三个步骤：
 - en: Creating your CSS/JS file
+  id: totrans-97
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 创建你的 CSS/JS 文件
 - en: Creating a library that includes them
+  id: totrans-98
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 创建包含它们的库
 - en: Attaching that library to a render array
+  id: totrans-99
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 将该库附加到渲染数组
 - en: Libraries
+  id: totrans-100
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 库
 - en: 'Assuming that you already have the CSS/JS files, libraries are defined inside
     a `module_name.libraries.yml` file in the module root folder. A simple example
     of a library definition inside this file would look like this:'
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设你已经有了 CSS/JS 文件，库在模块根文件夹中的 `module_name.libraries.yml` 文件内定义。这个文件中库定义的一个简单例子如下：
 - en: '[PRE6]'
+  id: totrans-102
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: This is a standard YAML notation by which we define a library called `my-library`
     and provide some information about it. We can specify a version number and then
     add as many CSS and JS file references as we need. The file paths are relative
     to the module folder this library definition is in, and we can add some options
     between the curly braces (more advanced, but we will see an example in a moment).
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是一个标准的 YAML 表示法，通过它我们定义了一个名为 `my-library` 的库，并提供了有关它的信息。我们可以指定一个版本号，然后添加尽可能多的
+    CSS 和 JS 文件引用。文件路径相对于包含此库定义的模块文件夹，我们可以在大括号之间添加一些选项（更高级，但我们将稍后看到一个示例）。
 - en: 'Additionally, you''ll note that the CSS file has an extra level key called
     `theme`. This is to indicate the type of CSS to be included and can be one of
     the following (based on SMACSS ([https://smacss.com/](https://smacss.com/)) standards):'
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 此外，你还会注意到 CSS 文件有一个额外的层级键名为 `theme`。这是为了指明要包含的 CSS 类型，可以是以下之一（基于 SMACSS ([https://smacss.com/](https://smacss.com/))
+    标准）：
 - en: '`base`: Usually contains CSS reset/normalizers and HTML element styling'
+  id: totrans-105
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`base`：通常包含 CSS 重置/标准化和 HTML 元素样式'
 - en: '`layout`: High-level page styling, such as grid systems'
+  id: totrans-106
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`layout`：高级页面样式，例如网格系统'
 - en: '`component`: UI elements and reusable components'
+  id: totrans-107
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`component`：UI 元素和可重用组件'
 - en: '`state`: Styles used in client-side changes to components'
+  id: totrans-108
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`state`：用于组件客户端更改的样式'
 - en: '`theme`: Visual styling of components'
+  id: totrans-109
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`theme`：组件的视觉样式'
 - en: The choice here is also reflected in the weighting of the CSS file inclusion,
     the latter being the "heaviest"—it will be included last.
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里的选择也反映在 CSS 文件包含的权重上，后者是“最重”的——它将被最后包含。
 - en: 'Another important aspect of using libraries in any application is the ability
     to include externally hosted files (usually from a CDN) for better performance.
     Let''s take a look at an example library definition that uses externally hosted
     files:'
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: 在任何应用程序中使用库的一个重要方面是能够包含外部托管文件（通常来自 CDN），以获得更好的性能。让我们看看一个使用外部托管文件的示例库定义：
 - en: '[PRE7]'
+  id: totrans-112
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: This example is taken from Drupal.org ([https://www.drupal.org/docs/8/creating-custom-modules/adding-stylesheets-css-and-javascript-js-to-a-drupal-8-module](https://www.drupal.org/docs/8/creating-custom-modules/adding-stylesheets-css-and-javascript-js-to-a-drupal-8-module))
     on defining libraries in Drupal 8\. However, as you can see, the structure is
     the same as our previous example, except that it has some more meta information
@@ -678,202 +923,292 @@
     a remote URL to the actual resource. Moreover, we also see some options within
     the curly braces with which we can specify that the file is actually externally
     located and minified.
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个例子是从 Drupal.org ([https://www.drupal.org/docs/8/creating-custom-modules/adding-stylesheets-css-and-javascript-js-to-a-drupal-8-module](https://www.drupal.org/docs/8/creating-custom-modules/adding-stylesheets-css-and-javascript-js-to-a-drupal-8-module))
+    上关于在 Drupal 8 中定义库的内容中摘取的。然而，正如你所看到的，结构与我们之前的例子相同，只是它有一些关于外部库的更多元信息。而且，我们有一个远程
+    URL 到实际资源的引用，而不是本地路径引用。此外，我们还在大括号内看到了一些选项，我们可以通过这些选项指定文件实际上是外部定位和压缩的。
 - en: An important change when it comes to JS in Drupal 8 is that Drupal no longer
     includes all libraries such as jQuery by default. It does so only where and when
     it's needed. This has, therefore, brought the concept of library dependencies
     to the forefront, as certain scripts require other libraries to be loaded for
     them to work.
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: 当涉及到 Drupal 8 中的 JS 时，一个重要的变化是 Drupal 不再默认包含所有库，如 jQuery。它只在需要时才这样做。因此，这使得库依赖的概念变得突出，因为某些脚本需要加载其他库才能工作。
 - en: 'Let''s assume that `my-library` depends on jQuery and specify it as a dependency.
     All we need to add to our library definition is the following:'
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设 `my-library` 依赖于 jQuery，并将其指定为依赖项。我们只需要添加到我们的库定义中的是以下内容：
 - en: '[PRE8]'
+  id: totrans-116
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: Keep in mind that the `dependencies` key is at the same YML level as `css` and
     `js`.
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: 请记住，`dependencies` 键与 `css` 和 `js` 处于相同的 YML 级别。
 - en: With this, we declare the Drupal core jQuery library to be required by our library.
     This means that if we use our library somewhere and jQuery is not included, Drupal
     will process the dependencies and include them all. A side-benefit of this is
     that dependencies are always included before our scripts, so we can also control
     that.
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过这种方式，我们声明 Drupal 核心jQuery库是我们库所需的。这意味着如果我们使用我们的库某处，而 jQuery 没有被包含，Drupal 将处理依赖关系并将它们全部包含。这个好处是依赖关系总是在我们脚本之前包含，因此我们也可以控制这一点。
 - en: The `core/jquery` notation indicates that the extension (module or theme) that
     defines the `jquery` library is Drupal core. If it had been a module or theme,
     `core` would have been replaced by the module or theme machine name. So, for example,
     to use our new library somewhere, it would be referenced as `module_name/my-library`.
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: '`core/jquery` 表示法表明定义 `jquery` 库的扩展（模块或主题）是 Drupal 核心。如果它是一个模块或主题，`core` 将会被模块或主题的机器名所替换。因此，例如，要在某处使用我们的新库，它将被引用为
+    `module_name/my-library`。'
 - en: Attaching libraries
+  id: totrans-120
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 附加库
 - en: The most common way you'll be libraries is attaching them to your render arrays.
     This approach implies that the library is needed for the rendering of that component
     so that if said component is missing from the page, the library assets are no
     longer included.
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 你最常见的方式是将库附加到你的渲染数组上。这种方法意味着库对于该组件的渲染是必需的，因此如果该组件从页面中缺失，库资源将不再被包含。
 - en: 'Here is what a render array would look like with the previous library we defined
     attached to it:'
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 这里是一个渲染数组的样子，其中我们之前定义的库被附加到它上面：
 - en: '[PRE9]'
+  id: totrans-123
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: The `#attached` property is important here, and it signifies that we are essentially
     attaching something to the render array, which in our case happens to be a library.
     In Drupal 7, we could attach CSS and JS files directly, but we now have a standardized
     libraries API to do so in a more robust way.
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: '`#attached` 属性在这里很重要，它表示我们实际上正在将某些内容附加到渲染数组上，在我们的例子中，这恰好是一个库。在 Drupal 7 中，我们可以直接附加
+    CSS 和 JS 文件，但现在我们有一个标准化的库 API 来以更稳健的方式这样做。'
 - en: 'However, you may have cases in which the library you need is not linked to
     a specific render array (a component on the page) but to the entire page itself—all
     pages or a subset. To attach libraries on an entire page, you can implement `hook_page_attachments()`.
     Consider the following example:'
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，你可能会有这样的情况，你需要的库并没有链接到特定的渲染数组（页面上的组件），而是链接到整个页面——所有页面或子集。要在整个页面上附加库，你可以实现
+    `hook_page_attachments()`。考虑以下示例：
 - en: '[PRE10]'
+  id: totrans-126
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: This hook is called on each page, so you can also attach libraries contextually
     (for example, if the user has a specific role or something like that). Moreover,
     there is also the `hook_page_attachments_alter()` hook that you can use to alter
     any existing attachments (for example, to remove attachments from the page).
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个钩子在每一页上都会被调用，因此您也可以根据上下文附加库（例如，如果用户具有特定的角色或类似的东西）。此外，还有一个 `hook_page_attachments_alter()`
+    钩子，您可以使用它来修改任何现有的附件（例如，从页面上删除附件）。
 - en: 'Another way you can attach libraries is inside a preprocess function. We talked
     about preprocess functions earlier in this chapter; it''s simple to achieve:'
+  id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: 另一种附加库的方法是在预处理器函数内部。我们在这章的早期讨论了预处理器函数；实现起来很简单：
 - en: '[PRE11]'
+  id: totrans-129
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: All you have to do is add the `#attached` key (if it doesn't already exist)
     to the variables array.
+  id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: 您需要做的只是将 `#attached` 键（如果它已经存在）添加到变量数组中。
 - en: These three methods of attaching libraries are the most common ones you'll encounter
     and use yourself. However, there are a few other ways and places attachments can
     be added—you can alter an existing render element definition and you can attach
     libraries directly in a Twig file. I recommend that you read the Drupal.org documentation
     ([https://www.drupal.org/docs/8/creating-custom-modules/adding-stylesheets-css-and-javascript-js-to-a-drupal-8-module](https://www.drupal.org/docs/8/creating-custom-modules/adding-stylesheets-css-and-javascript-js-to-a-drupal-8-module))
     for more information on these methods.
+  id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: 这三种附加库的方法是最常见的方法，您可能会遇到并使用。然而，还有其他一些方法和地方可以添加附件——您可以修改现有的渲染元素定义，您也可以直接在 Twig
+    文件中附加库。我建议您阅读 Drupal.org 文档（[https://www.drupal.org/docs/8/creating-custom-modules/adding-stylesheets-css-and-javascript-js-to-a-drupal-8-module](https://www.drupal.org/docs/8/creating-custom-modules/adding-stylesheets-css-and-javascript-js-to-a-drupal-8-module)）以获取有关这些方法的更多信息。
 - en: Common theme hooks
+  id: totrans-132
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 常见主题钩子
 - en: In this section, we will look at three common theme hooks that come with Drupal
     core that you are likely to use quite often. The best way to understand them is,
     of course, by referring to an example of how to use them. So, let's get to it.
+  id: totrans-133
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本节中，我们将探讨 Drupal 核心附带的三种常见主题钩子，您可能会非常频繁地使用。当然，理解它们最好的方法是通过参考如何使用它们的示例。所以，让我们开始吧。
 - en: Lists
+  id: totrans-134
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 列表
 - en: One of the most common HTML constructs are lists (ordered or unordered), and
     any web application ends up having many of them, either for listing items or for
     components that do not even look like lists, but for the purposes of marking up,
     an `ul` or `ol` fits the bill best. Luckily, Drupal has always had the `item_list`
     theme hook which is flexible enough to allow us to use it in almost all cases.
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 最常见的 HTML 构造之一是列表（有序或无序列表），任何网络应用程序最终都会有很多这样的列表，无论是用于列出项目还是用于看起来根本不像列表的组件，但在标记的目的上，`ul`
+    或 `ol` 是最合适的。幸运的是，Drupal 一直都有 `item_list` 主题钩子，它足够灵活，可以让我们在几乎所有情况下使用它。
 - en: The `item_list` theme hook is defined inside `drupal_common_theme()`, is preprocessed
     (by default) in `template_preprocess_item_list()`, uses the `item-list.html.twig`
     template by default, and has no default theme hook suggestions (because it's so
     generic and registered outside the context of any business logic). If we inspect
     its definition, we'll note that it takes a number of variables that build up its
     flexibility. Let's take a look at an example of how to use it.
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: '`item_list` 主题钩子定义在 `drupal_common_theme()` 中，默认情况下在 `template_preprocess_item_list()`
+    中进行预处理，默认使用 `item-list.html.twig` 模板，并且没有默认的主题钩子建议（因为它非常通用，并且是在任何业务逻辑之外注册的）。如果我们检查其定义，我们会注意到它接受许多变量，这些变量构建了其灵活性。让我们看看如何使用它的一个示例。'
 - en: 'Imagine that we have the following array of items:'
+  id: totrans-137
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设我们有一个以下的项目数组：
 - en: '[PRE12]'
+  id: totrans-138
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: 'The simplest way we can render this as an `<ul>` is as follows:'
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以将这个渲染为 `<ul>` 的最简单方法是以下这样：
 - en: '[PRE13]'
+  id: totrans-140
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: Do note that the respective `<ul>` is wrapped in a `<div class="item_list">`
     and that the items in our array can also render arrays themselves.
+  id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: 请注意，相应的 `<ul>` 被包装在 `<div class="item_list">` 中，并且我们数组中的项目也可以渲染数组本身。
 - en: If we want to change the list into an `<ol>`, we set the `#list_type` variable
     to `ol`. We can even have a title heading (`<h3>`) before the list if we set the
     `#title` variable. Moreover, we can add more attributes on the `<div>` wrapper.
     For more information on how the other options work, I suggest that you inspect
     the template file and preprocessor function. However, these are the ones you'll
     most often use.
+  id: totrans-142
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们要将列表转换为 `<ol>`，我们需要将 `#list_type` 变量设置为 `ol`。我们甚至可以在列表之前设置一个标题标题（`<h3>`），如果我们设置
+    `#title` 变量。此外，我们还可以在 `<div>` 包装器上添加更多属性。关于其他选项如何工作的更多信息，我建议您检查模板文件和预处理器函数。然而，这些是您最常使用的。
 - en: Links
+  id: totrans-143
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 链接
 - en: In [Chapter 2](601b4dd0-c521-459e-9342-2645a109642c.xhtml), *Creating Your First
     Module,* we briefly looked at how we can work with links programmatically and
     how to build and render them in two different ways. We also noted that it's better
     to use the `#link` render element (and we now understand what this is) if we want
     the link to be alterable somewhere down the line. Now, let's take a look at how
     we can build a list of links using the helpful `links` theme hook.
+  id: totrans-144
   prefs: []
   type: TYPE_NORMAL
+  zh: 在[第2章](601b4dd0-c521-459e-9342-2645a109642c.xhtml) *创建您的第一个模块* 中，我们简要地探讨了如何以编程方式处理链接，以及如何以两种不同的方式构建和渲染它们。我们还指出，如果我们希望链接在将来可更改，最好使用`#link`渲染元素（我们现在也理解了这是什么）。现在，让我们看看如何使用有用的`links`主题钩子构建链接列表。
 - en: The `links` theme hook takes an array of links to be rendered, optional attributes,
     an optional heading, and a flag to set the active class dynamically. It then uses
     the `links.html.twig` template to construct a `<ul>`, much like the `item_list`
     hook.
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: '`links`主题钩子接受要渲染的链接数组、可选属性、可选标题以及一个用于动态设置活动类的标志。然后它使用`links.html.twig`模板来构建一个`<ul>`，就像`item_list`钩子一样。'
 - en: 'The most important variable here is the array of links, as it needs to contain
     individual arrays with the following keys: `title` (the link text), `url` (a `Url`
     object), and `attributes` (an array of attributes to add to each link item). If
     you look inside the `template_preprocess_links` preprocessor, you''ll see that
     it takes each of these items and transforms them into a render array with the
     `#type => ''link''` (the render element).'
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这里最重要的变量是链接数组，因为它需要包含具有以下键的单独数组：`title`（链接文本）、`url`（一个`Url`对象）和`attributes`（要添加到每个链接项的属性数组）。如果您查看`template_preprocess_links`预处理器内部，您会看到它接受这些项目并将它们转换为一个带有`#type
+    => 'link'`（渲染元素）的渲染数组。
 - en: 'In addition to the array of links, we can also pass a heading (just like with
     `item_list`) and a flag for setting the active class—`set_active_class`. The latter
     will make it add an `is-active` class onto the `<li>` item in the list and the
     link itself if the link matches the current route. Handy stuff, isn''t it? However,
     for more information, check out the documentation above the `template_preprocess_links()`
     implementation. Now, let''s see a quick example of using this in practice:'
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: 除了链接数组之外，我们还可以传递一个标题（就像`item_list`一样）和一个用于设置活动类的标志—`set_active_class`。后者将使它向列表中的`<li>`项和链接本身添加`is-active`类，如果链接与当前路由匹配。这很方便，不是吗？然而，对于更多信息，请查看`template_preprocess_links()`实现上方的文档。现在，让我们看看一个快速示例，看看如何在实践中使用它：
 - en: '[PRE14]'
+  id: totrans-148
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: That is all. We build an array of link data and then construct the render array
     using the `links` theme hook. We also use the `set_active_class` option just for
     kicks. This means that the `is-active` class will be present on the first link
     if this is rendered on the home page or on the second link if rendered on the
     *Hello World* page. As simple as that.
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: 那就是全部了。我们构建了一个链接数据数组，然后使用`links`主题钩子来构建渲染数组。我们还只是为了好玩使用了`set_active_class`选项。这意味着如果这个渲染在主页上，`is-active`类将出现在第一个链接上；如果渲染在*Hello
+    World*页面上，则出现在第二个链接上。就这么简单。
 - en: Tables
+  id: totrans-150
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 表格
 - en: The last common theme hook we will look at now will help you build tables. It
     has always been a Drupal best practice to use the theme hook when building tables
     rather than creating the markup yourself. This is also, in part, because it has
     always been very flexible. So, let's take a look.
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们现在将要查看的最后一个常见主题钩子将帮助您构建表格。在Drupal中，使用主题钩子构建表格而不是自己创建标记一直是最佳实践。这也部分是因为它一直非常灵活。所以，让我们看看。
 - en: 'The `table` theme hook takes a bunch of variables, many of them optional. The
     most important, however, are the `header` (an array of header definitions) and
     `rows` (a multidimensional array of row definitions). It''s not worth repeating
@@ -881,36 +1216,48 @@
     very well documented above the `template_preprocess_table()` preprocessor function.
     So, do check there for more information. Instead, we''ll focus on a simple use
     case of rendering a table, and we''ll do so via an example:'
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: '`table`主题钩子接受许多变量，其中许多是可选的。然而，最重要的是`header`（一个标题定义数组）和`rows`（一个行定义的多维数组）。在这里重复所有可能的表格构建选项是没有意义的，因为它们都在`template_preprocess_table()`预处理器函数上方有很好的文档说明。所以，请查看那里以获取更多信息。相反，我们将专注于渲染表格的简单用例，并通过一个示例来实现：'
 - en: '[PRE15]'
+  id: totrans-153
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: So, as you can see, we have the two critical variables. We have the list of
     header items and the rows (whose cells are in the array in the same order as the
     header). Of course, you have many more options, including attributes at all levels
     of the table, handy sorting capability that makes it easy to integrate with a
     database query, and more. I strongly encourage you to explore these options in
     the documentation.
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，正如你所见，我们有两个关键变量。我们有标题项的列表和行（其单元格的顺序与标题中的顺序相同）。当然，你还有很多其他选项，包括表格所有级别的属性、方便的排序功能，这使得它很容易与数据库查询集成，还有更多。我强烈建议你在文档中探索这些选项。
 - en: Attributes
+  id: totrans-155
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 属性
 - en: In the previous three examples of theme hooks we encountered the concept of
     `attributes` in the context of using them to render HTML elements. Attributes
     here are understood in the same way as with HTML. For example, `class`, `id`,
     `style`, and `href` are all HTML element attributes. Why is this important?
+  id: totrans-156
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们遇到的之前三个主题钩子示例中，我们遇到了在渲染HTML元素时使用`attributes`的概念。这里的属性理解方式与HTML中相同。例如，`class`、`id`、`style`和`href`都是HTML元素属性。这为什么很重要？
 - en: The reusability of theme hooks makes it so that we cannot hardcode all our HTML
     attributes in the Twig template files. We can have some, including classes, but
     we will always need to allow business logic to inform the theme hook of certain
     attribute values it needs printed on the HTML element. For example, an `active`
     class on a link. This is why we have this concept of attributes.
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 主题钩子的可重用性使得我们无法在Twig模板文件中硬编码所有的HTML属性。我们可以有一些，包括类，但我们始终需要允许业务逻辑通知主题钩子它需要在HTML元素上打印的某些属性值。例如，一个链接上的`active`类。这就是为什么我们有这个属性概念。
 - en: 'Most theme hooks you''ll see have attributes in some form or another, with
     the variable usually being called `$attributes`, `$wrapper_attributes`, or something
     of that nature. Also, this variable always needs to be a multidimensional array
@@ -918,133 +1265,189 @@
     the attribute, whereas the value is the attribute value. If the value can have
     multiple items, such as classes, it will also be an array. Consider the following
     example:'
+  id: totrans-158
   prefs: []
   type: TYPE_NORMAL
+  zh: 你会看到的绝大多数主题钩子都有某种形式的属性，变量通常被称为`$attributes`、`$wrapper_attributes`或类似的东西。此外，这个变量始终需要是一个多维数组，包含你想要传递的属性数据。这个数组中的键是属性的名称，而值是属性值。如果值可以有多个项目，例如类，它也将是一个数组。考虑以下示例：
 - en: '[PRE16]'
+  id: totrans-159
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: As you can see, we have some common attributes, but you can also make up your
     own as needed (usually in the form of data attributes). However, in no way is
     this mandatory, and you can add only the ones you actually need. Do always, though,
     read the documentation on the theme hook to see how they are used and which elements
     are actually going to get them.
+  id: totrans-160
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如你所见，我们有一些常见的属性，但根据需要你也可以自己创建（通常以数据属性的形式）。然而，这并不是强制性的，你只能添加你实际需要的属性。不过，始终要阅读有关主题钩子的文档，以了解它们的使用方式和哪些元素实际上会获得它们。
 - en: From an API point of view, Drupal handles attributes via a handy class called
     `Attribute`. You'll note that many template preprocessors will take that array
     and construct a new `Attribute` object for manipulating them with more ease. Additionally,
     such an object is also renderable because it implements the `MarkupInterface`
     and Twig will know directly how to transform it into a string.
+  id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: 从API的角度来看，Drupal通过一个名为`Attribute`的便捷类来处理属性。你会注意到，许多模板预处理程序都会使用那个数组，并构建一个新的`Attribute`对象，以便更轻松地操作它们。此外，这样的对象也是可渲染的，因为它实现了`MarkupInterface`接口，并且Twig将直接知道如何将其转换为字符串。
 - en: So, keep that in mind if you are writing your own theme hooks and need to handle
     attributes with more class (pun intended).
+  id: totrans-162
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，如果你在编写自己的主题钩子并需要处理具有更多类的属性（有意为之），请记住这一点。
 - en: Layouts
+  id: totrans-163
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 布局
 - en: As part of the Drupal 8 release cycle, the Layouts API has been introduced in
     order to provide contributed modules with a unified approach for defining layouts.
     For example, modules like Panels and Layout Builder make use of this API to define
     layouts that contain regions and that can render content and all sorts of things
     inside.
+  id: totrans-164
   prefs: []
   type: TYPE_NORMAL
+  zh: 作为Drupal 8发布周期的一部分，为了为贡献模块提供一个统一的定义布局的方法，引入了布局API。例如，像Panels和Layout Builder这样的模块就利用这个API来定义包含区域并可以渲染内容以及各种事物的布局。
 - en: Layouts have been introduced in version 8.3 of Drupal as an experimental module
     (called Layout Discovery) and marked stable in version 8.4\. At the same time,
     a new experimental module has been introduced, called Layout Builder, which uses
     this API to provide site builders a way to build layouts for regular content.
+  id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: 在Drupal 8.3版本中引入了布局功能作为一个实验性模块（称为布局发现），并在8.4版本中将其标记为稳定。同时，还引入了一个新的实验性模块，称为布局构建器，它使用此API为网站构建者提供了一种构建常规内容布局的方法。
 - en: We won't be using layouts going forward in this book but it's important you
     know how to work with them in case you need them. So let's quickly talk about
     how you, as a module developer, can define and make use of layouts programmatically.
+  id: totrans-166
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本书接下来的内容中，我们不会使用布局，但了解如何使用它们是很重要的，以防你需要它们。所以让我们快速讨论一下，作为模块开发者，你如何定义和程序化地使用布局。
 - en: Defining layouts
+  id: totrans-167
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 定义布局
 - en: Simply put, layouts are plugins. But unlike the plugins we've seen before, these
     are defined in YAML files instead of annotations above a class. One of the reasons
     for this is that layouts are more *definition* than functionality, so they don't
     necessarily require classes. They can be simply defined in a few lines inside
     a `YAML` file.
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
+  zh: 简而言之，布局是插件。但与之前见过的插件不同，这些是在YAML文件中定义的，而不是在类之上的注释中。这样做的一个原因是因为布局更多的是定义而不是功能，因此它们不一定需要类。它们可以简单地定义在`YAML`文件中的几行内。
 - en: Although not necessarily, YAML-based plugins are typically defined inside a
     file named `module_name.plugin_type_name.yml` found in the root of the module
     defining the plugin. So in the case of layouts, this would be `module_name.layouts.yml`.
     But what does a definition contain?
+  id: totrans-169
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然不一定，但基于YAML的插件通常定义在模块根目录下名为`module_name.plugin_type_name.yml`的文件中。因此，在布局的情况下，这将是在`module_name.layouts.yml`。但定义包含什么内容呢？
 - en: 'Let''s imagine we want to define a two-column layout with a left and right
     region. Our simplest definition could look like this:'
+  id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们假设我们想要定义一个包含左右区域的两列布局。我们的简单定义可能如下所示：
 - en: '[PRE17]'
+  id: totrans-171
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: So what do we learn from this definition?
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: 那么，我们从这个定义中学到了什么呢？
 - en: First, we have a name and category, which are mandatory. These can be used in
     whatever UI to show information about the layout.
+  id: totrans-173
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 首先，我们有一个名称和类别，这是强制性的。这些可以在任何UI中用来显示有关布局的信息。
 - en: Second, we specify the template that should render this layout. The corresponding
     theme hook gets defined under the hood. In the case above, the template file would
     be in the `templates` folder and would be called `two-column.html.twig`.
+  id: totrans-174
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 其次，我们指定应该渲染此布局的模板。相应的主题钩子将在幕后定义。在上面的例子中，模板文件将在`templates`文件夹中，并被称为`two-column.html.twig`。
 - en: Lastly, we define the regions of the layout with a label for each. The `left`
     and `right` keys are important as they are the machine names of the regions.
+  id: totrans-175
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 最后，我们使用标签定义布局的区域，其中`left`和`right`键很重要，因为它们是区域的机器名称。
 - en: 'As a bonus, if we wanted to attach a library, we could add another line to
     this definition, like so:'
+  id: totrans-176
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 作为额外的好处，如果我们想要附加一个库，我们可以在定义中添加另一行，如下所示：
 - en: '[PRE18]'
+  id: totrans-177
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: 'Before the layout registration was complete, we''d also need to create the
     template file we referenced. And it could look like this:'
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: 在布局注册完成之前，我们还需要创建我们引用的模板文件。它可能看起来像这样：
 - en: '[PRE19]'
+  id: totrans-179
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: In the template we have access to the `content` variable on which we can access
     the values of the regions we can print.
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: 在模板中，我们可以访问`content`变量，我们可以从中获取可以打印的区域值。
 - en: And that's pretty much it. Clearing the cache (and enabling the Layout Discovery
     module) would register this layout with the system.
+  id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: 就这样了。清除缓存（并启用布局发现模块）将把此布局注册到系统中。
 - en: Rendering a layout
+  id: totrans-182
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 渲染布局
 - en: OK, but registering a layout doesn't help us with much. Unless, of course, we
     use Layout Builder or some contributed module that uses layouts for various things.
     In which case we'd already be providing great value. But what if we want to use
     this layout ourselves? In other words, render stuff with it.
+  id: totrans-183
   prefs: []
   type: TYPE_NORMAL
+  zh: 好的，但注册布局并不能帮我们太多。除非，当然，我们使用布局构建器或某些使用布局进行各种操作的贡献模块。在这种情况下，我们已经在提供很大的价值。但如果我们想自己使用这个布局怎么办？换句话说，用这个布局渲染内容。
 - en: 'The simplest way of rendering something with this layout could look like this:'
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用此布局渲染内容的简单方法可能如下所示：
 - en: '[PRE20]'
+  id: totrans-185
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: Without going into too much detail about the plugin system (yet), but with the
     above we use the Layout plugin manager to create a new instance of the layout
     we defined (whose machine name is `two_column`). Then we prepare the data to print
@@ -1052,12 +1455,16 @@
     mirrors the regions in the layout. Finally, we build the layout by passing the
     regions data. And that is it. The resulting render array would render the template
     with the content printed in the corresponding regions.
+  id: totrans-186
   prefs: []
   type: TYPE_NORMAL
+  zh: 在不深入太多关于插件系统（目前）的细节的情况下，但使用上述内容，我们使用布局插件管理器创建了一个新实例的布局（其机器名为`two_column`）。然后我们在`$regions`数组中准备要打印在布局内的数据。正如你所看到的，数组结构反映了布局中的区域。最后，我们通过传递区域数据来构建布局。就是这样。生成的渲染数组将渲染模板，并在相应的区域打印内容。
 - en: Theming our Hello World module
+  id: totrans-187
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 主题化我们的Hello World模块
 - en: The `HelloWorldController` we built in [Chapter 2](601b4dd0-c521-459e-9342-2645a109642c.xhtml),
     *Creating Your First Module*, currently uses a service to retrieve the string
     to be used as the salutation and then returns a simple markup render array with
@@ -1067,94 +1474,134 @@
     we want to allow others to override our theme using suggestions that depend on
     whether or not the salutation has been overridden via the configuration form.
     So, let's see how we can do these things.
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们在[第2章](601b4dd0-c521-459e-9342-2645a109642c.xhtml)“创建您的第一个模块”中构建的`HelloWorldController`目前使用一个服务来检索用作问候语的字符串，然后返回一个包含该字符串的简单标记渲染数组。现在让我们假设我们想要输出这条消息，但将其包裹在我们自己的特定标记中。为了使事情变得复杂，我们想要将问候语字符串拆分成几个部分，以便它们可以稍微不同地样式化。此外，我们希望允许其他人通过配置表单是否覆盖了问候语来使用建议覆盖我们的主题。那么，让我们看看我们如何做这些事情。
 - en: 'To get things started, this is the markup we are after:'
+  id: totrans-189
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了开始，这是我们想要的标记：
 - en: '[PRE21]'
+  id: totrans-190
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: 'The first thing we need to do is to define our own theme hook capable of outputting
     this. To this end, we implement `hook_theme()`:'
+  id: totrans-191
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们需要做的第一件事是定义一个能够输出此内容的自定义主题钩子。为此，我们实现了`hook_theme()`函数：
 - en: '[PRE22]'
+  id: totrans-192
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: For now, we only return one theme hook called `hello_world_salutation`, which
     takes the variables you can see. Each of them has a default value in case one
     is not passed from the client (render array). The first two are obvious, but we
     also want to have a flag on whether or not the salutation has been overridden.
     This will help with the theme hook suggestions.
+  id: totrans-193
   prefs: []
   type: TYPE_NORMAL
+  zh: 目前，我们只返回一个名为`hello_world_salutation`的主题钩子，它接受你可以看到的变量。每个变量都有一个默认值，以防客户端（渲染数组）没有传递。前两个很明显，但我们还希望有一个标志来表示问候语是否被覆盖。这将有助于主题钩子建议。
 - en: 'By default, if we don''t specify a template filename, this theme hook will
     look for a Twig template with the name `hello-world-salutation.html.twig` inside
     the `/templates` folder of our module. Since this is good enough for us, let''s
     go ahead and create it:'
+  id: totrans-194
   prefs: []
   type: TYPE_NORMAL
+  zh: 默认情况下，如果我们没有指定模板文件名，这个主题钩子将在我们的模块的`/templates`文件夹中查找名为`hello-world-salutation.html.twig`的Twig模板。由于这对我们来说已经足够好了，让我们继续创建它：
 - en: '[PRE23]'
+  id: totrans-195
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: Twig notation is easy to understand. The `{{ }}` means that we are printing
     a variable with that name (which can even be a render array) and `{% %}` refers
     to control structures, such as *if statements* or *loops*. Do check out the Twig
     documentation ([https://twig.symfony.com/](https://twig.symfony.com/)) for more
     information if you are unsure.
+  id: totrans-196
   prefs: []
   type: TYPE_NORMAL
+  zh: Twig语法易于理解。`{{ }}`表示我们正在打印一个具有该名称的变量（这甚至可以是一个渲染数组），而`{% %}`指的是控制结构，例如`if`语句或循环。如果你不确定，请查看Twig文档([https://twig.symfony.com/](https://twig.symfony.com/))以获取更多信息。
 - en: There are some great ways to debug what values end up being printed in the Twig
     template. You can use the native Twig `dump()` function which will output things
     using the PHP `var_dump()` or you can install the Devel module and use the `kint()`
     function which will format things in a more readable way.
+  id: totrans-197
   prefs: []
   type: TYPE_NORMAL
+  zh: 有一些很好的方法可以调试在Twig模板中最终打印的值。你可以使用原生的Twig `dump()`函数，它将使用PHP的`var_dump()`输出内容，或者你可以安装Devel模块并使用`kint()`函数，它将以更可读的方式格式化内容。
 - en: We wrapped the `target` variable in an *if* statement so that if by any chance
     it's missing, we don't print an empty span tag. It's best practice to have your
     template mirror the possibilities of the theme hook being called with the defaults.
+  id: totrans-198
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们在`target`变量中包裹了一个`if`语句，这样如果它缺失，我们就不打印一个空的span标签。最好是将你的模板与主题钩子使用默认值调用的可能性相匹配。
 - en: Finally, we also have an `attributes` array we are printing on the wrapper.
     We did not define this, but each theme hook comes with it. The variable is an
     `Attribute` object, as we discussed earlier, which gets printed into a string
     of the individual attributes.
+  id: totrans-199
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，我们还有一个打印在包装器上的`attributes`数组。我们没有定义它，但每个主题钩子都自带它。这个变量是一个`Attribute`对象，正如我们之前讨论的，它被打印成单个属性的字符串。
 - en: Now, instead of printing the class we want directly in the template, we will
     use the preprocessor to make things more dynamic.
+  id: totrans-200
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，我们不再直接在模板中打印我们想要的类，而是使用预处理器使事情更加动态。
 - en: 'So let''s implement the preprocessor next:'
+  id: totrans-201
   prefs: []
   type: TYPE_NORMAL
+  zh: 所以，让我们接下来实现预处理器：
 - en: '[PRE24]'
+  id: totrans-202
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: As I mentioned earlier, at this stage we are still working with an array of
     attributes. The theme system will turn it into the `Attribute` object before rendering
     the template, which in turn will know how to handle that.
+  id: totrans-203
   prefs: []
   type: TYPE_NORMAL
+  zh: 如我之前提到的，在这个阶段，我们仍在使用一个属性数组。主题系统将在渲染模板之前将其转换为`Attribute`对象，然后它将知道如何处理它。
 - en: Other modules or themes can now implement this preprocessor themselves and change
     the classes (or any other wrapper attributes) as they need. Had we hardcoded the
     class in the template file, they would have had to override the entire template—which,
     although still a viable option, is overkill if you just need to add a class.
+  id: totrans-204
   prefs: []
   type: TYPE_NORMAL
+  zh: 其他模块或主题现在可以自己实现这个预处理器，并根据需要更改类（或任何其他包装属性）。如果我们直接在模板文件中硬编码类，它们将不得不覆盖整个模板——尽管这仍然是一个可行的选项，但如果只需要添加一个类，这将是过度杀鸡用牛刀。
 - en: Now, let's allow themers to have different implementations for our salutation
     message depending on whether or not it is overridden by an admin. I know this
     particular example is quite a stretch in terms of usefulness, but it allows us
     to demonstrate the approach. Which is very useful.
+  id: totrans-205
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，让我们允许主题设计师根据问候语是否被管理员覆盖，为我们的问候语消息有不同的实现。我知道这个特定的例子在实用性方面相当牵强，但它允许我们展示这种方法。这非常有用。
 - en: 'So, as we discussed, we can define a suggestion for our theme hook:'
+  id: totrans-206
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，正如我们之前讨论的，我们可以为我们的主题钩子定义一个建议：
 - en: '[PRE25]'
+  id: totrans-207
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: If you remember, our theme hook had the `overridden` variable which can be used
     for this flag. So, in our theme hook suggestion implementation we check for it,
     and if it's true, we add our suggestion. This function gets called on the fly
@@ -1162,23 +1609,33 @@
     if, of course, the salutation is overridden. If that is the case, it will try
     `hello_world_salutation__overridden`, and if not found, it will fall back to `hello_world_salutation`,
     which exists.
+  id: totrans-208
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你还记得，我们的主题钩子有一个`overridden`变量，它可以用来设置这个标志。所以，在我们的主题钩子建议实现中，我们检查它，如果它是真的，我们就添加我们的建议。这个函数在渲染时即时调用，如果问候语被覆盖，则使用遇到的特定建议。如果是这种情况，它将尝试`hello_world_salutation__overridden`，如果没有找到，它将回退到`hello_world_salutation`，后者是存在的。
 - en: 'Themes can now have two different templates that render the salutation in two
     different ways, depending on whether or not the message has been overridden:'
+  id: totrans-209
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在主题可以有两组不同的模板，根据消息是否被覆盖，以两种不同的方式呈现问候语：
 - en: '`hello-world-salutation.html.twig`'
+  id: totrans-210
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`hello-world-salutation.html.twig`'
 - en: '`hello-world-salutation—overridden.html.twig`'
+  id: totrans-211
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`hello-world-salutation—overridden.html.twig`'
 - en: Okay, our theme hook is now ready for use. Let's use it.
+  id: totrans-212
   prefs: []
   type: TYPE_NORMAL
+  zh: 好的，我们的主题钩子现在可以使用了。让我们使用它。
 - en: Since our theme template breaks our salutation message up into pieces, and can
     even receive the `overridden` flag, it will not be enough to just use this theme
     hook in the `HelloWorldController`. Instead, we will need to go back to our service
@@ -1186,16 +1643,22 @@
     After all, business logic knows the structural aspects of how a certain component
     needs to be rendered. Theming just needs to style and alter that based on the
     flexibility offered by a good functional implementation.
+  id: totrans-213
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于我们的主题模板将问候语消息拆分成片段，甚至可以接收`overridden`标志，仅仅在`HelloWorldController`中使用这个主题钩子是不够的。相反，我们需要回到我们的服务中，让它返回负责输出问候语的渲染数组。毕竟，业务逻辑知道某个组件需要如何渲染的结构方面。主题只需要根据良好的功能实现提供的灵活性来样式化和修改它。
 - en: 'However, let''s not override the `getSalutation()` method on the service, but
     instead create a new one called `getSalutationComponent()`. This will then return
     the render array which can output the whole thing:'
+  id: totrans-214
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，我们不要在服务中覆盖`getSalutation()`方法，而是创建一个新的方法，称为`getSalutationComponent()`。这将返回可以输出整个内容的渲染数组：
 - en: '[PRE26]'
+  id: totrans-215
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: This is how it will look. We start by creating the render array that uses our
     new theme hook. Then, we look in the configuration object and if there is a message
     stored in there, we use that, set the `overridden` flag to true, and return the
@@ -1204,8 +1667,10 @@
     we proceed with our previous logic and set the message dynamically while keeping
     the `target` the same. You can easily see how this now maps to what the theme
     hook and template expect for the different cases.
+  id: totrans-216
   prefs: []
   type: TYPE_NORMAL
+  zh: 这就是它将呈现的样子。我们首先创建一个使用我们新主题钩子的渲染数组。然后，我们在配置对象中查找，如果其中存储有消息，我们就使用它，将`overridden`标志设置为true，并返回渲染数组。你会注意到我们没有设置`target`，这意味着它不会在模板文件中打印出来（正如预期的那样）。然而，如果它没有被覆盖，我们就继续使用我们之前的逻辑，动态设置消息，同时保持`target`不变。你可以很容易地看到现在它如何映射到主题钩子和模板对不同情况的要求。
 - en: A couple of points to be made before going forward. First, I want to reiterate
     the warning that due to things such as caching, the dynamic salutation message
     won't actually work as expected. We'd need to set some cache metadata to prevent
@@ -1222,32 +1687,44 @@
     the difference between a good developer and a great one is the ability of the
     latter to figure things out by reading the source code rather than relying on
     documentation.
+  id: totrans-217
   prefs: []
   type: TYPE_NORMAL
+  zh: 在继续之前，有几个要点需要说明。首先，我想重申由于缓存等问题，动态问候消息实际上不会按预期工作。我们需要设置一些缓存元数据来防止这个渲染数组被缓存，以便它能够工作。然而，我们将在第11章[缓存](13739cad-2542-40b4-ae42-9a7f9e159716.xhtml)中看到更多关于这个内容。其次，你会注意到我们在主题钩子中定义的变量前面有一个`#`符号，好像它们是渲染系统已知属性一样。正如我之前所说的，它们实际上不是属性，但主题系统将它们视为变量，因为我们这样定义了它们。因此，在阅读你未编写的代码时能够区分这些是很重要的。当然，有很多属性你并不知道（我当然不知道大多数），但通过经验，你将能够阅读代码，找出源代码，并理解它的含义。在这方面，优秀开发者和杰出开发者之间的区别在于后者能够通过阅读源代码来解决问题，而不是依赖于文档。
 - en: 'Now, we have a service that can return a string representation of our message,
     and a fully-fledged renderable component. It follows that we edit our Controller
     and have it return this component instead of its own render array:'
+  id: totrans-218
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，我们有一个可以返回我们消息的字符串表示形式和完整的可渲染组件的服务。因此，我们编辑我们的控制器，让它返回这个组件而不是它自己的渲染数组：
 - en: '[PRE27]'
+  id: totrans-219
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: You'll note that we don't need the `#markup` property anymore, as we have our
     own render array. For the `salutation` token and the block we created, let's not
     use this component but rely on the string version. This way we keep both options
     in the code for you to see.
+  id: totrans-220
   prefs: []
   type: TYPE_NORMAL
+  zh: 你会注意到我们不再需要`#markup`属性了，因为我们已经有了自己的渲染数组。对于`salutation`标记和我们所创建的块，我们不要使用这个组件，而是依赖字符串版本。这样我们可以在代码中保留两种选项供你查看。
 - en: Summary
+  id: totrans-221
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 摘要
 - en: The Drupal 8 theming system is complex and flexible and thus impossible to cover
     fully in one chapter of a module development book. However, we did go through
     the basics necessary to get you started—understanding the core tenets of the theme
     system, some of its most important Drupal specificities and practical use cases.
+  id: totrans-222
   prefs: []
   type: TYPE_NORMAL
+  zh: Drupal 8的主题系统既复杂又灵活，因此在模块开发书籍的一章中完全覆盖是不可能的。然而，我们确实介绍了让你入门的基础知识——理解主题系统的核心原则，其中一些最重要的Drupal特定性和实际用例。
 - en: We started this chapter by discussing the abstract principle of separating business
     from presentation logic—a principle that is used by many modern web applications.
     We saw why it is critical for flexible and dynamic theming. Next, we discussed
@@ -1261,8 +1738,10 @@
     render array. Next, we discussed libraries and how we can "attach" them to render
     arrays. We will definitely see some more examples later in the book when we talk
     about JavaScript.
+  id: totrans-223
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们本章开始时讨论了将业务逻辑与展示逻辑分离的抽象原则——这是许多现代Web应用所使用的原则。我们看到了为什么这对于灵活和动态的主题化是至关重要的。接下来，我们讨论了Drupal如何实现这种分离——强大的主题钩子，它们在两层之间充当桥梁。在这里，我们还涵盖了围绕它们的一些高度使用的实践——预处理函数和主题钩子建议，以增加灵活性。然后，我们讨论了业务逻辑如何实际使用主题钩子——渲染数组（可能是Drupal最重要的结构之一）。由于我们正在讨论这个主题，我们还概述了Drupal和Symfony渲染管道，以更好地理解构建整个页面渲染数组的流程。接下来，我们讨论了库以及我们如何将它们“附加”到渲染数组上。在本书后面讨论JavaScript时，我们肯定会看到更多示例。
 - en: 'Finally, we started transitioning into the practical aspects of theming a module
     by exemplifying a few common theme hooks found in Drupal 8 core. In doing so,
     we also encountered the topic of Attributes, an important one to understand when
@@ -1272,10 +1751,16 @@
     we defined a theme hook and corresponding template, a preprocess function, as
     well as a theme hook suggestion and built a render array dynamically to fire them
     all. Not a bad day in the life of a Drupal 8 module developer.'
+  id: totrans-224
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，我们通过举例说明Drupal 8核心中的一些常见主题钩子，开始过渡到模块主题化的实际方面。在这个过程中，我们也遇到了属性这一主题，这是在使主题钩子更加动态时需要理解的一个重要概念。我们以对*Hello
+    World*问候信息的全面改写结束本章，以创建一个可主题化的组件。我们这样做是通过实践之前学到的关于主题钩子的许多知识：我们定义了一个主题钩子和相应的模板、一个预处理函数，以及一个主题钩子建议，并动态构建了一个渲染数组来触发所有这些。对于Drupal
+    8模块开发者来说，这真是一个不错的一天。
 - en: In the next chapter, we will look at menus and the different types of menu links
     in Drupal 8\. What kind of web application would it be without any menu links
     in it?
+  id: totrans-225
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下一章中，我们将探讨菜单和Drupal 8中不同类型的菜单链接。没有菜单链接的Web应用会是什么样子呢？
