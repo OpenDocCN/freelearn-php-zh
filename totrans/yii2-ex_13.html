@@ -1,0 +1,335 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;13.&#xA0;Final Refactoring"><div class="titlepage"><div><div><h1 class="title"><a id="ch13"/>Chapter 13. Final Refactoring</h1></div></div></div><p>This is the final stage of our development. Now that we have written all the working code, we must make it reusable but most importantly, maintainable. This chapter will help you to reuse code by means of widgets and other components. We will see some practical examples on how to use them. Then, we will deal with documentation, an important aspect of app development that allows everyone to quickly learn how a project is structured and built.</p><p>For the documentation, we are going to use the two most important tools provided by the framework in order to build API and guide references, making a real-life example. We will cover the following topics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Creating widgets<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Example – creating a widget with a carousel</li></ul></div></li><li class="listitem" style="list-style-type: disc">Creating components<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Example – creating a component that creates a backup of the MySQL database and sends an e-mail to the administrator</li></ul></div></li><li class="listitem" style="list-style-type: disc">Creating modules</li><li class="listitem" style="list-style-type: disc">Generating the API documentation<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Example – using API documentation to generate doc of the app</li></ul></div></li></ul></div><div class="section" title="Creating widgets"><div class="titlepage"><div><div><h1 class="title"><a id="ch13lvl1sec86"/>Creating widgets</h1></div></div></div><p>A widget is a <a id="id550" class="indexterm"/>reusable client-side code (containing JavaScript, CSS, and HTML) with minimal logic wrapped in a <code class="literal">yii\base\Widget</code> object that we can easily insert and apply in any view.</p><p>Building a widget <a id="id551" class="indexterm"/>requires you to extend two methods of <code class="literal">yii\base\Widget</code>:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The <code class="literal">init()</code> method initializes the object</li><li class="listitem" style="list-style-type: disc">The <code class="literal">run()</code> method executes the object</li></ul></div><p>In order to instance a widget, it is enough to call the static <code class="literal">widget()</code> method that accepts just one parameter or better still an array containing values for its public properties.</p><p>The following is an example:</p><div class="informalexample"><pre class="programlisting">    MyWidget::widget(['prop1' =&gt; 'value of prop1', …])</pre></div><p>This returns a string containing widget output, passing its value <code class="literal">value of prop1</code> for its <code class="literal">prop1</code> public properties.</p><p>If we need to<a id="id552" class="indexterm"/> insert an extra code in a widget's execution (for example, in the ActiveForm widget), we have a more complex way of instantiating the widget, using the <code class="literal">begin()</code> and <code class="literal">end()</code> methods.</p><p>The first method, <code class="literal">begin()</code>, accepts a function parameter with a configuration array to pass to the widget, and it will return the widget object.</p><p>When the second method, <code class="literal">end()</code>, is called, the code between these two methods will be displayed and simultaneously, the <code class="literal">end()</code> method directly echoes the output of the widget <code class="literal">run()</code> method:</p><div class="informalexample"><pre class="programlisting">    $widget = MyWidget::begin(['prop1' =&gt; 'value of prop1', …]);
+
+    ..
+    .. I can use $widget object here  ..
+    ..
+
+     MyWidget::end();</pre></div><p>As for any other views, in the <code class="literal">run()</code> method, we can refer to a view file, through the <code class="literal">render()</code> method, in order to display the widget output.</p><p>For example, a widget could be a real-time date/time clock. For this purpose, we will build a clock based on a block containing the date/time string updated by the JavaScript code. We can pass to widget construct time some values concerning for example, the color of the border box.</p><p>To make an instance, let's start with the basic template app (but this is obviously also valid for the advanced template app). Create a new folder (if it does not exist) named <code class="literal">components</code> in the root of the project at the same level of <code class="literal">controllers</code>, <code class="literal">models</code>, <code class="literal">views</code>, and so on, which will contain all the widgets we want to build.</p><p>Then, in this folder, we will create a new file named <code class="literal">ClockWidget.php</code> with the complete path <code class="literal">basic/components/ClockWidget.php</code>:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\components;
+
+use yii\base\Widget;
+
+class ClockWidget extends Widget
+{
+
+    public function init()
+    {
+        \yii\web\JqueryAsset::register($this-&gt;getView());
+    }
+    
+    public function run()
+    {
+        return $this-&gt;render('clock');
+    }
+    
+}</pre></div><p>In the <code class="literal">init()</code> method, we <a id="id553" class="indexterm"/>have also made references to the jQuery asset to request the framework to load the jQuery plugin, since we need it in the view file.</p><p>In the <code class="literal">run()</code> method, we have rendered the <code class="literal">clock</code> view, whose content will be discussed in next rows.</p><p>So, create a new folder at <code class="literal">basic/components/views</code> and, within it, a new file named <code class="literal">clock.php</code> with the following code:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+$this-&gt;registerJs( &lt;&lt;&lt; EOT_JS
+
+    function ClockWidget_refresh_datetime()
+    {
+        var dateTimeString = new Date().toString();
+        $('#ClockWidget_realtime_clock').html(dateTimeString);
+    }
+
+    setInterval(ClockWidget_refresh_datetime,1000);
+    
+    ClockWidget_refresh_datetime();
+EOT_JS
+);
+
+?&gt;
+
+&lt;div style="border:1px solid black;padding:5px;width:200px;text-align:center"&gt;
+    &lt;span id="ClockWidget_realtime_clock"&gt;&lt;/span&gt;
+&lt;/div&gt;</pre></div><p>This code simply displays a box with a string containing real-time values of the current date and time, updated every second.</p><p>Finally, we can use our <a id="id554" class="indexterm"/>widget in any view using this code:</p><div class="informalexample"><pre class="programlisting">&lt;?= \app\components\ClockWidget::widget(); ?&gt;</pre></div><div class="section" title="Example – creating a widget with a carousel"><div class="titlepage"><div><div><h2 class="title"><a id="ch13lvl2sec55"/>Example – creating a widget with a carousel</h2></div></div></div><p>In this example, we will<a id="id555" class="indexterm"/> create a widget that consists of a carousel with<a id="id556" class="indexterm"/> some rooms (we can choose which one to display by passing them to the widget with the public property). Again, we will use a basic template application; however, everything is equally applicable to the advanced template apps.</p><p>For this example, we will create a new controller to use its view as a widget container.</p><p>So, let's create this new controller named <code class="literal">TestCarouselController</code> at <code class="literal">basic/controller/TestCarouselController.php</code>. From here, we will pass the <code class="literal">models</code> property, consisting of a list of maximum three rooms:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use yii\web\Controller;
+use app\models\Room;
+
+class TestCarouselController extends Controller
+{
+    public function actionIndex()
+    {
+        $models = Room::find()-&gt;limit(3)-&gt;all();
+        
+        return $this-&gt;render('index', ['models' =&gt; $models]);
+    }
+}</pre></div><p>Next, we will create the view at <code class="literal">basic/views/test-carousel/index.php</code> with the widget output as follows:</p><div class="informalexample"><pre class="programlisting">This is a carousel widget with some rooms:
+&lt;?= \app\components\CarouselWidget\CarouselWidget::widget(['models' =&gt; $models, 'options' =&gt; ['style' =&gt; 'border:1px solid black;text-align:center;padding:5px;']]); ?&gt;</pre></div><p>This builds the widget filling and its public properties <code class="literal">models</code> and <code class="literal">options</code>.</p><p>Now it is time to create our widget. To isolate the widget from another code as much as possible, we create a specific widget folder at the <code class="literal">basic/components</code> folder, under a subfolder named <code class="literal">CarouselWidget</code> inside of which we will create the widget file named <code class="literal">CarouselWidget.php</code>.</p><p>This widget includes a public property, <code class="literal">models</code> that contains the room's model that has been passed from the container view. It is necessary to pass these models to the Carousel widget at <code class="literal">\yii\bootstrap\Carousel</code> as an array of this kind:</p><div class="informalexample"><pre class="programlisting">items =&gt; [
+['content' =&gt; '...', 'caption' =&gt; '...'],
+['content' =&gt; '...', 'caption' =&gt; '...'],
+['content' =&gt; '...', 'caption' =&gt; '...'],
+...
+];</pre></div><p>In this way, in the <code class="literal">init()</code> method, we<a id="id557" class="indexterm"/> will create an internal representation of the<a id="id558" class="indexterm"/> models according to the Bootstrap Yii2 widget expectation.</p><p>Finally, in the <code class="literal">run()</code> method, we will output the view now in the views folder at <code class="literal">basic/components/CarouselWidget/views</code>. This is the widget content; remember that it is stored in <code class="literal">CarouselWidget.php</code> at <code class="literal">basic/components/CarouselWidget</code>:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\components\CarouselWidget;
+
+use yii\base\Widget;
+
+class CarouselWidget extends Widget
+{
+    public $carouselId = 'carouselWidget_0';
+    public $options = [];
+    public $models = [];
+    
+    
+    private $carouselItemsContent;
+
+    public function init()
+    {
+        // It is not necessary because yii bootstrap Carousel widget will load it automatically
+        // \yii\jui\JuiAsset::register($this-&gt;getView());
+        
+        $this-&gt;carouselItemsContent = [];
+        foreach($this-&gt;models as $model)
+        {
+            $caption = sprintf('&lt;h1&gt;Room #%d&lt;/h1&gt;', $model-&gt;id);
+            $content = sprintf('This is room #%d at floor %d with %0.2f€ price per day', $model-&gt;id, $model-&gt;floor, $model-&gt;price_per_day);
+            $itemContent = ['content' =&gt; $content, 'caption' =&gt; $caption];
+            $this-&gt;carouselItemsContent[] = $itemContent;
+        }
+        
+    }
+    
+    public function run()
+    {
+        return $this-&gt;render('carousel', ['carouselItemsContent' =&gt; $this-&gt;carouselItemsContent]);
+    }
+    
+}</pre></div><p>The widget view, called <a id="id559" class="indexterm"/>in the <code class="literal">run()</code> method, will be stored in <a id="id560" class="indexterm"/>the <code class="literal">carousel.php</code> file at <code class="literal">basic/components/CarouselWidget/views</code>:</p><div class="informalexample"><pre class="programlisting">&lt;?php $styleOption = isset($this-&gt;context-&gt;options['style'])?$this-&gt;context-&gt;options['style']:''; ?&gt;
+&lt;div id="&lt;?php echo $this-&gt;context-&gt;id ?&gt;" style="&lt;?php echo $styleOption ?&gt;"&gt;
+    &lt;?php
+    echo \yii\bootstrap\Carousel::widget([
+        'id' =&gt; $this-&gt;context-&gt;carouselId,
+        'items' =&gt; $carouselItemsContent
+        
+    ]);
+    ?&gt;
+
+&lt;/div&gt;</pre></div><p>Browsing to <code class="literal">http://hostname/basic/web/test-carousel/index</code>, we will see the carousel widget (only text, but we can also insert some images within).</p></div></div></div>
+<div class="section" title="Creating components"><div class="titlepage"><div><div><h1 class="title"><a id="ch13lvl1sec87"/>Creating components</h1></div></div></div><p>A component <a id="id561" class="indexterm"/>is a reusable object that should contain only logic, and it is callable from every point of the app. In a component, we put all the functions that are usable in more than one place of the app.</p><p>Technically, a component extends <code class="literal">yii\base\Component</code> that implements the property, event and behavior features. We can have two kinds of component: component and application component. The only difference between them is that the second has to be also configured in the configuration file of the app in the <code class="literal">components</code> property and it is available as a property from the <code class="literal">Yii::$app</code> object. Examples of application components are <code class="literal">db</code>, <code class="literal">user</code>, and so on.</p><p>Usually, components are stored in the <code class="literal">components</code> folder starting from the root folder of the project.</p><p>Let's see how to create a simple custom component:</p><div class="informalexample"><pre class="programlisting">namespace app\components;
+ 
+use Yii;
+use yii\base\Component;
+ 
+class MyComponent extends Component
+{
+..
+..
+}</pre></div><p>We can instantiate this component as follows:</p><div class="informalexample"><pre class="programlisting">$myCmp = new \app\components\MyComponent();</pre></div><p>Then, we will have a new instance of the <code class="literal">MyComponent</code> object.</p><p>If we want to render this component into the application component and access to it through <code class="literal">Yii::$app-&gt;myComponent</code>, we must update the configuration file, <code class="literal">web.php</code>, at <code class="literal">basic/config</code>:</p><div class="informalexample"><pre class="programlisting">'components' =&gt; [
+    ..
+    ..
+        'myComponent' =&gt; [
+            'class' =&gt; '\app\components\MyComponent'
+        ],
+]</pre></div><p>At this point, we can call <code class="literal">myComponent</code> using:</p><div class="informalexample"><pre class="programlisting">Yii:$app-&gt;myComponent</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note77"/>Note</h3><p>Remember that an application component is a single and shared instance of the same object.</p></div></div><p>We can make custom<a id="id562" class="indexterm"/> initializations when a component is instantiated by overriding the <code class="literal">init()</code> method of the component.</p><p>A concrete example of the component (or the application component, according to our needs) could be sending an SMS to the SMS gateway for the app.</p><p>The component could be:</p><div class="informalexample"><pre class="programlisting">namespace app\components;
+
+use Yii;
+use yii\base\Component;
+ 
+class SmsGateway extends Component
+{
+    public function send($to, $text)
+    {
+        ..
+        ..
+        ..
+    }
+}</pre></div><p>This example is suitable to use this component as an application component:</p><div class="informalexample"><pre class="programlisting">'components' =&gt; [
+    ..
+    ..
+        'smsgw' =&gt; [
+            'class' =&gt; '\app\components\SmsGateway
+        ],
+]</pre></div><p>That is usable directly from:</p><div class="informalexample"><pre class="programlisting">Yii:$app-&gt;smsgw-&gt;send('+3913456789', 'hello world!');</pre></div><p>Another common example for an application component could be an object to send push notifications to mobile devices, which is made in the same way as the previous SMS gateway object.</p><div class="section" title="Example – creating a component that creates a backup of the MySQL database and sends an e-mail to the administrator"><div class="titlepage"><div><div><h2 class="title"><a id="ch13lvl2sec56"/>Example – creating a component that creates a backup of the MySQL database and sends an e-mail to the administrator</h2></div></div></div><p>This example will show a common task concerning the creation of backup copies for the main database and the alert messages that the administrator receives once complete.</p><p>A backup will be taken using the command line MySQL tool.</p><p>Maintenance <a id="id563" class="indexterm"/>operations should be executed in a console environment since they can be scheduled (every day, every week, two days a week, and so on), and they could cause a web server timeout (usually, if an operation is not finished, the web server will return a timeout error after 30 seconds) if this operation takes longer than the maximum time available. So we will start by creating a console controller in the advanced template that we previously installed.</p><p>Remember that the project root folder for the advanced template is <code class="literal">yiiadv</code>.</p><p>Create a new component in <code class="literal">Maintenance.php</code> at <code class="literal">yiiadv/common/components</code> with this content:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+namespace common\components;
+ 
+use Yii;
+use yii\base\Component;
+ 
+class Maintenance extends Component
+{
+    public function launchBackup($database, $username, $password, $pathDestSqlFile)
+    {
+        $cmd = sprintf('mysqldump -u %s -p%s %s &gt; %s', $username, $password, $database, $pathDestSqlFile);
+        $outputLines = [];
+        exec($cmd, $outputLines, $exitCode);
+
+        return ['cmd' =&gt; $cmd, 'exitCode' =&gt; $exitCode, 'outputLines' =&gt; $outputLines];        
+    }
+}
+?&gt;</pre></div><p>The <code class="literal">launchBackup()</code> method will launch <code class="literal">mysqldump</code> (which should be installed in the system) by passing the username, password, database, and the destination file path where the SQL output of this command is to be stored.</p><p>Then, it will return an array with these values: command, exit code of command, and its possible output text. Now let's create the console controller that we will use to launch the command. We could also launch it from a web controller, for example after clicking on a button.</p><p>Let's create the<a id="id564" class="indexterm"/> console controller in <code class="literal">MaintenanceController.php</code> at <code class="literal">yiiadv/console/controllers</code>:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace console\controllers;
+
+use \yii\console\Controller;
+use \yii\helpers\Console;
+use \common\components\Maintenance;
+
+class MaintenanceController extends Controller
+{
+    public function actionBackupDatabase()
+    {
+        $tmpfname = tempnam(sys_get_temp_dir(), 'FOO');
+        $obj = new Maintenance();
+        $ret = $obj-&gt;launchBackup('username', 'password', 'database_name', $tmpfname);
+
+        if($ret['exitCode'] == 0)
+        {
+            $this-&gt;stdOut("OK\n");        
+            $this-&gt;stdOut(sprintf("Backup successfully stored in: %s\n", $tmpfname));        
+        }
+        else
+        {
+            $this-&gt;stdOut("ERR\n");
+        }
+        
+        // equivalent to return 0;
+        return $ret['exitCode'];
+    }
+    
+}
+
+?&gt;</pre></div><p>Let's make some considerations:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">We could set the <code class="literal">launchBackup()</code> method of the maintenance component as static by avoiding to create an instance of the object; however, if we keep it nonstatic, we could also use it as application component. Otherwise, if we mark the method as static, and then use it as application component when calling the static method <code class="literal">launchBackup()</code> from the object, we will receive a warning from PHP.</li><li class="listitem" style="list-style-type: disc">We could move the file creation inside the <code class="literal">launchBackup()</code> method because in this case it is a temporary file, but generally we could use a specific file path.</li><li class="listitem" style="list-style-type: disc">We could avoid passing database info and get it from Yii parameters, if we store them in the parameters file.</li></ul></div><p>A more complete<a id="id565" class="indexterm"/> action is to back up and send an e-mail to the administrator, containing the backup result and eventually, if needed, also the backup file:</p><div class="informalexample"><pre class="programlisting">    public function actionBackupDatabaseAndSendEmail()
+    {
+        $tmpfname = tempnam(sys_get_temp_dir(), 'FOO'); // good
+        $obj = new Maintenance();
+        $ret = $obj-&gt;launchBackup('username', 'password', 'database_name', $tmpfname);
+
+        $emailAttachment = null;
+        if($ret['exitCode'] == 0)
+        {
+            $this-&gt;stdOut("OK\n");        
+            $this-&gt;stdOut(sprintf("Backup successfully stored in: %s\n", $tmpfname));
+            
+            $textEmail = 'Backup database successful! Find it in attachment';
+            $emailAttachment = $tmpfname;
+        }
+        else
+        {
+            $this-&gt;stdOut("ERR\n");
+                    
+            $textEmail = 'Error in backup database! Check it!';
+        }
+        
+        $emailMsg = Yii::$app-&gt;mailer-&gt;compose()
+            -&gt;setFrom('from@example.com')
+            -&gt;setTo('to@example.com')
+            -&gt;setSubject('Backup database')
+            -&gt;setTextBody($textEmail);
+            
+        if($emailAttachment!=null) $emailMsg-&gt;attach($emailAttachment, ['fileName' =&gt; 'backup_db.sql']);
+        $emailMsg-&gt;send();            
+        
+        // equivalent to return 0;
+        return $ret['exitCode'];
+    }</pre></div></div></div>
+<div class="section" title="Creating modules"><div class="titlepage"><div><div><h1 class="title"><a id="ch13lvl1sec88"/>Creating modules</h1></div></div></div><p>A module is practically an <a id="id566" class="indexterm"/>application inside the main application. In fact, it is organized as a directory that is called the base path of the module. Within the directory, there are folders containing its controllers, models, views, and other code, just like in an application.</p><p>Follow the typical structure of a module:</p><div class="informalexample"><pre class="programlisting">myCustomModule/
+    Module.php                   the module class file
+    controllers/                 containing controller class files
+        DefaultController.php    the default controller class file
+    models/                      containing model class files
+    views/                       containing controller view and layout files
+        layouts/                 containing layout view files
+        default/                 containing view files for DefaultController
+            index.php            the index view file</pre></div><p>The <code class="literal">module</code> class file is instanced when a module is being accessed and it is used to share data and components for code, such as application instances.</p><p>The module class file has these characteristics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">It is by default named <code class="literal">Module.php</code></li><li class="listitem" style="list-style-type: disc">It is instanced once during the code execution</li><li class="listitem" style="list-style-type: disc">It is located directly under the module's base path</li><li class="listitem" style="list-style-type: disc">It extends from <code class="literal">yii\base\Module</code></li></ul></div><p>Let's look at an example of a module class for <code class="literal">myCustomModule</code> (under the <code class="literal">app\modules\myCustomModule</code> namespace):</p><div class="informalexample"><pre class="programlisting">namespace app\modules\myCustomModule;
+
+class Module extends \yii\base\Module
+{
+    public function init()
+    {
+        parent::init();
+
+        $this-&gt;params['foo'] = 'bar';
+        // ...  other initialization code ...
+    }
+}</pre></div><p>As a standard application, a module can have its own configuration based on a config file that has the same contents of a standard application:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+return [
+    'components' =&gt; [
+        // list of component configurations
+    ],
+    'params' =&gt; [
+        // list of parameters
+    ],
+  ..
+  ..
+  ..
+];</pre></div><p>We load this in the <code class="literal">init()</code> method of the module:</p><div class="informalexample"><pre class="programlisting">public function init()
+{
+    parent::init();
+    // initialize the module with the configuration loaded from config.php
+    \Yii::configure($this, require(__DIR__ . '/config.php'));
+}</pre></div><p>Then, we create and use<a id="id567" class="indexterm"/> controllers, models, and views in the same way we do with a normal application.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note78"/>Note</h3><p>We always have to take care to specify the right namespace at the top of every file.</p></div></div><p>Finally, to use a module in an application, we simply configure the application by listing the module in the module's property of the application. The following code in the application configuration uses the forum module:</p><div class="informalexample"><pre class="programlisting">[
+    'modules' =&gt; [
+        'myCustomModule' =&gt; [
+            'class' =&gt; 'app\modules\myCustomModule\Module',
+            // ... other configurations for the module ...
+        ],
+    ],
+]</pre></div></div>
+<div class="section" title="Generating an API documentation"><div class="titlepage"><div><div><h1 class="title"><a id="ch13lvl1sec89"/>Generating an API documentation</h1></div></div></div><p>Documentation<a id="id568" class="indexterm"/> is definitively <a id="id569" class="indexterm"/>one of the most important aspects of an app, since it provides information about its flows and structures. Unfortunately, it is often omitted due to lack of time.</p><p>Yii give us a powerful tool to automatically generate a pretty documentation. Basically, it uses all the documentation comments present in the app, those starting with <code class="literal">/**</code> instead of the classic <code class="literal">/*</code>.</p><p>Therefore, we have the advantage that comments in the code are used to produce a complete documentation.</p><p>Inside these comments, there are few keywords that are usable according to the context—file, class, or function/method.</p><p>In case of a file, the most common keywords to put on top are:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">@link url</code>, where <code class="literal">url</code> is the reference URL linked to the file</li><li class="listitem" style="list-style-type: disc"><code class="literal">@copyright text</code>, where text is the content of copyright</li><li class="listitem" style="list-style-type: disc"><code class="literal">@license url</code>, where <code class="literal">url</code> is the reference to license content</li></ul></div><p>In case of a class, the most common keywords to put on top are:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">@author name</code>, where name is the name of the author</li><li class="listitem" style="list-style-type: disc"><code class="literal">@since version</code>, where version is the version of the project in which this class has been included</li></ul></div><p>In case of a function/method, the most common keywords to put on top are:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">@param type name</code>, where type is the type of parameter and name is the name of the parameter passed as an argument of the function</li><li class="listitem" style="list-style-type: disc"><code class="literal">@return type</code>, where type is the returned type</li><li class="listitem" style="list-style-type: disc"><code class="literal">@throws class</code>, where class is the exception class thrown by the exception</li></ul></div><p>Besides API documentation, Yii provides tools to create pretty guide files that are in the <code class="literal">.md</code> format (typical of GitHub). It is easy to find information on formatting a <code class="literal">.md</code> file by surfing the Internet.</p><div class="section" title="Example – using an API documentation to generate a doc of app and services"><div class="titlepage"><div><div><h2 class="title"><a id="ch13lvl2sec57"/>Example – using an API documentation to generate a doc of app and services</h2></div></div></div><p>Let's now see which<a id="id570" class="indexterm"/> commands automatically produce a documentation from the Yii app.</p><p>There are two kinds of documentation:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">API documentation, which is a reference of each <code class="literal">.php</code> file in the project, completed with doc comments referred to a single file, class, or function</li><li class="listitem" style="list-style-type: disc">Guide, which is a pretty manual for the app, created using the <code class="literal">.md</code> files that Yii renders in pretty <code class="literal">.html</code> files</li></ul></div><p>The first step is to install <code class="literal">api-doc</code>, if it is not already present.</p><p>Point to the project root folder and launch this command:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ php composer.phar require --prefer-dist yiisoft/yii2-apidoc</strong></span>
+</pre></div><p>This will install the <code class="literal">yii2-apidoc</code> extension.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note79"/>Note</h3><p>If this command is not properly complete, launch also a Composer update as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ php composer.phar update</strong></span>
+</pre></div></div></div><p>Now we can launch the command to produce an API documentation starting from the project root folder:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ vendor/bin/apidoc api ./ ../app-doc</strong></span>
+</pre></div><p>The parameters are as follows:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The first parameter, <code class="literal">api</code>, identifies the command to execute</li><li class="listitem" style="list-style-type: disc">The second parameter, <code class="literal">./</code>, identifies the path of the source files to scan</li><li class="listitem" style="list-style-type: disc">The third parameter, <code class="literal">../app-doc</code>, identifies the destination folder of the created documentation</li></ul></div><p>After launching the command, going to the <code class="literal">../app-doc</code> folder on a browser will show us the API documentation created by the framework.</p><p>When we make any changes in the source file, it is necessary to relaunch the command to update the API documentation. The second kind of documentation is the guide, a set of <code class="literal">.html</code> files produced by <code class="literal">.md</code> files.</p><p>So we need to create a folder, starting from the project root folder, for example, the folder named <code class="literal">guide</code>, where we will put all the <code class="literal">.md</code> files that we want to convert into <code class="literal">.html</code> pretty files from the command <code class="literal">guide</code>.</p><p>Now we are ready to launch the command to create our guide, which is totally similar to the previously made API command:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ vendor/bin/apidoc guide ./guide ../app-doc</strong></span>
+</pre></div><p>This command will convert all the <code class="literal">.md</code> files present in the <code class="literal">./guide</code> folder into <code class="literal">.html</code> files, storing them in the <code class="literal">../app-doc</code> folder (together with the API documentation files).</p><p>Let's make a concrete<a id="id571" class="indexterm"/> example. Starting with the basic template project, create a new controller named <code class="literal">TestDocController</code> in <code class="literal">TestDocController.php</code> at <code class="literal">basic/controllers</code>:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+/**
+ * This file contains a controller to demonstrate api documentation tool.  
+ *
+ * @link http://www.example.com/
+ * @copyright Copyright (c) 2015
+ * @license http://www.example.com/license/
+ */
+
+namespace app\controllers;
+
+use Yii;
+use yii\web\Controller;
+
+
+/**
+ * This is a controller class to demonstrate api documentation tool.  
+ *
+ * @author Fabrizio Caldarelli
+ * @since 1.0
+ */
+class TestDocController extends Controller
+{
+    /**
+     * Make sum of the operands
+     *
+     * @param float $a first operand
+     * @param float $b second operand
+     * @return float sum of parameters
+     * @author  
+     */
+    public function makeSum(float $a, float $b)
+    {
+        return $a+$b;
+    }
+}</pre></div><p>Now open a shell console on host, and from the project root folder, launch the command to generate the API documentation:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$  vendor/bin/apidoc api ./ ../app-doc</strong></span>
+</pre></div><p>This will create the<a id="id572" class="indexterm"/> documentation for all files starting with the root folder (<code class="literal">./</code>) and storing the HTML result files in <code class="literal">../app-doc</code>.</p><p>Now, on your browser, go to <code class="literal">http://hostname/app-doc</code> and we will display the API documentation index page. Search for <code class="literal">TestDocController.php</code> in the side menu and click on it. This should be the output:</p><div class="mediaobject"><img src="graphics/B04656_13_01.jpg" alt="Example – using an API documentation to generate a doc of app and services"/><div class="caption"><p>TestDocController API documentation</p></div></div><p>Now, we want to demonstrate the second kind of documentation—guide documentation.</p><p>Create a folder from the project root folder named <code class="literal">app-guide</code>. In it, put a new file named <code class="literal">test-doc-controller.md</code> with the following content:</p><div class="informalexample"><pre class="programlisting">## TestDoc Controller
+
+This is the guide for TestDoc Controller.
+
+## Functionalities
+
+It is provided makeSum function, that makes a sum of two values passed as parameter
+
+```
+$a = 10;
+$b = 20;
+$c = $this-&gt;makeSum(float $a, float $b)     // $c = 30;
+```</pre></div><p>Go to the shell console<a id="id573" class="indexterm"/> of the hosting and from the project root folder, launch the command to generate the guide documentation:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$  vendor/bin/apidoc guide ./app-guide ../app-doc</strong></span>
+</pre></div><p>This will create the guide documentation for all <code class="literal">.md</code> files in the <code class="literal">./app-guide</code> folder and will store <code class="literal">.html</code> results in <code class="literal">../app-doc</code>.</p><p>On your browser go to <code class="literal">http://hostname/app-doc/guide-test-doc-controller.html</code>, you should see the following screen:</p><div class="mediaobject"><img src="graphics/B04656_13_02.jpg" alt="Example – using an API documentation to generate a doc of app and services"/><div class="caption"><p>TestDocController guide documentation</p></div></div></div></div>
+<div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch13lvl1sec90"/>Summary</h1></div></div></div><p>In this final chapter, you learned how to make reusable and easily maintainable code, using widgets and components. Talking about reusable view code (HTML, JavaScript, and CSS), we introduced widgets, defined and focused on the benefits they add to the project. Next, you learned to build and use them, and finally, we did a practical example by building a new widget from scratch. Talking of reusable logic code, we discovered its components, distinguished between components and application components, and also did some practical examples by building useful components for real-life problems.</p><p>Then we mastered the documentation generator, specifically API and guide documentation. You learned how to launch and use the tools provided by Yii. Finally, we built a controller class to explain, with a practical example, how to build the API reference and the guide reference for that controller.</p></div></body></html>

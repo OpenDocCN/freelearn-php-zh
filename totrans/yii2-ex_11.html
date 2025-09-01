@@ -1,0 +1,692 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;11.&#xA0;Creating an API for Use in a Mobile App"><div class="titlepage"><div><div><h1 class="title"><a id="ch11"/>Chapter 11. Creating an API for Use in a Mobile App</h1></div></div></div><p>In this chapter, you will learn how to create RESTful Web Services with the new integrated management of Yii 2.</p><p>You will learn how to create a new application to manage the <code class="literal">api</code> environment and how to create a controller using the default base classes provided by the framework.</p><p>Then, we will cover authentication methods and you'll learn how to customize the response output format. We'll also discuss:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Configuring the REST app in the advanced template</li><li class="listitem" style="list-style-type: disc">Creating a controller:<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">For example: creating a controller to manage rooms</li></ul></div></li><li class="listitem" style="list-style-type: disc">Authentication:<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">For example: using authentication to get a customers list</li></ul></div></li><li class="listitem" style="list-style-type: disc">New controller actions:<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">For example: getting a rooms list for a reservation</li></ul></div></li><li class="listitem" style="list-style-type: disc">Customizing authentication and the response<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">For example: status response node in received data</li></ul></div></li><li class="listitem" style="list-style-type: disc">Other forms of export – RSS:<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">For example: creating RSS with a list of available rooms</li></ul></div></li></ul></div><div class="section" title="Configuring a REST app in the advanced template"><div class="titlepage"><div><div><h1 class="title"><a id="ch11lvl1sec74"/>Configuring a REST app in the advanced template</h1></div></div></div><p>Before <a id="id462" class="indexterm"/>using <a id="id463" class="indexterm"/>the advanced template, it is advisable to configure RESTful Web Services, since, as you saw in previous chapters, this configuration allows you to easily add a new application in the same project.</p><p>Yii provides many built-in features to create RESTful Web Services and it reduces the code needed to implement it that is always structured with models, controllers, and actions.</p><p>These are its main features:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Default actions (<code class="literal">index</code>, <code class="literal">view</code>, <code class="literal">create</code>, <code class="literal">update</code>, <code class="literal">delete</code>, and <code class="literal">options</code>) in <code class="literal">yii\rest\ActiveController</code>, which is the base controller suggested to override</li><li class="listitem" style="list-style-type: disc">A response format selectable from input</li><li class="listitem" style="list-style-type: disc">Customized authentication and authorization</li><li class="listitem" style="list-style-type: disc">Caching and rate limiting</li></ul></div><p>Yii applies<a id="id464" class="indexterm"/> well-established knowledge <a id="id465" class="indexterm"/>about RESTful Web Services creation, such as how to present metadata in the response output. So, it is advisable that we follow the framework guidelines as far as possible; in this way, we will write commonly manageable REST APIs.</p><p>The first thing to do with an advanced template is to create a new application in the same project, for example renaming it <code class="literal">api</code>. Yii has not got a built-in functionality to create a new application, but it only takes a few steps to complete this task.</p><p>Starting from the root of our project, we will create, as well as for other applications (<code class="literal">common</code>, <code class="literal">backend</code>, <code class="literal">frontend</code>, and <code class="literal">console</code>), a new folder named <code class="literal">api</code> with the following command:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ mkdir api</strong></span>
+</pre></div><p>Now, enter in <code class="literal">api</code> and let's create these five subfolders:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ mkdir config</strong></span>
+<span class="strong"><strong>$ mkdir web</strong></span>
+<span class="strong"><strong>$ mkdir controllers</strong></span>
+<span class="strong"><strong>$ mkdir runtime</strong></span>
+</pre></div><p>We must only create files for the first two folders, and the others will be left temporarily empty.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note69"/>Note</h3><p>Another possible solution would be to copy complete content from other applications, such as <code class="literal">frontend</code> or <code class="literal">backend</code>, to the new application destination folder and then to clear content  that is not useful.</p></div></div><p>In the <code class="literal">config</code> folder, we must create two files: <code class="literal">main.php</code> and <code class="literal">params.php</code>. The second file, <code class="literal">params.php</code>, will be<a id="id466" class="indexterm"/> temporarily empty as we have not got any parameters to store in it, such as:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+return [
+];</pre></div><p>The <a id="id467" class="indexterm"/>content of <code class="literal">api/config/main.php</code> will, instead, be:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+$params = array_merge(
+    require(__DIR__ . '/../../common/config/params.php'),
+    require(__DIR__ . '/../../common/config/params-local.php'),
+    require(__DIR__ . '/params.php')
+);
+
+return [
+    'id' =&gt; 'app-api',
+    'basePath' =&gt; dirname(__DIR__),
+    'controllerNamespace' =&gt; 'api\controllers',
+    'bootstrap' =&gt; ['log'],
+    'modules' =&gt; [],
+    
+    'components' =&gt; [
+        
+        'urlManager' =&gt; [
+            'enablePrettyUrl' =&gt; true,
+            'showScriptName' =&gt; false,
+        ],        
+        
+        'user' =&gt; [
+            'identityClass' =&gt; '\common\models\User',
+            'enableSession' =&gt; false,
+            'loginUrl' =&gt; null
+        ],
+        
+        'log' =&gt; [
+            'traceLevel' =&gt; YII_DEBUG ? 3 : 0,
+            'targets' =&gt; [
+                [
+                    'class' =&gt; 'yii\log\FileTarget',
+                    'levels' =&gt; ['error', 'warning'],
+                ],
+            ],
+        ],
+
+    ],
+    'params' =&gt; $params,
+];</pre></div><p>Then, we will create an <code class="literal">index.php</code> file in the <code class="literal">web</code> folder with the following content:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+defined('YII_DEBUG') or define('YII_DEBUG', true);
+defined('YII_ENV') or define('YII_ENV', 'dev');
+
+require(__DIR__ . '/../../vendor/autoload.php');
+require(__DIR__ . '/../../vendor/yiisoft/yii2/Yii.php');
+require(__DIR__ . '/../../common/config/bootstrap.php');
+
+$config = yii\helpers\ArrayHelper::merge(
+    require(__DIR__ . '/../../common/config/main.php'),
+    require(__DIR__ . '/../../common/config/main-local.php'),
+    require(__DIR__ . '/../config/main.php')
+);
+
+$application = new yii\web\Application($config);
+$application-&gt;run();</pre></div><p>Still in <a id="id468" class="indexterm"/>the <code class="literal">web</code> folder, we will create the <code class="literal">.htaccess</code> file to <a id="id469" class="indexterm"/>handle a pretty URL:</p><div class="informalexample"><pre class="programlisting">RewriteEngine on
+
+# If a directory or a file exists, use it directly
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+# Otherwise forward it to index.php
+RewriteRule . index.php</pre></div><p>Finally, we have to add a new alias in <code class="literal">common/config/bootstrap </code>regarding the <code class="literal">api</code> application:</p><div class="informalexample"><pre class="programlisting">Yii::setAlias('api', dirname(dirname(__DIR__)) . '/api');</pre></div><p>Our job is complete, as we finally have a brand new application from scratch.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note70"/>Note</h3><p>Be sure to make the <code class="literal">runtime</code> folder writable, since the framework will write in it runtime data such as log files.</p></div></div></div></div>
+<div class="section" title="Creating a controller"><div class="titlepage"><div><div><h1 class="title"><a id="ch11lvl1sec75"/>Creating a controller</h1></div></div></div><p>Yii provides two<a id="id470" class="indexterm"/> base classes: <code class="literal">\yii\rest\Controller</code> and <code class="literal">\yii\rest\ActiveController</code> that we can extend when we are creating a new controller for RESTful web services.</p><p>Both of these classes contain the following useful common features, in execution order:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">The response output as required from the request (content negotiator).</li><li class="listitem">The HTTP method validation.</li><li class="listitem">Authentication.</li><li class="listitem">Rate limiting.</li></ol></div><p>The second class <code class="literal">\yii\rest\ActiveController</code> adds more functionalities through ActiveRecord, such as handling user authorization and a set of already existing actions: <code class="literal">index</code>, <code class="literal">view</code>, <code class="literal">create</code>, <code class="literal">update</code>, <code class="literal">delete</code>, and <code class="literal">options</code>.</p><p>We will see that Yii provides all the necessary information to get the response status and content through the body and HTTP header.</p><p>Let's create a controller to extend <code class="literal">\yii\rest\Controller</code> or rather without ActiveRecord. Create a new controller in <code class="literal">api/controllers/TestRestController.php</code>:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+namespace api\controllers;
+
+use yii\rest\Controller;
+
+class TestRestController extends Controller
+{
+    private function dataList()
+    {
+        return [
+            [ 'id' =&gt; 1, 'name' =&gt; 'Albert', 'surname' =&gt; 'Einstein' ],
+            [ 'id' =&gt; 2, 'name' =&gt; 'Enzo', 'surname' =&gt; 'Ferrari' ],
+            [ 'id' =&gt; 4, 'name' =&gt; 'Mario', 'surname' =&gt; 'Bros' ]
+        ];
+    }
+    
+    
+    public function actionIndex()
+    {
+            return $this-&gt;dataList();
+    }
+}</pre></div><p>In the preceding code, we have a method <code class="literal">dataList</code>, which returns an array of objects, and an <code class="literal">actionIndex</code> method that provides the <code class="literal">index</code> action for <code class="literal">TestRestController</code> and returns <a id="id471" class="indexterm"/>that list.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note71"/>Note</h3><p>Many examples can be executed using a web browser (requested by employing the GET verb). Generally, however, we need a specific tool to test RESTful web services, such as <code class="literal">Postman</code> for example, an excellent extension for the Chrome browser or the <code class="literal">curl</code> command for advanced users.</p></div></div><p>The first feature of <code class="literal">\yii\rest\Controller</code> is to arrange the response output format, dynamically based on the request, which is also called <a id="id472" class="indexterm"/><span class="strong"><strong>content negotiation</strong></span>.</p><p>Indeed, we can try to launch this request through <code class="literal">http://hostname/yiiadv/api/web/test-rest/index</code> in our browser, or through specific tools using the GET verb and the <code class="literal">Accept</code> HTTP header set to <code class="literal">application/xml</code>, or by using <code class="literal">curl</code>, as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ curl -H "Accept: application/xml" http://hostname/yiiadv/api/web/test-rest/index</strong></span>
+<span class="strong"><strong>&lt;?xml version="1.0" encoding="UTF-8"?&gt;</strong></span>
+<span class="strong"><strong>&lt;response&gt;&lt;item&gt;&lt;id&gt;1&lt;/id&gt;&lt;name&gt;Albert&lt;/name&gt;&lt;surname&gt;Einstein&lt;/surname&gt;&lt;/item&gt;&lt;item&gt;&lt;id&gt;2&lt;/id&gt;&lt;name&gt;Enzo&lt;/name&gt;&lt;surname&gt;Ferrari&lt;/surname&gt;&lt;/item&gt;&lt;item&gt;&lt;id&gt;4&lt;/id&gt;&lt;name&gt;Mario&lt;/name&gt;&lt;surname&gt;Bros&lt;/surname&gt;&lt;/item&gt;&lt;/response&gt;</strong></span>
+</pre></div><p>In these cases, we will get a response based on the XML data:</p><div class="mediaobject"><img src="graphics/B04656_11_01.jpg" alt="Creating a controller"/><div class="caption"><p>The XML data response to test-rest/index</p></div></div><p>However, if we change the <code class="literal">Accept</code> header to <code class="literal">application/json</code>, we will get a response based on the JSON data:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ curl -H "Accept: application/json" http://hostname/yiiadv/api/web/test-rest/index</strong></span>
+
+<span class="strong"><strong>[{"id":1,"name":"Albert","surname":"Einstein"},{"id":2,"name":"Enzo","surname":"Ferrari"},{"id":4,"name":"Mario","surname":"Bros"}]</strong></span>
+</pre></div><p>In these cases, we will get a response based on the JSON data:</p><div class="mediaobject"><img src="graphics/B04656_11_02.jpg" alt="Creating a controller"/><div class="caption"><p>The JSON data response to test-rest/index</p></div></div><p>The same <a id="id473" class="indexterm"/>data will be rendered in different ways according to the <code class="literal">Accept</code> header sent from the client.</p><p>The second feature, HTTP method validation, allows you to specify which verbs are available for a resource. Verbs are defined in the <code class="literal">behaviors()</code> method, which must be extended to modify this setting:</p><div class="informalexample"><pre class="programlisting">    public function behaviors()
+    {
+        $behaviors = parent::behaviors();
+        $behaviors['verbs'] = [
+                'class' =&gt; \yii\filters\VerbFilter::className(),
+                'actions' =&gt; [
+                    'index'  =&gt; ['get'],
+                ],
+        ];
+        return $behaviors;
+    }</pre></div><p>In this case, we only set the GET verb to the <code class="literal">index</code> action, because keys of the <code class="literal">actions</code> attribute of <code class="literal">behaviors['verbs']</code> are the actions and the value is an array containing supported HTTP methods.</p><p>If we launch <code class="literal">http://hostname/yiiadv/api/web/test-rest/index</code> using the GET verb (as a browser request), we will continue to display the result. However, if we change the HTTP method to the POST verb, for example, we will get an exception error:</p><div class="mediaobject"><img src="graphics/B04656_11_03.jpg" alt="Creating a controller"/><div class="caption"><p>An exception error using the wrong verb</p></div></div><p>This is <a id="id474" class="indexterm"/>because only the GET verb is supported by the <code class="literal">index</code> action.</p><p>In the next sections, we will explain the third and fourth features, authentication and rate limiting.</p><div class="section" title="Example – creating a controller to manage rooms"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec48"/>Example – creating a controller to manage rooms</h2></div></div></div><p>With this example, we <a id="id475" class="indexterm"/>will apply the concepts dealt with in the previous chapter, in this case using <code class="literal">\yii\rest\ActiveController</code> as the base class instead of <code class="literal">\yii\rest\Controller</code>, since we are going to employ an ActiveRecord class to manipulate data.</p><p>Create a new controller in <code class="literal">api/controllers/RoomsController.php</code>:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+namespace api\controllers;
+
+use yii\rest\ActiveController;
+
+class RoomsController extends ActiveController
+{
+    public $modelClass = 'common\models\Room';
+}</pre></div><p>This controller implicitly contains these actions:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">actionIndex</code> that returns a list of models, accessible only with GET and HEAD HTTP methods</li><li class="listitem" style="list-style-type: disc"><code class="literal">actionView</code> that returns details about the mode, accessible only with the GET and HEAD HTTP methods by passing the <code class="literal">id</code> parameter</li><li class="listitem" style="list-style-type: disc"><code class="literal">actionCreate</code> that creates a new model, accessible only with the POST HTTP methods</li><li class="listitem" style="list-style-type: disc"><code class="literal">actionUpdate</code> that updates an existing model, accessible only with the PUT and PATCH HTTP methods</li><li class="listitem" style="list-style-type: disc"><code class="literal">actionDelete</code> that deletes an existing model, accessible only with the DELETE HTTP method</li><li class="listitem" style="list-style-type: disc"><code class="literal">actionOptions</code> that returns the allowed HTTP methods</li></ul></div><p>Now, let's try to <a id="id476" class="indexterm"/>launch all these methods.</p><p>Launch <code class="literal">actionIndex</code> at <code class="literal">http://hostname/yiiadv/api/web/rooms</code> using the GET method:</p><div class="informalexample"><pre class="programlisting">[
+{
+    "id": 1,
+    "floor": 1,
+    "room_number": 101,
+    "has_conditioner": 1,
+    "has_tv": 0,
+    "has_phone": 1,
+    "available_from": "2015-05-20",
+    "price_per_day": "120.00",
+    "description": "description 1"
+
+},
+
+    {
+        "id": 2,
+        "floor": 2,
+        "room_number": 202,
+        "has_conditioner": 0,
+        "has_tv": 1,
+        "has_phone": 1,
+        "available_from": "2015-05-30",
+        "price_per_day": "118.00",
+        "description": "description 2"
+    }
+]</pre></div><p>We will get all the records in the database as an array of the JSON object and HTTP header, along with the successful status code and pagination details:</p><div class="informalexample"><pre class="programlisting">X-Pagination-Current-Page: 1
+X-Pagination-Page-Count: 1
+X-Pagination-Per-Page: 20
+X-Pagination-Total-Count: 2</pre></div><p>If we launch <a id="id477" class="indexterm"/>the same URL using the HEAD HTTP method, we will only get the HTTP HEADER response without a body, so we will get only the pagination information.</p><p>Finally, if we launch the same URL with an unsupported HTTP method, for example the PUT method, we will get two important HTTP headers:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The <code class="literal">status code</code> header set to <code class="literal">405 Method Not Allowed</code></li><li class="listitem" style="list-style-type: disc">The <code class="literal">Allow</code> header set to <code class="literal">GET, HEAD</code></li></ul></div><p>The <code class="literal">status code</code> header says that a method is not supported, and the <code class="literal">Allow</code> header returns a list of supported HTTP methods for that action.</p><p>Now, launch <code class="literal">actionView</code> on <code class="literal">http://hostname/yiiadv/api/web/rooms/view?id=1</code> using the GET method:</p><div class="informalexample"><pre class="programlisting">{
+  "id": 1,
+  "floor": 1,
+  "room_number": 101,
+  "has_conditioner": 1,
+  "has_tv": 0,
+  "has_phone": 1,
+  "available_from": "2015-05-20",
+  "price_per_day": "120.00",
+  "description": "description 1"
+}</pre></div><p>If we try to launch a nonexistent ID, for example <code class="literal">http://hostname/yiiadv/api/web/rooms/view?id=100</code>, using the GET method, we will get this body response:</p><div class="informalexample"><pre class="programlisting">{
+  "name": "Not Found",
+  "message": "Object not found: 100",
+  "code": 0,
+  "status": 404,
+  "type": "yii\\\\web\\\\NotFoundHttpException"
+}</pre></div><p>The HTTP <code class="literal">status code</code> header will be set to <code class="literal">404 Not Found</code> to specify that the requested item (<code class="literal">id=100</code>) does not exist. Using only the HEAD HTTP method, we will get information from the HTTP <code class="literal">status code</code> set to <code class="literal">404</code>. The <code class="literal">Create</code> and <code class="literal">Update</code> actions require that the client sends body content of the object to be created or updated.</p><p>By default, Yii recognizes only the <code class="literal">application/x-www-form-urlencoded</code> and <code class="literal">multipart/form-data</code> input formats. In order to enable the JSON input format, we need to configure the <code class="literal">parsers</code> property of the request's application component in the <code class="literal">api/config/main.php</code> file:</p><div class="informalexample"><pre class="programlisting">'request' =&gt; [
+    'parsers' =&gt; [
+        'application/json' =&gt; 'yii\web\JsonParser',
+    ]
+]</pre></div><p>After<a id="id478" class="indexterm"/> configuring the JSON input parser, we can call <code class="literal">http://hostname/yiiadv/api/web/rooms/create</code> using the POST HTTP method to create a new room and pass, for example, this JSON:</p><div class="informalexample"><pre class="programlisting">    {
+        "floor": 99,
+        "room_number": 999,
+        "has_conditioner": 1,
+        "has_tv": 1,
+        "has_phone": 1,
+        "available_from": "2015-12-30",
+        "price_per_day": "48.00",
+        "description": "description room 999"
+    }</pre></div><p>If no error occurred, we will get:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>201 Created as HTTP Header Status Code</strong></span>
+<span class="strong"><strong>Object just created as body content</strong></span>
+</pre></div><p>If we are missing some required fields and there are validation errors, we will get:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>422 Data Validation Failed</strong></span>
+<span class="strong"><strong>An array of field-message to indicate which validation errors occurred</strong></span>
+</pre></div><p>The same thing needs to be done for an update action, in this case, however, we will call <code class="literal">http://hostname/yiiadv/api/web/rooms/update</code> and pass the <code class="literal">id</code> URL parameter using the PUT or PATCH HTTP method. In this case, only the HTTP header status code <code class="literal">200 OK</code> will be a successful response and the update object will be returned as body content.</p><p>Finally, <code class="literal">actionDelete</code> is used by calling <code class="literal">http://hostname/yiiadv/api/web/rooms/delete</code>, by passing the <code class="literal">id</code> URL parameter, and using the DELETE HTTP method. A successful execution will return <code class="literal">204 No Content</code> as the HTTP status code; otherwise, it will be <code class="literal">404 Not Found</code>.</p></div></div>
+<div class="section" title="Authentication"><div class="titlepage"><div><div><h1 class="title"><a id="ch11lvl1sec76"/>Authentication</h1></div></div></div><p>There are three kinds of<a id="id479" class="indexterm"/> authentication:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>HTTP Basic Auth</strong></span> (the <code class="literal">HttpBasicAuth</code> class): This method uses the WWW-Authenticate<a id="id480" class="indexterm"/> HTTP header to send the <a id="id481" class="indexterm"/>username and password for every request</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Query parameter</strong></span> (the <code class="literal">QueryParamAuth</code> class): This method uses an access token passed as <a id="id482" class="indexterm"/>query parameter<a id="id483" class="indexterm"/> in the API URL</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>OAuth 2</strong></span> (the <code class="literal">HttpBearerAuth</code> class): This <a id="id484" class="indexterm"/>method uses an <a id="id485" class="indexterm"/>access token that is obtained by the consumer from an authorization server and sent to the API server via HTTP bearer tokens</li></ul></div><p>Yii supports all the methods mentioned, but we can also easily create a new one.</p><p>To enable <a id="id486" class="indexterm"/>authentication, follow these steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Configure the user application component in the configuration, setting <code class="literal">enableSession</code> to <code class="literal">false</code> in order to make user authentication status not persistent using a session across requests. Next, set <code class="literal">loginUrl</code> to <code class="literal">null</code> to show the HTTP 403 error instead of redirecting it to the login page.</li><li class="listitem">Specify which authentication method we want to use, configuring the <code class="literal">authenticator</code> behavior in API controller classes.</li><li class="listitem">Implement <code class="literal">yii\web\IdentityInterface::findIdentityByAccessToken()</code> in the user identity class.<div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note72"/>Note</h3><p>The first step ensures that REST requests are really stateless, but if you need to persist or store session data, you can skip this step.</p></div></div></li></ol></div><p>Step 1 can be configured in <code class="literal">api/config/main.php</code>:</p><div class="informalexample"><pre class="programlisting">    'components' =&gt; [
+            ...
+        'user' =&gt; [
+            'identityClass' =&gt; 'common\models\User',
+            'enableSession' =&gt; false,
+            'loginUrl' =&gt; null
+        ],
+];</pre></div><p>Step 2 requires that we extend the <code class="literal">behaviors()</code> controller method, specifying a single authenticator:</p><div class="informalexample"><pre class="programlisting">public function behaviors()
+{
+    $behaviors = parent::behaviors();
+    $behaviors['authenticator'] = [
+        'class' =&gt; yii\filters\auth\HttpBasicAuth::className(),
+    ];
+    return $behaviors;
+}</pre></div><p>Or we can do this by specifying multiple authenticators:</p><div class="informalexample"><pre class="programlisting">public function behaviors()
+{
+    $behaviors = parent::behaviors();
+    $behaviors['authenticator'] = [
+        'class' =&gt; yii\filters\auth\CompositeAuth::className(),
+        'authMethods' =&gt; [
+            yii\filters\auth\HttpBasicAuth::className(),
+            yii\filters\auth\HttpBearerAuth::className(),
+            yii\filters\auth\QueryParamAuth::className(),
+        ],
+    ];
+    return $behaviors;
+}</pre></div><p>Finally, step 3<a id="id487" class="indexterm"/> requires the implementation of <code class="literal">findIdentityByAccessToken()</code> of the <code class="literal">identityClass</code> specified in the configuration file.</p><p>In a simple scenario, the access token can be stored in a column of the <code class="literal">User</code> table and then retrieved:</p><div class="informalexample"><pre class="programlisting">    public static function findIdentityByAccessToken($token, $type = null)
+    {
+        return static::findOne(['access_token' =&gt; $token]);
+    }</pre></div><p>At the end of the configuration, every request will try to authenticate the user in the <code class="literal">beforeAction()</code> method of the same controller.</p><p>Now, let's take a look at the first authentication method, <code class="literal">HTTPBasicAuth</code>. This method requires us to set the <code class="literal">auth</code> property to the callable PHP function; if it is not set, the username will be used as the access token passed to the <code class="literal">\yii\web\User::loginByAccessToken()</code> method.</p><p>The basic implementation of the <code class="literal">HttpBasicAuth</code> authentication is:</p><div class="informalexample"><pre class="programlisting">public function behaviors()
+{
+    $behaviors = parent::behaviors();
+    $behaviors['authenticator'] = [
+            'class' =&gt; yii\filters\auth\HttpBasicAuth::className(),
+           'auth' =&gt; function($username, $password) {
+            // return null or identity interface
+    // For example search by username and password
+    return \common\models\User::findOne(['username' =&gt; $username, 'password' =&gt; $password);
+           }
+
+           /*
+           'auth' =&gt; [$this, 'httpBasicAuthHandler'],
+           */
+    ];
+    return $behaviors;
+}
+
+public function httpBasicAuthHandler($username, $password)
+{
+    // For example search by username and password
+    return \common\models\User::findOne(['username' =&gt; $username, 'password' =&gt; $password]);
+}</pre></div><p>The callable PHP function stored by the <code class="literal">auth</code> property can be represented as an inline function, or as an array, whose first value is the object and the second is the function name to be called, by passing <code class="literal">$username</code> and <code class="literal">$password</code> parameters.</p><p>Check how PHP is running through <code class="literal">phpinfo()</code>. If you display CGI/FCGI, then you need to add <code class="literal">SetEnvIf Authorization .+ HTTP_AUTHORIZATION=$0</code> in <code class="literal">.htaccess</code> to use HTTP Auth from PHP.</p><p>The second <a id="id488" class="indexterm"/>authentication method is query parameter, by using the <code class="literal">QueryParamAuth</code> class. With this method, a query parameter named <code class="literal">access-token</code> must be passed to the URL. Then, it will call the <code class="literal">\yii\web\user::loginByAccessToken()</code> method, passing <code class="literal">access-token</code> as the first parameter. This function will return an <code class="literal">IdentityInterface</code> or <code class="literal">null</code>.</p><p>The URL parameter name can be changed using <code class="literal">tokenParam</code> in the authentication declaration:</p><div class="informalexample"><pre class="programlisting">public function behaviors()
+{
+    $behaviors = parent::behaviors();
+    $behaviors['authenticator'] = [
+            'class' =&gt; yii\filters\auth\QueryParamAuth::className(),
+           'tokenParam' =&gt; 'myAccessToken'
+    ];
+    return $behaviors;
+}</pre></div><p>With this configuration, the URL must be <code class="literal">http://hostname/url?myAccessToken=...</code>
+</p><p>The last <a id="id489" class="indexterm"/>authentication method, OAuth 2, requires an authorization server from which we will get the bearer token to pass to the REST API server, which is similar to <code class="literal">QueryParamAuth</code>.</p><div class="section" title="Example – using authentication to get a customers list"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec49"/>Example – using authentication to get a customers list</h2></div></div></div><p>In this example, we are <a id="id490" class="indexterm"/>going to authenticate ourselves by<a id="id491" class="indexterm"/> using two methods at the same time: <code class="literal">HTTPBasicAuth</code> and <code class="literal">QueryParamAuth</code>. When using <code class="literal">QueryParamAuth</code> with an access token, we will first call a publically accessible action to get an access token that the user will pass to all the other actions as the query URL parameter.</p><p>We will start by creating a new model from the <code class="literal">Customer</code> database table and putting it into the <code class="literal">common/models</code> folder. Then, we will create a new user in the <code class="literal">User</code> database table using, for example, <code class="literal">foo</code> as the username and <code class="literal">$2a$12$xzGZB29iqBHva4sEYbJeT.pq9g1/VdjoD0S67ciDB30EWSCE18sW6</code> as the password (this is equivalent to the hashed bar text).</p><p>Create a new controller in <code class="literal">api/controllers/CustomersController.php</code> that only extends the <code class="literal">behaviors()</code> method to implement <code class="literal">HTTPBasicAuth</code> and <code class="literal">QueryParamAuth</code>:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+namespace api\controllers;
+
+use yii\rest\ActiveController;
+use yii\filters\auth\CompositeAuth;
+use yii\filters\auth\HttpBasicAuth;
+use yii\filters\auth\QueryParamAuth;
+
+class CustomersController extends ActiveController
+{
+  public $modelClass = 'common\models\Customer';
+
+  public function behaviors()
+  {
+    $behaviors = parent::behaviors();
+
+    $behaviors['authenticator'] = [
+      'class' =&gt; CompositeAuth::className(),
+      'authMethods' =&gt; [
+        [
+          'class' =&gt; HttpBasicAuth::className(),
+          'auth' =&gt; function($username, $password)
+          {
+            $out = null;
+            $user = \common\models\User::findByUsername($username);
+            if($user!=null)
+            {
+              if($user-&gt;validatePassword($password)) $out = $user;
+            }
+            return $out;
+          }
+        ],
+        [
+           'class' =&gt; QueryParamAuth::className(),
+        ]
+      ]
+    ];
+      
+   return $behaviors;
+  }
+}</pre></div><p>In <code class="literal">HTTPBasicAuth</code>, we implement the <code class="literal">auth</code> property inside the configuration array by checking <code class="literal">$username</code> and<a id="id492" class="indexterm"/> then validating the password. If the<a id="id493" class="indexterm"/> username and password match each other, it will return the user found or will otherwise be null.</p><p>
+<code class="literal">QueryParamAuth</code>, instead, does not need any property other than the class, since we will use <code class="literal">access-token</code> as the query parameter name. Nevertheless, to complete this task, we need an action that will return the related user's access token after passing both the username and password.</p><p>For this purpose, we will add the <code class="literal">actionAccessTokenByUser()</code> method, which looks for the user with the <code class="literal">$username</code> and <code class="literal">$password</code> parameters passed. If the user already exists, its <code class="literal">access_token</code> property will be updated with a random string, so every time we call this action, <code class="literal">access_token</code> will change and the previous one will be cancelled:</p><div class="informalexample"><pre class="programlisting">    public function actionAccessTokenByUser($username, $passwordHash)
+    {
+        $accessToken = null;
+        
+        $user = \common\models\User::findOne(['username' =&gt; $username, 'password_hash' =&gt; $passwordHash]);
+        if($user!=null)
+        {
+            $user-&gt;access_token = Yii::$app-&gt;security-&gt;generateRandomString();
+            $user-&gt;save();
+            $accessToken = $user-&gt;access_token;
+        }        
+        return [ 'access-token' =&gt; $accessToken ];
+    }</pre></div><p>Finally, to test <code class="literal">HTTPBasicAuth</code>, we need to pass the WWW-Authentication header by calling the <code class="literal">http://hostname/yiiadv/api/web/customers/index</code> URL.</p><p>If we want to<a id="id494" class="indexterm"/> use <code class="literal">QueryParamAuth</code>, we need to:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Get <code class="literal">access-token</code> returned from <code class="literal">http://hostname/yiiadv/api/web/customers/access-token-by-user</code>, by<a id="id495" class="indexterm"/> passing the username and hashed password</li><li class="listitem" style="list-style-type: disc">Call <code class="literal">http://hostname/yiiadv/api/web/customers/index?access-token</code>, by passing the access-token property value received from the previous request</li></ul></div><p>
+<code class="literal">QueryParamAuth</code> calls the <code class="literal">findIdentityByAccessToken()</code> function of <code class="literal">IdentityInterfaces</code>(the user mode ). So, check that the method is implemented, and if it's not, implement it as follows:</p><div class="informalexample"><pre class="programlisting">public static function findIdentityByAccessToken($token, $type = null)
+    {
+    return User::findOne(['access_token' =&gt; $token]);
+    }</pre></div><p>Pay attention, as this way of using access tokens allows the use of the REST API with the same credentials for only one client at a time. This is because any time an <code class="literal">access-token-by-user</code> is called, a new <code class="literal">access-token</code> will be created. Therefore, it should be created a relation one-to-many between users and <code class="literal">access-token</code> in order to provide multiple clients with <a id="id496" class="indexterm"/>access using the same username/password <a id="id497" class="indexterm"/>credentials.</p></div></div>
+<div class="section" title="New controller action"><div class="titlepage"><div><div><h1 class="title"><a id="ch11lvl1sec77"/>New controller action</h1></div></div></div><p>It is very simple to add new actions to the<a id="id498" class="indexterm"/> REST API controller. We only need to<a id="id499" class="indexterm"/> remember three differences in the web controller:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Verb setting for the new action</li><li class="listitem" style="list-style-type: disc">Authenticate the setting for the new action</li><li class="listitem" style="list-style-type: disc">Output for the new action</li></ul></div><p>The first two steps are configured in the <code class="literal">behaviors()</code> method of the controller:</p><div class="informalexample"><pre class="programlisting">    public function behaviors()
+    {
+        $behaviors = parent::behaviors();
+        $behaviors['verbs'] = [
+                'class' =&gt; \yii\filters\VerbFilter::className(),
+                'actions' =&gt; [
+                    'myCustomAction'  =&gt; ['get', 'head'],
+                ],
+        ];
+        
+        $behaviors['authenticator'] = [
+        'except' =&gt; 'myCustomAction',
+            'class' =&gt; HttpBasicAuth::className(),
+        ];
+      
+        return $behaviors;
+    }
+
+public function actionMyCustomAction()
+{
+    …
+    …
+    
+}</pre></div><p>In the first part of the <code class="literal">behaviors()</code> method, we will only set the <code class="literal">get</code> and <code class="literal">head</code> HTTP methods to call the <code class="literal">myCustomAction</code> action. If we try to call this action with other HTTP methods, we will get a not supported exception.</p><p>In the last part of the <code class="literal">behaviors()</code> method, we will set it so that <code class="literal">myCustomAction</code> has not got authentication, since it is in the <code class="literal">except</code> property.</p><p>The third difference, output for the new action, states that we have different ways to return data. We can use:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">A key-value pair array to create a single object from scratch</li><li class="listitem" style="list-style-type: disc">An ActiveRecord instance to create a single object</li><li class="listitem" style="list-style-type: disc">An ActiveRecord array to create a list of objects</li><li class="listitem" style="list-style-type: disc">A data provider</li></ul></div><p>In this last case, the <a id="id500" class="indexterm"/>framework will automatically output <a id="id501" class="indexterm"/>pagination information and links to other pages (if present).</p><div class="section" title="Example – getting a rooms list for a reservation"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec50"/>Example – getting a rooms list for a reservation</h2></div></div></div><p>In this example, we need to<a id="id502" class="indexterm"/> create a <code class="literal">Reservation</code> model in <a id="id503" class="indexterm"/>the <code class="literal">common/models</code> folder using Gii.</p><p>Then, we create a new controller in <code class="literal">api/controllers/ReservationsController.php</code>:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+namespace api\controllers;
+
+use Yii;
+use yii\rest\ActiveController;
+use yii\filters\auth\CompositeAuth;
+use yii\filters\auth\HttpBasicAuth;
+use yii\filters\auth\QueryParamAuth;
+
+class ReservationsController extends ActiveController
+{
+    public $modelClass = 'common\models\Reservation';
+     
+    public function actionIndexWithRooms()
+    {
+        $reservations = \common\models\Reservation::find()-&gt;all();
+        
+        $outData = [];
+        foreach($reservations as $r)
+        {
+            $outData[] = array_merge($r-&gt;attributes, ['room' =&gt; $r-&gt;room-&gt;attributes]);
+        }
+        return $outData;        
+    }
+            
+}</pre></div><p>Now, let's call <code class="literal">http://hostname/yiiadv/api/web/reservations/index-with-rooms</code>, where we will display a list of reservations, in each of which the <code class="literal">room</code> property is expanded together with the content of room object related to the reservation.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note73"/>Note</h3><p>Take care to ensure that the <code class="literal">room</code> relation already exists in the <code class="literal">Reservation</code> model. If not, we must add this relation to the <code class="literal">Reservation</code> model:</p><div class="informalexample"><pre class="programlisting">    public function getRoom()
+    {
+        return $this-&gt;hasOne(Room::className(), ['id' =&gt; 'room_id']);
+    }</pre></div></div></div><p>However, this solution is inefficient since we always get all the rows and if there are too many of them, this can result in it being too expensive for us. To solve this problem, we could use a DataProvider created from a set of data found, or better yet, a more simple solution automatically provided by Yii.</p><p>Indeed, Yii <a id="id504" class="indexterm"/>provides some easy ways to display relations<a id="id505" class="indexterm"/> and filter returned fields. For example, there could be fields that we do not want to show, such as a password, private data, and so on.</p><p>Models have these methods:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">fields()</code>: By default, classes that extend <code class="literal">yii\base\Model::fields()</code> return all the model attributes as fields, while classes that extend <code class="literal">yii\db\ActiveRecord::fields()</code> only return the attributes that have been populated from the DB</li><li class="listitem" style="list-style-type: disc"><code class="literal">extraFields()</code>: By default, classes that extend <code class="literal">yii\base\Model::extraFields()</code> return nothing, while classes that extend <code class="literal">yii\db\ActiveRecord::extraFields()</code> return the names of the relations that have been populated from the DB</li></ul></div><p>The first method, <code class="literal">fields()</code>, is a key-value array where the key is the name of the field returned. The value can be empty if the returned content is the attribute with the same name as the key, a string indicating which attribute to get the returned value from, or a callable PHP function to manipulate the returned value.</p><p>The second method, <code class="literal">extraFields()</code>, is a string array whose values are relations defined in the model class.</p><p>Finally, to dynamically filter the requested field, we append the <code class="literal">fields</code> parameter to the requested URL and the <code class="literal">expand</code> parameter to get a list of relations from the models.</p><p>So, if we call <code class="literal">http://hostname/yiiadv/api/web/reservations/index?expand=room</code>, we will get the same <a id="id506" class="indexterm"/>result but we will also have the pagination and loaded<a id="id507" class="indexterm"/> models that are only necessary for that page.</p><p>However, it would be more convenient for us to distribute an URL without special parameters, such as the <code class="literal">expand</code> and <code class="literal">fields</code>, for example, in order to avoid confusion among developers who will use these APIs.</p><p>We can use <code class="literal">actionIndexWithRooms</code> as a wrapper for <code class="literal">actionIndex</code> with an expanded parameter in this way:</p><div class="informalexample"><pre class="programlisting">    public function actionIndexWithRooms()
+    {
+            $_GET['expand'] = 'room';
+            return $this-&gt;runAction('index');
+    }</pre></div><p>With this solution, the <code class="literal">http://hostname/yiiadv/api/web/reservations/index-with-rooms</code> URL is simply a wrapper for h<code class="literal">ttp://hostname/yiiadv/api/web/reservations/index?expand=room</code> but this prevents developers from having to remember which parameters to pass to the URL to obtain the necessary nodes in the response.</p></div></div>
+<div class="section" title="Customizing authentication and response"><div class="titlepage"><div><div><h1 class="title"><a id="ch11lvl1sec78"/>Customizing authentication and response</h1></div></div></div><p>Yii allows us to quickly create a<a id="id508" class="indexterm"/> custom authentication method for our application. This is useful because in some cases, the previously mentioned authentications are not sufficient.</p><p>A custom authentication model can be made by extending the <code class="literal">yii\filters\auth\AuthMethod</code> class, which implements <code class="literal">yii\filters\auth\AuthInterface</code> that requires overriding the <code class="literal">authenticate</code> (<code class="literal">$user</code>, <code class="literal">$request</code>, and <code class="literal">$response</code>) method:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace api\components;
+
+use yii\filters\auth\AuthMethod;
+use Yii;
+
+class CustomAuthMethod extends AuthMethod {
+
+    public function authenticate($user, $request, $response) {
+    …
+    …
+    …
+}
+…
+…
+…
+}</pre></div><p>Even though the REST API should be stateless, or rather should not save session data, it could be necessary to store some information or preferences during a session across requests.</p><p>So, if we need to <a id="id509" class="indexterm"/>support a session, we can start it through the <code class="literal">authenticate()</code> method called in the <code class="literal">beforeAction()</code> event. The idea is to use <code class="literal">QueryParamAuth</code> using <code class="literal">access-token</code> as the session ID to identify the current session.</p><p>For this purpose, we will create a new folder in <code class="literal">api\components</code> to store the custom <code class="literal">SessionAuth</code> method.</p><p>This is the content of the <code class="literal">api/components/SessionAuth.php</code> file where the query URL parameter is named <code class="literal">sid</code>:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace api\components;
+
+use yii\filters\auth\AuthMethod;
+use Yii;
+
+class SessionAuth extends AuthMethod {
+  public $tokenParam = 'sid';
+
+  public function authenticate($user, $request, $response) {
+    $accessToken = $request-&gt;get($this-&gt;tokenParam);
+    
+    if (is_string($accessToken)) {
+      
+       Yii::$app-&gt;session-&gt;id = $accessToken;
+       
+       $identity = isset(Yii::$app-&gt;session['loggedUser'])?Yii::$app-&gt;session['loggedUser']:null;
+            
+          if ($identity !== null) {
+             return $identity;
+          }
+    }
+    if ($accessToken !== null) {
+        $this -&gt; handleFailure($response);
+    }
+    return null;
+  }
+
+}</pre></div><p>It is also <a id="id510" class="indexterm"/>necessary to create an action to start the session; otherwise, the user will not be stored in the session.</p><p>So, create a new controller called <code class="literal">UsersController</code> in <code class="literal">api/controllers/UsersController.php</code> to handle the login:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+namespace api\controllers;
+
+use Yii;
+use yii\rest\ActiveController;
+use yii\filters\auth\CompositeAuth;
+use yii\filters\auth\HttpBasicAuth;
+use yii\filters\auth\QueryParamAuth;
+use api\components\SessionAuth;
+use common\models\User;
+
+class UsersController extends ActiveController
+{
+    public $modelClass = 'common\models\User';
+    
+    public function behaviors()
+    {
+        $behaviors = parent::behaviors();
+
+        $behaviors['authenticator'] = [
+                'except' =&gt; ['login'],
+                'class' =&gt; SessionAuth::className(),
+        ];
+        
+        return $behaviors;
+    }    
+
+    public function actionLogin($username, $passwordHash)
+    {
+        $dataOut = null;
+        
+        $user = User::findOne(['username' =&gt; $username, 'password_hash' =&gt; $passwordHash]);
+        if($user != null)
+        {
+            $session = Yii::$app-&gt;session;
+            $session-&gt;open();
+            
+            $session['loggedUser'] = $user;
+            
+            $sid = $session-&gt;id;
+            
+            $dataOut = ['sid' =&gt; $sid];        
+        }
+        
+        return $dataOut;
+    }
+}</pre></div><p>As earlier <a id="id511" class="indexterm"/>defined, in the <code class="literal">behaviors()</code> method, the actions of this controller, except for <code class="literal">login</code>, will authenticate against the <code class="literal">SessionAuth</code> component that checks primarily whether a user has successfully executed the login action.</p><p>We now call <code class="literal">http://hostname/yiiadv/api/web/users/login?username=&amp;passwordHash=</code> and fill out the <code class="literal">username</code> and <code class="literal">passwordHash</code> fields. It returns the session ID to access the session data. Also, the <code class="literal">loggedUser</code> property is filled out in the session with the user model data.</p><p>Now, we can store shared information among requests as a typical web application.</p><p>Now, let's see how to customize a response in RESTful Web Services. First of all, this operation could be needed when we have to add, for example, extra information, such as explicit error messages to display in the client or operation status code.</p><p>The custom response must extend <code class="literal">\yii\web\Response</code> and override the <code class="literal">send()</code> method, as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+namespace api\components;
+
+use yii\rest\ActiveController;
+use Yii;
+use yii\web\Response;
+
+class ApiResponse extends \yii\web\Response
+{
+ 
+    public function send()
+    {
+      ..
+  ..
+  ..
+  }
+}</pre></div><p>This <code class="literal">send()</code> method manipulates data stored in the object properties, mainly in the <code class="literal">$this-&gt;data</code> variable.</p><p>This customization, which we will see in detail in the next example, is incomplete, as the <code class="literal">send()</code> method should implement all the manipulations of data made from the <code class="literal">\yii\web\Response</code> version. We must remember that Yii returns data based on the <code class="literal">Accept</code> HTTP header passed from the client and many other convenient functionalities.</p><p>It is possible to <a id="id512" class="indexterm"/>maintain this behavior simply by calling <code class="literal">parent::send()</code> before returning from the <code class="literal">send()</code> function, as follows:</p><div class="informalexample"><pre class="programlisting">    public function send()
+    {
+        ..
+  ..
+        parent::send();
+ }</pre></div><p>Because, as said before, <code class="literal">send()</code> uses the <code class="literal">$this-&gt;data</code> variable as a container for data to be sent.</p><div class="section" title="Example – status response node in data received"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec51"/>Example – status response node in data received</h2></div></div></div><p>Now, let's apply the <a id="id513" class="indexterm"/>concepts seen in the previous chapter to add extra data into a response. This practice is useful when we need to return to client information about the operation status and extra data such as detailed error messages.</p><p>The purpose of this example is to return a response with two attributes:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The <code class="literal">status</code> attribute containing three properties: <code class="literal">response_code</code> with an integer value indicating the operation state, <code class="literal">response_message</code> with a string value representation of <code class="literal">response_code</code> and <code class="literal">response_extra</code> with a custom text string</li><li class="listitem" style="list-style-type: disc">The <code class="literal">data</code> attribute containing the expected output data</li></ul></div><p>We will use a class <a id="id514" class="indexterm"/>containing all the integer codes and their text representations as a response code, since the integer value will be used to fill in the <code class="literal">response_code</code> property and a string representation to fill in the <code class="literal">response_message</code> property.</p><p>Create a new class file in <code class="literal">api/components/ApiResponseCode.php</code> with this content:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+namespace api\components;
+
+class ApiResponseCode
+{
+    const ERR_OK = 0;
+    const ERR_LOGIN_REQUIRED = 1;
+    const ERR_METHOD_NOT_FOUND = 2;
+    const ERR_NOT_FOUND = 3;
+    const ERR_NOT_SAVED = 4;
+    const ERR_DUPLICATE = 5;
+    const ERR_INPUT_DATA_FORMAT = 6;
+    
+    public static function responsesExtras()
+    {
+        return [
+            ApiResponseCode::ERR_OK =&gt; '',
+            ApiResponseCode::ERR_LOGIN_REQUIRED =&gt; 'Login required to use this interface',
+            ApiResponseCode::ERR_METHOD_NOT_FOUND =&gt; 'Interface not found',
+            ApiResponseCode::ERR_NOT_FOUND =&gt; 'Record not found',
+            ApiResponseCode::ERR_NOT_SAVED =&gt; 'Error in saving',
+            ApiResponseCode::ERR_DUPLICATE =&gt; 'Duplicated record',
+            ApiResponseCode::ERR_INPUT_DATA_FORMAT =&gt; 'Input data format incompatible',
+        ];        
+    }
+    
+    public static function responseExtraFromCode($rc)
+    {
+        $al = ApiResponseCode::responsesExtras();
+        return (isset($al[$rc]))?$al[$rc]:null;
+    }     
+    
+    public static function responseMessages()
+    {
+        return [
+            ApiResponseCode::ERR_OK =&gt; 'OK',
+            ApiResponseCode::ERR_LOGIN_REQUIRED =&gt; 'ERR_LOGIN_REQUIRED',
+            ApiResponseCode::ERR_METHOD_NOT_FOUND =&gt; 'ERR_METHOD_NOT_FOUND',
+            ApiResponseCode::ERR_NOT_FOUND =&gt; 'ERR_NOT_FOUND',
+            ApiResponseCode::ERR_NOT_SAVED =&gt; 'ERR_NOT_SAVED',
+            ApiResponseCode::ERR_DUPLICATE =&gt; 'ERR_DUPLICATED',
+            ApiResponseCode::ERR_INPUT_DATA_FORMAT =&gt; 'ERR_INPUT_DATA_FORMAT',
+        ];        
+    }
+    
+    public static function responseMessageFromCode($rc)
+    {
+        $al = ApiResponseCode::responseMessages();
+        return (isset($al[$rc]))?$al[$rc]:null;
+    }            
+}</pre></div><p>In this component, we <a id="id515" class="indexterm"/>defined a list of constants that represent all response codes that can be sent to a client. For each response code, there will be a relative text representation returned by the <code class="literal">responseMessage()</code> static method. Then, there will also be an array of extra text messages returned by <code class="literal">responseExtras()</code> that will fill the <code class="literal">response_extra</code> property if no specific text <code class="literal">extra</code> is passed.</p><p>Finally, we must write the component that extends <code class="literal">\yii\web\Response</code> named <code class="literal">ApiResponse</code> in <code class="literal">api/components/ApiResponse.php</code>. In this component, we will define three custom properties: <code class="literal">statusResponseCode</code>, <code class="literal">statusResponseMessage</code>, and <code class="literal">statusResponseExtra</code>, which we are going to fill with content composing in the <code class="literal">status</code> property.</p><p>In this way, we will have a convenient method, <code class="literal">fillStatusResponse()</code>, based on the <code class="literal">$code</code> parameter, which will automatically fill in both the <code class="literal">statusResponseExtra</code> and <code class="literal">statusResponseMessage</code> properties.</p><p>The core of this component is the overridden <code class="literal">send()</code> method that will return <code class="literal">status</code> with <code class="literal">ERR_OK</code> as response message and <code class="literal">0</code> as response code by default if there are no client errors (as authentication, not found, and so on.). This is unless a developer changes the values of <code class="literal">statusResponseCode</code>, <code class="literal">statusResponseExtra</code>, and <code class="literal">statusResponseMessage</code>, or manually or automatically calls its properties with <code class="literal">fillStatusResponse()</code>.</p><p>Otherwise, if there are<a id="id516" class="indexterm"/> some client errors, we will support <code class="literal">Not Authenticated</code> and <code class="literal">Not Found</code> errors.</p><p>This is the content of the <code class="literal">api/components/ApiResponse.php</code> file:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+namespace api\components;
+
+use Yii;
+use yii\web\Response;
+
+class ApiResponse extends Response
+{
+    public $statusResponseCode;
+    public $statusResponseMessage;
+    public $statusResponseExtra;
+    
+    /**
+     * Set response code and extra from code.
+     *
+     * Response extra will be filled based on $extraData value
+     * If $extraData is null, response extra will be value from ApiResponseCode::responseExtraFromCode($code)
+     * If $extraData is string, response extra will be filled with this value
+     */
+    public function fillStatusResponse($code, $extraData=null)
+    {
+        $responseExtra = ApiResponseCode::responseExtraFromCode($code);
+        $responseMessage = ApiResponseCode::responseMessageFromCode($code);
+        
+        if($extraData == null)
+        {
+            $statusResponseExtra = $responseExtra;
+        }
+        else
+        {
+            $statusResponseExtra = $extraData;
+        }
+        
+        $this-&gt;statusResponseCode = $code;
+        $this-&gt;statusResponseMessage = $responseMessage;
+        $this-&gt;statusResponseExtra = $statusResponseExtra;
+    }
+
+    /**
+     * Override send() method.
+     *
+     * $this-&gt;data member contains data released to client.
+     */
+    public function send()
+    {
+        $responseMessage = ApiResponseCode::responseMessageFromCode($this-&gt;statusResponseCode);
+        
+        if($this-&gt;isClientError)
+        {
+           $dataOut = $this-&gt;data;
+           
+           if($this-&gt;statusCode == 401) {   // Not authorized
+             $dataOut = null;
+             
+             $this-&gt;fillStatusResponse(ApiResponseCode::ERR_LOGIN_REQUIRED);
+            }
+            else if($this-&gt;statusCode == 404) {  // Non found
+                $dataOut = null;
+                
+                $this-&gt;fillStatusResponse(ApiResponseCode::ERR_METHOD_NOT_FOUND);
+            }            
+            
+            $this-&gt;data = ['status' =&gt; ['response_code' =&gt; $this-&gt;statusResponseCode, 'response_message' =&gt; $this-&gt;statusResponseMessage, 'response_extra' =&gt; $this-&gt;statusResponseExtra ], 'data' =&gt; $dataOut ];
+            
+        }
+        else
+        {
+            $this-&gt;data = ['status' =&gt; ['response_code' =&gt; $this-&gt;statusResponseCode, 'response_message' =&gt; $responseMessage, 'response_extra' =&gt; $this-&gt;statusResponseExtra ], 'data' =&gt; $this-&gt;data ];
+        }
+        
+        parent::send();
+    }
+
+    public function init()
+    {
+        parent::init();
+        
+        $this-&gt;statusResponseCode = ApiResponseCode::ERR_OK;
+    }
+  
+}</pre></div><p>Finally, we have to <a id="id517" class="indexterm"/>change the configuration file <code class="literal">api/config/main.php</code> by adding the <code class="literal">response</code> property as a component to indicate to use a custom response class:</p><div class="informalexample"><pre class="programlisting">        'response' =&gt; [
+        
+            'format' =&gt; yii\web\Response::FORMAT_JSON,
+            'charset' =&gt; 'UTF-8',
+            'class' =&gt; '\api\components\ApiResponse',
+
+        ],</pre></div><p>Let's make some attempts. Try to call the non-existent URL <code class="literal">http://hostname/yiiadv/api/web/reservations/index-inexistent</code>.</p><p>This will be the output, correctly returning data as null and the status with the error explained:</p><div class="mediaobject"><img src="graphics/B04656_11_04.jpg" alt="Example – status response node in data received"/><div class="caption"><p>The response with an error after calling a non-existent URL</p></div></div><p>Then, try to call a URL that requires authentication: <code class="literal">http://hostname/yiiadv/api/web/customers/index</code>, which we already implemented in the previous paragraphs.</p><p>This will be the output, correctly returning data as null and the status with the error explained:</p><div class="mediaobject"><img src="graphics/B04656_11_05.jpg" alt="Example – status response node in data received"/><div class="caption"><p>The response with an error when calling the URL with authentication</p></div></div><p>Finally, we try to call a<a id="id518" class="indexterm"/> URL that returns data: <code class="literal">http://hostname/yiiadv/api/web/rooms/index</code>, which is already implemented in the previous paragraphs.</p><p>This will be the output, correctly returning data as filled and successful as the status:</p><div class="mediaobject"><img src="graphics/B04656_11_06.jpg" alt="Example – status response node in data received"/><div class="caption"><p>A response with a successful output</p></div></div></div></div>
+<div class="section" title="Other forms of export &#x2013; RSS"><div class="titlepage"><div><div><h1 class="title"><a id="ch11lvl1sec79"/>Other forms of export – RSS</h1></div></div></div><p>Yii allows us to create <a id="id519" class="indexterm"/>a custom format response to output data. The response format can be changed based on the <code class="literal">Accept</code> HTTP header sent by the client or done programmatically. When Yii receives a request, it searches for an available response formatter based on the <code class="literal">Accept</code> HTTP header value and finally calls the <code class="literal">format </code>(<code class="literal">$response</code>) method of the response formatter found.</p><p>Therefore, there are three steps to create <a id="id520" class="indexterm"/>custom responses:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Implementing the <code class="literal">yii\web\ResponseFormatterInterface</code> interface.</li><li class="listitem">Adding a new custom formatter response property in the configuration file.</li><li class="listitem">Extending the <code class="literal">behaviors()</code> method of the controller to handle specific <code class="literal">Accept</code> HTTP header values.</li></ol></div><p>The first step requires us to implement the <code class="literal">yii\web\ResponseFormatterInterface</code> interface and extend its method <code class="literal">format</code> (<code class="literal">$response</code>). Data to be formatted is stored in the <code class="literal">$response-&gt;data</code> property, and the response to client must be filled out in the <code class="literal">$response-&gt;content</code> property:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+namespace api\components;
+
+use yii\web\ResponseFormatterInterface;
+
+class RssResponseFormatter implements ResponseFormatterInterface
+{
+    public function format($response)
+    {
+        $response-&gt;getHeaders()-&gt;set('Content-Type', 'application/rss+xml; charset=UTF-8');
+        if ($response-&gt;data !== null) {
+            $response-&gt;content = "&lt;rss&gt;&lt;/rss&gt;";
+        }
+    }
+}</pre></div><p>The second step requires us to add a reference to the custom response formatter. For this purpose, we will use the <code class="literal">formatters</code> property of <code class="literal">response</code>, which is an array where keys are the format names, and the array values are the corresponding configurations to create formatter objects:</p><div class="informalexample"><pre class="programlisting">         'response' =&gt; [
+            'formatters' =&gt; [
+            
+                'rss' =&gt; [
+                    'format' =&gt; 'raw',
+                    'charset' =&gt; 'UTF-8',
+                    'class' =&gt; '\api\components\RssResponseFormatter',
+                ],                
+                
+            ]
+
+        ],             </pre></div><p>The third step requires us <a id="id521" class="indexterm"/>to extend the <code class="literal">behaviors()</code> method of the controller in order to handle specific <code class="literal">Accept</code> HTTP header values and indicate to the framework which response formatter to use according to the <code class="literal">Accept</code> HTTP header value, for example:</p><div class="informalexample"><pre class="programlisting">    public function behaviors()
+    {
+        $behaviors = parent::behaviors();
+        $behaviors['contentNegotiator']['formats']['application/rss+xml'] = 'rss';
+        return $behaviors;
+    }    </pre></div><p>When a client sends a request with the <code class="literal">Accept</code> HTTP header set to <code class="literal">application/rss+xml</code>, this controller will use the <code class="literal">rss</code> formatter (read from the configuration file) to prepare the response. If we specify a formatter that does not exist in the configuration file, we will get <code class="literal">InvalidConfigException</code>.</p><div class="section" title="Example – creating an RSS with a list of available rooms"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec52"/>Example – creating an RSS with a list of available rooms</h2></div></div></div><p>Now, let's look at how to<a id="id522" class="indexterm"/> create an RSS response formatter for the available rooms.</p><p>First of all, we must create the complete response formatter component in <code class="literal">api/components/RssResponseFormatter.php</code>:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+namespace api\components;
+
+use yii\web\ResponseFormatterInterface;
+
+class RssResponseFormatter implements ResponseFormatterInterface
+{
+    public function format($response)
+    {
+        $response-&gt;getHeaders()-&gt;set('Content-Type', 'application/rss+xml; charset=UTF-8');
+        if ($response-&gt;data !== null) {
+            $rssOut = '&lt;?xml version="1.0" encoding="UTF-8"?&gt;';
+            $rssOut .= '&lt;rss&gt;';
+            $rssOut .= '&lt;channel&gt;';
+            foreach($response-&gt;data as $d)
+            {
+                $rssOut .= '&lt;item&gt;';    
+                $rssOut .= sprintf('&lt;title&gt;Room #%d at floor %d&lt;/title&gt;', $d['id'], $d['floor']);
+                $rssOut .= '&lt;/item&gt;';
+            }
+            $rssOut .= '&lt;/channel&gt;';
+            $rssOut .= '&lt;/rss&gt;';
+            
+            $response-&gt;content = $rssOut;;
+        }
+    }
+}</pre></div><p>The RSS response <a id="id523" class="indexterm"/>formatter must implement the <code class="literal">format</code> (<code class="literal">$response</code>) method to correctly implement <code class="literal">yii\web\ResponseFormatterInterface</code>. When the <code class="literal">format</code> (<code class="literal">$response</code>) method is invoked, it will set the <code class="literal">Content-Type</code> HTTP header to <code class="literal">application/rss+xml</code>, use data that is ready to be sent from the <code class="literal">$response-&gt;data</code> property, and fill in the <code class="literal">$response-&gt;content</code> property, which is the final content received by the client.</p><p>Then, we must change the <code class="literal">api/config/main.php</code> file to add the <code class="literal">response</code> property with the support of the new response formatter:</p><div class="informalexample"><pre class="programlisting">        'response' =&gt; [
+            'formatters' =&gt; [
+            
+                'rss' =&gt; [
+                    'format' =&gt; 'raw',
+                    'charset' =&gt; 'UTF-8',
+                    'class' =&gt; '\api\components\RssResponseFormatter',
+                ],                
+                
+            ]
+        ],</pre></div><p>The <code class="literal">formatter</code> property is an array of the response formatter where the keys are the format names and the values are the corresponding configurations to create formatter objects.</p><p>In this case, we configured a new formatter called <code class="literal">rss</code> that represents the <code class="literal">\api\components\RssResponseFormatter</code> component.</p><p>Finally, we have to configure the <code class="literal">behaviors()</code> method in the controller to handle the <code class="literal">Accept</code> HTTP header with the <code class="literal">application/rss+xml</code> value.</p><p>Open the <code class="literal">RoomsController</code> file in <code class="literal">api/controllers/RoomsController.php</code> and add the extension to the <code class="literal">behaviors()</code> method:</p><div class="informalexample"><pre class="programlisting">    public function behaviors()
+    {
+        $behaviors = parent::behaviors();
+        $behaviors['contentNegotiator']['formats']['application/rss+xml'] = 'rss';
+        return $behaviors;
+    }    </pre></div><p>Starting from the base<a id="id524" class="indexterm"/> configuration of <code class="literal">$behaviors</code> inherited from <code class="literal">parent::behaviors()</code>, the <code class="literal">contentNegotiator</code> attribute contains a reference to <code class="literal">formats</code> for the <code class="literal">Accept</code> HTTP header value. The array keys are the <code class="literal">Accept</code> HTTP header value that is supported, and the values are the corresponding response formatter.</p><p>If we try to make the following request:</p><div class="informalexample"><pre class="programlisting">GET /yiiadv/api/web/rooms/index HTTP/1.1
+Host: hostname
+Accept: application/rss+xml</pre></div><p>We should display the following response:</p><div class="mediaobject"><img src="graphics/B04656_11_07.jpg" alt="Example – creating an RSS with a list of available rooms"/><div class="caption"><p>The RSS response output</p></div></div><p>We can also use the response formatter programmatically. It is enough to set the format of the <code class="literal">Yii::$app-&gt;response</code> application component to a configured response formatter in the configuration file.</p><p>For example, we can add a new action named <code class="literal">actionIndexRss</code> in <code class="literal">RoomsController</code> that will output data<a id="id525" class="indexterm"/> using <code class="literal">RssResponseFormatter</code> in this way:</p><div class="informalexample"><pre class="programlisting">    public function actionIndexRss()
+    {
+        \Yii::$app-&gt;response-&gt;format = 'rss';
+        
+        $provider = new \yii\data\ActiveDataProvider([
+            'query' =&gt; \common\models\Room::find(),
+            'pagination' =&gt; [
+                'pageSize' =&gt; 20,
+            ],
+        ]);
+        
+        return $provider;
+    }</pre></div></div></div>
+<div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch11lvl1sec80"/>Summary</h1></div></div></div><p>In this chapter, we created <code class="literal">api</code> for use in a mobile app through the use of the powerful tools provided by Yii. We adopted the approach of creating a new application in order to distribute RESTful web services, instead of mixing web and <code class="literal">api</code> controllers. For this purpose, at the beginning of the chapter, we configured a new REST application using the advanced template.</p><p>After configuring the RESTful web service environment, we discovered two kinds of <code class="literal">api</code> controllers that Yii provides by default, then we created controllers with custom data and data from ActiveRecord.</p><p>Next, we found out the default authentication methods for RESTful Web Services provided by framework and you learned how to use them.</p><p>Finally, we focused on how to customize the response output format, taking an example of how to create an RSS version of the available data.</p><p>In the next chapter, you will learn how to write a console application and will look at the differences between web and console apps.</p></div></body></html>
