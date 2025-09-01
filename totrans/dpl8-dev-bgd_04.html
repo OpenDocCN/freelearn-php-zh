@@ -1,0 +1,501 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;4.&#xA0;Introduction to the Field Types API and Developing the Custom Field Module"><div class="titlepage"><div><div><h1 class="title"><a id="ch04"/>Chapter 4. Introduction to the Field Types API and Developing the Custom Field Module</h1></div></div></div><p><span class="emphasis"><em>In the last chapter, we learned how to use views and about configuration management. Now let's understand more about the Field Types API and how to use it to develop custom field modules.</em></span></p><p>In this chapter, we will learn these topics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Creating field types, widgets, and formatters using field APIs</li><li class="listitem" style="list-style-type: disc">Developing custom field modules</li></ul></div><div class="section" title="Introducing the NutritionInformation module"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec52"/>Introducing the NutritionInformation module</h1></div></div></div><p>In the<a class="indexterm" id="id246"/> previous chapter, one of the <a class="ulink" href="http://schema.org/Recipe">http://schema.org/Recipe</a> properties that we did not include with our Drupal Recipe content type is the <code class="literal">NutritionInformation</code> property. The reason for this is that the <code class="literal">NutritionInformation</code> property is itself an <code class="literal">itemType</code> from <a class="ulink" href="http://schema.org">http://schema.org</a>, and as such is made up of a number of its own individual properties. In order to add <code class="literal">NutritionInformation</code> to <a class="indexterm" id="id247"/>our custom Recipe content type, we will need to create a custom Drupal compound field module that is based on the specification at <a class="ulink" href="http://schema.org/NutritionInformation">http://schema.org/NutritionInformation</a>.</p></div></div>
+<div class="section" title="Time for action &#x2013; developing a custom module for a compound NutritionInformation field"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec53"/>Time for action – developing a custom module for a compound NutritionInformation field</h1></div></div></div><p>Rather <a class="indexterm" id="id248"/>than adding the code to create this compound field to our existing module, we are going to create a new module, as it is possible that it is something that could be useful to the Drupal community as a whole, and we may want to eventually contribute it to Drupal (<a class="ulink" href="https://www.drupal.org/">https://www.drupal.org/</a>). We need to create a compound field that consists of several different form elements (a select number and several text fields). We <a class="indexterm" id="id249"/>can now have a basic compound field in three basic steps: first is defining the field (info and schema), second is defining the field form (widget), and then comes defining the output (formatter). All of these steps are explained here:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">In Phpstorm, create a new folder named <code class="literal">nutritioninfo</code> in the <code class="literal">/modules/custom</code> directory.</li><li class="listitem">Create the <code class="literal">nutritioninfo.module</code> and <code class="literal">nutritioninfo.info.yml</code> files with the same name as the folder—<code class="literal">nutritioninfo</code>. Create the templates <code class="literal">src/Plugin/Field</code> folders and you should have a folder structure that looks similar to the following screenshot:<div class="mediaobject"><img alt="Time for action – developing a custom module for a compound NutritionInformation field" src="graphics/4659_04_01.jpg"/></div></li><li class="listitem">Now, open the <code class="literal">nutrtioninfo.info</code> file and add the following configuration:<div class="informalexample"><pre class="programlisting">name: Nutrition Information
+type: module
+description: 'Defines a nutrition information field type based on the Microdata spec at http://schema.org/NutritionInformation '
+package: Fields
+core: '8.x'</pre></div></li><li class="listitem">In Drupal 7, the <code class="literal">hook_field_schema</code> hook allows us to define a database schema for storing our custom field information. But in Drupal 8, field types changed to a plugin system (<a class="ulink" href="https://www.drupal.org/node/2064123">https://www.drupal.org/node/2064123</a>).</li><li class="listitem">Next, we are <a class="indexterm" id="id250"/>going to use the following code from the telephone core module (<code class="literal">/core/modules/telephone/src/Plugin/Field/FieldType/TelephoneItem.php</code>). We are only copying this file and changing to the <code class="literal">NutritioninfoItem.php</code> file. In the next step, we create the <code class="literal">/modules/nutritioninfo/src/Plugin/Field/FieldType/NutritioninfoItem.php</code> file and core <code class="literal">TelephoneItem.php</code> file, which looks like this:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+/**
+ * @file
+ * Contains \Drupal\telephone\Plugin\Field\FieldType\TelephoneItem.
+ */
+
+namespace Drupal\telephone\Plugin\Field\FieldType;
+
+use Drupal\Core\Field\FieldDefinitionInterface;
+use Drupal\Core\Field\FieldItemBase;
+use Drupal\Core\Field\FieldStorageDefinitionInterface;
+use Drupal\Core\TypedData\DataDefinition;
+
+/**
+ * Plugin implementation of the 'telephone' field type.
+ *
+ * @FieldType(
+ *   id = "telephone",
+ *   label = @Translation("Telephone number"),
+ *   description = @Translation("This field stores a telephone number in the database."),
+ *   category = @Translation("Number"),
+ *   default_widget = "telephone_default",
+ *   default_formatter = "basic_string"
+ * )
+ */
+class TelephoneItem extends FieldItemBase {
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function schema(FieldStorageDefinitionInterface $field_definition) {
+    return array(
+      'columns' =&gt; array(
+        'value' =&gt; array(
+          'type' =&gt; 'varchar',
+          'length' =&gt; 256,
+        ),
+      ),
+    );
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function propertyDefinitions(FieldStorageDefinitionInterface $field_definition) {
+    $properties['value'] = DataDefinition::create('string')
+      -&gt;setLabel(t('Telephone number'))
+      -&gt;setRequired(TRUE);
+
+    return $properties;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function isEmpty() {
+    $value = $this-&gt;get('value')-&gt;getValue();
+    return $value === NULL || $value === '';
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getConstraints() {
+    $constraint_manager = \Drupal::typedDataManager()-&gt;getValidationConstraintManager();
+    $constraints = parent::getConstraints();
+
+    $max_length = 256;
+    $constraints[] = $constraint_manager-&gt;create('ComplexData', array(
+      'value' =&gt; array(
+        'Length' =&gt; array(
+          'max' =&gt; $max_length,
+          'maxMessage' =&gt; t('%name: the telephone number may not be longer than @max characters.', array('%name' =&gt; $this-&gt;getFieldDefinition()-&gt;getLabel(), '@max' =&gt; $max_length)),
+        )
+      ),
+    ));
+
+    return $constraints;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function generateSampleValue(FieldDefinitionInterface $field_definition) {
+    $values['value'] = rand(pow(10, 8), pow(10, 9)-1);
+    return $values;
+  }
+
+}</pre></div><p>As we <a class="indexterm" id="id251"/>discussed in step 4, Drupal 8 introduced a plugin system. Most plugins in Drupal 8 use annotations to register themselves and describe their metadata. Here, <code class="literal">@FieldType</code> is the annotation it is registering to the <code class="literal">telephone</code> field type. The <code class="literal">schema</code> function holds columns and its properties such as <code class="literal">type</code> and <code class="literal">length</code>.</p><p>The <code class="literal">PropertyDefinitions</code> function is for setting column property values such as <code class="literal">label</code> and <code class="literal">description</code>. The <code class="literal">isEmpty</code> function determines whether the list contains any nonempty items.</p></li><li class="listitem">Drupal 8 implemented the PSR-4 standard for package-based PHP namespace auto-loading by the PHP Framework. Each module has a namespace that corresponds to its module name (<code class="literal">namespace Drupal\telephone\Plugin\Field\FieldType</code>). In our module, it should be <code class="literal">namespace Drupal\nutritioninfo\Plugin\Field\FieldType</code>. And the module's namespace is mapped to the <code class="literal">./src/</code> folder in the module directory. Classes and interfaces with a backslash (<code class="literal">\</code>) inside their fully qualified name (for example, use <code class="literal">Drupal\Core\Field\FieldItemBase;</code>) must not use their fully qualified name inside the code. If the namespace differs from the namespace of the current file, put a <code class="literal">use</code> statement at the top of the file. Here is an example:<div class="informalexample"><pre class="programlisting">  namespace Drupal\nutritioninfo\Plugin\Field\FieldType;
+use Drupal\Core\Field\FieldItemBase;
+use Drupal\Core\Field\FieldStorageDefinitionInterface;
+use Drupal\Core\TypedData\DataDefinition;</pre></div></li><li class="listitem">Now, we are going create the <code class="literal">/modules/nutritioninfo/src/Plugin/Field/FieldType/NutritioninfoItem.php</code> file. We need to add the <code class="literal">NutritioninfoItem</code> class. The <code class="literal">NutritioninfoItem.php</code> code looks as follows without any methods added:<div class="informalexample"><pre class="programlisting">&lt;?php
+/**
+ * @file
+ * Contains \Drupal\custom_field\Plugin\Field\FieldType\NutritioninfoItem.
+ */
+
+namespace Drupal\nutritioninfo\Plugin\Field\FieldType;
+
+use Drupal\Core\Field\FieldItemBase;
+use Drupal\Core\Field\FieldStorageDefinitionInterface;
+use Drupal\Core\TypedData\DataDefinition;
+
+/**
+ * Plugin implementation of the 'nutritioninfo' field type.
+ *
+ * @FieldType(
+ *   id = "nutritioninfo",
+ *   label = @Translation("Nutrition Information"),
+ *   description = @Translation("A field type used for storing 
+ nutrition information as defined by the Microdata spec at 
+ http://schema.org/ NutritionInformation."),
+ *   default_widget = "nutritioninfo_standard",
+ *   default_formatter = "nutritioninfo_default"
+ * )
+ */
+
+class NutritioninfoItem extends FieldItemBase
+{
+
+}</pre></div><p>Here, the <code class="literal">@FieldType</code> annotation registers the <code class="literal">nutritioninfo</code> field type.</p></li><li class="listitem">Next, we <a class="indexterm" id="id252"/>need to add schema columns in the <code class="literal">schema</code> function. In <code class="literal">TelephoneItem</code>, we have only one column value. But in <code class="literal">NutritioninfoItem</code>, there are 12 columns need to be added. So that <code class="literal">schema</code> function looks as follows. Add these functions inside the <code class="literal">NutritioninfoItem</code> class:<div class="informalexample"><pre class="programlisting">   /**
+     * {@inheritdoc}
+     */
+    public static function 
+    schema(FieldStorageDefinitionInterface $field)
+    {
+        return array(
+            'columns' =&gt; array(
+                'calories' =&gt; array(
+                    'type' =&gt; 'varchar',
+                    'length' =&gt; 256,
+                    'not null' =&gt; FALSE,
+                ),
+                'carbohydrate_content' =&gt; array(
+                    'type' =&gt; 'text',
+                    'length' =&gt; 256,
+                    'not null' =&gt; FALSE,
+                ),
+                'cholesterol_content' =&gt; array(
+                    'type' =&gt; 'varchar',
+                    'length' =&gt; 256,
+                    'not null' =&gt; FALSE,
+                ),
+                'fat_content' =&gt; array(
+                    'type' =&gt; 'varchar',
+                    'length' =&gt; 256,
+                    'not null' =&gt; FALSE,
+                ),
+                'fiber_content' =&gt; array(
+                    'type' =&gt; 'varchar',
+                    'length' =&gt; 256,
+                    'not null' =&gt; FALSE,
+                ),
+                'protein_content' =&gt; array(
+                    'type' =&gt; 'varchar',
+                    'length' =&gt; 256,
+                    'not null' =&gt; FALSE,
+                ),
+                'saturated_fat_content' =&gt; array(
+                    'type' =&gt; 'varchar',
+                    'length' =&gt; 256,
+                    'not null' =&gt; FALSE,
+                ),
+                'serving_size' =&gt; array(
+                    'type' =&gt; 'varchar',
+                    'length' =&gt; 256,
+                    'not null' =&gt; FALSE,
+                ),
+                'sodium_content' =&gt; array(
+                    'type' =&gt; 'varchar',
+                    'length' =&gt; 256,
+                    'not null' =&gt; FALSE,
+                ),
+                'sugar_content' =&gt; array(
+                    'type' =&gt; 'varchar',
+                    'length' =&gt; 256,
+                    'not null' =&gt; FALSE,
+                ),
+                'trans_fat_content' =&gt; array(
+                    'type' =&gt; 'varchar',
+                    'length' =&gt; 256,
+                    'not null' =&gt; FALSE,
+                ),
+                'unsaturated_fat_content' =&gt; array(
+                    'type' =&gt; 'varchar',
+                    'length' =&gt; 256,
+                    'not null' =&gt; FALSE,
+                ),
+
+            ),
+        );
+    }</pre></div></li><li class="listitem">Next, we <a class="indexterm" id="id253"/>need to add the <code class="literal">isEmpty()</code> function. This determines whether the list contains any nonempty items. Add these functions inside the <code class="literal">NutritioninfoItem</code> class:<div class="informalexample"><pre class="programlisting">   /**
+     * {@inheritdoc}
+     */
+    public function isEmpty()
+    {
+        $calories = $this-&gt;get('calories')-&gt;getValue();
+        $carbohydrate_content = $this
+        -&gt;get('carbohydrate_content')-&gt;getValue();
+        $cholesterol_content = $this
+        -&gt;get('cholesterol_content')-&gt;getValue();
+        $fat_content = $this-&gt;get('fat_content')-&gt;getValue();
+        $fiber_content = $this-&gt;get('fiber_content')
+        -&gt;getValue();
+        $protein_content = $this-&gt;get('protein_content')
+        -&gt;getValue();
+        $saturated_fat_content = $this
+        -&gt;get('saturated_fat_content')-&gt;getValue();
+        $serving_size = $this-&gt;get('serving_size')-&gt;getValue();
+        $sodium_content = $this-&gt;get('sodium_content')
+        -&gt;getValue();
+        $sugar_content = $this-&gt;get('sugar_content')
+        -&gt;getValue();
+        $trans_fat_content = $this-&gt;get('trans_fat_content')
+        -&gt;getValue();
+        $unsaturated_fat_content = $this
+        -&gt;get('unsaturated_fat_content')-&gt;getValue();
+
+        //the nutrition field is empty if all of its properties 
+       are empty
+        return empty($calories)
+        &amp;&amp; empty($carbohydrate_content)
+        &amp;&amp; empty($cholesterol_content)
+        &amp;&amp; empty($fat_content)
+        &amp;&amp; empty($fiber_content)
+        &amp;&amp; empty($protein_content)
+        &amp;&amp; empty($saturated_fat_content)
+        &amp;&amp; empty($serving_size)
+        &amp;&amp; empty($sodium_content)
+        &amp;&amp; empty($sugar_content)
+        &amp;&amp; empty($trans_fat_content)
+        &amp;&amp; empty($unsaturated_fat_content);
+    }</pre></div></li><li class="listitem">The last<a class="indexterm" id="id254"/> method in this class is <code class="literal">propertyDefinitions()</code>, which is used to set column property values such as <code class="literal">label</code> and <code class="literal">description</code>. Add these functions inside the <code class="literal">NutritioninfoItem</code> class:<div class="informalexample"><pre class="programlisting">/**
+     * {@inheritdoc}
+     */
+    public static function 
+    propertyDefinitions(FieldStorageDefinitionInterface 
+    $field_definition)
+    {
+        $properties['calories'] = 
+        DataDefinition::create('string')
+            -&gt;setLabel(t('Calories'))
+            -&gt;setDescription(t('The number of calories.'));
+
+        $properties['carbohydrate_content'] = 
+        DataDefinition::create('string')
+            -&gt;setLabel(t('Carbohydrate Content'))
+            -&gt;setDescription(t('The number of grams of 
+            carbohydrates.'));
+
+        $properties['cholesterol_content'] = 
+        DataDefinition::create('string')
+            -&gt;setLabel(t('Cholesterol Content'))
+            -&gt;setDescription(t('The number of milligrams of 
+            cholesterol.'));
+
+        $properties['fat_content'] = 
+        DataDefinition::create('string')
+            -&gt;setLabel(t('Fat Content'))
+            -&gt;setDescription(t('The number of grams of fat.'));
+
+        $properties['fiber_content'] = 
+        DataDefinition::create('string')
+            -&gt;setLabel(t('Fiber Content'))
+            -&gt;setDescription(t('The number of grams of 
+            fiber.'));
+
+        $properties['protein_content'] = 
+        DataDefinition::create('string')
+            -&gt;setLabel(t('Protein Content'))
+            -&gt;setDescription(t('The number of grams of 
+            protein.'));
+
+        $properties['saturated_fat_content'] = 
+        DataDefinition::create('string')
+            -&gt;setLabel(t('Saturated Fat Content'))
+            -&gt;setDescription(t('The number of grams of 
+            saturated fat.'));
+
+        $properties['serving_size'] = 
+        DataDefinition::create('string')
+            -&gt;setLabel(t('Serving Size'))
+            -&gt;setDescription(t('The serving size, in terms of 
+            the number of volume or mass.'));
+
+        $properties['sodium_content'] = 
+        DataDefinition::create('string')
+            -&gt;setLabel(t('Sodium Content'))
+            -&gt;setDescription(t('The number of milligrams of 
+            sodium.'));
+
+        $properties['sugar_content'] = 
+        DataDefinition::create('string')
+            -&gt;setLabel(t('Sugar Content'))
+            -&gt;setDescription(t('The number of grams of 
+            sugar.'));
+
+        $properties['trans_fat_content'] = 
+        DataDefinition::create('string')
+            -&gt;setLabel(t('Trans Fat Content'))
+            -&gt;setDescription(t('The number of grams of trans 
+            fat.'));
+
+        $properties['unsaturated_fat_content'] = 
+        DataDefinition::create('string')
+            -&gt;setLabel(t('Unsaturated Fat Content'))
+            -&gt;setDescription(t('The number of grams of 
+            unsaturated fat.'));
+
+        return $properties;
+    }</pre></div></li><li class="listitem">Finally, our <a class="indexterm" id="id255"/><code class="literal">NutritioninfoItem.php</code> code looks as shown here: <a class="ulink" href="https://raw.githubusercontent.com/valuebound/nutritioninfo/master/src/Plugin/Field/FieldType/NutritioninfoItem.php">https://raw.githubusercontent.com/valuebound/nutritioninfo/master/src/Plugin/Field/FieldType/NutritioninfoItem.php</a>.</li><li class="listitem">Next, we <a class="indexterm" id="id256"/>need to tell Drupal how to handle our compound field on the node edit form. In Drupal 7, we have <code class="literal">hook_field_widget_info</code> for making Drupal aware of our custom widget, and then <code class="literal">hook_field_widget_form</code> for actually adding the form components to the node form. In Drupal 8, field widgets have become plugins. Now, we are going to add the <code class="literal">FieldWidget/NutritioninfoDefaultWidget.php</code> file in the <code class="literal">/modules/nutritioninfo/src/Plugin/Field/FieldWidget</code> folder. And the file looks like this without any methods:<div class="informalexample"><pre class="programlisting">&lt;?php
+/**
+ * @file
+ * Contains \Drupal\custom_field\Plugin\Field\FieldWidget\NutritioninfoDefaultWidget.
+ */
+
+namespace Drupal\nutritioninfo\Plugin\Field\FieldWidget;
+
+use Drupal\Core\Field\FieldItemListInterface;
+use Drupal\Core\Field\WidgetBase;
+use Drupal\Core\Form\FormStateInterface;
+
+/**
+ * Plugin implementation of the 'nutritioninfo_default' widget.
+ *
+ * @FieldWidget(
+ *   id = "nutritioninfo_default",
+ *   label = @Translation("Nutrition Field Widget"),
+ *   field_types = {
+ *     "nutritioninfo"
+ *   }
+ * )
+ */
+class NutritioninfoDefaultWidget extends WidgetBase {
+
+}</pre></div><p>The <code class="literal">FieldItemListInterface</code> interface is for fields, being lists of field items. This interface must be implemented by every entity field, whereas contained field items must implement <code class="literal">FieldItemInterface</code>. Moreover, <code class="literal">FormStateInterface</code> provides an interface for an object containing the current state of a form. It will be used to store information related to the processed data in the form.</p><p>Here, the <code class="literal">@FieldWidget</code> annotation registers the <code class="literal">nutritioninfo_default</code> widget.</p></li><li class="listitem">Next, we <a class="indexterm" id="id257"/>need to add the <code class="literal">formElement()</code> function. In this function, form elements will be added, which are displayed in the node edit/add form for the nutrition field. We are taking one form element to understand:<div class="informalexample"><pre class="programlisting">$element['calories'] = array(
+            '#title' =&gt; t('Calories'),
+            '#type' =&gt; 'textfield',
+            '#default_value' =&gt; isset($items[$delta]-&gt;calories) ? $items[$delta]-&gt;calories : NULL,
+          );</pre></div><p>This is the calories <code class="literal">textfield</code>. It will display as a <code class="literal">textfield</code> while editing/adding the form. The <code class="literal">formElement()</code>function's code looks like this:</p><div class="informalexample"><pre class="programlisting">   /**
+     * {@inheritdoc}
+     */
+    public function formElement(FieldItemListInterface $items, $delta, array $element, array &amp;$form, FormStateInterface $form_state) {
+      $element['calories'] = array(
+            '#title' =&gt; t('Calories'),
+            '#type' =&gt; 'textfield',
+            '#default_value' =&gt; isset($items[$delta]-&gt;calories) ? $items[$delta]-&gt;calories : NULL,
+          );
+      $element['carbohydrate_content'] = array(
+            '#title' =&gt; t('Carbohydrate Content'),
+            '#type' =&gt; 'textfield',
+            '#default_value' =&gt; isset($items[$delta]-&gt;carbohydrate_content) ? $items[$delta]-&gt;carbohydrate_content : NULL,
+          );
+      $element['cholesterol_content'] = array(
+            '#title' =&gt; t('Cholesterol Content'),
+            '#type' =&gt; 'textfield',
+            '#default_value' =&gt; isset($items[$delta]-&gt;cholesterol_content) ? $items[$delta]-&gt;cholesterol_content : NULL,
+          );
+
+        $element['fat_content'] = array(
+            '#title' =&gt; t('Fat Content'),
+            '#type' =&gt; 'textfield',
+            '#default_value' =&gt; isset($items[$delta]-&gt;fat_content) ? $items[$delta]-&gt;fat_content : NULL,
+        );
+
+        $element['fiber_content'] = array(
+            '#title' =&gt; t('Fiber Content'),
+            '#type' =&gt; 'textfield',
+            '#default_value' =&gt; isset($items[$delta]-&gt;fiber_content) ? $items[$delta]-&gt;fiber_content : NULL,
+        );
+
+        $element['protein_content'] = array(
+            '#title' =&gt; t('Protein Content'),
+            '#type' =&gt; 'textfield',
+            '#default_value' =&gt; isset($items[$delta]-&gt;protein_content) ? $items[$delta]-&gt;protein_content : NULL,
+        );
+
+        $element['saturated_fat_content'] = array(
+            '#title' =&gt; t('Saturated Fat Content'),
+            '#type' =&gt; 'textfield',
+            '#default_value' =&gt; isset($items[$delta]-&gt;saturated_fat_content) ? $items[$delta]-&gt;saturated_fat_content : NULL,
+        );
+
+        $element['serving_size'] = array(
+            '#title' =&gt; t('Serving Size'),
+            '#type' =&gt; 'textfield',
+            '#default_value' =&gt; isset($items[$delta]-&gt;serving_size) ? $items[$delta]-&gt;serving_size : NULL,
+        );
+
+        $element['sodium_content'] = array(
+            '#title' =&gt; t('sodium Content'),
+            '#type' =&gt; 'textfield',
+            '#default_value' =&gt; isset($items[$delta]-&gt;sodium_content) ? $items[$delta]-&gt;sodium_content : NULL,
+        );
+
+        $element['sugar_content'] = array(
+            '#title' =&gt; t('Sugar Content'),
+            '#type' =&gt; 'textfield',
+            '#default_value' =&gt; isset($items[$delta]-&gt;sugar_content) ? $items[$delta]-&gt;sugar_content : NULL,
+        );
+
+        $element['trans_fat_content'] = array(
+            '#title' =&gt; t('Trans Fat Content'),
+            '#type' =&gt; 'textfield',
+            '#default_value' =&gt; isset($items[$delta]-&gt;trans_fat_content) ? $items[$delta]-&gt;trans_fat_content : NULL,
+        );
+
+        $element['unsaturated_fat_content'] = array(
+            '#title' =&gt; t('Unsaturated Fat Content'),
+            '#type' =&gt; 'textfield',
+            '#default_value' =&gt; isset($items[$delta]-&gt;unsaturated_fat_content) ? $items[$delta]-&gt;unsaturated_fat_content : NULL,
+        );
+
+        return $element;
+    }</pre></div></li><li class="listitem">The full <a class="indexterm" id="id258"/>file, <code class="literal">NutritioninfoDefaultWidget.php</code>, looks as shown here: <a class="ulink" href="https://raw.githubusercontent.com/valuebound/nutritioninfo/master/src/Plugin/Field/FieldWidget/NutritioninfoDefaultWidget.php">https://raw.githubusercontent.com/valuebound/nutritioninfo/master/src/Plugin/Field/FieldWidget/NutritioninfoDefaultWidget.php</a>.</li><li class="listitem">Now, we <a class="indexterm" id="id259"/>need to format our compound field when displaying a content item. In Drupal 7, we used the <code class="literal">hook_ field_formatter_info</code> and <code class="literal">hook_field_formatter_view</code> hooks. Now in Drupal 8, these hooks are used as plugins. We are going to add the <code class="literal">NutritioninfoDefaultFormatter.php</code> file in the <code class="literal">/modules/nutritioninfo/src/Plugin/Field/FieldFormatter</code> folder. And the code looks like this without any methods:<div class="informalexample"><pre class="programlisting">&lt;?php
+/**
+ * @file
+ * Contains \Drupal\custom_field\Plugin\field\formatter\NutritioninfoDefaultFormatter.
+ */
+
+namespace Drupal\nutritioninfo\Plugin\Field\FieldFormatter;
+
+use Drupal\Core\Field\FormatterBase;
+use Drupal\Core\Field\FieldItemListInterface;
+
+/**
+ * Plugin implementation of the 'nutritioninfo_default' formatter.
+ *
+ * @FieldFormatter(
+ *   id = "nutritioninfo_default",
+ *   label = @Translation("Nutritioninfo Formatter"),
+ *   field_types = {
+ *      "nutritioninfo"
+ *   }
+ * )
+ */
+class NutritioninfoDefaultFormatter extends FormatterBase
+{
+
+}</pre></div><p>Here, the <code class="literal">@FieldFormatter</code> annotation is registering the <code class="literal">nutritioninfo</code> formatter.</p></li><li class="listitem">Next, we <a class="indexterm" id="id260"/>need to add the <code class="literal">viewElements()</code> function. This builds a renderable array for table theme markup. The <code class="literal">viewElements()</code> function's code looks as follows:<div class="informalexample"><pre class="programlisting">   /**
+     * {@inheritdoc}
+     */
+    public function viewElements(FieldItemListInterface $items)
+
+    {
+        $rows = array();
+        foreach ($items as $delta =&gt; $item) {
+            $rows[] = array(
+                'data' =&gt; array(
+                    $item-&gt;calories,
+                    $item-&gt;carbohydrate_content,
+                    $item-&gt;cholesterol_content,
+                    $item-&gt;fat_content,
+                    $item-&gt;fiber_content,
+                    $item-&gt;protein_content,
+                    $item-&gt;saturated_fat_content,
+                    $item-&gt;serving_size,
+                    $item-&gt;sodium_content,
+                    $item-&gt;sugar_content,
+                    $item-&gt;trans_fat_content,
+                    $item-&gt;unsaturated_fat_content
+                )
+
+            );
+
+        }
+
+        $headers = array(
+            t('Calories'),
+            t('Carbohydrate Content'),
+            t('Cholesterol Content'),
+            t('Fat Content'),
+            t('Fiber Content'),
+            t('Protein Content'),
+            t('Saturated Fat Content'),
+            t('Serving Size'),
+            t('Sodium Content'),
+            t('Sugar Content'),
+            t('Trans Fat Content'),
+            t('Unsaturated Fat Content'),
+        );
+
+        $table = array(
+            '#type' =&gt; 'table',
+            '#header' =&gt; $headers,
+            '#rows' =&gt; $rows,
+            '#empty' =&gt; t('No calories information available'),
+            '#attributes' =&gt; array('id' =&gt; 'nutrition-info'),
+        );
+
+        return $elements = array('#markup' =&gt; drupal_render($table));
+
+    }</pre></div></li><li class="listitem">The code of the full <a class="indexterm" id="id261"/><code class="literal">NutritioninfoDefaultFormatter.php</code> file is shown here: <a class="ulink" href="https://github.com/valuebound/nutritioninfo/blob/master/src/Plugin/Field/FieldFormatter/NutritioninfoDefaultFormatter.php">https://github.com/valuebound/nutritioninfo/blob/master/src/Plugin/Field/FieldFormatter/NutritioninfoDefaultFormatter.php</a>.</li><li class="listitem">All right, now<a class="indexterm" id="id262"/> it's time to enable our new module. Open up your d8dev Drupal site in your favorite browser, and click on the <span class="strong"><strong>Modules</strong></span> link in the <span class="strong"><strong>Admin</strong></span> toolbar. Search for <code class="literal">Nutrition</code> and check the checkbox next to your new <span class="strong"><strong>Nutrition Information</strong></span> field module:<div class="mediaobject"><img alt="Time for action – developing a custom module for a compound NutritionInformation field" src="graphics/4659_04_02.jpg"/></div></li><li class="listitem">Finally, scroll to the bottom of the page and click on the <span class="strong"><strong>I</strong></span><span class="strong"><strong>nstall</strong></span> button.</li></ol></div><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec35"/><span class="emphasis"><em>What just happened?</em></span></h2></div></div></div><p>That was some serious development. We created a fairly complex custom module, and now we have a field that offers a more complete Recipe content type. We used the Field Types API and created a new custom field, nutrition. In this process, we learned how to create FieldType, Field, and Field formatter, which are required for the nutrition field. We also learned about Drupal namespaces and how to use them in custom modules.</p></div></div>
+<div class="section" title="Time for action &#x2013; updating the Recipe content type to use the NutritionInformation field"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec54"/>Time for action – updating the Recipe content type to use the NutritionInformation field</h1></div></div></div><p>Now, let's put our <a class="indexterm" id="id263"/>new module to use and add our new compound field to our Recipe content type, using our new custom <code class="literal">nutritioninfo</code> field for the <code class="literal">NutrionInformation</code> property of the <a class="ulink" href="http://schema.org/Recipe">http://schema.org/Recipe</a> definition:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Go to the <span class="strong"><strong>Manage Fields</strong></span> configuration page for the Recipe content type: <code class="literal">http://localhost/d7dev/admin/structure/types/ manage/recipe/fields</code>.</li><li class="listitem">Now, add a new field with the following settings—<span class="strong"><strong>Label</strong></span>: <code class="literal">nutrition</code>, <span class="strong"><strong>Name</strong></span>: <code class="literal">field_nutrition_information</code>, and <span class="strong"><strong>Type</strong></span>: <code class="literal">Nutrition Information</code> . Click on the <span class="strong"><strong>Save and continue</strong></span> button:<div class="mediaobject"><img alt="Time for action – updating the Recipe content type to use the NutritionInformation field" src="graphics/4659_04_03.jpg"/></div></li><li class="listitem">There<a class="indexterm" id="id264"/> is nothing to set for the field settings, so just click on the <span class="strong"><strong>Save field settings</strong></span> button.</li><li class="listitem">Next, click on the <span class="strong"><strong>Find content</strong></span> link in the <span class="strong"><strong>Shortcuts</strong></span> toolbar, and click on the <span class="strong"><strong>Edit</strong></span> link for the first Recipe content item in the list.</li><li class="listitem">Towards the bottom of the node edit form, you will see inputs for our new compound field.</li></ol></div><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec36"/><span class="emphasis"><em>What just happened?</em></span></h2></div></div></div><p>We completed the development of a new module. It will create a nutrition field programmatically, which will display the data in a specific format as required.</p></div></div>
+<div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec55"/>Summary</h1></div></div></div><p>In this chapter, we developed a custom compound field module based on the microdata specification at <a class="ulink" href="http://schema.org/NutritionInformation">http://schema.org/NutritionInformation</a>, allowing us to enhance our Recipe content type. However, at this point, our Nutrition Information field module is still a bit rough around the edges.</p><p>In the next chapter, we will introduce some more code examples, and clean up some of those rough edges.</p></div></body></html>
