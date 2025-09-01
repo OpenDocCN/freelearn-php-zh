@@ -1,0 +1,1270 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;6.&#xA0;Creating an Authentication System"><div class="titlepage"><div><div><h1 class="title"><a id="ch06"/>Chapter 6. Creating an Authentication System</h1></div></div></div><p>CodeIgniter doesn't come with a user authentication system out of the box (urgh, that phrase), but nevertheless it doesn't. If you want to manage users and sessions, there are several options open to you. You can install an auth Spark, or you can develop your own solution—which is what we will do here.</p><p>One of the irritations I have with other "third-party" plugins (whatever their purpose) is that the code is almost always difficult, making maintenance and integration difficult. This authentication system is as simple as I can make it, and hopefully, it will be easy for you to adapt and extend it for your purposes.</p><p>The authentication system provided in this chapter will allow you to create and manage users, password resets, user e-mail notifications, user logins, and so on.</p><p>In this chapter, we will cover the following topics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Design and wireframes</li><li class="listitem" style="list-style-type: disc">Creating the database</li><li class="listitem" style="list-style-type: disc">Creating the models</li><li class="listitem" style="list-style-type: disc">Creating the views</li><li class="listitem" style="list-style-type: disc">Creating the controllers</li><li class="listitem" style="list-style-type: disc">Putting it all together</li></ul></div><div class="section" title="Introduction"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec59"/>Introduction</h1></div></div></div><p>To create this app, we will <a id="id408" class="indexterm"/>create five controllers: one to handle signing in to sessions, one to handle admin functions (CRUD operations), one for user password management, one to allow a user to register, and one to offer functionality to a user once they are logged in.</p><p>We'll also create a language file to store text, allowing you to have multiple language support should that be required.</p><p>We will make amends to the <code class="literal">config.php</code> file to allow for encryption support necessary for sessions and password support.</p><p>We'll create all the necessary view files and even a CSS file to help Bootstrap with some of the views.</p><p>However, this app along with all the others in this book, relies on the basic setup we did in <a class="link" href="ch01.html" title="Chapter 1. Introduction and Shared Project Resources">Chapter 1</a>, <span class="emphasis"><em>Introduction and Shared Project Resources</em></span>; although you can take large sections of the code and drop it into pretty much any app you might already have, please keep in mind that the <a id="id409" class="indexterm"/>setup done in the first chapter acts as a foundation for this chapter.</p><p>So without further ado, let's get on with it.</p></div></div>
+<div class="section" title="Design and wireframes"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec60"/>Design and wireframes</h1></div></div></div><p>As always, before we<a id="id410" class="indexterm"/> start building, we should as always take a look at what we plan to build.</p><p>Firstly, a brief description of our intent: we plan to build an app that will provide the following functions:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">An admin can manage all users<a id="id411" class="indexterm"/> within the system and also allow individual users to edit and update their own data.</li><li class="listitem" style="list-style-type: disc">Users can reset passwords if they have forgotten them; e-mails confirming this will be sent to these users</li><li class="listitem" style="list-style-type: disc">New users are able to register and become part of the system; a password will be generated and sent to them in an e-mail</li></ul></div><p>We will also look at how to implement code to check for a users' access level. You can use this code in your projects to limit users from specific controllers and controller functions.</p><p>To get a better idea of what's happening, let's take a look at the following site map:</p><div class="mediaobject"><img src="graphics/7093OS_06_01.jpg" alt="Design and wireframes"/></div><p>So, that's the site map; now, let's go over each item and get a brief idea of what it does:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Signin</strong></span>: Imagine this as<a id="id412" class="indexterm"/> the start point. The user will be able to sign in at this point. Depending on the value in <code class="literal">users.usr_access_level</code>, they will either be directed to <code class="literal">me</code> or <code class="literal">users</code> controllers. The <code class="literal">me</code> controller is a place for normal users to edit and update their details, while the <code class="literal">users</code> controller offers a place for an admin to manage all users.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Me</strong></span>: This currently displays a form to the user; however, consider this area a dashboard area for<a id="id413" class="indexterm"/> users who are not admins. Admins have their <code class="literal">users.usr_access_level</code> value set to <code class="literal">1</code>. Currently, the <code class="literal">me</code> controller will load the <code class="literal">index</code> function, which will allow the user to edit their details—speaking of which, let's see the next block.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Edit My Details</strong></span>: This will display a form to the current user. The form will allow the user to change and <a id="id414" class="indexterm"/>save their contact data.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Users</strong></span>: The <code class="literal">users</code> controller handles admin functions such as all CRUD operations for users, password<a id="id415" class="indexterm"/> resets, and password scramble (for all users).</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>View All</strong></span>: This lists all users and their <a id="id416" class="indexterm"/>current status in the database. The users are displayed in a table. Those users who are active (<code class="literal">users.usr_is_active = 1</code>) have no background color to their row, while users who are inactive (<code class="literal">users.usr_is_active = 0</code>) have an orange background color.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Create</strong></span>: As the name suggests, this will display the <code class="literal">users/new_user</code> view that contains a form, allowing an <a id="id417" class="indexterm"/>admin to create a user within the system.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Edit</strong></span>: This displays a form similar to the previous one, except that it is prepopulated with details <a id="id418" class="indexterm"/>of the current logged in user. This is loaded when the admin presses the Edit link in the View All page.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Delete</strong></span>: This displays a confirmation page, asking the admin to confirm whether they wish to delete<a id="id419" class="indexterm"/> the user. This is loaded when the admin presses the Edit link in the View All page.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Forgot Password</strong></span>: This displays a form to the user. The user is invited to enter their e-mail address in a form text field and press Submit. If the e-mail address exists in the database, then an<a id="id420" class="indexterm"/> e-mail is sent to the e-mail address with a URL in the body. This URL is the reset URL for this auth system. Appended to the URL is a unique code that is used by the system to verify that a password reset request is genuine.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Register</strong></span>: This displays a form to the user, inviting them to enter their first name, last name, and e-mail<a id="id421" class="indexterm"/> address. Once successfully submitted (there were no validation errors), the new user is added to the system and an e-mail is sent to the new user informing them of their password; their password was generated automatically by the system on their registration.</li></ul></div><p>Now that we have a fairly good idea of the structure and form of the site, let's take a look at some wireframes of each page.</p><div class="section" title="Me – editing details"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec53"/>Me – editing details</h2></div></div></div><p>The following screenshot <a id="id422" class="indexterm"/>shows you a wireframe from the Edit My Details item discussed in the site map. The normal user (not an admin user) can view their details in an HTML form and by pressing Save, they can then update these details.</p><div class="mediaobject"><img src="graphics/7093OS_06_06.jpg" alt="Me – editing details"/></div></div><div class="section" title="Viewing all users"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec54"/>Viewing all users</h2></div></div></div><p>The following screenshot shows<a id="id423" class="indexterm"/> you a wireframe from<a id="id424" class="indexterm"/> the View All item in the site map. The admin user is able to see all users within the system in a table grid. Users are listed and have Edit and Delete options, which the admin user can use.</p><div class="mediaobject"><img src="graphics/7093OS_06_03.jpg" alt="Viewing all users"/></div></div><div class="section" title="Creating users"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec55"/>Creating users</h2></div></div></div><p>The following screenshot<a id="id425" class="indexterm"/> shows you a wireframe from point <span class="strong"><strong>6</strong></span> (the Create User item) in the site map. It displays a form that contains text fields, allowing an admin to enter a user's details. Notice that user access levels can be set here; level <code class="literal">1</code> is treated in the system as an admin, so the user will be able to have admin rights assigned to<a id="id426" class="indexterm"/> them, whereas higher numbers are normal users. Currently, only level <code class="literal">2</code> (as a normal user) is understood by the system; the dropdown has as many as five levels—you can apply these in your adaptation of this project as you see fit or even add more should you wish. Setting the user as active (<code class="literal">users.usr_is_active = 1</code>) or inactive (<code class="literal">users.usr_is_active = 0</code>) will restrict the user at login. An active user will have their login request processed by the <code class="literal">signin</code> script, whereas an inactive user won't.</p><div class="mediaobject"><img src="graphics/7093OS_06_08.jpg" alt="Creating users"/></div></div><div class="section" title="Editing the user details"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec56"/>Editing the user details</h2></div></div></div><p>The form to<a id="id427" class="indexterm"/> edit user details is similar to the New<a id="id428" class="indexterm"/> User functionality discussed in the previous section. It is accessed through point <span class="strong"><strong>5</strong></span> (the View Users functionality) of the site map when an admin user clicks on the Edit link (in the <code class="literal">/views/users/view_all_users.php</code> view file) next to a person's name. The interesting difference here is the Other Options panel with the Reset Password Email option. This will <a id="id429" class="indexterm"/>reset the user's password and send them an e-mail informing them of their new password.</p><div class="mediaobject"><img src="graphics/7093OS_06_05.jpg" alt="Editing the user details"/></div></div><div class="section" title="Deleting a user"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec57"/>Deleting a user</h2></div></div></div><p>This is a final confirmation page<a id="id430" class="indexterm"/> that asks for permission to delete<a id="id431" class="indexterm"/> a user. It is accessed through point <span class="strong"><strong>5 </strong></span>(the View Users functionality) in the site map. An admin clicks on the Edit link to view the Edit User page. Clicking on Delete will remove the user from the <code class="literal">users</code> table, whereas <code class="literal">Cancel</code> will return the admin to point <span class="strong"><strong>5</strong></span> (the View Users item).</p><div class="mediaobject"><img src="graphics/7093OS_06_04.jpg" alt="Deleting a user"/></div></div><div class="section" title="Sign in"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec58"/>Sign in</h2></div></div></div><p>The following<a id="id432" class="indexterm"/> screenshot shows you the plan for the signing-in page. The user can enter their username and password and press the Login button. Validation errors are<a id="id433" class="indexterm"/> displayed above the form (however, validation errors are not shown in the following screenshot). There is also a link for someone to initiate a process to reset password. The <span class="strong"><strong>Forgot Password</strong></span> link will display a new form, allowing that person to enter an e-mail address.</p><div class="mediaobject"><img src="graphics/7093OS_06_02.jpg" alt="Sign in"/></div></div><div class="section" title="Register"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec59"/>Register</h2></div></div></div><p>The register functionality <a id="id434" class="indexterm"/>allows a nonuser to register <a id="id435" class="indexterm"/>with the system. The potential user is prompted to enter their first name, last name, and e-mail address. We use their first and last name in a welcome e-mail that will be sent to the e-mail address entered at this stage.</p><div class="mediaobject"><img src="graphics/7093OS_06_07.jpg" alt="Register"/></div></div><div class="section" title="File overview"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec60"/>File overview</h2></div></div></div><p>We're going to create quite a<a id="id436" class="indexterm"/> few files for this project, 23 files in all, and<a id="id437" class="indexterm"/> they are as follows:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/core/MY_Controller.php</code>: This acts as a parent class to child<a id="id438" class="indexterm"/> classes such as the <code class="literal">users.php</code> controller. It provides common resources such as commonly used helpers, libraries, and error delimiters.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/models/password_model.php</code>: This provides read/write<a id="id439" class="indexterm"/> access to the database—particularly around the <code class="literal">users</code> table—focusing on password specific operations.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/models/signin_model.php</code>: This provides methods<a id="id440" class="indexterm"/> that are specific to the sign-in process.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/models/users_model.php</code>: This provides methods that are <a id="id441" class="indexterm"/>specific to the <code class="literal">users</code> table.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/model/register_model.php</code>: This provides methods that <a id="id442" class="indexterm"/>assist in a user being added to the <code class="literal">users</code> table without an admin creating them first.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/nav/top_nav.php</code>: This provides a navigation bar <a id="id443" class="indexterm"/>at the top of the page.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/language/english/en_admin_lang.php</code>: This provides<a id="id444" class="indexterm"/> language support for the application.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/users/new_user.php</code>: This allows an admin to create a new user. The user is saved to the <code class="literal">users</code> table.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/users/view_all_users.php</code>: This allows an <a id="id445" class="indexterm"/>admin to view a list of all users in the <code class="literal">users</code> table.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/users/delete_user.php</code>: This allows an <a id="id446" class="indexterm"/>admin to delete a user.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/users/edit_user.php</code>: This allows<a id="id447" class="indexterm"/> an admin to<a id="id448" class="indexterm"/> edit the details of a user.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/users/forgot_password.php</code>: This allows someone who is not logged in to reset their password. This view contains a simple<a id="id449" class="indexterm"/> form that asks a user to enter their e-mail address. An e-mail is sent to this address with a unique code. This code is used to ensure that the change password request is genuine.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/users/me.php</code>: This allows a user who is not <a id="id450" class="indexterm"/>an admin to edit their<a id="id451" class="indexterm"/> details.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/users/new_password.php</code>: This allows a user <a id="id452" class="indexterm"/>who is not logged in to enter a new password.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/users/register.php</code>: This allows <a id="id453" class="indexterm"/>someone who is not already a user (a record in the <code class="literal">users</code> table) to sign in and generate a new row in the <code class="literal">users</code> table.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/users/signin.php</code>: This shows a<a id="id454" class="indexterm"/> simple login form.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/users/change_password.php</code>: This allows <a id="id455" class="indexterm"/>someone who is signed in to reset their password.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/email_scripts/welcome.txt</code>: This contains<a id="id456" class="indexterm"/> simple welcome text.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/email_scripts/new_password.txt</code>: This contains a<a id="id457" class="indexterm"/> simple instruction to click on a link to open the <code class="literal">password/new_password</code> controller function</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/email_scripts/reset_password.txt</code>: This<a id="id458" class="indexterm"/> contains a simple message that informs a user that their password has been changed.</li></ul></div><p>The file structure of the preceding 23 files is shown here:</p><div class="informalexample"><pre class="programlisting">application/
+├── core/
+│   ├── MY_Controller.php
+├── controllers/
+│   ├── me.php
+│   ├── password.php
+│   ├── register.php
+│   ├── signin.php
+│   ├── users.php
+├── models/
+│   ├── password_model.php
+│   ├── register_model.php
+│   ├── signin_model.php
+│   ├── users_model.php
+├── views/users/
+│   ├── new_user.php
+│   ├── view_all_users.php
+│   ├── delete_user.php
+│   ├── edit_user.php
+│   ├── forgot_password.php
+│   ├── me.php
+│   ├── new_password.php
+│   ├── register.php
+│   ├── signin.php
+│   ├── change_password.php
+├── views/email_scripts/
+│   ├── welcome.txt
+│   ├── new_password.txt
+│   ├── reset_password.txt
+├── views/nav/
+│   ├── top_nav.php
+├── views/common/
+│   ├── login_header.php
+├── language/english/
+│   ├── en_admin_lang.php
+bootstrap/
+├── css/
+    ├── signin.css</pre></div><p>Note the last item in the list, which is <code class="literal">signin.css</code>. This sits in the <code class="literal">bootstrap/css/</code> folder, which is at the same level as CodeIgniter's <code class="literal">application</code> folder. We installed Twitter Bootstrap in <a class="link" href="ch01.html" title="Chapter 1. Introduction and Shared Project Resources">Chapter 1</a>, <span class="emphasis"><em>Introduction and Shared Project Resources</em></span>. In this chapter, we will go through how to place the <code class="literal">bootstrap</code> folder at the proper folder level and location.</p></div></div>
+<div class="section" title="Creating the database"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec61"/>Creating the database</h1></div></div></div><p>Okay, you should have already<a id="id459" class="indexterm"/> set up CodeIgniter and Bootstrap as described in <a class="link" href="ch01.html" title="Chapter 1. Introduction and Shared Project Resources">Chapter 1</a>, <span class="emphasis"><em>Introduction and Shared Project Resources</em></span>. If not, then you<a id="id460" class="indexterm"/> should know that the code in this chapter is specifically built with the setup from <a class="link" href="ch01.html" title="Chapter 1. Introduction and Shared Project Resources">Chapter 1</a>, <span class="emphasis"><em>Introduction and Shared Project Resources</em></span>, in mind. However, it's not the end of the world if you haven't—the code can easily be applied to other situations.</p><p>Firstly, we'll build the database. Copy the following MySQL code into your database:</p><div class="informalexample"><pre class="programlisting">CREATE DATABASE `user_auth`;
+USE `user_auth`;
+
+CREATE TABLE `ci_sessions` (
+  `session_id` varchar(40) COLLATE utf8_bin NOT NULL DEFAULT '0',
+  `ip_address` varchar(16) COLLATE utf8_bin NOT NULL DEFAULT '0',
+  `user_agent` varchar(120) COLLATE utf8_bin DEFAULT NULL,
+  `last_activity` int(10) unsigned NOT NULL DEFAULT '0',
+  `user_data` text COLLATE utf8_bin NOT NULL,
+  PRIMARY KEY (`session_id`),
+  KEY `last_activity_idx` (`last_activity`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
+
+CREATE TABLE `users` (
+  `usr_id` int(11) NOT NULL AUTO_INCREMENT,
+  `acc_id` int(11) NOT NULL COMMENT 'account id',
+  `usr_fname` varchar(125) NOT NULL,
+  `usr_lname` varchar(125) NOT NULL,
+  `usr_uname` varchar(50) NOT NULL,
+  `usr_email` varchar(255) NOT NULL,
+  `usr_hash` varchar(255) NOT NULL,
+  `usr_add1` varchar(255) NOT NULL,
+  `usr_add2` varchar(255) NOT NULL,
+  `usr_add3` varchar(255) NOT NULL,
+  `usr_town_city` varchar(255) NOT NULL,
+  `usr_zip_pcode` varchar(10) NOT NULL,
+  `usr_access_level` int(2) NOT NULL COMMENT 'up to 99',
+  `usr_is_active` int(1) NOT NULL COMMENT '1 (active) or 0 (inactive)',
+  `usr_created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `usr_pwd_change_code` varchar(50) NOT NULL,
+  PRIMARY KEY (`usr_id`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;</pre></div><p>You'll see that the first table we create is <code class="literal">ci_sessions</code>. We need this to allow CodeIgniter to manage sessions, specifically logged in users. However, it is just the standard session table available from <span class="emphasis"><em>CodeIgniter User Guide</em></span>, so I'll not include a description of that table<a id="id461" class="indexterm"/> as it's not technically specific to this application. However, if you're interested, there's a description at <a class="ulink" href="http://ellislab.com/codeigniter/user-guide/libraries/sessions.html">http://ellislab.com/codeigniter/user-guide/libraries/sessions.html</a>.</p><p>Right, let's take a look at each item in each<a id="id462" class="indexterm"/> table and see what it means:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th colspan="2" style="text-align: center" valign="bottom">
+<p>Table: users</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<span class="strong"><strong>Element</strong></span>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<span class="strong"><strong>Description</strong></span>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">usr_id</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is the<a id="id463" class="indexterm"/> primary key.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">acc_id</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Should you wish<a id="id464" class="indexterm"/> to associate users with specific accounts (or group users together under a sort of umbrella), <code class="literal">acc_id</code> (for account ID) can be a hook that enables you to do that. You'll need to create an <code class="literal">accounts</code> table to do this, however.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">usr_fname</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is the<a id="id465" class="indexterm"/> user's first name.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">usr_lname</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is<a id="id466" class="indexterm"/> the user's last name.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">usr_uname</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is the an<a id="id467" class="indexterm"/> option for a username.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">usr_email</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is the<a id="id468" class="indexterm"/> user's e-mail address.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">usr_hash</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is a hash<a id="id469" class="indexterm"/> of the user's password. The value in <code class="literal">users.usr_hash</code> is generated in two ways. The first is when someone manually changes their password (perhaps by the "forgot password" process). The <code class="literal">$this-&gt;encrypt-&gt;sha1($this-&gt;input-&gt;post('usr_password1'));</code> CodeIgniter function contains the new password from the user.</p>
+<p>The second way a password is created is when a password is generated by the system and is e-mailed to the user, for example, when an admin creates a new user manually. This way, the admin doesn't know what the password of the new user is.</p>
+<p>To achieve this, CodeIgniter uses the same <code class="literal">sha1()</code> encryption function; however, instead of a password being supplied from a user through <code class="literal">$POST</code>, it is made by creating a random string and passing it to <code class="literal">sha1()</code>, as shown here:</p>
+<div class="informalexample"><pre class="programlisting">$password = random_string('alnum', 8);
+$hash = $this-&gt;encrypt-&gt;sha1($password);</pre></div>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">usr_add1</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is the first line<a id="id470" class="indexterm"/> of a person's address.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">usr_add2</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is the second line <a id="id471" class="indexterm"/>of a person's address.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">usr_add3</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is the third line<a id="id472" class="indexterm"/> of a person's address.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">usr_town_city</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is the town or<a id="id473" class="indexterm"/> city of their address.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">usr_zip_pcode</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is the <a id="id474" class="indexterm"/>postal code or zip code of the person's address.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">usr_access_level</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is the indicates<a id="id475" class="indexterm"/> the permission level of the user. The permission level can govern what actions a user is allowed to perform.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">usr_is_active</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is the<a id="id476" class="indexterm"/> indicates whether the user is active (<code class="literal">1</code>) or inactive (<code class="literal">0</code>)—inactive means that a user cannot log in.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">usr_created_at</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is the <a id="id477" class="indexterm"/>MySQL timestamp that is created when the record is created.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">usr_pwd_change_code</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is a unique code that's generated when a person wishes to change their password. This unique<a id="id478" class="indexterm"/> code is generated and sent in an e-mail to the user who wishes to change their password. The code is appended to a URL in the body of the e-mail. The user clicks on this link and is redirected to the auth system. The system looks at that code to check whether it is valid and matches the e-mail. If it matches, the user can follow onscreen instructions to create a new password<a id="id479" class="indexterm"/> for them.</p>
+</td></tr></tbody></table></div><p>We'll also need to make amends to the <code class="literal">config/database.php</code> file, namely setting the database access details, username password, and so on.</p><p>Open the <code class="literal">config/database.php</code> file and find the following lines:</p><div class="informalexample"><pre class="programlisting">$db['default']['hostname'] = 'localhost';
+$db['default']['username'] = 'your username';
+$db['default']['password'] = 'your password';
+$db['default']['database'] = 'user_auth';</pre></div><p>Edit the values in the preceding lines, ensuring you substitute these values with ones that are more specific to your setup and situation; so, enter your username, password, and so on.</p></div>
+<div class="section" title="Adjusting the config.php file"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec62"/>Adjusting the config.php file</h1></div></div></div><p>There are a few settings in<a id="id480" class="indexterm"/> this file that we'll need to configure to support sessions and encryption. So, open the <code class="literal">config/config.php</code> file and make<a id="id481" class="indexterm"/> the following changes:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">We will need to set an encryption key; both sessions and CodeIgniter's encryption functionalities require an encryption key to be set in the <code class="literal">$config</code> array, so find the following line:<div class="informalexample"><pre class="programlisting">$config['encryption_key'] = '';</pre></div><p>Then, change it to the following:</p><div class="informalexample"><pre class="programlisting">$config['encryption_key'] = 'a-random-string-of-alphanum-characters';</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip08"/>Tip</h3><p>Now, obviously don't actually change this value to literally a-random-string-of-alphanum-characters but change it to, er, a random string of alphanum characters instead—if that makes sense? Yeah, you know what I mean.</p></div></div></li><li class="listitem">Next, find the following lines:<div class="informalexample"><pre class="programlisting">$config['sess_cookie_name'] = 'ci_session';
+$config['sess_expiration'] = 7200;
+$config['sess_expire_on_close'] = FALSE;
+$config['sess_encrypt_cookie'] = FALSE;
+$config['sess_use_database'] = FALSE;
+$config['sess_table_name'] = 'ci_sessions';
+$config['sess_match_ip'] = FALSE;
+$config['sess_match_useragent'] = TRUE;
+$config['sess_time_to_update'] = 300;</pre></div><p>Then, change it to the following:</p><div class="informalexample"><pre class="programlisting">$config['sess_cookie_name'] = 'ci_session';
+$config['sess_expiration'] = 7200;
+$config['sess_expire_on_close'] = TRUE;
+$config['sess_encrypt_cookie'] = TRUE;
+$config['sess_use_database'] = TRUE;
+$config['sess_table_name'] = 'ci_sessions';
+$config['sess_match_ip'] = TRUE;
+$config['sess_match_useragent'] = TRUE;
+$config['sess_time_to_update'] = 300;</pre></div></li></ol></div></div>
+<div class="section" title="Adjusting the routes.php file"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec63"/>Adjusting the routes.php file</h1></div></div></div><p>We want to redirect the user to the <code class="literal">signin</code> controller rather than default CodeIgniter <code class="literal">welcome</code> controller. We will<a id="id482" class="indexterm"/> need to amend the default<a id="id483" class="indexterm"/> controller settings in the <code class="literal">routes.php</code> file to reflect this:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Open the <code class="literal">config/routes.php</code> file for editing and find the following lines (near the bottom of the file):<div class="informalexample"><pre class="programlisting">$route['default_controller'] = "welcome";
+$route['404_override'] = '';</pre></div></li><li class="listitem">Firstly, we need to change the default controller. Initially in a CodeIgniter application, the default controller is set to <code class="literal">welcome</code>; however, we don't need this; instead, we want the default controller to be <code class="literal">signin</code>. So, find the following line:<div class="informalexample"><pre class="programlisting">$route['default_controller'] = "welcome";</pre></div><p>Replace it with the following:</p><div class="informalexample"><pre class="programlisting">$route['default_controller'] = "signin";</pre></div></li></ol></div></div>
+<div class="section" title="Creating the models"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec64"/>Creating the models</h1></div></div></div><p>There are four models in<a id="id484" class="indexterm"/> this project, which are <a id="id485" class="indexterm"/>as follows:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">models/password_model.php</code>: This contains <a id="id486" class="indexterm"/>functions that are specific to creating and resetting passwords.</li><li class="listitem" style="list-style-type: disc"><code class="literal">models/register_model.php</code>: This contains<a id="id487" class="indexterm"/> functions that are specific to registering a user.</li><li class="listitem" style="list-style-type: disc"><code class="literal">models/signin_model.php</code>: This contains<a id="id488" class="indexterm"/> functions that are specific to signing a user into the system.</li><li class="listitem" style="list-style-type: disc"><code class="literal">models/users_model.php</code>: This<a id="id489" class="indexterm"/> contains the main bulk of the model functions for this project, specifically CRUD operations to be performed on users and various other admin functions.</li></ul></div><p>So that's an overview of the models for this project; now, let's go and create each model.</p><p>Create the <code class="literal">/path/to/codeigniter/application/models/password_model.php</code> file and add the following <a id="id490" class="indexterm"/>code to it:</p><div class="informalexample"><pre class="programlisting">&lt;?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+class Password_model extends CI_Model {
+  function __construct() {
+      parent::__construct();
+  }</pre></div><p>The <code class="literal">does_code_match()</code> function will check whether the code supplied in the URL matches that in the database. If it does, it returns <code class="literal">true</code> or <code class="literal">false</code> if it doesn't. This is shown here:</p><div class="informalexample"><pre class="programlisting">  function does_code_match($code, $email) {
+    $query = "SELECT COUNT(*) AS `count` 
+              FROM `users` 
+              WHERE `usr_pwd_change_code` = ?
+              AND `usr_email` = ? ";
+
+        $res = $this-&gt;db-&gt;query($query, array($code, $email));
+    foreach ($res-&gt;result() as $row) {
+      $count = $row-&gt;count;
+    }
+
+    if ($count == 1) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+}</pre></div><p>Create the <code class="literal">/path/to/codeigniter/application/models/register_model.php</code> model file and add the following code to it:</p><div class="informalexample"><pre class="programlisting">&lt;?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+class Register_model extends CI_Model {
+  function __construct() {
+    parent::__construct();
+  }
+
+  public function register_user($data) {
+    if ($this-&gt;db-&gt;insert('users', $data)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+}</pre></div><p>The <code class="literal">register</code> model contains<a id="id491" class="indexterm"/> just one function, which is <code class="literal">register_user()</code>. It simply uses the CodeIgniter Active Record <code class="literal">insert()</code> class to insert the contents of the <code class="literal">$data</code> array into the <code class="literal">users</code> table.</p><p>Create the <code class="literal">/path/to/codeigniter/application/models/users_model.php</code> model file and add the following code to it:</p><div class="informalexample"><pre class="programlisting">&lt;?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+class Users_model extends CI_Model {
+  function __construct() {
+    parent::__construct();
+  }
+
+  function get_all_users() {
+    return $this-&gt;db-&gt;get('users');
+  } 
+
+  function process_create_user($data) {
+    if ($this-&gt;db-&gt;insert('users', $data)) {
+      return $this-&gt;db-&gt;insert_id();
+    } else {
+      return false;
+    }
+  }
+
+  function process_update_user($id, $data) {
+    $this-&gt;db-&gt;where('usr_id', $id);
+    if ($this-&gt;db-&gt;update('users', $data)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  function get_user_details($id) {
+    $this-&gt;db-&gt;where('usr_id', $id);
+    $result = $this-&gt;db-&gt;get('users');
+
+    if ($result) {
+      return $result;
+    } else {
+      return false;
+    }
+  }
+
+  function get_user_details_by_email($email) {
+    $this-&gt;db-&gt;where('usr_email', $email);
+    $result = $this-&gt;db-&gt;get('users');
+
+    if ($result) {
+      return $result;
+    } else {
+      return false;
+    }
+  }
+
+  function delete_user($id) {
+    if($this-&gt;db-&gt;delete('users', array('usr_id' =&gt; $id))) {
+      return true;
+    } else {
+      return false;
+    }
+  }</pre></div><p>Let's look at the<a id="id492" class="indexterm"/> <code class="literal">make_code()</code> function. This function creates a unique code and saves it to the user's record. This code is <a id="id493" class="indexterm"/>sent out at the end of a URL in an e-mail to the user. If this code in the URL matches the code in the database, then chances are that it's a genuine password change as it is unlikely that someone would have accurately guessed the code.</p><p>Notice the PHP construct <code class="literal">do…while</code>—it looks something like this:</p><div class="informalexample"><pre class="programlisting">do {
+// something
+} while ('…a condition is met');</pre></div><p>So, this means <span class="emphasis"><em>do something while a condition is met</em></span>. With that in mind, think about our problem; we have to assign <code class="literal">users.usr_pwd_change_code</code> with a value that doesn't exist in the database already. The code should be a unique value to ensure that someone else doesn't have his or her password changed by mistake.</p><p>We use the <code class="literal">do…while</code> construct as a means to create code that is unique in the database by first creating the code and then looking through the <code class="literal">users</code> table for another occurrence of that code. If it is found, then<a id="id494" class="indexterm"/> the number of rows returned will be greater or equal to one. Then, another code is generated and another search for the <code class="literal">users</code> table happens. </p><p>This will repeat until a code that cannot be found in the <code class="literal">users</code> table is generated. This unique code is then returned as <code class="literal">$url_code</code>:</p><div class="informalexample"><pre class="programlisting">function make_code() {
+  do {
+    $url_code = random_string('alnum', 8); 
+
+    $this-&gt;db-&gt;where('usr_pwd_change_code = ', $url_code);
+    $this-&gt;db-&gt;from('users');
+    $num = $this-&gt;db-&gt;count_all_results();
+  } while ($num &gt;= 1);
+
+  return $url_code;
+}
+
+function count_results($email) {
+  $this-&gt;db-&gt;where('usr_email', $email);
+  $this-&gt;db-&gt;from('users');
+  return $this-&gt;db-&gt;count_all_results();
+}</pre></div><p>The following <code class="literal">update_user_password()</code> function accepts an array of data containing the user's primary key and a new password. The array is provided the <code class="literal">new_password()</code> function of <code class="literal">password_model</code>. The user's ID (<code class="literal">users.usr_id</code>) is from the session (as they're logged in) and the new password is from the form that <code class="literal">new_password()</code> loads (<code class="literal">views/users/new_password.php</code>):</p><div class="informalexample"><pre class="programlisting">  function update_user_password($data) {
+    $this-&gt;db-&gt;where('usr_id', $data['usr_id']);
+    if ($this-&gt;db-&gt;update('users', $data)) {
+        return true;
+    } else {
+        return false;
+    }
+  }
+
+  function does_code_match($data, $email) {
+    $query = "SELECT COUNT(*) AS `count` 
+                    FROM `users` 
+                    WHERE `usr_pwd_change_code` = ?
+                    AND `usr_email` = ? ";
+
+    $res = $this-&gt;db-&gt;query($query, array($data['code'], $email));
+    foreach ($res-&gt;result() as $row) {
+      $count = $row-&gt;count;
+    }
+
+    if ($count == 1) {
+        return true;
+    } else {
+        return false;
+    }
+  }
+
+  function update_user_code($data) {
+    $this-&gt;db-&gt;where('usr_email', $data['usr_email']);
+    if ($this-&gt;db-&gt;update('users', $data)) {
+        return true;
+    } else {
+        return false;
+    }
+  }
+}</pre></div><p>Create the <code class="literal">/path/to/codeigniter/application/models/signin_model.php</code> model file and add the <a id="id495" class="indexterm"/>following code to it:</p><div class="informalexample"><pre class="programlisting">&lt;?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+class Signin_model extends CI_Model {
+    function __construct() {
+        parent::__construct();
+    } 
+
+    public function does_user_exist($email) {
+        $this-&gt;db-&gt;where('usr_email', $email);
+        $query = $this-&gt;db-&gt;get('users');
+        return $query;
+    }
+}</pre></div><p>This model contains only one function other than <code class="literal">__construct()</code>, that is, <code class="literal">does_user_exist($email)</code>. This function takes an e-mail address submitted by the user from the sign-in view and returns the active record query.</p><p>The query is<a id="id496" class="indexterm"/> evaluated in the <code class="literal">signin</code> controller with the CodeIgniter database function <code class="literal">num_rows()</code>:</p><div class="informalexample"><pre class="programlisting">$query = $this-&gt;Signin_model-&gt;does_user_exist($usr_email);
+if ($query-&gt;num_rows() == 1) {
+...</pre></div><p>If there is a single match, then the <code class="literal">signin</code> controller loops over the Active Record result and attempts to log the user in.</p></div>
+<div class="section" title="Creating the views"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec65"/>Creating the views</h1></div></div></div><p>There are quite a few view files and e-mail template files in this project—in fact, we're going to create 10 view files, three e-mail scripts, and one header file each specific to logging in and amending<a id="id497" class="indexterm"/> a navigation file. Right, let's get to it.</p><p>The following<a id="id498" class="indexterm"/> are the standard view files used in this project:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">path/to/codeigniter/application/views/users/new_user.php</code>: This displays a form to the admin user, allowing them to create a user. The new user is sent an e-mail that <a id="id499" class="indexterm"/>welcomes them to the system and informs them of their password. The e-mail script is <code class="literal">/views/email_scripts/welcome.txt</code>.</li><li class="listitem" style="list-style-type: disc"><code class="literal">path/to/codeigniter/application/views/users/view_all_users.php</code>: This displays a list of<a id="id500" class="indexterm"/> users currently in the system. Admin users are able to edit or delete a user.</li><li class="listitem" style="list-style-type: disc"><code class="literal">path/to/codeigniter/application/views/users/delete_user.php</code>: This displays a confirmation<a id="id501" class="indexterm"/> page to the admin user. This is displayed if the admin user presses Delete in the <code class="literal">view_all_users/php</code> view. The confirmation page asks whether the admin user really wishes to delete the selected user.</li><li class="listitem" style="list-style-type: disc"><code class="literal">path/to/codeigniter/application/views/users/edit_user.php</code>: This displays a form to the<a id="id502" class="indexterm"/> admin user. This is displayed if the admin user presses Edit in the <code class="literal">view_all_users.php</code> view. The form is similar to the <code class="literal">new_user.php</code> file, except that there is a panel where the admin user can send an e-mail to the user to reset their password.</li><li class="listitem" style="list-style-type: disc"><code class="literal">path/to/codeigniter/application/views/users/forgot_password.php</code>: This displays a form<a id="id503" class="indexterm"/> to anyone asking for an e-mail address. If this e-mail address is in the system, an e-mail will be sent to them with instructions on how to reset their password.</li><li class="listitem" style="list-style-type: disc"><code class="literal">path/to/codeigniter/application/views/users/me.php</code>: This displays a form to the current<a id="id504" class="indexterm"/> logged in user. The form is similar to <code class="literal">edit_user.php</code>. It allows the current logged in user to edit and amend their<a id="id505" class="indexterm"/> account details.</li><li class="listitem" style="list-style-type: disc"><code class="literal">path/to/codeigniter/application/views/users/new_password.php</code>: This displays a form to anyone, inviting then to enter their e-mail address—the code<a id="id506" class="indexterm"/> generated earlier from the forgotten password process is already a hidden form element. The code and e-mail address are compared, and if the code matches, a new password is generated for the user.</li><li class="listitem" style="list-style-type: disc"><code class="literal">path/to/codeigniter/application/views/users/register.php</code>: This displays a form to the user, allowing them to enter their first and last names and e-mail addresses. They are<a id="id507" class="indexterm"/> then added to the database and a password is generated for them. This password is sent to them in an e-mail along with a welcome message. The text for this e-mail is in <code class="literal">/views/email_scripts/welcome.txt</code>.</li><li class="listitem" style="list-style-type: disc"><code class="literal">path/to/codeigniter/application/views/users/signin.php</code>: This displays a form. The form allows<a id="id508" class="indexterm"/> a user (normal or admin) to sign in to the system with their username and password; remember that their password isn't stored in the <code class="literal">users</code> table, only a hash of that password is stored. To support this hashing, we'll need to alter the encryption key in the config file. We discussed this in the <span class="emphasis"><em>Adjusting the config.php file</em></span> section of this chapter.</li><li class="listitem" style="list-style-type: disc"><code class="literal">path/to/codeigniter/application/views/users/change_password.php</code>: This displays a form<a id="id509" class="indexterm"/> to anyone who is logged in. The form allows a user (normal or admin) to change their password.</li></ul></div><p>The following are the e-mail scripts <a id="id510" class="indexterm"/>used in this application:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">path/to/codeigniter/application/views/email_scripts/welcome.txt</code>: This contains the text for the welcome e-mail that is sent to a new user when they are either added <a id="id511" class="indexterm"/>by an admin from the <code class="literal">new_user.php</code> form or when they create an account themselves with the form in the <code class="literal">register.php</code> view.</li><li class="listitem" style="list-style-type: disc"><code class="literal">path/to/codeigniter/application/views/email_scripts/new_password.txt</code>: This file contains the text informing the user of a password change. </li><li class="listitem" style="list-style-type: disc"><code class="literal">path/to/codeigniter/application/views/email_scripts/reset_password.txt</code>: This contains a URL that a user can click on to begin the reset password process. The URL contains a unique code that the system uses to ensure that it is a genuine password change request.</li></ul></div><p>The following are the login header and <a id="id512" class="indexterm"/>navigation views:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">path/to/codeigniter/application/views/common/login_header.php</code>: The css requirements <a id="id513" class="indexterm"/>of the login form are different from that of the standard <code class="literal">/views/common/header.php</code> view. Specifically, it needs the <code class="literal">signin.css</code> file.</li><li class="listitem" style="list-style-type: disc"><code class="literal">path/to/codeigniter/application/views/nav/top_nav.php</code>: This contains navigation options that allow admins and normal users to open various pages, and it also contains a logout link that allows a user to terminate their session.</li></ul></div><p>Right, these were the view files, both standard HTML and TXT files for e-mails, and so on. Let's go over each file in turn and create them.</p><p>Create the <code class="literal">/path/to/codeigniter/application/views/users/register.php</code> file and add the following code to it:</p><div class="informalexample"><pre class="programlisting">&lt;div class="container"&gt;
+  &lt;?php echo validation_errors(); ?&gt;
+  &lt;?php echo form_open('register/index', 'role="form" class="form-signin"') ; ?&gt; 
+    &lt;h2 class="form-signin-heading"&gt;&lt;?php echo $this-&gt;lang-&gt;line('register_page_title'); ?&gt;&lt;/h2&gt;
+    &lt;input type="text" class="form-control" name="usr_fname" placeholder="&lt;?php echo $this-&gt;lang-&gt;line('register_first_name'); ?&gt;" autofocus&gt;
+    &lt;input type="text" class="form-control" name="usr_lname" placeholder="&lt;?php echo $this-&gt;lang-&gt;line('register_last_name'); ?&gt;" &gt;
+    &lt;input type="email" class="form-control" name="usr_email" placeholder="&lt;?php echo $this-&gt;lang-&gt;line('register_email'); ?&gt;" &gt;
+    &lt;?php echo form_submit('submit', 'Register', 'class="btn btn-lg btn-primary btn-block"'); ?&gt;
+  &lt;/form&gt;
+&lt;/div&gt;</pre></div><p>This displays a form to a potential user in the system. It requires the user to enter a first name, last name, and an e-mail address. The form is submitted to <code class="literal">register/index</code>, which will validate the data inputted by the user. If there were no errors, then the user is added to the <code class="literal">users</code> table, a <a id="id514" class="indexterm"/>password is generated for them, and a hash is generated and stored as <code class="literal">users.usr_hash</code> and e-mailed to them. The e-mail template is <code class="literal">welcome.txt</code>, which is given next.</p><p>Create the <code class="literal">/path/to/codeigniter/application/views/email_scripts/welcome.txt</code> file and add the following code to it:</p><div class="informalexample"><pre class="programlisting">Dear %usr_fname% %usr_lname%,
+
+Welcome to the site.  Your password is:
+
+%password%
+
+Regards,
+The Team</pre></div><p>This is the text for the welcome e-mail sent to users when they register. Notice that there are three strings of text enclosed in a percent sign (<code class="literal">%</code>). These are strings of text that will be identified by the signup process and replaced using the <code class="literal">str_replace()</code> PHP function with their true values. For example, assume that I register with the site. My name is Robert Foster and my e-mail might be <code class="literal">rob-foster@domain.com</code>. The e-mail sent to <code class="literal">rob-foster@domain.com</code> would look like the following:</p><div class="informalexample"><pre class="programlisting">Dear Robert Foster,
+Welcome to the site.  Your password is:
+
+&lt;this-is-the-password&gt;
+
+Regards,
+The Team</pre></div><p>Create the <code class="literal">/path/to/codeigniter/application/views/users/forgot_password.php</code> file and add the following code to it:</p><div class="informalexample"><pre class="programlisting">&lt;?php if (isset($login_fail)) : ?&gt;
+  &lt;div class="alert alert-danger"&gt;&lt;?php echo $this-&gt;lang-&gt;line('admin_login_error') ; ?&gt;&lt;/div&gt;
+&lt;?php endif ; ?&gt;
+  &lt;?php echo validation_errors(); ?&gt;
+  &lt;?php echo form_open('password/forgot_password', 'class="form-signin" role="form"') ; ?&gt;
+    &lt;h2 class="form-signin-heading"&gt;&lt;?php echo $this-&gt;lang-&gt;line('forgot_pwd_header') ; ?&gt;&lt;/h2&gt;
+    &lt;p class="lead"&gt;&lt;?php echo $this-&gt;lang-&gt;line('forgot_pwd_instruction') ;?&gt;&lt;/p&gt;
+    &lt;?php echo form_input(array('name' =&gt; 'usr_email', 'class' =&gt; 'form-control', 'placeholder' =&gt; $this-&gt;lang-&gt;line('admin_login_email'),'id' =&gt; 'email', 'value' =&gt; set_value('email', ''), 'maxlength' =&gt; '100', 'size' =&gt; '50', 'style' =&gt; 'width:100%')); ?&gt;
+    &lt;br /&gt;
+    &lt;button class="btn btn-lg btn-primary btn-block" type="submit"&gt;&lt;?php echo $this-&gt;lang-&gt;line('common_form_elements_go') ; ?&gt;&lt;/button&gt;
+    &lt;br /&gt;
+  &lt;?php echo form_close() ; ?&gt;
+&lt;/div&gt;</pre></div><p>The <code class="literal">forgot_password.php</code> view file provides a short form to any user to begin the process of resetting their password. The user can enter their e-mail address and press the Go button. The form is submitted to the <code class="literal">password</code> controller's <code class="literal">forgot_password()</code> function, where it is validated.</p><p>If the e-mail address<a id="id515" class="indexterm"/> passes validation, then the <code class="literal">forgot_password()</code> function checks to see whether the e-mail address exists in the <code class="literal">users</code> table. If it exists, then a unique code is generated and stored in <code class="literal">users.usr_pwd_change_code</code>. If the code does not exist, then the user is just redirected to the <code class="literal">forgot_password()</code> function to try again.</p><p>This code is also appended to a URL and sent in the body of an e-mail to the user. The user is instructed to click on the link in the e-mail that will direct them to the <code class="literal">password</code> controller's <code class="literal">new_password()</code> function. The <code class="literal">new_password()</code> function will load the <code class="literal">users/new_password.php</code> view file, which will ask the user to enter their e-mail address.</p><p>This e-mail address is validated and <code class="literal">new_password()</code> will look in the <code class="literal">users</code> table to see whether the e-mail address exists. If it exists, it will check to see whether the value of the code in the URL matches the value stored in <code class="literal">users.usr_pwd_change_code</code>. If it does, then it is likely to be genuine and a new password is generated. This password is e-mailed to the user. A hash is created using the password and stored in <code class="literal">users.usr_hash</code>.</p><p>Create the <code class="literal">/path/to/codeigniter/application/views/users/signin.php</code> file and add the following code to it:</p><div class="informalexample"><pre class="programlisting">&lt;?php if (isset($login_fail)) : ?&gt;
+  &lt;div class="alert alert-danger"&gt;&lt;?php echo $this-&gt;lang-&gt;line('admin_login_error') ; ?&gt;&lt;/div&gt;
+&lt;?php endif ; ?&gt;
+  &lt;?php echo validation_errors(); ?&gt;
+  &lt;?php echo form_open('signin/index', 'class="form-signin" role="form"') ; ?&gt;
+    &lt;h2 class="form-signin-heading"&gt;&lt;?php echo $this-&gt;lang-&gt;line('admin_login_header') ; ?&gt;&lt;/h2&gt;
+    &lt;input type="email" name="usr_email" class="form-control" placeholder="&lt;?php echo $this-&gt;lang-&gt;line('admin_login_email') ; ?&gt;" required autofocus&gt;
+    &lt;input type="password" name="usr_password" class="form-control" placeholder="&lt;?php echo $this-&gt;lang-&gt;line('admin_login_password') ; ?&gt;" required&gt;
+    &lt;button class="btn btn-lg btn-primary btn-block" type="submit"&gt;&lt;?php echo $this-&gt;lang-&gt;line('admin_login_signin') ; ?&gt;&lt;/button&gt;
+    &lt;br /&gt;
+    &lt;?php echo anchor('password',$this-&gt;lang-&gt;line('signin_forgot_password')); ?&gt;
+  &lt;?php echo form_close() ; ?&gt;
+&lt;/div&gt;</pre></div><p>The <code class="literal">signin</code> view is quite simple: a standard sign-in interface. The user can enter their e-mail address and password to sign in. Validation errors are echoed above the form if there were any errors, and a <a id="id516" class="indexterm"/>
+<span class="strong"><strong>Forgot Password</strong></span> link allows the user to use a method to begin the process of resetting their password.</p><p>The error messages are contained in a <code class="literal">div</code> element with the <code class="literal">alert alert-danger</code> Bootstrap class; I prefer a big red error message rather than one of those limp-wristed orange jobbies; however, you can change it to something softer, such as <code class="literal">alert alert-warning</code>.</p><p>Create the <code class="literal">/path/to/codeigniter/application/views/users/view_all_users.php</code> file and add the following code to it:</p><div class="informalexample"><pre class="programlisting">&lt;h2&gt;&lt;?php echo $page_heading ; ?&gt;&lt;/h2&gt;
+&lt;table class="table table-bordered"&gt;
+    &lt;thead&gt;
+        &lt;tr&gt;
+          &lt;th&gt;#&lt;/th&gt;
+          &lt;th&gt;First Name&lt;/th&gt;
+          &lt;th&gt;Last Name&lt;/th&gt;
+          &lt;th&gt;Email&lt;/th&gt;
+         &lt;td&gt;Actions&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/thead&gt;
+    &lt;tbody&gt;
+    &lt;?php if ($query-&gt;num_rows() &gt; 0) : ?&gt;
+        &lt;?php foreach ($query-&gt;result() as $row) : ?&gt;
+          &lt;tr&gt;
+            &lt;td&gt;&lt;?php echo $row-&gt;usr_id ; ?&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;?php echo $row-&gt;usr_fname ; ?&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;?php echo $row-&gt;usr_lname ; ?&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;?php echo $row-&gt;usr_email ; ?&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;?php echo anchor('users/edit_user/'.
+              $row-&gt;usr_id,$this-&gt;lang-&gt;line('common_form_elements_action_edit')) . ' ' . anchor('users/delete_user/'.
+              $row-&gt;usr_id,$this-&gt;lang-&gt;line('common_form_elements_action_delete')) ; ?&gt;
+            &lt;/td&gt;
+          &lt;/tr&gt;
+        &lt;?php endforeach ; ?&gt;
+        &lt;?php else : ?&gt;
+          &lt;tr&gt;
+            &lt;td colspan="5" class="info"&gt;No users here!&lt;/td&gt;
+          &lt;/tr&gt;
+        &lt;?php endif; ?&gt;
+    &lt;/tbody&gt;
+&lt;/table&gt;</pre></div><p>The <code class="literal">view_all_users.php</code> view file displays all users within the system in a table at any one time. Only admin users are able to see this list.</p><p>The table has options<a id="id517" class="indexterm"/> for editing and deleting, allowing the user to edit a user (loading the <code class="literal">users</code> controller's <code class="literal">edit_user()</code> function) and delete a user (loading the <code class="literal">users</code> controller's <code class="literal">delete_user()</code> function).</p><p>Create the <code class="literal">/path/to/codeigniter/application/views/users/new_user.php</code> file and add the following code to it:</p><div class="informalexample"><pre class="programlisting">&lt;?php echo validation_errors() ; ?&gt;
+&lt;div class="page-header"&gt;
+  &lt;h1&gt;&lt;?php echo $page_heading ; ?&gt;&lt;/h1&gt;
+&lt;/div&gt; 
+  &lt;p class="lead"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_form_instruction_edit');?&gt;&lt;/p&gt;
+  &lt;div class="span8"&gt; 
+&lt;?php echo form_open('users/new_user','role="form" class="form"') ; ?&gt;
+    &lt;div class="form-group"&gt;
+      &lt;?php echo form_error('usr_fname'); ?&gt;
+      &lt;label for="usr_fname"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_fname');?&gt;&lt;/label&gt;
+      &lt;?php echo form_input($usr_fname); ?&gt;
+    &lt;/div&gt;
+    &lt;div class="form-group"&gt;
+      &lt;?php echo form_error('usr_lname'); ?&gt;
+      &lt;label for="usr_lname"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_lname');?&gt;&lt;/label&gt;
+      &lt;?php echo form_input($usr_lname); ?&gt;
+    &lt;/div&gt;
+    &lt;div class="form-group"&gt;
+      &lt;?php echo form_error('usr_uname'); ?&gt;
+      &lt;label for="usr_uname"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_uname');?&gt;&lt;/label&gt;
+      &lt;?php echo form_input($usr_uname); ?&gt;
+    &lt;/div&gt;
+
+    &lt;div class="form-group"&gt;
+      &lt;label for="usr_email"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_email');?&gt;&lt;/label&gt;
+      &lt;?php echo form_input($usr_email); ?&gt;
+    &lt;/div&gt;
+    &lt;div class="form-group"&gt;
+      &lt;label for="usr_confirm_email"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_confirm_email');?&gt;&lt;/label&gt;
+      &lt;?php echo form_input($usr_confirm_email); ?&gt;
+    &lt;/div&gt;
+
+    &lt;div class="form-group"&gt;
+      &lt;label for="usr_add1"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_add1');?&gt;&lt;/label&gt;
+      &lt;?php echo form_input($usr_add1); ?&gt;
+    &lt;/div&gt;
+
+    &lt;div class="form-group"&gt;
+      &lt;label for="usr_add2"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_add2');?&gt;&lt;/label&gt;
+      &lt;?php echo form_input($usr_add2); ?&gt;
+    &lt;/div&gt;
+
+    &lt;div class="form-group"&gt;
+      &lt;label for="usr_add3"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_add3');?&gt;&lt;/label&gt;
+      &lt;?php echo form_input($usr_add3); ?&gt;
+    &lt;/div&gt;
+
+    &lt;div class="form-group"&gt;
+      &lt;label for="usr_town_city"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_town_city');?&gt;&lt;/label&gt;
+      &lt;?php echo form_input($usr_town_city); ?&gt;
+    &lt;/div&gt;
+
+    &lt;div class="form-group"&gt;
+      &lt;label for="usr_zip_pcode"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_zip_pcode');?&gt;&lt;/label&gt;
+      &lt;?php echo form_input($usr_zip_pcode); ?&gt;
+    &lt;/div&gt;
+
+    &lt;div class="form-group"&gt;
+      &lt;label for="usr_access_level"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_access_level');?&gt;&lt;/label&gt;
+      &lt;?php echo form_dropdown('usr_access_level', $usr_access_level, 'large'); ?&gt;
+    &lt;/div&gt;
+
+    &lt;div class="form-group"&gt;
+      &lt;label for="usr_is_active"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_is_active');?&gt;&lt;/label&gt;
+      &lt;input type="radio" name="usr_is_active" value="&lt;?php echo set_value('usr_is_active') ; ?&gt;" /&gt; Active
+      &lt;input type="radio" name="usr_is_active" value="&lt;?php echo set_value('usr_is_active') ; ?&gt;" /&gt; Inactive
+     &lt;/div&gt;
+
+    &lt;div class="form-group"&gt;
+      &lt;button type="submit" class="btn btn-success"&gt;&lt;?php echo $this-&gt;lang-&gt;line('common_form_elements_go');?&gt;&lt;/button&gt;  or &lt;? echo anchor('users',$this-&gt;lang-&gt;line('common_form_elements_cancel'));?&gt;
+    &lt;/div&gt;
+&lt;?php echo form_close() ; ?&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</pre></div><p>The <code class="literal">new_user.php</code> view file <a id="id518" class="indexterm"/>displays a form to an admin user, allowing them to create a user in the system. The form is submitted to the <code class="literal">users</code> controller's <code class="literal">new_user()</code> function. Validation errors are displayed above the form. On a successful submission (no validation errors), the <code class="literal">new_user()</code> function will create a password for the user and a hash value based on the password. The password will be sent to the user in an e-mail. The text of this e-mail is in the <code class="literal">/views/email_scripts/welcome.txt</code> file.</p><p>Create the <code class="literal">/path/to/codeigniter/application/views/users/edit_user.php</code> file and add the following<a id="id519" class="indexterm"/> code to it:</p><div class="informalexample"><pre class="programlisting">&lt;div class="page-header"&gt;
+  &lt;h1&gt;&lt;?php echo $page_heading ; ?&gt;&lt;/h1&gt;
+&lt;/div&gt; 
+  &lt;p class="lead"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_form_instruction_edit');?&gt;&lt;/p&gt;
+
+  &lt;div class="span8"&gt; 
+    &lt;?php echo form_open('users/edit_user','role="form" class="form"') ; ?&gt;
+      &lt;div class="form-group"&gt;
+        &lt;?php echo form_error('usr_fname'); ?&gt;
+        &lt;label for="usr_fname"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_fname');?&gt;&lt;/label&gt;
+        &lt;?php echo form_input($usr_fname); ?&gt;
+      &lt;/div&gt;
+      &lt;div class="form-group"&gt;
+        &lt;?php echo form_error('usr_lname'); ?&gt;
+        &lt;label for="usr_lname"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_lname');?&gt;&lt;/label&gt;
+        &lt;?php echo form_input($usr_lname); ?&gt;
+      &lt;/div&gt;
+      &lt;div class="form-group"&gt;
+        &lt;?php echo form_error('usr_uname'); ?&gt;
+        &lt;label for="usr_uname"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_uname');?&gt;&lt;/label&gt;
+        &lt;?php echo form_input($usr_uname); ?&gt;
+      &lt;/div&gt;
+      &lt;div class="form-group"&gt;
+        &lt;?php echo form_error('usr_email'); ?&gt;
+        &lt;label for="usr_email"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_email');?&gt;&lt;/label&gt;
+        &lt;?php echo form_input($usr_email); ?&gt;
+      &lt;/div&gt;
+      &lt;div class="form-group"&gt;
+        &lt;?php echo form_error('usr_confirm_email'); ?&gt;
+        &lt;label for="usr_confirm_email"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_confirm_email');?&gt;&lt;/label&gt;
+        &lt;?php echo form_input($usr_confirm_email); ?&gt;
+      &lt;/div&gt;
+      &lt;div class="form-group"&gt;
+        &lt;?php echo form_error('usr_add1'); ?&gt;
+        &lt;label for="usr_add1"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_add1');?&gt;&lt;/label&gt;
+        &lt;?php echo form_input($usr_add1); ?&gt;
+      &lt;/div&gt;
+      &lt;div class="form-group"&gt;
+        &lt;?php echo form_error('usr_add2'); ?&gt;
+        &lt;label for="usr_add2"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_add2');?&gt;&lt;/label&gt;
+        &lt;?php echo form_input($usr_add2); ?&gt;
+      &lt;/div&gt;
+      &lt;div class="form-group"&gt;
+        &lt;?php echo form_error('usr_add3'); ?&gt;
+        &lt;label for="usr_add3"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_add3');?&gt;&lt;/label&gt;
+        &lt;?php echo form_input($usr_add3); ?&gt;
+      &lt;/div&gt; 
+      &lt;div class="form-group"&gt;
+        &lt;?php echo form_error('usr_town_city'); ?&gt;
+        &lt;label for="usr_town_city"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_town_city');?&gt;&lt;/label&gt;
+        &lt;?php echo form_input($usr_town_city); ?&gt;
+      &lt;/div&gt; 
+      &lt;div class="form-group"&gt;
+        &lt;?php echo form_error('usr_zip_pcode'); ?&gt;
+        &lt;label for="usr_zip_pcode"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_zip_pcode');?&gt;&lt;/label&gt;
+        &lt;?php echo form_input($usr_zip_pcode); ?&gt;
+      &lt;/div&gt;
+      &lt;div class="form-group"&gt;
+        &lt;?php echo form_error('usr_access_level'); ?&gt;
+        &lt;label id="usr_access_level" for="usr_access_level"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_access_level');?&gt;&lt;/label&gt;
+        &lt;?php echo form_dropdown('usr_access_level', $usr_access_level_options, $usr_access_level); ?&gt;
+      &lt;/div&gt;
+      &lt;div class="form-group"&gt;
+        &lt;?php echo form_error('usr_is_active'); ?&gt;
+        &lt;label for="usr_is_active"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_is_active');?&gt;&lt;/label&gt;
+        &lt;input type="radio" name="usr_is_active" &lt;?php if ($usr_is_active == 1) { echo 'checked' ;} ?&gt; /&gt; Active
+        &lt;input type="radio" name="usr_is_active" &lt;?php if ($usr_is_active == 0) { echo 'checked' ;} ?&gt; /&gt; Inactive
+      &lt;/div&gt;
+
+      &lt;?php echo form_hidden($id); ?&gt;
+
+      &lt;div class="form-group"&gt;
+        &lt;button type="submit" class="btn btn-success"&gt;&lt;?php echo $this-&gt;lang-&gt;line('common_form_elements_go');?&gt;&lt;/button&gt; or &lt;? echo anchor('users',$this-&gt;lang-&gt;line('common_form_elements_cancel'));?&gt;
+      &lt;/div&gt;
+    &lt;?php echo form_close() ; ?&gt;
+  &lt;/div&gt;
+
+  &lt;?php echo anchor('users/pwd_email/'.$id['usr_id'],'Send Password Reset Email') ; ?&gt;
+
+&lt;/div&gt;</pre></div><p>The <code class="literal">edit_user.php</code> view file displays a form to an admin user, allowing them to edit a user in the system. The form is <a id="id520" class="indexterm"/>accessed when an admin user clicks on Edit from the <code class="literal">views/users/list_all_users.php</code> view file. The form is submitted to the <code class="literal">users</code> controller's <code class="literal">edit_user()</code> function. Validation errors are displayed above the form.</p><p>Create the <code class="literal">/path/to/codeigniter/application/views/users/me.php</code> file and add the following code to it:</p><div class="informalexample"><pre class="programlisting">&lt;?php echo validation_errors() ; ?&gt;
+&lt;div class="page-header"&gt;
+  &lt;h1&gt;&lt;?php echo $page_heading ; ?&gt;&lt;/h1&gt;
+&lt;/div&gt; 
+  &lt;p class="lead"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_form_instruction');?&gt;&lt;/p&gt;
+
+  &lt;div class="span8"&gt; 
+    &lt;?php echo form_open('me/index','role="form"') ; ?&gt;
+      &lt;div class="form-group"&gt;
+        &lt;?php echo form_error('usr_fname'); ?&gt;
+        &lt;label for="usr_fname"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_fname');?&gt;&lt;/label&gt;
+        &lt;?php echo form_input($usr_fname); ?&gt;
+      &lt;/div&gt;
+      &lt;div class="form-group"&gt;
+        &lt;?php echo form_error('usr_lname'); ?&gt;
+        &lt;label for="usr_lname"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_lname');?&gt;&lt;/label&gt;
+        &lt;?php echo form_input($usr_lname); ?&gt;
+      &lt;/div&gt;
+      &lt;div class="form-group"&gt;
+        &lt;?php echo form_error('usr_uname'); ?&gt;
+        &lt;label for="usr_uname"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_uname');?&gt;&lt;/label&gt;
+        &lt;?php echo form_input($usr_uname); ?&gt;
+      &lt;/div&gt;
+
+      &lt;div class="form-group"&gt;
+        &lt;label for="usr_email"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_email');?&gt;&lt;/label&gt;
+        &lt;?php echo form_input($usr_email); ?&gt;
+      &lt;/div&gt;
+      &lt;div class="form-group"&gt;
+        &lt;label for="usr_confirm_email"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_confirm_email');?&gt;&lt;/label&gt;
+        &lt;?php echo form_input($usr_confirm_email); ?&gt;
+      &lt;/div&gt;
+
+      &lt;div class="form-group"&gt;
+        &lt;label for="usr_add1"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_add1');?&gt;&lt;/label&gt;
+        &lt;?php echo form_input($usr_add1); ?&gt;
+      &lt;/div&gt;
+      &lt;div class="form-group"&gt;
+        &lt;label for="usr_add2"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_add2');?&gt;&lt;/label&gt;
+        &lt;?php echo form_input($usr_add2); ?&gt;
+      &lt;/div&gt;
+      &lt;div class="form-group"&gt;
+        &lt;label for="usr_add3"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_add3');?&gt;&lt;/label&gt;
+        &lt;?php echo form_input($usr_add3); ?&gt;
+      &lt;/div&gt; 
+      &lt;div class="form-group"&gt;
+        &lt;label for="usr_town_city"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_town_city');?&gt;&lt;/label&gt;
+        &lt;?php echo form_input($usr_town_city); ?&gt;
+      &lt;/div&gt;
+      &lt;div class="form-group"&gt;
+        &lt;label for="usr_zip_pcode"&gt;&lt;?php echo $this-&gt;lang-&gt;line('usr_zip_pcode');?&gt;&lt;/label&gt;
+        &lt;?php echo form_input($usr_zip_pcode); ?&gt;
+      &lt;/div&gt;
+
+      &lt;?php echo form_hidden($id); ?&gt;
+
+      &lt;div class="form-group"&gt;
+        &lt;button type="submit" class="btn btn-success"&gt;&lt;?php echo $this-&gt;lang-&gt;line('common_form_elements_go');?&gt;&lt;/button&gt; or &lt;? echo anchor('users',$this-&gt;lang-&gt;line('common_form_elements_cancel'));?&gt;
+      &lt;/div&gt;
+    &lt;?php echo form_close() ; ?&gt;
+  &lt;/div&gt;
+
+  &lt;?php echo anchor('me/pwd_email/'.$id,'Reset Email') ; ?&gt;</pre></div><p>Again, like the forms in <code class="literal">new_user</code> and <code class="literal">edit_user</code> views, this form is similar; however, it includes a Reset Email link, which will run the <code class="literal">me</code> controller's <code class="literal">pwd_email()</code> function to create a new password<a id="id521" class="indexterm"/> and e-mail it to the current user. The password isn't stored in the database; only a hash value is stored (<code class="literal">users.usr_hash</code>).</p><p>Create the <code class="literal">/path/to/codeigniter/application/views/users/register.php</code> file and add the following code to it:</p><div class="informalexample"><pre class="programlisting">&lt;div class="container"&gt;
+  &lt;?php echo validation_errors(); ?&gt;
+  &lt;?php echo form_open('register/index', 'role="form" class="form-signin"') ; ?&gt;
+    &lt;h2 class="form-signin-heading"&gt;&lt;?php echo $this-&gt;lang-&gt;line('register_page_title'); ?&gt;&lt;/h2&gt;
+    &lt;input type="text" class="form-control" name="usr_fname" placeholder="&lt;?php echo $this-&gt;lang-&gt;line('register_first_name'); ?&gt;" required autofocus&gt;
+    &lt;input type="text" class="form-control" name="usr_lname" placeholder="&lt;?php echo $this-&gt;lang-&gt;line('register_last_name'); ?&gt;" required&gt;
+    &lt;input type="email" class="form-control" name="usr_email" placeholder="&lt;?php echo $this-&gt;lang-&gt;line('register_email'); ?&gt;" required&gt;
+    &lt;?php echo form_submit('submit', 'Register', 'class="btn btn-lg btn-primary btn-block"'); ?&gt;
+  &lt;/form&gt;
+&lt;/div&gt;</pre></div><p>The <code class="literal">register.php</code> view file displays a form to a person wishing to become a user within the system. The user is invited to enter a first name and last name as well as their e-mail address. They then press the Register button.</p><p>The form is submitted to the <code class="literal">register</code> controller's <code class="literal">index()</code> function. The <code class="literal">index()</code> function will perform validation, and any errors are displayed above the form.</p><p>Assuming that there were no errors and the form was submitted without problems, the <code class="literal">index()</code> function will attempt to write them to the <code class="literal">users</code> table. A password is generated and sent to the user in the form of an e-mail. The contents of the e-mail are stored in the <code class="literal">views/email_scripts/welcome.txt</code> view file.</p><p>Create the <code class="literal">/path/to/codeigniter/application/views/users/signin.php</code> file and add the following code to it:</p><div class="informalexample"><pre class="programlisting">&lt;?php if (isset($login_fail)) : ?&gt;
+  &lt;div class="alert alert-danger"&gt;&lt;?php echo $this-&gt;lang-&gt;line('admin_login_error') ; ?&gt;&lt;/div&gt;
+&lt;?php endif ; ?&gt;
+  &lt;?php echo validation_errors(); ?&gt;
+  &lt;?php echo form_open('signin/index', 'class="form-signin" role="form"') ; ?&gt;
+    &lt;h2 class="form-signin-heading"&gt;&lt;?php echo $this-&gt;lang-&gt;line('admin_login_header') ; ?&gt;&lt;/h2&gt;
+    &lt;input type="email" name="usr_email" class="form-control" placeholder="&lt;?php echo $this-&gt;lang-&gt;line('admin_login_email') ; ?&gt;" required autofocus&gt;
+    &lt;input type="password" name="usr_password" class="form-control" placeholder="&lt;?php echo $this-&gt;lang-&gt;line('admin_login_password') ; ?&gt;" required&gt;
+    &lt;button class="btn btn-lg btn-primary btn-block" type="submit"&gt;&lt;?php echo $this-&gt;lang-&gt;line('admin_login_signin') ; ?&gt;&lt;/button&gt;
+    &lt;br /&gt;
+    &lt;?php echo anchor('password',$this-&gt;lang-&gt;line('signin_forgot_password')); ?&gt;
+  &lt;?php echo form_close() ; ?&gt;
+&lt;/div&gt;</pre></div><p>The <code class="literal">signin.php</code> view file displays a form to a user. The user is invited to enter their e-mail address and password. The<a id="id522" class="indexterm"/> form is submitted to the <code class="literal">signin</code> controller's <code class="literal">index()</code> function, which will validate the input, and assuming there were no errors, attempt to process the sign-in request.</p><p>Only users who are active can sign in (<code class="literal">users.usr_is_active = 1</code>) and admin users (<code class="literal">users.usr_accss_level = 1</code>) will see options that are only available to admins. The normal users (<code class="literal">users.usr_access_level = 2</code>) will be directed to the <code class="literal">me</code> controller.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip09"/>Tip</h3><p>You can, of course, adapt this behavior to any other controller. Instructions on how to do this are discussed in the <span class="emphasis"><em>Ensuring correct access</em></span> section.</p></div></div><p>Create the <code class="literal">/path/to/codeigniter/application/views/users/change_password.php</code> file and add the following code to it:</p><div class="informalexample"><pre class="programlisting">&lt;?php if (isset($login_fail)) : ?&gt;
+  &lt;div class="alert alert-danger"&gt;&lt;?php echo $this-&gt;lang-&gt;line('admin_login_error') ; ?&gt;&lt;/div&gt;
+&lt;?php endif ; ?&gt;
+  &lt;?php echo validation_errors(); ?&gt;
+  &lt;?php echo form_open('me/change_password', 'class="form-signin" role="form"') ; ?&gt;
+    &lt;h2 class="form-signin-heading"&gt;&lt;?php echo $this-&gt;lang-&gt;line('forgot_pwd_header') ; ?&gt;&lt;/h2&gt;
+    &lt;p class="lead"&gt;&lt;?php echo $this-&gt;lang-&gt;line('forgot_pwd_instruction') ;?&gt;&lt;/p&gt;
+    &lt;table border="0"&gt;
+        &lt;tr&gt;
+            &lt;td&gt;&lt;?php $this-&gt;lang-&gt;line('signin_new_pwd_email') ; ?&gt;&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;td&gt;&lt;?php echo form_input($usr_new_pwd_1); ?&gt;&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+            &lt;td&gt;&lt;?php echo form_input($usr_new_pwd_2); ?&gt;&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/table&gt;
+    &lt;button class="btn btn-lg btn-primary btn-block" type="submit"&gt;&lt;?php echo $this-&gt;lang-&gt;line('common_form_elements_go') ; ?&gt;&lt;/button&gt;
+    &lt;br /&gt;
+  &lt;?php echo form_close() ; ?&gt;
+&lt;/div&gt;</pre></div><p>This view file displays an HTML form to the user, allowing them to enter two new passwords for their account. The form is submitted to the <code class="literal">me</code> controller's <code class="literal">change_password()</code> function, which<a id="id523" class="indexterm"/> validates the two passwords supplied and checks whether they match each other, apart from various other validation checks. If validation is passed, then a hash is created from the supplied passwords and that hash is saved to the user's record in the database.</p></div>
+<div class="section" title="Creating the controllers"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec66"/>Creating the controllers</h1></div></div></div><p>In this project, there are six<a id="id524" class="indexterm"/> controllers, which are<a id="id525" class="indexterm"/> as follows:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">/core/MY_Controller.php</code>: This is the parent <a id="id526" class="indexterm"/>controller class that contains common resources.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/controllers/password.php</code>: This <a id="id527" class="indexterm"/>contains functions that allow the user to request a new password.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/controllers/me.php</code>: This provides a<a id="id528" class="indexterm"/> location for a normal (that is, not an admin) user to alter their account settings: name, e-mail, and so on.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/controllers/register.php</code>: This<a id="id529" class="indexterm"/> contains functions that allow a new user to sign up and have their details recorded in the <code class="literal">users</code> table.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/controllers/signin.php</code>: This provides a<a id="id530" class="indexterm"/> method for users to log in to their account and to start a session.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/controllers/users.php</code>: This provides<a id="id531" class="indexterm"/> functions for an admin to manage users who have signed up and whose records are in the <code class="literal">users</code> table.</li></ul></div><p>These are our six<a id="id532" class="indexterm"/> controllers (one to extend and five that are extended); let's go over each one and create them.</p><p>Create the <code class="literal">/path/to/codeigniter/application/core/MY_Controller.php</code> controller file and add the following code to it:</p><div class="informalexample"><pre class="programlisting">&lt;?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+class MY_Controller extends CI_Controller {
+  function __construct() {
+    parent::__construct();
+    $this-&gt;load-&gt;helper('form');
+    $this-&gt;load-&gt;helper('url');
+    $this-&gt;load-&gt;helper('security');
+    $this-&gt;load-&gt;helper('language');
+    $this-&gt;load-&gt;library('session');
+    $this-&gt;load-&gt;library('form_validation');
+    $this-&gt;form_validation-&gt;set_error_delimiters('&lt;div class="alert alert-warning" role="alert"&gt;', '&lt;/div&gt;');
+    $this-&gt;lang-&gt;load('en_admin', 'english');
+  }
+}</pre></div><p>The <code class="literal">core/MY_Controller.php</code> controller acts as an overarching parent controller for all controllers that require the user to be logged in before they're accessed.</p><p>Create the <code class="literal">/path/to/codeigniter/application/controllers/password.php</code> controller file and add the following code to it. As this controller need not be accessed by a logged-in user, we're not extending it with the <code class="literal">MY_Controller</code>, but only the default <code class="literal">CI_Controller</code>:</p><div class="informalexample"><pre class="programlisting">&lt;?php if (!defined('BASEPATH')) exit('No direct script access allowed');
+class Password extends CI_Controller {
+  function __construct() {
+    parent::__construct();
+    $this-&gt;load-&gt;library('session');
+    $this-&gt;load-&gt;helper('form');
+    $this-&gt;load-&gt;helper('file');
+    $this-&gt;load-&gt;helper('url');
+    $this-&gt;load-&gt;helper('security');
+    $this-&gt;load-&gt;model('Users_model');
+    $this-&gt;lang-&gt;load('en_admin', 'english'); 
+    $this-&gt;load-&gt;library('form_validation');
+    $this-&gt;form_validation-&gt;set_error_delimiters('&lt;div class="bs-callout bs-callout-error"&gt;', '&lt;/div&gt;'); 
+  }
+
+  public function index() {
+    redirect('password/forgot_password');
+  }</pre></div><p>The <span class="strong"><strong>Reset Password page</strong></span> provides a form to the user, allowing them to enter their e-mail address. Once the <a id="id533" class="indexterm"/>user has submitted the form, a code is generated and prepended to a URL link. This link is sent in an e-mail to the e-mail address provided. The unique code in the URL is used by the <code class="literal">password</code> controller's next function, which is <code class="literal">new_password()</code>, but we'll go into that later.</p><p>First, we define the validation rules for the form in the <code class="literal">users/forgot_password.php</code> view file, as shown here:</p><div class="informalexample"><pre class="programlisting">public function forgot_password() {
+  $this-&gt;form_validation-&gt;set_rules('usr_email', $this-&gt;lang-&gt;line('signin_new_pwd_email'), 'required|min_length[5]|max_length[125]|valid_email');</pre></div><p>If the form is being viewed for the first time or has failed the preceding validation rules, then the <code class="literal">$this-&gt;form_validation()</code> CodeIgniter function returns <code class="literal">FALSE</code>, loading the <code class="literal">users/forgot_password.php</code> view file:</p><div class="informalexample"><pre class="programlisting">if ($this-&gt;form_validation-&gt;run() == FALSE) {
+  $this-&gt;load-&gt;view('common/login_header');
+  $this-&gt;load-&gt;view('users/forgot_password');
+  $this-&gt;load-&gt;view('common/footer');</pre></div><p>If the user's e-mail passes validation, then we will try to generate a unique code and send them an e-mail:</p><div class="informalexample"><pre class="programlisting">} else {
+  $email = $this-&gt;input-&gt;post('usr_email');
+  $num_res = $this-&gt;Users_model-&gt;count_results($email);</pre></div><p>First, we look to see whether the e-mail address supplied in the form actually exists in the database. If not, then <code class="literal">$num_res</code> will not equal <code class="literal">1</code>. If this is the case, then we redirect the user to the <code class="literal">forgot_password()</code> function. If, however, it exists, then we continue to process the request with an if statement:</p><div class="informalexample"><pre class="programlisting">if ($num_res == 1) {</pre></div><p>We call the <code class="literal">make_code()</code> function of <code class="literal">Users_model</code>, which will generate a unique code for us and return it as the <code class="literal">$code</code> variable. This <code class="literal">$code</code> variable is added to the <code class="literal">$data</code> array and sent to the <code class="literal">update_user_code()</code> function of <code class="literal">Users_model</code>, which will write the unique code that was just generated to <code class="literal">users.usr_pwd_change_code</code> in preparation for the <code class="literal">new_password()</code> function<a id="id534" class="indexterm"/> shown here (<code class="literal">new_password()</code> is run when the user clicks on the URL in the e-mail we will soon send them):</p><div class="informalexample"><pre class="programlisting">$code = $this-&gt;Users_model-&gt;make_code();
+$data = array(
+  'usr_pwd_change_code' =&gt; $code,
+  'usr_email' =&gt; $email
+);
+
+if ($this-&gt;Users_model-&gt;update_user_code($data)) { // Update okay, so send email
+  $result = $this-&gt;Users_model-&gt;get_user_details_by_email($email);
+
+  foreach ($result-&gt;result() as $row) {
+    $usr_fname = $row-&gt;usr_fname;
+    $usr_lname = $row-&gt;usr_lname;
+  }</pre></div><p>Right, the code has been created and saved to the correct account in the database, and we're now ready to start with the e-mail. Let's define the link that will go in the e-mail. For this example, it is <code class="literal">http://www.domain.com/password/new_password/UNIQUE-CODE-HERE</code>; however, you'll need to change this to reflect the path and domain on your servers:</p><div class="informalexample"><pre class="programlisting">$link = "http://www.domain.com/password/new_password/".$code;</pre></div><p>Now we need to load the <code class="literal">reset_password.txt</code> file. This file contains the template text for the body of the e-mail we'll send. Again, you'll need to change the file path of this file to that on your system. We pass the filename to the <code class="literal">read_file()</code> CodeIgniter function that will open the file and return its contents. The contents of this file, that is, the text in the file, is stored as a string in the <code class="literal">$file</code> variable:</p><div class="informalexample"><pre class="programlisting">          $path = '/path/to/codeigniter/application/views/email_scripts/reset_password.txt';
+$file = read_file($path);</pre></div><p>Using the <code class="literal">str_replace()</code> PHP function, we'll replace the variables in the <code class="literal">$file</code> variable with the correct values:</p><div class="informalexample"><pre class="programlisting">$file = str_replace('%usr_fname%', $usr_fname, $file);
+$file = str_replace('%usr_lname%', $usr_lname, $file);
+echo $file = str_replace('%link%', $link, $file);</pre></div><p>Now we're ready to send<a id="id535" class="indexterm"/> the e-mail to the user. We're using PHP's <code class="literal">mail()</code> function to send the e-mail for us. If the e-mail was sent, then we will redirect the user to the sign-in page. If not, then we just reload the function:</p><div class="informalexample"><pre class="programlisting">        if (mail ($email, $this-&gt;lang-&gt;line('email_subject_reset_password'),$file, 'From: me@domain.com')) {
+          redirect('signin');
+        }
+      } else {
+        // Some sort of error happened, redirect user back to form
+        redirect('password/forgot_password');
+      }
+    } else { // Some sort of error happened, redirect user back to form
+      redirect('password/forgot_password');
+    } 
+  }
+}</pre></div><p>The <code class="literal">new_password()</code> function is accessed when a user clicks on the URL in the e-mail they were sent during the execution of the previous function—<code class="literal">forgot_password()</code>. It displays a form to the user, allowing them to enter their new password.</p><p>First we define the validation rules for the form in the <code class="literal">users/new_password.php</code> view file:</p><div class="informalexample"><pre class="programlisting">  public function new_password() {
+    $this-&gt;form_validation-&gt;set_rules('code', $this-&gt;lang-&gt;line('signin_new_pwd_code'), 'required|min_length[4]|max_length[8]');
+    $this-&gt;form_validation-&gt;set_rules('usr_email', $this-&gt;lang-&gt;line('signin_new_pwd_email'), 'required|min_length[5]|max_length[125]');
+    $this-&gt;form_validation-&gt;set_rules('usr_password1', $this-&gt;lang-&gt;line('signin_new_pwd_email'), 'required|min_length[5]|max_length[125]');
+    $this-&gt;form_validation-&gt;set_rules('usr_password2', $this-&gt;lang-&gt;line('signin_new_pwd_email'), 'required|min_length[5]|max_length[125]|matches[usr_password1]');
+
+    if ($this-&gt;input-&gt;post()) {
+      $data['code'] = xss_clean($this-&gt;input-&gt;post('code'));
+    } else { 
+      $data['code'] = xss_clean($this-&gt;uri-&gt;segment(3));
+    }</pre></div><p>If the form is being viewed for the first time or has failed the preceding validation rules, then the <code class="literal">$this-&gt;form_validation()</code> CodeIgniter function returns <code class="literal">FALSE</code>, loading the <code class="literal">users/new_password.php</code> view file. The view file contains three form elements: one for a user's email and<a id="id536" class="indexterm"/> two for their new password:</p><div class="informalexample"><pre class="programlisting">    if ($this-&gt;form_validation-&gt;run() == FALSE) {
+      $data['usr_email']     = array('name' =&gt; 'usr_email',     'class' =&gt; 'form-control', 'id' =&gt; 'usr_email',     'type' =&gt; 'text',     'value' =&gt; set_value('usr_email', ''),     'maxlength'   =&gt; '100', 'size' =&gt; '35', 'placeholder' =&gt; $this-&gt;lang-&gt;line('signin_new_pwd_email'));
+      $data['usr_password1'] = array('name' =&gt; 'usr_password1', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_password1', 'type' =&gt; 'password', 'value' =&gt; set_value('usr_password1', ''), 'maxlength'   =&gt; '100', 'size' =&gt; '35', 'placeholder' =&gt; $this-&gt;lang-&gt;line('signin_new_pwd_pwd'));
+      $data['usr_password2'] = array('name' =&gt; 'usr_password2', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_password2', 'type' =&gt; 'password', 'value' =&gt; set_value('usr_password2', ''), 'maxlength'   =&gt; '100', 'size' =&gt; '35', 'placeholder' =&gt; $this-&gt;lang-&gt;line('signin_new_pwd_confirm'));
+
+      $this-&gt;load-&gt;view('common/login_header', $data);
+      $this-&gt;load-&gt;view('users/new_password', $data);
+      $this-&gt;load-&gt;view('common/footer', $data);
+    } else {</pre></div><p>If the form has passed validation, then we will try to match the code in the URL with an account using the e-mail address as a search term:</p><div class="informalexample"><pre class="programlisting">// Does code from input match the code against the email
+$email = xss_clean($this-&gt;input-&gt;post('usr_email'));</pre></div><p>If the <code class="literal">does_code_match()</code> function of <code class="literal">Users_model</code> returns a false value, then there is no record in the database that has the e-mail address and code that matches the e-mail address supplied in the form and the code in the URL. If that's the case, we redirect them to the <code class="literal">forgot_password()</code> function to start the process again. If, however, it matches, then this is obviously a genuine request:</p><div class="informalexample"><pre class="programlisting">  if (!$this-&gt;Users_model-&gt;does_code_match($data, $email)) { // Code doesn't match
+        redirect ('users/forgot_password');
+      } else {  // Code does match</pre></div><p>As this is most likely a genuine request and the e-mail and unique code have matched, let's create a hash value from the supplied password:</p><div class="informalexample"><pre class="programlisting">$hash = $this-&gt;encrypt-&gt;sha1($this-&gt;input-&gt;post('usr_password1'));</pre></div><p>We can store this hash in the <code class="literal">$data</code> array along with the supplied e-mail:</p><div class="informalexample"><pre class="programlisting">$data = array(
+  'usr_hash' =&gt; $hash,
+  'usr_email' =&gt; $email
+);</pre></div><p>Now let's take this e-mail and hash and pass to the <code class="literal">update_user_password()</code> function of <code class="literal">Users_model</code>:</p><div class="informalexample"><pre class="programlisting">if ($this-&gt;Users_model-&gt;update_user_password($data)) {</pre></div><p>Now that the user has <a id="id537" class="indexterm"/>updated their password, let's send them an e-mail confirming this:</p><div class="informalexample"><pre class="programlisting">$link = 'http://www.domain.com/signin';
+$result = $this-&gt;Users_model-&gt;get_user_details_by_email($email);
+
+foreach ($result-&gt;result() as $row) {
+  $usr_fname = $row-&gt;usr_fname;
+  $usr_lname = $row-&gt;usr_lname;
+}</pre></div><p>We need to load the <code class="literal">new_password.txt</code> file. This file contains the template text for the body of the e-mail we'll send. Again, you'll need to change the file path of this file to that on your system. We pass the filename to the <code class="literal">read_file()</code> CodeIgniter function that will open the file and return its contents. The contents of this file, that is, the text in the file, is stored as a string in the <code class="literal">$file</code> variable:</p><div class="informalexample"><pre class="programlisting">$path = '/ path/to/codeigniter/application/views/email_scripts/new_password.txt';
+$file = read_file($path);</pre></div><p>Using the <code class="literal">str_replace()</code> PHP function, we'll replace the variables in the <code class="literal">$file</code> variable with the correct values. Once this e-mail is sent, we redirect them to the <code class="literal">signin</code> controller where they can log in using their new password:</p><div class="informalexample"><pre class="programlisting">          $file = str_replace('%usr_fname%', $usr_fname, $file);
+          $file = str_replace('%usr_lname%', $usr_lname, $file);
+          $file = str_replace('%password%', $password, $file);
+          $file = str_replace('%link%', $link, $file);
+          if (mail ($email, $this-&gt;lang-&gt;line('email_subject_new_password'),$file, 'From: me@domain.com') ) {
+            redirect ('signin');
+          }
+        }
+      }
+    }
+  }
+}</pre></div><p>Create the <code class="literal">/path/to/codeigniter/application/controllers/me.php</code> controller file and add the following code to it:</p><div class="informalexample"><pre class="programlisting">&lt;?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+class Me extends CI_Controller {</pre></div><p>The <code class="literal">me</code> controller is to be used by users who are not admins—in other words, users whose value of <code class="literal">users.usr_access_level</code> is set to <code class="literal">2</code> or above.</p><p>This project allows the<a id="id538" class="indexterm"/> user to change their details, name, e-mail address, and so on. However, you can adapt the <code class="literal">me</code> controller to display any number of things. Or, using the following code in the <code class="literal">__construct()</code> function of another controller, you can provide functions for specific levels of users:</p><div class="informalexample"><pre class="programlisting">if ( ($this-&gt;session-&gt;userdata('logged_in') == FALSE) || 
+     (!$this-&gt;session-&gt;userdata('usr_access_level') &gt;= 2) ) {
+        redirect('signin');
+}</pre></div><p>We will go through this in more detail later on in the <span class="emphasis"><em>Putting it all together</em></span> section of this chapter; however, let's quickly mention it here anyway. The preceding code checks to see whether the user is logged in and then checks the users' access level (<code class="literal">users.usr_access_level</code>).</p><p>If the <code class="literal">users.usr_access_level</code> value is not greater than or equal to <code class="literal">2</code> (which is the level of a normal user), then it will redirect them to <code class="literal">signin</code> or <code class="literal">signout</code>—in other words, it will log them out and terminate their session.</p><p>By adjusting the value that is compared (for example <code class="literal">1</code>, <code class="literal">2</code>, <code class="literal">3</code>, and so on), you can ensure that users with a specific value can only access this controller:</p><div class="informalexample"><pre class="programlisting">function __construct() {
+  parent::__construct();
+  $this-&gt;load-&gt;helper('form');
+  $this-&gt;load-&gt;helper('url');
+  $this-&gt;load-&gt;helper('security');
+  $this-&gt;load-&gt;helper('file'); // for html emails
+  $this-&gt;load-&gt;helper('language');
+  $this-&gt;load-&gt;model('Users_model');
+  $this-&gt;load-&gt;library('session');
+
+  // Load language file
+  $this-&gt;lang-&gt;load('en_admin', 'english');
+  $this-&gt;load-&gt;library('form_validation');
+  $this-&gt;form_validation-&gt;set_error_delimiters('&lt;div class="alert alert-warning" role="alert"&gt;', '&lt;/div&gt;');
+
+  if ( ($this-&gt;session-&gt;userdata('logged_in') == FALSE) || 
+       (!$this-&gt;session-&gt;userdata('usr_access_level') &gt;= 2) ) {
+          redirect('signin/signout');
+  }
+}</pre></div><p>The <code class="literal">index()</code> function allows<a id="id539" class="indexterm"/> a normal user to update their details in the database. First, we set our validation rules for the form:</p><div class="informalexample"><pre class="programlisting">public function index() {
+  // Set validation rules
+  $this-&gt;form_validation-&gt;set_rules('usr_fname', $this-&gt;lang-&gt;line('usr_fname'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_lname', $this-&gt;lang-&gt;line('usr_lname'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_uname', $this-&gt;lang-&gt;line('usr_uname'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_email', $this-&gt;lang-&gt;line('usr_email'), 'required|min_length[1]|max_length[255]|valid_email');
+  $this-&gt;form_validation-&gt;set_rules('usr_confirm_email', $this-&gt;lang-&gt;line('usr_confirm_email'), 'required|min_length[1]|max_length[255]|valid_email|matches[usr_email]');
+  $this-&gt;form_validation-&gt;set_rules('usr_add1', $this-&gt;lang-&gt;line('usr_add1'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_add2', $this-&gt;lang-&gt;line('usr_add2'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_add3', $this-&gt;lang-&gt;line('usr_add3'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_town_city', $this-&gt;lang-&gt;line('usr_town_city'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_zip_pcode', $this-&gt;lang-&gt;line('usr_zip_pcode'), 'required|min_length[1]|max_length[125]');
+
+  $data['id'] = $this-&gt;session-&gt;userdata('usr_id');
+
+  $data['page_heading'] = 'Edit my details';
+  // Begin validation</pre></div><p>If the form is being viewed for the first time or has failed the preceding validation rules, then the <code class="literal">$this-&gt;form_validation()</code> CodeIgniter function returns <code class="literal">FALSE</code>, loading the <code class="literal">users/me.php</code> view file:</p><div class="informalexample"><pre class="programlisting">if ($this-&gt;form_validation-&gt;run() == FALSE) { // First load, or problem with form</pre></div><p>Here, we define the setting for the HTML form items to be displayed in the <code class="literal">users/me.php</code> view file. As we<a id="id540" class="indexterm"/> are editing a user who is already logged in, we'll need to grab their details from the database in order to prepopulate the form elements.</p><p>We call the <code class="literal">get_user_details()</code> function of <code class="literal">Users_model</code>, passing to it the user ID fetched from the session:</p><div class="informalexample"><pre class="programlisting">$query = $this-&gt;Users_model-&gt;get_user_details($data['id']);
+foreach ($query-&gt;result() as $row) {
+  $usr_fname = $row-&gt;usr_fname;
+  $usr_lname = $row-&gt;usr_lname;
+  $usr_uname = $row-&gt;usr_uname;
+  $usr_email = $row-&gt;usr_email;
+  $usr_add1 = $row-&gt;usr_add1;
+  $usr_add2 = $row-&gt;usr_add2;
+  $usr_add3 = $row-&gt;usr_add3;
+  $usr_town_city = $row-&gt;usr_town_city;
+  $usr_zip_pcode = $row-&gt;usr_zip_pcode;
+}</pre></div><p>Once we have fetched the users details and saved them to local variables, we apply them to the form items. To do this, we use the <code class="literal">set_value()</code> CodeIgniter function, the first parameter being the name of the form element (for example, <code class="literal">&lt;input type="text" name="this-is-the-name" /&gt;</code>) and the second parameter being the actual value of the form element:</p><div class="informalexample"><pre class="programlisting">  $data['usr_fname'] = array('name' =&gt; 'usr_fname', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_fname', 'value' =&gt; set_value('usr_fname', $usr_fname), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_lname'] = array('name' =&gt; 'usr_lname', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_lname', 'value' =&gt; set_value('usr_lname', $usr_lname), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_uname'] = array('name' =&gt; 'usr_uname', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_uname', 'value' =&gt; set_value('usr_uname', $usr_uname), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_email'] = array('name' =&gt; 'usr_email', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_email', 'value' =&gt; set_value('usr_email', $usr_email), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_confirm_email'] = array('name' =&gt; 'usr_confirm_email', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_confirm_email', 'value' =&gt; set_value('usr_confirm_email', $usr_email), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_add1'] = array('name' =&gt; 'usr_add1', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_add1', 'value' =&gt; set_value('usr_add1', $usr_add1), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_add2'] = array('name' =&gt; 'usr_add2', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_add2', 'value' =&gt; set_value('usr_add2', $usr_add2), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_add3'] = array('name' =&gt; 'usr_add3', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_add3', 'value' =&gt; set_value('usr_add3', $usr_add3), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_town_city'] = array('name' =&gt; 'usr_town_city', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_town_city', 'value' =&gt; set_value('usr_town_city', $usr_town_city), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_zip_pcode'] = array('name' =&gt; 'usr_zip_pcode', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_zip_pcode', 'value' =&gt; set_value('usr_zip_pcode', $usr_zip_pcode), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+
+  $this-&gt;load-&gt;view('common/header', $data);
+  $this-&gt;load-&gt;view('nav/top_nav', $data);
+  $this-&gt;load-&gt;view('users/me', $data);
+  $this-&gt;load-&gt;view('common/footer', $data);
+} else { // Validation passed, now escape the data</pre></div><p>Now that validation has <a id="id541" class="indexterm"/>passed, we'll save the posted data to the <code class="literal">$data</code> array in preparation to save it to the <code class="literal">process_update_user()</code> function of <code class="literal">Users_model</code>:</p><div class="informalexample"><pre class="programlisting">    $data = array(
+        'usr_fname' =&gt; $this-&gt;input-&gt;post('usr_fname'),
+        'usr_lname' =&gt; $this-&gt;input-&gt;post('usr_lname'),
+        'usr_uname' =&gt; $this-&gt;input-&gt;post('usr_uname'),
+        'usr_email' =&gt; $this-&gt;input-&gt;post('usr_email'),
+        'usr_add1' =&gt; $this-&gt;input-&gt;post('usr_add1'),
+        'usr_add2' =&gt; $this-&gt;input-&gt;post('usr_add2'),
+        'usr_add3' =&gt; $this-&gt;input-&gt;post('usr_add3'),
+        'usr_town_city' =&gt; $this-&gt;input-&gt;post('usr_town_city'),
+        'usr_zip_pcode' =&gt; $this-&gt;input-&gt;post('usr_zip_pcode')
+    );
+
+    if ($this-&gt;Users_model-&gt;process_update_user($id, $data)) {
+        redirect('users');
+    }
+  }
+}</pre></div><p>The <code class="literal">me</code> controller also contains the <code class="literal">change_password()</code> function. This allows the user who is accessing the controller to change their password. Once accessed, the <code class="literal">/views/users/change_password.php</code> view file displays a simple form that asks for a new password. Once the form is submitted and validated successfully, a hash is created using the new password<a id="id542" class="indexterm"/> provided and saved to the logged-in user's record:</p><div class="informalexample"><pre class="programlisting">  public function change_password() {
+    $this-&gt;load-&gt;library('form_validation');
+    $this-&gt;form_validation-&gt;set_rules('usr_new_pwd_1', $this-&gt;lang-&gt;line('signin_new_pwd_pwd'), 'required|min_length[5]|max_length[125]');
+    $this-&gt;form_validation-&gt;set_rules('usr_new_pwd_2', $this-&gt;lang-&gt;line('signin_new_pwd_confirm'), 'required|min_length[5]|max_length[125]|matches[usr_new_pwd_1]');
+
+    if ($this-&gt;form_validation-&gt;run() == FALSE) {
+      $data['usr_new_pwd_1'] = array('name' =&gt; 'usr_new_pwd_1', 'class' =&gt; 'form-control', 'type' =&gt; 'password', 'id' =&gt; 'usr_new_pwd_1', 'value' =&gt; set_value('usr_new_pwd_1', ''), 'maxlength'   =&gt; '100', 'size' =&gt; '35', 'placeholder' =&gt; $this-&gt;lang-&gt;line('signin_new_pwd_pwd'));
+      $data['usr_new_pwd_2'] = array('name' =&gt; 'usr_new_pwd_2', 'class' =&gt; 'form-control', 'type' =&gt; 'password', 'id' =&gt; 'usr_new_pwd_2', 'value' =&gt; set_value('usr_new_pwd_2', ''), 'maxlength'   =&gt; '100', 'size' =&gt; '35', 'placeholder' =&gt; $this-&gt;lang-&gt;line('signin_new_pwd_confirm'));
+      $data['submit_path'] = 'me/change_password';
+
+      $this-&gt;load-&gt;view('common/login_header', $data);
+      $this-&gt;load-&gt;view('users/change_password', $data);
+      $this-&gt;load-&gt;view('common/footer', $data);
+    } else {
+      $hash = $this-&gt;encrypt-&gt;sha1($this-&gt;input-&gt;post('usr_new_pwd_1')); 
+
+      $data = array(
+        'usr_hash' =&gt; $hash,
+        'usr_id' =&gt; $this-&gt;session-&gt;userdata('usr_id')
+      );
+
+      if ($this-&gt;Users_model-&gt;update_user_password($data)) {
+        redirect('signin/signout');
+      }
+    }
+  }
+}</pre></div><p>Create the <code class="literal">/path/to/codeigniter/application/controllers/register.php</code> controller file and add the<a id="id543" class="indexterm"/> following code to it:</p><div class="informalexample"><pre class="programlisting">&lt;?php if (!defined('BASEPATH')) exit('No direct script access allowed'); 
+
+class Register extends CI_Controller {
+  function __construct() {
+  parent::__construct();
+  $this-&gt;load-&gt;helper('form');
+  $this-&gt;load-&gt;helper('url');
+  $this-&gt;load-&gt;helper('security');
+  $this-&gt;load-&gt;model('Register_model');
+  $this-&gt;load-&gt;library('encrypt');
+  $this-&gt;lang-&gt;load('en_admin', 'english');
+  $this-&gt;load-&gt;library('form_validation');
+  $this-&gt;form_validation-&gt;set_error_delimiters('&lt;div class="alert alert-warning" role="alert"&gt;', '&lt;/div&gt;');
+  }</pre></div><p>The <code class="literal">index()</code> function displays a small form to a new user. This form allows them to enter basic information such as the e-mail address and name. Once the user presses the Register button and for form is successfully validated, the user is sent a welcome e-mail and is added to the database.</p><p>First, we set the validation rules for the form in <code class="literal">views/users/register.php</code>:</p><div class="informalexample"><pre class="programlisting">public function index() {
+  // Set validation rules
+  $this-&gt;form_validation-&gt;set_rules('usr_fname', $this-&gt;lang-&gt;line('first_name'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_lname', $this-&gt;lang-&gt;line('last_name'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_email', $this-&gt;lang-&gt;line('email'), 'required|min_length[1]|max_length[255]|valid_email|is_unique[users.usr_email]');
+
+  // Begin validation 
+  if ($this-&gt;form_validation-&gt;run() == FALSE) { // First load, or problem with form
+    $this-&gt;load-&gt;view('common/login_header');
+    $this-&gt;load-&gt;view('users/register'); 
+    $this-&gt;load-&gt;view('common/footer');
+  } else { </pre></div><p>Once the form is successfully validated, we create an e-mail for them. This is done by using the <code class="literal">random_string()</code> CodeIgniter function. We generate an eight-character string of alphanumeric digits. This is stored in the <code class="literal">$password</code> variable—we'll need this to create the hash (which will be stored in <code class="literal">users.usr_hash</code>) and to send it to the user in an e-mail (otherwise they won't know what their password is):</p><div class="informalexample"><pre class="programlisting">// Create hash from user password 
+$password = random_string('alnum', 8);</pre></div><p>After we create their password, we create a hash value of it. This is done by passing <code class="literal">$password</code> to <code class="literal">$this-&gt;encrypt-&gt;sha1()</code>:</p><div class="informalexample"><pre class="programlisting">$hash = $this-&gt;encrypt-&gt;sha1($password);</pre></div><p>Now, we save everything<a id="id544" class="indexterm"/> to the <code class="literal">$data</code> array in preparation of writing to the database. This is done by calling the <code class="literal">register_user()</code> function of <code class="literal">Register_model</code> and passing it the <code class="literal">$data</code> array:</p><div class="informalexample"><pre class="programlisting">$data = array( 
+  'usr_fname' =&gt; $this-&gt;input-&gt;post('usr_fname'), 
+  'usr_lname' =&gt; $this-&gt;input-&gt;post('usr_lname'), 
+  'usr_email' =&gt; $this-&gt;input-&gt;post('usr_email'), 
+  'usr_is_active' =&gt; 1,
+  'usr_access_level' =&gt; 2,
+  'usr_hash' =&gt; $hash 
+); </pre></div><p>If the <code class="literal">register_user()</code> function returns <code class="literal">true</code>, then we send the user an e-mail, otherwise we send them back to the <code class="literal">register</code> controller:</p><div class="informalexample"><pre class="programlisting">      if ($this-&gt;Register_model-&gt;register_user($data)) {
+        $file = read_file('../views/email_scripts/welcome.txt');
+        $file = str_replace('%usr_fname%', $data['usr_fname'], $file);
+        $file = str_replace('%usr_lname%', $data['usr_lname'], $file);
+        $file = str_replace('%password%', $password, $file);
+        redirect('signin');
+      } else {
+        redirect('register');
+      }
+    } 
+  }
+}</pre></div><p>Create the <code class="literal">/path/to/codeigniter/application/controllers/signin.php</code> controller file and add the following code to it:</p><div class="informalexample"><pre class="programlisting">&lt;?php if (!defined('BASEPATH')) exit('No direct script access allowed');
+
+class Signin extends CI_Controller {
+  function __construct() {
+    parent::__construct();
+    $this-&gt;load-&gt;library('session');
+    $this-&gt;load-&gt;helper('form');
+    $this-&gt;load-&gt;helper('url');
+    $this-&gt;load-&gt;helper('security');
+    $this-&gt;lang-&gt;load('en_admin', 'english'); 
+    $this-&gt;load-&gt;library('form_validation');
+    $this-&gt;form_validation-&gt;set_error_delimiters('&lt;div class="alert alert-warning" role="alert"&gt;', '&lt;/div&gt;'); 
+  }</pre></div><p>The <code class="literal">index()</code> function displays a form to the user, allowing them to enter their e-mail address and password. It also handles any validation from the sign-in form.</p><p>First off, the <code class="literal">index()</code> function<a id="id545" class="indexterm"/> checks to see whether the user is already logged in—after all, there's no point in someone trying to log in when they're already logged in. So, we check for the value of the <code class="literal">logged_in</code> userdata item. If this exists and equals <code class="literal">TRUE</code>, then they must already be logged in. If this is the case, then we work out their user level to see whether they are a normal user or an admin. If they are an admin, they're redirected to the admin area, that is, the <code class="literal">users</code> controller; if they are not an admin user, they are redirected to the <code class="literal">me</code> controller:</p><div class="informalexample"><pre class="programlisting">public function index() {
+  if ($this-&gt;session-&gt;userdata('logged_in') == TRUE) {
+    if ($this-&gt;session-&gt;userdata('usr_access_level') == 1) {
+      redirect('users');
+    } else {
+      redirect('me');
+    }
+  } else {</pre></div><p>If they get to this point in the code, then they are not logged in, which means that we have to display a form so they can log in. Now, we define the validation rules for the sign-in form:</p><div class="informalexample"><pre class="programlisting">      // Set validation rules for view filters
+      $this-&gt;form_validation-&gt;set_rules('usr_email', $this-&gt;lang-&gt;line('signin_email'), 'required|valid_email|min_length[5]|max_length[125]');
+      $this-&gt;form_validation-&gt;set_rules('usr_password', $this-&gt;lang-&gt;line('signin_password'), 'required|min_length[5]|max_length[30]');
+
+      if ($this-&gt;form_validation-&gt;run() == FALSE) {
+        $this-&gt;load-&gt;view('common/login_header');
+        $this-&gt;load-&gt;view('users/signin');
+        $this-&gt;load-&gt;view('common/footer');
+      } else {</pre></div><p>Assuming that the validation has passed, we store their e-mail and password in local variables, load <code class="literal">Signin_model</code>, and call the <code class="literal">does_user_exist()</code> function, passing to it the e-mail address<a id="id546" class="indexterm"/> supplied by the user. If anything other than one record is found, then the form redirects to the <code class="literal">signin</code> controller for the user to try again:</p><div class="informalexample"><pre class="programlisting">$usr_email = $this-&gt;input-&gt;post('usr_email');
+$password = $this-&gt;input-&gt;post('usr_password');
+
+$this-&gt;load-&gt;model('Signin_model');
+$query = $this-&gt;Signin_model-&gt;does_user_exist($usr_email);</pre></div><p>If, however, exactly one record is found, then we will try to log them in:</p><div class="informalexample"><pre class="programlisting">if ($query-&gt;num_rows() == 1) { // One matching row found
+  foreach ($query-&gt;result() as $row) {
+    // Call Encrypt library
+    $this-&gt;load-&gt;library('encrypt');</pre></div><p>We generate a hash from the password supplied by the user and compare it to the hash value in the database result object returned by the <code class="literal">does_user_exist()</code> call:</p><div class="informalexample"><pre class="programlisting">// Generate hash from a their password
+$hash = $this-&gt;encrypt-&gt;sha1($password);
+
+if ($row-&gt;usr_is_active != 0) { // See if the user is active or not
+  // Compare the generated hash with that in the database
+  if ($hash != $row-&gt;usr_hash) {</pre></div><p>If the user gets to this part in the code, then it means that the hash values didn't match, so we'll display the sign-in view with an error message:</p><div class="informalexample"><pre class="programlisting">  // Didn't match so send back to login
+  $data['login_fail'] = true;
+  $this-&gt;load-&gt;view('common/login_header');
+  $this-&gt;load-&gt;view('users/signin', $data);
+  $this-&gt;load-&gt;view('common/footer'); 
+} else {</pre></div><p>However, if the user gets here then the hash values match, the password supplied by the user must be correct. So, we package a few items into the <code class="literal">$data</code> array, which they will find useful once they are logged in:</p><div class="informalexample"><pre class="programlisting">$data = array(
+    'usr_id' =&gt; $row-&gt;usr_id,
+    'acc_id' =&gt; $row-&gt;acc_id,
+    'usr_email' =&gt; $row-&gt;usr_email,
+    'usr_access_level' =&gt; $row-&gt;usr_access_level,
+    'logged_in' =&gt; TRUE
+);</pre></div><p>Then, create a session for them with <code class="literal">$this-&gt;session-&gt;set_userdata()</code>:</p><div class="informalexample"><pre class="programlisting">// Save data to session
+$this-&gt;session-&gt;set_userdata($data);</pre></div><p>Finally, we work out what controller to redirect them to. If they are an admin user (<code class="literal">users.usr_access_level = 1</code>), they will<a id="id547" class="indexterm"/> be directed to <code class="literal">users</code>; if they are a normal user (<code class="literal">users.usr_access_level = 2</code>), they will be directed to the <code class="literal">me</code> controller; however, if <code class="literal">users.usr_access_level</code> is anything other than <code class="literal">1</code> or <code class="literal">2</code>, then they are also directed to the <code class="literal">me</code> controller by default:</p><div class="informalexample"><pre class="programlisting">if ($data['usr_access_level'] == 2) {
+                  redirect('me');
+                } elseif ($data['usr_access_level'] == 1) {
+                  redirect('users');
+                } else {
+                  redirect('me');
+                }
+              }
+            } else {
+              // User currently inactive
+              redirect('signin');
+            }
+          }
+        } 
+      }
+    }
+  }</pre></div><p>What comes up must come down, or something like that; anyway. what's logged in must be logged out (dreadful!) anyway—<code class="literal">signout()</code> is a quick function that destroys the session and redirects the user to the <code class="literal">signin</code> controller.</p><p>The <code class="literal">signin</code> controller is called when a user (admin or otherwise) clicks on the Logout link in the <code class="literal">top_nav.php</code> view. Once redirected, the <code class="literal">signin</code> controller will recognize they are no longer logged in and display the sign-in form:</p><div class="informalexample"><pre class="programlisting">  public function signout() {
+    $this-&gt;session-&gt;sess_destroy();
+    redirect ('signin');
+  } 
+}</pre></div><p>Create the <code class="literal">/path/to/codeigniter/application/controllers/users.php</code> controller file and add the following code to it:</p><div class="informalexample"><pre class="programlisting">&lt;?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+class Users extends MY_Controller {
+  function __construct() {
+    parent::__construct();
+    $this-&gt;load-&gt;helper('file'); // for html emails
+    $this-&gt;load-&gt;model('Users_model');
+    $this-&gt;load-&gt;model('Password_model');
+
+    if ( ($this-&gt;session-&gt;userdata('logged_in') == FALSE) || 
+       ($this-&gt;session-&gt;userdata('usr_access_level') != 1) ) {
+        redirect('signin');
+    }
+  }</pre></div><p>Okay, the first thing to notice is the <code class="literal">__construct()</code> function. We test the user's access level (<code class="literal">users.usr_access_level</code>)—if it is not equal to <code class="literal">1</code> at least, then they are not an admin user—so, we <a id="id548" class="indexterm"/>redirect them out of the controller:</p><div class="informalexample"><pre class="programlisting">public function index() {
+  $data['page_heading'] = 'Viewing users';
+  $data['query'] = $this-&gt;Users_model-&gt;get_all_users();
+  $this-&gt;load-&gt;view('common/header', $data);
+  $this-&gt;load-&gt;view('nav/top_nav', $data);
+  $this-&gt;load-&gt;view('users/view_all_users', $data);
+  $this-&gt;load-&gt;view('common/footer', $data);
+}</pre></div><p>Now, let's take a look at the preceding function. The <code class="literal">index()</code> function loads the <code class="literal">get_all_users()</code> function of <code class="literal">Users_model</code> that, as the name suggests, gets all users in the <code class="literal">users</code> table. The result of this is stored in the <code class="literal">$data</code> array's <code class="literal">query</code> item and is then passed to the <code class="literal">views/users/view_all_users.php</code> view file. This view file will display all users in a table format with two options for editing and deleting.</p><p>The <code class="literal">new_user()</code> function handles the creation of users within the system. Initially, the <code class="literal">new_user()</code> function sets the validation rules:</p><div class="informalexample"><pre class="programlisting">public function new_user() {
+  // Set validation rules
+  $this-&gt;form_validation-&gt;set_rules('usr_fname', $this-&gt;lang-&gt;line('usr_fname'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_lname', $this-&gt;lang-&gt;line('usr_lname'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_uname', $this-&gt;lang-&gt;line('usr_uname'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_email', $this-&gt;lang-&gt;line('usr_email'), 'required|min_length[1]|max_length[255]|valid_email|is_unique[users.usr_email]');
+  $this-&gt;form_validation-&gt;set_rules('usr_confirm_email', $this-&gt;lang-&gt;line('usr_confirm_email'), 'required|min_length[1]|max_length[255]|valid_email|matches[usr_email]');
+  $this-&gt;form_validation-&gt;set_rules('usr_add1', $this-&gt;lang-&gt;line('usr_add1'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_add2', $this-&gt;lang-&gt;line('usr_add2'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_add3', $this-&gt;lang-&gt;line('usr_add3'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_town_city', $this-&gt;lang-&gt;line('usr_town_city'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_zip_pcode', $this-&gt;lang-&gt;line('usr_zip_pcode'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_access_level', $this-&gt;lang-&gt;line('usr_access_level'), 'min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_is_active', $this-&gt;lang-&gt;line('usr_is_active'), 'min_length[1]|max_length[1]|integer|is_natural');
+
+  $data['page_heading'] = 'New user';
+  // Begin validation</pre></div><p>After we set the validation rules (shown in the preceding code), we then test for the return value of <code class="literal">$this-&gt;form_validation()</code>. If it's the first time the page is accessed or any form item fails validation, then <code class="literal">FALSE</code> is <a id="id549" class="indexterm"/>returned, and the following code is run. Here, we define the settings for the HTML form elements displayed in the <code class="literal">views/users/new_user.php</code> view:</p><div class="informalexample"><pre class="programlisting">if ($this-&gt;form_validation-&gt;run() == FALSE) { // First load, or problem with form
+  $data['usr_fname'] = array('name' =&gt; 'usr_fname', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_fname', 'value' =&gt; set_value('usr_fname', ''), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_lname'] = array('name' =&gt; 'usr_lname', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_lname', 'value' =&gt; set_value('usr_lname', ''), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_uname'] = array('name' =&gt; 'usr_uname', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_uname', 'value' =&gt; set_value('usr_uname', ''), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_email'] = array('name' =&gt; 'usr_email', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_email', 'value' =&gt; set_value('usr_email', ''), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_confirm_email'] = array('name' =&gt; 'usr_confirm_email', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_confirm_email', 'value' =&gt; set_value('usr_confirm_email', ''), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_add1'] = array('name' =&gt; 'usr_add1', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_add1', 'value' =&gt; set_value('usr_add1', ''), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_add2'] = array('name' =&gt; 'usr_add2', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_add2', 'value' =&gt; set_value('usr_add2', ''), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_add3'] = array('name' =&gt; 'usr_add3', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_add3', 'value' =&gt; set_value('usr_add3', ''), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_town_city'] = array('name' =&gt; 'usr_town_city', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_town_city', 'value' =&gt; set_value('usr_town_city', ''), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_zip_pcode'] = array('name' =&gt; 'usr_zip_pcode', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_zip_pcode', 'value' =&gt; set_value('usr_zip_pcode', ''), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_access_level'] = array(1=&gt;1, 2=&gt;2, 3=&gt;3, 4=&gt;4, 5=&gt;5);
+
+  $this-&gt;load-&gt;view('common/header', $data);
+  $this-&gt;load-&gt;view('nav/top_nav', $data);
+  $this-&gt;load-&gt;view('users/new_user',$data);
+  $this-&gt;load-&gt;view('common/footer', $data);
+} else { // Validation passed, now escape the data</pre></div><p>Assuming that the form data has passed validation, we begin to create a password for the user. We use the <code class="literal">random_string()</code> CodeIgniter function to generate an alphanumeric string of characters 8 digits in length.</p><p>We then generate a hash<a id="id550" class="indexterm"/> from this password using the <code class="literal">$this-&gt;encrypt-&gt;sha1()</code> CodeIgniter function, as shown in the following snippet. Later on in the code, we send the password to the user in an e-mail:</p><div class="informalexample"><pre class="programlisting">$password = random_string('alnum', 8);
+$hash = $this-&gt;encrypt-&gt;sha1($password);</pre></div><p>We save the form input and <code class="literal">$hash</code> to the <code class="literal">$data</code> arrays:</p><div class="informalexample"><pre class="programlisting">$data = array(
+  'usr_fname' =&gt; $this-&gt;input-&gt;post('usr_fname'),
+  'usr_lname' =&gt; $this-&gt;input-&gt;post('usr_lname'),
+  'usr_uname' =&gt; $this-&gt;input-&gt;post('usr_uname'),
+  'usr_email' =&gt; $this-&gt;input-&gt;post('usr_email'),
+  'usr_hash' =&gt; $hash,
+  'usr_add1' =&gt; $this-&gt;input-&gt;post('usr_add1'),
+  'usr_add2' =&gt; $this-&gt;input-&gt;post('usr_add2'),
+  'usr_add3' =&gt; $this-&gt;input-&gt;post('usr_add3'),
+  'usr_town_city' =&gt; $this-&gt;input-&gt;post('usr_town_city'),
+  'usr_zip_pcode' =&gt; $this-&gt;input-&gt;post('usr_zip_pcode'),
+  'usr_access_level' =&gt; $this-&gt;input-&gt;post('usr_access_level'),
+  'usr_is_active' =&gt; $this-&gt;input-&gt;post('usr_is_active')
+);</pre></div><p>Once it is stored in the <code class="literal">$data</code> array, we attempt to save the hash to the database with the <code class="literal">process_create_user()</code> function of <code class="literal">Users_model</code>:</p><div class="informalexample"><pre class="programlisting">    if ($this-&gt;Users_model-&gt;process_create_user($data)) {
+      $file = read_file('../views/email_scripts/welcome.txt');
+      $file = str_replace('%usr_fname%', $data['usr_fname'], $file);
+      $file = str_replace('%usr_lname%', $data['usr_lname'], $file);
+      $file = str_replace('%password%', $password, $file);
+      redirect('users');
+    } else {
+
+    }
+  }
+}</pre></div><p>Should the admin user<a id="id551" class="indexterm"/> choose to edit a user's details, they can click on Edit against the user's name when they're viewing the full user list, as described earlier for the <code class="literal">index()</code> function. If they do press Edit, then the <code class="literal">edit_user()</code> function is called—this is a basic function that uses the form validation functionality to validate the user's details should the form be submitted.</p><p>Initially, we begin by defining the form validation rules:</p><div class="informalexample"><pre class="programlisting">public function edit_user() {
+  // Set validation rules
+  $this-&gt;form_validation-&gt;set_rules('usr_id', $this-&gt;lang-&gt;line('usr_id'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_fname', $this-&gt;lang-&gt;line('usr_fname'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_lname', $this-&gt;lang-&gt;line('usr_lname'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_uname', $this-&gt;lang-&gt;line('usr_uname'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_email', $this-&gt;lang-&gt;line('usr_email'), 'required|min_length[1]|max_length[255]|valid_email');
+  $this-&gt;form_validation-&gt;set_rules('usr_confirm_email', $this-&gt;lang-&gt;line('usr_confirm_email'), 'required|min_length[1]|max_length[255]|valid_email|matches[usr_email]');
+  $this-&gt;form_validation-&gt;set_rules('usr_add1', $this-&gt;lang-&gt;line('usr_add1'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_add2', $this-&gt;lang-&gt;line('usr_add2'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_add3', $this-&gt;lang-&gt;line('usr_add3'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_town_city', $this-&gt;lang-&gt;line('usr_town_city'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_zip_pcode', $this-&gt;lang-&gt;line('usr_zip_pcode'), 'required|min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_access_level', $this-&gt;lang-&gt;line('usr_access_level'), 'min_length[1]|max_length[125]');
+  $this-&gt;form_validation-&gt;set_rules('usr_is_active', $this-&gt;lang-&gt;line('usr_is_active'), 'min_length[1]|max_length[1]|integer|is_natural');</pre></div><p>The user's primary key (<code class="literal">users.usr_id</code>) is appended to the Edit link and passed to the <code class="literal">edit_user()</code> function. This is used to look up the user in the <code class="literal">users</code> table. The <code class="literal">get_user_details($id)</code> function of <code class="literal">Users_model</code> takes one parameter—the value of <code class="literal">$id</code> (as passed in the Edit link <a id="id552" class="indexterm"/>or posted using <code class="literal">$_POST</code> if the form is submitted)—and looks for the user. Once found, the details of the query are written to local variables and saved to the <code class="literal">$data</code> array. This, in turn, is passed to the <code class="literal">edit_user.php</code> view where it is used to populate the form items with the correct data:</p><div class="informalexample"><pre class="programlisting">if ($this-&gt;input-&gt;post()) {
+  $id = $this-&gt;input-&gt;post('usr_id');
+} else {
+  $id = $this-&gt;uri-&gt;segment(3); 
+}
+
+$data['page_heading'] = 'Edit user';
+// Begin validation</pre></div><p>After we set the validation rules, we test for the return value of <code class="literal">$this-&gt;form_validation()</code>. If it's the first time the page is accessed or any form item fails validation, then <code class="literal">FALSE</code> is returned, and the following code is run. Here, we define the settings for the HTML form elements displayed in the <code class="literal">views/users/edit_user.php</code> view:</p><div class="informalexample"><pre class="programlisting">if ($this-&gt;form_validation-&gt;run() == FALSE) { // First load, or problem with form
+      $query = $this-&gt;Users_model-&gt;get_user_details($id);
+      foreach ($query-&gt;result() as $row) {
+        $usr_id = $row-&gt;usr_id;
+        $usr_fname = $row-&gt;usr_fname;
+        $usr_lname = $row-&gt;usr_lname;
+        $usr_uname = $row-&gt;usr_uname;
+        $usr_email = $row-&gt;usr_email;
+        $usr_add1 = $row-&gt;usr_add1;
+        $usr_add2 = $row-&gt;usr_add2;
+        $usr_add3 = $row-&gt;usr_add3;
+        $usr_town_city = $row-&gt;usr_town_city;
+        $usr_zip_pcode = $row-&gt;usr_zip_pcode;
+        $usr_access_level = $row-&gt;usr_access_level;
+        $usr_is_active = $row-&gt;usr_is_active;
+      }</pre></div><p>We build the HTML form<a id="id553" class="indexterm"/> elements here, defining their settings in the <code class="literal">$data</code> array, as shown in the following code:</p><div class="informalexample"><pre class="programlisting">  $data['usr_fname'] = array('name' =&gt; 'usr_fname', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_fname', 'value' =&gt; set_value('usr_fname', $usr_fname), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_lname'] = array('name' =&gt; 'usr_lname', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_lname', 'value' =&gt; set_value('usr_lname', $usr_lname), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_uname'] = array('name' =&gt; 'usr_uname', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_uname', 'value' =&gt; set_value('usr_uname', $usr_uname), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_email'] = array('name' =&gt; 'usr_email', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_email', 'value' =&gt; set_value('usr_email', $usr_email), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_confirm_email'] = array('name' =&gt; 'usr_confirm_email', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_confirm_email', 'value' =&gt; set_value('usr_confirm_email', $usr_email), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_add1'] = array('name' =&gt; 'usr_add1', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_add1', 'value' =&gt; set_value('usr_add1', $usr_add1), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_add2'] = array('name' =&gt; 'usr_add2', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_add2', 'value' =&gt; set_value('usr_add2', $usr_add2), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_add3'] = array('name' =&gt; 'usr_add3', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_add3', 'value' =&gt; set_value('usr_add3', $usr_add3), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_town_city'] = array('name' =&gt; 'usr_town_city', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_town_city', 'value' =&gt; set_value('usr_town_city', $usr_town_city), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_zip_pcode'] = array('name' =&gt; 'usr_zip_pcode', 'class' =&gt; 'form-control', 'id' =&gt; 'usr_zip_pcode', 'value' =&gt; set_value('usr_zip_pcode', $usr_zip_pcode), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+  $data['usr_access_level_options'] = array(1=&gt;1, 2=&gt;2, 3=&gt;3, 4=&gt;4, 5=&gt;5);
+  $data['usr_access_level'] = array('value' =&gt; set_value('usr_access_level', ''));
+  $data['usr_is_active'] = $usr_is_active;
+  $data['id'] = array('usr_id' =&gt; set_value('usr_id', $usr_id));
+
+  $this-&gt;load-&gt;view('common/header', $data);
+  $this-&gt;load-&gt;view('nav/top_nav', $data);
+  $this-&gt;load-&gt;view('users/edit_user', $data);
+  $this-&gt;load-&gt;view('common/footer', $data);
+} else { // Validation passed, now escape the data</pre></div><p>Assuming that the form input <a id="id554" class="indexterm"/>passed validation, we save the new user information to the <code class="literal">$data</code> array:</p><div class="informalexample"><pre class="programlisting">$data = array(
+  'usr_fname' =&gt; $this-&gt;input-&gt;post('usr_fname'),
+  'usr_lname' =&gt; $this-&gt;input-&gt;post('usr_lname'),
+  'usr_uname' =&gt; $this-&gt;input-&gt;post('usr_uname'),
+  'usr_email' =&gt; $this-&gt;input-&gt;post('usr_email'),
+  'usr_add1' =&gt; $this-&gt;input-&gt;post('usr_add1'),
+  'usr_add2' =&gt; $this-&gt;input-&gt;post('usr_add2'),
+  'usr_add3' =&gt; $this-&gt;input-&gt;post('usr_add3'),
+  'usr_town_city' =&gt; $this-&gt;input-&gt;post('usr_town_city'),
+  'usr_zip_pcode' =&gt; $this-&gt;input-&gt;post('usr_zip_pcode'),
+  'usr_access_level' =&gt; $this-&gt;input-&gt;post('usr_access_level'),
+  'usr_is_active' =&gt; $this-&gt;input-&gt;post('usr_is_active')
+);</pre></div><p>Once everything is added to the <code class="literal">$data</code> array, we try to update the user's details using the <code class="literal">process_update_user()</code> function of <code class="literal">Users_model</code>:</p><div class="informalexample"><pre class="programlisting">    if ($this-&gt;Users_model-&gt;process_update_user($id, $data)) {
+      redirect('users');
+    }
+  }
+}</pre></div><p>By pressing the Delete link in the <code class="literal">views/users/view_all_users.php</code> file, the <code class="literal">users</code> controller's <code class="literal">delete_user()</code> function is called. Like the <code class="literal">edit_user()</code> function, <code class="literal">delete_user()</code> uses the <code class="literal">users_usr_id</code> primary key appended to the end of the Delete link URL and passes it to the <code class="literal">delete_user($id)</code> function of <code class="literal">Users_model</code>. This model function takes one parameter—the <code class="literal">$id</code> (as passed in the Delete link or posted using <code class="literal">$_POST</code> if the form is <a id="id555" class="indexterm"/>submitted)—and deletes the user from the <code class="literal">users</code> table:</p><div class="informalexample"><pre class="programlisting">  public function delete_user() {
+    // Set validation rules
+    $this-&gt;form_validation-&gt;set_rules('id', $this-&gt;lang-&gt;line('usr_id'), 'required|min_length[1]|max_length[11]|integer|is_natural');
+    if ($this-&gt;input-&gt;post()) {
+      $id = $this-&gt;input-&gt;post('id');
+    } else {
+      $id = $this-&gt;uri-&gt;segment(3);
+    }
+
+    $data['page_heading'] = 'Confirm delete?';
+    if ($this-&gt;form_validation-&gt;run() == FALSE) { // First load, or problem with form
+      $data['query'] = $this-&gt;Users_model-&gt;get_user_details($id);
+      $this-&gt;load-&gt;view('common/header', $data);
+      $this-&gt;load-&gt;view('nav/top_nav', $data);
+      $this-&gt;load-&gt;view('users/delete_user', $data);
+      $this-&gt;load-&gt;view('common/footer', $data);
+    } else {
+      if ($this-&gt;Users_model-&gt;delete_user($id)) {
+        redirect('users');
+      }
+    }
+  }
+
+  public function pwd_email() {
+    $id = $this-&gt;uri-&gt;segment(3);
+    send_email($data, 'reset');
+    redirect('users');
+  }
+}</pre></div></div>
+<div class="section" title="Creating the language file"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec67"/>Creating the language file</h1></div></div></div><p>As with all the projects<a id="id556" class="indexterm"/> in this book, we're making use of the language file to serve text to users. This way, you can enable multiple region/multiple language<a id="id557" class="indexterm"/> support.</p><p>Create the <code class="literal">/path/to/codeigniter/application/language/english/en_admin_lang.php</code> file and add the following code to it:</p><div class="informalexample"><pre class="programlisting">&lt;?php if (!defined('BASEPATH')) exit('No direct script access allowed');
+
+// General
+$lang['system_system_name'] = "Auth System";
+
+// Top Nav
+$lang['top_nav_users'] = "Users";
+$lang['top_nav_new'] = 'New';
+$lang['top_nav_signin'] = "Login";
+$lang['top_nav_signout'] = "Logout";
+
+// Login
+$lang['signin_email'] = "Email";
+$lang['signin_password'] = "Password";
+$lang['admin_login_header'] = "Please sign in";
+$lang['admin_login_email'] = "Email";
+$lang['admin_login_password'] = "Password";
+$lang['admin_login_signin'] = "Signin...";
+$lang['admin_login_error'] = "Whoops!  Something went wrong - have another go!";
+$lang['forgot_pwd_header'] = 'Reset Password...';
+$lang['forgot_pwd_instruction'] = 'Enter your email in the box below and if your email is in the database we will send you a new password' ;
+
+$lang['signin_forgot_password'] = "Forgot Password?";
+
+// Register
+$lang['register_page_title'] = "Register...";
+$lang['register_first_name'] = "First Name";
+$lang['register_last_name'] = "Last Name";
+$lang['register_email'] = "Email";
+
+// Emails
+$lang['email_subject_new_password'] = "Your new password.";
+$lang['email_subject_reset_password'] = "Reset your password.";
+
+// New/Edit User
+$lang['usr_form_instruction_new'] = "New User Details";
+$lang['usr_form_instruction_edit'] = "Edit User Details";
+$lang['usr_id'] = "ID";
+$lang['usr_fname'] = "First name";
+$lang['usr_lname'] = "Last Name";
+$lang['usr_uname'] = "Username";
+$lang['usr_email'] = "Email";
+$lang['usr_confirm_email'] = "Confirm Email";
+$lang['usr_add1'] = "Address 1";
+$lang['usr_add2'] = "Address 2";
+$lang['usr_add3'] = "Address 3";
+$lang['usr_town_city'] = "Town/City";
+$lang['usr_zip_pcode'] = "Zip/Postal Code";
+$lang['usr_access_level'] = "User Access Level";
+$lang['is_active'] = "User is active?";
+
+// Forgot password
+$lang['forgot_pwd_success_heading'] = "Email Sent:";
+$lang['forgot_pwd_success_msg'] = "An email has been sent to the address provided.";
+
+// New password
+$lang['signin_new_pwd_instruction'] = "Reset your password";
+$lang['signin_new_pwd_email'] = "Your email";
+$lang['signin_new_pwd_pwd'] = "Password";
+$lang['signin_new_pwd_confirm'] = "Confirm password";
+$lang['signin_new_pwd_code'] = "Code";
+
+// Delete
+$lang['delete_confirm_message'] = "Are you sure you want to delete the user: ";</pre></div></div>
+<div class="section" title="Putting it all together"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec68"/>Putting it all together</h1></div></div></div><p>Okay, so that's the<a id="id558" class="indexterm"/> code. Now, let's take a look at some ways in which it can be used—this will help us get a good idea about how it all interacts with each other.</p><div class="section" title="User registration"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec61"/>User registration</h2></div></div></div><p>The following is<a id="id559" class="indexterm"/> the sequence of steps:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">A user opens the <code class="literal">register</code> controller in their browser and is prompted to enter their first name, last name, and e-mail address</li><li class="listitem" style="list-style-type: disc">The user submits the form and the form is posted to the <code class="literal">index()</code> register function</li><li class="listitem" style="list-style-type: disc">The <code class="literal">register</code> controller saves<a id="id560" class="indexterm"/> the user's details to the <code class="literal">users</code> table and generates a password for them</li><li class="listitem" style="list-style-type: disc">This is sent to them in an e-mail and is sent to the email address submitted earlier</li><li class="listitem" style="list-style-type: disc">The user can then log back in to the system and amend their details as they wish</li></ul></div></div><div class="section" title="Ensuring correct access"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec62"/>Ensuring correct access</h2></div></div></div><p>It is possible to allocate controllers and even certain functions to be accessed by users with a specific access level only. We touched on this earlier in the chapter; however, we're going to discuss it here as well.</p><p>Look at the following code snippet, specifically, the parts in bold:</p><div class="informalexample"><pre class="programlisting">if ( ($this-&gt;session-&gt;userdata('logged_in') == FALSE) || 
+ <span class="strong"><strong>($this-&gt;session-&gt;userdata('usr_access_level') != 1)</strong></span> ) {
+   redirect('signin');
+}</pre></div><p>This function can be placed into any <a id="id561" class="indexterm"/>controller or function as you wish; doing so will protect this code block from access to users without the correct access level. The first part checks whether a user is logged in (that is, if a session exists), but the second comparison looks at the user access level set at the sign-in. By adjusting the value checked for, you can tailor access to specific users, user groups, or access levels.</p></div></div>
+<div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec69"/>Summary</h1></div></div></div><p>So there you are—a simple auth system using Twitter Bootstrap as a frontend. It should be simple to adapt and amend to suit your needs but still enable you to do the basics.</p><p>In the next chapter we will look at creating a simple e-commerce site that will allow you to have a simple shop and a look at options on how you can extend it.</p></div></body></html>

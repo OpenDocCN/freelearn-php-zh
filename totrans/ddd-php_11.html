@@ -1,0 +1,760 @@
+<html><head></head><body>
+        <section>
+
+            <header>
+                <h1 class="header-title">Application</h1>
+            </header>
+
+            <article>
+                
+<p>The Application layer is the area that separates the Domain Model from the clients that query or change its state. Application Services are the building blocks for such a layer. As Vaughn Vernon <a href="https://www.amazon.com/Implementing-Domain-Driven-Design-Vaughn-Vernon/dp/0321834577">says</a>: "Application Services are the direct clients of the domain model." You could think about an Application Service as a point of contact between the outside world (HTML forms, API clients, the command line, frameworks, UI, and so on.) and the Domain Model itself. It might help by thinking about the top-level use cases that your system exposes to the world, example: "as guest, I want to register," "as a logged user, I want to purchase a product," and so on.</p>
+<p>In this chapter, we'll explore how to implement Application Services, understand the role of the Command pattern, and establish the responsibilities of an Application Service. To do this, let's consider the use case of <em>signing up a new user</em>.</p>
+<p>Conceptually, in order to register a new user, we need to:</p>
+<ul>
+<li>Get an email and password from the client</li>
+<li>Check if the email is already in use</li>
+<li>Create a new user</li>
+<li>Add this new user to the existing user set</li>
+<li>Return the user we've just created</li>
+</ul>
+<p>Let's go for it.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Requests</h1>
+            </header>
+
+            <article>
+                
+<p>We need to send the <kbd>email</kbd> and <kbd>password</kbd> to the Application Service. There are many ways of doing such a thing from the client (HTML form, API client, or even the command line). We could just send standard parameters (email and password) through the method signature or build and send a data structure with this information. The latter approach, sending a <a href="http://martinfowler.com/eaaCatalog/dataTransferObject.html">DTO</a>, brings some interesting features to the table. By sending an object, it'll be possible to serialize and queue it over a Command Bus. It'll also be possible to add type safety and some IDE help, too.</p>
+<div class="packt_tip"><span class="packt_screen">Data Transfer Object</span><br/>
+A DTO is a data structure that carries information between processes. Don't mistake it for a full-featured object. A DTO doesn't have any behavior except for storage and retrieval of its own data (accessors and mutators). DTOs are simple objects that shouldn't contain any business logic that would require testing.</div>
+<p>As Vaughn Vernon <a href="https://www.amazon.com/Implementing-Domain-Driven-Design-Vaughn-Vernon/dp/0321834577">says</a>:</p>
+<p style="padding-left: 30px">Application Service method signatures use only primitive types (<kbd>int</kbd>, <kbd>strings</kbd>, and so on.), and possibly DTOs. As an alternative to these approaches, however, a better approach may be to design Command objects instead. There is not necessarily a right or wrong way. It mostly depends on your tastes and goals.</p>
+<p>The implementation for a DTO that holds the data required for the Application Service could be something like this:</p>
+<pre>
+namespace Lw\Application\Service\User;<br/><br/>class SignUpUserRequest<br/>{<br/>    private $email;<br/>    private $password;<br/><br/>    public function __construct($email, $password)<br/>    {<br/>        $this-&gt;email = $email;<br/>        $this-&gt;password = $password;<br/>    }<br/><br/>    public function email()<br/>    {<br/>        return $this-&gt;email;<br/>    }<br/><br/>    public function password()<br/>    {<br/>        return $this-&gt;password;<br/>    }<br/>}
+</pre>
+<p>As you see, <kbd>SignUpUserRequest</kbd> has no behavior, only data. This could have come from an HTML form or an API endpoint, though we don't care which.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Building Application Service Requests</h1>
+            </header>
+
+            <article>
+                
+<p>Creating a request from the delivery mechanism, your favorite framework, should be pretty straightforward. On the web, you could pick up parameters from the controller request and pass them down to the Service inside a DTO. The same principle applies for a CLI command: read input parameters and send them down again.</p>
+<p>With Symfony, we can extract the data we need from Request object from the <kbd>HttpFoundation</kbd> component:</p>
+<pre>
+// ...<br/>class UsersController extends Controller<br/>{<br/>    /**<br/>     * @Route('/signup', name = 'signup')<br/>     * @param Request $request<br/>     * @return Response<br/>     */<br/>    public function signUpAction(Request $request)<br/>    {<br/>        // ...<br/>        $signUpUserRequest = new SignUpUserRequest(<br/>            $request-&gt;get('email'),<br/>            $request-&gt;get('password')<br/>        );<br/>        // ...<br/>    }<br/>// ...
+</pre>
+<p>On a more elaborate Silex application that uses the <kbd>Form</kbd> component to capture and validate parameters, it would look like this:</p>
+<pre>
+// ...<br/>$app-&gt;match('/signup', function (Request $request) use ($app) {<br/>    $form = $app['sign_up_form'];<br/>    $form-&gt;handleRequest($request);<br/><br/>    if ($form-&gt;isValid()) {<br/>        $data = $form-&gt;getData();<br/><br/>        try {<br/>            $app['sign_in_user_application_service']-&gt;execute(<br/>                new SignUpUserRequest(<br/>                     $data['email'],<br/>                     $data['password']<br/>                )<br/>            );<br/><br/>            return $app-&gt;redirect(<br/>                $app['url_generator']-&gt;generate('login')<br/>            );<br/>        } catch (UserAlreadyExistsException $e) {<br/>            $form<br/>                -&gt;get('email')<br/>                -&gt;addError(<br/>                    new FormError(<br/>                        'Email is already registered by another user'<br/>                    )<br/>                );<br/>        } catch (Exception $e) {<br/>            $form<br/>                -&gt;addError(<br/>                    new FormError(<br/>                      'There was an error, please get in touch with us'<br/>                    )<br/>                );<br/>        }<br/>    }<br/><br/>    return $app['twig']-&gt;render('signup.html.twig', [<br/>        'form' =&gt; $form-&gt;createView(),<br/>    ]);<br/>});
+</pre>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Request Design</h1>
+            </header>
+
+            <article>
+                
+<p>When designing your request objects, you should always follow these principles: use primitives, design for serialization, and don't include business logic inside. This way, you'll be able to save unit testing dollars.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Use Primitives</h1>
+            </header>
+
+            <article>
+                
+<p>We recommend using basic types to build up your request objects — that means strings, integers, booleans, and so on. We're just abstracting away input parameters. You should be able to consume Application Services independently from the delivery mechanism. Even pretty complicated HTML forms get translated into basic types all the time at the controller level. You don't want to mix up your framework and your business logic.</p>
+<p>With certain scenarios, it's tempting to use Value Objects directly. Don't do it. Updates on the Value Object definition will affect all clients, and you'll be coupling clients with your Domain logic.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Serializable</h1>
+            </header>
+
+            <article>
+                
+<p>A cool side effect of using basic types is that any request object can easily be serialized into a string, sent through the wire, and stored in a messaging system or database.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">No Business Logic</h1>
+            </header>
+
+            <article>
+                
+<p>Avoid putting any business logic — even validation — inside your request objects. Validation should take place inside your Domain — this is inside your Entities, Value Objects, Domain Services, etc. Validation is a way of enforcing business invariants and Domain constraints.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">No Tests</h1>
+            </header>
+
+            <article>
+                
+<p>Application requests are data structures, not objects. Unit testing data structures is like testing getters and setters. There's no behavior to test, so there isn't much value in trying to unit test request objects and DTOs. These structures will be covered as a side effect of more elaborate tests, such as Integration or Acceptance tests.</p>
+<p>Commands are an alternative to request objects. We could design a Service with multiple Application methods, and each one of them with the parameters you'd put inside the Request. This is OK for simple applications, but we'll worry about this topic later.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Anatomy of an Application Service</h1>
+            </header>
+
+            <article>
+                
+<p>Once we have the data encapsulated in a request, it's time for the business logic. As Vaughn Vernon <a href="https://www.amazon.com/Implementing-Domain-Driven-Design-Vaughn-Vernon/dp/0321834577">says</a>: "Keep Application Services thin, using them only to coordinate tasks on the model."</p>
+<p>The first thing to do is to extract the necessary information from the request, That is, the <kbd>email</kbd> and <kbd>password</kbd>. At a high level, we need to check if there's an existing user with a particular email. If this isn't the case, then we create and add the user to the <kbd>UserRepository</kbd>. In the special case of finding a user with the same email, we raise an exception so the client can treat it their own way — by displaying an error, retrying, or just ignoring it:</p>
+<pre>
+namespace Lw\Application\Service\User;<br/><br/>use Ddd\Application\Service\ApplicationService;<br/>use Lw\Domain\Model\User\User;<br/>use Lw\Domain\Model\User\UserAlreadyExistsException;<br/>use Lw\Domain\Model\User\UserRepository;<br/><br/>class SignUpUserService<br/>{<br/>    private $userRepository;<br/><br/>    public function __construct(UserRepository $userRepository) <br/>    {<br/>        $this-&gt;userRepository = $userRepository;<br/>    }<br/><br/>    public function execute(SignUpUserRequest $request)<br/>    {<br/>        $email = $request-&gt;email();<br/>        $password = $request-&gt;password();<br/><br/>        $user = $this-&gt;userRepository-&gt;ofEmail($email);<br/>        if ($user) {<br/>            throw new UserAlreadyExistsException();<br/>        }<br/><br/>        $this-&gt;userRepository-&gt;add(<br/>            new User(<br/>                $this-&gt;userRepository-&gt;nextIdentity(),<br/>                $email ,<br/>                $password<br/>            )<br/>        );<br/>    }<br/>}
+</pre>
+<p>Nice! If you're wondering what this <kbd>UserRepository</kbd> thing is doing in the constructor, we'll show you that next.</p>
+<div class="packt_tip"><span class="packt_screen"><strong>Handling Exceptions</strong></span><br/>
+Exceptions raised by Application Services are a way of communicating unusual cases and flows to the client. Exceptions on this layer are related to business logic (like not finding a user), and not implementation details (like <kbd>PDOException</kbd>, <kbd>PredisException</kbd>, or <kbd>DoctrineException</kbd>).</div>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Dependency Inversion</h1>
+            </header>
+
+            <article>
+                
+<p>Handling users is not the responsibility of the Service. As we saw in <a href="c688814f-5b8c-49f2-9b2c-f292299c2fde.xhtml">Chapter 10</a>, <em>Repositories</em>, there's a specialized class that deals with <kbd>User</kbd> collections: the <kbd>User</kbd> Repository. This is a dependency from the Application Service to the Repository. We don't want to couple the Application Service with a concrete implementation of the Repository, as then we'd be coupling our Service with Infrastructure details. So we depend on the contract (interface) that concrete implementations depend on, the <kbd>UserRepository</kbd>.</p>
+<p>A specific implementation of the <kbd>UserRepository</kbd> will be built and passed in at runtime — for example, with <kbd>DoctrineUserRepository</kbd>, a specific implementation that uses Doctrine. Passing a specific implementation will also work when testing. For example, <kbd>NotAvailableUserRepository</kbd> can be a specific implementation that will throw exceptions each time an operation is performed. This way, we can test all Application Service behaviors, including <em>sad</em> paths, which is when the application must behave properly, even if something goes wrong.</p>
+<p>Application Services could depend on Domain Services like <kbd>GetBadgesByUser</kbd> too. At runtime, the implementation for such a Service could be quite elaborate. Imagine an <kbd>HttpGetBadgesByUser</kbd> for integrating a Bounded Context through HTTP protocol.</p>
+<p>Depending on abstractions, we'll make our Application Service immune to low-level Infrastructure changes.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Instantiating Application Services</h1>
+            </header>
+
+            <article>
+                
+<p>Instantiating just your Application Service is easy, but building the dependency tree might be tricky, depending on how complicated the dependencies are to build. For such a purpose, most frameworks come with a Dependency Injection Container. Without one, you'll end up with something like the following code somewhere in your controller:</p>
+<pre>
+$redisClient = new Predis\Client([<br/>    'scheme' =&gt; 'tcp',<br/>    'host' =&gt; '10.0.0.1',<br/>    'port' =&gt; 6379<br/>]);<br/><br/>$userRepository = new RedisUserRepository($redisClient);<br/>$signUp = new SignUpUserService($userRepository);<br/>$signUp-&gt;execute(new SignUpUserRequest(<br/>    'user@example.com',<br/>    'password'<br/>));
+</pre>
+<p>We decided to use the <a href="http://redis.io/">Redis</a> implementation for the <kbd>UserRepository</kbd>. In the previous code example, we built all dependencies needed for building a Repository that uses Redis internally. Those dependencies are: a <a href="https://github.com/nrk/predis">Predis</a> client, and all parameters to connect to our Redis server. This is not only inefficient, but it also spreads duplication across controllers.</p>
+<p>You could refactor the construction logic into a Factory, or you could use a Dependency Injection Container — most modern frameworks come with it.</p>
+<div class="packt_tip"><span class="packt_screen">Is It Bad to Use a Dependency Injection Container?</span><br/>
+Not at all. Dependency Injection Containers are just a tool. They help by abstracting away the complexities of building your dependencies. They come in handy for building Infrastructure artifacts. Symfony offers a complete solution.</div>
+<div class="packt_infobox">Take into account the fact that passing the entire container as a whole to one of the Services is a bad practice. That would be like coupling the entire context of your application with the Domain. If a Service needs specific objects, build them from your framework and pass them as dependencies into the Service, but don't make that Service aware of the entire context.</div>
+<p>Let's see how would we build dependencies in Silex:</p>
+<pre>
+$app = new \Silex\Application();<br/>$app['redis_parameters'] = [<br/>     'scheme' =&gt; 'tcp',<br/>     'host' =&gt; '127.0.0.1',<br/>     'port' =&gt; 6379<br/>];<br/><br/>$app['redis'] = $app-&gt;share(function ($app) {<br/>    return new Predis\Client($app['redis_parameters']);<br/>});<br/><br/>$app['user_repository'] = $app-&gt;share(function($app) {<br/>    return new RedisUserRepository(<br/>        $app['redis']<br/>    );<br/>});<br/><br/>$app['sign_up_user_application_service'] = $app-&gt;share(function($app) {<br/>    return new SignUpUserService(<br/>        $app['user_repository']<br/>    );<br/>});<br/><br/>// ...<br/><br/>$app-&gt;match('/signup' ,function (Request $request) use ($app) {<br/>    // ...<br/>    $app['sign_up_user_application_service']-&gt;execute(<br/>        new SignUpUserRequest(<br/>            $request-&gt;get('email'),<br/>            $request-&gt;get('password')<br/>        )<br/>    );<br/>    // ...<br/>});
+</pre>
+<p>As you can see, <kbd>$app</kbd> is used as the Service Container. We register all the components needed, along with their dependencies. <kbd>sign_up_user_application_service</kbd> depends on the definitions made above. Changing the implementation for the <kbd>user_repository</kbd> is as easy as returning something else (MySQL, MongoDB, and so on.), so we don't need to change the Service code at all.</p>
+<p>The equivalent for a Symfony application looks like this:</p>
+<pre>
+<span>&lt;?xml version=" 1.0" ?&gt;<br/>&lt;container <br/>    <br/>    xsi:schemaLocation="<br/>        http://symfony.com/schema/dic/services<br/>        http://symfony.com/schema/dic/services/services-1.0.xsd"&gt;<br/>    &lt;services&gt;<br/>        &lt;service<br/>            id="sign_up_user_application_service"<br/>            class="SignUpUserService"&gt;<br/>            &lt;argument type="service" id="user_repository" /&gt;<br/>        &lt;/service&gt;<br/><br/>        &lt;service<br/>            id="user_repository"<br/>            class="RedisUserRepository"&gt;<br/>            &lt;argument type="service"&gt;<br/>                &lt;service class="Predis\Client" /&gt;<br/>            &lt;/argument&gt;<br/>        &lt;/service&gt;<br/>    &lt;/services&gt; <br/>&lt;/container&gt;</span>
+</pre>
+<p>Now that you have the definition of your Application Service in the Symfony Service Container, getting it later is pretty straightforward. All delivery mechanisms — Web Controllers, REST Controllers, and even Console Commands — share the same definition. The Service is available on any class implementing the <kbd>ContainerAware</kbd> interface. Getting the Service is as easy as calling <kbd>$this-&gt;get('sign_up_user_application_service'</kbd>.</p>
+<p>To summarize, how you build your Services (adhoc, using Service Containers, using Factories, and so on.) doesn't matter. However, it's important to keep your Application Services setup out of the Infrastructure boundary.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Customize an Application Service</h1>
+            </header>
+
+            <article>
+                
+<p>The main way to customize your Application Service is by choosing which dependencies you're passing in. Depending on your Service Container capabilities, that could be a bit tricky, so you can also add a setter to change the dependency on the fly. For example, you may need to change an output dependency so that you can set up a default one and then change it afterward. If logic gets too complicated, you can create an Application Service Factory that will handle this situation for you.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Execution</h1>
+            </header>
+
+            <article>
+                
+<p>There are two different approaches for invoking Application Services: a dedicated class per use case with a single execution method, and multiple Application Services and use cases inside the same class.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">One Class Per Application Service</h1>
+            </header>
+
+            <article>
+                
+<p>This is our preferred approach, and probably the one that fits all scenarios:</p>
+<pre>
+class SignUpUserService <br/>{ <br/>    // ...<br/>    public function execute(SignUpUserRequest $request)<br/>    {<br/>       // ...<br/>    }<br/>}
+</pre>
+<p>Using a dedicated class per Application Service makes the code more robust against external changes (Single Responsibility Principle). There are fewer reasons to change the class, as the Service does one and only one thing. The Application Service will be easier to test, seeing as it does less things. It's easier to implement a common Application Service contract, making class decoration easier (check out Sub section <em>Transactions</em> of<em> </em><a href="c688814f-5b8c-49f2-9b2c-f292299c2fde.xhtml">Chapter 10</a>, <em> Repositories</em> ). This will also result in higher cohesion, as all dependencies are exclusively dedicated to a single use case.</p>
+<p>The <kbd>execution</kbd> method could have a more expressive name, like <kbd>signUp</kbd>. However, the execute <a href="http://martinfowler.com/bliki/DecoratedCommand.html">Command pattern</a> format standardizes a common contract across Application Services, thereby enabling easy decoration, which comes in handy for transactions.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Multiple Application Service Methods per Class</h1>
+            </header>
+
+            <article>
+                
+<p>Sometimes it might be a good idea to group cohesive Application Services under the same class:</p>
+<pre>
+class UserService<br/>{<br/>    // ...<br/>    public function signUp(SignUpUserRequest $request)<br/>    {<br/>        // ...<br/>    }<br/><br/>    public function signIn(SignUpUserRequest $request)<br/>    {<br/>        // ...<br/>    }<br/><br/>    public function logOut(LogOutUserRequest $request)<br/>    {<br/>        // ...<br/>    }<br/>}
+</pre>
+<p>We don't recommend such an approach, as not all Application Services are 100 percent cohesive. Some Services will require different dependencies, and you'll end up with Application Services depending on things they don't need. Another issue is that this kind of class grows fast. As it violates the Single Responsibility Principle, there will be multiple reasons to change and maybe even break it.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Returning Values</h1>
+            </header>
+
+            <article>
+                
+<p>After signing up, we might be thinking about redirecting the user to a profile page. The natural way of passing the required information back to the controller is to return the User Entity directly from the Service:</p>
+<pre>
+class SignUpUserService<span><br/>{<br/>    // ...<br/></span><br/>    public function execute(SignUpUserRequest $request)<br/>    {<br/>        $user = new User(<br/>            $this-&gt;userRepository-&gt;nextIdentity(),<br/>            $email,<br/>            $password<br/>        );<br/><br/>        $this-&gt;userRepository-&gt;add($user);<br/><br/>        return $user;<br/>    }<br/>}
+</pre>
+<p>Then, from the controller, we would pick up the <kbd>id</kbd> field and redirect to some other place. However, think twice about what we've just done. We returned a full-featured Entity to the controller, which will allow the delivery mechanism to bypass the Application Layer and interact directly with the Domain.</p>
+<p>Imagine the <kbd>User</kbd> Entity offers an <kbd>updateEmailAddress</kbd> method. You could try to prevent it, but at some point in the future, somebody might think about using it:</p>
+<pre>
+$app-&gt; match( '/signup' , function (Request $request) use ($app) {<br/>   // ...<br/>   $user = $app['sign_up_user_application_service']-&gt;execute(<br/>       new SignUpUserRequest(<br/>           $request-&gt;get('email'),<br/>           $request-&gt;get('password'))<br/>   );<br/>   $user-&gt;updateEmailAddress('shouldnotupdate@email.com');<br/>   // ...<br/>});
+</pre>
+<p>Not only that, but the data that the presentation layer needs is not the same that the Domain manages. We don't want to evolve and couple the Domain layer around the presentation layer. Instead, we want them to evolve freely.</p>
+<p>To do this, we need a flexible way of decoupling both layers.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">DTO from Aggregate Instances</h1>
+            </header>
+
+            <article>
+                
+<p>We could return sterile data structures with the information the presentation layer needs. As we've seen before, DTOs fit with this scenario. We just need to compose them in the Application Service and return them to the client:</p>
+<pre>
+class UserDTO<br/>{<br/>    private $email ;<br/>    // ...<br/><br/>    public function __construct(User $user)<br/>    {<br/>        $this-&gt;email = $user-&gt;email ();<br/>        // ...<br/>    }<br/><br/>    public function email ()<br/>    {<br/>        return $this-&gt;email ;<br/>    }<br/>}
+</pre>
+<p>The <kbd>UserDTO</kbd> will expose whatever read-only data we need from the <kbd>User</kbd> Entity on the presentation layer, thereby avoiding exposing behavior:</p>
+<pre>
+class SignUpUserService<br/>{<br/>    public function execute(SignUpUserRequest $request)<br/>    {<br/>        // ...<br/><br/>        $user = // ...<br/><br/>        return new UserDTO($user);<br/>    }<br/>}
+</pre>
+<p>Mission accomplished. Now we could pass parameters to the template engine and transform them into widgets, tags, or subtemplates, or do whatever we want with the data on the presentation side:</p>
+<pre>
+$app-&gt;match('/signup' , function (Request $request) use ($app) {<br/>    /**<br/>     * @var UserDTO $user<br/>     */<br/>    $userDto=$app['sign_up_user_application_service']-&gt;execute(<br/>        new SignUpUserRequest(<br/>            $request-&gt;get('email'),<br/>            $request-&gt;get('password')<br/>        )<br/>    );<br/><br/>    // ...<br/>});
+</pre>
+<p>However, letting the Application Service decide how to build the DTO reveals another limitation. As building the DTO depends exclusively on the Application Service, adapting the DTO to different clients will be very difficult. Consider the data needed for a redirect on a Web Controller and the data needed for a REST response for the same use case. Not the same data at all.</p>
+<p>Let's allow the client to define how to build the DTO by passing a specific DTO Assembler:</p>
+<pre>
+class SignUpUserService<br/>{<br/>    private $userDtoAssembler;<br/><br/>    public function __construct(<br/>        UserRepository $userRepository,<br/>        UserDTOAssembler $userDtoAssembler<br/>    ) {<br/>        $this-&gt;userRepository = $userRepository;<br/>        $this-&gt;userDtoAssembler = $userDtoAssembler;<br/>    }<br/><br/>    public function execute(SignUpUserRequest $request)<br/>    {<br/>        $user = // ...<br/><br/>        return $this-&gt;userDtoAssembler-&gt;assemble($user);<br/>    }<br/>}
+</pre>
+<p>Now the client can customize the response by passing a specific <kbd>UserDTOAssembler</kbd>.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Data Transformers</h1>
+            </header>
+
+            <article>
+                
+<p>There are some cases where generating intermediate DTOs for more complex responses like JSON, XML, CSV, and iCAL Contact could be seen as an unnecessary overhead. We could output the representation in a buffer and ask for it later on the delivery side.</p>
+<p>Transformers help reduce this overhead by transforming high-level Domain concepts into low-level client details. Let's see an example:</p>
+<pre>
+interface UserDataTransformer<br/>{<br/>    public function write(User $user);<br/><br/>    /**<br/>     * @return mixed<br/>     */<br/>    public function read();<br/>}
+</pre>
+<p>Consider the case of generating different data representations for a given product. Usually, the product information is served through a web interface (HTML), but we might be interested in offering other formats, like XML, JSON, or CSV. This might enable integrations with other Services.</p>
+<p>Consider a similar case for a blog. We might expose our potential as writers in HTML to the world, but some people will be interested in consuming our articles through RSS. The use cases — Application Services — remain the same. The representation doesn't.</p>
+<p>DTOs are a clean and simple solution that could be passed to template engines for different representations, but this might complicate the logic of this last step of data transformation, as the logic for such templates could become a problem to maintain, test, and understand.</p>
+<p>Data Transformers might be a better approach on specific cases. These are just black boxes with Domain concepts (Aggregates, Entities, and so on.) as inputs and read-only representations (XML, JSON, CSV, and so on.) as outputs. These transformers could be really easy to test:</p>
+<pre>
+class JsonUserDataTransformer implements UserDataTransformer<br/>{<br/>    private $data;<br/><br/>    public function write(User $user)<br/>    {<br/>        // More complex logic could be placed here<br/>        // As using JMSSerializer, native json, etc.<br/>        $this-&gt;data = json_encode($user);<br/>    }<br/><br/>    /**<br/>     * @return string<br/>     */<br/>    public function read()<br/>    {<br/>        return $this-&gt;data;<br/>    }<br/>}
+</pre>
+<p>That was easy. Wondering how the XML or CSV one would look? Let's see how to integrate the Data Transformer with our Application Service:</p>
+<pre>
+class SignUpUserService<br/>{<br/>    private $userRepository;<br/>    private $userDataTransformer;<br/><br/>    public function __construct(<br/>        UserRepository $userRepository,<br/>        UserDataTransformer $userDataTransformer<br/>    ) {<br/>        $this-&gt;userRepository = $userRepository;<br/>        $this-&gt;userDataTransformer = $userDataTransformer;<br/>    }<br/><br/>    public function execute(SignUpUserRequest $request)<br/>    {<br/>        $user = // ...<br/>        $this-&gt;userDataTransformer()-&gt;write($user);<br/>    }<br/><br/>    /**<br/>     * @return UserDataTransformer<br/>     */<br/>    public function userDataTransformer()<br/>    {<br/>        return $this-&gt;userDataTransformer;<br/>    } <br/>}
+</pre>
+<p>That's similar to the DTO Assembler approach, but this time without returning a concrete value. The Data Transformer is being used to hold and interact with the data.</p>
+<p>The main issue with DTOs is the overhead of writing them. Most of the time, your Domain concepts and DTO representations will present the same structure. Most of the time, you'll feel it's not worth your time to make such a mapping. That said, the relationship between representations and Aggregates is not 1:1. You can represent two Aggregates together in a single representation. You can also represent the same Aggregate in multiple ways. How you do it always depends on your use cases.</p>
+<p>However, according to <a href="http://www.martinfowler.com/books/eaa.html">Martin Fowler</a>:</p>
+<p style="padding-left: 60px">One case where it is useful to use something like a DTO is <strong>when you have a significant mismatch between the model in your presentation layer and the underlying domain model</strong>. In this case it makes sense to make presentation specific facade/gateway that maps from the domain model and presents an interface that's convenient for the presentation. It fits in nicely with Presentation Model. This is worth doing, but it is only worth doing for screens that have this mismatch (in this case it isn't extra work, since you'd have to do it in the screen anyway.)</p>
+<p>We think the long-term vision will be worth the investment. On medium to big projects, interface representations and Domain concepts change at very different rhythms. You might want to decouple them from each other to lower the friction for updates. Using DTOs or Data Transformers allows you to evolve your model freely without having to think about breaking the layout all the time.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Multiple Application Services on Compound Layouts</h1>
+            </header>
+
+            <article>
+                
+<p>Most of the time, no layout is as simple as a single Application Service. Our projects have pretty complicated interfaces.</p>
+<p>Consider the homepage of a specific project. How can we render so many pieces and use cases? There are a few options, so let's check them out.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">AJAX Content Integration</h1>
+            </header>
+
+            <article>
+                
+<p>You could let the browser ask for different endpoints directly and combine the data in the layout right after through AJAX or <a href="https://en.wikipedia.org/wiki/Hijax">Hijax</a>. This will avoid mixing a lot of Application Services in your controllers, but it might have a performance penalty, depending on the number of requests triggered.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">ESI Content Integration</h1>
+            </header>
+
+            <article>
+                
+<p><strong>Edge Side Includes</strong> (<strong>ESI</strong>) is a tiny markup language similar to the previous approach, but on the server side. It requires additional effort configuring extra middleware, like NGINX or Varnish, to make it work. Includes (ESI) is a tiny markup language similar to the previous approach, but on the server side. It requires additional effort configuring extra middleware, like NGINX or <a href="https://en.wikipedia.org/wiki/Edge_Side_Includes">Varnish</a>, to make it work.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Symfony Sub Requests</h1>
+            </header>
+
+            <article>
+                
+<p>If you use Symfony, Sub Requests could be an interesting option. According to the <a href="http://symfony.com/doc/current/components/http_kernel/introduction.html#sub-requests">Symfony Documentation</a>:</p>
+<p>In addition to the main request that's sent into <kbd>HttpKernel::handle</kbd>, you can also send so-called sub request. A sub request looks and acts like any other request, but typically serves to render just one small portion of a page instead of a full page. You'll most commonly make sub-requests from your controller (or perhaps from inside a template, that's being rendered by your controller). This creates another full request-response cycle where this new Request is transformed into a Response. The only difference internally is that some listeners (Example: security) may only act upon the master request. Each listener is passed some sub-class of <kbd>KernelEvent</kbd>, whose <kbd>isMasterRequest()</kbd> can be used to check if the current request is a master or sub request.</p>
+<p>This is great, as you'll get the benefits of invoking separate Application Services without AJAX penalties or complicated ESI configurations.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">One Controller, Multiple Application Services</h1>
+            </header>
+
+            <article>
+                
+<p>One last option could be managing multiple Application Services within the same controller, though the controller logic could get a little bit dirty, as it'll handle and merge the responses to pass to the view.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Testing Application Services</h1>
+            </header>
+
+            <article>
+                
+<p>As you're interested in testing the behavior of the Application Service itself, there's no need to turn it into an integration test with complicated setups going against a real database. You're not interested in testing the low-level details, so most of the time, a unit test will be enough:</p>
+<pre>
+class SignUpUserServiceTest extends \PHPUnit_Framework_TestCase<br/>{<br/>    /**<br/>     * @var \Lw\Domain\Model\User\UserRepository<br/>     */<br/>    private $userRepository;<br/><br/>    /**<br/>     * @var SignUpUserService<br/>     */<br/>    private $signUpUserService;<br/><br/>    public function setUp()<br/>    {<br/>        $this-&gt;userRepository = new InMemoryUserRepository();<br/>        $this-&gt;signUpUserService = new SignUpUserService(<br/>            $this-&gt;userRepository<br/>        );<br/>    }<br/><br/>    /**<br/>     * @test<br/>     * @expectedException   <br/>     *     \Lw\Domain\Model\User\UserAlreadyExistsException<br/>     */<br/>    public function alreadyExistingEmailShouldThrowAnException()<br/>    {<br/>        $this-&gt;executeSignUp();<br/>        $this-&gt;executeSignUp();<br/>    }<br/><br/>    private function executeSignUp()<br/>    {<br/>        return $this-&gt;signUpUserService-&gt;execute(<br/>            new SignUpUserRequest(<br/>                'user@example.com',<br/>                'password'<br/>            )<br/>        );<br/>    }<br/><br/>    /**<br/>     * @test<br/>     */<br/>    public function afterUserSignUpItShouldBeInTheRepository()<br/>    {<br/>        $user = $this-&gt;executeSignUp();<br/><br/>        $this-&gt;assertSame(<br/>            $user,<br/>            $this-&gt;userRepository-&gt;ofId($user-&gt;id())<br/>        );<br/>    }<br/>}
+</pre>
+<p>We've used an in-memory implementation for the <kbd>User</kbd> Repository. This is what is called a Fake: a fully functional implementation for the Repository that will make our test work as a unit. We don't need to go to the database to test the behavior of this class. That would make our test slow and fragile.</p>
+<p>Checking for a Domain Events submission might be interesting too. If creating a user fires a user registered event, ensuring it's been triggered might be a good idea:</p>
+<pre>
+class SignUpUserServiceTest extends \PHPUnit_Framework_TestCase<br/>{<br/>    // ...<br/><br/>    /**<br/>     * @test<br/>     */<br/>    public function itShouldPublishUserRegisteredEvent()<br/>    {<br/>        $subscriber = new SpySubscriber();<br/>        $id = DomainEventPublisher::instance()-&gt;subscribe($subscriber);<br/><br/>        $user = $this-&gt;executeSignUp();<br/>        $userId = $user-&gt;id();<br/><br/>        DomainEventPublisher::instance()-&gt;unsubscribe($id);<br/>        $this-&gt;assertUserRegisteredEventPublished(<br/>            $subscriber, $userId<br/>        );<br/>    }  <br/><br/>    private function assertUserRegisteredEventPublished(<br/>        $subscriber, $userId<br/>    ) {<br/>        $this-&gt;assertInstanceOf(<br/>            'UserRegistered', $subscriber-&gt;domainEvent<br/>        );<br/>        $this-&gt;assertTrue(<br/>            $subscriber-&gt;domainEvent-&gt;userId()-&gt;equals($userId)<br/>        );<br/>    }<br/>}<br/><br/>class SpySubscriber implements DomainEventSubscriber<br/>{<br/>    public $domainEvent;<br/><br/>    public function handle($aDomainEvent)<br/>    {<br/>        $this-&gt;domainEvent = $aDomainEvent;<br/>    }<br/><br/>    public function isSubscribedTo($aDomainEvent)<br/>    {<br/>        return true;<br/>    }<br/>}
+</pre>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Transactions</h1>
+            </header>
+
+            <article>
+                
+<p>Transactions are an implementation detail related to the persistence mechanism. The Domain layer shouldn't be aware of this low-level implementation detail. Thinking about beginning, committing, or rolling back a transaction at this level is a big smell. This level of detail belongs to the Infrastructure layer.</p>
+<p>The best way of handling transactions is to not handle them at all. We could wrap our Application Services with a Decorator implementation for handling the transaction session automatically.</p>
+<p>We've implemented a solution to this problem in one of our repositories, and you can check it out <a href="https://github.com/dddinphp/ddd">here</a>:</p>
+<pre>
+interface TransactionalSession<br/>{<br/>    /**<br/>     * @return mixed<br/>     */<br/>    public function executeAtomically(callable $operation);<br/>}
+</pre>
+<p>This contract takes a piece of code and executes it atomically. Depending on your persistence mechanism, you'll end up with different implementations.</p>
+<p>Let's see how we could do it with Doctrine ORM:</p>
+<pre>
+class DoctrineSession implements TransactionalSession<br/>{<br/>    private $entityManager;<br/><br/>    public function __construct(EntityManager $entityManager)<br/>    {<br/>        $this-&gt;entityManager = $entityManager;<br/>    }<br/><br/>    public function executeAtomically(callable $operation)<br/>    {<br/>        return $this-&gt;entityManager-&gt;transactional($operation);<br/>    }<br/>}
+</pre>
+<p>This is how a client would use the previous code:</p>
+<pre>
+/** @var EntityManager $em */<br/>$nonTxApplicationService = new SignUpUserService(<br/>    $em-&gt;getRepository('BoundedContext\Domain\Model\User\User')<br/>);<br/><br/>$txApplicationService = new TransactionalApplicationService(<br/>    $nonTxApplicationService,<br/>    new DoctrineSession($em)<br/>);<br/><br/>$response = $txApplicationService-&gt;execute(<br/>    new SignUpUserRequest(<br/>        'user@example.com',<br/>        'password'<br/>    )<br/>);
+</pre>
+<p>Now that we have the Doctrine implementation for transactional sessions, it would be great to create a Decorator for our Application Services. With this approach, we make transactional requests transparent to the Domain:</p>
+<pre>
+class TransactionalApplicationService implements ApplicationService<br/>{<br/>    private $session;<br/>    private $service;<br/><br/>    public function __construct(<br/>        ApplicationService $service, TransactionalSession $session<br/>    ) {<br/>        $this-&gt;session = $session;<br/>        $this-&gt;service = $service;<br/>    }<br/><br/>    public function execute(BaseRequest $request)<br/>    {<br/>        $operation = function () use ($request) {<br/>            return $this-&gt;service-&gt;execute($request);<br/>        };<br/><br/>        return $this-&gt;session-&gt;executeAtomically($operation);<br/>    }<br/>}
+</pre>
+<p>A nice side effect of using Doctrine Session is that it automatically manages the flush method, so you don't need to add the flush inside your Domain or Infrastructure.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Security</h1>
+            </header>
+
+            <article>
+                
+<p>In case you're wondering how to manage and handle user credentials and security in general, unless it's the responsibility of your Domain, we recommend letting the framework handle it. The user session is a concern of the delivery mechanism. Polluting the Domain with such concepts will make it harder to develop.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Domain Events</h1>
+            </header>
+
+            <article>
+                
+<p>Domain Event listeners have to be configured before the Application Service gets executed, or nobody will be noticed. There are situations where you'll have to be explicit and configure the listener before executing the Application Service:</p>
+<pre>
+// ...<br/>$subscriber = new SpySubscriber();<br/>DomainEventPublisher::instance()-&gt;subscribe($subscriber);<br/><br/>$applicationService = // ...<br/>$applicationService-&gt;execute(...);
+</pre>
+<p>Most of the time, this will be done by configuring the Dependency Injection Container.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Command Handlers</h1>
+            </header>
+
+            <article>
+                
+<p>An interesting way of executing Application Services is through a Command Bus library. A good one is <a href="https://tactician.thephpleague.com/">Tactician</a>. From the Tactician website:</p>
+<p style="padding-left: 60px">What is a Command Bus? The term is mostly used when we combine the <a href="https://en.wikipedia.org/wiki/Command_pattern">Command pattern</a> with a <a href="http://martinfowler.com/eaaCatalog/serviceLayer.html">service layer</a>. Its job is to take a Command object (which describes what the user wants to do) and match it to a Handler (which executes it). This can help structure your code neatly.</p>
+<p>— our Application Services are the Service Layer, and our Request objects look pretty much like Commands.</p>
+<p>Fair enough — our Application Services are the Service Layer, and our Request objects look pretty much like Commands. Wouldn't it be great if we had a mechanism to link all the Application Services, and then based on the Request, execute the correct one? Well, that's actually what a Command Bus is.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Tactician Library and Other Options</h1>
+            </header>
+
+            <article>
+                
+<p>Tactician is a Command Bus library, which allows you to use the Command pattern for your Application Services. It's especially convenient for Application Services, but you could use any kind of input.</p>
+<p>Let's see an example from the <a href="http://tactician.thephpleague.com/">Tactician</a><em> </em>website:</p>
+<pre>
+// You build a simple message object like this:<br/>class PurchaseProductCommand<br/>{<br/>    protected $productId;<br/>    protected $userId;<br/><br/>    // ...and constructor to assign those properties...<br/>}<br/><br/>// And a Handler class that expects it:<br/>class PurchaseProductHandler<br/>{<br/>    public function handle(PurchaseProductCommand $command)<br/>    {<br/>        // use command to update your models, etc<br/>    }<br/>}<br/>// And then in your Controllers, you can fill in the command using your favorite<br/>// form or serializer library, then drop it in the CommandBus and you're done!<br/>$command = new PurchaseProductCommand(42, 29);<br/>$commandBus-&gt;handle($command);
+</pre>
+<p>That's it. Tactician is the <kbd>$commandBus</kbd> Service. It does all the plumbing for finding the right handler and method, which can avoid a lot of boilerplate code. Here, Commands and Handlers are just normal classes, but you can configure whichever one fits your app better.</p>
+<p>In summary, we can conclude that Commands are just Request objects, and Command Handlers are just Application Services.</p>
+<p>A cool thing about Tactician (and Command Buses in general) is that they're really easy to extend. Tactician provides plug-ins for common tasks, like logging and database transactions. That way, you can forget about setting up the wiring on every handler.</p>
+<p>Another interesting plug-in for <a href="http://bernard.readthedocs.org/">Tactician is Bernard</a> integration. Bernard is an asynchronous job queue that allows you to leave some tasks for later processing. Heavy processes block the response. Most of the time, we can branch and delay their execution for later. For the best experience, answer the customer as fast as possible and let them know once the branched processes are done.</p>
+<p>Matthias Noback has developed another similar project, called <a href="http://simplebus.github.io/MessageBus/">SimpleBus</a>, that can be used as an alternative to Tactician. The main difference is that <kbd>SimpleBus</kbd> Command Handlers don't have a return value.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Wrap-Up</h1>
+            </header>
+
+            <article>
+                
+<p>Application Services represent the Application layer of your Bounded Context. These high-level use cases should be relatively simple and skinny, as their purpose evolves around Domain coordination. Application Services are the entry point for Domain logic interaction. We've seen that Requests and Commands keep things organized; that DTOs and Data Transformers allow us to decouple data representation from Domain conceptualization; that building Application Services is pretty straightforward with Dependency Injection Containers; and that we have plenty of options for combining Application Services in complex layouts.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </body></html>

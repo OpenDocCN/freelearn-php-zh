@@ -1,0 +1,687 @@
+<html><head></head><body>
+        <section>
+
+            <header>
+                <h1 class="header-title">Domain-Events</h1>
+            </header>
+
+            <article>
+                
+<p>Software Events are things that happened in the system that other components might be interested in knowing about. PHP developers are generally not used to working with Events, which are not a feature in the language. However, it's more common to see how new frameworks and libraries embrace them to provide new ways of decoupling, reusing, and speeding up code.</p>
+<p>Domain Events are Events related to Domain changes. Domain Events are things that happen in our Domain that Domain Experts care about.</p>
+<p>In Domain-Driven Design, Domain Events are fundamental building blocks that help:</p>
+<ul>
+<li>Communicate with other Bounded Contexts.</li>
+<li>Improve performance and scalability, pushing for eventual consistency.</li>
+<li>Serve as historical checkpoints.</li>
+</ul>
+<p>Domain Events represent the essence of asynchronous communication. For more on this topic, we recommend the book <em>Enterprise Integration Patterns:  </em><a href="http://www.amazon.com/Enterprise-Integration-Patterns-Designing-Deploying/dp/0321200683">Designing, Building, and Deploying Messaging Solutions</a> by Gregor Hohpe and Bobby Woolf.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Introduction</h1>
+            </header>
+
+            <article>
+                
+<p>Think about a JavaScript 2D platform game. There are tons of different components interacting with each other on the screen, all at the same time. There's a component that indicates the number of lives remaining, another one that shows all the points scored, and another one counting down the time remaining to finish the current level. Each time your character jumps on an enemy, the points increase. When your scoring goes higher than a certain number of points, you get an extra life. When your character picks up a key, a door usually opens. But how do all these components interact with one another? What's the optimal architecture for this scenario?</p>
+<p>There are probably two main options: the first one is to couple each component with the ones it's connected to. However, in the above example, that means a lot of components are coupled together, with each new addition requiring the developer to modify the code. But do you remember the <strong>Open Closed Principle </strong>(<strong>OCP</strong>)? Adding a new component shouldn't make it so the first component has to be updated; this would be too much work to maintain.</p>
+<p>The second — and better — approach is to connect all the components to a single object that handles all the important Events in the game. It receives Events from each component and forwards them to specific components. For example, the scoring component would be interested in an <kbd>EnemyKilled</kbd> Event, while the <kbd>LifeCaptured</kbd> Event is quite useful for the player Entity and the remaining lives component. In this way, all components are coupled to a single component that manages all the notifications. With this approach, adding or removing components doesn't affect the existing ones.</p>
+<p>When developing a single application, Events come in handy for decoupling components. When developing a whole Domain in a distributed way, Events are very useful for decoupling each service or application that plays a role in the Domain. The key points are the same, but on a different scale.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Definition</h1>
+            </header>
+
+            <article>
+                
+<p>Domain Events are one specific type of Event used for notifying local or remote Bounded Contexts of Domain changes.</p>
+<p>Vaughn Vernon <a href="http://www.amazon.com/Implementing-Domain-Driven-Design-Vaughn-Vernon-ebook/dp/B00BCLEBN8">defines</a> a Domain Event as:</p>
+<p style="padding-left: 60px">An occurrence of something that happened in the domain.</p>
+<p>Eric Evans <a href="https://domainlanguage.com/ddd/patterns/DDD_Reference_2011-01-31.pdf">defines</a> a Domain Event as:</p>
+<p style="padding-left: 60px">A full-fledged part of the Domain Model, a representation of something that happened in the Domain. Ignore irrelevant Domain activity while making explicit the events that the Domain Experts want to track or be notified of, or which are associated with state change in the other Model objects.</p>
+<p>Martin Fowler <a href="http://martinfowler.com/eaaDev/DomainEvent.html">defines</a> a Domain Event as something that:</p>
+<p style="padding-left: 30px">    Captures the memory of something interesting which affects the Domain.</p>
+<p>Examples of Domain Events in a web application are <kbd>UserRegistered</kbd>, <kbd>OrderPlaced</kbd>, <kbd>UserRelocated</kbd>, and <kbd>ProductAdded</kbd>.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Short Story</h1>
+            </header>
+
+            <article>
+                
+<p>In a ticket sales agency, a content manager decides to increase the price of a U2 show. Using her back office, she edits the show. A <kbd>ShowPriceChanged</kbd> Domain Event is published and persisted into the database with the new show price in the same transaction.</p>
+<p>A batch process takes the Domain Event and queues it into RabbitMQ. The Domain Event gets distributed in two queues: one for the same local Bounded Context, and another remote one for Business Intelligence purposes.</p>
+<p>In the first queue, a worker fetches the corresponding Show using the ID in the Event and pushes it into an Elasticsearch server so that the user can see the new price when searching. It could also update the new price in a different database table.</p>
+<p>In the second queue, a worker inserts the information into a Logs Server or a Data Lake, where reporting or Data Mining processes can be run.</p>
+<p>An external application that can't be integrated using Domain Events could access all the <kbd>ShowPriceChanged</kbd> Events using a REST API that the local Bounded Context provides.</p>
+<p>As you can see, Domain Events are useful for dealing with eventual consistency and integrating different Bounded Contexts. Aggregates create Events and publish them. Subscribers may store Events and then forward them to remote subscribers.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Metaphor</h1>
+            </header>
+
+            <article>
+                
+<p>We go to Babur's for a meal on Tuesday and pay by credit card. This might be modeled as an Event with an Event type of <kbd>PurchasePlaced</kbd>, a subject of my credit card, and a date of occurrence of Tuesday. If Babur's uses an old manual system and doesn't transmit the transaction until Friday, the transaction would be effective on Friday.</p>
+<p>Things happen. Not all of them are interesting, and some may be worth recording but don't provoke a reaction. However, the most interesting things cause a reaction. Many systems need to react to interesting Events. Often you need to know why a system reacts in the way it did.</p>
+<p>By funneling inputs to a system into streams of Domain Events, you can keep a record of all the inputs to a system. This helps you organize your processing logic, and it also allows you to keep an audit log of the inputs to the system.</p>
+<div class="packt_tip"><span class="packt_screen">Exercise</span><br/>
+Try to locate examples of potential Domain Events in your current Domain.</div>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Real-World Example</h1>
+            </header>
+
+            <article>
+                
+<p>Before going into detail about Domain Events, let's see a real example of Domain Events and how they can help us in our application and our whole Domain.</p>
+<p>Let's consider a simple Application Service that will register a new user — for example, in an e-commerce context. Application Services will be explained in another chapter, so don't worry too much about the interface. Instead, just focus on the execute method:</p>
+<pre>
+class SignUpUserService implements ApplicationService<br/>{<br/>    private $userRepository;<br/>    private $userFactory;<br/>    private $userTransformer;<br/><br/>    public function __construct(<br/>        UserRepository $userRepository,<br/>        UserFactory $userFactory,<br/>        UserTransformer $userTransformer<br/>    ) {<br/>        $this-&gt;userRepository = $userRepository;<br/>        $this-&gt;userFactory = $userFactory;<br/>        $this-&gt;userTransformer = $userTransformer;<br/>    }<br/><br/>    /**<br/>     * @param SignUpUserRequest $request<br/>     * @return User<br/>     * @throws UserAlreadyExistsException<br/>     */<br/>    public function execute(SignUpUserRequest $request)<br/>    {<br/>        $email = $request-&gt;email();<br/>        $password = $request-&gt;password();<br/><br/>        $user = $this-&gt;userRepository-&gt;userOfEmail($email );<br/>        if ($user) {<br/>            throw new UserAlreadyExistsException();<br/>        }<br/><br/>        $user = $this-&gt;userFactory-&gt;build(<br/>            $this-&gt;userRepository-&gt;nextIdentity(),<br/>            $email,<br/>            $password<br/>        );<br/><br/>        $this-&gt;userRepository-&gt;add($user);<br/>        $this-&gt;userTransformer-&gt;write($user);<br/>    }<br/>}
+</pre>
+<p>As shown, the <em>Application Service</em> section checks if the user already exists. If not, it creates a new User and adds it to the <kbd>UserRepository</kbd>.</p>
+<p>Now consider an additional requirement: a new user must be notified by email when registered. Without thinking about it too much, the first approach that comes to mind is to update our Application Service to include a piece of code that would do the job — probably some sort of <kbd>EmailSender</kbd> that would be run after the add method. However, let's consider another approach.</p>
+<p>What about firing a <kbd>UserRegistered</kbd> Event so that another component listening can react and send that email? There are some cool benefits to this new approach. First of all, we don't need to update the code of our Application Service every time a new action must be performed when a new user is registered.</p>
+<p>Second, it's easier to test. The Application Service remains simpler, and each time a new action is developed, we just write the tests for the action.</p>
+<p>Later in the same e-commerce project, we're told to integrate an open source gamification platform not written in PHP. Each time users place purchases or review products in our e-commerce Bounded Context, they can get badges that can be shown on their e-commerce user profile pages or be notified by email. How could we model the problem?</p>
+<p>Following the first approach, we would update the Application Service to integrate with the new platform in a fashion similar to the previous email confirmation approach. With the Domain Event approach, we could create another listener for the <kbd>UserRegistered</kbd> Event, which will connect directly, by REST or SOA, to the gamification platform. Even better, it could communicate the Event to a messaging system like RabbitMQ so that the gamification Bounded Context can subscribe and get notified automatically. Our e-commerce Bounded Context doesn't need to know about the gamification Bounded Context at all.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Characteristics</h1>
+            </header>
+
+            <article>
+                
+<p>Domain Events are ordinarily <strong>immutable</strong>, as they're a record of something in the past. In addition to a description of the Event, a Domain Event typically contains a timestamp for the time the Event occurred and the identity of Entities involved in the Event. Additionally, a Domain Event often has a separate timestamp indicating when the Event was entered into the system, along with the identity of the person who entered it. When useful, an identity for the Domain Event can be based on some set of these properties. So, for example, if two instances of the same Event arrive at a node, they can be recognized as the same.</p>
+<p>The essence of a Domain Event is that you use it to capture things that can trigger a change to the state of the application you're developing or to another application in your Domain that's interested in those changes. These Event objects are then processed to cause changes to the system and stored to provide an audit log.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Naming Conventions</h1>
+            </header>
+
+            <article>
+                
+<p>All Events should be represented as verbs in the past tense, as they're things that have been completed in the past — for example, <kbd>CustomerRelocated</kbd>, <kbd>CargoShipped</kbd>, or <kbd>InventoryLossageRecorde</kbd>d. There are interesting examples in the English language where one may be tempted to use nouns as opposed to verbs in the past tense; an example of this would be <em>Earthquake</em> or <em>Capsize</em> as relevant Events for a congressperson interested in natural disasters. We suggest avoiding the temptation of using names like those for Domain Events and sticking with verbs in the past tense.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Domain Events and Ubiquitous Language</h1>
+            </header>
+
+            <article>
+                
+<p>Consider the differences in the Ubiquitous Language when we discuss the side effects of relocating a customer. The Event makes the concept explicit, whereas previously, the changes that occurred within an Aggregate or between multiple Aggregates were left as an implicit concept that needed to be explored and defined. As an example, in most systems, when a side effect occurs on a library like Hibernate or the Entity Framework, it doesn't affect the Domain. These Events are implicit and transparent from the client point of view. The introduction of the Event makes the concept explicit and part of the Ubiquitous Language. Relocating a customer doesn't just change some stuff; rather it produces a <kbd>CustomerRelocatedEvent</kbd> that is explicitly defined within the language.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Immutability</h1>
+            </header>
+
+            <article>
+                
+<p>As we mentioned already, Domain Events talk about the past and describe changes in your Domain that have already occurred. By definition, it's impossible to change the past, unless you're Marty McFly and have a DeLorean, which is probably not the case. So just remember that Domain Events are immutable.</p>
+<div class="packt_infobox"><span class="packt_screen">Symfony Event Dispatcher</span><br/>
+Some PHP frameworks support Events. However, don't confuse those Events with Domain Events; they're different in characteristics and goals. For example, Symfony has the Event Dispatcher component, and if you need to implement an Event system for a state machine, you can rely on it. In Symfony, the transformation from requests to responses is handled by Events too. However, Symfony Events are mutable, and each of the listeners is capable of modifying, adding to, or updating the information in the Event.</div>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Modeling Events</h1>
+            </header>
+
+            <article>
+                
+<p>In order to describe your business Domain accurately, you'll have to work closely with Domain Experts and define the Ubiquitous Language. This requires crafting Domain concepts using Domain Events, Entities, Value Objects, and so on. When modeling Events, name them and their properties according to the Ubiquitous Language, in the Bounded Context where they originated. If an Event is the result of executing a command operation on an Aggregate, the name is usually derived from the command that was executed. It's important that the Event name reflects the past nature of the occurrence.</p>
+<p>Let's consider our user registration feature; the Domain Event needs to represent it. The following code shows a minimal interface for a base Domain Event:</p>
+<pre>
+interface DomainEvent <br/>{ <br/>    /** <br/>     * <span class="citation">@return</span> DateTimeImmutable<br/>     */<br/>     public function occurredOn(); <br/>}
+</pre>
+<p>As you can see, the minimum information required is a <kbd>DateTimeImmutable</kbd>, which is necessary in order to know when the Event happened.</p>
+<p>Now let's model the new user registration Event using the following code. As we mentioned above, the name should be a verb in the past tense, so <kbd>UserRegistered</kbd> is probably a good choice:</p>
+<pre>
+<span>class UserRegistered implements DomainEvent <br/></span><span>{ <br/>    private $userId;<br/><br/></span>    public function __construct(UserId $userId)<br/>    {<br/>        $this-&gt;userId = $userId;<br/>        $this-&gt;occurredOn = new \DateTimeImmutable();<br/>    }<br/><br/>    public function userId()<br/>    {<br/>        return $this-&gt;userId;<br/>    }<br/><br/>    public function occurredOn()<br/>    {<br/>        return $this-&gt;occurredOn;<br/>    }<br/>}
+</pre>
+<p>The minimum amount of information required to notify subscribers about the creation of new users is the <kbd>UserId</kbd>. With this information, any process, command, or Application Service — from either the same Bounded Context or a different one — may react to this Event.</p>
+<div class="packt_infobox"><span class="packt_screen">As a Rule of Thumb</span><strong><br/></strong>
+<ul>
+<li>Domain Events are usually designed as immutable</li>
+<li>The Constructor will initialize the full state of the Domain Event.</li>
+<li>Domain Events will have getters to access their attributes</li>
+<li>Include the identity of the Aggregate that performs the action</li>
+<li>Include other Aggregate identities related to the first one</li>
+<li>Include parameters that caused the Event (if useful)</li>
+</ul>
+</div>
+<p>But what happens if your Domain experts from the same Bounded Context or a different one need more information? Let's see the same Domain Event modeled with more information — for example, the email address:</p>
+<pre>
+class UserRegistered implements DomainEvent<br/>{<br/>    private $userId;<br/>    private $userEmail ;<br/><br/>    public function __construct(UserId $userId, $userEmail)<br/>    {<br/>        $this-&gt; userId = $userId;<br/>        $this-&gt;userEmail = $userEmail ;<br/>        $this-&gt;occurredOn = new DateTimeImmutable();<br/>    }<br/><br/>    public function userId()<br/>    {<br/>        return $this-&gt;userId;<br/>    }<br/><br/>    public function userEmail ()<br/>    {<br/>        return $this-&gt;userEmail ;<br/>    }<br/><br/>    public function occurredOn()<br/>    {<br/>        return $this-&gt;occurredOn;<br/>    }<br/>}
+</pre>
+<p>Above, we've added the email address. Adding more information to a Domain Event can help improve performance or simplify the integration between different Bounded Contexts. Thinking from the point of view of another Bounded Context could help modeling Events. When a new user is created in the upstream Bounded Context, the downstream one would have to create its own user. Adding the user email could possibly save a sync request to the upstream Bounded Context in the case the downstream one needed it.</p>
+<p>Do you remember the gamification example? In order to create a user of the gamification platform, probably called Player, the UserId from the e-commerce Bounded Context was probably enough. But what happens if the gamification platform has to notify the users by email about being rewarded? In this case, the email address is also mandatory. So if the email address is included in the original Domain Event, we're done. If that's not the case, the gamification Bounded Context needs to request this information from the e-commerce Bounded Context via REST or SOA integration.</p>
+<div class="packt_tip"><span class="packt_screen">Why Not the Whole User Entity?</span><br/>
+Wondering if you should include the whole User Entity from your Bounded Context in the Domain Event? Our suggestion is that you don't. Domain Events might be used to communicate messages internally to a given Bounded Context or externally to other Bounded Contexts. In other words, what can be a <kbd>Seller</kbd> in a C2C e-commerce product catalog Bounded Context can be an <kbd>Author</kbd> of a product review in a product feedback one. Both can share the same ID or email, but <kbd>Seller</kbd> and <kbd>Author</kbd> are different concepts representing different Entities from different Bounded Contexts. So Entities from one Bounded Context have no meaning or a totally different one in another Bounded Context.</div>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Doctrine Events</h1>
+            </header>
+
+            <article>
+                
+<p>Domain Events are not just for doing batch jobs such as sending emails or communicating to other Bounded Contexts; they're also interesting for performance and scalability improvements. Let's see an example.</p>
+<p>Consider the following scenario. You have an e-commerce application. Your main persistence mechanism is MySQL, but for browsing and filtering your catalog, you're using a better approach, such as Elasticsearch or Solr. On Elasticsearch, you'll end up with a subset of the information stored in your full database. How do you keep the data in sync? What happens when the Content Team updates the catalog from the back office tool?</p>
+<p>There have been people re-indexing the entire catalog from time to time. This is very expensive and slow. A smarter approach may be updating one or some of the documents related to the Product that has been updated. How can we do that? Using Domain Events.</p>
+<p>However, if you've been working with Doctrine, this is likely not something that's new to you. According to the <a href="http://docs.doctrine-project.org/projects/doctrine-orm/en/latest/reference/events.html#events">Doctrine 2 ORM 2 Documentation</a>:</p>
+<p style="padding-left: 60px">Doctrine 2 features a lightweight event system that is part of the Common package. Doctrine uses it to dispatch system events, mainly life cycle events. You can also use it for your own custom events.</p>
+<p>Furthermore, it <a href="http://docs.doctrine-project.org/projects/doctrine-orm/en/latest/reference/events.html#lifecycle-callbacks">states</a> that:</p>
+<p style="padding-left: 60px">Life cycle Callbacks are defined on an entity class. They allow you to trigger callbacks whenever an instance of that entity class experiences a relevant life cycle event. More than one callback can be defined for each life cycle event. Life cycle Callbacks are best used for simple operations specific to a particular entity class's life cycle.</p>
+<p>Let's see an example from the <a href="http://doctrine-orm.readthedocs.io/projects/doctrine-orm/en/latest/reference/events.html">Doctrine Events Documentation</a>:</p>
+<pre>
+/** @Entity @HasLifecycleCallbacks */<br/>class User<br/>{<br/>    // ...<br/><br/>   /**<br/>    * @Column(type="string", length=255)<br/>    */<br/>    public $value;<br/><br/>    /** @Column(name="created_at", type="string", length=255) */<br/>    private $createdAt;<br/><br/>    /** @PrePersist */<br/>    public function doStuffOnPrePersist()<br/>    {<br/>        $this-&gt;createdAt = date('Y-m-d H:i:s');<br/>    }<br/><br/>    /** @PrePersist */<br/>    public function doOtherStuffOnPrePersist()<br/>    {<br/>        $this-&gt; value = 'changed from prePersist callback!';<br/>    }<br/><br/>    /** @PostPersist */<br/>    public function doStuffOnPostPersist()<br/>    {<br/>        $this-&gt;value = 'changed from postPersist callback!';<br/>    }<br/><br/>    /** @PostLoad */<br/>    public function doStuffOnPostLoad()<br/>    {<br/>        $this-&gt;value = 'changed from postLoad callback!';<br/>    }<br/><br/>    /** @PreUpdate */<br/>    public function doStuffOnPreUpdate()<br/>    {<br/>        $this-&gt;value = 'changed from preUpdate callback!';<br/>    }<br/>}
+</pre>
+<p>You can hook specific tasks on each different important moment in the Doctrine Entity life cycle. For example, on <kbd>PostPersist</kbd>, you can generate the JSON document of your Entity and put it into Elasticsearch. That way, it's easy to keep data consistent between different persistence mechanisms.</p>
+<p>Doctrine Events are a good example of the benefits of Events around your Entities. But you may be wondering what the problem with them is. This is because they're coupled to a framework, they're synchronous, and they act on your application level, but not for communication purposes. So that's why Domain Events, despite being a bit more difficult to implement and handle, are so much more interesting.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Persisting Domain Events</h1>
+            </header>
+
+            <article>
+                
+<p>Persisting Events is always a good idea. Some of you may be wondering why you shouldn't publish Domain Events directly to a messaging or logging system. This is because persisting them has interesting benefits:</p>
+<ul>
+<li>You can expose your Domain Events to other Bounded Contexts through a REST interface.</li>
+<li>You can persist the Domain Event and the Aggregate changes in the same database transaction before pushing them to RabbitMQ. (You don't want to send notifications about something that didn't happen, just as you don't want to miss a notification about something that did happen.)</li>
+<li>Business Intelligence can use this data to analyze, forecast, or trend.</li>
+<li>You can audit your Entity changes.</li>
+<li>For Event Sourcing, you can reconstitute Aggregates from Domain Events.</li>
+</ul>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Event Store</h1>
+            </header>
+
+            <article>
+                
+<p>Where do we persist Domain Events? In an Event Store. An Event Store is a Domain Event Repository that lives in our Domain space as an abstraction (interface or abstract class). Its responsibility is to append Domain Events and query them. A possible basic interface could be the following:</p>
+<pre>
+interface EventStore<br/>{<br/>    public function append(DomainEvent $aDomainEvent);<br/>    public function allStoredEventsSince($anEventId);<br/>}
+</pre>
+<p>However, depending on the usage of your Domain Events, the previous interface can have more methods to query your Events.</p>
+<p>In terms of implementation, you can decide to use a Doctrine Repository, a DBAL one, or a plain PDO. Because Domain Events are immutable, using a Doctrine Repository adds an unnecessary performance penalty, though for a small to medium application, Doctrine is probably OK. Let's look at a possible implementation with Doctrine:</p>
+<pre>
+<span>class DoctrineEventStore extends EntityRepository implements EventStore<br/>{<br/>    private $serializer;<br/><br/>    public function append(DomainEvent $aDomainEvent)<br/>    {<br/>        $storedEvent = new StoredEvent(<br/>            get_class($aDomainEvent),<br/>            $aDomainEvent-&gt;occurredOn(),<br/>            $this-&gt;serializer()-&gt;serialize($aDomainEvent, 'json')<br/>        );<br/><br/>        $this-&gt;getEntityManager()-&gt;persist($storedEvent);<br/>     }<br/><br/>     public function allStoredEventsSince($anEventId)<br/>     {<br/>         $query = $this-&gt;createQueryBuilder('e');<br/>         if ($anEventId) {<br/>             $query-&gt;where('e.eventId &gt; :eventId');<br/>             $query-&gt;setParameters(['eventId' =&gt; $anEventId]);<br/>         }<br/>         $query-&gt;orderBy('e.eventId');<br/><br/>         return $query-&gt;getQuery()-&gt;getResult();<br/>     }<br/><br/>     private function serializer()<br/>     {<br/>         if (null === $this-&gt;serializer) {<br/>             /** \JMS\Serializer\Serializer\SerializerBuilder */<br/>             $this-&gt;serializer = SerializerBuilder::create()-&gt;build();<br/>         }<br/><br/>         return $this-&gt;serializer;<br/>     }<br/> }<br/></span>
+</pre>
+<p><kbd>StoredEvent</kbd> is the Doctrine Entity needed to map to the database. As you may have seen, when appending and after persisting the <kbd>Store</kbd>, there's no <kbd>flush</kbd> call. If this operation is inside a Doctrine transaction, it's not needed. So, let's leave it without the call and we'll go into more details when talking about Application Services.</p>
+<p>Now let's see the <kbd>StoredEvent</kbd> implementation:</p>
+<pre>
+class StoredEvent implements DomainEvent<br/>{<br/>    private $eventId;<br/>    private $eventBody;<br/>    private $occurredOn;<br/>    private $typeName;<br/><br/>    /**<br/>     * @param string $aTypeName<br/>     * @param \DateTimeImmutable $anOccurredOn<br/>     * @param string $anEventBody<br/>     */<br/>    public function __construct(<br/>        $aTypeName, \DateTimeImmutable $anOccurredOn, $anEventBody<br/>    ) {<br/>        $this-&gt;eventBody = $anEventBody;<br/>        $this-&gt;typeName = $aTypeName;<br/>        $this-&gt;occurredOn = $anOccurredOn;<br/>    }<br/><br/>    public function eventBody()<br/>    {<br/>        return $this-&gt;eventBody;<br/>    }<br/><br/>    public function eventId()<br/>    {<br/>        return $this-&gt;eventId;<br/>    }<br/><br/>    public function typeName()<br/>    {<br/>        return $this-&gt;typeName;<br/>    }<br/><br/>    public function occurredOn()<br/>    {<br/>        return $this-&gt;occurredOn;<br/>    }<br/>}
+</pre>
+<p>And here is its mapping:</p>
+<pre>
+Ddd\Domain\Event\StoredEvent:<br/>    type: entity<br/>    table: event<br/>    repositoryClass:<br/>        Ddd\Infrastructure\Application\Notification\DoctrineEventStore<br/>    id:<br/>        eventId:<br/>            type: integer<br/>            column: event_id<br/>            generator:<br/>            strategy: AUTO<br/>    fields:<br/>        eventBody:<br/>            column: event_body<br/>            type: text<br/>        typeName:<br/>            column: type_name<br/>            type: string<br/>            length: 255<br/>        occurredOn:<br/>            column: occurred_on<br/>            type: datetime
+</pre>
+<p>In order to persist Domain Events with different fields, we'll have to join those fields as a serialized string. <kbd>typeName</kbd> identifies the Domain-wide Domain Event. An Entity or Value Object makes sense inside a Bounded Context, but Domain Events define a communication protocol between Bounded Contexts.</p>
+<p>In distributed systems, shit happens. You'll have to deal with Domain Events that aren't published, are lost somewhere in the chain, or are published more than once. That's why it's important to persist a Domain Event with an ID, so that it's easy to track which Domain Events have been published and which are missing.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Publishing Events from the Domain Model</h1>
+            </header>
+
+            <article>
+                
+<p>Domain Events should be published when the fact they represent occurs. For instance, when a new user has been registered, a new <kbd>UserRegistered</kbd> Event should be published.</p>
+<p>Following the newspaper metaphor:</p>
+<ul>
+<li><strong>Modeling</strong> a Domain Event is like writing a news article</li>
+<li><strong>Publishing</strong> a Domain Event is like printing the article in the paper</li>
+<li><strong>Spreading</strong> a Domain Event is like delivering the newspaper so everyone can read the article</li>
+</ul>
+<p>The recommended approach for publishing Domain Events is to use a simple Listener-Observer pattern to implement a <kbd>DomainEventPublisher</kbd>.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Publishing a Domain Event from an Entity</h1>
+            </header>
+
+            <article>
+                
+<p>Continuing with the example of a new user who has been registered in our application, let's see how the corresponding Domain Event can be published:</p>
+<pre>
+class User<br/>{<br/>    protected $userId;<br/>    protected $email ;<br/>    protected $password;<br/><br/>    public function __construct(UserId $userId, $email, $password)<br/>    {<br/>        $this-&gt;setUserId($userId);<br/>        $this-&gt;setEmail($email);<br/>        $this-&gt;setPassword($password);<br/><br/>        DomainEventPublisher::instance()-&gt;publish(<br/>            new UserRegistered($this-&gt;userId)<br/>        );<br/>    }<br/><br/>    // ...<br/>}
+</pre>
+<p>As seen in the example, when the <kbd>User</kbd> is created, a new <kbd>UserRegistered</kbd> Event is published. It's done in the Entity constructor and not outside because, with this approach, it's easier to keep our Domain consistent; any client who creates a new <kbd>User</kbd> will publish its corresponding Event. On the other hand, this makes it a bit more complex to use an infrastructure that needs to create a <kbd>User</kbd> Entity without using its constructor. For example, Doctrine uses the <kbd>serialize</kbd> and <kbd>unserialize</kbd> technique that recreates an object without calling its constructor. However, if you have to create your own, this isn't going to be as easy as in Doctrine.</p>
+<p>In general, constructing an object from plain data such as an array is called <strong>hydration</strong>. Let's see an easy approach to building a new <kbd>User</kbd> fetched from a database. First of all, let's extract the Domain Event publication to its own method by applying the <a href="http://en.wikipedia.org/wiki/Template_method_pattern">Factory Method pattern</a>.</p>
+<p>According to <a href="https://en.wikipedia.org/wiki/Template_method_pattern">Wikipedia</a>:</p>
+<div class="packt_infobox">The template method pattern is a behavioral design pattern that defines the program skeleton of an algorithm in an operation, deferring some steps to subclasses:</div>
+<pre>
+class User<br/>{<br/>    protected $userId;<br/>    protected $email ;<br/>    protected $password;<br/><br/>    public function __construct(UserId $userId, $email, $password)<br/>    {<br/>        $this-&gt;setUserId($userId);<br/>        $this-&gt;setEmail($email);<br/>        $this-&gt;setPassword($password);<br/>        $this-&gt;publishEvent();<br/><br/>    }<br/><br/>    protected function publishEvent()<br/>    {<br/>        DomainEventPublisher::instance()-&gt;publish(<br/>            new UserRegistered($this-&gt;userId)<br/>        );<br/>    }<br/><br/>    // ...<br/>}
+</pre>
+<p>Now, let's extend our current <kbd>User</kbd> with a new infrastructure Entity that will do the job for us. The trick here is make <kbd>publishEvent</kbd> do nothing so that the Domain Event isn't published:</p>
+<pre>
+class CustomOrmUser extends User<br/>{<br/>    protected function publishEvent()<br/>    {<br/><br/>    }<br/><br/>    public static function fromRawData($data)<br/>    {<br/>        return new self(<br/>            new UserId($data['user_id']),<br/>            $data['email'],<br/>            $data['password']<br/>        );<br/>    }<br/>}
+</pre>
+<p>Remember to be careful with this approach; you might fetch invalid objects from the persistence mechanism, as Domain rules change all the time. Another approach without using the parent constructor could be the following:</p>
+<pre>
+class CustomOrmUser extends User<br/>{<br/>    public function __construct()<br/>    {<br/>    }<br/><br/>    public static function fromRawData($data)<br/>    {<br/>        $user = new self();<br/>        $user-&gt;userId = new UserId($data['user_id']);<br/>        $user-&gt;email = $data['email'];<br/>        $user-&gt;password = $data['password'];<br/><br/>        return $user;<br/>    }<br/>}
+</pre>
+<p>With this approach, the parent constructor isn't called and User attributes must be protected. Other alternatives are Reflection, passing flags in the constructor, using a proxy library like <a href="https://packagist.org/packages/ocramius/proxy-manager">Proxy-Manager</a>, or using an ORM like Doctrine.</p>
+<div class="packt_tip"><span class="packt_screen">Other Strategy for Publishing Domain Events</span><br/>
+As you can see in the previous example, we're using a static class for publishing our Domain Events. Other people, as an alternative, and especially when using <a href="http://martinfowler.com/eaaDev/EventSourcing.html">Event Sourcing</a>, will suggest that Entities hold all the fired Events internally within a field. In order to access all the Events, a getter is used in the Aggregate. This is also a valid approach. However, sometimes it's a bit difficult to keep track of which Entities have fired an Event. It can also be difficult to fire Events from places that aren't just Entities, example: Domain Services. On the plus side, testing if an Entity has fired an Event is much easier.</div>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Publishing your Domain Events from Domain or Application Services</h1>
+            </header>
+
+            <article>
+                
+<p>You should struggle to publish Domain Events from deeper in the chain. The closer to the inside of the Entity or the Value Object, the better. As we saw in the previous section, sometimes this isn't easy, but the final result is simpler for the clients. We've seen developers publishing Domain Events from the Application Services or Domain Services. This looks easier to do, but it will eventually lead to an Anemic Domain Model. This is not unlike when pushing business logic in Domain Services instead of placing it into your Entities.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">How the Domain Event Publisher Works</h1>
+            </header>
+
+            <article>
+                
+<p>A Domain Event Publisher is a Singleton class available from our Bounded Context needed to publish Domain Events. It also has support to attach listeners — Domain Event Subscribers — that will be listening for any Domain Event they're interested in. This isn't much different from subscribing to an Event with jQuery using the on method:</p>
+<pre>
+class DomainEventPublisher<br/>{<br/>    private $subscribers;<br/>    private static $instance = null;<br/><br/>    public static function instance()<br/>    {<br/>        if (null === static::$instance) {<br/>            static::$instance = new static();<br/>        }<br/><br/>        return static::$instance;<br/>    }<br/><br/>    private function __construct()<br/>    {<br/>        $this-&gt;subscribers = [];<br/>    }<br/><br/>    public function __clone()<br/>    {<br/>        throw new BadMethodCallException('Clone is not supported');<br/>    }<br/><br/>    public function subscribe(<br/>        DomainEventSubscriber $aDomainEventSubscriber<br/>    ) {<br/>        $this-&gt;subscribers[] = $aDomainEventSubscriber;<br/>    }<br/><br/>    public function publish(DomainEvent $anEvent)<br/>    {<br/>        foreach ($this-&gt;subscribers as $aSubscriber) {<br/>           if ($aSubscriber-&gt;isSubscribedTo($anEvent)) {<br/>               $aSubscriber-&gt;handle($anEvent);<br/>           }<br/>        }<br/>    }<br/>}
+</pre>
+<p>The <kbd>publish</kbd> method goes through all the possible subscribers, checking if they're interested in the published Domain Event. If that's the case, the <kbd>handle</kbd> method of the subscriber is called.</p>
+<p>The <kbd>subscribe</kbd> method adds a new <kbd>DomainEventSubscriber</kbd> that will be listening to specific Domain Event types:</p>
+<pre>
+<span>interface DomainEventSubscriber<br/>{<br/>    /**<br/>     * @param DomainEvent $aDomainEvent<br/>     */<br/>    public function handle($aDomainEvent);<br/><br/>    /**<br/>     * @param DomainEvent $aDomainEvent<br/>     * @return bool<br/>     */<br/>    public function isSubscribedTo($aDomainEvent);<br/>}<br/></span>
+</pre>
+<p>As we've already discussed, persisting all the Domain Events is a great idea. We can easily persist all the Domain Events published in our app by using a specific subscriber. Let's create a <kbd>DomainEventSubscriber</kbd> that will listen to all Domain Events, no matter what type, and persist them using our <kbd>EventStore</kbd>:</p>
+<pre>
+class PersistDomainEventSubscriber implements DomainEventSubscriber<br/>{<br/>    private $eventStore;<br/><br/>    public function __construct(EventStore $anEventStore)<br/>    {<br/>        $this-&gt;eventStore = $anEventStore;<br/>    }<br/><br/>    public function handle($aDomainEvent)<br/>    {<br/>        $this-&gt;eventStore-&gt;append($aDomainEvent);<br/>    }<br/><br/>    public function isSubscribedTo($aDomainEvent)<br/>    {<br/>        return true;<br/>    }<br/>}
+</pre>
+<p><kbd>$eventStore</kbd> could be a custom Doctrine Repository, as already seen, or any other object capable of persisting <kbd>DomainEvents</kbd> into a database.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Setting Up DomainEventListeners</h1>
+            </header>
+
+            <article>
+                
+<p>Where's the best place to set up the subscribers to the <kbd>DomainEventPublisher</kbd>? It depends. For global subscribers that will potentially affect the entire request cycle, the best place might be on the <kbd>DomainEventPublisher</kbd> initialization itself. For subscribers affected by a specific Application Service, the service instantiation might be a better place. Let's see an example using Silex.</p>
+<p>In <a href="http://silex.sensiolabs.org/">Silex</a>, the best way to register a Domain Event Publisher that will persist all Domain Events is by using an Application Middleware. According to the <a href="http://silex.sensiolabs.org/doc/master/middlewares.html">Silex 2.0 Documentation</a>:</p>
+<p style="padding-left: 60px">A <em>before</em> application middleware allows you to tweak the Request before the controller is executed.</p>
+<p>This is the correct place to subscribe the listener responsible for persisting to the database those Events that will be sent to RabbitMQ later:</p>
+<pre>
+// ...<br/>$app['em'] = $app-&gt; share(function () {<br/>    return (new EntityManagerFactory())-&gt;build();<br/>});<br/><br/>$app['event_repository'] = $app-&gt;share(function ($app) {<br/>    return $app['em']-&gt;getRepository(<br/>        'Ddd\Domain\Model\Event\StoredEvent'<br/>    );<br/>});<br/><br/>$app['event_publisher'] = $app-&gt;share(function($app) {<br/>    return DomainEventPublisher::instance();<br/>});<br/><br/>$app-&gt;before(<br/>    function(Symfony\Component\HttpFoundation\Request $request)<br/>        use($app) {<br/><br/>        $app['event_publisher']-&gt;subscribe(<br/>            new PersistDomainEventSubscriber(<br/>                $app['event_repository']<br/>            )<br/>        );<br/>    }<br/>);
+</pre>
+<p>With this setup, each time an Aggregate publishes a Domain Event, it will get persisted into the database. Mission accomplished.</p>
+<div class="packt_tip"><span class="packt_screen">Exercise</span><br/>
+If you're working with Symfony, Laravel, or another PHP framework, find a way to subscribe globally specific subscribers for performing tasks around your Domain Events.</div>
+<p>In case you want to perform any action on all Domain Events when the request is about to finish, you can create a Listener that will store all published Domain Events in memory. If you add a getter to that Listener to return all Domain Events, you can then decide what to do. This can be useful if you don't want to or if you can't persist the Events in the same transaction, as suggested before.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Testing Domain Events</h1>
+            </header>
+
+            <article>
+                
+<p>You already know how to publish Domain Events, but how can you unit test this and ensure that <kbd>UserRegistered</kbd> is really fired? The easiest way we suggest is to use a specific <kbd>EventListener</kbd> that will work as a <a href="http://www.martinfowler.com/bliki/TestDouble.html">Spy</a> to record whether or not the Domain Event was published. Let's see an example of the <kbd>User</kbd> Entity unit test:</p>
+<pre>
+use Ddd\Domain\DomainEventPublisher;<br/>use Ddd\Domain\DomainEventSubscriber;<br/><br/>class UserTest extends \PHPUnit_Framework_TestCase<br/>{<br/>    // ...<br/><br/>    /**<br/>     * @test<br/>     */<br/>    public function itShouldPublishUserRegisteredEvent()<br/>    {<br/>        $subscriber = new SpySubscriber();<br/>        $id = DomainEventPublisher::instance()-&gt;subscribe($subscriber);<br/><br/>        $userId = new UserId();<br/>        new User($userId, 'valid@email.com', 'password');<br/>        DomainEventPublisher::instance()-&gt;unsubscribe($id);<br/><br/>        $this-&gt;assertUserRegisteredEventPublished($subscriber,$userId);<br/>    }<br/><br/>    private function assertUserRegisteredEventPublished(<br/>        $subscriber, $userId<br/>    ) {<br/>        $this-&gt;assertInstanceOf(<br/>            'UserRegistered', $subscriber-&gt;domainEvent<br/>        );<br/>        $this-&gt;assertTrue(<br/>            $subscriber-&gt;domainEvent-&gt;serId()-&gt;equals($userId)<br/>        );<br/>    }<br/>}<br/><br/>class SpySubscriber implements DomainEventSubscriber<br/>{<br/>    public $domainEvent;<br/><br/>    public function handle($aDomainEvent)<br/>    {<br/>        $this-&gt;domainEvent = $aDomainEvent;<br/>    }<br/><br/>    public function isSubscribedTo($aDomainEvent)<br/>    {<br/>        return true;<br/>    }<br/>}
+</pre>
+<p>There are some alternatives to the above. You could use a static setter for the <kbd>DomainEventPublisher</kbd> or some reflection framework to detect the call. However, we think the approach we've shared is more natural. Last but not least, remember to clean up the Spy subscription so it won't affect the execution of the rest of the unit tests.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Spreading the news to Remote Bounded Contexts</h1>
+            </header>
+
+            <article>
+                
+<p>In order to communicate a set of Domain Events to local or remote Bounded Contexts, there are two main strategies: messaging and a REST API. The first plans to use a messaging system such as RabbitMQ to transmit the Domain Events. The second plans to create a REST API for accessing the Domain Events of a specific Bounded Context.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Messaging</h1>
+            </header>
+
+            <article>
+                
+<p>With all Domain Events persisted into the database, the only thing remaining to spread the news is to push them to our favorite messaging system. We prefer <a href="https://www.rabbitmq.com">RabbitMQ</a>, but any other system, such as ActiveMQ or ZeroMQ, will do the job. For integrating with RabbitMQ using PHP, there aren't many options, but <em><a href="https://packagist.org/packages/php-amqplib/php-amqplib"><kbd>php-amqplib</kbd></a></em> will do the work.</p>
+<p>First of all, we need a service capable of sending persisted Domain Events to RabbitMQ. You may want to query EventStore for all the Events and send each one, which isn't a bad idea. However, we could push the same Domain Event more than once, and generally speaking, <em>we need to minimize the number of Domain Events republished</em>. If the number of Domain Events republished is 0, that's even better. In order to not republish Domain Events, we need some sort of component to track which Domain Events have already been pushed and which ones are remaining. Last but not least, once we know which Domain Events we have to push, we send them and keep track of the last one published into our messaging system. Let's see a possible implementation for this service:</p>
+<pre>
+class NotificationService<br/>{<br/>    private $serializer;<br/>    private $eventStore;<br/>    private $publishedMessageTracker;<br/>    private $messageProducer;<br/><br/>    public function __construct(<br/>        EventStore $anEventStore,<br/>        PublishedMessageTracker $aPublishedMessageTracker,<br/>        MessageProducer $aMessageProducer,<br/>        Serializer $aSerializer<br/>    ) {<br/>        $this-&gt;eventStore = $anEventStore;<br/>        $this-&gt;publishedMessageTracker = $aPublishedMessageTracker;<br/>        $this-&gt;messageProducer = $aMessageProducer;<br/>        $this-&gt;serializer = $aSerializer;<br/>    }<br/><br/>    /**<br/>     * @return int<br/>     */<br/>    public function publishNotifications($exchangeName)<br/>    {<br/>        $publishedMessageTracker = $this-&gt;publishedMessageTracker();<br/>        $notifications = $this-&gt;listUnpublishedNotifications(<br/>            $publishedMessageTracker<br/>                -&gt;mostRecentPublishedMessageId($exchangeName)<br/>        );<br/><br/>        if (!$notifications) {<br/>            return 0;<br/>        }<br/><br/>        $messageProducer = $this-&gt;messageProducer();<br/>        $messageProducer-&gt;open($exchangeName);<br/>        try {<br/>            $publishedMessages = 0;<br/>            $lastPublishedNotification = null;<br/>            foreach ($notifications as $notification) {<br/>                $lastPublishedNotification = $this-&gt;publish(<br/>                    $exchangeName,<br/>                    $notification,<br/>                    $messageProducer<br/>                );<br/>                $publishedMessages++;<br/>            }<br/>        } catch (\Exception $e) {<br/>            // Log your error (trigger_error, Monolog, etc.)<br/>        }<br/><br/>        $this-&gt;trackMostRecentPublishedMessage(<br/>            $publishedMessageTracker,<br/>            $exchangeName,<br/>            $lastPublishedNotification<br/>        );<br/><br/>        $messageProducer-&gt;close($exchangeName);<br/><br/>        return $publishedMessages;<br/>    }<br/><br/>    protected function publishedMessageTracker()<br/>    {<br/>        return $this-&gt;publishedMessageTracker;<br/>    }<br/><br/>    /**<br/>     * @return StoredEvent[]<br/>     */<br/>    private function listUnpublishedNotifications(<br/>        $mostRecentPublishedMessageId<br/>    ) {<br/>        return $this<br/>            -&gt;eventStore()<br/>            -&gt;allStoredEventsSince($mostRecentPublishedMessageId);<br/>    }<br/><br/>    protected function eventStore()<br/>    {<br/>        return $this-&gt;eventStore;<br/>    }<br/><br/>    private function messageProducer()<br/>    {<br/>        return $this-&gt;messageProducer;<br/>    }<br/><br/>    private function publish(<br/>        $exchangeName,<br/>        StoredEvent $notification,<br/>        MessageProducer $messageProducer<br/>    ) {<br/>        $messageProducer-&gt;send(<br/>            $exchangeName,<br/>            $this-&gt;serializer()-&gt;serialize($notification, 'json'),<br/>            $notification-&gt;typeName(),<br/>            $notification-&gt;eventId(),<br/>            $notification-&gt;occurredOn()<br/>        );<br/><br/>        return $notification;<br/>    }<br/><br/>    private function serializer()<br/>    {<br/>       return $this-&gt;serializer;<br/>    }<br/><br/>    private function trackMostRecentPublishedMessage(<br/>        PublishedMessageTracker $publishedMessageTracker,<br/>        $exchangeName,<br/>        $notification<br/>    ) {<br/>        $publishedMessageTracker-&gt;trackMostRecentPublishedMessage(<br/>            $exchangeName, $notification<br/>        );<br/>    }<br/>}
+</pre>
+<p><kbd>NotificationService</kbd> depends on three interfaces. We've already seen <kbd>EventStore</kbd>, which is responsible for appending and querying Domain Events. The second one is <kbd>PublishedMessageTracker</kbd>, which is responsible for keeping track of pushed messages. The third one is <kbd>MessageProducer</kbd>, an interface representing our messaging system:</p>
+<pre>
+interface PublishedMessageTracker<br/>{<br/>    /**<br/>     * @param string $exchangeName<br/>     * @return int<br/>     */<br/>    public function mostRecentPublishedMessageId($exchangeName);<br/><br/>    /**<br/>     * @param string $exchangeName<br/>     * @param StoredEvent $notification<br/>     */<br/>    public function trackMostRecentPublishedMessage(<br/>        $exchangeName, $notification<br/>    );<br/>}
+</pre>
+<p>The <kbd>mostRecentPublishedMessageId</kbd> method returns the ID of last <kbd>PublishedMessage</kbd>, so that the process can start from the next one. <kbd>trackMostRecentPublishedMessage</kbd> is responsible for tracking which message was sent last, in order to be able to republish messages in case you need to. <kbd>$exchangeName</kbd> represents the communication channel we're going to use to send out our Domain Events. Let's see a Doctrine implementation of <kbd>PublishedMessageTracker</kbd>:</p>
+<pre>
+class DoctrinePublishedMessageTracker extends EntityRepository\<br/>implements PublishedMessageTracker<br/>{<br/>    /**<br/>     * @param $exchangeName<br/>     * @return int<br/>     */<br/>    public function mostRecentPublishedMessageId($exchangeName)<br/>    {<br/>        $messageTracked = $this-&gt;findOneByExchangeName($exchangeName);<br/>        if (!$messageTracked) {<br/>            return null ;<br/>        }<br/><br/>        return $messageTracked-&gt;mostRecentPublishedMessageId();<br/>    }<br/><br/>    /**<br/>     *@param $exchangeName<br/>     * @param StoredEvent $notification<br/>     */<br/>    public function trackMostRecentPublishedMessage(<br/>        $exchangeName, $notification<br/>    ) {<br/>        if(!$notification) {<br/>            return;<br/>        }<br/><br/>        $maxId = $notification-&gt;eventId();<br/><br/>        $publishedMessage= $this-&gt;findOneByExchangeName($exchangeName);<br/>        if(null === $publishedMessage){<br/>            $publishedMessage = new PublishedMessage(<br/>                $exchangeName,<br/>                $maxId<br/>            );<br/>        }<br/><br/>        $publishedMessage-&gt;updateMostRecentPublishedMessageId($maxId);<br/><br/>        $this-&gt;getEntityManager()-&gt;persist($publishedMessage);<br/>        $this-&gt;getEntityManager()-&gt;flush($publishedMessage);<br/>    }<br/>}
+</pre>
+<p>This code is quite straightforward. The only edge case we have to consider is when no Domain Event has already been published.</p>
+<div class="packt_infobox"><span class="packt_screen">Why an Exchange Name?</span><br/>
+We'll see this in more detail in the Chapter 12, <em>Integrating Bounded Contexts</em>. However, when a system is running and a new Bounded Context comes into play, you might be interested in resending all the Domain Events to the new Bounded Context. So keeping track of the last Domain Event published and the channel where it was sent might come in handy later.</div>
+<p>In order to keep track of published Domain Events, we need an exchange name and a notification ID. Here's a possible implementation:</p>
+<pre>
+class PublishedMessage<br/>{<br/>    private $mostRecentPublishedMessageId;<br/>    private $trackerId;<br/>    private $exchangeName;<br/><br/>    /**<br/>     * @param string $exchangeName<br/>     * @param int $aMostRecentPublishedMessageId<br/>     */<br/>    public function __construct(<br/>        $exchangeName, $aMostRecentPublishedMessageId<br/>    ) {<br/>        $this-&gt;mostRecentPublishedMessageId =<br/>            $aMostRecentPublishedMessageId;<br/>        $this-&gt;exchangeName = $exchangeName;<br/>    }<br/><br/>    public function mostRecentPublishedMessageId()<br/>    {<br/>        return $this-&gt;mostRecentPublishedMessageId;<br/>    }<br/><br/>    public function updateMostRecentPublishedMessageId($maxId)<br/>    {<br/>        $this-&gt;mostRecentPublishedMessageId = $maxId;<br/>    }<br/><br/>    public function trackerId()<br/>    {<br/>        return $this-&gt;trackerId;<br/>    }<br/>}
+</pre>
+<p>And here is its corresponding mapping:</p>
+<pre>
+Ddd\Domain\Event\PublishedMessage:<br/>    type: entity<br/>    table: event_published_message_tracker<br/>    repositoryClass:<br/>        Ddd\Infrastructure\Application\Notification\<br/>            DoctrinePublished\MessageTracker<br/>    id:<br/>        trackerId:<br/>            column: tracker_id<br/>            type: integer<br/>            generator:<br/>            strategy: AUTO<br/>    fields:<br/>        mostRecentPublishedMessageId:<br/>            column: most_recent_published_message_id<br/>            type: bigint<br/>        exchangeName:<br/>            type: string<br/>            column: exchange_name
+</pre>
+<p>Now let's see what the <kbd>MessageProducer</kbd> interface is used for, along with its implementation details:</p>
+<pre>
+interface MessageProducer <br/>{ <br/>    public function open($exchangeName);<br/><br/>    /**<br/>     * @param $exchangeName<br/>     * @param string $notificationMessage<br/>     * @param string $notificationType<br/>     * @param int $notificationId<br/>     * @param \DateTimeImmutable $notificationOccurredOn<br/>     * @return<br/>     */<br/>    public function send(<br/>        $exchangeName,<br/>        $notificationMessage,<br/>        $notificationType,<br/>        $notificationId,<br/>        \DateTimeImmutable $notificationOccurredOn<br/>    );<br/><br/>    public function close($exchangeName);<br/>}
+</pre>
+<p>Easy. The open and close methods open and close a connection with the messaging system. send takes a message body — message name and message ID — and sends them to our messaging engine, whatever it is. Because we've chosen RabbitMQ, we need to implement the connection and sending process:</p>
+<pre>
+abstract class RabbitMqMessaging<br/>{<br/>    protected $connection;<br/>    protected $channel ;<br/><br/>    public function __construct(AMQPConnection $aConnection)<br/>    {<br/>        $this-&gt;connection =$aConnection;<br/>        $this-&gt;channel = null ;<br/>    }<br/><br/>    private function connect($exchangeName)<br/>    {<br/>        if (null !== $this-&gt;channel ) {<br/>            return;<br/>        }<br/><br/>        $channel = $this-&gt;connection-&gt;channel();<br/>        $channel-&gt;exchange_declare(<br/>            $exchangeName, 'fanout', false, true, false<br/>        );<br/>        $channel-&gt;queue_declare(<br/>            $exchangeName, false, true, false, false<br/>        );<br/>        $channel-&gt;queue_bind($exchangeName, $exchangeName);<br/><br/>        $this-&gt;channel = $channel ;<br/>    }<br/><br/>    public function open($exchangeName)<br/>    {<br/><br/>    }<br/><br/>    protected function channel ($exchangeName)<br/>    {<br/>        $this-&gt;connect($exchangeName);<br/><br/>        return $this-&gt;channel;<br/>    }<br/><br/>    public function close($exchangeName)<br/>    {<br/>        $this-&gt;channel-&gt;close();<br/>        $this-&gt;connection-&gt;close();<br/>    }<br/>}<br/><br/>class RabbitMqMessageProducer<br/>    extends RabbitMqMessaging<br/>    implements MessageProducer<br/>{<br/>    /**<br/>     * @param $exchangeName<br/>     * @param string $notificationMessage<br/>     * @param string $notificationType<br/>     * @param int $notificationId<br/>     * @param \DateTimeImmutable $notificationOccurredOn<br/>     */<br/>    public function send(<br/>        $exchangeName,<br/>        $notificationMessage,<br/>        $notificationType,<br/>        $notificationId,<br/>        \DateTimeImmutable $notificationOccurredOn<br/>    ) {<br/>        $this-&gt;channel ($exchangeName)-&gt;basic_publish(<br/>            new AMQPMessage(<br/>                $notificationMessage,<br/>                [<br/>                  'type'=&gt;$notificationType,<br/>                  'timestamp'=&gt;$notificationOccurredOn-&gt;getTimestamp(),<br/>                  'message_id'=&gt;$notificationId<br/>                ]<br/>            ),<br/>            $exchangeName<br/>        );<br/>    }<br/>}
+</pre>
+<p>Now that we have a <kbd>DomainService</kbd> for pushing Domain Events into a messaging system like RabbitMQ, it's time to execute them. We need to choose a delivery mechanism to run the service. We personally suggest creating a <a href="http://symfony.com/doc/current/components/console/introduction.html">Symfony Console</a> Command:</p>
+<pre>
+class PushNotificationsCommand extends Command<br/>{<br/>    protected function configure()<br/>    {<br/>        $this<br/>            -&gt;setName('domain:events:spread')<br/>            -&gt;setDescription('Notify all domain events via messaging')<br/>            -&gt;addArgument(<br/>                'exchange-name',<br/>                InputArgument::OPTIONAL,<br/>                'Exchange name to publish events to',<br/>                'my-bc-app'<br/>            );<br/>    }<br/><br/>    protected function execute(<br/>        InputInterface $input, OutputInterface $output<br/>    ) {<br/>        $app = $this-&gt;getApplication()-&gt;getContainer();<br/><br/>        $numberOfNotifications =<br/>            $app['notification_service']<br/>                -&gt;publishNotifications(<br/>                    $input-&gt;getArgument('exchange-name')<br/>                );<br/><br/>        $output-&gt;writeln(<br/>            sprintf(<br/>                '&lt;comment&gt;%d&lt;/comment&gt;' .<br/>                '&lt;info&gt;notification(s) sent!&lt;/info&gt;',<br/>                $numberOfNotifications<br/>            )<br/>        );<br/>    }<br/>}
+</pre>
+<p>Following the Silex example, let's see the definition of the <kbd>$app['notification_service']</kbd> defined in the <a href="http://silex.sensiolabs.org/doc/services.html#id1">Silex Pimple Service Container</a>:</p>
+<pre>
+ // ...<br/> $app['event_store']=$app-&gt;share( function ($app) {<br/>     return $app['em']-&gt;getRepository('Ddd\Domain\Event\StoredEvent');<br/> });<br/><br/>$app['message_tracker'] = $app-&gt;share(function($app) {<br/>    return $app['em']<br/>        -&gt;getRepository('Ddd\Domain\Event\Published\Message');<br/>});<br/><br/>$app['message_producer'] = $app-&gt;share(function () {<br/>    return new RabbitMqMessageProducer(<br/>       new AMQPStreamConnection('localhost', 5672, 'guest', 'guest')<br/>    );<br/>});<br/><br/>$app['message_serializer'] = $app-&gt;share(function () {<br/>    return SerializerBuilder::create()-&gt;build();<br/>});<br/><br/>$app['notification_service'] = $app-&gt;share(function ($app) {<br/>    return new NotificationService(<br/>       $app['event_store'],<br/>       $app['message_tracker'],<br/>       $app['message_producer'],<br/>       $app['message_serializer']<br/>    );<br/>});<br/>//...
+</pre>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Syncing Domain Services with REST</h1>
+            </header>
+
+            <article>
+                
+<p>With the <kbd>EventStore</kbd> already implemented in the messaging system, it should be easy to add some pagination capabilities, query for Domain Events, and render a JSON or XML representation publishing a REST API. Why is that interesting? Well, distributed systems using messaging have to face many different problems, such as messages that don't arrive, messages that arrive duplicated, or messages that arrive in an unexpected order. That's why it's nice to provide an API to publish your Domain Events so that other Bounded Contexts can ask for some missing information. Just as an example, consider that you make an HTTP request to an <kbd>/events</kbd> endpoint. A possible result would be the following:</p>
+<pre>
+<span>[<br/>    {<br/>        "id": 1,<br/>        "version": 1,<br/>        "typeName": "Lw\\Domain\\Model\\User\\UserRegistered",<br/>        "eventBody": {<br/>            "user_id": {<br/>                "id": "459a4ffc-cd57-4cf0-b3a2-0f2ccbc48234"<br/>            }<br/>        },<br/>        "occurredOn": {<br/>            "date": "2016-05-26 06:06:07.000000",<br/>            "timezone_type": 3,<br/>            "timezone": "UTC"<br/>        }<br/>    },<br/>    {<br/>        "id": 2,<br/>        "version": 2,<br/>        "typeName": "Lw\\Domain\\Model\\Wish\\WishWasMade",<br/>        "eventBody": {<br/>            "wish_id": {<br/>                "id": "9e90435a-395c-46b0-b4c4-d4b769cbf201"<br/>            },<br/>            "user_id": {<br/>                "id": "459a4ffc-cd57-4cf0-b3a2-0f2ccbc48234"<br/>            },<br/>            "address": "john@example.com",<br/>            "content": "This is my new wish!"<br/>        },<br/>        "occurredOn": {<br/>            "date": "2016-05-26 06:06:27.000000",<br/>            "timezone_type": 3,<br/>            "timezone": "UTC"<br/>        },<br/>        "timeTaken": "650"<br/>    },<br/>    //...<br/>]</span>
+</pre>
+<p>As you can see in the previous example, we're exposing a set of Domain Events in a JSON REST API. In the output example, you can see a JSON representation of each of the Domain Events. There are some interesting points. First, the <kbd>version</kbd> field. Sometimes your Domain Events will evolve: they'll include more fields, they'll change the behavior of some existing fields, or they'll remove some existing fields. That's why it's important to add a version field in your Domain Events. If other Bounded Contexts are listening to such Events, they can use the version field to parse the Domain Event in different ways. You may have faced the same problem when versioning REST APIs.</p>
+<p>Another point is the name. If you want to use the <kbd>classname</kbd> of the Domain Event, it may work in most cases. The problem is when a team decides to change the name of the class because of a refactoring. In this case, all Bounded Contexts listening to that name would stop working. This problem only occurs if you publish different Domain Events in the same queue. If you publish each Domain Event type in a different queue, it's not a real problem, but if you choose this approach, you'll face a different set of problems, such as receiving unordered events. Like in many other instances, there's a tradeoff involved. We strongly recommend you read <em>Enterprise Integration Patterns:</em> <a href="http://www.amazon.com/Enterprise-Integration-Patterns-Designing-Addison-Wesley-ebook/dp/B007MQLL4E">Designing, Building, and Deploying Messaging Solutions</a>. In this book, you'll learn different patterns for integrating multiple applications using asynchronous methods. Because Domain Events are messages sent in an integration channel, all messaging patterns also apply to them.</p>
+<div class="packt_tip"><span class="packt_screen">Exercise</span><br/>
+Think about the pros and cons of having a REST API for Domain Events. Consider Bounded Context coupling. You can also try to implement a REST API for your current application.</div>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Wrap-Up</h1>
+            </header>
+
+            <article>
+                
+<p>We've seen the tricks to model a proper <kbd>DomainEvent</kbd> with a base interface, we've seen where to publish the <kbd>DomainEvent</kbd> (the nearer to the Entities the better), and we've seen the strategies for spreading those <kbd>DomainEvents</kbd> to local and remote Bounded Contexts. Now, the only thing remaining is listening for a notification in the messaging system, reading it, and executing the corresponding Application Service or Command. We'll see how to do this in <a href="31f29fd9-2a73-42bd-88ad-2b189981cd1b.xhtml">Chapter 12</a>, <em>Integrating Bounded Contexts</em> and <a href="dd26d3b0-1441-4dc1-81fb-0be8332e0540.xhtml">Chapter 5</a>, <em>Services</em>.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </body></html>

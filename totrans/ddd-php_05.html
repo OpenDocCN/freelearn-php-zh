@@ -1,0 +1,331 @@
+<html><head></head><body>
+        <section>
+
+            <header>
+                <h1 class="header-title">Services</h1>
+            </header>
+
+            <article>
+                
+<p>You've already seen what Entities and Value Objects are. As basic building blocks, they should contain most of the business logic of any application. However, there are some scenarios where Entities and Value Objects aren't the best solutions. Let's take a look at what Eric Evans has to say about this in his book, <a href="http://www.amazon.com/Domain-Driven-Design-Tackling-Complexity-Software/dp/0321125215">Domain-Driven Design: Tackling Complexity in the Heart of Software</a>:</p>
+<p style="padding-left: 60px">When a significant process or transformation in the domain is not a natural responsibility of an Entity or Value Object, add an operation to the model as standalone interface declared as a Service. Define the interface in terms of the language of the model and make sure the operation name is part of the Ubiquitous Language. Make the Service stateless.</p>
+<p>So when there are operations that need to be represented, but Entities and Value Objects aren't the best place, you should consider modeling these operations as Services. In Domain-Driven Design, there are typically three different types of Services you'll encounter:</p>
+<ul>
+<li><strong>Application Services</strong>: Operate on scalar types, transforming them into Domain types. A scalar type can be considered any type that's unknown to the Domain Model. This includes primitive types and types that don't belong to the Domain. We'll provide an overview in this chapter, but for a deeper look at this topic, check out the <a href="145aa94e-d316-4e2b-b18c-1a3555f53e3f.xhtml">Chapter 11</a>, <em>Application</em>.</li>
+<li><strong>Domain Services</strong>: Operate only on types belonging to the Domain. They contain meaningful concepts that can be found within the Ubiquitous Language. They hold operations that don't fit well into Value Objects or Entities.</li>
+<li><strong>Infrastructure Services</strong>: Are operations that fulfill infrastructure concerns, such as sending emails and logging meaningful data. In terms of Hexagonal Architecture, they live outside the Domain boundary.</li>
+</ul>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Application Services</h1>
+            </header>
+
+            <article>
+                
+<p>Application Services are the middleware between the outside world and the Domain logic. The purpose of such a mechanism is to transform commands from the outside world into meaningful Domain instructions.</p>
+<p>Let's consider the <em>User signs up to our platform</em> use case. Starting with an outside-in approach: from the delivery mechanism, we need to compose the input request for our Domain operation. Using a framework like Symfony as the delivery mechanism, the code would look something like this:</p>
+<pre>
+<span>class SignUpController extends Controller<br/>{<br/>    public function signUpAction(Request $request)<br/>    {<br/>        $signUpService = new SignUpUserService(<br/>            $this-&gt;get('user_repository')<br/>        );<br/><br/>        try {<br/>            $response = $signUpService-&gt;execute(new SignUpUserRequest(<br/>                $request-&gt;request-&gt;get('email'),<br/>                $request-&gt;request-&gt;get('password')<br/>            ));<br/>        } catch (UserAlreadyExistsException $e) {<br/>            return $this-&gt;render('error.html.twig', $response);<br/>        }<br/><br/>        return $this-&gt;render('success.html.twig', $response);<br/>    }<br/>}</span>
+</pre>
+<p>As you can see, we create a new instance of our Application Services, passing all dependencies needed — in this case, a <kbd>UserRepository</kbd>. <kbd>UserRepository</kbd> is an interface that can be implemented with any specific technology (Example: MySQL, Redis, Elasticsearch). Then, we build a request object for our Application Service in order to abstract the delivery mechanism — in this example, a web request — from the business logic. Last, we execute the Application Service, get the response, and use that response for rendering the result. On the Domain side, let's check a possible implementation for the Application Service that coordinates the logic that fulfills the <em>User signs up</em> use case:</p>
+<pre>
+<span>class SignUpUserService<br/>{<br/>    private $userRepository;<br/><br/>    public function __construct(UserRepository $userRepository)<br/>    {<br/>        $this-&gt;userRepository = $userRepository;<br/>    }<br/><br/>    public function execute(SignUpUserRequest $request)<br/>    {<br/>        $user = $this-&gt;userRepository-&gt;userOfEmail($request-&gt;email);<br/>        if ($user) {<br/>            throw new UserAlreadyExistsException();<br/>        }<br/><br/>        $user = new User(<br/>            $this-&gt;userRepository-&gt;nextIdentity(),<br/>            $request-&gt;email,<br/>            $request-&gt;password<br/>        );<br/><br/>        $this-&gt;userRepository-&gt;add($user);<br/><br/>        return new SignUpUserResponse($user);<br/>    }<br/>}</span>
+</pre>
+<p>Everything in the code is about the Domain problem we want to solve, and not about the specific technology we're using to solve it. With this approach, we can decouple the high-level policies from the low-level implementation details. The communication between the delivery mechanism and the Domain is carried by data structures called DTOs, which we introduced in the <a href="d29cc2f8-a8a4-4c83-9322-3f346397de30.xhtml">Chapter 2</a>, <em>Architectural Styles</em>:</p>
+<pre>
+<span>class SignUpUserRequest<br/>{<br/>    public $email;<br/>    public $password;<br/><br/>    public function __construct($email, $password)<br/>    {<br/>        $this-&gt;email = $email;<br/>        $this-&gt;password = $password;<br/>    }<br/>}</span>
+</pre>
+<p>There are different strategies for returning content, but for now, consider that we shouldn't return our Entities so that they can't be modified from outside our Application Services. That's why it's common to return another DTO with information, rather than the whole Entity. Let's see a simple example:</p>
+<pre>
+class SignUpUserResponse<br/>{<br/>    public $id;<br/>    public $email;<br/><br/>    public function __construct(User $user)<br/>    {<br/>        $this-&gt;id = $user-&gt;id();<br/>        $this-&gt;email = $user-&gt;email();<br/>    }<br/>}<br/><span><br/></span>
+</pre>
+<p>For creating your responses, you can use getters or public instance variables. Application Services should take care with transaction scopes and security. However, you'll delve into more detail about these and other things related to Application Services in the <a href="145aa94e-d316-4e2b-b18c-1a3555f53e3f.xhtml">Chapter 11</a>, <em>Application</em>.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Domain Services</h1>
+            </header>
+
+            <article>
+                
+<p>Throughout conversations with Domain Experts, you'll come across concepts in the Ubiquitous Language that can't be neatly represented as either an Entity or a Value Object, such as:</p>
+<ul>
+<li>Users being able to sign into systems by themselves</li>
+<li>A shopping cart being able to become an order by itself</li>
+</ul>
+<p>The preceding example are two concrete concepts, neither of which can naturally be bound to either an Entity or a Value Object. Further highlighting this oddity, we can attempt to model the behavior as follows:</p>
+<pre>
+<span>class User<br/>{<br/>    public function signUp($aUsername, $aPassword)<br/>    {<br/>        // ...<br/>    }<br/>}<br/><br/>class Cart<br/>{<br/>    public function createOrder()<br/>    {<br/>        // ...<br/>    }<br/>}</span>
+</pre>
+<p>In the case of the first implementation, we're not able to know that the given username and password relate to the invoked-upon user instance. Clearly, this operation doesn't suit this Entity; instead, it should be extracted out into a separate class, making its intention explicit.</p>
+<p>With this in mind, we could create a Domain Service with the sole responsibility of authenticating users:</p>
+<pre>
+<span>class SignUp<br/>{<br/>    public function execute($aUsername, $aPassword)<br/>    {<br/>        // ...<br/>    }<br/>}<br/></span>
+</pre>
+<p>Similarly, as in the case of the second example, we could create a Domain Service specialized in creating orders from a supplied cart:</p>
+<pre>
+<span>class CreateOrderFromCart<br/>{<br/>    public function execute(Cart $aCart)<br/>    {<br/>        // ...<br/>    }<br/>}<br/></span>
+</pre>
+<p>A Domain Service can be defined as an operation that fulfills a Domain task and naturally doesn't fit into either an Entity or a Value Object. As concepts that represent operations in the Domain, Domain Services should be used by clients regardless of their run history. Domain Services don't hold any kind of state by themselves, so Domain Services are stateless operations.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Domain Services and Infrastructure Services</h1>
+            </header>
+
+            <article>
+                
+<p>It's common to encounter infrastructural dependencies when modeling a Domain Service  — for example, in the case where an authentication mechanism that handles password hashing is required. In this instance, you could use a <a href="http://martinfowler.com/eaaCatalog/separatedInterface.html">Separated Interface</a>, which allows for multiple hashing mechanisms to be defined. Using this pattern still provides you with a clear Separation of Concerns between the Domain and the Infrastructure:</p>
+<pre>
+<span>namespace Ddd\Auth\Domain\Model;<br/><br/>interface SignUp<br/>{<br/>    public function execute($aUsername, $aPassword);<br/>}<br/></span>
+</pre>
+<p>Using the preceding interface found in the Domain, we could create an implementation in the Infrastructure layer, like the following:</p>
+<pre>
+namespace Ddd\Auth\Infrastructure\Authentication;<br/><br/>class DefaultHashingSignUp implements Ddd\Auth\Domain\Model\SignUp<br/>{<br/>    private $userRepository;<br/><br/>    public function __construct(UserRepository $userRepository)<br/>    {<br/>        $this-&gt;userRepository = $userRepository;<br/>    }<br/><br/>    public function execute($aUsername, $aPassword)<br/>    {<br/>        if (!$this-&gt;userRepository-&gt;has($aUsername)) {<br/>            throw UserDoesNotExistException::fromUsername($aUsername);<br/>        }<br/><br/>        $aUser = $this-&gt;userRepository-&gt;byUsername($aUsername);<br/><br/>        if (!$this-&gt;isPasswordValidForUser($aUser, $aPassword)) {<br/>            throw new BadCredentialsException($aUser, $aPassword);<br/>        }<br/><br/>        return $aUser;<br/>    }<br/><br/>    private function isPasswordValidForUser(<br/>        User $aUser, $anUnencryptedPassword<br/>    ) {<br/>        return password_verify($anUnencryptedPassword,$aUser-&gt;hash());<br/>    }<br/>}<span><br/></span>
+</pre>
+<p>Here is another implementation based instead on the MD5 algorithm:</p>
+<pre>
+namespace Ddd\Auth\Infrastructure\Authentication;<br/><br/>use Ddd\Auth\Domain\Model\SignUp<br/><br/>class Md5HashingSignUp implements SignUp<br/>{<br/>    const SALT = 'S0m3S4lT' ;<br/><br/>    private $userRepository;<br/><br/>    public function __construct(UserRepository $userRepository)<br/>    {<br/>        $this-&gt;userRepository = $userRepository;<br/>    }<br/><br/>    public function execute($aUsername, $aPassword)<br/>    {<br/>        if (!$this-&gt;userRepository-&gt;has($aUsername)) {<br/>            throw new InvalidArgumentException(<br/>                sprintf('The user "%s" does not exist.', $aUsername)<br/>            );<br/>        }<br/><br/>        $aUser = $this-&gt;userRepository-&gt;byUsername($aUsername);<br/><br/>        if ($this-&gt;isPasswordInvalidFor($aUser, $aPassword)) {<br/>            throw new BadCredentialsException($aUser, $aPassword);<br/>        }<br/><br/>        return $aUser;<br/>    }<br/><br/>    private function salt()<br/>    {<br/>        return md5(self::SALT);<br/>    }<br/><br/>    private function isPasswordInvalidFor(<br/>        User $aUser, $anUnencryptedPassword<br/>    ) {<br/>        $encryptedPassword = md5(<br/>            $anUnencryptedPassword . '_' .$this-&gt;salt()<br/>        );<br/><br/>        return $aUser-&gt;hash() !== $encryptedPassword;<br/>    }<br/>}
+</pre>
+<p>Opting for this choice allows us to have multiple implementations of the Domain Service interface at the Infrastructure layer. In other words, we end up with several Infrastructure Domain Services. Each Infrastructure service will be responsible for handling a different hash mechanism. Depending on the implementation, the use can easily be managed through a Dependency Injection container — for example, through Symfony's Dependency Injection component:</p>
+<pre>
+&lt;?xml version="1.0"?&gt;<br/>&lt;container<br/>    <br/>    <br/>    xsi:schemaLocation="<br/>        http://symfony.com/schema/dic/services<br/>        http://symfony.com/schema/dic/services/services-1.0.xsd"&gt;<br/><br/>    &lt;services&gt;<br/><br/>        &lt;service id="sign_in" alias="sign_in.default" /&gt;<br/><br/>        &lt;service id="sign_in.default"<br/>            class="Ddd\Auth\Infrastructure\Authentication<br/>            \DefaultHashingSignUp"&gt;<br/>            &lt;argument type="service" id="user_repository"/&gt;<br/>        &lt;/service&gt;<br/><br/>        &lt;service id="sign_in.md5"<br/>            class="Ddd\Auth\Infrastructure\Authentication<br/>                \Md5HashingSignUp"&gt;<br/>            &lt;argument type="service" id="user_repository"/&gt;<br/>        &lt;/service&gt;<br/><br/>    &lt;/services&gt;<br/>&lt;/container&gt;
+</pre>
+<p>If, in the future, we wish to handle a new type of hashing, we can simply start by implementing the Domain Service interface. Then it's a matter of declaring the service in the Dependency Injection container and replacing the service alias dependency with the newly created one.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">An Issue of Code Reuse</h1>
+            </header>
+
+            <article>
+                
+<p>Although the implementation described previously clearly defines the Separation of Concerns, we're required to repeat the password verification algorithm every time we wish to implement a new hashing mechanism. An alternative for solving this problem, which improves code reuse, is by separating out these two responsibilities. We could instead extract the password hashing logic out into a specialized class, using the <a href="http://en.wikipedia.org/wiki/Strategy_pattern">Strategy Pattern</a> for all defined hashing algorithms. This leaves the design open for extension and closed for modification:</p>
+<pre>
+namespace Ddd\Auth\Domain\Model;<br/><br/>class SignUp <br/>{<br/>    private $userRepository; <br/>    private $passwordHashing;<br/><br/>    public function __construct(<br/>        UserRepository $userRepository, PasswordHashing $passwordHashing<br/>    ) {<br/>        $this-&gt;userRepository = $userRepository;<br/>        $this-&gt;passwordHashing = $passwordHashing;<br/>    }<br/><br/>    public function execute($aUsername, $aPassword)<br/>    {<br/>        if (!$this-&gt;userRepository-&gt;has($aUsername)) {<br/>            throw new InvalidArgumentException(<br/>                sprintf('The user "%s" does not exist.', $aUsername)<br/>            );<br/>        }<br/><br/>        $aUser = $this-&gt;userRepository-&gt;byUsername($aUsername);<br/><br/>        if ($this-&gt;isPasswordInvalidFor($aUser, $aPassword)) {<br/>            throw new BadCredentialsException($aUser, $aPassword);<br/>        }<br/><br/>        return $aUser;<br/>    }<br/><br/>    private function isPasswordInvalidFor(User $aUser, $plainPassword)<br/>    {<br/>        return !$this-&gt;passwordHashing-&gt;verify(<br/>            $plainPassword,<br/>            $aUser-&gt;hash()<br/>        );<br/>    }<br/>}<br/><br/>interface PasswordHashing <br/>{<br/>    /**<br/>     * <span class="citation">@param</span> string <span class="math">$password<br/>     * @param string $</span>hash <br/>     * <span class="citation">@return</span> boolean <br/>     */<br/>    public function verify($plainPassword, hash);<br/>}
+</pre>
+<p>Defining different hashing strategies is as easy as implementing the <kbd>PasswordHashing</kbd> interface:</p>
+<pre>
+namespace Ddd\Auth\Infrastructure\Authentication;<br/><br/>class BasicPasswordHashing<br/><span>    implements \Ddd\Auth\Domain\Model\PasswordHashing<br/>{<br/>    public function verify($plainPassword, $hash)<br/>    {<br/>        return password_verify($plainPassword, $hash);<br/>    }<br/>}<br/></span><br/>class Md5PasswordHashing<br/><span>    implements Ddd\Auth\Domain\Model\PasswordHashing<br/>{<br/>    const SALT = 'S0m3S4lT' ;<br/><br/>    public function verify($plainPassword, $hash)<br/>    {<br/>        return $hash === $this-&gt; calculateHash($plainPassword);<br/>    }<br/><br/>    private function calculateHash($plainPassword)<br/>    {<br/>        return md5($plainPassword . '_' .$this-&gt; salt());<br/>    }<br/><br/>    private function salt()<br/>    {<br/>        return md5(self::SALT);<br/>    }<br/>}<br/></span>
+</pre>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Testing Domain Services</h1>
+            </header>
+
+            <article>
+                
+<p>Given the user authentication example from multiple Domain Service implementations, it's extremely beneficial to be able to easily test the service. Typically, however, testing the Template Method implementations can be tricky. As a result, we'll be using a plain password hashing implementation for testing purposes:</p>
+<pre>
+class PlainPasswordHashing implements PasswordHashing<br/>{<br/>    public function verify($plainPassword, $hash)<br/>    {<br/>        return $plainPassword === $hash;<br/>    }<br/>}
+</pre>
+<p>Now we can test all cases in the Domain Service:</p>
+<pre>
+class SignUpTest extends PHPUnit_Framework_TestCase<br/>{<br/>    private $signUp;<br/>    private $userRepository;<br/><br/>    protected function setUp()<br/>    {<br/>        $this-&gt;userRepository = new InMemoryUserRepository();<br/>        $this-&gt;signUp = new SignUp(<br/>            $this-&gt;userRepository,<br/>            new PlainPasswordHashing()<br/>        );<br/>    }<br/><br/>    /**<br/>     * @test<br/>     * @expectedException InvalidArgumentException<br/>     */<br/>    public function itShouldComplainIfTheUserDoesNotExist()<br/>    {<br/>        $this-&gt;signUp-&gt;execute('test-username', 'test-password');<br/>    }<br/><br/>    /**<br/>     * @test<br/>     * @expectedException BadCredentialsException<br/>     */<br/>    public function itShouldTellIfThePasswordDoesNotMatch()<br/>    {<br/>        $this-&gt;userRepository-&gt;add(<br/>            new User(<br/>                'test-username',<br/>                'test-password'<br/>            )<br/>        );<br/><br/>        $this-&gt;signUp-&gt;execute('test-username', 'no-matching-password')<br/>    }<br/><br/>    /**<br/>     * @test<br/>     */<br/>    public function itShouldTellIfTheUserMatchesProvidedPassword()<br/>    {<br/>        $this-&gt;userRepository-&gt;add(<br/>            new User(<br/>                'test-username',<br/>                'test-password'<br/>            )<br/>        );<br/><br/>        $this-&gt;assertInstanceOf(<br/>            'Ddd\Domain\Model\User\User',<br/>            $this-&gt;signUp-&gt;execute('test-username', 'test-password')<br/>        );<br/>    }<br/>}
+</pre>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Anemic Domain Models Vs Rich Domain Models</h1>
+            </header>
+
+            <article>
+                
+<p>You must be cautious not to overuse Domain Service abstractions within your system. Following this path can lead to Entities and Value Objects being stripped of all behavior and becoming mere data containers. This is contrary to the goal of Object-Oriented Programming, which can be thought of as the gathering of both data and behavior into semantic units called objects, with the intent of expressing real-world concepts and problems. Domain Service overuse can be considered an anti-pattern and is referred to as the Anemic Domain Model.</p>
+<p>Typically, when starting a new project or feature, it's easy to fall into the trap of modeling the data first. This commonly includes thinking that each database table has a direct one-to-one object form representation. However, this thinking may or may not be the exact case all the time.</p>
+<p>Suppose we're tasked with modeling an order processing system. If we start by modeling the data first, we could end up with an SQL script like this:</p>
+<pre>
+CREATE TABLE `orders` (<br/>    `ID` INTEGER NOT NULL AUTO_INCREMENT,<br/>    `CUSTOMER_ID` INTEGER NOT NULL,<br/>    `AMOUNT` DECIMAL(17, 2) NOT NULL DEFAULT '0.00',<br/>    `STATUS` TINYINT NOT NULL DEFAULT 0,<br/>    `CREATED_AT` DATETIME NOT NULL,<br/>    `UPDATED_AT` DATETIME NOT NULL, <br/>    PRIMARY KEY (`ID`)<br/>) ENGINE=INNODB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+</pre>
+<p>From this, it's relatively easy to create an <kbd>Order</kbd> class representation. This representation includes the required accessor methods, which are used to set or get data to and from the underlying orders database table:</p>
+<pre>
+<span>class Order <br/>{ <br/>    const STATUS_CREATED   = 10;<br/>    const STATUS_ACCEPTED  = 20;<br/>    const STATUS_PAID      = 30;<br/>    const STATUS_PROCESSED = 40;</span><br/><br/>    private $id;<br/>    private $customerId;<br/>    private $amount;<br/>    private $status;<br/>    private $createdAt;<br/>    private $updatedAt;<br/><br/>    public function __construct(<br/>        $customerId,<br/>        $amount,<br/>        $status,<br/>        DateTimeInterface $createdAt,<br/>        DateTimeInterface $updatedAt<br/>    ) {<br/>        $this-&gt;customerId = $customerId;<br/>        $this-&gt;amount = $amount;<br/>        $this-&gt;status = $status;<br/>        $this-&gt;createdAt = $createdAt;<br/>        $this-&gt;updatedAt = $updatedAt;<br/>    }<br/><br/>    public function setId($id)<br/>    {<br/>        $this-&gt;id = $id;<br/>    }<br/><br/>    public function getId()<br/>    {<br/>        return $this-&gt;id;<br/>    }<br/><br/>    public function setCustomerId($customerId)<br/>    {<br/>        $this-&gt;customerId = $customerId;<br/>    }<br/><br/>    public function getCustomerId()<br/>    {<br/>        return $this-&gt;customerId;<br/>    }<br/><br/>    public function setAmount($amount)<br/>    {<br/>        $this-&gt;amount = $amount;<br/>    }<br/><br/>    public function getAmount()<br/>    {<br/>        return $this-&gt;amount;<br/>    }<br/><br/>    public function setStatus($status)<br/>    {<br/>        $this-&gt;status = $status;<br/>    }<br/><br/>    public function getStatus()<br/>    {<br/>        return $this-&gt;status;<br/>    }<br/><br/>    public function setCreatedAt(DateTimeInterface $createdAt)<br/>    {<br/>        $this-&gt;createdAt = $createdAt;<br/>    }<br/><br/>    public function getCreatedAt()<br/>    {<br/>        return $this-&gt;createdAt;<br/>    }<br/><br/>    public function setUpdatedAt(DateTimeInterface $updatedAt)<br/>    {<br/>        $this-&gt;updatedAt = $updatedAt;<br/>    }<br/><br/>    public function getUpdatedAt()<br/>    {<br/>        return $this-&gt;updatedAt;<br/>    }<br/>}
+</pre>
+<p>An example use case for this implementation could be to update the order status as follows:</p>
+<pre>
+// Fetch an order from the database<br/>$anOrder = $orderRepository-&gt;find( 1 );<br/><br/>// Update order status<br/>$anOrder-&gt;setStatus(Order::STATUS_ACCEPTED);<br/><br/>// Update updatedAt field<br/>$anOrder-&gt;setUpdatedAt(new DateTimeImmutable());<br/><br/>// Save the order to the database<br/>$orderRepository-&gt;save($anOrder);
+</pre>
+<p>With regard to code reuse, this code has a problem similar to the initial user authentication solution. To resolve this issue, defenders of such a practice suggest the use of a <a href="http://martinfowler.com/eaaCatalog/serviceLayer.html">Service layer</a>, thereby making the operations explicit and reusable. This preceding implementation could now instead be encapsulated into a separate class:</p>
+<pre>
+class ChangeOrderStatusService<br/>{<br/>    private $orderRepository;<br/><br/>    public function __construct(OrderRepository $orderRepository)<br/>    {<br/>        $this-&gt;orderRepository = $orderRepository;<br/>    }<br/><br/>    public function execute($anOrderId, $anOrderStatus)<br/>    {<br/>        // Fetch an order from the database<br/>        $anOrder = $this-&gt;orderRepository-&gt;find($anOrderId);<br/><br/>        // Update order status<br/>        $anOrder-&gt;setStatus($anOrderStatus);<br/><br/>        // Update updatedAt field<br/>        $anOrder-&gt;setUpdatedAt(new DateTimeImmutable());<br/><br/>        // Save the order to the database<br/>        $this-&gt;orderRepository-&gt;save($anOrder);<br/>    }<br/>}
+</pre>
+<p>Or, in the case of updating an order amount, consider this:</p>
+<pre>
+class UpdateOrderAmountService<br/>{<br/>    private $orderRepository;<br/><br/>    public function __construct(OrderRepository $orderRepository)<br/>    {<br/>        $this-&gt;orderRepository = $orderRepository;<br/>    }<br/><br/>    public function execute( $orderId, $amount)<br/>    {<br/>        $anOrder = $this-&gt;orderRepository-&gt;find(1);<br/><br/>        $anOrder-&gt;setAmount($amount);<br/>        $anOrder-&gt;setUpdatedAt(new DateTimeImmutable());<br/>        $this-&gt;orderRepository-&gt;save($anOrder);<br/>    }<br/>}
+</pre>
+<p><span>The client code would be drastically reduced following a clearly intentioned operation:<br/></span></p>
+<pre>
+$updateOrderAmountService = new UpdateOrderAmountService(<br/>    $orderRepository<br/>);<br/><br/>$updateOrderAmountService-&gt;execute(1, 20.5);
+</pre>
+<p>Implementing this approach can result in a large degree of code reusability. Someone who wishes to update the order amount simply has to retrieve an instance of <kbd>UpdateOrderAmountService</kbd> and invoke the execute method with the appropriate parameters.</p>
+<p>However, choosing this path breaks the discussed Object-Oriented Design principles and incurs the costs of building a Domain Model without taking advantage of any of the benefits.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Anemic Domain Model Breaks Encapsulation</h1>
+            </header>
+
+            <article>
+                
+<p>If we revisit the code used to define the services within our Service layer, we can see that as a client making use of the Order Entity, we're required to know every detail of its internal representation. This finding goes against the fundamental rule of Object-Oriented Programming, which is combining data with subsequent behavior</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Anemic Domain Model Brings a False Sense of Code Reuse</h1>
+            </header>
+
+            <article>
+                
+<p>Say there's an instance where a client bypasses <kbd>UpdateOrderAmountService</kbd> and instead fetches, updates, and persists directly to <kbd>OrderRepository</kbd>. Then, all the extra business logic that the <kbd>UpdateOrderAmountService</kbd> service might have won't be executed. This could lead to the order being stored in an inconsistent state. As such, invariants should be correctly guarded, and the best way to do this is to let the true Domain Model handle it. In the case of this example, the Order Entity would be the best place to ensure this:</p>
+<pre>
+<span>class Order <br/>{ <br/>    // ...</span><br/>    public function changeAmount($amount)<br/>    {<br/>        $this-&gt;amount = $amount;<br/>        $this-&gt;setUpdatedAt(new DateTimeImmutable());<br/>    }<br/>}
+</pre>
+<p>Note that by pushing this action down into the Entity and naming it in terms of the Ubiquitous Language, the system achieves great code reuse. Anyone who now wishes to change the amount of the order has to invoke the <kbd>Order::changeAmount</kbd> method directly.</p>
+<p>This leads to far richer classes, where behavior is the goal for code reuse. This is commonly referred to as a Rich Domain Model.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">How to Avoid Anemic Domain Models</h1>
+            </header>
+
+            <article>
+                
+<p>The way to avoid falling into an Anemic Domain Model is to, when starting a new project or feature, think of the behavior first. Databases, ORMs, and so on are just implementation details, and we should strive to push the decision to use these tools as late in the development process as we can. In doing so, we can focus on the one true attribute that matters: the behavior.</p>
+<p>Just as is the case with Entities, Domain Services can also fire <a href="607255c5-e619-4398-94bb-484c008472b7.xhtml">Chapter 6</a>, <em>Domain-Events</em>. However, when events are mostly fired by Domain Services and not Entities, it's again an indicator that you may be creating an Anemic Domain Model.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    
+
+        <section>
+
+            <header>
+                <h1 class="header-title">Wrap-Up</h1>
+            </header>
+
+            <article>
+                
+<p>As we've seen, Services represent operations inside our system, and we can differentiate between three versions of them:</p>
+<ul>
+<li><strong>Application Services</strong>: Help coordinate requests from the outside world into the Domain. These Services should not contain Domain logic. Transactions are handled in the application level; wrapping your services inside transnational decorators will make your code transaction agnostic.</li>
+<li><strong>Domain Services</strong>: Operate with Domain concepts only, which are expressed by the Ubiquitous Language. Remember to postpone implementation details and think of behavior first, as abuse of Domain Services will lead to Anemic Domain Models and bad Object-Oriented Design.</li>
+<li><strong>Infrastructure Services</strong>: Operate over Infrastructure, doing things like sending emails or logging information.</li>
+</ul>
+<p>Our most important recommendation is that you should consider all your options before deciding on creating a Domain Service. First try to move your business logic inside an Entity or Value. Check with some workmates. Review again. If, after different approaches, the best option is creating a Domain Service, go for it.</p>
+
+
+            </article>
+
+            <footer style="margin-top: 5em;">
+                
+            </footer>
+
+        </section>
+    </body></html>
