@@ -1,0 +1,476 @@
+<html><head></head><body>
+<div class="book" title="Chapter&#xA0;6.&#xA0;PHP Streams API and Higher-Order Observables" id="1FLS41-bd355a22cf10407cb10df27e65585b8d"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch06" class="calibre1"/>Chapter 6. PHP Streams API and Higher-Order Observables</h1></div></div></div><p class="calibre8">In this chapter, we'll introduce a lot of new features that we need for the next chapter. Almost everything covered in this chapter is related to <span class="strong"><strong class="calibre17">PHP Streams API</strong></span>, Promises and event loops (<code class="literal">reactphp/event-loop</code> project in our case). This also includes a couple of more advanced RxPHP operators working with so-called higher-order Observables.</p><p class="calibre8">In particular, in this chapter, we'll do the following:</p><div class="book"><ul class="itemizedlist"><li class="listitem">Quickly look at using Promises in PHP with the <code class="literal">reactphp/promise</code> library</li><li class="listitem">Introduce PHP Streams API and, with examples, see what benefits it brings with minimal or no effort</li><li class="listitem">Examine the internals of <code class="literal">StreamSelectLoop</code> class, this time in the context of PHP Streams API</li><li class="listitem">See what caveats we need to be aware of when working with non-blocking code in event loops</li><li class="listitem">Talk about higher-order Observables</li><li class="listitem">Introduce four new and more advanced operators, <code class="literal">concatAll()</code>, <code class="literal">mergeAll()</code>, <code class="literal">combineLatest()</code> and <code class="literal">switchMap()</code>, which are intended to work with higher-order Observables</li></ul></div><p class="calibre8">This chapter is going to introduce a lot of new things we haven't encountered yet. However, all of them have their benefits in practice, as we'll see in the next chapter, where we'll write an application that spawns multiple subprocesses on the go. Each subprocess will be a self-sufficient WebSocket server itself, and we'll use knowledge gained in this chapter to communicate with them and to collect information from them.</p></div>
+
+<div class="book" title="Chapter&#xA0;6.&#xA0;PHP Streams API and Higher-Order Observables" id="1FLS41-bd355a22cf10407cb10df27e65585b8d">
+<div class="book" title="Using Promises in PHP"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_1"><a id="ch06lvl1sec42" class="calibre1"/>Using Promises in PHP</h1></div></div></div><p class="calibre8">While using Reactive Extensions, we think of data as continuous streams that emit data over time. A similar, and probably more familiar, concept is Promises, which represent a single value in the future.</p><p class="calibre8">You've probably met Promises in libraries such as jQuery, where it's commonly used to handle responses from an AJAX request. There are multiple implementations in PHP, but the principle is always the same. We're going to use a library called <code class="literal">reactphp/promise</code> (<a class="calibre1" href="https://github.com/reactphp/promise">
+https://github.com/reactphp/promise
+</a>), which follows Promises/A proposal (<a class="calibre1" href="http://wiki.commonjs.org/wiki/Promises/A">
+http://wiki.commonjs.org/wiki/Promises/A
+</a>) and adds some extra functionality as well. Since we're going to use this library for this and the next chapter, we will have a look at how to use it.</p><p class="calibre8">Install <code class="literal">react/promise</code> package via composer:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ composer require react/promiseWe</strong></span>
+</pre><p class="calibre8">We will use two basic classes:</p><div class="book"><ul class="itemizedlist"><li class="listitem"><code class="literal">Promise</code>: This class represents a result of a deferred computation that will be available in the future.</li><li class="listitem"><code class="literal">Deferred</code>: This class represents an action that's pending. It returns a single instance of Promise, which is resolved or rejected. Usually, by resolving a Promise, we understand that the action ended successfully, while rejection means it failed.</li></ul></div><p class="calibre8">Each Promise is going to be resolved or rejected, and we can handle its results via multiple methods (we can call them operators as well, since they serve a similar purpose, like in Rx). Each of these methods returns a new Promise, so we'll be able to chain them in a very similar way to how we do it in Rx:</p><div class="book"><ul class="itemizedlist"><li class="listitem"><code class="literal">then()</code>: This method takes two callbacks as arguments. The first one is called only when the Promise is resolved, while the second one is called only when it's rejected. Each callback can return a modified value, which is passed to the next operator.</li><li class="listitem"><code class="literal">done()</code>: Similarly to <code class="literal">then()</code>, it takes two callbacks as arguments. However, this method returns null, so it doesn't allow chaining. It's intended only to consume the result and prevents you from modifying it any further.</li><li class="listitem"><code class="literal">otherwise()</code>: This is a handler when the Promise is rejected or when the preceding <code class="literal">then()</code> method throws an exception.</li><li class="listitem"><code class="literal">always()</code>: This is the cleanup method called when the Promise is either resolved or rejected.</li></ul></div></div></div>
+
+<div class="book" title="Chapter&#xA0;6.&#xA0;PHP Streams API and Higher-Order Observables" id="1FLS41-bd355a22cf10407cb10df27e65585b8d">
+<div class="book" title="Using Promises in PHP">
+<div class="book" title="Using the then() and done() methods"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_2"><a id="ch06lvl2sec53" class="calibre1"/>Using the then() and done() methods</h2></div></div></div><p class="calibre8">We can demonstrate how to use a <code class="literal">Promise</code> and <code class="literal">Deferred</code> classes with the <code class="literal">then()</code> and <code class="literal">done()</code> methods in the following example:</p><pre class="programlisting">// deferred_01.php 
+use React\Promise\Deferred; 
+$deferred = new Deferred(); 
+ 
+$deferred-&gt;promise() 
+    -&gt;then(function($val) { 
+        echo "Then #1: $val\n"; 
+        return $val + 1; 
+    }) 
+    -&gt;then(function($val) { 
+        echo "Then #2: $val\n"; 
+        return $val + 1; 
+    }) 
+    -&gt;done(function($val) { 
+        echo "Done: $val\n"; 
+    }); 
+ 
+$deferred-&gt;resolve(42); 
+</pre><p class="calibre8">The <code class="literal">promise()</code> method returns an instance of the <code class="literal">Promise</code> class, which is then chained with two <code class="literal">then()</code> and one <code class="literal">done()</code> calls. We've mentioned that a <code class="literal">Promise</code> class represents a single value in the future. For this reason, calling <code class="literal">promise()</code> method multiple times always returns the same <code class="literal">Promise</code> object.</p><p class="calibre8">In the first <code class="literal">then()</code> call, we'll print the value and return <code class="literal">$val + 1</code>. This modified value will be passed to the consecutive <code class="literal">then()</code> call, which again updates the value and passes it to <code class="literal">done()</code>. The <code class="literal">done()</code> method returns <code class="literal">null</code>, so it can't be chained with any more operators.</p><p class="calibre8">The output is then as follows:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php deferred_01.php </strong></span>
+<span class="strong"><strong class="calibre17">Then #1: 42</strong></span>
+<span class="strong"><strong class="calibre17">Then #2: 43</strong></span>
+<span class="strong"><strong class="calibre17">Done: 44</strong></span>
+</pre><p class="calibre8">Notice that it's the instance of the <code class="literal">Deferred</code> class that is responsible for resolving or rejecting the <code class="literal">Promise</code> class because it represents the asynchronous action. The <code class="literal">Promise</code> class, on the other hand, represents just the result of the <code class="literal">Deferred</code> class.</p></div></div></div>
+
+<div class="book" title="Chapter&#xA0;6.&#xA0;PHP Streams API and Higher-Order Observables" id="1FLS41-bd355a22cf10407cb10df27e65585b8d">
+<div class="book" title="Using Promises in PHP">
+<div class="book" title="Using the otherwise() and always() methods"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_3"><a id="ch06lvl2sec54" class="calibre1"/>Using the otherwise() and always() methods</h2></div></div></div><p class="calibre8">Similarly to using <code class="literal">then()</code> and <code class="literal">done()</code>, we'll handle exceptions with <code class="literal">otherwise()</code>, and we'll also append <code class="literal">always()</code>, which will be called regardless of the <code class="literal">Promise</code> class being resolved or rejected:</p><pre class="programlisting">// deferred_02.php  
+$deferred = new Deferred(); 
+$deferred-&gt;promise() 
+    -&gt;then(function($val) { 
+        echo "Then: $val\n"; 
+        throw new \Exception('This is an exception'); 
+    }) 
+    -&gt;otherwise(function($reason) { 
+        echo 'Error: '. $reason-&gt;getMessage() . "\n"; 
+    }) 
+    -&gt;always(function() { 
+        echo "Do cleanup\n"; 
+    }); 
+ 
+$deferred-&gt;resolve(42); 
+</pre><p class="calibre8">Now, the callable for <code class="literal">then()</code> throws an exception, which is caught by the following <code class="literal">otherwise()</code> method. This chain of Promises is always finished by an <code class="literal">always()</code> call, even when we threw an exception in <code class="literal">then()</code>.</p><p class="calibre8">If we run this example, we'll receive the following output:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php deferred_02.php </strong></span>
+<span class="strong"><strong class="calibre17">Then: 42</strong></span>
+<span class="strong"><strong class="calibre17">Error: This is an exception</strong></span>
+<span class="strong"><strong class="calibre17">Do cleanup</strong></span>
+</pre><p class="calibre8">The <code class="literal">otherwise()</code> method is, in fact, just a shortcut for <code class="literal">then(null, $onRejected)</code>, so we could write it as a single call. However, this notation is split into two separate method calls, making it easier to understand. We can also test a scenario where we reject the <code class="literal">Promise</code> class instead of resolving it:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$deferred-&gt;reject(new \Exception('This is an exception'));</strong></span>
+</pre><p class="calibre8">This skips the <code class="literal">then()</code> call and triggers only the <code class="literal">otherwise()</code> callable:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php deferred_02.php </strong></span>
+<span class="strong"><strong class="calibre17">Error: This is an exception</strong></span>
+<span class="strong"><strong class="calibre17">Do cleanup</strong></span>
+</pre><p class="calibre8">Notice that the <code class="literal">always()</code> method was called in both situations. Also, note that the <code class="literal">otherwise()</code> method allows creating multiple handlers for different exception classes. If we don't specify the class type in the callable definition, it'll be triggered on any exception.</p></div></div></div>
+
+<div class="book" title="PHP Streams API"><div class="book" id="1GKCM2-bd355a22cf10407cb10df27e65585b8d"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch06lvl1sec43" class="calibre1"/>PHP Streams API</h1></div></div></div><p class="calibre8">If we want to work with sockets in PHP, we're offered two sets of methods, starting with one of these two prefixes:</p><div class="book"><ul class="itemizedlist"><li class="listitem"><code class="literal">socket_*</code>: Low-level API to the socket communication available since PHP 4.1. This extension needs to be enabled when compiling PHP with the <code class="literal">--enable-sockets</code> option. You can check whether your PHP supports this API by running <code class="literal">php -i</code> in the console and watching for <code class="literal">--enable-sockets</code> under the <code class="literal">Configure Command</code> option.</li><li class="listitem"><code class="literal">stream_*</code>: API introduced in PHP 4.3 that generalizes usage of file, network, and other operations under a unified set of functions. Streams in the sense of this API are resource objects that share some common behavior. This extension is part of PHP and doesn't require any extra steps to be enabled. More stream functions were added in PHP 5, such as <code class="literal">stream_socket_server()</code>, which we'll use in a moment.</li></ul></div><p class="calibre8">In general, we'll always want to use the newer <code class="literal">stream_*</code> API because it's a built-in part of PHP and offers better functionality.</p><p class="calibre8">The core feature is that it's built around using resources. A resource in PHP is a special variable holding a reference to some external resource (this can be a socket connection, file handler, and so on). These have some limitations. For instance, they can't be serialized, for obvious reasons, and certain methods are not applicable with particular types of resources, such as <code class="literal">fseek()</code>.</p><p class="calibre8">Working with resources and streams is unified, so we can use <code class="literal">stream_*</code> functions when, for example, writing data to files instead of the typical <code class="literal">fwrite()</code> function. Consider the following example, where we copy the content of a file to another file and instead of using <code class="literal">fwrite()</code>, or <code class="literal">file_get_content()</code> and <code class="literal">file_put_content()</code>, we'll use <code class="literal">stream_copy_to_stream()</code>:</p><pre class="programlisting">// streams_00.php 
+$source = fopen('textfile.txt', 'r'); 
+$dest = fopen('destfile.txt', 'w'); 
+stream_copy_to_stream($source, $dest); 
+</pre><p class="calibre8">Both <code class="literal">$source</code> and <code class="literal">$dest</code> are resources. The <code class="literal">stream_copy_to_stream()</code> function just copies the content of one stream to another. How one resource reads the data and how the second resource writes the data is up to the inner implementation of this resource. We could also use <code class="literal">fseek()</code> to move the read cursor to some position instead of reading data from the beginning of the file:</p><pre class="programlisting">$source = fopen('textfile.txt', 'r'); 
+fseek($source, 5); 
+... 
+</pre><p class="calibre8">Now we have skipped the first five bytes of the file.</p><p class="calibre8">There are many types of resources. We can see what types we're supporting with the <code class="literal">get_resource_type()</code> function.</p><p class="calibre8">In the following example, we create three different types of resources:</p><pre class="programlisting">// streams_01.php 
+$source = fopen('textfile.txt', 'r'); 
+echo get_resource_type($source) . "\n"; 
+ 
+$xml = xml_parser_create(); 
+echo get_resource_type($xml) . "\n"; 
+ 
+$curl = curl_init(); 
+echo get_resource_type($curl) . "\n"; 
+</pre><p class="calibre8">We can see that each resource type is identified by a different string:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php streams_01.php </strong></span>
+<span class="strong"><strong class="calibre17">stream</strong></span>
+<span class="strong"><strong class="calibre17">xml</strong></span>
+<span class="strong"><strong class="calibre17">curl</strong></span>
+</pre><p class="calibre8">In <a class="calibre1" title="Chapter 3. Writing a Reddit Reader with RxPHP" href="part0033_split_000.html#VF2I2-bd355a22cf10407cb10df27e65585b8d">
+Chapter 3
+</a>, <span class="strong"><em class="calibre18">Writing a Reddit Reader with RxPHP</em></span>, we read inputs from the console by opening a stream to <code class="literal">php://stdin</code> and using <code class="literal">fread()</code> to periodically (with <code class="literal">IntervalObservable</code>) get content of the current read buffer. We also used the <code class="literal">stream_set_blocking()</code> function to make the read stream nonblocking, which makes <code class="literal">fread()</code> return an empty string if there was no data available.</p><p class="calibre8">Using an event loop is, of course, a viable option, but there's also a function made exactly for this purpose, called <code class="literal">stream_select()</code>.</p></div>
+
+<div class="book" title="PHP Streams API">
+<div class="book" title="Using the stream_select() function"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_1"><a id="ch06lvl2sec55" class="calibre1"/>Using the stream_select() function</h2></div></div></div><p class="calibre8">Instead of looping over all streams and checking manually whether they have any data available, we can use the <code class="literal">stream_select()</code> function (<a class="calibre1" href="http://php.net/manual/en/function.stream-select.php">
+http://php.net/manual/en/function.stream-select.php
+</a>). This function takes arrays of streams as parameters and waits until there's some activity on at least one of them.</p><p class="calibre8">Since any resource created with <code class="literal">fopen()</code> is a stream, we can use this function to wait for user input instead of using a loop:</p><pre class="programlisting">// streams_02.php 
+$stdin = fopen('php://stdin', 'r'); 
+stream_set_blocking($stdin, false); 
+ 
+$readStreams = [$stdin]; 
+$writeStreams = []; 
+$exceptStreams = []; 
+ 
+stream_select($readStreams, $writeStreams, $exceptStreams, 5); 
+echo "stdin: " . strrev(fgets($stdin)); 
+</pre><p class="calibre8">The <code class="literal">stream_select()</code> function returns the number of active streams, or zero if the timeout elapsed. It takes five arguments in total, where the first four of them are required:</p><div class="book"><ul class="itemizedlist"><li class="listitem"><code class="literal">array &amp;$read</code>: This is the array of read streams (streams are checked for any available data to be read).</li><li class="listitem"><code class="literal">array &amp;$write</code>: This is the array of write streams. Streams listed here need to indicate they're ready to write data.</li><li class="listitem"><code class="literal">array &amp;$except</code>: This is the array of streams with higher priority.</li><li class="listitem"><code class="literal">int $tv_sec</code>: This is the maximum time in seconds spent waiting for at least one of the streams to be active.</li><li class="listitem"><code class="literal">int $tv_usec</code> (optional): This is the time in microseconds added to the timeout in seconds.</li></ul></div><p class="calibre8">Each array is passed by reference, so we can't leave it with just <code class="literal">[]</code>; we need to pass it as a variable (<code class="literal">null</code> is also acceptable). The last integer parameter <code class="literal">5</code> is the timeout after which this function returns, even though it didn't catch any activity on any of its streams.</p><p class="calibre8">So in this example, we create a resource <code class="literal">$stdin</code> using <code class="literal">fopen()</code>, then wait for five seconds for any user input (the data is sent to the buffer by terminal after we press the <span class="strong"><em class="calibre18">
+<span class="strong"><strong class="calibre17">Enter</strong></span>
+</em></span> key) and then use <code class="literal">fgets()</code> to get the data from buffer and print it in reversed order.</p><p class="calibre8">Notice that we had to make the <code class="literal">$stdin</code> stream nonblocking anyway. If we didn't, the <code class="literal">stream_select()</code> would never end, regardless the timeout.</p></div></div>
+
+<div class="book" title="PHP Streams API">
+<div class="book" title="StreamSelectLoop and stream_select() function"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_2"><a id="ch06lvl2sec56" class="calibre1"/>StreamSelectLoop and stream_select() function</h2></div></div></div><p class="calibre8">We've been using the <code class="literal">StreamSelectLoop</code> class in <a class="calibre1" title="Chapter 3. Writing a Reddit Reader with RxPHP" href="part0033_split_000.html#VF2I2-bd355a22cf10407cb10df27e65585b8d">
+Chapter 3
+</a>, <span class="strong"><em class="calibre18">Writing a Reddit Reader with RxPHP</em></span>, to periodically emit values with <code class="literal">IntervalObservable</code>, or in <a class="calibre1" title="Chapter 2. Reactive Programming with RxPHP" href="part0024_split_000.html#MSDG2-bd355a22cf10407cb10df27e65585b8d">
+Chapter 2
+</a>, <span class="strong"><em class="calibre18">Reactive Programming with RxPHP</em></span>, to check for user input. Let's combine what we've learned about PHP streams, <code class="literal">stream_select()</code> function, and <code class="literal">StreamSelectLoop</code> together and update the previous example to use <code class="literal">StreamSelectLoop</code>.</p><p class="calibre8">The <code class="literal">StreamSelectLoop</code> class has an <code class="literal">addReadStream()</code> method to add streams (resources) and callables, which are executed when the stream is active. Then it calls <code class="literal">stream_select()</code> internally and waits for activity on any of the streams in a loop:</p><pre class="programlisting">// stdin_loop_01.php 
+use React\EventLoop\StreamSelectLoop; 
+$stdin = fopen('php://stdin', 'r'); 
+ 
+$loop = new StreamSelectLoop(); 
+$loop-&gt;addReadStream($stdin, function($stream) { 
+    $str = trim(fgets($stream)); 
+    echo strrev($str) . "\n"; 
+}); 
+ 
+$loop-&gt;run(); 
+</pre><p class="calibre8">Finally, it should be obvious why the event loop class is called <code class="literal">StreamSelectLoop</code> and not <code class="literal">EventLoop</code> or just <code class="literal">Loop</code>: it uses <code class="literal">stream_select()</code> internally.</p><p class="calibre8">Now we know how <code class="literal">StreamSelectLoop</code> is able to work with PHP streams. However, a very good question is, how do Observables such as <code class="literal">IntervalObservable</code>, which periodically emit values, work when they don't use any streams?</p></div></div>
+
+<div class="book" title="PHP Streams API">
+<div class="book" title="Scheduling events with StreamSelectLoop"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_3"><a id="ch06lvl2sec57" class="calibre1"/>Scheduling events with StreamSelectLoop</h2></div></div></div><p class="calibre8">Apart from using <code class="literal">StreamSelectLoop</code> to handle streams, we can also schedule one-time or periodical events by just specifying an interval and a callable.</p><p class="calibre8">Consider the following example, which creates two timers:</p><pre class="programlisting">// loop_01.php 
+use React\EventLoop\StreamSelectLoop; 
+ 
+$loop = new StreamSelectLoop(); 
+$loop-&gt;addTimer(1.5, function() { 
+    echo "timer 1\n"; 
+}); 
+ 
+$counter = 0; 
+$loop-&gt;addPeriodicTimer(1, function () use (&amp;$counter, $loop) { 
+    printf("periodic timer %d\n", ++$counter); 
+    if ($counter == 5) { 
+        $loop-&gt;stop(); 
+    } 
+}); 
+$loop-&gt;run(); 
+</pre><p class="calibre8">The periodic timer fires every second, while the one-time timer is fired just once after 1500ms. Output in the console will print values for the increasing <code class="literal">$counter</code> variable:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php loop_01.php </strong></span>
+<span class="strong"><strong class="calibre17">periodic timer 1</strong></span>
+<span class="strong"><strong class="calibre17">timer 1</strong></span>
+<span class="strong"><strong class="calibre17">periodic timer 2</strong></span>
+<span class="strong"><strong class="calibre17">periodic timer 3</strong></span>
+<span class="strong"><strong class="calibre17">periodic timer 4</strong></span>
+<span class="strong"><strong class="calibre17">...</strong></span>
+</pre><p class="calibre8">So how is <code class="literal">StreamSelectLoop</code> able to schedule events when we're not using streams at all?</p><p class="calibre8">The answer is the <code class="literal">stream_select()</code> function and its fourth and fifth arguments. Even when we're not waiting for any stream activity, we can still make use of the timeouts provided to <code class="literal">stream_select()</code>. We could, in fact, achieve the same result if we used just the <code class="literal">usleep()</code> function to hold the script execution for a period of time. However, if we did use <code class="literal">usleep()</code>, we wouldn't be able to combine timers with streams.</p><p class="calibre8">When we start the event loop with <code class="literal">$loop-&gt;run()</code>, it iterates all its times and checks which timer is supposed to fire first. In our case it's the periodic timer that'll fire after one second, so <code class="literal">StreamSelectLoop</code> calls <code class="literal">stream_select()</code> and sets its fourth parameter (timeout) to one second. Since we didn't add any streams to the loop, the <code class="literal">stream_select()</code> call will always end with a timeout, which is intentional in this case.</p><p class="calibre8">If we did add a stream to the loop that would signal activity any time before the timer is supposed to fire, then <code class="literal">stream_select()</code> might be interrupted and the stream would be handled before the timer.</p><p class="calibre8">We can go back to our example where the <code class="literal">StreamSelectLoop</code> class works as follows:</p><div class="book"><ul class="itemizedlist"><li class="listitem">We scheduled a one-second timeout that makes <code class="literal">stream_select()</code>return even when there's no stream activity.</li><li class="listitem">The <code class="literal">StreamSelectLoop</code> class checks what timers are due and calls their callables. Then, if the timer was periodical, it reschedules the timer to fire again in the future.</li><li class="listitem">This was the first iteration of the internal loop where <code class="literal">stream_select()</code> caused the pause.</li><li class="listitem">At the second iteration, it checks for the nearest timers again. This time it's the one-time timer that'll fire in 500ms (1000ms already elapsed), so the timeout for <code class="literal">stream_select()</code> is going to be just 500ms.</li></ul></div><p class="calibre8">This goes on until we call <code class="literal">$loop-&gt;stop()</code> from one of the callables.</p><p class="calibre8">We can rewrite this example with a periodic timer to use <code class="literal">IntervalObservable</code>, while also reading any input from <code class="literal">php://stdin</code>:</p><pre class="programlisting">// loop_02.php 
+use React\EventLoop\StreamSelectLoop; 
+use Rx\Observable; 
+use Rx\Scheduler\EventLoopScheduler; 
+ 
+$loop = new StreamSelectLoop(); 
+$scheduler = new EventLoopScheduler($loop); 
+ 
+Observable::interval(2000, $scheduler) 
+    -&gt;subscribeCallback(function($counter) { 
+        printf("periodic timer %d\n", $counter); 
+    }); 
+ 
+$stdin = fopen('php://stdin', 'r'); 
+$loop-&gt;addReadStream($stdin, function($stream) { 
+    $str = trim(fgets($stream)); 
+    echo strrev($str) . "\n"; 
+}); 
+ 
+$loop-&gt;run(); 
+</pre><p class="calibre8">Observables don't work directly with <code class="literal">StreamSelectLoop</code>, so we need to wrap it with a Scheduler. The <code class="literal">EventLoopScheduler</code> class inherits the <code class="literal">VirtualTimeScheduler</code> class that we explained in detail in the previous chapter, when we talked about testing and how it's used with the <code class="literal">TestScheduler</code> class. The principle with <code class="literal">EventLoopScheduler</code> is the same.</p><p class="calibre8">The <code class="literal">EventLoopScheduler</code> class schedules timers on the <code class="literal">StreamSelectLoop</code> instance, which doesn't forbid us from using the same loop for streams also.</p><div class="book" title="Minimalistic HTTP Server with StreamSelectLoop"><div class="book"><div class="book"><div class="book"><h3 class="title1"><a id="ch06lvl3sec21" class="calibre1"/>Minimalistic HTTP Server with StreamSelectLoop</h3></div></div></div><p class="calibre8">A nice example of using just <code class="literal">StreamSelectLoop</code> to create a simple HTTP web server is available on the GitHub page for the <code class="literal">react/event-loop</code> package:</p><pre class="programlisting">// streams_03.php 
+$loop = new React\EventLoop\StreamSelectLoop(); 
+$server = stream_socket_server('tcp://127.0.0.1:8080'); 
+stream_set_blocking($server, 0); 
+ 
+$loop-&gt;addReadStream($server, function ($server) use ($loop) { 
+  $c = stream_socket_accept($server); 
+  $data = "HTTP/1.1 200 OK\r\nContent-Length: 3\r\n\r\nHi\n"; 
+ 
+  $loop-&gt;addWriteStream($c, function($c) use (&amp;$data, $loop) { 
+    $written = fwrite($c, $data); 
+    if ($written === strlen($data)) { 
+      fclose($conn); 
+      $loop-&gt;removeStream($c); 
+    } else { 
+      $data = substr($data, 0, $written); 
+    } 
+  }); 
+}); 
+ 
+$loop-&gt;addPeriodicTimer(5, function () { 
+  $memory = memory_get_usage() / 1024; 
+  $formatted = number_format($memory, 3).'K'; 
+  echo "Current memory usage: {$formatted}\n"; 
+}); 
+ 
+$loop-&gt;run(); 
+</pre><p class="calibre8">This demo uses <code class="literal">stream_socket_server()</code> to create a listening TCP socket server accepting connections only from localhost on port <code class="literal">8080</code>. The <code class="literal">$server</code> stream is then added to the event loop, and every time a new connection is established, it's captured by <code class="literal">stream_select()</code>. Then, to actually accept the connection, we need to call the <code class="literal">stream_socket_accept()</code> function, which returns another stream representing the stream to this client. Then, with <code class="literal">addWriteStream()</code> we'll know when the client is ready to start receiving data.</p><p class="calibre8">There are four important things to notice:</p><div class="book"><ul class="itemizedlist"><li class="listitem">With <code class="literal">stream_socket_server()</code>, we can use multiple different protocols. The most common are <code class="literal">tcp</code>, <code class="literal">udp</code>, and <code class="literal">unix</code>. We can get a full list of all the available protocols with <code class="literal">stream_get_transports()</code>.</li><li class="listitem">If we have <span class="strong"><em class="calibre18">N</em></span> clients there are always <span class="strong"><em class="calibre18">N+1</em></span> streams in the loop. This is because the server stream that accepts connections is inside the event loop as well.</li><li class="listitem">When we write data to the client stream, we need to be aware that it might not be able to write the entire response at once and we'll need to send it in chunks. That's why we always check how many bytes were written to the stream with <code class="literal">fwrite()</code>.</li><li class="listitem">After we're done writing data to the write stream, we close it with <code class="literal">fclose()</code> and remove it from the loop because we don't need it anymore. When a new client connection is accepted it'll have its own write stream.</li></ul></div></div></div></div>
+
+<div class="book" title="PHP Streams API">
+<div class="book" title="A note on nonblocking event loops"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_4"><a id="ch06lvl2sec58" class="calibre1"/>A note on nonblocking event loops</h2></div></div></div><p class="calibre8">The implementation details of <code class="literal">StreamSelectLoop</code> suggest that it can't guarantee that all timers will fire exactly at the time they should. For example, if we created two timers that both need to fire after 500ms, then we can predict pretty accurately that the first callable will be executed after exactly 500ms. However, the callable for the second timer is dependent on the execution time of the first callable. This means that if the first callable took 100ms to execute; the second callable will be trigger after 600ms instead of 500ms.</p><p class="calibre8">An implication of this is that the event loop is nonblocking - as long as our code is nonblocking.</p><p class="calibre8">There's no parallelism in PHP, thus all code is strictly sequential. If we write code that takes long to execute or needs to be blocking from its nature, it's going to cause the entire event loop to also be blocking.</p></div></div>
+
+<div class="book" title="PHP Streams API">
+<div class="book" title="Using multiple StreamSelectLoop instances"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_5"><a id="ch06lvl2sec59" class="calibre1"/>Using multiple StreamSelectLoop instances</h2></div></div></div><p class="calibre8">In real-world PHP applications, where we need to work asynchronously with PHP streams, Observables, HTTP servers/clients, or WebSocket servers/clients (and basically any asynchronous code), we might need to use multiple event loops. This means a situation where each nonblocking part of the application requires its own event loop.</p><p class="calibre8">For example, we need to use an event loop to use <code class="literal">IntervalObservable</code>, but we also need an event loop for a WebSocket server that needs to read data from a PHP stream.</p><p class="calibre8">Consider the following example, where we simulate a similar scenario:</p><pre class="programlisting">// loop_03.php 
+use React\EventLoop\StreamSelectLoop; 
+ 
+$loop1 = new StreamSelectLoop(); 
+$loop1-&gt;addPeriodicTimer(1, function() { 
+    echo "timer 1\n"; 
+}); 
+ 
+$loop2 = new StreamSelectLoop(); 
+$loop2-&gt;addTimer(2, function() { 
+    echo "timer 2\n"; 
+}); 
+ 
+$loop1-&gt;run(); 
+$loop2-&gt;run(); 
+</pre><p class="calibre8">In this example, the second <code class="literal">$loop2</code> will never start. The PHP interpreter will only stay in the first <code class="literal">$loop1</code>, which never ends because of the periodic timer. If we did it in reverse order (calling <code class="literal">$loop2</code> first and then <code class="literal">$loop1</code>) it would actually work. The second loop would just be delayed by two seconds because the first loop runs just one action and then ends (there are no other timers active, so it'll end automatically).</p><p class="calibre8">This is something we need to be aware of. In <a class="calibre1" title="Chapter 7. Implementing Socket IPC and WebSocket Server/Client" href="part0054_split_000.html#1JFUC2-bd355a22cf10407cb10df27e65585b8d">
+Chapter 7
+</a>, <span class="strong"><em class="calibre18">Implementing Socket IPC and WebSocket Server/Client</em></span>, we'll write an app that uses a WebSocket server and a Unix socket client that need to run at the same time. This means they both need to be able to read data from streams in a loop. The good thing is that the WebSocket server will use the same event loop implementation from <code class="literal">react/event-loop</code> package.</p><p class="calibre8">The outcome of this is that, in PHP, we need to have just a single event loop, which might be a problem with certain libraries that need to work with their own event loop implementations, but don't expose any way we can hook them.</p><p class="calibre8">However, this doesn't necessarily apply to RxJS or, in general, to JavaScript applications where the interpreter works differently to PHP. We'll talk about the differences when using RxJS and RxPHP in more depth in the last chapter of this book.</p><div class="book" title="Event loop interoperability in PHP"><div class="book"><div class="book"><div class="book"><h3 class="title1"><a id="ch06lvl3sec22" class="calibre1"/>Event loop interoperability in PHP</h3></div></div></div><p class="calibre8">To tackle this problem there's an attempt to standardize even loop implementations to follow the same API.</p><p class="calibre8">The <code class="literal">async-interop/event-loop</code> package defines a set of interfaces that an even loop needs to implement to be truly interchangeable. This means that we can write a library that only relies on the interfaces provided by <code class="literal">async-interop/event-loop</code> and the end user can decide which even loop implementation they want to use.</p><p class="calibre8">We can have a look at an example of <code class="literal">StreamSelectLoop</code> we know already and use it only via the interface provided by <code class="literal">async-interop/event-loop</code>. As of now, <code class="literal">StreamSelectLoop</code> doesn't implement this interface natively so we'll need one more package <code class="literal">wyrihaximus/react-async-interop-loop</code> that wraps the event loop implementation from <code class="literal">react/event-loop</code> with <code class="literal">async-interop/event-loop</code> interface.</p><p class="calibre8">Our <code class="literal">composer.json</code> file will be very simple because we'll have just a single required package:</p><pre class="programlisting">{ 
+    "require": { 
+        "wyrihaximus/react-async-interop-loop": "^0.1.0" 
+    } 
+} 
+</pre><p class="calibre8">The <code class="literal">wyrihaximus/react-async-interop-loop</code> package requires as dependencies both <code class="literal">async-interop/event-loop</code> and <code class="literal">react/event-loop</code> so we don't need to include them ourselves.</p><p class="calibre8">Then we'll write a minimal example that schedules two actions using the <code class="literal">Loop</code> interoperability interface:</p><pre class="programlisting">// event_interop_01.php 
+use Interop\Async\Loop; 
+use WyriHaximus\React\AsyncInteropLoop\ReactDriverFactory; 
+ 
+Loop::setFactory(ReactDriverFactory::createFactory()); 
+ 
+Loop::delay(1000, function() { 
+    echo "second\n"; 
+}); 
+Loop::delay(500, function() { 
+    echo "first\n"; 
+}); 
+ 
+Loop::get()-&gt;run(); 
+</pre><p class="calibre8">Notice that all our operations are done only on the <code class="literal">Loop</code> class which comes from the <code class="literal">async-interop/event-loop</code> package and its static methods. We already know that we always have to have only one event loop running at a time. This is why all the methods on the <code class="literal">Loop</code> class are static.</p><p class="calibre8">The <code class="literal">setFactory()</code> method tells the <code class="literal">Loop</code> class how to create an instance of our event loop. In our case we're using <code class="literal">react/event-loop</code> that is wrapped inside <code class="literal">ReactDriverFactory</code> to follow the <code class="literal">async-interop</code> interface.</p></div><div class="book" title="Event loops and future versions of RxPHP"><div class="book"><div class="book"><div class="book"><h3 class="title1"><a id="ch06lvl3sec23" class="calibre1"/>Event loops and future versions of RxPHP</h3></div></div></div><p class="calibre8">Using event loops (and thus all operators requiring asynchronous scheduling) has been significantly simplified in RxPHP 2 and most of the time we don't even need to worry about starting the event loop ourselves.</p><div class="informaltable" title="Note"><h3 class="title1"><a id="note34" class="calibre1"/>Note</h3><p class="calibre8">RxPHP 2 was supposed to be based on the async-interop/event-loop interface. However, the specification is still unstable so the RxPHP team decided to rollback to the RxPHP 1 style of event loops. The following paragraphs describe how the event loops should be used in the future versions of RxPHP (maybe RxPHP 3). At the end, RxPHP 2 is based on the <code class="literal">StreamSelectLoop</code> class from the <code class="literal">reactphp</code> library as we're used to.</p></div><p class="calibre8">RxPHP in the future will rely on the <code class="literal">async-interop/event-loop</code> interface. Since we don't want to start the loop ourselves we can autoload a bootstrap script from RxPHP to start the loop automatically at the end of the script execution using PHP's <code class="literal">register_shutdown_function()</code>. We'll update our <code class="literal">composer.json</code> again and add the <code class="literal">autoload</code> directive:</p><pre class="programlisting">"autoload": { 
+    "files": ["vendor/reactivex/rxphp/src/bootstrap.php"] 
+} 
+</pre><p class="calibre8">Now we can write any asynchronous code:</p><pre class="programlisting">// rxphp2_01.php 
+use Rx\Observable; 
+ 
+Observable::interval(1000) 
+    -&gt;take(5) 
+    -&gt;flatMap(function($i) { 
+        return \Rx\Observable::of($i + 1); 
+    }) 
+    -&gt;subscribe(function($value) { 
+        echo "$value\n"; 
+    }); 
+</pre><p class="calibre8">Notice that we're neither creating a Scheduler nor starting the loop. In RxPHP 2 all operators have their default Scheduler predefined so we don't need to pass it in the <code class="literal">subscribe()</code> method.</p><p class="calibre8">If we wanted to follow a similar approach as with RxPHP 1 we could hardcode the Scheduler:</p><pre class="programlisting">use Rx\Scheduler; 
+Observable::interval(1000, Scheduler::getAsync()) 
+    -&gt;take(5) 
+    ... 
+</pre><p class="calibre8">However, in some situations, we might not want to wait until the end of the script for <code class="literal">register_shutdown_function()</code> to start the loop and we want to start it ourselves.</p><p class="calibre8">Let's have a look at the following example:</p><pre class="programlisting">// rxphp2_02.php 
+use Rx\Observable; 
+ 
+Observable::interval(1000) 
+    -&gt;take(3) 
+    -&gt;subscribe(function($value) { 
+        echo "First: $value\n"; 
+    }); 
+ 
+Observable::interval(1000) 
+    -&gt;take(3) 
+    -&gt;subscribe(function($value) { 
+        echo "Second: $value\n"; 
+    }); 
+</pre><p class="calibre8">Both Observables will start emitting values at the same time when the loop is started so the output will be as follows:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php rxphp2_02.php</strong></span>
+<span class="strong"><strong class="calibre17">First: 0</strong></span>
+<span class="strong"><strong class="calibre17">Second: 0</strong></span>
+<span class="strong"><strong class="calibre17">First: 1</strong></span>
+<span class="strong"><strong class="calibre17">Second: 1</strong></span>
+<span class="strong"><strong class="calibre17">First: 2</strong></span>
+<span class="strong"><strong class="calibre17">Second: 2</strong></span>
+</pre><p class="calibre8">We can also manually start the event loop after we create the first Observable:</p><pre class="programlisting">// rxphp2_03.php 
+Observable::interval(1000) 
+    -&gt;take(3) 
+    -&gt;subscribe(function($value) { 
+        echo "First: $value\n"; 
+    }); 
+ 
+Loop::get()-&gt;run(); 
+ 
+Observable::interval(1000) 
+    -&gt;take(3) 
+    -&gt;subscribe(function($value) { 
+        echo "Second: $value\n"; 
+    }); 
+</pre><p class="calibre8">The loop will end after printing three values and then we carry on with the second Observable. The event loop will be automatically started again at the end the script execution. The output is then the following:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php rxphp2_03.php</strong></span>
+<span class="strong"><strong class="calibre17">First: 0</strong></span>
+<span class="strong"><strong class="calibre17">First: 1</strong></span>
+<span class="strong"><strong class="calibre17">First: 2</strong></span>
+<span class="strong"><strong class="calibre17">Second: 0</strong></span>
+<span class="strong"><strong class="calibre17">Second: 1</strong></span>
+<span class="strong"><strong class="calibre17">Second: 2</strong></span>
+</pre><div class="informaltable" title="Note"><h3 class="title1"><a id="note35" class="calibre1"/>Note</h3><p class="calibre8">Note that at the time of writing this book (April 2017) both <code class="literal">async-interop/event-loop</code> and RxPHP 2 are in pre-release state and their APIs might change.</p></div></div></div></div>
+
+<div class="book" title="Higher-order Observables"><div class="book" id="1HIT82-bd355a22cf10407cb10df27e65585b8d"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch06lvl1sec44" class="calibre1"/>Higher-order Observables</h1></div></div></div><p class="calibre8">When talking about the prerequisites for functional programming we mentioned higher-order functions. These are functions that return other functions. A very similar concept is applied in RxPHP as well, when using Observables.</p><p class="calibre8">A higher-order Observable is an Observable that emits other Observables. To illustrate how higher-order Observables differ from first-order Observables, consider the following simple example:</p><pre class="programlisting">// higher_order_01.php 
+use Rx\Observable; 
+Observable::range(1, 3) 
+    -&gt;subscribe(new DebugSubject()); 
+</pre><p class="calibre8">This example just prints three values and completes as expected. This is what we expect from any first-order Observable:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php higher_order_01.php </strong></span>
+<span class="strong"><strong class="calibre17">22:54:05 [] onNext: 1 (integer)</strong></span>
+<span class="strong"><strong class="calibre17">22:54:05 [] onNext: 2 (integer)</strong></span>
+<span class="strong"><strong class="calibre17">22:54:05 [] onNext: 3 (integer)</strong></span>
+<span class="strong"><strong class="calibre17">22:54:05 [] onCompleted</strong></span>
+</pre><p class="calibre8">Now, we can make this more complicated by adding the <code class="literal">map()</code> operator that, instead of returning an integer, returns another Observable:</p><pre class="programlisting">// higher_order_02.php 
+use Rx\Observable; 
+ 
+Observable::range(1, 3) 
+    -&gt;map(function($value) { 
+        return Observable::range(0, $value); 
+    }) 
+    -&gt;subscribe(new DebugSubject()); 
+</pre><p class="calibre8">We create an Observable using <code class="literal">range()</code> for each value from the source Observable. In our example, Observables that arrive to the <code class="literal">DebugSubject</code> instances are supposed to emit values <code class="literal">[0]</code>, <code class="literal">[0, 1]</code>, and <code class="literal">[0,1,2]</code>, respectively.</p><p class="calibre8">The output in console is not satisfactory. The <code class="literal">DebugSubject</code> instance prints what it receives, which is an instance of <code class="literal">RangeObservable</code>.</p><p class="calibre8">This is correct behavior. We're really returning Observables from the <code class="literal">map()</code> operator, and <code class="literal">subscribe()</code> method doesn't care what values it passes through:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php higher_order_02.php </strong></span>
+<span class="strong"><strong class="calibre17">23:29:46 [] onNext: RangeObservable (Rx\Observable\RangeObservable)</strong></span>
+<span class="strong"><strong class="calibre17">23:29:46 [] onNext: RangeObservable (Rx\Observable\RangeObservable)</strong></span>
+<span class="strong"><strong class="calibre17">23:29:46 [] onNext: RangeObservable (Rx\Observable\RangeObservable)</strong></span>
+<span class="strong"><strong class="calibre17">23:29:46 [] onCompleted</strong></span>
+</pre><div class="informaltable" title="Note"><h3 class="title1"><a id="note36" class="calibre1"/>Note</h3><p class="calibre8">The value for each <code class="literal">onNext</code> is <code class="literal">RangeObservable</code> (<code class="literal">Rx\Observable\RangeObservable</code>) because <code class="literal">DebugSubject</code> receives an object and transforms it into a string. Then it prints the class name, including its namespace, in parentheses.</p></div><p class="calibre8">So, what if we want to flatten the inner Observables and re-emit all values from them?</p><p class="calibre8">RxPHP has a couple of operators intended to work with higher-order Observables. In particular the most useful are <code class="literal">mergeAll()</code>, <code class="literal">concatAll()</code>, and <code class="literal">switchLatest()</code>.</p><p class="calibre8">For this purpose, we can choose <code class="literal">mergeAll()</code> or <code class="literal">concatAll()</code>. The difference between these two is the same as <code class="literal">merge()</code> and <code class="literal">concat()</code>. The <code class="literal">mergeAll()</code> operator subscribes to all inner Observables right when it receives them, and re-emits all their values immediately. On the other hand, <code class="literal">concatAll()</code> will subscribe to the inner Observables one at the time, in the order it receives them.</p></div>
+
+<div class="book" title="Higher-order Observables">
+<div class="book" title="The concatAll() and mergeAll() operators"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_1"><a id="ch06lvl2sec60" class="calibre1"/>The concatAll() and mergeAll() operators</h2></div></div></div><p class="calibre8">In this example, it doesn't matter which one we choose. The <code class="literal">RangeObservable</code> is a cold Observable that uses <code class="literal">ImmediateScheduler</code>, so all values are always emitted in the correct order.</p><p class="calibre8">Implementation with <code class="literal">mergeAll()</code> could look like the following:</p><pre class="programlisting">// higher_order_03.php 
+Observable::range(1, 3)
+    -&gt;map(function($value) {
+        return Observable::range(0, $value);
+    })
+    -&gt;mergeAll()
+    -&gt;subscribe(new DebugSubject()); 
+</pre><p class="calibre8">Now <code class="literal">Observable::range(1, 3)</code> emits three instances of <code class="literal">RangeObservable</code>. The <code class="literal">mergeAll()</code> operator subscribes to each of them and re-emits all their values to its observer, which is a <code class="literal">DebugSubject</code> instance.</p><p class="calibre8">How <code class="literal">mergeAll()</code> works is obvious from the following marble diagram:</p><p class="calibre8">
+</p><div class="mediaobject"><img src="../images/00024.jpeg" alt="The concatAll() and mergeAll() operators" class="calibre19"/></div><p class="calibre20"> </p><p class="calibre8">
+</p><p class="calibre8">Marble diagram representing the mergeAll() operator in RxJS (http://reactivex.io/rxjs/class/es6/Observable.js)</p><p class="calibre8">The source Observable, represented as a horizontal line at the top, doesn't emit values directly (there are no circles on the line). Instead, it emits other Observables, represented by diagonal lines.</p><p class="calibre8">If we run this example, we'll get values as described above, which are <code class="literal">0</code>, <code class="literal">0</code>,
+ <code class="literal">1</code>, <code class="literal">0</code>, <code class="literal">1</code>, and <code class="literal">2</code>:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php higher_order_03.php </strong></span>
+<span class="strong"><strong class="calibre17">00:02:26 [] onNext: 0 (integer)</strong></span>
+<span class="strong"><strong class="calibre17">00:02:26 [] onNext: 0 (integer)</strong></span>
+<span class="strong"><strong class="calibre17">00:02:26 [] onNext: 1 (integer)</strong></span>
+<span class="strong"><strong class="calibre17">00:02:26 [] onNext: 0 (integer)</strong></span>
+<span class="strong"><strong class="calibre17">00:02:26 [] onNext: 1 (integer)</strong></span>
+<span class="strong"><strong class="calibre17">00:02:26 [] onNext: 2 (integer)</strong></span>
+<span class="strong"><strong class="calibre17">00:02:26 [] onCompleted</strong></span>
+</pre><p class="calibre8">We can also test what happens if we work with Observables that emit values asynchronously. In this case, it matters whether we use <code class="literal">mergeAll()</code> or <code class="literal">concatAll()</code>, so we'll test both scenarios.</p><p class="calibre8">Let's start with <code class="literal">mergeAll()</code> and an example similar to the previous one. We'll use <code class="literal">IntervalObservable</code> and <code class="literal">take(3)</code> to emit three Observables that asynchronously emit three values:</p><pre class="programlisting">// higher_order_04.php 
+$loop = new StreamSelectLoop(); 
+$scheduler = new EventLoopScheduler($loop); 
+ 
+Observable::interval(1000, $scheduler)
+    -&gt;take(3)
+    -&gt;map(function($value) use ($scheduler) {
+        return Observable::interval(600, $scheduler)
+            -&gt;take(3)
+            -&gt;map(function($counter) use ($value) {
+                return sprintf('#%d: %d', $value, $counter);
+            });
+    })
+    -&gt;mergeAll()
+    -&gt;subscribe(new DebugSubject()); 
+ 
+$loop-&gt;run(); 
+</pre><p class="calibre8">Each value from the inner Observable is transformed into a string to be easily identifiable. We can describe what happens in this example by time-stamping each value:</p><div class="book"><ul class="itemizedlist"><li class="listitem"><code class="literal">1000ms</code>: The first value is emitted from the outer <code class="literal">IntervalObservable</code>, which is via the <code class="literal">map()</code> operator turned into another <code class="literal">IntervalObservable</code>. At this point, <code class="literal">mergeAll()</code> subscribes to this first inner Observable.</li><li class="listitem"><code class="literal">1600ms</code>: The inner <code class="literal">IntervalObservable</code> emits a first-value (integer <code class="literal">0</code>), which is converted to a string and printed by the <code class="literal">DebugSubject</code> instance.</li><li class="listitem"><code class="literal">2000ms</code>: The second inner Observable is created. The <code class="literal">mergeAll()</code> operator subscribes to it as well. It's subscribed to two Observables now.</li><li class="listitem"><code class="literal">2200ms</code>: The first inner <code class="literal">IntervalObservable</code> emits its second value <code class="literal">(1)</code>.</li><li class="listitem"><code class="literal">2600ms</code>: The second inner <code class="literal">IntervalObservable</code> emits its first value <code class="literal">(0)</code>.</li><li class="listitem"><code class="literal">2800ms</code>: The first inner <code class="literal">IntervalObservable</code> emits its last value <code class="literal">(2)</code>.</li><li class="listitem"><code class="literal">3000ms</code>: The third inner <code class="literal">IntervalObservable</code> is created.</li></ul></div><p class="calibre8">This continues until all inner <code class="literal">IntervalObservable</code> emit three values, thanks to the <code class="literal">take(3)</code> operator.</p><p class="calibre8">We can see that the values from inner Observables are really emitted asynchronously and, if we want to consume them, it's very easy to use the <code class="literal">mergeAll()</code> operator.</p><p class="calibre8">The full console output is as follows:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php higher_order_04.php </strong></span>
+<span class="strong"><strong class="calibre17">00:43:55 [] onNext: #0: 0 (string)</strong></span>
+<span class="strong"><strong class="calibre17">00:43:55 [] onNext: #0: 1 (string)</strong></span>
+<span class="strong"><strong class="calibre17">00:43:56 [] onNext: #1: 0 (string)</strong></span>
+<span class="strong"><strong class="calibre17">00:43:56 [] onNext: #0: 2 (string)</strong></span>
+<span class="strong"><strong class="calibre17">00:43:56 [] onNext: #1: 1 (string)</strong></span>
+<span class="strong"><strong class="calibre17">00:43:57 [] onNext: #2: 0 (string)</strong></span>
+<span class="strong"><strong class="calibre17">00:43:57 [] onNext: #1: 2 (string)</strong></span>
+<span class="strong"><strong class="calibre17">00:43:57 [] onNext: #2: 1 (string)</strong></span>
+<span class="strong"><strong class="calibre17">00:43:58 [] onNext: #2: 2 (string)</strong></span>
+<span class="strong"><strong class="calibre17">00:43:58 [] onCompleted</strong></span>
+</pre><p class="calibre8">Implementation using <code class="literal">concatAll()</code> is exactly the same. The only thing that changes is how we use this operator:</p><pre class="programlisting">// higher_order_05.php 
+... 
+    -&gt;map(function($value) use ($scheduler) {
+       // ...
+    })
+    -&gt;concatAll()
+    -&gt;subscribe(new DebugSubject()); 
+... 
+</pre><p class="calibre8">Just like the <code class="literal">concat()</code> operator, <code class="literal">concatAll()</code> keeps the order of Observables and subscribes to the next Observable only after the previous Observables are completed. The output in the console is in the order the inner <code class="literal">IntervalObservables</code> are created:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php higher_order_05.php </strong></span>
+<span class="strong"><strong class="calibre17">00:55:30 [] onNext: #0: 0 (string)</strong></span>
+<span class="strong"><strong class="calibre17">00:55:30 [] onNext: #0: 1 (string)</strong></span>
+<span class="strong"><strong class="calibre17">00:55:31 [] onNext: #0: 2 (string)</strong></span>
+<span class="strong"><strong class="calibre17">00:55:32 [] onNext: #1: 0 (string)</strong></span>
+<span class="strong"><strong class="calibre17">00:55:32 [] onNext: #1: 1 (string)</strong></span>
+<span class="strong"><strong class="calibre17">00:55:33 [] onNext: #1: 2 (string)</strong></span>
+<span class="strong"><strong class="calibre17">00:55:34 [] onNext: #2: 0 (string)</strong></span>
+<span class="strong"><strong class="calibre17">00:55:34 [] onNext: #2: 1 (string)</strong></span>
+<span class="strong"><strong class="calibre17">00:55:35 [] onNext: #2: 2 (string)</strong></span>
+<span class="strong"><strong class="calibre17">00:55:35 [] onCompleted</strong></span>
+</pre><p class="calibre8">The core principle of higher-order Observables isn't easy to grasp at first sight, so feel free to experiment by yourself.</p><p class="calibre8">Although it's hard to see the real benefit of <code class="literal">concat()</code>, <code class="literal">concatAll()</code>, <code class="literal">merge()</code>, and <code class="literal">mergeAll()</code> in RxPHP, these all are very common in RxJS. Typically, when we need to run multiple HTTP requests in order or independently of each other, it's very convenient to use one of these operators. More on this topic is in the final chapter, which shows some interesting use-cases of RxJS.</p></div></div>
+
+<div class="book" title="Higher-order Observables">
+<div class="book" title="The switchLatest Operator"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_2"><a id="ch06lvl2sec61" class="calibre1"/>The switchLatest Operator</h2></div></div></div><p class="calibre8">With <code class="literal">concatAll()</code> or <code class="literal">mergeAll()</code>, we know we'll always receive all values emitted from all inner Observables. In some use cases, we might care only about values from the most recent Observable, while discarding all other Observables. This is something we can't do with either <code class="literal">concatAll()</code> or <code class="literal">mergeAll()</code> because these always wait until the current Observable completes or all Observables complete, respectively.</p><p class="calibre8">This is why there's a <code class="literal">switchLatest()</code> operator that's always subscribed only to the most recent Observable and automatically unsubscribes from the previous one.</p><p class="calibre8">The following marble diagram explains this principle very well:</p><p class="calibre8">
+</p><div class="mediaobject"><img src="../images/00025.jpeg" alt="The switchLatest Operator" class="calibre19"/></div><p class="calibre20"> </p><p class="calibre8">
+</p><p class="calibre8">Marble diagram representing the switch() operator in RxJS (http://reactivex.io/rxjs/class/es6/Observable.js)</p><div class="informaltable" title="Note"><h3 class="title1"><a id="note37" class="calibre1"/>Note</h3><p class="calibre8">This operator is called, simply, <code class="literal">switch()</code> in RxJS. There are also the <code class="literal">switchMap()</code> and <code class="literal">switchMapTo()</code> operators, currently available only in RxJS.</p></div><p class="calibre8">In this figure, we can see that the source Observable emits two Observables. The first inner Observable emits four values, but only two of them ("a" and "b") are re-emitted. Before the third value is emitted the source Observable emits another inner Observable and the current one is unsubscribed. Then it carries on by re-emitting values from the new inner Observable.
+</p><p class="calibre8">Also, note that the inner Observable is consumed even after the source Observable completes.</p><p class="calibre8">So, how is this operator going to change the output from the same example we used for <code class="literal">concatAll()</code> and <code class="literal">mergeAll()</code>? Take a look at the following:</p><pre class="programlisting">// higher_order_06.php 
+... 
+    -&gt;map(function($value) use ($scheduler) {
+        // ...
+    })
+    -&gt;switchLatest()
+    -&gt;subscribe(new DebugSubject()); 
+... 
+</pre><p class="calibre8">We know for sure we won't receive all values from all inner Observables because each one of them is created before the previous one completes:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php higher_order_06.php </strong></span>
+<span class="strong"><strong class="calibre17">01:26:24 [] onNext: #0: 0 (string)</strong></span>
+<span class="strong"><strong class="calibre17">01:26:25 [] onNext: #1: 0 (string)</strong></span>
+<span class="strong"><strong class="calibre17">01:26:26 [] onNext: #2: 0 (string)</strong></span>
+<span class="strong"><strong class="calibre17">01:26:27 [] onNext: #2: 1 (string)</strong></span>
+<span class="strong"><strong class="calibre17">01:26:27 [] onNext: #2: 2 (string)</strong></span>
+<span class="strong"><strong class="calibre17">01:26:27 [] onCompleted</strong></span>
+</pre><p class="calibre8">Each inner Observable was able to emit only its first value, and then they were unsubscribed except for the last Observable. Since there are no more emissions from the source Observable, <code class="literal">switchLatest()</code> stays subscribed to it.</p></div></div>
+
+<div class="book" title="Higher-order Observables">
+<div class="book" title="The combineLatest() operator"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_3"><a id="ch06lvl2sec62" class="calibre1"/>The combineLatest() operator</h2></div></div></div><p class="calibre8">Both <code class="literal">concatAll()</code> and <code class="literal">mergeAll()</code> re-emit all values emitted by their inner Observable (or Observables) one by one. There's one more operator with a similar functionality, called <code class="literal">combineLatest()</code>.</p><p class="calibre8">In contrast to the previous two, <code class="literal">combineLatest()</code> takes arguments as an array of Observables and immediately subscribes to all of them. Then, the last value emitted by each Observable is internally stored in a buffer by <code class="literal">combineLatest()</code> and when all source Observables have emitted at least one value, it emits the entire buffer as a single array. Then on any emission from any of the source Observables the updated buffer is re-emitted again.</p><p class="calibre8">This is demonstrated in the following marble diagram:</p><p class="calibre8">
+</p><div class="mediaobject"><img src="../images/00026.jpeg" alt="The combineLatest() operator" class="calibre19"/></div><p class="calibre20"> </p><p class="calibre8">
+</p><p class="calibre8">Marble diagram representing the combineLatest() operator in RxJS (http://reactivex.io/rxjs/class/es6/Observable.js)</p><p class="calibre8">Notice that when the first Observable emitted <span class="strong"><strong class="calibre17">a</strong></span>, it wasn't immediately re-emitted. Only after the second Observable emits its first value the <code class="literal">combineLatest()</code> operator reemitted both of them. This means that, if we have an array of <span class="strong"><em class="calibre18">N</em></span> Observables, the observer for <code class="literal">combineLatest()</code> will always receive an array of <span class="strong"><em class="calibre18">N</em></span> values.</p><p class="calibre8">An important implication of this is that, if we had an Observable in the source array that, for some reason, didn't emit any value, then <code class="literal">combineLatest()</code> won't emit any value either because it needs to have at least one value for each source Observable. This can be easily avoided by using the <code class="literal">startWith()</code> or <code class="literal">startWithArray()</code> operators that prepend value emissions before the source Observable.</p><p class="calibre8">Consider the following example, where we have an Observable with just a single value, created using <code class="literal">Observable::just()</code>. We want to combine it using the <code class="literal">combineLatest()</code> operator with an array of <code class="literal">IntervalObservable</code> instances:</p><pre class="programlisting">// combine_latest_01.php 
+ 
+use React\EventLoop\StreamSelectLoop; 
+use Rx\Scheduler\EventLoopScheduler; 
+use Rx\Observable; 
+ 
+$loop = new StreamSelectLoop(); 
+$scheduler = new EventLoopScheduler($loop); 
+ 
+$source = Observable::just(42) 
+  -&gt;combineLatest([ 
+    Observable::interval(175, $scheduler)-&gt;take(3), 
+    Observable::interval(250, $scheduler)-&gt;take(3), 
+    Observable::interval(100, $scheduler)-&gt;take(5), 
+  ]) 
+  -&gt;subscribe(new DebugSubject()); 
+ 
+$loop-&gt;run(); 
+</pre><p class="calibre8">We know for sure that the output array will always start with integer <code class="literal">42</code>. This array will be emitted for every change in the array of source Observables.</p><p class="calibre8">Notice that the second <code class="literal">IntervalObservable</code> emits its first value after 250ms, while the third <code class="literal">IntervalObservable</code> emits its first value after just 100ms. This means that we'll never receive the first value from the third <code class="literal">IntervalObservable</code>. It'll never be re-emitted, because <code class="literal">combineLatest()</code> needs all Observables to emit at least one value, and in our case, it's going to wait for the second <code class="literal">IntervalObservable</code>, which is the slowest one.</p><p class="calibre8">The console output confirms our expected behavior:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php combine_latest_01.php </strong></span>
+<span class="strong"><strong class="calibre17">09:42:45 [] onNext: [42,0,0,1] (array)</strong></span>
+<span class="strong"><strong class="calibre17">09:42:46 [] onNext: [42,0,0,2] (array)</strong></span>
+<span class="strong"><strong class="calibre17">09:42:46 [] onNext: [42,1,0,2] (array)</strong></span>
+<span class="strong"><strong class="calibre17">09:42:46 [] onNext: [42,1,0,3] (array)</strong></span>
+<span class="strong"><strong class="calibre17">09:42:46 [] onNext: [42,1,1,3] (array)</strong></span>
+<span class="strong"><strong class="calibre17">09:42:46 [] onNext: [42,1,1,4] (array)</strong></span>
+<span class="strong"><strong class="calibre17">09:42:46 [] onNext: [42,2,1,4] (array)</strong></span>
+<span class="strong"><strong class="calibre17">09:42:46 [] onNext: [42,2,2,4] (array)</strong></span>
+<span class="strong"><strong class="calibre17">09:42:46 [] onCompleted</strong></span>
+</pre><p class="calibre8">The last two emissions happened only because of the second <code class="literal">IntervalObservable</code>. Also, notice that, since every emission from the source Observables triggers <code class="literal">combineLatest()</code> to re-emit its current values, there's always only one updated value in the array.</p><p class="calibre8">If we want to be sure we'll catch all values emitted from all Observables, we can use <code class="literal">startWith()</code> to set default values for each of them:</p><pre class="programlisting">... 
+-&gt;combineLatest([ 
+  Observable::interval(175, $scheduler)-&gt;take(3)-&gt;startWith(null), 
+  Observable::interval(250, $scheduler)-&gt;take(3)-&gt;startWith(null), 
+  Observable::interval(100, $scheduler)-&gt;take(5)-&gt;startWith(null), 
+]) 
+... 
+</pre><p class="calibre8">Now the output is going to start with <code class="literal">null</code> values, and we can be sure we'll receive all values from all source Observables:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php combine_latest_01.php </strong></span>
+<span class="strong"><strong class="calibre17">09:53:46 [] onNext: [42,null,null,null] (array)</strong></span>
+<span class="strong"><strong class="calibre17">09:53:46 [] onNext: [42,null,null,0] (array)</strong></span>
+<span class="strong"><strong class="calibre17">09:53:46 [] onNext: [42,0,null,0] (array)</strong></span>
+<span class="strong"><strong class="calibre17">09:53:46 [] onNext: [42,0,null,1] (array)</strong></span>
+<span class="strong"><strong class="calibre17">09:53:46 [] onNext: [42,0,0,1] (array)</strong></span>
+<span class="strong"><strong class="calibre17">09:53:46 [] onNext: [42,0,0,2] (array)</strong></span>
+<span class="strong"><strong class="calibre17">... </strong></span>
+</pre><p class="calibre8">These four operators belong to a category of more advanced Rx features. Although these aren't commonly used in either RxPHP or RxJS, it's very useful to know that they exist, because it leverages the true power of Reactive Extensions. The internal logic provided by <code class="literal">switchMap()</code> or <code class="literal">combineLatest()</code> lets us avoid using any state variables to keep track of where we need to subscribe/unsubscribe and what values we need to store.</p><p class="calibre8">We'll encounter <code class="literal">combineLatest()</code> and <code class="literal">switchMap()</code> used in one operator chain in the next chapter. Also, in the final chapter of this book, when talking about similarities with RxJS, we'll use a slightly modified version of <code class="literal">combineLatest()</code> in JavaScript. The <code class="literal">concatAll()</code> and <code class="literal">mergeAll()</code> Operators are useful in RxJS as well, and we can do some tricks with them that aren't possible in RxPHP as of now; but more on that in the final chapter.</p></div></div>
+<div class="book" title="Summary" id="1IHDQ1-bd355a22cf10407cb10df27e65585b8d"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch06lvl1sec45" class="calibre1"/>Summary</h1></div></div></div><p class="calibre8">This chapter covered a lot of new topics. We're going to use all of what we just learned in the next chapter, where we'll use Unix sockets for inter-process communication and WebSocket server for a simple chat application. Most importantly, we're going to use spawning subprocesses with <code class="literal">ProcessObservable</code>, PHP Streams API for Unix socket communication. We are also going to look into event loops, including use cases, where we need to share the same instance of the event loop among Unix socket streams and a WebSocket server. Then we will move on to higher-order Observables to collect statuses from multiple subprocesses, and a WebSocket server and client. PHP Streams API and higher-order Observables are, in principle, a little harder to understand at first glance, so feel free to take your time and experiment by yourself.</p><p class="calibre8">In the next chapter, we'll also introduce the concept of backpressure in Rx, which is a common way to avoid overloading the consumer by emitting more values that the observer is able to process.</p></div></body></html>

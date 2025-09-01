@@ -1,0 +1,491 @@
+<html><head></head><body>
+<div class="book" title="Chapter&#xA0;5.&#xA0;Testing RxPHP Code" id="190861-bd355a22cf10407cb10df27e65585b8d"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch05" class="calibre1"/>Chapter 5. Testing RxPHP Code</h1></div></div></div><p class="calibre8">In this chapter, we're going to start testing code based on RxPHP. So far, we've been testing code by just running it and watching for the expected output in console. Of course, this isn't a very systematic approach, so it's time to start testing our code in an automatic way.</p><p class="calibre8">More precisely, in this chapter we will do the following:</p><div class="book"><ul class="itemizedlist"><li class="listitem">Introduce the <code class="literal">doOn*()</code> operators</li><li class="listitem">Start using the PHPUnit library for unit testing code</li><li class="listitem">Talk about testing asynchronous code in general and try some common pitfalls ourselves</li><li class="listitem">Explore classes that come with RxPHP intended for testing and see how to use them separately, and how they fit into the great scheme of things</li><li class="listitem">For demonstration purposes, create a <code class="literal">SumObservable</code> class that calculates the sum of all integers going through, and test it using RxPHP testing tools</li><li class="listitem">Write a simplified <code class="literal">ForkJoinObservable</code> class and test it</li><li class="listitem">Stress how important it is to be aware of timing when testing Observables and operators</li></ul></div><p class="calibre8">This chapter is going to be very code-intensive, although most of these examples are simple and aim to put things from previous chapters to the perspective of unit testing. Previous experience with unit testing with PHPUnit is helpful, but not required.</p><p class="calibre8">Apart from writing unit tests, there's a very common way of debugging Observable chains with <code class="literal">doOn*()</code> operators.</p></div>
+
+<div class="book" title="Chapter&#xA0;5.&#xA0;Testing RxPHP Code" id="190861-bd355a22cf10407cb10df27e65585b8d">
+<div class="book" title="The doOn*() operators"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_1"><a id="ch05lvl1sec35" class="calibre1"/>The doOn*() operators</h1></div></div></div><p class="calibre8">In the previous chapter, we've used the <code class="literal">map()</code> operator a couple of times to just print to the console what's happening inside our Observable chains. However, this isn't very convenient. The <code class="literal">map()</code> operator always needs to return a value that is passed further down the chain, and it can catch only <code class="literal">onNext</code> signals.</p><p class="calibre8">That's why RxPHP has a couple of operators with the common prefix <code class="literal">doOn*</code>:</p><div class="book"><ul class="itemizedlist"><li class="listitem"><code class="literal">doOnNext()</code>, <code class="literal">doOnError()</code>, <code class="literal">doOnCompleted()</code>: Each of these operators takes a callable as a parameter that is executed when they receive their respective signal</li><li class="listitem"><code class="literal">doOnEach()</code>: This operator takes an instance of <code class="literal">ObserverInterface</code> as a parameter and executes its handlers for each signal</li></ul></div><p class="calibre8">So these operators are very similar to the methods <code class="literal">subscribeCallback()</code> and <code class="literal">subscribe()</code>. The biggest advantage is in the way <code class="literal">doOn*</code> operators work internally. They never modify the value going through and just execute our callables, which is ideal for quickly debugging Observable chains or to perform side-effects without creating subscriptions (this includes everything related to subscribing to Observables as we talked about in <a class="calibre1" title="Chapter 3. Writing a Reddit Reader with RxPHP" href="part0033_split_000.html#VF2I2-bd355a22cf10407cb10df27e65585b8d">Chapter 3</a>, <span class="strong"><em class="calibre18">Writing a Reddit Reader with RxPHP</em></span>).</p><p class="calibre8">We can see this with a very simple example:</p><pre class="programlisting">// do_01.php 
+use Rx\Observable; 
+use Rx\ObserverInterface; 
+ 
+Observable::create(function(ObserverInterface $obs) { 
+        $obs-&gt;onNext(1); 
+        $obs-&gt;onNext(2); 
+        $obs-&gt;onError(new \Exception("it's broken")); 
+    }) 
+    -&gt;doOnError(function(\Exception $value) { 
+        echo $value-&gt;getMessage() . "\n"; 
+    }) 
+    -&gt;subscribeCallback(function($value) { 
+        echo "$value\n"; 
+    }, function() {}); 
+</pre><p class="calibre8">We have a single subscriber that handles <code class="literal">onNext</code> and <code class="literal">onError</code> signals. Note that the <code class="literal">onError</code> handler is empty and it's the <code class="literal">doOnError()</code> operator that prints the exception messages. Console output for this example is as follows:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php do_01.php </strong></span>
+<span class="strong"><strong class="calibre17">1</strong></span>
+<span class="strong"><strong class="calibre17">2</strong></span>
+<span class="strong"><strong class="calibre17">doOnError: it's broken</strong></span>
+</pre><p class="calibre8">Using the remaining <code class="literal">doOn*()</code> operators is exactly the same. We're obviously not going to use these operators to test RxPHP code, but these are often the easiest way to see what's emitted by our Observables.</p><div class="informaltable" title="Note"><h3 class="title1"><a id="note27" class="calibre1"/>Note</h3><p class="calibre8">These operators have been simplified in RxPHP v2 and have the same signature as the <code class="literal">subscribe()</code> method in RxPHP v2, which is just <code class="literal">do()</code> instead of all its variants. Its functionality remains unchanged.</p></div></div></div>
+<div class="book" title="Installing the PHPUnit package" id="19UOO1-bd355a22cf10407cb10df27e65585b8d"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch05lvl1sec36" class="calibre1"/>Installing the PHPUnit package</h1></div></div></div><p class="calibre8">Since we're installing all dependencies throughout this book from the composer, we will do the same for PHPUnit:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">composer require phpunit/phpunit</strong></span>
+</pre><p class="calibre8">This also creates a symlink into <code class="literal">vendor/bin/phpunit</code>, which we'll use to run our unit tests from the console.</p><p class="calibre8">PHPUnit supports multiple ways to install, including <span class="strong"><strong class="calibre17">PHAR</strong></span> (<span class="strong"><strong class="calibre17">PHP archive</strong></span>) format and installing it globally using the following:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">composer global require phpunit/phpunit</strong></span>
+</pre><div class="informaltable" title="Note"><h3 class="title1"><a id="note28" class="calibre1"/>Note</h3><p class="calibre8">If you run into trouble installing PHPUnit, head over to the installation instructions at <a class="calibre1" href="https://phpunit.de/manual/5.6/en/installation.html">
+https://phpunit.de/manual/5.6/en/installation.html
+</a>.</p></div><p class="calibre8">However, unless you have a good reason to use one global instance of PHPUnit, it's better to install it per project. This way we can avoid dealing with issues involving unit testing code written for different PHPUnit versions.</p></div>
+
+<div class="book" title="Basics of writing tests using PHPUnit"><div class="book" id="1AT9A2-bd355a22cf10407cb10df27e65585b8d"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch05lvl1sec37" class="calibre1"/>Basics of writing tests using PHPUnit</h1></div></div></div><p class="calibre8">We're not going to go into very much detail about how to use PHPUnit, and instead leave it to its in-depth documentation (<a class="calibre1" href="https://phpunit.de/manual/5.6/en/index.html">
+https://phpunit.de/manual/5.6/en/index.html
+</a>). For the purpose of this chapter, we should, however, have a quick look at some of the basics we're going to use for the purposes of testing RxPHP code.</p><p class="calibre8">There are some basic rules we should follow:</p><div class="book"><ul class="itemizedlist"><li class="listitem">All tests for a single class, <code class="literal">MyClass</code>, go into a class called <code class="literal">MyClassTest</code>, which should inherit from <code class="literal">PHPUnit\Framework\TestCase</code>.</li><li class="listitem">Each test scenario is represented by a function prefixed with <code class="literal">test</code> or annotated with <code class="literal">@test</code> annotation. This way it can be auto-discovered by PHPUnit.</li><li class="listitem">Each test function consists of one or more assertions using <code class="literal">assert*</code> methods (more on them later). If any one of them fails, the whole test scenario (one test function) is marked as failed. All assertions are inherited from <code class="literal">PHPUnit\Framework\TestCase</code>.</li><li class="listitem">We can specify dependencies between test scenarios using <code class="literal">@depends testname</code> annotation to change the order in which tests are executed.</li></ul></div><p class="calibre8">So, let's write a minimalistic test class that demonstrates the preceding points. We can call this test class <code class="literal">DemoTest</code>, and it can make just a few assertions:</p><pre class="programlisting">// phpunit_01.php 
+use PHPUnit\Framework\TestCase; 
+ 
+class DemoTest extends TestCase { 
+    public function testFirstTest() { 
+        $expectedVar = 5; 
+        $this-&gt;assertTrue(5 == $expectedVar); 
+        $this-&gt;assertEquals(5, $expectedVar); 
+ 
+        $expectedArray = [1, 2, 3]; 
+        $this-&gt;assertEquals([1, 2, 3], $expectedArray); 
+        $this-&gt;assertContains(2, $expectedArray); 
+    } 
+} 
+</pre><p class="calibre8">We used three different types of assertion. In general, all assertions compare an expected value and an actual value returned from a tested function. The following three assertions work in this way too:</p><div class="book"><ul class="itemizedlist"><li class="listitem"><code class="literal">assertTrue($condition)</code>: The tested condition needs to be true.</li><li class="listitem"><code class="literal">assertEquals($expected, $actual)</code>: Checks that <code class="literal">$expected</code> and <code class="literal">$actual</code> values are equal. This single assertion handles multiple types of data separately, even those that aren't comparable with the <code class="literal">==</code> operator. Apart from comparing basic types, such as strings, arrays, Booleans, and numbers, it can also compare <code class="literal">DOMDocument</code> instances, or any objects to match their attributes.</li><li class="listitem"><code class="literal">assertContains($needle, $haystack)</code>: Typically, checks that an array (haystack) contains a value, but can also check that a string contains another string.</li></ul></div><p class="calibre8">PHPUnit contains dozens of different assertion methods, and all of them work on the same principle. A full list is available in the documentation (<a class="calibre1" href="https://phpunit.de/manual/current/en/appendixes.assertions.html">
+https://phpunit.de/manual/current/en/appendixes.assertions.html
+</a>), and we can, of course, write our own. We're going to use a very limited number of assertions that are relevant for us, so we're good to go with these basic ones.</p><p class="calibre8">Then, we can execute all test scenarios in the class from the console, using the PHPUnit command-line executable. It's located in <code class="literal">vendor/bin</code>, and since we're going to use it a lot we'll make a symlink to the project root. We'll do the same for the <code class="literal">autoload.php</code> script located in the vendor directory that we need as well:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ ln -s vendor/bin/phpunit ./phpunit</strong></span>
+<span class="strong"><strong class="calibre17">$ ln -s vendor/autoload.php ./autoload.php</strong></span>
+</pre><p class="calibre8">Now we can run our test class with the following command:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ ./phpunit --bootstrap autoload.php phpunit_01.php</strong></span>
+<span class="strong"><strong class="calibre17">PHPUnit 5.6.2 by Sebastian Bergmann and contributors.</strong></span>
+<span class="strong"><strong class="calibre17">.                                   1 / 1 (100%)</strong></span>
+<span class="strong"><strong class="calibre17">Time: 72 ms, Memory: 4.00MB</strong></span>
+<span class="strong"><strong class="calibre17">OK (1 test, 4 assertions)</strong></span>
+</pre><div class="informaltable" title="Note"><h3 class="title1"><a id="note29" class="calibre1"/>Note</h3><p class="calibre8">Some empty lines from the CLI output are purposely removed to keep them reasonably short.</p></div><p class="calibre8">We used two CLI parameters here:</p><div class="book"><ul class="itemizedlist"><li class="listitem"><code class="literal">--bootstrap</code>: Since we expect tests to work with various classes and functions from our project, we need to tell PHPUnit where it can find them. This parameter lets you specify a custom class loader (basically a PHP SPL autoloader). Fortunately, Composer already does everything for us, and generates <code class="literal">autoload.php</code> from our <code class="literal">composer.json</code> file. If we don't use the <code class="literal">--bootstrap</code> parameter, PHPUnit will throw an error because it will be unable to find <code class="literal">PHPUnit\Framework\TestCase</code>.</li><li class="listitem"><code class="literal">phpunit_01.php</code>: This is the file containing the test we want to run. Note that we could also use a directory path to test all the files in that directory, or just a dot (<code class="literal">.</code>), to test all the files in the current directory.</li></ul></div><div class="informaltable" title="Note"><h3 class="title1"><a id="note30" class="calibre1"/>Note</h3><p class="calibre8">PHPUnit allows the creation of a custom XML file with its configuration, so we don't have to include the <code class="literal">--bootstrap</code> parameter every time. To keep things simple, we're not using it. For more information, see the documentation at <a class="calibre1" href="https://phpunit.de/manual/current/en/appendixes.configuration.html">
+https://phpunit.de/manual/current/en/appendixes.configuration.html
+</a>.</p></div><p class="calibre8">The console output summarizes everything we need to know about the tests processed. We can see it ran one test case with four assertions. The line with a single dot (<code class="literal">.</code>) followed by <code class="literal">1 / 1 (100%)</code> means we executed a single test case and it succeeded. This isn't very descriptive, so we can use another argument, <code class="literal">--testdox</code>, to make it more human-readable:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ ./phpunit --testdox --bootstrap autoload.php phpunit_01.php </strong></span>
+<span class="strong"><strong class="calibre17">PHPUnit 5.6.2 by Sebastian Bergmann and contributors.</strong></span>
+<span class="strong"><strong class="calibre17">Demo</strong></span>
+<span class="strong"><strong class="calibre17"> [x] First test</strong></span>
+</pre><p class="calibre8">Now, instead of the dot (<code class="literal">.</code>), PHPUnit converted the class and function names into strings, and marked those that passed. This is definitely more understandable; however, it doesn't show error messages on the failed test, so we don't know why it failed.</p><p class="calibre8">We'll use both formats in this chapter depending on the situation. Usually, when we expect a test to pass, we'll use the second, more readable, format. When we expect the test to fail, we'll use the first format to see where it failed and why (if it failed).</p><p class="calibre8">For demonstration purposes, we'll also add a test that fails and another test that depends on the first test:</p><pre class="programlisting">class DemoTest extends TestCase { 
+    // ... 
+    public function testFails() { 
+        $this-&gt;assertEquals(5, 6); 
+        $this-&gt;assertContains(2, [1, 3, 4]); 
+    } 
+ 
+    /** 
+     * @depends testFails 
+     */ 
+    public function testDepends() { 
+        $this-&gt;assertTrue(true); 
+    } 
+} 
+</pre><p class="calibre8">The first test case fails because it asserts that <code class="literal">5 == 6</code>. The second test case is skipped because the test it depends on failed. The failed test is then properly marked as failed, while the skipped test is omitted:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ ./phpunit --testdox --bootstrap autoload.php phpunit_01.php </strong></span>
+<span class="strong"><strong class="calibre17">PHPUnit 5.6.2 by Sebastian Bergmann and contributors.</strong></span>
+<span class="strong"><strong class="calibre17">Demo</strong></span>
+<span class="strong"><strong class="calibre17"> [x] First test</strong></span>
+<span class="strong"><strong class="calibre17"> [ ] Fails</strong></span>
+</pre><p class="calibre8">This is all we need to know for now. Before jumping into testing RxPHP code, we should quickly talk about testing asynchronous code in general and one common pitfall we need to be aware of.</p></div>
+
+<div class="book" title="Basics of writing tests using PHPUnit">
+<div class="book" title="Testing asynchronous code"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_1"><a id="ch05lvl2sec48" class="calibre1"/>Testing asynchronous code</h2></div></div></div><p class="calibre8">There's one important caveat we need to know about when testing asynchronous code, and since everything we do with RxPHP is asynchronous it's very relevant to us. Let's consider the following function <code class="literal">asyncPowIterator()</code>, which we're about to test:</p><pre class="programlisting">// phpunit_async_01.php 
+use PHPUnit\Framework\TestCase; 
+ 
+function asyncPowIterator($num, callable $callback) { 
+    foreach (range(1, $num - 1) as $i) { // intentional 
+        $callback($i, pow($i, 2)); 
+    } 
+} 
+ 
+class AsyncDemoTest extends TestCase { 
+    public function testBrokenAsync() { 
+        $callback = function($i, $pow) use (&amp;$count) { 
+            $this-&gt;assertEquals(pow($i, 2), $pow); 
+        }; 
+    } 
+} 
+</pre><p class="calibre8">We have a function, <code class="literal">asyncPowIterator()</code>, that calls a callable on each number in the range 1 to 5. Notice that we made an intentional bug and instead of iterating the range 1 to 5, we'll just iterate 1 to 4.</p><p class="calibre8">In order to test that this method produces correct values, we placed the assertion right into the callable. So, let's run the test and see what happens:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ ./phpunit --testdox --bootstrap autoload.php phpunit_async_01.php </strong></span>
+<span class="strong"><strong class="calibre17">PHPUnit 5.6.2 by Sebastian Bergmann and contributors.</strong></span>
+<span class="strong"><strong class="calibre17">AsyncDemo</strong></span>
+<span class="strong"><strong class="calibre17"> [x] Broken async</strong></span>
+</pre><p class="calibre8">Well, the test passed, even though there's a bug that we know about.</p><p class="calibre8">The function in fact generates correct results, it's just not called as many times as we expect. This means that to test this function properly, we need to count the calls of the callable as well, and then compare it to the expected value:</p><pre class="programlisting">class AsyncDemoTest extends TestCase { 
+    public function testBrokenAsync() { 
+        $count = 0; 
+        $callback = function($i, $pow) use (&amp;$count) { 
+            $this-&gt;assertEquals(pow($i, 2), $pow); 
+            $count++; 
+        }; 
+        asyncPowIterator(5, $callback); 
+        $this-&gt;assertEquals(5, $count); 
+    } 
+} 
+</pre><p class="calibre8">Now, we're incrementing the <code class="literal">$count</code> variable every time we go through the callable and, if we run the test again, we'll see it fails as it's supposed to:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ ./phpunit --bootstrap autoload.php phpunit_async_01.php </strong></span>
+<span class="strong"><strong class="calibre17">PHPUnit 5.6.2 by Sebastian Bergmann and contributors.</strong></span>
+<span class="strong"><strong class="calibre17">F                                          1 / 1 (100%)</strong></span>
+<span class="strong"><strong class="calibre17">Time: 57 ms, Memory: 4.00MB</strong></span>
+<span class="strong"><strong class="calibre17">There was 1 failure:</strong></span>
+<span class="strong"><strong class="calibre17">1) AsyncDemoTest::testBrokenAsync</strong></span>
+<span class="strong"><strong class="calibre17">Failed asserting that 4 matches expected 5.</strong></span>
+<span class="strong"><strong class="calibre17">/path/Chapter 05/phpunit_async_01.php:22</strong></span>
+<span class="strong"><strong class="calibre17">FAILURES!</strong></span>
+<span class="strong"><strong class="calibre17">Tests: 1, Assertions: 5, Failures: 1.</strong></span>
+</pre><p class="calibre8">Now it fails as we want and we know that something's wrong.</p><p class="calibre8">This is an important paradigm. When testing asynchronous code, we can't just test that it returns correct results; we also need to be sure it gets called at all.</p><p class="calibre8">What we already know about unit testing could be enough to start testing our Observables and operators. RxPHP comes with a couple of classes intended for testing RxPHP code that can make our lives easier. All of these are used internally by RxPHP to test itself, so it's worth spending a little time learning about them, and start using them as well when testing our own code.</p></div></div>
+
+<div class="book" title="Testing RxPHP code"><div class="book" id="1BRPS2-bd355a22cf10407cb10df27e65585b8d"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch05lvl1sec38" class="calibre1"/>Testing RxPHP code</h1></div></div></div><p class="calibre8">Since <a class="calibre1" title="Chapter 2. Reactive Programming with RxPHP" href="part0024_split_000.html#MSDG2-bd355a22cf10407cb10df27e65585b8d">Chapter 2</a>, <span class="strong"><em class="calibre18">Reactive Programming with RxPHP</em></span>, where we introduced Schedulers, we've been using them via <code class="literal">ImmediateScheduler</code> and <code class="literal">EventLoopScheduler</code>. Internally, <code class="literal">EventLoopScheduler</code> extends another Scheduler, called <code class="literal">VirtualTimeScheduler</code>, which is also used internally by <code class="literal">TestScheduler</code>, which we'll use for testing in a moment. But before we do that, let's see what's so interesting about <code class="literal">VirtualTimeScheduler</code>.</p></div>
+
+<div class="book" title="Testing RxPHP code">
+<div class="book" title="Introducing VirtualTimeScheduler"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_1"><a id="ch05lvl2sec49" class="calibre1"/>Introducing VirtualTimeScheduler</h2></div></div></div><p class="calibre8">With <code class="literal">ImmediateScheduler</code>, everything is executed immediately. The <code class="literal">VirtualTimeScheduler</code> keeps a priority queue of actions to be executed and gives us control over the order they're called.</p><p class="calibre8">In this example, we'll make an instance of <code class="literal">VirtualTimeScheduler</code> and stack a couple of actions that will be executed with different delays using the <code class="literal">schedule($actionCallable, $delay)</code> method:</p><pre class="programlisting">// virtual_time_scheduler_01.php 
+use Rx\Scheduler\VirtualTimeScheduler; 
+ 
+$scheduler = new VirtualTimeScheduler(0, function($a, $b) { 
+    return $a - $b; 
+}); 
+ 
+$scheduler-&gt;schedule(function() { 
+    print("1\n"); 
+}, 300); 
+$scheduler-&gt;schedule(function() { 
+    print("2\n"); 
+}, 0); 
+$scheduler-&gt;schedule(function() { 
+    print("3\n"); 
+}, 150); 
+$scheduler-&gt;start(); 
+</pre><p class="calibre8">When we instantiate the <code class="literal">VirtualTimeScheduler</code> class, we also need to pass a starting time and a typical comparer function that decides which action is called first. Then, to actually start executing all the actions in the correct order, we need to call the <code class="literal">start()</code> method manually.</p><p class="calibre8">The <code class="literal">schedule()</code> method also takes as its last argument a delay from the starting time when it'll be executed. This means we can define actions in a different order than they're supposed to be executed.</p><p class="calibre8">This example will print numbers in the following order:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php virtual_time_scheduler_01.php</strong></span>
+<span class="strong"><strong class="calibre17">2</strong></span>
+<span class="strong"><strong class="calibre17">3</strong></span>
+<span class="strong"><strong class="calibre17">1</strong></span>
+</pre><p class="calibre8">This is actually what <code class="literal">EventLoopScheduler</code> does when we use it with an Observable that allows delayed execution, such as <code class="literal">IntervalObservable</code>. Let's look again at the very basic example with the <code class="literal">interval()</code> operator in RxPHP 1.x:</p><pre class="programlisting">$loop = new React\EventLoop\StreamSelectLoop(); 
+$scheduler = new Rx\Scheduler\EventLoopScheduler($loop); 
+ 
+Rx\Observable::interval(1000, $scheduler) 
+    -&gt;subscribe(...); 
+$loop-&gt;run(); 
+</pre><p class="calibre8">The <code class="literal">EventLoopScheduler</code> class is based on the same principle as <code class="literal">VirtualTimeScheduler</code> (it also inherits <code class="literal">VirtualTimeScheduler</code>). The primary difference is that <code class="literal">EventLoopScheduler</code> uses a loop to reschedule action calls over and over again in the specified interval. In this example, by "action" we mean an <code class="literal">onNext()</code> call from <code class="literal">IntervalObservable</code>.</p><p class="calibre8">The default delay for <code class="literal">schedule()</code> is <code class="literal">0</code>, so we can also use <code class="literal">VirtualTimeScheduler</code> instead of <code class="literal">ImmediateScheduler</code>. Consider the following example:</p><pre class="programlisting">// virtual_time_scheduler_02.php 
+use Rx\Scheduler\VirtualTimeScheduler; 
+use Rx\Observable; 
+use Rx\Observer\CallbackObserver;  
+$scheduler = new VirtualTimeScheduler(0, function($a, $b) { 
+    return $a - $b; 
+}); 
+$observer = new CallbackObserver(function($val) { 
+    print("$val\n"); 
+}); 
+ 
+$observable = Observable::fromArray([1,2,3,4]); 
+$observable-&gt;subscribe($observer, $scheduler); 
+$scheduler-&gt;start(); 
+</pre><p class="calibre8">As expected, this prints all items in the array in the order they're specified:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php virtual_time_scheduler_02.php </strong></span>
+<span class="strong"><strong class="calibre17">1</strong></span>
+<span class="strong"><strong class="calibre17">2</strong></span>
+<span class="strong"><strong class="calibre17">3</strong></span>
+<span class="strong"><strong class="calibre17">4</strong></span>
+</pre><p class="calibre8">Now it should be obvious why we always check in all our methods whether there's a Scheduler passed, and if there isn't, we use the simplest <code class="literal">ImmediateScheduler</code>. This allows us to easily switch to any other Scheduler if we have a reason to. Well, one good reason is unit testing, of course.</p><p class="calibre8">The <code class="literal">VirtualTimeScheduler</code> itself isn't used when testing RxPHP code, but it's wrapped with another Scheduler called <code class="literal">TestScheduler</code> that uses its principles under the hood and lets us schedule even more than just actions. Since <code class="literal">TestScheduler</code> uses a few other classes related to testing internally, we'll first have a look at them and then go back to <code class="literal">TestScheduler</code>.</p><div class="informaltable" title="Note"><h3 class="title1"><a id="note31" class="calibre1"/>Note</h3><p class="calibre8">As its name suggests the <code class="literal">VirtualTimeScheduler</code> doesn't work with real time. The delays we set when calling the <code class="literal">schedule()</code> method are only used to execute actions in the correct order.</p></div></div></div>
+
+<div class="book" title="Testing RxPHP code">
+<div class="book" title="HotObservable and ColdObservable"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_2"><a id="ch05lvl2sec50" class="calibre1"/>HotObservable and ColdObservable</h2></div></div></div><p class="calibre8">We know what hot and cold Observables are from <a class="calibre1" title="Chapter 2. Reactive Programming with RxPHP" href="part0024_split_000.html#MSDG2-bd355a22cf10407cb10df27e65585b8d">
+Chapter 02
+</a>, <span class="strong"><em class="calibre18">Reactive Programming with RxPHP</em></span>. These have their universal variants as <code class="literal">HotObservable</code> and <code class="literal">ColdObservable</code> classes. Note that these are intended only for testing and not for production usage.</p><p class="calibre8">We'll first have a look at how <code class="literal">HotObservable</code> can be used, and then talk about each class used in this example separately:</p><pre class="programlisting">// hot_observable_01.php 
+use Rx\Scheduler\VirtualTimeScheduler; 
+use Rx\Testing\HotObservable;  
+use Rx\Testing\Recorded; 
+use Rx\Notification\OnNextNotification; 
+ 
+$scheduler = new VirtualTimeScheduler(0, function($a, $b) { 
+    return $a - $b; 
+}); 
+$observable = new HotObservable($scheduler, [ 
+    new Recorded(100, new OnNextNotification(3)), 
+    new Recorded(150, new OnNextNotification(1)), 
+    new Recorded(80, new OnNextNotification(2)), 
+]); 
+$observable-&gt;subscribeCallback(function($val) { 
+    print("$val\n"); 
+}); 
+$scheduler-&gt;start(); 
+</pre><p class="calibre8">We used two new classes, <code class="literal">Recorded</code> and <code class="literal">OnNextNotification</code>, which we haven't met yet, so let's talk about them:</p><div class="book"><ul class="itemizedlist"><li class="listitem"><code class="literal">HotObservable</code>/<code class="literal">ColdObservable</code>: This class creates a hot or cold Observable, respectively. It takes as its argument a Scheduler and an array of actions that need to be scheduled for execution on the Scheduler we provide.</li><li class="listitem"><code class="literal">Recorded</code>: This class represents a single message (instead of a callable we used in the previous examples) scheduled for delayed execution. This class has a very important method, <code class="literal">equal()</code>, to compare two instances for equal value, time of invocation, and message type.</li><li class="listitem"><code class="literal">OnNextNotification</code>: The action itself is represented by an instance of this class. It takes only one parameter representing its value, and its only purpose is to call <code class="literal">onNext()</code> on an observer when invoked. There are also <code class="literal">OnErrorNotification</code> and <code class="literal">OnCompletedNotification</code> classes, calling <code class="literal">onError</code> and <code class="literal">OnComplete</code> methods, respectively.</li></ul></div><p class="calibre8">When we run this example, we get the following result:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php hot_observable_01.php</strong></span>
+<span class="strong"><strong class="calibre17">2</strong></span>
+<span class="strong"><strong class="calibre17">3</strong></span>
+<span class="strong"><strong class="calibre17">1</strong></span>
+</pre><p class="calibre8">The difference between <code class="literal">HotObservable</code> and <code class="literal">ColdObservable</code> is when they schedule their actions. The <code class="literal">HotObservable</code> class schedules everything right in its constructor, while <code class="literal">ColdObservable</code> does everything on subscription.</p></div></div>
+
+<div class="book" title="Testing RxPHP code">
+<div class="book" title="MockObserver"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_3"><a id="ch05lvl2sec51" class="calibre1"/>MockObserver</h2></div></div></div><p class="calibre8">Just like when we talked about testing asynchronous code and that we need to be able to tell when callables weren't called at all, we need the same thing in RxPHP when testing Observables. RxPHP comes with class <code class="literal">MockObserver</code>, which records all the messages it receives (including the exact time for each record from the Scheduler), so we can later compare them with expected messages in the correct order.</p><p class="calibre8">Consider the following code printing all messages from <code class="literal">MockObserver</code>:</p><pre class="programlisting">// mock_observer_01.php 
+use Rx\Testing\MockObserver; 
+use Rx\Scheduler\VirtualTimeScheduler; 
+use Rx\Testing\HotObservable; 
+use Rx\Testing\Recorded; 
+use Rx\Notification\OnNextNotification;  
+use Rx\Notification\OnCompletedNotification; 
+ 
+$scheduler = new VirtualTimeScheduler(0, function($a, $b) { 
+    return $a - $b; 
+}); 
+$observer = new MockObserver($scheduler); 
+ 
+(new HotObservable($scheduler, [ 
+    new Recorded(100, new OnNextNotification(3)), 
+    new Recorded(150, new OnNextNotification(1)), 
+    new Recorded(80, new OnNextNotification(2)), 
+    new Recorded(140, new OnCompletedNotification()), 
+]))-&gt;subscribe($observer); 
+$scheduler-&gt;start(); 
+ 
+foreach ($observer-&gt;getMessages() as $message) { 
+    printf("%s: %s\n", $message-&gt;getTime(), $message-&gt;getValue()); 
+} 
+</pre><p class="calibre8">Notice that we've also included <code class="literal">OnCompletedNotification</code>, which is called before the last value:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php mock_observer_01.php </strong></span>
+<span class="strong"><strong class="calibre17">80: OnNext(2)</strong></span>
+<span class="strong"><strong class="calibre17">100: OnNext(3)</strong></span>
+<span class="strong"><strong class="calibre17">140: OnCompleted()</strong></span>
+<span class="strong"><strong class="calibre17">150: OnNext(1)</strong></span>
+</pre><p class="calibre8">We can see that the value in each message is wrapped with the type of notification we used. Also, the last <code class="literal">onNext</code> call is recorded as well, even though it was emitted after <code class="literal">onComplete</code>. This is the correct behavior of <code class="literal">MockObserver</code>, because its only goal is to record messages and not to perform any logic.</p></div></div>
+
+<div class="book" title="Testing RxPHP code">
+<div class="book" title="TestScheduler"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_4"><a id="ch05lvl2sec52" class="calibre1"/>TestScheduler</h2></div></div></div><p class="calibre8">Now let's come back to the <code class="literal">TestScheduler</code> class we mentioned when talking about <code class="literal">VirtualTimeScheduler</code>. This class inherits <code class="literal">VirtualTimeScheduler</code> and provides a couple of methods related to scheduling events.</p><p class="calibre8">We'll start with an example again and see what <code class="literal">TestScheduler</code> does for us:</p><pre class="programlisting">$scheduler = new TestScheduler(); 
+$observer = $scheduler 
+    -&gt;startWithCreate(function() use ($scheduler) { 
+        return new HotObservable($scheduler, [ 
+            new Recorded(200, new OnNextNotification(3)), 
+            new Recorded(250, new OnNextNotification(1)), 
+            new Recorded(180, new OnNextNotification(2)), 
+            new Recorded(240, new OnCompletedNotification()), 
+            new Recorded(1200, new OnNextNotification(4)), 
+        ]); 
+}); 
+ 
+$expected = [ 
+    new Recorded(200, new OnNextNotification(3)), 
+    new Recorded(240, new OnCompletedNotification()), 
+    new Recorded(250, new OnNextNotification(1)), 
+]; 
+ 
+$actual = $observer-&gt;getMessages(); 
+printf("Count match: %d\n", count($actual) == count($expected)); 
+foreach ($actual as $i =&gt; $message) { 
+    printf("%s: %d\n", $message-&gt;getTime(), 
+        $message-&gt;equals($expected[$i])); 
+} 
+</pre><p class="calibre8">We created five messages and we're expecting to receive only three. Also, this time, we're using the method <code class="literal">equals()</code> on instances of <code class="literal">Recorded</code> to compare them to each other. This will make sure we're receiving the correct number of messages in the correct order.</p><p class="calibre8">Let's run this example and check that we receive messages as we expect in the <code class="literal">$expected</code> array, and then talk about what happens inside and why:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php mock_observer_02.php </strong></span>
+<span class="strong"><strong class="calibre17">Count match: 1</strong></span>
+<span class="strong"><strong class="calibre17">200: 1</strong></span>
+<span class="strong"><strong class="calibre17">240: 1</strong></span>
+<span class="strong"><strong class="calibre17">250: 1</strong></span>
+</pre><p class="calibre8">So, where did the other two messages disappear to? The <code class="literal">TestScheduler</code> class has two very important methods for scheduling actions, which we're going to use when testing RxPHP code:</p><div class="book"><ul class="itemizedlist"><li class="listitem"><code class="literal">startWithTiming($create, $createTime, $subscribeTime, $disposeTime)</code>: This method schedules three actions. These actions are: creating an instance of the source Observable, subscribing to the Observable and finally disposing a disposable returned from the <code class="literal">subscribe()</code> call. Each action is scheduled for a specific time by one of the arguments. Since creating an instance of Observable is one of the scheduled actions, it needs to be passed as a callable that returns the Observable, and not directly as an argument.</li><li class="listitem"><code class="literal">startWithCreate($create)</code>: This method calls the <code class="literal">startWithTiming()</code> method with default values. It's equal to calling <code class="literal">startWithTiming($create, 100, 200, 1000)</code>. The only argument is a callable that returns the source Observable.</li></ul></div><p class="calibre8">Both these methods return an instance of <code class="literal">MockObserver</code>, which is also used to subscribe to the source Observable, so we don't need to create it ourselves.</p><p class="calibre8">Now it should be obvious why we received just three messages when we actually scheduled five. The message delayed by 180 happens before we subscribe to the source Observable, and the last message, with a delay of 1200, happens after we've already called <code class="literal">dispose()</code>, which unsubscribed <code class="literal">TestObserver</code> from the source Observable.</p><p class="calibre8">Comparing actual and expected messages with a <code class="literal">foreach</code> loop is, of course, possible, but it would be very tedious to do this in every single test we write. That's why RxPHP comes with <code class="literal">Rx\Functional\FunctionalTestCase</code> class, which we can use instead of <code class="literal">PHPUnit\Framework\TestCase</code> and which adds assertion methods specific to RxPHP code, most notably the <code class="literal">assertMessages()</code> method, which compares arrays of messages, just as we did in this example.</p></div></div>
+<div class="book" title="Testing SumOperator"><div class="book" id="1CQAE2-bd355a22cf10407cb10df27e65585b8d"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch05lvl1sec39" class="calibre1"/>Testing SumOperator</h1></div></div></div><p class="calibre8">All these classes are used by RxPHP to test its own code. Now we'll use them to test our own Observables and operators as well.</p><p class="calibre8">For testing purposes, we're going to write a simple operator that calculates the sum of all the integers it receives. When an <code class="literal">onComplete</code> arrives, it emits a single <code class="literal">onNext</code> with the sum of all numbers. It also emits <code class="literal">onError</code> when a non-integer value arrives:</p><pre class="programlisting">// SumOperator.php 
+class SumOperator implements OperatorInterface  { 
+  private $sum = 0; 
+ 
+  function __invoke($observable, $observer, $scheduler=null) { 
+    $observable-&gt;subscribe(new CallbackObserver( 
+      function($value) use ($observer) { 
+        if (is_int($value)) { 
+          $this-&gt;sum += $value; 
+        } else { 
+          $observer-&gt;onError(new Exception()); 
+        } 
+      }, 
+      [$observer, 'onError'], 
+      function() use ($observer) { 
+        $observer-&gt;onNext($this-&gt;sum); 
+        $observer-&gt;onCompleted(); 
+      } 
+    )); 
+  } 
+} 
+</pre><p class="calibre8">This operator is very straightforward, and since we already know all the utilities we need to properly test it, we can jump right into unit testing with PHPUnit.</p><div class="informaltable" title="Note"><h3 class="title1"><a id="note32" class="calibre1"/>Note</h3><p class="calibre8">In fact, RxPHP already has a <code class="literal">sum()</code> operator, which is internally implemented as a <code class="literal">reduce()</code> operator that just adds values.</p></div><p class="calibre8">Instead of <code class="literal">PHPUnit\Framework\TestCase</code>, we'll use <code class="literal">Rx\Functional\FunctionalTestCase</code>, which creates <code class="literal">TestScheduler</code> internally and automatically passes it to new hot/cold Observables, so we don't need to worry about Schedulers at all.</p><p class="calibre8">RxPHP also contains a few helper functions to simplify creating <code class="literal">Recorded</code> objects. Instead of calling <code class="literal">new Recorded(200, new OnNextNotification(3))</code>, we can use <code class="literal">onNext(200, 3)</code> function defined in the <code class="literal">rxphp/test/helper-functions.php</code> file.</p><p class="calibre8">In order to use these functions, and also the <code class="literal">FunctionalTestCase</code> class, we need to tell the autoloader where to find them by updating our <code class="literal">composer.json</code>:</p><pre class="programlisting">{ 
+  "name": "rxphp_unittesting_demo", 
+  ... 
+  "require": { 
+    "reactivex/rxphp": "^1.5", 
+    "phpunit/phpunit": "^5.6", 
+    ... 
+  }, 
+  "autoload": { 
+    "psr-4": { 
+      "Rx": "vendor/reactivex/rxphp/test/Rx" 
+    }, 
+    "files": [ 
+      "vendor/reactivex/rxphp/test/helper-functions.php" 
+    ] 
+  } 
+} 
+</pre><p class="calibre8">After updating <code class="literal">composer.json</code>, we need to regenerate the <code class="literal">autoload.php</code> script as well:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ composer update</strong></span>
+</pre><p class="calibre8">Now we can use <code class="literal">onNext()</code>, <code class="literal">onComplete()</code>, <code class="literal">onError()</code>, and also the <code class="literal">FunctionalTestCase</code> class (don't interchange the <code class="literal">onNext()</code> function from <code class="literal">helper-functions.php</code> with the <code class="literal">onNext()</code> method in observers; these are two separate things). Thanks to all this, the test class will then be pretty short:</p><pre class="programlisting">// SumOperatorTest.php 
+use Rx\Functional\FunctionalTestCase; 
+ 
+class SumOperatorTest extends FunctionalTestCase { 
+  public function testSumSuccess() { 
+    $observer = $this-&gt;scheduler-&gt;startWithCreate(function () { 
+      return $this-&gt;createHotObservable([ 
+        onNext(150, 3), 
+        onNext(210, 2), 
+        onNext(450, 7), 
+        onCompleted(460), 
+        onNext(500, 4), 
+      ])-&gt;lift(function() { 
+        return new SumOperator(); 
+      }); 
+    }); 
+ 
+    $this-&gt;assertMessages([ 
+      onNext(460, 9), 
+      onCompleted(460) 
+    ], $observer-&gt;getMessages()); 
+  } 
+} 
+</pre><p class="calibre8">This test schedules a couple of messages and completes the Observable at time <code class="literal">460</code>, which causes the <code class="literal">SumOperator</code> to emit its accumulated value, and also to complete right after that.</p><p class="calibre8">The callable for the <code class="literal">startWithCreate()</code> method creates a <code class="literal">HotObservable</code> class and connects it with our <code class="literal">SumOperator</code> using the <code class="literal">lift()</code> method we talked about extensively and used in <a class="calibre1" title="Chapter 3. Writing a Reddit Reader with RxPHP" href="part0033_split_000.html#VF2I2-bd355a22cf10407cb10df27e65585b8d">
+Chapter 03
+</a>, <span class="strong"><em class="calibre18">Writing a Reddit Reader with RxPHP</em></span>. At the end, we used <code class="literal">assertMessages()</code> to compare messages received by <code class="literal">MockObserver</code> with expected messages, just as we did in the previous example. Using <code class="literal">assertMessages()</code> from <code class="literal">FunctionalTestCase</code> is just more comfortable.</p><p class="calibre8">We can run the test to see that it really passes successfully:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ ./phpunit --bootstrap ./vendor/autoload.php SumOperatorTest.php</strong></span>
+<span class="strong"><strong class="calibre17">PHPUnit 5.6.2 by Sebastian Bergmann and contributors.</strong></span>
+<span class="strong"><strong class="calibre17">.                                         1 / 1 (100%)</strong></span>
+<span class="strong"><strong class="calibre17">Time: 84 ms, Memory: 4.00MB</strong></span>
+<span class="strong"><strong class="calibre17">OK (1 test, 1 assertion)</strong></span>
+</pre><p class="calibre8">Note that even when <code class="literal">assertMessages()</code> has to compare two messages and make sure both arrays are the same size, it counts as a single assertion.</p><p class="calibre8">Now let's also test a situation where we pass an invalid value (a string in this case) that causes an <code class="literal">onError</code> message:</p><pre class="programlisting">class SumOperatorTest extends FunctionalTestCase { 
+  // ... 
+  public function testSumFails() { 
+    $observer = $this-&gt;scheduler-&gt;startWithCreate(function () { 
+      return $this-&gt;createHotObservable([ 
+        onNext(150, 3), 
+        onNext(250, 'abc'), 
+        onNext(300, 2), 
+        onCompleted(460) 
+      ])-&gt;lift(function() { 
+        return new SumOperator(); 
+      }); 
+    }); 
+ 
+    $this-&gt;assertMessages([ 
+      onError(250, new Exception()), 
+    ], $observer-&gt;getMessages()); 
+  } 
+} 
+</pre><p class="calibre8">We expect to receive an <code class="literal">onError</code> message at <code class="literal">250</code> and that's all. Even though there are two more messages scheduled, they won't arrive at <code class="literal">TestObservable</code>.</p><p class="calibre8">Of course, these two tests pass as expected:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ ./phpunit --testdox --bootstrap autoload.php SumOperatorTest </strong></span>
+<span class="strong"><strong class="calibre17">PHPUnit 5.6.2 by Sebastian Bergmann and contributors.</strong></span>
+<span class="strong"><strong class="calibre17">SumOperator</strong></span>
+<span class="strong"><strong class="calibre17"> [x] Sum success</strong></span>
+<span class="strong"><strong class="calibre17"> [x] Sum fails</strong></span>
+</pre></div>
+<div class="book" title="Testing ForkJoinObservable"><div class="book" id="1DOR02-bd355a22cf10407cb10df27e65585b8d"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch05lvl1sec40" class="calibre1"/>Testing ForkJoinObservable</h1></div></div></div><p class="calibre8">Now we can have a look at a slightly more complicated example. In RxPHP, there's an interesting operator called <code class="literal">forkJoin()</code>. This operator takes as its parameter an array of Observables, collects the last value emitted for each of them, and when they all complete, emits a single array with the last values for each Observable.</p><p class="calibre8">This will make better sense when we look at the following marble diagram for <code class="literal">forkJoin()</code> operator in RxJS:</p><p class="calibre8">
+</p><div class="mediaobject"><img src="../images/00023.jpeg" alt="Testing ForkJoinObservable" class="calibre19"/></div><p class="calibre20"> </p><p class="calibre8">
+</p><p class="calibre8">Marble diagram representing the forkJoin() operator in RxJS (http://reactivex.io/documentation/operators/zip.html)</p><p class="calibre8">We're going to implement a simplified version of the <code class="literal">forkJoin()</code> operator as an Observable. To make it extra clear what it does, we'll start with an example:</p><pre class="programlisting">// fork_join_test_01.php 
+use Rx\Observable; 
+ 
+(new ForkJoinObservable([ 
+    Observable::fromArray([1, 2, 3, 4]), 
+    Observable::fromArray([7, 6, 5]), 
+    Observable::fromArray(['a', 'b', 'c']), 
+]))-&gt;subscribeCallback(function($values) { 
+    print_r($values); 
+}); 
+</pre><p class="calibre8">This will print the last value from each source Observable:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php fork_join_test_01.php </strong></span>
+<span class="strong"><strong class="calibre17">Array</strong></span>
+<span class="strong"><strong class="calibre17">(</strong></span>
+<span class="strong"><strong class="calibre17">    [0] =&gt; 4</strong></span>
+<span class="strong"><strong class="calibre17">    [1] =&gt; 5</strong></span>
+<span class="strong"><strong class="calibre17">    [2] =&gt; c</strong></span>
+<span class="strong"><strong class="calibre17">)</strong></span>
+</pre><p class="calibre8">Our implementation will subscribe to each source Observable and keep the latest value emitted for each of them. Then, when all of them complete, it emits one <code class="literal">onNext()</code> and one <code class="literal">onComplete</code>:</p><pre class="programlisting">// ForkJoinObservable.php 
+class ForkJoinObservable extends Observable { 
+  private $observables; 
+  private $lastValues = []; 
+  private $completed = []; 
+ 
+  public function __construct($observables) { 
+    $this-&gt;sources = $observables; 
+  } 
+ 
+  public function subscribe($observer, $sched = null) { 
+    $disp = new CompositeDisposable(); 
+ 
+    if (null == $sched) { 
+      $sched = new ImmediateScheduler(); 
+    } 
+ 
+    foreach ($this-&gt;observables as $i =&gt; $obs) { 
+      $inDisp = $obs-&gt;subscribeCallback(function($v) use ($i) { 
+          $this-&gt;lastValues[$i] = $v; 
+        }, function($e) use ($observer) { 
+          $observer-&gt;onError($e); 
+        }, function() use ($i, $observer) { 
+          $this-&gt;completed[$i] = true; 
+           
+          $completed = count($this-&gt;completed); 
+          if ($completed == count($this-&gt;observables)) { 
+            $observer-&gt;onNext($this-&gt;lastValues); 
+            $observer-&gt;onCompleted(); 
+          } 
+        } 
+      ); 
+      $disp-&gt;add($inDisp); 
+    } 
+    return $disp; 
+  } 
+} 
+</pre><p class="calibre8">There are just a couple of nested anonymous functions. Note that we also need to store all disposables in <code class="literal">CompositeDisposable</code> to be able to properly dispose all of them.</p><p class="calibre8">Testing this class is very similar to what we did before. Pay special attention to the delays we use for each of the message calls:</p><pre class="programlisting">// ForkJoinObservableTest.php 
+class ForkJoinObservableTest extends FunctionalTestCase { 
+ 
+  public function testJoinObservables() { 
+    $observer = $this-&gt;scheduler-&gt;startWithCreate(function () { 
+      return new ForkJoinObservable([ 
+        $this-&gt;createHotObservable([ 
+          onNext(200, 1), 
+          onNext(300, 2), 
+          onNext(400, 3), 
+          onCompleted(500), 
+          onNext(600, 4), 
+        ]), 
+        $this-&gt;createHotObservable([ 
+          onNext(200, 8), 
+          onNext(300, 7), 
+          onNext(400, 6), 
+          onCompleted(800), 
+        ]) 
+      ]); 
+    }); 
+ 
+    $this-&gt;assertMessages([ 
+        onNext(800, [3, 6]), 
+        onCompleted(800) 
+    ], $observer-&gt;getMessages()); 
+  } 
+} 
+</pre><p class="calibre8">We expect to receive <code class="literal">onNext()</code> with the last values for each source Observable at <code class="literal">800</code>, because this is the time when the second Observable completes. Also, even though the first Observable emitted one more value after its <code class="literal">onComplete</code> call, this will be ignored because it has already completed.</p><p class="calibre8">Then, if we run the test case, it will pass as expected:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ ./phpunit --testdox --bootstrap autoload.php  
+    ForkJoinObservableTest</strong></span>
+<span class="strong"><strong class="calibre17">PHPUnit 5.6.2 by Sebastian Bergmann and contributors.</strong></span>
+<span class="strong"><strong class="calibre17">ForkJoinObservable</strong></span>
+<span class="strong"><strong class="calibre17"> [x] Join observables</strong></span>
+</pre><p class="calibre8">The most important thing we should keep in mind when testing RxPHP code is that time of invocation matters.</p><p class="calibre8">We could, of course, just test that our Observables and operators produce the correct values, but this could leave some bugs unnoticed and hard to find. To take a specific example, a bug could cause an Observable to pass along values even after it was supposed to complete, or to fail on an error.</p><p class="calibre8">Another interesting scenario we can test is when one of the Observables never completes. In this case <code class="literal">ForkJoinObservable</code> won't emit any value and not even the
+ <code class="literal">onComplete</code> signal:</p><pre class="programlisting">public function testJoinObservablesNeverCompletes() { 
+  $observer = $this-&gt;scheduler-&gt;startWithCreate(function () { 
+    return new ForkJoinObservable([ 
+      $this-&gt;createHotObservable([ 
+        onNext(200, 1), 
+        onNext(300, 2), 
+        onCompleted(500), 
+      ]), 
+      $this-&gt;createHotObservable([ 
+        onNext(200, 8), 
+        onNext(300, 7), 
+      ]) 
+    ]); 
+  }); 
+ 
+  $this-&gt;assertMessages([], $observer-&gt;getMessages()); 
+} 
+</pre><p class="calibre8">If we reran the <code class="literal">ForkJoinObservableTest</code> class, we'd see that this test passes as well.</p><div class="informaltable" title="Note"><h3 class="title1"><a id="note33" class="calibre1"/>Note</h3><p class="calibre8">The real implementation of <code class="literal">ForkJoinObservable</code> is in RxPHP available since version 1.5 and is slightly more complicated. We'll come back to it in <a class="calibre1" title="Chapter 10. Using Advanced Operators and Techniques in RxPHP" href="part0070_split_000.html#22O7C1-bd355a22cf10407cb10df27e65585b8d">Chapter 10</a>, <span class="strong"><em class="calibre18">Using Advanced Operators and Techniques in RxPHP</em></span>.
+In <a class="calibre1" title="Chapter Appendix.  Reusing RxPHP Techniques in RxJS" href="part0081_split_000.html#2D7TI2-bd355a22cf10407cb10df27e65585b8d">Appendix</a>, <span class="strong"><em class="calibre18">Reusing RxPHP Techniques in RxJS</em></span>, we'll learn about the new way of testing Rx code called "marble tests" implemented in RxPHP 2 and RxJS 5.</p></div></div>
+<div class="book" title="Summary" id="1ENBI1-bd355a22cf10407cb10df27e65585b8d"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch05lvl1sec41" class="calibre1"/>Summary</h1></div></div></div><p class="calibre8">This chapter covered unit testing code written using PHPUnit with utilities provided by the RxPHP package.</p><p class="calibre8">Most importantly, we went through the <code class="literal">doOn*()</code> operators and the basics of unit testing with PHPUnit, and the problems we need to be aware of when unit testing asynchronous code. Next, we went in-depth into which classes aimed at unit testing are provided by RxPHP, how to use each of them, and which problems they solve. In particular, these were the <code class="literal">VirtualTimeScheduler</code>, <code class="literal">HotObservable</code>, 
+<code class="literal">ColdObservable</code>, <code class="literal">TestScheduler</code>, and <code class="literal">FunctionalTestCase</code> classes. In addition to this, we wrote example <code class="literal">SumOperator</code> and <code class="literal">ForkJoinObservable</code> classes to demonstrate how important it is to test that messages are emitted and received at the correct times.</p><p class="calibre8">In the following chapter, we'll have a deeper look at event loops in PHP and we'll introduce a more advanced concept of higher-order Observables in RxPHP.</p></div></body></html>

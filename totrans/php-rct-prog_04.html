@@ -1,0 +1,704 @@
+<html><head></head><body>
+<div class="book" title="Chapter&#xA0;4.&#xA0;Reactive versus a Typical Event-Driven Approach"><div class="book" id="1565U2-bd355a22cf10407cb10df27e65585b8d"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch04" class="calibre1"/>Chapter 4. Reactive versus a Typical Event-Driven Approach</h1></div></div></div><p class="calibre8">So far, we've been focused mainly on CLI applications. In this chapter, we'll apply what we've already learned to a typical component of all web frameworks, and add a little on top of that. We're going to use the Symfony <code class="literal">EventDispatcher</code> component, which is an independent library that can be used in any framework.</p><p class="calibre8">Its main purpose is dispatching events during an application's lifetime, and easy extendability. Most notably, it's a core building block of the Symfony3 framework and the Silex micro-framework.</p><p class="calibre8">In this chapter, we're going to do the following:</p><div class="book"><ul class="itemizedlist"><li class="listitem">Have a look at error handling in RxPHP and explain the <code class="literal">retry()</code>, <code class="literal">retryWhen()</code>, and <code class="literal">catchError()</code> operators. We'll see how these three relate to what we've talked about in the previous chapter.</li><li class="listitem">We'll see how to combine two Observables using <code class="literal">concat()</code> and <code class="literal">merge()</code> operators. Then we'll also have a look at <code class="literal">concatMap()</code> and its very common use-case with ordered HTTP requests.</li><li class="listitem">Have a quick introduction to <code class="literal">EventDispatcher</code> component using examples.</li><li class="listitem">Write a drop-in replacement for the default <code class="literal">EventDispatcher</code> class called <code class="literal">ReactiveEventDispatcher</code> that's built on the top of the default <code class="literal">EventDispatcher</code>, with a reactive approach using RxPHP.</li><li class="listitem">See how we can use Subjects to construct Observable chains on the fly.</li><li class="listitem">Enhance our event dispatcher implementation using Observables instead of closures as event listeners.</li><li class="listitem">Test our event-dispatcher implementation on the same examples we used when introducing the default <code class="literal">EventDispatcher</code>.</li></ul></div><p class="calibre8">Before we jump into the <code class="literal">EventDispatcher</code> component, we should also talk about how to handle error states in operator chains.</p><p class="calibre8">We've worked with <code class="literal">onError</code> handlers already in <a class="calibre1" title="Chapter 2. Reactive Programming with RxPHP" href="part0024_split_000.html#MSDG2-bd355a22cf10407cb10df27e65585b8d">
+Chapter 2
+</a>, <span class="strong"><em class="calibre18">Reactive Programming with RxPHP</em></span>, with <code class="literal">CURLObservable</code>, for example. However, we haven't seen how to gracefully recover from errors and what unexpected implications these might have.</p></div>
+
+<div class="book" title="Chapter&#xA0;4.&#xA0;Reactive versus a Typical Event-Driven Approach">
+<div class="book" title="Handling error states in operator chains"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_1"><a id="ch04lvl1sec31" class="calibre1"/>Handling error states in operator chains</h1></div></div></div><p class="calibre8">If we go back to <a class="calibre1" title="Chapter 2. Reactive Programming with RxPHP" href="part0024_split_000.html#MSDG2-bd355a22cf10407cb10df27e65585b8d">
+Chapter 2
+</a>, <span class="strong"><em class="calibre18">Reactive Programming with RxPHP</em></span>, and <code class="literal">CURLObservable</code>, we know that it emits <code class="literal">onError</code> when it wasn't able to download any data. The question is, what if we want to try downloading the URL again? And even more interestingly, repeat the failed attempt every few seconds.</p><p class="calibre8">Subscribing only to <code class="literal">onError</code> signals is simple with the second parameter to the <code class="literal">subscribeCallback()</code> method:</p><pre class="programlisting">(new CURLObservable('https://example.com')) 
+    -&gt;subscribeCallback(null, function($e) { ... }); 
+</pre><p class="calibre8">It's obvious that nesting another <code class="literal">CURLObservable</code> into <code class="literal">onError</code> handler is probably not an option. This is exactly what the <code class="literal">retry()</code> operator is designed for.</p></div></div>
+
+<div class="book" title="Chapter&#xA0;4.&#xA0;Reactive versus a Typical Event-Driven Approach">
+<div class="book" title="Handling error states in operator chains">
+<div class="book" title="The retry() operator"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_2"><a id="ch04lvl2sec33" class="calibre1"/>The retry() operator</h2></div></div></div><p class="calibre8">When the <code class="literal">retry()</code> operator receives an <code class="literal">onError</code> signal, it captures it and tries to resubscribe to its source Observable. It takes as an argument the number of times it tries to resubscribe until it passes the error signal down the operator chain.</p><p class="calibre8">Let's rewrite the preceding example with the <code class="literal">retry()</code> operator:</p><pre class="programlisting">(new CURLObservable('https://example.com')) 
+    -&gt;retry(3) 
+    -&gt;subscribe(new DebugSubject()); 
+</pre><p class="calibre8">This tries to resubscribe to the <code class="literal">CURLObservable</code> three times, until <code class="literal">DebugSubject</code> receives the <code class="literal">onError</code> signal. By default, the <code class="literal">retry()</code> operator takes no parameters and tries to resubscribe infinitely.</p><p class="calibre8">Well, testing error states on third-party web services isn't very convenient, because we can't force it to return error states. For this reason, we're better off using the <code class="literal">map()</code> operator to trigger <code class="literal">onError</code> signals from now on.</p><p class="calibre8">To our advantage, the <code class="literal">map()</code> operator calls its callable wrapped inside a <code class="literal">try...catch</code> block, so any exception thrown will be turned into an <code class="literal">onError</code> signal:</p><pre class="programlisting">// snippet from Rx\Operator\MapOperator class 
+try { 
+    $value = call_user_func_array($this-&gt;selector, [$nextValue]); 
+} catch (\Exception $e) { 
+    $observer-&gt;onError($e); 
+} 
+</pre><p class="calibre8">Consider the following code, which is supposed to print numbers from <code class="literal">1</code> to <code class="literal">6</code>, but fails every time on number <code class="literal">3</code>:</p><pre class="programlisting">// retry_01.php 
+Observable::range(1, 6) 
+    -&gt;map(function($val) { 
+        if ($val == 3) { 
+            throw new \Exception('error'); 
+        } 
+        return $val; 
+    }) 
+    -&gt;retry(3) 
+    -&gt;subscribe(new DebugSubject()); 
+</pre><p class="calibre8">Now, try to guess what happens before looking at the actual output, and keep in mind what we talked about in <a class="calibre1" title="Chapter 3. Writing a Reddit Reader with RxPHP" href="part0033_split_000.html#VF2I2-bd355a22cf10407cb10df27e65585b8d">
+Chapter 03
+</a>, <span class="strong"><em class="calibre18">Writing a Reddit Reader with RxPHP</em></span>, in the section called <span class="strong"><em class="calibre18">A closer look at Operator chains</em></span> and <span class="strong"><em class="calibre18">A closer look on subscribing to Observables</em></span>:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php retry_01.php</strong></span>
+<span class="strong"><strong class="calibre17">09:18:32 [] onNext: 1 (integer)</strong></span>
+<span class="strong"><strong class="calibre17">09:18:32 [] onNext: 2 (integer)</strong></span>
+<span class="strong"><strong class="calibre17">09:18:32 [] onNext: 1 (integer)</strong></span>
+<span class="strong"><strong class="calibre17">09:18:32 [] onNext: 2 (integer)</strong></span>
+<span class="strong"><strong class="calibre17">09:18:32 [] onNext: 1 (integer)</strong></span>
+<span class="strong"><strong class="calibre17">09:18:32 [] onNext: 2 (integer)</strong></span>
+<span class="strong"><strong class="calibre17">09:18:32 [] onError (Exception): error</strong></span>
+</pre><p class="calibre8">It prints only the numbers <code class="literal">1</code> and <code class="literal">2</code> three times and then ends with <code class="literal">onError</code>.</p><p class="calibre8">What might be confusing at first is that common sense tells us to expect this code to print the numbers <code class="literal">1</code>, <code class="literal">2</code>, <code class="literal">4</code>, <code class="literal">5</code>, and <code class="literal">6</code>. Number <code class="literal">3</code> throws an exception, but thanks to the <code class="literal">retry()</code> operator it continues with the next value.</p><p class="calibre8">However, this is not what happens, due to the fact that <code class="literal">retry()</code> resubscribes to its source Observable, and emitting an <code class="literal">onError</code> signal always makes the chain stop propagating further values. In <a class="calibre1" title="Chapter 3. Writing a Reddit Reader with RxPHP" href="part0033_split_000.html#VF2I2-bd355a22cf10407cb10df27e65585b8d">
+Chapter 03
+</a>, <span class="strong"><em class="calibre18">Writing a Reddit Reader with RxPHP</em></span>, we saw that subscribing to an Observable triggers generation of the entire chain of Observables that subscribe to each other in the order they were defined. At the end, it subscribes to the source Observable that starts emitting values.</p><p class="calibre8">We've encountered the exact same situation here. When the <code class="literal">map()</code> operator signals <code class="literal">onError</code>, it's immediately resubscribed thanks to the <code class="literal">retry()</code> operator, which in turn resubscribes to <code class="literal">RangeObservable</code> and starts emitting values from the beginning.</p><p class="calibre8">This is nicely demonstrated by the following marble diagram for this operator (note the red and yellow marbles):</p><p class="calibre8">
+</p><div class="mediaobject"><img src="../images/00017.jpeg" alt="The retry() operator" class="calibre19"/></div><p class="calibre20"> </p><p class="calibre8">
+</p><p class="calibre8">Marble diagram representing the retry() operator, from http://reactivex.io/documentation/operators/retry.html</p><p class="calibre8">If we wanted to simulate a situation where we get numbers from 1 to 6 except number 3, we could make an external variable, <code class="literal">$count</code>, and increment it, instead of relying on values coming from <code class="literal">RangeObservable</code>. To stop emitting values, we can use <code class="literal">takeWhile()</code>, which calls <code class="literal">onCompleted</code> when its callable returns <code class="literal">false</code>:</p><pre class="programlisting">// retry_05.php 
+$count = 0; 
+Rx\Observable::range(1, 6) 
+    -&gt;map(function($val) use (&amp;$count) { 
+        if (++$count == 3) { 
+            throw new \Exception('error'); 
+        } 
+        return $count; 
+    }) 
+    -&gt;retry(3) 
+    -&gt;takeWhile(function($val) { 
+        return $val &lt;= 6; 
+    }) 
+    -&gt;subscribe(new DebugSubject()); 
+</pre><p class="calibre8">The output is then as we expected:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php retry_05.php</strong></span>
+<span class="strong"><strong class="calibre17">14:18:01 [] onNext: 1 (integer)</strong></span>
+<span class="strong"><strong class="calibre17">14:18:01 [] onNext: 2 (integer)</strong></span>
+<span class="strong"><strong class="calibre17">14:18:01 [] onNext: 4 (integer)</strong></span>
+<span class="strong"><strong class="calibre17">14:18:01 [] onNext: 5 (integer)</strong></span>
+<span class="strong"><strong class="calibre17">14:18:01 [] onNext: 6 (integer)</strong></span>
+<span class="strong"><strong class="calibre17">14:18:01 [] onCompleted</strong></span>
+</pre><div class="book" title="CURLObservable and the retry() operator"><div class="book"><div class="book"><div class="book"><h3 class="title1"><a id="ch04lvl3sec12" class="calibre1"/>CURLObservable and the retry() operator</h3></div></div></div><p class="calibre8">We can make a simple test scenario that is closer to a real world application. We'll take our CURLObservable and try to repeat an HTTP request three times. We'll choose any non-existing URL to be sure it fails every time to see how the error is propagated through the operator chain when using <code class="literal">retry()</code>:</p><pre class="programlisting">// retry_04.php 
+Rx\Observable::defer(function() { 
+        echo "Observable::defer\n"; 
+        return new CurlObservable('https://example.com123'); 
+    }) 
+    -&gt;retry(3) 
+    -&gt;subscribe(new DebugSubject()); 
+</pre><p class="calibre8">We've already seen the <code class="literal">Observable::defer()</code> static method in <a class="calibre1" title="Chapter 3. Writing a Reddit Reader with RxPHP" href="part0033_split_000.html#VF2I2-bd355a22cf10407cb10df27e65585b8d">Chapter 3</a>, <span class="strong"><em class="calibre18">Writing a Reddit Reader with RxPHP</em></span>. We're using it here to show that the <code class="literal">retry()</code> operator causes resubscription to the source Observable.</p><p class="calibre8">This example prints to the console the following output:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php retry_04.php </strong></span>
+<span class="strong"><strong class="calibre17">Observable::defer()</strong></span>
+<span class="strong"><strong class="calibre17">Observable::defer()</strong></span>
+<span class="strong"><strong class="calibre17">Observable::defer()</strong></span>
+<span class="strong"><strong class="calibre17">13:14:20 [] onError (Exception): Unable to download https://ex...</strong></span>
+</pre><p class="calibre8">We can see that it took three iterations before the error (in fact an exception) reached <code class="literal">DebugSubject</code>.</p></div></div></div></div>
+
+<div class="book" title="Chapter&#xA0;4.&#xA0;Reactive versus a Typical Event-Driven Approach">
+<div class="book" title="Handling error states in operator chains">
+<div class="book" title="The retryWhen() operator"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_3"><a id="ch04lvl2sec34" class="calibre1"/>The retryWhen() operator</h2></div></div></div><p class="calibre8">Similar to <code class="literal">retry()</code>, there's also an operator called <code class="literal">retryWhen()</code>, which in contrast to <code class="literal">retry()</code>, doesn't re-subscribe immediately. Operator <code class="literal">retryWhen()</code> takes as an argument a callable that returns another Observable. This Observable is then used when the <code class="literal">onError</code> signal occurs, to schedule resubscription.</p><p class="calibre8">
+</p><div class="mediaobject"><img src="../images/00018.jpeg" alt="The retryWhen() operator" class="calibre19"/></div><p class="calibre20"> </p><p class="calibre8">
+</p><p class="calibre8">Marble diagram representing the retryWhen() operator, from http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html#instance-method-retryWhen</p><div class="book" title="CURLObservable and the retryWhen() operator"><div class="book"><div class="book"><div class="book"><h3 class="title1"><a id="ch04lvl3sec13" class="calibre1"/>CURLObservable and the retryWhen() operator</h3></div></div></div><p class="calibre8">For example, we can consider our <code class="literal">CURLObservable</code> once more and imagine we want to repeat the failed request after a one-second delay. Since the functionality of <code class="literal">retryWhen()</code> is a little more complicated, we'll start with an example:</p><pre class="programlisting">// retry_when_01.php 
+$loop = new \React\EventLoop\StreamSelectLoop(); 
+$scheduler = new \Rx\Scheduler\EventLoopScheduler($loop); 
+ 
+(new CURLObservable('https://example.com123')) 
+    -&gt;retryWhen(function($errObs) use ($scheduler) { 
+        $notificationObs = $errObs 
+            -&gt;delay(1000, $scheduler) 
+            -&gt;map(function() { 
+                echo "\$notificationObs\n"; 
+                return true; 
+            }); 
+        return $notificationObs; 
+    }) 
+    -&gt;subscribe(new DebugSubject(), $scheduler); 
+ 
+$scheduler-&gt;start(); 
+</pre><div class="informaltable" title="Note"><h3 class="title1"><a id="note23" class="calibre1"/>Note</h3><p class="calibre8">We need to use an event loop to schedule the <code class="literal">delay()</code> operator.</p></div><p class="calibre8">The callable to <code class="literal">retryWhen()</code> takes an Observable as an argument and has to return an Observable. Then, when an error signal occurs, it's pushed to <code class="literal">$errObs</code> as <code class="literal">onNext</code> so we can decide based on the type of error what we want to do. Depending on the emissions from the returned <code class="literal">$notificationObs</code> we can control what happens next:</p><div class="book"><ul class="itemizedlist"><li class="listitem"><code class="literal">onNext</code>: When <code class="literal">$notificationObs</code> emits the <code class="literal">onNext</code> signal, the <code class="literal">retryWhen()</code> operator resubscribes to its source Observable. Note that the value emitted is not important.</li><li class="listitem"><code class="literal">onError</code>: The error is propagated further down the operator chain.</li><li class="listitem"><code class="literal">onComplete</code>: The <code class="literal">onComplete</code> signal is propagated further down the operator chain.</li></ul></div><p class="calibre8">What the preceding example does should be obvious. When <code class="literal">CURLObservable</code> fails (emits <code class="literal">onError</code>), the <code class="literal">retryWhen()</code> operator waits one second, thanks to the <code class="literal">delay()</code> operator, and then resubscribes, which will make CURLObservable try to download the URL again indefinitely. The output from this example looks like the following:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php retry_when_01.php</strong></span>
+<span class="strong"><strong class="calibre17">onNext</strong></span>
+<span class="strong"><strong class="calibre17">onNext</strong></span>
+<span class="strong"><strong class="calibre17">onNext</strong></span>
+<span class="strong"><strong class="calibre17">...</strong></span>
+</pre><p class="calibre8">Since the <code class="literal">retryWhen()</code> operator is slightly more complicated, we can have a look into its internals to understand why it works the way it works:</p><div class="book"><ul class="itemizedlist"><li class="listitem">It creates an instance of <code class="literal">Subject</code> and stores its reference in a variable called <code class="literal">$errors</code>. Subjects work as both Observables and observers. It needs to use Subject, because it's important to be able to manually trigger signals such as <code class="literal">onNext</code>, which is not possible with just an Observable.</li><li class="listitem">When the operator calls its callable, it passes along the <code class="literal">$errors-&gt;asObservable()</code> and expects to receive an Observable, which is stored in another variable, called <code class="literal">$when</code>. The method <code class="literal">asObservable()</code> wraps Subject with an <code class="literal">AnonymousObservable</code>, and thus hides that it is, in fact, an instance of <code class="literal">Subject</code>.</li><li class="listitem">Then, <code class="literal">CallbackObserver</code> is subscribed to <code class="literal">$when</code>, which can later resubscribe to the source Observable of this operator.</li><li class="listitem">This means that we have the "head" and "tail" of the chain of Observables in variables <code class="literal">$errors</code> and <code class="literal">$when</code>, respectively.</li><li class="listitem">Later on, when an <code class="literal">onError</code> signal is received, the operator calls <code class="literal">$errors-&gt;onNext()</code>, which sends the value through the chain of Observables. In our case, it goes through the <code class="literal">delay()</code> operator.</li></ul></div><p class="calibre8">If we rewrote the preceding points into an actual heavily simplified code it would look like the following:</p><pre class="programlisting">$errors = new Subject(); 
+$when = call_user_func($callable, $errors-&gt;asObservable()); 
+ 
+$subscribe = function() use ($observable, $observer, $errors) { 
+    $observable-&gt;subscribe(new CallbackObserver( 
+        [$observer, 'onNext'], 
+        function() use ($errors) { 
+            $errors-&gt;onNext($errors); 
+        }), 
+        [$observer, 'onCompleted'] 
+    ); 
+}; 
+$when-&gt;subscribe(new CallbackObserver(function() use ($subscribe){ 
+    $subscribe(); 
+})); 
+ 
+$subscribe(); 
+</pre><p class="calibre8">This operator doesn't care about <code class="literal">onNext</code> or <code class="literal">onComplete</code>, and passes them right into <code class="literal">$observer</code>. The only signal it needs to handle is <code class="literal">onError</code>, which calls <code class="literal">$errors-&gt;onNext()</code>, and therefore triggers the chain of Observables, eventually resulting in resubscribing to the source Observable inside the <code class="literal">$when-&gt;subscribe()</code> callable.</p><p class="calibre8">This technique of using an instance of <code class="literal">Subject</code> to be able to manually trigger signals and at the same time subscribe observers to it is very useful. We're going to use it in a moment, when we implement our event dispatcher.</p></div><div class="book" title="CURLObservable and controlled number of retries"><div class="book"><div class="book"><div class="book"><h3 class="title1"><a id="ch04lvl3sec14" class="calibre1"/>CURLObservable and controlled number of retries</h3></div></div></div><p class="calibre8">When talking about the <code class="literal">retry()</code> operator, we made a demo where we tried to download a URL three times and then failed. The number of retries was fixed to 3.</p><p class="calibre8">We can create the same example with the <code class="literal">retryWhen()</code> operator while having more control if and when we want to retry the HTTP request. Consider the following example where we make three attempts to download a URL and then propagate the error further:</p><pre class="programlisting">// retry_when_02.php 
+use Rx\Observable; 
+$loop = new \React\EventLoop\StreamSelectLoop(); 
+$scheduler = new \Rx\Scheduler\EventLoopScheduler($loop); 
+ 
+(new CURLObservable('https://example.com123')) 
+    -&gt;retryWhen(function($errObs) use ($scheduler) { 
+        echo "retryWhen\n"; 
+        $i = 1; 
+        $notificationObs = $errObs 
+            -&gt;delay(1000, $scheduler) 
+            -&gt;map(function(Exception $val) use (&amp;$i) { 
+                echo "attempt: $i\n"; 
+                if ($i == 3) { 
+                    throw $val; 
+                } 
+                $i++; 
+                return $val; 
+            }); 
+ 
+        return $notificationObs; 
+    }) 
+    -&gt;subscribe(new DebugSubject(), $scheduler); 
+ 
+$loop-&gt;run(); 
+</pre><p class="calibre8">In this example, we make three attempts where each is delayed by one second and then re-throw the exception, which is caught by the <code class="literal">map()</code> operator and passed as an <code class="literal">onError</code> signal. Since <code class="literal">$notificationObs</code> sends the <code class="literal">onError</code> signal, the <code class="literal">retryWhen()</code> operator passes this error further as explained previously. We also print the string <code class="literal">retryWhen</code> to prove that the callable is called just once even when there're multiple retries.</p><p class="calibre8">The output from this example is the following:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php retry_when_02.php</strong></span>
+<span class="strong"><strong class="calibre17">retryWhen</strong></span>
+<span class="strong"><strong class="calibre17">attempt: 1</strong></span>
+<span class="strong"><strong class="calibre17">attempt: 2</strong></span>
+<span class="strong"><strong class="calibre17">attempt: 3</strong></span>
+<span class="strong"><strong class="calibre17">14:36:13 [] onError (Exception): Unable to download https://ex...</strong></span>
+</pre><p class="calibre8">What's interesting about this demo is that it doesn't need to end with the error at all. We could use <code class="literal">$notificationObs</code> to signal <code class="literal">onComplete</code> instead.</p><p class="calibre8">The inner callable could look, for example, like the following code:</p><pre class="programlisting">// retry_when_03.php 
+... 
+$notificationObs = $errObs 
+    -&gt;delay(1000, $scheduler) 
+    -&gt;map(function(Exception $val) use (&amp;$i) { 
+        echo "attempt: $i\n"; 
+        $i++; 
+        return $val; 
+    }) 
+    -&gt;take(3); 
+... 
+</pre><p class="calibre8">In contrast to the previous example we're not re-throwing the exception, and just emitting <code class="literal">onComplete</code> instead:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php retry_when_03.php </strong></span>
+<span class="strong"><strong class="calibre17">retryWhen</strong></span>
+<span class="strong"><strong class="calibre17">attempt: 1</strong></span>
+<span class="strong"><strong class="calibre17">attempt: 2</strong></span>
+<span class="strong"><strong class="calibre17">attempt: 3</strong></span>
+<span class="strong"><strong class="calibre17">15:30:01 [] onCompleted</strong></span>
+</pre><p class="calibre8">This might be useful in situations where even multiple failed retries don't necessarily mean an error state.</p></div></div></div></div>
+
+<div class="book" title="Chapter&#xA0;4.&#xA0;Reactive versus a Typical Event-Driven Approach">
+<div class="book" title="Handling error states in operator chains">
+<div class="book" title="The catchError() operator"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_4"><a id="ch04lvl2sec35" class="calibre1"/>The catchError() operator</h2></div></div></div><p class="calibre8">The operator <code class="literal">catchError()</code> also handles only error signals. When it receives an <code class="literal">onError</code>, it calls a callable that returns an Observable, which is then used to continue the Observable sequence instead of the source Observable.</p><p class="calibre8">Consider the following example:</p><pre class="programlisting">use Rx\Observable; 
+Observable::range(1,6) 
+    -&gt;map(function($val) { 
+        if ($val == 3) { 
+            throw new Exception(); 
+        } 
+        return $val; 
+    }) 
+    -&gt;catchError(function(Exception $e, Observable $sourceOb) { 
+        return Observable::just(42); 
+    }) 
+    -&gt;subscribe(new DebugSubject()); 
+</pre><p class="calibre8">In this example, the <code class="literal">onError</code> signal is captured by <code class="literal">catchError()</code> and, instead of ending the entire Observable sequence, it continues with a single value, thanks to <code class="literal">Observable::just()</code>, and then ends with <code class="literal">onComplete</code>:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php catch_01.php </strong></span>
+<span class="strong"><strong class="calibre17">06:43:04 [] onNext: 1 (integer)</strong></span>
+<span class="strong"><strong class="calibre17">06:43:04 [] onNext: 2 (integer)</strong></span>
+<span class="strong"><strong class="calibre17">06:43:04 [] onNext: 42 (integer)</strong></span>
+<span class="strong"><strong class="calibre17">06:43:04 [] onCompleted</strong></span>
+</pre></div></div></div>
+
+<div class="book" title="The concat() and merge() operators"><div class="book" id="164MG2-bd355a22cf10407cb10df27e65585b8d"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch04lvl1sec32" class="calibre1"/>The concat() and merge() operators</h1></div></div></div><p class="calibre8">With <code class="literal">retry()</code> and <code class="literal">retryWhen()</code> we've stumbled upon operators that take as parameters other Observables and work with their emissions. Combining multiple Observables into a single chain is a common practice mostly in RxJS due to the asynchronous nature of JavaScript by design. In RxPHP we don't use them as often, but it's worth having a quick look at them.</p></div>
+
+<div class="book" title="The concat() and merge() operators">
+<div class="book" title="The merge() operator"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_1"><a id="ch04lvl2sec36" class="calibre1"/>The merge() operator</h2></div></div></div><p class="calibre8">In order to merge two Observables into a single one that emits all values from both of them (including <code class="literal">onError</code> signals) we can use the <code class="literal">merge()</code> operator.</p><p class="calibre8">
+</p><div class="mediaobject"><img src="../images/00019.jpeg" alt="The merge() operator" class="calibre19"/></div><p class="calibre20"> </p><p class="calibre8">
+</p><p class="calibre8">Marble diagram representing the merge() operator, from http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html#static-method-merge</p><p class="calibre8">As we can see from the marble diagram, this operator reemits values from source and the merged Observables. This means it subscribes to both of them and emits values as they arrive.</p><p class="calibre8">To better understand how it works, we can make a simple example with two interval Observables where each emits three values with different delays:</p><pre class="programlisting">// merge_01.php 
+use Rx\Observable; 
+$loop = new \React\EventLoop\StreamSelectLoop(); 
+$scheduler = new \Rx\Scheduler\EventLoopScheduler($loop); 
+ 
+$merge = Observable::interval(100) 
+    -&gt;map(function($value) { 
+        return 'M' . $value; 
+    }) 
+    -&gt;take(3); 
+ 
+$source = Observable::interval(300) 
+    -&gt;map(function($value) { 
+        return 'S' . $value; 
+    }) 
+    -&gt;take(3) 
+    -&gt;merge($merge) 
+    -&gt;subscribe(new DebugSubject(), $scheduler); 
+ 
+$loop-&gt;run(); 
+</pre><p class="calibre8">The <code class="literal">$merge</code> Observable emits its values faster than <code class="literal">$source</code>. We also prefix each value to mark where it came from so the output from this example is the following:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php merge_01.php</strong></span>
+<span class="strong"><strong class="calibre17">22:00:28 [] onNext: M0 (string)</strong></span>
+<span class="strong"><strong class="calibre17">22:00:28 [] onNext: M1 (string)</strong></span>
+<span class="strong"><strong class="calibre17">22:00:28 [] onNext: S0 (string)</strong></span>
+<span class="strong"><strong class="calibre17">22:00:28 [] onNext: M2 (string)</strong></span>
+<span class="strong"><strong class="calibre17">22:00:29 [] onNext: S1 (string)</strong></span>
+<span class="strong"><strong class="calibre17">22:00:29 [] onNext: S2 (string)</strong></span>
+<span class="strong"><strong class="calibre17">22:00:29 [] onCompleted</strong></span>
+</pre><p class="calibre8">We can see that the values are mixed together. However, there's only one <code class="literal">onComplete</code> signal when both Observables complete, so overall it behaves like a single Observable.</p></div></div>
+
+<div class="book" title="The concat() and merge() operators">
+<div class="book" title="The concat() operator"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_2"><a id="ch04lvl2sec37" class="calibre1"/>The concat() operator</h2></div></div></div><p class="calibre8">In contrast to <code class="literal">merge()</code> sometimes we might want to combine two Observables but first emit all values from the first Observable and, when it completes, subscribe to the second one and emit all values from that as well. For this reason, there's also the <code class="literal">concat()</code> operator:</p><p class="calibre8">
+</p><div class="mediaobject"><img src="../images/00020.jpeg" alt="The concat() operator" class="calibre19"/></div><p class="calibre20"> </p><p class="calibre8">
+</p><p class="calibre8">Marble diagram representing the concat() operator, from http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html#instance-method-concat</p><p class="calibre8">We can take the same example as we made for <code class="literal">merge()</code> and just switch the <code class="literal">merge()</code> operator to <code class="literal">concat()</code>:</p><pre class="programlisting">// concat_01.php 
+use Rx\Observable; 
+$loop = new \React\EventLoop\StreamSelectLoop(); 
+$scheduler = new \Rx\Scheduler\EventLoopScheduler($loop); 
+ 
+$concat = Observable::interval(100) 
+    -&gt;map(function($value) { 
+        return 'C' . $value; 
+    }) 
+    -&gt;take(3); 
+ 
+$source = Observable::interval(300) 
+    -&gt;map(function($value) { 
+        return 'S' . $value; 
+    }) 
+    -&gt;take(3) 
+    -&gt;concat($concat) 
+    -&gt;subscribe(new DebugSubject(), $scheduler); 
+ 
+$loop-&gt;run(); 
+</pre><p class="calibre8">Since <code class="literal">concat()</code> should subscribe to the source and concatenated Observables one after another we should expect to receive first all values from the source Observable and, when it completes, all values from <code class="literal">$concat</code> Observable.</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php concat_01.php </strong></span>
+<span class="strong"><strong class="calibre17">22:25:45 [] onNext: S0 (string)</strong></span>
+<span class="strong"><strong class="calibre17">22:25:45 [] onNext: S1 (string)</strong></span>
+<span class="strong"><strong class="calibre17">22:25:46 [] onNext: S2 (string)</strong></span>
+<span class="strong"><strong class="calibre17">22:25:46 [] onNext: C0 (string)</strong></span>
+<span class="strong"><strong class="calibre17">22:25:46 [] onNext: C1 (string)</strong></span>
+<span class="strong"><strong class="calibre17">22:25:46 [] onNext: C2 (string)</strong></span>
+<span class="strong"><strong class="calibre17">22:25:46 [] onCompleted</strong></span>
+</pre><p class="calibre8">Even though the concatenated Observable emits values faster than the source Observable, its values follow after all the values from source.</p></div></div>
+
+<div class="book" title="The concat() and merge() operators">
+<div class="book" title="The concatMap() and flatMap() operators"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_3"><a id="ch04lvl2sec38" class="calibre1"/>The concatMap() and flatMap() operators</h2></div></div></div><p class="calibre8">Both the <code class="literal">merge()</code> and <code class="literal">concat()</code> operators have their <code class="literal">*map()</code> variants. In particular these are <code class="literal">flatMap()</code> and <code class="literal">concatMap()</code>. These operators combine the functionality of <code class="literal">merge()</code>/<code class="literal">concat()</code> with the <code class="literal">map()</code> operator. If we look at both examples we made a moment ago, we'll see that we need to know the inner Observable beforehand. This means the inner Observable is passed to <code class="literal">concat()</code>/<code class="literal">merge()</code> once when creating the Observable chain.</p><p class="calibre8">We'll pick one of the two operators and explain its benefits in an example.</p><p class="calibre8">Let's imagine we want to make three HTTP requests one after another. This looks like an ideal use case for the <code class="literal">concat()</code> operator. However, each request is going to be dependent on the result from the previous one, so we need to use <code class="literal">concatMap()</code> instead because its callable takes the current value from the source Observable as a parameter and returns an Observable that'll be concatenated to the chain:</p><pre class="programlisting">// concat_map_01.php 
+use Rx\Observable; 
+ 
+function createCURLObservable($num) { 
+    $url = 'http://httpbin.org/get?num=' . $num; 
+    echo "$url\n"; 
+    return (new CURLObservable($url)) 
+        -&gt;filter(function($response) { 
+            return is_string($response); 
+        }); 
+} 
+ 
+$source = Observable::emptyObservable() 
+    -&gt;concat(createCURLObservable(rand(1, 100))) 
+    -&gt;concatMap(function($response) { 
+        $json = json_decode($response, true); 
+        return createCURLObservable(2 * $json['args']['num']); 
+    }) 
+    -&gt;concatMap(function($response) { 
+        $json = json_decode($response, true); 
+        return createCURLObservable(2 * $json['args']['num']); 
+    }) 
+    -&gt;subscribe(new DebugSubject()); 
+</pre><p class="calibre8">We're using the <a class="calibre1" href="http://httpbin.org/get">http://httpbin.org/get</a> web service that serves as a test server and returns the request we sent as a JSON string.</p><p class="calibre8">We used <code class="literal">Observable::emptyObservable()</code> to create an empty Observable that completes immediately, and chain it with one <code class="literal">concat()</code> and two <code class="literal">concatMap()</code> operators. Each <code class="literal">concatMap()</code> then decodes the JSON from the previous requests, takes its <code class="literal">num</code> parameter multiplied by 2 and resends the HTTP request.</p><p class="calibre8">Then, from the console output, we can see the requests are called in order and the random <code class="literal">num</code> parameter created in the <code class="literal">concat()</code> operator call is multiplied by 2 with every request:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php concat_map_01.php</strong></span>
+<span class="strong"><strong class="calibre17">http://httpbin.org/get?num=51</strong></span>
+<span class="strong"><strong class="calibre17">http://httpbin.org/get?num=102</strong></span>
+<span class="strong"><strong class="calibre17">http://httpbin.org/get?num=204</strong></span>
+<span class="strong"><strong class="calibre17">22:54:37 [] onNext: {</strong></span>
+<span class="strong"><strong class="calibre17">  "args": {</strong></span>
+<span class="strong"><strong class="calibre17">    "num": "204"</strong></span>
+<span class="strong"><strong class="calibre17">  }, </strong></span>
+<span class="strong"><strong class="calibre17">  "headers": {</strong></span>
+<span class="strong"><strong class="calibre17">    "Accept"... (string)</strong></span>
+<span class="strong"><strong class="calibre17">22:54:37 [] onCompleted</strong></span>
+</pre><p class="calibre8">With <code class="literal">flatMap()</code> the example would be the same. However, since PHP isn't asynchronous like JavaScript, <code class="literal">flatMap()</code> operator isn't as useful in this particular use case.</p><p class="calibre8">We'll have a look at more operators that combine multiple Observables in <a class="calibre1" title="Chapter 6. PHP Streams API and Higher-Order Observables" href="part0050_split_000.html#1FLS41-bd355a22cf10407cb10df27e65585b8d">Chapter 6</a>, <span class="strong"><em class="calibre18">PHP Streams API and Higher-Order Observables</em></span>.</p></div></div>
+
+<div class="book" title="Writing a reactive event dispatcher"><div class="book" id="173722-bd355a22cf10407cb10df27e65585b8d"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch04lvl1sec33" class="calibre1"/>Writing a reactive event dispatcher</h1></div></div></div><p class="calibre8">The Symfony <code class="literal">EventDispatcher</code> component is a PHP library for exchanging messages between objects. It's based on the Mediator design pattern (<a class="calibre1" href="https://en.wikipedia.org/wiki/Mediator_pattern">
+https://en.wikipedia.org/wiki/Mediator_pattern
+</a>), and its implementation is relatively simple.</p><p class="calibre8">A very common scenario is when we have an application that we want to make extendable via plugins. In this case, we'd create a single instance of <code class="literal">EventDispatcher</code> and let plugins listen to various events. Each event is an object that can hold references to other objects as well. This is what the Symfony3 framework does extensively.</p></div>
+
+<div class="book" title="Writing a reactive event dispatcher">
+<div class="book" title="A quick introduction to EventDispatcher"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_1"><a id="ch04lvl2sec39" class="calibre1"/>A quick introduction to EventDispatcher</h2></div></div></div><p class="calibre8">If you haven't done so already, install the Event Dispatcher component via <code class="literal">composer</code>:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ composer require symfony/event-dispatcher</strong></span>
+</pre><p class="calibre8">First, we're going to have a look at how the default implementation is used in practice, so we can later compare it to our reactive implementation, and check that both work the same from a developer's perspective while the internal implementation is different.</p><div class="book" title="Working with event listeners"><div class="book"><div class="book"><div class="book"><h3 class="title1"><a id="ch04lvl3sec15" class="calibre1"/>Working with event listeners</h3></div></div></div><p class="calibre8">In the most basic situation, we just want to set up a couple of listeners and dispatch events:</p><pre class="programlisting">// event_dispatcher_01.php  
+use Symfony\Component\EventDispatcher\EventDispatcher; 
+use Symfony\Component\EventDispatcher\Event; 
+ 
+$dispatcher = new EventDispatcher(); 
+$dispatcher-&gt;addListener('my_action', function() { 
+    echo "Listener #1\n"; 
+}); 
+$dispatcher-&gt;addListener('other_action', function() { 
+    echo "Other listener\n"; 
+}); 
+$dispatcher-&gt;addListener('my_action', function() { 
+    echo "Listener #2\n"; 
+}); 
+ 
+$dispatcher-&gt;dispatch('my_action'); 
+</pre><p class="calibre8">We created three event listeners to two different events, <code class="literal">my_action</code> and <code class="literal">other_action</code>. Then, with <code class="literal">$dispatcher-&gt;dispatch()</code>, we tell the event dispatcher to notify all event listeners that the event called <code class="literal">my_action</code> occurred.</p><p class="calibre8">The output in the console should be obvious:</p><pre class="programlisting">$ php event_dispatcher_01.php  
+Listener #1 
+Listener #2 
+</pre><p class="calibre8">The <code class="literal">dispatch()</code> method takes an optional second argument with an instance of <code class="literal">Event</code> class that can contain further information about the event. Event listeners can also modify event data if necessary. Also, all callables receive exactly one argument with the event object, which comes from the initial call to the <code class="literal">dispatch()</code> method. Since we didn't provide any event object, our callables don't need to accept any parameter.</p><p class="calibre8">Note that the event dispatcher doesn't need to know what events it supports, as they are created on the fly. This also means you can accidentally try to dispatch a non-existent event:</p><pre class="programlisting">$dispatcher-&gt;dispatch('foo_my_action'); 
+</pre><p class="calibre8">This won't throw an error, but no event will be dispatched.</p><p class="calibre8">The <code class="literal">EventDispatcher</code> class supports two important features:</p><div class="book"><ul class="itemizedlist"><li class="listitem"><span class="strong"><strong class="calibre17">Priority</strong></span>: By default, listeners are executed in the order they subscribe to the event dispatcher. We can alter this behavior by supplying a third argument to the <code class="literal">addListener()</code> method with priority for this particular listener (it's 0 by default). Listeners with higher priority are executed first. If more listeners have the same priority, then the order they were added matters.</li><li class="listitem"><span class="strong"><strong class="calibre17">Stopping event propagation</strong></span>: In some scenarios, it's important to be able to stop propagating a particular event to subsequent listeners. For this reason, the <code class="literal">Event</code> class has a method called <code class="literal">stopPropagation()</code>. The event dispatcher is then responsible for not propagating this event further.</li></ul></div><p class="calibre8">These two features can be used in a situation such as the following:</p><pre class="programlisting">// event_dispatcher_02.php  
+$dispatcher = new EventDispatcher(); 
+ 
+$dispatcher-&gt;addListener('my_action', function(Event $event) { 
+    echo "Listener #1\n"; 
+}); 
+$dispatcher-&gt;addListener('my_action', function(Event $event) { 
+    echo "Listener #2\n"; 
+    $event-&gt;stopPropagation(); 
+}, 1); 
+ 
+$dispatcher-&gt;dispatch('my_action', new Event()); 
+</pre><p class="calibre8">The first event listener should be called after the second one because it has higher priority, but it stops further propagation of this event using <code class="literal">$event-&gt;stopPropagation()</code>, so it's never invoked.</p><p class="calibre8">The console output is then very short:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php event_dispatcher_02.php</strong></span>
+<span class="strong"><strong class="calibre17">Listener #2</strong></span>
+</pre></div><div class="book" title="Working with event subscribers"><div class="book"><div class="book"><div class="book"><h3 class="title1"><a id="ch04lvl3sec16" class="calibre1"/>Working with event subscribers</h3></div></div></div><p class="calibre8">While <code class="literal">addListener()</code> subscribes to a single event listener, there's also the <code class="literal">addSubscriber()</code> method, which accepts an instance of a class implementing 
+<code class="literal">EventSubscriberInterface</code> and subscribes to multiple events at once. In fact, <code class="literal">addSubscriber()</code> uses <code class="literal">addListener()</code> internally to add listeners. Sometimes it's just easier to wrap all listeners into a single class than add them one by one.</p><p class="calibre8">Throughout this and upcoming examples in this chapter, we're also going to use a custom <code class="literal">Event</code> class in order to properly test that both the default and our reactive implementations work the same.</p><p class="calibre8">First, let's declare our event class:</p><pre class="programlisting">// MyEvent.php 
+use Symfony\Component\EventDispatcher\Event; 
+ 
+class MyEvent extends Event { 
+  private $name; 
+  private $counter = 0; 
+ 
+  public function __construct($name = null, $counter = 0) { 
+    $this-&gt;name = $name; 
+    $this-&gt;counter = $counter; 
+  } 
+  public function getCounter() { 
+    return $this-&gt;counter; 
+  } 
+  public function inc() { 
+    $this-&gt;counter++; 
+  } 
+  public function __toString() { 
+    return sprintf('%s (%d)', $this-&gt;name, $this-&gt;counter); 
+  } 
+} 
+</pre><p class="calibre8">It's a pretty simple class. We'll use the <code class="literal">inc()</code> method to see that all the listeners work with the same instance of <code class="literal">MyEvent</code>. We also use the <code class="literal">__toString()</code> magic method so we can convert this class to string just by typecasting it.</p><p class="calibre8">Now, for demonstration purposes, we'll declare a <code class="literal">MyEventSubscriber</code> class with three event listeners:</p><pre class="programlisting">// MyEventSubscriber.php 
+use Symfony\Component\EventDispatcher\EventDispatcher; 
+use Symfony\Component\EventDispatcher\Event; 
+use Symfony\Component\EventDispatcher\EventSubscriberInterface; 
+ 
+class MyEventSubscriber implements EventSubscriberInterface { 
+  public static function getSubscribedEvents() { 
+    return [ 
+      'my_action' =&gt; [ 
+        ['onMyActionA'], 
+        ['onMyActionAgain', 1], 
+      ], 
+      'other_action' =&gt; 'onOtherAction', 
+    ]; 
+  } 
+ 
+  public function onMyActionA(MyEvent $event) { 
+    $event-&gt;inc(); 
+    echo sprintf('Listener [onMyAction]: %s\n', $event); 
+  } 
+ 
+  public function onMyActionAgain(MyEvent $event) { 
+    $event-&gt;inc(); 
+    echo sprintf('Listener [onMyActionAgain]: %s\n', $event); 
+  } 
+ 
+  public function onOtherAction(Event $event) { } 
+} 
+</pre><p class="calibre8">The interface <code class="literal">EventSubscriberInterface</code> requires only the static method <code class="literal">getSubscribedEvents()</code>, which returns an associative array of event names and their appropriate callables.</p><p class="calibre8">This example class declares two listeners for the <code class="literal">my_action</code> event (where the second one has higher priority than the first) and one listener for the <code class="literal">other_action</code> event.</p><p class="calibre8">Subscribing to this class works the same way as subscribing to listeners:</p><pre class="programlisting">$dispatcher = new EventDispatcher(); 
+$dispatcher-&gt;addSubscriber(new MyEventSubscriber()); 
+$dispatcher-&gt;dispatch('my_action', new MyEvent('my-event')); 
+</pre><p class="calibre8">This time, the example also prints a string representation of the event:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php event_dispatcher_03.php </strong></span>
+<span class="strong"><strong class="calibre17">Listener [onMyActionAgain]: my-event (1)</strong></span>
+<span class="strong"><strong class="calibre17">Listener [onMyAction]: my-event (2)</strong></span>
+</pre><p class="calibre8">This is yet another thing we need to handle, because we want to allow defining event Observables in an event subscriber class.</p><p class="calibre8">Now we know how the default <code class="literal">EventDispatcher</code> class can be used and what use cases it's supposed to fulfill. Our goal will be to write our own implementation based on RxPHP and reactive programming.</p></div></div></div>
+
+<div class="book" title="Writing a reactive event dispatcher">
+<div class="book" title="Writing ReactiveEventDispatcher with RxPHP"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_2"><a id="ch04lvl2sec40" class="calibre1"/>Writing ReactiveEventDispatcher with RxPHP</h2></div></div></div><p class="calibre8">Event dispatchers need to implement an <code class="literal">EventDispatcherInterface</code> interface that defines all the methods we've seen previously, and we'll also add a few more. Luckily for us, we can reuse a large part of the default <code class="literal">EventDispatcher</code> class. For example, the <code class="literal">removeListener()</code> or <code class="literal">removeSubscriber()</code> methods will work without any modification.</p><div class="book" title="Internal representation of event listeners as observers"><div class="book"><div class="book"><div class="book"><h3 class="title1"><a id="ch04lvl3sec17" class="calibre1"/>Internal representation of event listeners as observers</h3></div></div></div><p class="calibre8">The original <code class="literal">EventDispatcher</code> had a very easy task. On the <code class="literal">dispatch()</code> call, it just sorted the array of listeners for that particular event by their priority and evaluated them one by one, in a loop:</p><pre class="programlisting">// snippet from Symfony\Component\EventDispatcher\EventDispatcher 
+foreach ($listeners as $listener) { 
+    if ($event-&gt;isPropagationStopped()) { 
+        break; 
+    } 
+    call_user_func($listener, $event, $eventName, $this); 
+} 
+</pre><p class="calibre8">In our case, we're going to represent all event listeners as observers. In fact, when we add a new event listener, we'll transform its callable into an observer. Then, when calling <code class="literal">dispatch()</code>, we'll create a chain of Observables where all observers are already subscribed at specific points. Of course, we also need to handle the 
+<code class="literal">isPropagationStopped()</code> condition by ourselves.</p><p class="calibre8">For example, let's consider the simplest usage of the event dispatcher, as shown previously:</p><pre class="programlisting">$dispatcher-&gt;addListener('my_action', function() { 
+    echo "Listener #1\n"; 
+}); 
+$dispatcher-&gt;addListener('my_action', function() { 
+    echo "Listener #2\n"; 
+}); 
+</pre><p class="calibre8">We have to turn these two event listeners into a chain of Observables while making sure that, before each event listener is executed, we check that the event object hasn't got the stop propagation flag set:</p><pre class="programlisting">// reactive_dispatcher_03.php 
+$subject = new Subject(); 
+ 
+$tail = $subject-&gt;filter(function(Event $event) { 
+    return !$event-&gt;isPropagationStopped(); 
+}); 
+$tail-&gt;subscribe(new CallbackObserver(function(Event $event) { 
+    echo "Listener #1\n"; 
+    $event-&gt;stopPropagation(); 
+})); 
+ 
+$tail = $tail-&gt;filter(function(Event $event) { 
+    return !$event-&gt;isPropagationStopped(); 
+}); 
+$tail-&gt;subscribe(new CallbackObserver(function(Event $event) { 
+    echo "Listener #2\n"; 
+})); 
+ 
+$subject-&gt;onNext(new Event()); 
+</pre><p class="calibre8">We're using Subject here for the same reason as we explained earlier in the chapter when we talked about the <code class="literal">retryWhen()</code> operator. Still, let's explain this code in more detail:</p><div class="book"><ul class="itemizedlist"><li class="listitem">The <code class="literal">$subject</code> variable holds a reference to the "head" of the chain of Observables</li><li class="listitem">The <code class="literal">$tail</code> variable always holds a reference to the last Observable in the chain. This is where we further chain more Observables, and where we append the <code class="literal">filter()</code> operator that checks for stopped events.</li><li class="listitem">When we want to dispatch an event, we just need to call <code class="literal">$subject-&gt;onNext()</code>.</li></ul></div><p class="calibre8">To be extra clear what the current chain of Observables looks like, we can represent it as a tree structure:</p><p class="calibre8">
+</p><div class="mediaobject"><img src="../images/00021.jpeg" alt="Internal representation of event listeners as observers" class="calibre19"/></div><p class="calibre20"> </p><p class="calibre8">
+</p><p class="calibre8">Now we just need to turn all this into a real PHP class.</p></div></div></div>
+
+<div class="book" title="Writing a reactive event dispatcher">
+<div class="book" title="Writing a ReactiveEventDispatcher class"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_3"><a id="ch04lvl2sec41" class="calibre1"/>Writing a ReactiveEventDispatcher class</h2></div></div></div><p class="calibre8">The good thing is that we can actually reuse a lot of the logic already written in <code class="literal">EventDispatcher</code> and just overload certain methods that need to work differently.</p><p class="calibre8">First, we'll just write a class stub to see what's waiting ahead of us, and talk a little about each method:</p><pre class="programlisting">// ReactiveEventDispatcher.php 
+class ReactiveEventDispatcher extends EventDispatcher { 
+  /** 
+   * @var Subject[]; 
+   */ 
+  private $subjects = []; 
+ 
+  public function dispatch($eventName, Event $event = null) {} 
+ 
+  public function addListener($eventName, $listener, $prio=0) {} 
+ 
+  public function addObservable($eventName, $create, $prio=0) {} 
+ 
+  public function addSubscriber($subscriber) {} 
+ 
+  private function observerFromListener($listener) {} 
+ 
+  private function getSubject($eventName) {} 
+} 
+</pre><p class="calibre8">Only the methods <code class="literal">dispatch()</code>, <code class="literal">addListener()</code>, and <code class="literal">addSubscriber()</code> from <code class="literal">EventDispatcher</code> need to be overwritten; the rest can remain as they are. We also added three more methods to help us deal with Observables.</p><p class="calibre8">Let's see what the purpose of each component is:</p><div class="book"><ul class="itemizedlist"><li class="listitem"><code class="literal">$subjects</code>: An associative array that holds references to all heads of Observable chains (their Subjects).</li><li class="listitem"><code class="literal">addListener()</code>: We already know this method from previous examples. However, now the method also accepts observers as event listeners.</li><li class="listitem"><code class="literal">addObservable()</code>: This is a method that lets us append an Observable to a specific point in the chain of Observables generated by <code class="literal">getSubject()</code>.</li><li class="listitem"><code class="literal">addSubscriber()</code>: This subscribes to multiple events with the subscription class. It uses the <code class="literal">addObserver()</code> method.</li><li class="listitem"><code class="literal">dispatch()</code>: This method takes the instance of <code class="literal">Subject</code> for this particular event and calls <code class="literal">onNext()</code>, with the event object as a parameter.</li><li class="listitem"><code class="literal">observerFromListener()</code>: A helper method that transforms any listener into an observer. Basically, this just wraps every callable with a <code class="literal">CallbackObserver</code> object.</li><li class="listitem"><code class="literal">getSubject()</code>: Our event dispatcher is going to work with Subjects. This method internally sorts an array of listeners by their priority and constructs a chain of Observables from them. It'll also keep Subjects in the <code class="literal">$subjects</code> associative array, to be easily reused without necessarily creating the Observable chain all over again on every <code class="literal">dispatch()</code> call.</li></ul></div><p class="calibre8">So, we have a pretty good picture of how this event dispatcher is going to work, and we can start implementing each method.</p></div></div>
+
+<div class="book" title="Writing a reactive event dispatcher">
+<div class="book" title="Adding event listeners"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_4"><a id="ch04lvl2sec42" class="calibre1"/>Adding event listeners</h2></div></div></div><p class="calibre8">The first two methods are going to be <code class="literal">addListener()</code> and <code class="literal">observerFromListener()</code>. The first one is dependent on the second one, so we'll write both of them at the same time:</p><pre class="programlisting"> 
+// ReactiveEventDispatcher.php 
+class ReactiveEventDispatcher extends EventDispatcher { 
+  /** 
+   * @param string $eventName 
+   * @param callable|ObserverInterface $listener 
+   * @param int $prio 
+   * @throws Exception 
+   */ 
+  public function addListener($eventName, $listener, $prio = 0) { 
+    $observer = $this-&gt;observerFromListener($listener); 
+    parent::addListener($eventName, $observer, $prio); 
+    unset($this-&gt;subjects[$eventName]); 
+  } 
+ 
+  /** 
+   * @param callable|ObserverInterface $listener 
+   * @return ObserverInterface 
+   */ 
+  private function observerFromListener($listener) { 
+    if (is_callable($listener)) { 
+      return new CallbackObserver($listener); 
+    } elseif ($listener instanceof ObserverInterface) { 
+      return $listener; 
+    } else { 
+      throw new \Exception(); 
+    } 
+  } 
+ 
+  /* rest of the class */ 
+} 
+</pre><div class="informaltable" title="Note"><h3 class="title1"><a id="note24" class="calibre1"/>Note</h3><p class="calibre8">In the rest of the examples in this chapter, we're also going to include doc blocks and type hints for each method to clarify what arguments it accepts.</p></div><p class="calibre8">The <code class="literal">observerFromListener()</code> method checks the runtime type of <code class="literal">$listener</code> and always turns it into an instance of observer.</p><p class="calibre8">The method <code class="literal">addListener()</code> uses <code class="literal">observerFromListener()</code> internally, and then calls its parent's <code class="literal">addListener()</code> with the observer as an argument, even though it originally accepted only callables. The parent method stores the listener in a nested associative array by event name and priority. Since the parent's code is pretty universal, we don't need to make any changes to it and will leave it as is.</p><p class="calibre8">Note that, after we call the parent <code class="literal">addListener()</code>, we remove a Subject from the <code class="literal">$subjects</code> array for this particular event. This is because we modified the Observable chain for this event and it needs to be created from scratch. This happens later, when calling the <code class="literal">dispatch()</code> method.</p></div></div>
+
+<div class="book" title="Writing a reactive event dispatcher">
+<div class="book" title="Adding Observables"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_5"><a id="ch04lvl2sec43" class="calibre1"/>Adding Observables</h2></div></div></div><p class="calibre8">Speaking of listeners, we can now also implement <code class="literal">addObservable()</code>, which is a slightly modified version of <code class="literal">addListener()</code>. This method is going to be used differently than <code class="literal">addListener()</code>, so it deserves special attention:</p><pre class="programlisting">class ReactiveEventDispatcher extends EventDispatcher { 
+  /** 
+   * @param string $evtName 
+   * @param callable $create 
+   * @param int $prio 
+   */ 
+  public function addObservable($evtName, $create, $prio=0) { 
+    $subject = new Subject(); 
+    $create($subject-&gt;asObservable()); 
+    $this-&gt;addListener($evtName, $subject, $prio); 
+  } 
+ 
+  /* rest of the class */ 
+} 
+</pre><p class="calibre8">We create an instance of <code class="literal">Subject</code> and call <code class="literal">asObservable()</code> to let the user-defined callable append its operators to it. Then we call <code class="literal">addListener()</code> with the <code class="literal">$subject</code> variable that we explained a moment ago. Again, this is the same technique we described with the <code class="literal">retryWhen()</code> operator.</p><p class="calibre8">This method is interesting, because it lets us add a "sub-chain" of Observables as a listener. Consider the following code:</p><pre class="programlisting">$dispatcher-&gt;addObservable('my_action', function($observable) { 
+  $observable 
+    -&gt;map(function($value) { return $value; }) 
+    -&gt;filter(function($value) { return true; }) 
+    -&gt;subscribe(new DebugSubject()); 
+}); 
+</pre><p class="calibre8">If we represent this code as a tree structure as we did before, inside the <code class="literal">$dispatcher</code>, it will look like the following (this structure is generated later inside the <code class="literal">getSubject()</code> method):</p><p class="calibre8">
+</p><div class="mediaobject"><img src="../images/00022.jpeg" alt="Adding Observables" class="calibre19"/></div><p class="calibre20"> </p><p class="calibre8">
+</p><p class="calibre8">Event "my_action" with two event listeners</p><p class="calibre8">So, this event listener appends a series of operators in its callable and then subscribes to it. In the <code class="literal">addObservable()</code> method, we pass only the <code class="literal">$subject</code> itself to the <code class="literal">addListener()</code>, which is later appended to the <code class="literal">filter()</code> operator, when calling <code class="literal">dispatch()</code>. This works thanks to the fact that Subjects work as observers as well and can subscribe to Observables.</p><p class="calibre8">This is the major benefit of writing our custom <code class="literal">ReactiveEventDispatcher</code>. We're using reactive programming to easily manipulate events that interest us in a very straightforward way. If we used the default event dispatcher, we'd have to put all the listener-specific conditions inside the callable.</p></div></div>
+
+<div class="book" title="Writing a reactive event dispatcher">
+<div class="book" title="Adding event subscribers"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_6"><a id="ch04lvl2sec44" class="calibre1"/>Adding event subscribers</h2></div></div></div><p class="calibre8">Similar to the original <code class="literal">EventDispatcher</code>, we want to be able to subscribe multiple listeners to multiple events at once, using a subscriber class. However, we're also going to support adding listeners as Observables, just like we did with <code class="literal">addObservable()</code>. This is not going to work without overloading the parent's <code class="literal">addSubscriber()</code> method and handling Observables in a special way.</p><p class="calibre8">Basically, we need to call <code class="literal">addObservable()</code> instead of the <code class="literal">addListener()</code> method:</p><p class="calibre8">First, let's define an interface that we can use to recognize an event subscriber class that also defines Observables as listeners:</p><pre class="programlisting">// EventObservableSubscriberInterface.php 
+use Symfony\Component\EventDispatcher\EventSubscriberInterface; 
+ 
+interface EventObservableSubscriberInterface extends  
+    EventSubscriberInterface { 
+  public static function getSubscribedEventsObservables(); 
+} 
+</pre><p class="calibre8">Now, <code class="literal">addSubscriber()</code> can check whether the class is an instance of this interface and, if it is, process all its listeners as if they were Observables:</p><pre class="programlisting">use EventObservableSubscriberInterface as RxEventSubscriber; 
+class ReactiveEventDispatcher extends EventDispatcher { 
+  /** 
+   * @param EventSubscriberInterface $subscriber The subscriber 
+   */ 
+  public function addSubscriber(EventSubscriberInterface $sub) { 
+    parent::addSubscriber($sub); 
+ 
+    if ($sub instanceof RxEventSubscriber) { 
+      $events = $sub-&gt;getSubscribedEventsObservables(); 
+      foreach ($events as $evt =&gt; $params) { 
+        if (is_callable($params)) { 
+          $this-&gt;addObservable($evt, $params); 
+        } else { 
+          foreach ($params as $listener) { 
+            $prio = isset($listener[1]) ? $listener[1] : 0; 
+            $this-&gt;addObservable($evt, $listener[0], $prio); 
+          } 
+        } 
+      } 
+    } 
+  } 
+ 
+  /* rest of the class */ 
+} 
+</pre><p class="calibre8">The array of event listeners can be defined as an array, with a key as the event name and its value as a callable. However, our implementation also supports using array values as another array defining the callable and priority (that's the second nested <code class="literal">foreach</code> loop).</p><p class="calibre8">At the beginning of this method, we also call its parent because we want to allow the default functionality as well.</p><p class="calibre8">For demonstration purposes, we're going to extend the <code class="literal">MyEventSubscriber</code> class we defined earlier and implement the <code class="literal">getSubscribedEventsObservables()</code> method, which is going to return two event listeners:</p><pre class="programlisting">// MyObservableEventSubscriber.php 
+use Symfony\Component\EventDispatcher\EventSubscriberInterface; 
+use Rx\Observable; 
+require_once __DIR__ . '/MyEventSubscriber.php'; 
+ 
+class MyObservableEventSubscriber extends MyEventSubscriber  
+    implements EventObservableSubscriberInterface { 
+   
+  public static function getSubscribedEventsObservables() { 
+    return [ 
+      'my_action' =&gt; [ 
+        [ 
+          function(Observable $observable) { 
+            $observable-&gt;subscribe(new DebugSubject()); 
+          }, 10 
+        ], [ 
+          function(Observable $observable) { 
+            $observable 
+              -&gt;subscribe(new DebugSubject()); 
+          } 
+        ] 
+      ], 
+      'other_action' =&gt; function(Observable $observable) { 
+        $observable-&gt;subscribe(new DebugSubject()); 
+      } 
+    ] 
+  } 
+} 
+</pre><p class="calibre8">We defined three event listeners for two different events, where the first one for <code class="literal">my_action</code> event has priority <code class="literal">10</code> and the second the default, <code class="literal">0</code>.</p></div></div>
+
+<div class="book" title="Writing a reactive event dispatcher">
+<div class="book" title="Creating the Observable chain for an event"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_7"><a id="ch04lvl2sec45" class="calibre1"/>Creating the Observable chain for an event</h2></div></div></div><p class="calibre8">The method <code class="literal">getSubject()</code> is the place where Observable chains are being generated. This method is then called only when dispatching an event:</p><pre class="programlisting">class ReactiveEventDispatcher extends EventDispatcher { 
+  /** 
+   * @param string $eventName 
+   * @return Subject 
+   */ 
+  private function getSubject($eventName) { 
+    if (isset($this-&gt;subjects[$eventName])) { 
+      return $this-&gt;subjects[$eventName]; 
+    } 
+ 
+    $subject = new Subject(); 
+    $this-&gt;subjects[$eventName] = $subject; 
+    $tail = $subject-&gt;asObservable(); 
+ 
+    foreach ($this-&gt;getListeners($eventName) as $listener) { 
+      $newTail = $tail-&gt;filter(function (Event $event) { 
+        return !$event-&gt;isPropagationStopped(); 
+      }); 
+      $newTail-&gt;subscribe($listener); 
+      $tail = $newTail; 
+    } 
+    return $subject; 
+  } 
+ 
+  /* rest of the class */ 
+} 
+</pre><p class="calibre8">If the Subject for this event doesn't exist, we create a new one and then call <code class="literal">getListeners()</code>. This method is defined in the parent <code class="literal">EventDispatcher</code> class and returns a sorted array of listeners (or observers, in our case). Then we iterate the array and add a <code class="literal">filter()</code> operator followed by subscribing the observer or Subject, depending on whether we used <code class="literal">addListener()</code> or <code class="literal">addObservable()</code>.</p><div class="informaltable" title="Note"><h3 class="title1"><a id="note25" class="calibre1"/>Note</h3><p class="calibre8">Note that operators (such as <code class="literal">filter()</code>, in this example) always return a new Observable, while calling <code class="literal">subscribe()</code> returns a disposable object.</p></div><p class="calibre8">We don't need to create the <code class="literal">$subject</code> every time we call this method, because it doesn't change until we add new listeners, so we can keep a reference to it in the <code class="literal">$subjects</code> array.</p><div class="book" title="Comparing filter() to takeWhile()"><div class="book"><div class="book"><div class="book"><h3 class="title1"><a id="ch04lvl3sec18" class="calibre1"/>Comparing filter() to takeWhile()</h3></div></div></div><p class="calibre8">In the previous <a class="calibre1" title="Chapter 3. Writing a Reddit Reader with RxPHP" href="part0033_split_000.html#VF2I2-bd355a22cf10407cb10df27e65585b8d">Chapter 3</a>, <span class="strong"><em class="calibre18">Writing a Reddit Reader with RxPHP</em></span>, we mentioned an operator that might work well instead of <code class="literal">filter()</code>. We used <code class="literal">takeWhile()</code>, which also takes a predicate callable as a parameter and can stop propagating values down the Observable chain.</p><p class="calibre8">The important distinction is that the <code class="literal">filter()</code> operator decides whether or not it internally calls <code class="literal">onNext()</code> on its associated observer. On the other hand, 
+<code class="literal">takeWhile()</code> decides whether or not it calls <code class="literal">onComplete()</code>. Calling <code class="literal">onComplete()</code> would lead to invoking disposables, which would unsubscribe the observers, and this is definitely not what we want. If we did unsubscribe, we'd have to create the Subject for each event on every <code class="literal">dispatch()</code> call.</p><div class="informaltable" title="Note"><h3 class="title1"><a id="note26" class="calibre1"/>Note</h3><p class="calibre8">In <a class="calibre1" title="Chapter 8. Multicasting in RxPHP and PHP7 pthreads Extension" href="part0061_split_000.html#1Q5IA1-bd355a22cf10407cb10df27e65585b8d">Chapter 8</a>, <span class="strong"><em class="calibre18">Multicasting in RxPHP and PHP7 pthreads Extension</em></span>, we'll talk more about what unexpected consequences calling <code class="literal">onComplete</code> on a <code class="literal">Subject</code> might have.</p></div></div></div></div>
+
+<div class="book" title="Writing a reactive event dispatcher">
+<div class="book" title="Dispatching events"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_8"><a id="ch04lvl2sec46" class="calibre1"/>Dispatching events</h2></div></div></div><p class="calibre8">Finally, dispatching events is very simple:</p><pre class="programlisting">class ReactiveEventDispatcher extends EventDispatcher { 
+  public function dispatch($eventName, Event $event = null) { 
+    if (null === $event) { 
+      $event = new Event(); 
+    } 
+    $subject = $this-&gt;getSubject($eventName); 
+    $subject-&gt;onNext($event); 
+    return $event; 
+  } 
+ 
+  /* rest of the class */ 
+} 
+</pre><p class="calibre8">Dispatching an event in our reactive dispatcher means taking the Subject for this particular event and calling its <code class="literal">onNext()</code> method, with the event as an argument. The event then gets propagated unless its <code class="literal">stopPropagation()</code> method is called, because we check its state before calling every observer with the <code class="literal">filter()</code> operator.</p><p class="calibre8">We also return the event from the method, to stay compatible with the default <code class="literal">EventDispatcher</code> implementation.</p><p class="calibre8">And that's it. Our <code class="literal">ReactiveEventDispatcher</code> is complete and we can run a few test scenarios.</p></div></div>
+
+<div class="book" title="Writing a reactive event dispatcher">
+<div class="book" title="Practical example of ReactiveEventDispatcher"><div class="book"><div class="book"><div class="book"><h2 class="title2" id="calibre_pb_9"><a id="ch04lvl2sec47" class="calibre1"/>Practical example of ReactiveEventDispatcher</h2></div></div></div><p class="calibre8">We dedicated the first part of this chapter to explaining how the default <code class="literal">EventDispatcher</code> that comes out of the box with the Symfony <code class="literal">EventDispatcher</code> component works, and what use cases we expect it to deal with.</p><p class="calibre8">Now we need to make sure the same applies to <code class="literal">ReactiveEventDispatcher</code> as well.</p><div class="book" title="Working with event listeners"><div class="book"><div class="book"><div class="book"><h3 class="title1"><a id="ch04lvl3sec19" class="calibre1"/>Working with event listeners</h3></div></div></div><p class="calibre8">We know that our overridden <code class="literal">addListener()</code> method now accepts both callables and observers, so we can test both use cases in one example:</p><pre class="programlisting">// reactive_dispatcher_02.php 
+$disp = new ReactiveEventDispatcher(); 
+$disp-&gt;addListener(' my.action ', function(Event $event) { 
+  echo "Listener #1\n"; 
+}); 
+$disp-&gt;addListener(' my.action ', new CallbackObserver(function($e) { 
+  echo "Listener #2\n"; 
+}), 1); 
+$disp-&gt;dispatch(' my.action ', new Event()); 
+</pre><p class="calibre8">This example calls the second listener and then the first listener, because the second one has a higher priority:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php reactive_dispatcher_02.php</strong></span>
+<span class="strong"><strong class="calibre17">Listener #2</strong></span>
+<span class="strong"><strong class="calibre17">Listener #1</strong></span>
+</pre><p class="calibre8">Now, let's test event subscribers with the same <code class="literal">MyEventSubscriber</code> class we used in the preceding example. The usage and the output are exactly the same, so we don't need to print the output here again:</p><pre class="programlisting">// reactive_dispatcher_04.php 
+$dispatcher = new ReactiveEventDispatcher(); 
+$dispatcher-&gt;addSubscriber(new MyEventSubscriber()); 
+$dispatcher-&gt;dispatch('my_action', new MyEvent()); 
+</pre><p class="calibre8">An important feature of <code class="literal">ReactiveEventDispatcher</code> is the <code class="literal">addObservable()</code> method. We've seen a short snippet of how it can be used when explaining the method itself, but it's worth showing this in context with <code class="literal">addListener()</code> as well.</p><p class="calibre8">A slightly modified example, which dispatches multiple events, uses Observables and fiddles with conditional stopping event propagation, could look like the following:</p><pre class="programlisting">// reactive_dispatcher_05.php 
+$dispatcher = new ReactiveEventDispatcher(); 
+$dispatcher-&gt;addListener('my_action', function(MyEvent $event) { 
+  echo "Listener #1\n"; 
+}); 
+$dispatcher-&gt;addObservable('my_action', function($observable) { 
+  $observable 
+    -&gt;map(function(MyEvent $event) { 
+      $event-&gt;inc(); 
+      return $event; 
+    }) 
+    -&gt;doOnNext(function(MyEvent $event) { 
+      if ($event-&gt;getCounter() % 2 === 0) { 
+        $event-&gt;stopPropagation(); 
+      } 
+    }) 
+    -&gt;subscribe(new DebugSubject()); 
+}, 1); 
+ 
+foreach (range(0, 5) as $i) { 
+  $dispatcher-&gt;dispatch('my_action', new MyEvent('my-event', $i)); 
+} 
+</pre><p class="calibre8">Its output is obvious. When the event's <code class="literal">getCounter()</code> method returns a number divisible by 2, the event is stopped and never reaches the first event listener added using <code class="literal">addListener()</code>:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php reactive_dispatcher_05.php </strong></span>
+<span class="strong"><strong class="calibre17">23:27:08 [] onNext: my-event (1) (MyEvent)</strong></span>
+<span class="strong"><strong class="calibre17">Listener #1</strong></span>
+<span class="strong"><strong class="calibre17">23:27:08 [] onNext: my-event (2) (MyEvent)</strong></span>
+<span class="strong"><strong class="calibre17">23:27:08 [] onNext: my-event (3) (MyEvent)</strong></span>
+<span class="strong"><strong class="calibre17">Listener #1</strong></span>
+<span class="strong"><strong class="calibre17">23:27:08 [] onNext: my-event (4) (MyEvent)</strong></span>
+<span class="strong"><strong class="calibre17">23:27:08 [] onNext: my-event (5) (MyEvent)</strong></span>
+<span class="strong"><strong class="calibre17">Listener #1</strong></span>
+<span class="strong"><strong class="calibre17">23:27:08 [] onNext: my-event (6) (MyEvent)</strong></span>
+</pre></div><div class="book" title="Working with event subscribers"><div class="book"><div class="book"><div class="book"><h3 class="title1"><a id="ch04lvl3sec20" class="calibre1"/>Working with event subscribers</h3></div></div></div><p class="calibre8">Let's also test that the event subscriber <code class="literal">MyObservableEventSubscriber</code> we defined earlier works as expected:</p><pre class="programlisting">// reactive_dispatcher_06.php 
+$dispatcher = new ReactiveEventDispatcher(); 
+$dispatcher-&gt;addSubscriber(new MyObservableEventSubscriber()); 
+$dispatcher-&gt;dispatch('my_action', new MyEvent('my-event')); 
+</pre><p class="calibre8">Remember that we extended the original <code class="literal">MyEventSubscriber</code> and added two more listeners, so the event dispatcher first adds listeners returned from 
+<code class="literal">getSubscribedEvents()</code>, and then adds those from 
+<code class="literal">getSubscribedEventsObservables()</code>:</p><pre class="programlisting">
+<span class="strong"><strong class="calibre17">$ php reactive_dispatcher_06.php</strong></span>
+<span class="strong"><strong class="calibre17">11:14:01 [] onNext: my-event (0) (MyEvent)</strong></span>
+<span class="strong"><strong class="calibre17">Listener [onMyActionAgain]: my-event (1)</strong></span>
+<span class="strong"><strong class="calibre17">Listener [onMyAction]: my-event (2)</strong></span>
+<span class="strong"><strong class="calibre17">11:14:01 [] onNext: my-event (2) (MyEvent)</strong></span>
+</pre><p class="calibre8">The listener with the highest priority is called first. In our case, it's the first Observable listener with priority 10, then <code class="literal">onMyActionAgain()</code> is called, with priority 1, and then the two remaining listeners are called in the order they were added.</p></div></div></div>
+<div class="book" title="Summary" id="181NK1-bd355a22cf10407cb10df27e65585b8d"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch04lvl1sec34" class="calibre1"/>Summary</h1></div></div></div><p class="calibre8">This chapter has focused mainly on the practical usage of RxPHP in combination with typical non-reactive code, and presented a different approach to existing event-based solutions.</p><p class="calibre8">Specifically, we stumbled across Error handling in Observable chains with <code class="literal">retry()</code>, <code class="literal">RetryWhen()</code>, and <code class="literal">catch()</code> operators. We combined Observables with the <code class="literal">concat()</code>, <code class="literal">merge()</code>, and <code class="literal">concatMap()</code> operator. We used Subjects to dynamically create Observable chains and manually emit values. You were also given an introduction to the Symfony <code class="literal">EventDispatcher</code> component, with a series of examples presenting how the default <code class="literal">EventDispatcher</code> class that comes out of the box can be used. We extended and partially rewrote the <code class="literal">EventDispatcher</code> class and created <code class="literal">ReactiveEventDispatcher</code>, which adds support for Observables. And lastly, we reused examples for <code class="literal">EventDispatcher</code> with <code class="literal">ReactiveEventDispatcher</code> to demonstrate that our implementation can work as a drop-in replacement.</p><p class="calibre8">The Symfony <code class="literal">EventDispatcher</code> component serves as an easily implementable solution to a common problem in larger applications, which is communication between object and extendability. We wrote <code class="literal">ReactiveEventDispatcher</code> to add capabilities to also use observers as event listeners.</p><p class="calibre8">In the next chapter, we'll learn how to write unit tests to test Observables, operators, and observers. We'll also have a better look at Schedulers and see how important are they in testing RxPHP code.</p></div></body></html>
