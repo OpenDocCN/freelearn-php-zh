@@ -1,0 +1,826 @@
+<html><head></head><body>
+<div id="page" style="height:0pt"/><div class="book" title="Chapter&#xA0;9.&#xA0;RESTful APIs"><div class="book" id="1HIT82-ad3e09b384df46aea690d9c8897d5fe7"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch09" class="calibre1"/>Chapter 9. RESTful APIs</h1></div></div></div><p class="calibre9">
+<span class="strong"><strong class="calibre2">Representational State Transfer</strong></span> (<span class="strong"><strong class="calibre2">REST</strong></span>) is a modern approach for client-server communications <a id="id467" class="calibre1"/>that decouple the client (such as Bowers and mobile applications) from the server components in applications. RESTful implementations enable backend implementations to speak a common language (usually, XML or JSON) while taking complete advantage of HTTP verbs, such as <code class="email">GET</code>, <code class="email">POST</code>, <code class="email">PUT</code>, and <code class="email">DELETE</code>. RESTful applications enable us to build stateless, scalable, and uniform applications that we can distribute to our clients. With Yii2, we can quickly implement RESTful APIs as either a part or the whole of our application.</p></div>
+
+<div class="book" title="Chapter&#xA0;9.&#xA0;RESTful APIs">
+<div class="book" title="ActiveController"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_1"><a id="ch09lvl1sec46" class="calibre1"/>ActiveController</h1></div></div></div><p class="calibre9">The simplest <a id="id468" class="calibre1"/>way to create RESTful APIs in Yii2 is to take advantage of <code class="email">yii\rest\ActiveController</code>. Like <code class="email">yii\web\Controller</code>, <code class="email">yii\rest\ActiveController</code> provides a controller interface that we can implement in our <code class="email">./controllers</code> directory. Unlike <code class="email">yii\web\Controller</code>, implementing <code class="email">yii\rest\ActiveController</code> with a <code class="email">yii\db\ActiveRecord</code> model will immediately create a complete REST API for that model available, with very minimal coding. Models implemented with <code class="email">yii\rest\ActiveController</code> also make the following additional features available out of the box:</p><div class="book"><ul class="itemizedlist"><li class="listitem">XML and JSON response formats</li><li class="listitem">Rate limiting</li><li class="listitem">Data and HTTP caching</li><li class="listitem">Authentication</li><li class="listitem">Full HTTP verb support (<code class="email">GET</code>, <code class="email">POST</code>, <code class="email">PATCH</code>, <code class="email">HEAD</code>, and <code class="email">OPTIONS</code>)</li><li class="listitem">Data validation</li><li class="listitem">Pagination</li><li class="listitem">Support for HATEOAS</li></ul></div><p class="calibre9">As an example, let's expose our User model that we created in <a class="calibre1" title="Chapter 4. Active Record, Models, and Forms" href="part0030_split_000.html#SJGS2-ad3e09b384df46aea690d9c8897d5fe7">Chapter 4</a>, <span class="strong"><em class="calibre13">Active Record, Models, and Forms</em></span>. To get started with <code class="email">yii\rest\ActiveController</code>, we first need to create a controller in our <code class="email">controllers/</code> directory called <code class="email">UserController.php</code>, which references <a id="id469" class="calibre1"/>our User model that we created previously:</p><div class="note"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use yii\rest\ActiveController;
+
+class UserController extends ActiveController
+{
+    <span class="strong"><strong class="calibre2">public $modelClass = 'app\models\User';</strong></span>
+}</pre></div><p class="calibre9">Next, we need to make some configuration changes to our <code class="email">config/web.php</code> configuration file so that Yii2 can route the correct routes to our newly created controller and to ensure that our application can accept JSON input. As we've already enabled pretty URLs and disabled the script name being displayed in our <code class="email">urlManager</code> component, we simply need to add a custom URL rule for our user class. This URL rule is an instance of <code class="email">yii\rest\UrlRule</code>, and it will handle all the required routing for our controller:</p><div class="note"><pre class="programlisting">return [
+    // [...],
+    'components' =&gt; [
+        // [...],
+            'urlManager' =&gt; [
+                'enablePrettyUrl' =&gt; true,
+                'enableStrictParsing' =&gt; true,
+                'showScriptName' =&gt; false,
+                'rules' =&gt; [
+                    ['class' =&gt; 'yii\rest\UrlRule', 'controller' =&gt; 'user'],
+               ],
+        ],
+    ]
+];</pre></div><p class="calibre9">Next, we need to modify the base request object that our application uses so that it can parse the JSON input:</p><div class="note"><pre class="programlisting">return [
+    // [...],
+    'components' =&gt; [
+        // [...],
+        'request' =&gt; [
+            'parsers' =&gt; [
+                'application/json' =&gt; 'yii\web\JsonParser',
+            ]
+        ]
+    ]
+];</pre></div><div class="note" title="Note"><h3 class="title2"><a id="tip152" class="calibre1"/>Tip</h3><p class="calibre9">The change to the request parser is added for convenience as JSON is an easy input type to work with. Without this change, our application will only be able to parse the <code class="email">application/x-www-form-urlencoded</code> and <code class="email">multipart/form-data</code> request formats.</p></div><p class="calibre9">By simply<a id="id470" class="calibre1"/> adding a few lines of code, we've now implemented a complete REST API for our <code class="email">Users</code> model. The following table exposes a complete <a id="id471" class="calibre1"/>list of methods that <code class="email">yii\rest\ActiveController</code> exposes for us:</p><div class="note"><table border="1" class="calibre16"><colgroup class="calibre17"><col class="calibre18"/><col class="calibre18"/><col class="calibre18"/></colgroup><thead class="calibre19"><tr class="calibre20"><th valign="bottom" class="calibre21">
+<p class="calibre22">HTTP Method</p>
+</th><th valign="bottom" class="calibre21">
+<p class="calibre22">Endpoint</p>
+</th><th valign="bottom" class="calibre21">
+<p class="calibre22">Result</p>
+</th></tr></thead><tbody class="calibre23"><tr class="calibre20"><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">GET</code>
+</p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">/users</code>
+</p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">This is a list of all users</p>
+</td></tr><tr class="calibre20"><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">GET</code>
+</p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">/users/&lt;id&gt;</code>
+</p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">This has the information for the user with the given <code class="literal">&lt;id&gt;</code> tag</p>
+</td></tr><tr class="calibre20"><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">POST</code> </p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">/users</code>
+</p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">This creates a new user with the data supplied in the request body</p>
+</td></tr><tr class="calibre20"><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">PATCH</code>
+</p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">/users/&lt;id&gt;</code>
+</p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">This modifies a user with the given <code class="literal">&lt;id&gt;</code> tag with the data supplied in the request body</p>
+</td></tr><tr class="calibre20"><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">DELETE</code>
+</p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">/users/&lt;id&gt;</code>
+</p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">This deletes a user with a given <code class="literal">&lt;id&gt;</code> tag</p>
+</td></tr><tr class="calibre20"><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">HEAD</code>
+</p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">/users</code>
+</p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">This retrieves the header information</p>
+</td></tr><tr class="calibre20"><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">HEAD</code>
+</p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">/users/&lt;idl&gt;</code>
+</p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">This retrieves the header information for the given user <code class="literal">&lt;id&gt;</code> tag</p>
+</td></tr><tr class="calibre20"><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">OPTIONS</code>
+</p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">/users</code>
+</p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">This retrieves the HTTP options for Ajax-like requests</p>
+</td></tr><tr class="calibre20"><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">OPTIONS</code>
+</p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">/users/&lt;id&gt;</code>
+</p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">This retrieves the HTTP options for Ajax-like requests for a user with a given <code class="literal">&lt;id&gt;</code> tag</p>
+</td></tr></tbody></table></div><p class="calibre9">An easy way to query against our newly created REST API is to use the command-line tool called CURL. For example, to retrieve the headers for our <code class="email">/users</code> endpoint, we can run the following command:</p><div class="note"><pre class="programlisting"><span class="strong"><strong class="calibre2">$ curl -i -X HEAD https://www.example.com/users</strong></span>
+</pre></div><p class="calibre9">You'll get output similar to the following:</p><div class="note"><pre class="programlisting">HTTP/1.1 200 OK
+Content-Type: application/json; charset=UTF-8
+Transfer-Encoding: chunked
+Connection: keep-alive
+Vary: Accept-Encoding
+X-Pagination-Total-Count: 4
+X-Pagination-Page-Count: 1
+X-Pagination-Current-Page: 1
+X-Pagination-Per-Page: 20
+Link: &lt;https://www.example.com/users?page=1&gt;; rel=self
+Access-Control-Allow-Origin: *</pre></div><p class="calibre9">As mentioned<a id="id472" class="calibre1"/> previously, <code class="email">yii\rest\ActiveRecord</code> immediately provides us with a bunch of useful information, such as CORS headers and pagination details.</p><p class="calibre9">With CURL, we can also query for the raw data itself. Our API can respond in either a JSON or an XML format depending upon the <code class="email">Accept</code> headers we submit along with our request. The next example illustrates a request that will respond in the JSON format:</p><div class="note"><pre class="programlisting">$ curl –I -H "Accept:application/json" https://www.example.com/users | jq .
+[
+  {
+    "updated_at": 1442602004,
+    "created_at": 1442602004,
+    "role_id": 1,
+    "last_name": "Joe",
+    "first_name": "Jane",
+    "password": "$2y$13$pc0TEJged1BwmqpGL7dywupNzG6bCBWRjBbDMzBXhv7FewvUR/qqm",
+    "email": "jane.doe@example.com",
+    "id": 1
+  },
+  {...}
+]</pre></div><div class="note" title="Note"><h3 class="title2"><a id="tip153" class="calibre1"/>Tip</h3><p class="calibre9">By default, CURL will return data as a single line. As illustrated in the previous command, we're<a id="id473" class="calibre1"/> piping the JSON response from our cURL request to a tool called <span class="strong"><strong class="calibre2">jq</strong></span> (<a class="calibre1" href="https://stedolan.github.io/jq/">https://stedolan.github.io/jq/</a>), which is used to format the data in an easy-to-read format. Alternatively, you can install a graphic-based tool of your choice to submit and display responses in an easy-to-read format.</p></div><p class="calibre9">Additionally, we can filter specific fields by passing them as <code class="email">GET</code> parameters within our request. For example, if we want to just retrieve the first and last name of the user with the ID of <code class="email">1</code> in<a id="id474" class="calibre1"/> our database, we can execute the following command:</p><div class="note"><pre class="programlisting"><span class="strong"><strong class="calibre2">$ curl -H "Accept:application/json" /</strong></span>
+<span class="strong"><strong class="calibre2">https://www.example.com/users/1?fields=id,first_name,last_name | jq .</strong></span>
+</pre></div><p class="calibre9">This will return the following response:</p><div class="note"><pre class="programlisting">{
+  "last_name": "Joe",
+  "first_name": "Jane",
+  "id": 1
+}</pre></div></div></div>
+
+<div class="book" title="Chapter&#xA0;9.&#xA0;RESTful APIs">
+<div class="book" title="ActiveController">
+<div class="book" title="Configuring ActiveController display fields"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_2"><a id="ch09lvl2sec103" class="calibre1"/>Configuring ActiveController display fields</h2></div></div></div><p class="calibre9">As you<a id="id475" class="calibre1"/> may have noticed, <code class="email">yii\rest\ActiveController</code> only returns fields that are populated from the database and does not return extra fields that you may have created (such as a <code class="email">full_name</code> field as the concatenation of the first and last name) or relations. Additionally, it exposes every field in the database, including sensitive data, such as encrypted password hashes. One way to get around this limitation is to modify the <code class="email">fields()</code> method of our models.</p><p class="calibre9">For example, to prevent accidentally exposing our hashed passwords over our API, we can implement a custom <code class="email">fields</code> method in our <code class="email">User</code> model, as follows. We can also change the display name of certain fields:</p><div class="note"><pre class="programlisting">class User extends \yii\db\ActiveRecord implements \yii\web\IdentityInterface
+{
+    /**
+     * API safe fields
+     */
+    public function fields()
+    {
+        return [
+            'id',
+            'email_address' =&gt; 'email',
+            'first_name',
+            'last_name',
+            'full_name' =&gt; function($model) {
+                return $model-&gt;getFullName();
+            },
+            'updated_at',
+            'created_at'
+        ];
+    }
+}</pre></div><p class="calibre9">Now, let's query against our API, as follows:</p><div class="note"><pre class="programlisting"><span class="strong"><strong class="calibre2">$ curl -H "Accept:application/json" https://www.example.com/users/1 /</strong></span>
+<span class="strong"><strong class="calibre2">| jq .</strong></span>
+</pre></div><p class="calibre9">We retrieve the following response:</p><div class="note"><pre class="programlisting">{
+  "created_at": 1442602004,
+  "updated_at": 1442602004,
+  "full_name": "Jane Joe",
+  "last_name": "Joe",
+  "first_name": "Jane",
+  "email_address": "jane.doe@example.com",
+  "id": 1
+}</pre></div><p class="calibre9">Additionally, we<a id="id476" class="calibre1"/> can expose relational data by implementing the <code class="email">extraFields()</code> method of our model, as shown in the next example:</p><div class="note"><pre class="programlisting">public function extraFields()
+{
+    // Expose the 'role' relation
+    return ['role'];
+}</pre></div><div class="note" title="Note"><h3 class="title2"><a id="tip154" class="calibre1"/>Tip</h3><p class="calibre9">The <code class="email">extraFields()</code> method will expose the entire model relationship in our response, and it can consequently be a security risk if our relations contain sensitive information. Ensure that you use the <code class="email">fields()</code> method in the related attribute to restrict what data will be returned.</p></div><p class="calibre9">We can expand this data by adding <code class="email">expand=role</code> to our <code class="email">GET</code> parameters, as shown in the following example:</p><div class="note"><pre class="programlisting"><span class="strong"><strong class="calibre2">$ curl -H "Accept:application/json" /</strong></span>
+<span class="strong"><strong class="calibre2">https://www.example.com/users/1?expand=role | jq .</strong></span>
+</pre></div><div class="note"><pre class="programlisting">{
+ <span class="strong"><strong class="calibre2"> "role": {</strong></span>
+<span class="strong"><strong class="calibre2">    "name": "User",</strong></span>
+<span class="strong"><strong class="calibre2">    "id": 1</strong></span>
+<span class="strong"><strong class="calibre2">  },</strong></span>
+  "created_at": 1442602004,
+  "updated_at": 1442602004,
+  "full_name": "Jane Joe",
+  "last_name": "Joe",
+  "first_name": "Jane",
+  "email_address": "jane.doe@example.com",
+  "id": 1
+}</pre></div></div></div></div>
+
+<div class="book" title="Chapter&#xA0;9.&#xA0;RESTful APIs">
+<div class="book" title="ActiveController">
+<div class="book" title="Data serialization within responses"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_3"><a id="ch09lvl2sec104" class="calibre1"/>Data serialization within responses</h2></div></div></div><p class="calibre9">In addition <a id="id477" class="calibre1"/>to modifying the fields that are displayed in our response, we can also modify our response to contain useful information, such as the information that is sent in our headers (such as pagination information and links), and wrap our response in a container that is easy to identify in our response. We can do this by adding and specifying a serializer in our <code class="email">yi\rest\ActiveController</code>, as shown in the following example:</p><div class="note"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use yii\rest\ActiveController;
+
+class UserController extends ActiveController
+{
+    public $modelClass = 'app\models\User';
+
+<span class="strong"><strong class="calibre2">     public $serializer = [</strong></span>
+<span class="strong"><strong class="calibre2">        'class' =&gt; 'yii\rest\Serializer',</strong></span>
+<span class="strong"><strong class="calibre2">        'collectionEnvelope' =&gt; 'users',</strong></span>
+<span class="strong"><strong class="calibre2">    ];</strong></span>
+}</pre></div><p class="calibre9">Now, when we query our <code class="email">/users</code> endpoint, we will have the following response:</p><div class="note"><pre class="programlisting"><span class="strong"><strong class="calibre2">$ curl -H "Accept:application/json" https://www.example.com /users /</strong></span>
+<span class="strong"><strong class="calibre2">| jq .</strong></span>
+</pre></div><div class="note"><pre class="programlisting">{
+<span class="strong"><strong class="calibre2">  "_meta": {</strong></span>
+<span class="strong"><strong class="calibre2">    "perPage": 20,</strong></span>
+<span class="strong"><strong class="calibre2">    "currentPage": 1,</strong></span>
+<span class="strong"><strong class="calibre2">    "pageCount": 2,</strong></span>
+<span class="strong"><strong class="calibre2">    "totalCount": 21</strong></span>
+<span class="strong"><strong class="calibre2">  },</strong></span>
+<span class="strong"><strong class="calibre2">  "_links": {</strong></span>
+<span class="strong"><strong class="calibre2">    "self": {</strong></span>
+<span class="strong"><strong class="calibre2">      "href": "https://www.example.com/users?page=1"</strong></span>
+<span class="strong"><strong class="calibre2">    },</strong></span>
+<span class="strong"><strong class="calibre2">    "next": {</strong></span>
+<span class="strong"><strong class="calibre2">      "href": "https://www.example.com/users?page=2"</strong></span>
+<span class="strong"><strong class="calibre2">    }</strong></span>
+
+<span class="strong"><strong class="calibre2">  },</strong></span>
+  "users": [
+    {
+      "created_at": 1442602004,
+      "updated_at": 1442602004,
+      "full_name": "Jane Joe",
+      "last_name": "Joe",
+      "first_name": "Jane",
+      "email_address": "jane.doe@example.com",
+      "id": 1
+    },
+    {...},
+    {...}
+  ]
+}</pre></div></div></div></div>
+
+<div class="book" title="Chapter&#xA0;9.&#xA0;RESTful APIs">
+<div class="book" title="ActiveController">
+<div class="book" title="Disabling ActiveController actions"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_4"><a id="ch09lvl2sec105" class="calibre1"/>Disabling ActiveController actions</h2></div></div></div><p class="calibre9">While <code class="email">yii\rest\ActiveController</code> provides many useful actions, there may be situations<a id="id478" class="calibre1"/> where you do not want to expose every <a id="id479" class="calibre1"/>method that is exposed by default. The following actions are automatically exposed by <code class="email">yii\rest\ActiveController</code>:</p><div class="note"><table border="1" class="calibre16"><colgroup class="calibre17"><col class="calibre18"/><col class="calibre18"/></colgroup><thead class="calibre19"><tr class="calibre20"><th valign="bottom" class="calibre21">
+<p class="calibre22">Action name</p>
+</th><th valign="bottom" class="calibre21">
+<p class="calibre22">Result</p>
+</th></tr></thead><tbody class="calibre23"><tr class="calibre20"><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">index</code>
+</p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">This lists all the resources provided by the model with pagination support</p>
+</td></tr><tr class="calibre20"><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">view</code>
+</p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">This returns the details of a specific model</p>
+</td></tr><tr class="calibre20"><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">create</code>
+</p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">This creates a new model instance</p>
+</td></tr><tr class="calibre20"><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">update</code>
+</p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">This updates an existing model instance</p>
+</td></tr><tr class="calibre20"><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">delete</code>
+</p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">This deletes a model</p>
+</td></tr><tr class="calibre20"><td valign="top" class="calibre24">
+<p class="calibre22">
+<code class="literal">options</code>
+</p>
+</td><td valign="top" class="calibre24">
+<p class="calibre22">This returns the available methods</p>
+</td></tr></tbody></table></div><p class="calibre9">Apart from overriding the action method, there are several different ways to disable actions. Actions can be disabled by removing them from the actions list within the <code class="email">actions()</code> method of your controller. For example, to disable <code class="email">delete</code> and <code class="email">create</code>, we can remove them, as follows:</p><div class="note"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use yii\rest\ActiveController;
+
+class UserController extends ActiveController
+{
+    public $modelClass = 'app\models\User';
+    
+    public function actions()
+    {
+        $actions = parent::actions();
+    
+        // disable the "delete" and "create" actions
+        unset($actions['delete'], $actions['create']);
+        return $actions;
+    }
+}</pre></div><p class="calibre9">Alternatively, actions<a id="id480" class="calibre1"/> can be disabled by removing the route from <code class="email">yii\rest\UrlRule</code> within our web configuration by setting the <code class="email">only</code> or the <code class="email">except</code> parameters of our rule. In the following example, the <code class="email">delete</code>, <code class="email">create</code>, and <code class="email">update</code> actions have been disabled in our router:</p><div class="note"><pre class="programlisting">[
+    'class' =&gt; 'yii\rest\UrlRule',
+    'controller' =&gt; 'user',
+    // 'only' =&gt; [ 'index' ], // Only allow index 
+    'except' =&gt; ['delete', 'create', 'update'], // Disabled
+]</pre></div></div></div></div>
+
+<div class="book" title="Chapter&#xA0;9.&#xA0;RESTful APIs">
+<div class="book" title="ActiveController">
+<div class="book" title="Customizing ActiveController actions"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_5"><a id="ch09lvl2sec106" class="calibre1"/>Customizing ActiveController actions</h2></div></div></div><p class="calibre9">There<a id="id481" class="calibre1"/> are several ways to modify the data that is returned by each action provided by <code class="email">yii\rest\ActiveController</code>. Apart from directly overloading a specific method, the data providers for each action can be modified as well. For example, to change the data provider for our index action, we can write code that's similar to the following code block:</p><div class="note"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use yii\rest\ActiveController;
+
+class UserController extends ActiveController
+{
+    
+    public function actions()
+    {
+        $actions = parent::actions();
+    
+        // Customize the data provider preparation with the "prepareDataProvider()" method
+        $actions['index']['prepareDataProvider'] = [$this, 'prepareDataProvider'];
+    
+        return $actions;
+    }
+
+    private function prepareDataProvider()
+    {
+        // Prepare a new data provider
+    }
+}</pre></div></div></div></div>
+
+<div id="page" style="height:0pt"/><div class="book" title="Authentication filters"><div class="book" id="1IHDQ2-ad3e09b384df46aea690d9c8897d5fe7"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch09lvl1sec47" class="calibre1"/>Authentication filters</h1></div></div></div><p class="calibre9">In <a class="calibre1" title="Chapter 7. Authenticating and Authorizing Users" href="part0042_split_000.html#181NK2-ad3e09b384df46aea690d9c8897d5fe7">Chapter 7</a>, <span class="strong"><em class="calibre13">Authenticating and Authorizing Users</em></span>, we covered the basics of user access control filters<a id="id482" class="calibre1"/> to control which users can have access to our controllers. Unlike stateful applications that depend upon the presence of session data to persist user data across each request, RESTful APIs are stateless by nature, which means that each request must provide the required information to authenticate each user. To assist us in authenticating users over our API, Yii2 provides three built-in methods to control access to our API:</p><div class="book"><ul class="itemizedlist"><li class="listitem">HTTP basic authentication</li><li class="listitem">Query parameter authentication</li><li class="listitem">OAuth2 authentication</li></ul></div><p class="calibre9">Additionally, we can define our own custom authentication methods.</p><p class="calibre9">To get started with authenticating users within our API, we need to make the following changes to our application:</p><div class="book"><ul class="itemizedlist"><li class="listitem">Configuring the user component of our configuration by doing the following:<div class="book"><ul class="itemizedlist1"><li class="listitem">Disabling sessions by setting <code class="email">enableSession</code> to <code class="email">false</code></li><li class="listitem">Setting the <code class="email">loginUrl</code> property to null to prevent redirects to the login page</li></ul></div></li><li class="listitem">Specifying the authentication method in the <code class="email">behaviors()</code> method of our controller</li><li class="listitem">Implementing <code class="email">yii\web\IdentityInterface::findIdentityByAccessToken()</code> in our user identity class</li></ul></div><div class="note" title="Note"><h3 class="title2"><a id="tip155" class="calibre1"/>Tip</h3><p class="calibre9">You may<a id="id483" class="calibre1"/> encounter issues if you mix your REST API with your normal Yii2 application. For this reason, it is strongly encouraged that you run your API as a separate application from your Yii2 app.</p></div></div>
+
+<div class="book" title="Authentication filters">
+<div class="book" title="HTTP basic authentication"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_1"><a id="ch09lvl2sec107" class="calibre1"/>HTTP basic authentication</h2></div></div></div><p class="calibre9">The <a id="id484" class="calibre1"/>most basic way to handle authentication is to implement HTTP basic authentication. HTTP basic authentication is provided by <code class="email">the yii\filters\auth\HttpBasicAuth</code> class, and it can be implemented as follows:</p><div class="note"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+use yii\filters\auth\HttpBasicAuth;
+use yii\rest\ActiveController;
+
+class UserController extends ActiveController
+{
+    public function behaviors()
+    {
+        $behaviors = parent::behaviors();
+        $behaviors['authenticator'] = [
+            'class' =&gt; HttpBasicAuth::className(),
+        ];
+        return $behaviors;
+    }
+}</pre></div><p class="calibre9">Now, if we attempt to query our API without sufficient credentials, we will receive the following response:</p><div class="note"><pre class="programlisting">{
+    "name": "Unauthorized",
+    "message": "You are requesting with an invalid credential.",
+    "code": 0,
+    "status": 401,
+    "type": "yii\\web\\UnauthorizedHttpException"
+}</pre></div><p class="calibre9">If we attempt to navigate to any endpoint in our application, we will then receive the following popup asking us to authenticate:</p><div class="mediaobject"><img src="../images/00039.jpeg" alt="HTTP basic authentication" class="calibre10"/></div><p class="calibre11"> </p><p class="calibre9">By <a id="id485" class="calibre1"/>default, Yii2 will pass this information to <code class="email">yii\web\IdentityInterface::findIdentityByAccessToken()</code> with just the username as the token. Generally, a username isn't sufficient information to authenticate a user. This behavior can be overwritten by specifying the <code class="email">auth</code> property of <code class="email">yii\filters\auth\HttpBasicAuth</code>, which will allow us to pass both the username and password to a function of our choice:</p><div class="note"><pre class="programlisting">public function behaviors()
+{
+    $behaviors = parent::behaviors();
+    $behaviors['authenticator'] = [
+        <code class="email">'auth'  =&gt; ['app\models\User', 'httpBasicAuth' ],</code>
+        <span class="strong"><strong class="calibre2">'class' =&gt; HttpBasicAuth::className(),</strong></span>
+    ];
+    return $behaviors;
+}</pre></div><p class="calibre9">Within our User model, we can define the <code class="email">httpBasicAuth()</code> method as follows:</p><div class="note"><pre class="programlisting">/**
+* Handle HTTP basic auth
+* @param string $email
+* @param string $password
+* @return static self
+*/
+public function httpBasicAuth($email, $password)
+{
+    $model = static::findOne(['email' =&gt; $email]);
+    if ($model == NULL)
+        return NULL;
+
+    if (password_verify($password, $model-&gt;password))
+        return $model;
+
+    return NULL;
+}</pre></div><div class="note" title="Note"><h3 class="title2"><a id="tip156" class="calibre1"/>Tip</h3><p class="calibre9">In the example shown, we're validating the username and password against the users we created in <a class="calibre1" title="Chapter 4. Active Record, Models, and Forms" href="part0030_split_000.html#SJGS2-ad3e09b384df46aea690d9c8897d5fe7">Chapter 4</a>, <span class="strong"><em class="calibre13">Active Record, Models, and Forms</em></span>. In this situation, we're validating the password against the previously created bcrypt hash. Ensure that you reference the credentials listed in that chapter for an example.</p></div><p class="calibre9">Now, if <a id="id486" class="calibre1"/>we query against our API, we will receive a valid response if we have valid credentials and an error if we provide the wrong credentials.</p></div></div>
+
+<div class="book" title="Authentication filters">
+<div class="book" title="Query parameter authentication"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_2"><a id="ch09lvl2sec108" class="calibre1"/>Query parameter authentication</h2></div></div></div><p class="calibre9">As an<a id="id487" class="calibre1"/> alternative to query parameter authentication, we can grant access to our API by specifying a query parameter. This can be a global query parameter that we treat as a secret key, or it can be a per-user token that we issue on our login request. Query parameter authentication can be implemented by implementing <code class="email">yii\filters\auth\QueryParamAuth</code>. In the following example, we're looking for a <code class="email">GET</code> parameter called <code class="email">token</code>, which contains our token:</p><div class="note"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+<span class="strong"><strong class="calibre2">use yii\filters\auth\QueryParamAuth;</strong></span>
+
+use yii\rest\ActiveController;
+
+class UserController extends ActiveController
+{
+    public function behaviors()
+    {
+        $behaviors = parent::behaviors();
+        $behaviors['authenticator'] = [
+            <span class="strong"><strong class="calibre2">'tokenParam'  =&gt; 'token',</strong></span>
+            <span class="strong"><strong class="calibre2">'class' =&gt; QueryParamAuth::className(),</strong></span>
+        ];
+        return $behaviors;
+    }
+}</pre></div><p class="calibre9">Authentication<a id="id488" class="calibre1"/> can be performed in our model by implementing <code class="email">yii\web\IdentityInterface::findIdentityByAccessToken()</code>. The simplest example is to create a new migration that adds a new column to our user's table called <code class="email">access_token</code> that is populated on our authentication request. We can then validate against it by adding the following code to our <code class="email">User</code> model:</p><div class="note"><pre class="programlisting">/** 
+ * @inheritdoc
+ */
+public static function findIdentityByAccessToken($token, $type=null)
+{
+    return static::findOne(['access_token' =&gt; $token]);
+}</pre></div></div></div>
+
+<div class="book" title="Authentication filters">
+<div class="book" title="OAuth2 authentication"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_3"><a id="ch09lvl2sec109" class="calibre1"/>OAuth2 authentication</h2></div></div></div><p class="calibre9">The most <a id="id489" class="calibre1"/>complex authentication method in Yii2 is OAuth2 authentication, as implemented by <code class="email">yii\auth\filters\HttpBearerAuth</code>. Like <code class="email">yii\auth\filters\QueryParamAuth</code>, <code class="email">yii\auth\filters\HttpBearerAuth</code> can be implemented by setting the appropriate behavior in the <code class="email">behaviors()</code> method and then implementing <code class="email">yii\web\IdentityInterface::findIdentityByAccessToken()</code>.</p><div class="note"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+<span class="strong"><strong class="calibre2">use yii\filters\auth\HttpBearerAuth;</strong></span>
+
+use yii\rest\ActiveController;
+
+class UserController extends ActiveController
+{    
+    public function behaviors()
+    {
+        $behaviors = parent::behaviors();
+        $behaviors['authenticator'] = [
+            <span class="strong"><strong class="calibre2">'class' =&gt; HttpBearerAuth::className(),</strong></span>
+        ];
+        return $behaviors;
+    }
+}</pre></div><p class="calibre9">If you're<a id="id490" class="calibre1"/> unfamiliar with the OAuth2 workflow, you can simulate a login request by setting the <code class="email">Authorization</code> header with a specific Bearer token, as shown here:</p><div class="note"><pre class="programlisting">Headers:
+    Authorization: Bearer &lt;token&gt;</pre></div><p class="calibre9">The <code class="email">&lt;token&gt;</code> part of the header is what will ultimately be passed to <code class="email">yii\web\IdentityInterface::findIdentityByAccessToken()</code>.</p></div></div>
+
+<div class="book" title="Authentication filters">
+<div class="book" title="Composite authentication"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_4"><a id="ch09lvl2sec110" class="calibre1"/>Composite authentication</h2></div></div></div><p class="calibre9">To<a id="id491" class="calibre1"/> increase the security of our API, we can bundle several different authentication filters together by implementing <code class="email">yii\filters\auth\CompositeAuth</code>. To authenticate against our API, we need to satisfy all the authentication requirements, as listed in our <code class="email">behaviors()</code> method. Composite authentication can be configured as follows within our controller:</p><div class="note"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+<span class="strong"><strong class="calibre2">use yii\filters\auth\CompositeAuth;</strong></span>
+use yii\filters\auth\HttpBasicAuth;
+use yii\filters\auth\QueryParamAuth;
+
+use yii\rest\ActiveController;
+
+class UserController extends ActiveController
+{
+    public function behaviors()
+    {
+        $behaviors = parent::behaviors();
+        $behaviors['authenticator'] = [
+           <span class="strong"><strong class="calibre2"> 'class' =&gt; CompositeAuth::className(),</strong></span>
+<span class="strong"><strong class="calibre2">            'authMethods' =&gt; [</strong></span>
+<span class="strong"><strong class="calibre2">                HttpBasicAuth::className(),</strong></span>
+<span class="strong"><strong class="calibre2">                QueryParamAuth::className(),</strong></span>
+<span class="strong"><strong class="calibre2">            ],</strong></span>
+        ];
+        return $behaviors;
+    }
+}</pre></div></div></div>
+
+<div class="book" title="Authentication filters">
+<div class="book" title="Custom authentication filters"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_5"><a id="ch09lvl2sec111" class="calibre1"/>Custom authentication filters</h2></div></div></div><p class="calibre9">As an<a id="id492" class="calibre1"/> alternative to built-in authentication providers, we can also define our own authentication filters. For example, as part of our login request, we may generate a unique token for the user to make all additional requests against. Rather than requiring clients of our API to store the users' raw password or pass the credentials as a <code class="email">GET</code> parameter that may end up in our server log files, we can have our users submit their authentication token as a unique header. An example class of how to implement this is shown as follows:</p><div class="note"><pre class="programlisting">&lt;?php
+
+namespace app\filters\auth;
+
+use yii\filters\auth\AuthMethod;
+use yii\web\UnauthorizedHttpException;
+/**
+ * HeaderParamAuth is an action filter that supports the authentication based on the access token passed through a query parameter.
+ */
+class HeaderParamAuth extends AuthMethod
+{
+    /**
+     * @var string the parameter name for passing the access token
+     */
+    public $tokenParam = 'x-auth-token';
+
+    /**
+     * @inheritdoc
+     */
+    public function authenticate($user, $request, $response)
+    {
+        $accessToken = $request-&gt;getHeaders()[$this-&gt;tokenParam];
+
+        if (is_string($accessToken))
+        {
+            $identity = $user-&gt;loginByAccessToken($accessToken, get_class($this));
+
+            if ($identity !== null)
+                return $identity;
+        }
+
+        if ($accessToken !== null)
+            $this-&gt;handleFailure($response);
+        
+        return null;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function handleFailure($response)
+    {
+        throw new UnauthorizedHttpException('The token you are using has is either invalid, or has expired. Please re-authenticate to continue your session.');
+    }
+}</pre></div><p class="calibre9">Our<a id="id493" class="calibre1"/> custom authentication method can then be implemented in our controller, as follows:</p><div class="note"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+<span class="strong"><strong class="calibre2">use app\filters\auth\HeaderParamAuth;</strong></span>
+
+use yii\rest\ActiveController;
+
+class UserController extends ActiveController
+{
+    public function behaviors()
+    {
+        $behaviors = parent::behaviors();
+        $behaviors['authenticator'] = [
+            <span class="strong"><strong class="calibre2">'class' =&gt; HeaderParamAuth::className(),</strong></span>
+        ];
+        return $behaviors;
+    }
+}</pre></div><p class="calibre9">As you would expect, the <code class="email">x-auth-token</code> parameter will be the token that is passed to <code class="email">yii\web\IdentityInterface::findIdentityByAccessToken()</code>.</p></div></div>
+
+<div class="book" title="Authentication filters">
+<div class="book" title="Action-specific authentication"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_6"><a id="ch09lvl2sec112" class="calibre1"/>Action-specific authentication</h2></div></div></div><p class="calibre9">Authentication<a id="id494" class="calibre1"/> can be restricted to certain actions using the <code class="email">only</code> and <code class="email">except</code> keywords as part of the authenticator behavior. For example, using our previously created <code class="email">HeaderParamAuth</code> class, we can only require authentication to the <code class="email">delete</code>, <code class="email">create</code>, and <code class="email">update</code> actions while allowing unauthenticated users to access the main index action:</p><div class="note"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+use app\filters\auth\HeaderParamAuth;
+
+use yii\rest\ActiveController;
+
+class UserController extends ActiveController
+{
+    public function behaviors()
+    {
+        $behaviors = parent::behaviors();
+        $behaviors['authenticator'] = [
+            'class' =&gt; HeaderParamAuth::className(),
+            'only' =&gt; [ 'delete', 'update', 'create' ]
+        ];
+        return $behaviors;
+    }
+}</pre></div></div></div>
+
+<div class="book" title="Authentication filters">
+<div class="book" title="Checking access"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_7"><a id="ch09lvl2sec113" class="calibre1"/>Checking access</h2></div></div></div><p class="calibre9">When<a id="id495" class="calibre1"/> exposing API endpoints, you often need to bundle both authentication and authorization. With <code class="email">yii\rest\Controller</code>, this can be handled by overriding the <code class="email">yii\rest\Controller::checkAccess()</code> method:</p><div class="note"><pre class="programlisting">/**
+ * Checks the privilege of the current user.
+ *
+ * This method should be overridden to check whether the current user has the privilege
+ * to run the specified action against the specified data model.
+ * If the user does not have access, a [[ForbiddenHttpException]] should be thrown.
+ *
+ * @param string $action the ID of the action to be executed
+ * @param \yii\base\Model $model the model to be accessed. If null, it means no specific model is being accessed.
+ * @param array $params additional parameters
+ * @throws ForbiddenHttpException if the user does not have access
+ */
+public function checkAccess($action, $model = null, $params = [])
+{
+    // check if the user can access $action or $model
+    // throw ForbiddenHttpException if access should be denied
+}</pre></div><p class="calibre9">Alternatively, you<a id="id496" class="calibre1"/> can use the access control filter, as shown in <a class="calibre1" title="Chapter 7. Authenticating and Authorizing Users" href="part0042_split_000.html#181NK2-ad3e09b384df46aea690d9c8897d5fe7">Chapter 7</a>, <span class="strong"><em class="calibre13">Authenticating and Authorizing Users</em></span>.</p><div class="note" title="Note"><h3 class="title2"><a id="note19" class="calibre1"/>Note</h3><p class="calibre9">Authorization determines which actions require authenticated access. When working with APIs, you'll need to properly implement authentication to determine which users, or which set of users, have access to a specific command. Refer to the material in <a class="calibre1" title="Chapter 7. Authenticating and Authorizing Users" href="part0042_split_000.html#181NK2-ad3e09b384df46aea690d9c8897d5fe7">Chapter 7</a>, <span class="strong"><em class="calibre13">Authenticating and Authorizing Users</em></span> for more details on how to authenticate users in your app.</p></div></div></div>
+<div class="book" title="Verb filters" id="1JFUC1-ad3e09b384df46aea690d9c8897d5fe7"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch09lvl1sec48" class="calibre1"/>Verb filters</h1></div></div></div><p class="calibre9">When <a id="id497" class="calibre1"/>creating custom API endpoints, you may want to only allow certain HTTP verbs to be issued against these actions. For instance, a PUT request to an endpoint that deletes a user doesn't make much sense. One way to control which HTTP verbs can be executed against our actions is to use <code class="email">yii\filters\VerbFilter</code>. When using <code class="email">yii\filters\VerbFilter</code>, we simply need to specify which HTTP verbs will be accepted by each of our public actions. The following example shows the default verb filter that is used by <code class="email">yii\rest\ActiveController</code>:</p><div class="note"><pre class="programlisting">public function behaviors()
+{
+    return [
+        'verbs' =&gt; [
+            'class' =&gt; \yii\filters\VerbFilter::className(),
+            'actions' =&gt; [
+                'index'  =&gt; ['get'],
+                'view'   =&gt; ['get'],
+                'create' =&gt; ['get', 'post'],
+                'update' =&gt; ['get', 'put', 'post'],
+                'delete' =&gt; ['post', 'delete'],
+            ],
+        ],
+    ];
+}</pre></div></div>
+<div class="book" title="Cross-origin resource headers" id="1KEEU1-ad3e09b384df46aea690d9c8897d5fe7"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch09lvl1sec49" class="calibre1"/>Cross-origin resource headers</h1></div></div></div><p class="calibre9">When <a id="id498" class="calibre1"/>working with JavaScript applications that issue <a id="id499" class="calibre1"/>AJAX requests against your API, you may want to use <span class="strong"><strong class="calibre2">cross-origin resource sharing</strong></span> (<span class="strong"><strong class="calibre2">CORS</strong></span>) headers to ensure that only domains that you specify can run against your domain. CORS headers can be implemented by adding <code class="email">yii\filters\Cors</code> to your <code class="email">behaviors()</code> method, as shown in the following example:</p><div class="note"><pre class="programlisting">public function behaviors()
+{
+    return [
+        'corsFilter' =&gt; [
+            'class' =&gt; \yii\filters\Cors::className(),
+        ],
+    ];
+}</pre></div><p class="calibre9">This behavior can be extended by setting specific CORS headers that you want to specify for your controller:</p><div class="note"><pre class="programlisting">public function behaviors()
+{
+    return [
+        'corsFilter' =&gt; [
+            'class' =&gt; \yii\filters\Cors::className(),
+            'cors' =&gt; [
+                // Only allow https://www.example.com to execute against your domain in AJAX
+                'Origin' =&gt; ['https://www.example.com'],
+                // Only allow POST and DELETE methods from the domain
+                'Access-Control-Request-Method' =&gt; ['POST', 'DELETE'],
+                // Set cache control headers
+                'Access-Control-Max-Age' =&gt; 3600,
+                // Allow the X-Pagination-Current-Page header to be exposed to the browser.
+                'Access-Control-Expose-Headers' =&gt; ['X-Pagination-Current-Page'],
+            ],
+
+        ],
+    ];
+}</pre></div><div class="note" title="Note"><h3 class="title2"><a id="note20" class="calibre1"/>Note</h3><p class="calibre9">CORS headers have a very specific purpose when it comes to preventing AJAX requests from browsers and other domains from accessing content on your domain, and<a id="id500" class="calibre1"/> they are meant to be implemented as a security precaution for your end users rather than your API. CORS headers will not prevent tools such as CURL or noncompliant browsers from accessing your API. Before implementing CORS, ensure that you have a concrete understanding of what they are, what they protect against, and what headers<a id="id501" class="calibre1"/> to use. For more information on CORS, refer to the W3C reference guide at <a class="calibre1" href="http://www.w3.org/TR/cors/">http://www.w3.org/TR/cors/</a>.</p></div></div>
+<div class="book" title="Rate Limiting" id="1LCVG1-ad3e09b384df46aea690d9c8897d5fe7"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch09lvl1sec50" class="calibre1"/>Rate Limiting</h1></div></div></div><p class="calibre9">When<a id="id502" class="calibre1"/> creating APIs, you may want to implement rate limiting within your API to prevent excessive requests being made to your API and exhausting server resources. This is extremely important if your API is dependent upon another API that has rate limits already in place. Rate limiting in Yii2 is implemented by <code class="email">yii\filters\RateLimiter</code> and <code class="email">yii\filters\RateLimitInterface</code>.</p><p class="calibre9">To get started with rate limiting, we first need to add <code class="email">yii\filters\Ratelimiter</code> to our controller behaviors. The <code class="email">yii\filters\RateLimiter</code> class is coupled to our user identity class. Consequently, rate limiting will only be applied to actions that are protected by authentication. Any action that is not protected by an authenticate filter will not have rate limiting applied to it. The following example illustrates the code blocks required to implement <code class="email">yii\filters\RateLimiter</code> within our controller:</p><div class="note"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+use yii\filters\auth\HttpBasicAuth;
+<span class="strong"><strong class="calibre2">use yii\filters\RateLimiter;</strong></span>
+use yii\rest\ActiveController;
+
+class UserController extends ActiveController
+{
+    public function behaviors()
+    {
+        $behaviors = parent::behaviors();
+        $behaviors['authenticator'] = [
+            'class' =&gt; HttpBasicAuth::className(),
+            'auth' =&gt; [ 'app\models\User', 'httpBasicAuth'],
+            'only' =&gt; [ 'delete', 'update', 'create', 'index']
+        ];
+        <span class="strong"><strong class="calibre2">$behaviors['rateLimiter'] = [</strong></span>
+<span class="strong"><strong class="calibre2">            'class' =&gt; RateLimiter::className(),</strong></span>
+<span class="strong"><strong class="calibre2">            'enableRateLimitHeaders' =&gt; true,</strong></span>
+<span class="strong"><strong class="calibre2">        ];</strong></span>
+        
+        return $behaviors;
+    }
+}</pre></div><p class="calibre9">Next, we need to implement the required methods in our user identity class with the <code class="email">yii\filters\RateLimitInterface</code> interface. The first method, <code class="email">yii\filters\RateLimitInterface::getRateLimit()</code>, defines the number of requests we<a id="id503" class="calibre1"/> can make in a unit of time. For global rate limiting, we can simply return <code class="email">[100, 600]</code>, which will allow 100 requests in 600 seconds. As the complete request and action are passed to the <code class="email">yii\filters\RateLimitInterface::getRateLimit() </code>method, however, we can further refine our rate limits for each controller and action pairing:</p><div class="note"><pre class="programlisting">/**
+ * Returns the rate limit
+ * @param yii\web\Request $request
+ * @param yii\base\Action $action
+ * @return array
+ */
+public function getRateLimit($request, $action)
+{
+  return [100, 600];    
+}</pre></div><div class="note" title="Note"><h3 class="title2"><a id="tip157" class="calibre1"/>Tip</h3><p class="calibre9">
+<code class="email">yii\filters\RateLimiter</code> is coupled with your user identity. If you want to implement rate limiting for unauthenticated users, you will need to implement a custom filter.</p></div><p class="calibre9">Next, we need to implement two methods to load the available rate limits and update the available rate limits after each request. These two methods are <code class="email">yii\filters\RateLimitInterface::loadAllowance()</code> and <code class="email">yii\filters\RateLimitInterface::saveAllowance()</code>. As rate limit data isn't considered sensitive and won't have a significant impact upon our application if the data is accidentally removed, this data can be stored either in our cache component or within a NoSQL solution, such as MongoDB or Redis. The method signatures are defined as follows:</p><div class="note"><pre class="programlisting">/**
+ * Returns the rate limit allowance
+ * @param yii\web\Request $request
+ * @param yii\base\Action $action
+ * @return array
+ */
+public function loadAllowance($request, $action)
+{ 
+    $allowance = 100; // Fetch the allowance from a datasource
+    return [$allowance, time()];
+}
+
+/**
+ * Saves the rate limit allowance
+ * @param yii\web\Request $request
+ * @param yii\base\Action $action
+ * @param integer $allowance
+ * @param Integer $timestamp
+ * @return array
+ */
+public function saveAllowance($request, $action, $allowance, $timestamp)
+{
+    // Update a NoSQL solution or a cache
+    return true;
+}</pre></div><p class="calibre9">Combined <a id="id504" class="calibre1"/>together, our extended class will look as follows:</p><div class="note"><pre class="programlisting">&lt;?php
+
+namespace app\models;
+
+use Yii;
+class User extends \yii\db\ActiveRecord implements \yii\web\IdentityInterface, \yii\filters\RateLimitInterface
+{
+    
+    public function getRateLimit( $request, $action )
+    {
+        return [100, 600];    
+    }
+    
+    public function loadAllowance( $request, $action )
+    {
+        return [100, time();
+    }
+    
+    public function saveAllowance( $request, $action, $allowance, $timestamp )
+    {
+        return true;
+    }
+}</pre></div><p class="calibre9">Now, when <a id="id505" class="calibre1"/>your query against authenticated API endpoints, the following additional headers will be returned with the response:</p><div class="note"><pre class="programlisting">x-rate-limit-remaining: &lt;remaining_rate_limts&gt;
+x-rate-limit-limit: &lt;rate_limit_upper_bound&gt;
+x-rate-limit-reset: &lt;seconds_until_rate_limit_reset&gt;</pre></div><div class="note" title="Note"><h3 class="title2"><a id="tip158" class="calibre1"/>Tip</h3><p class="calibre9">Now that you have MinGW and MSYS, there's no need to be jealous of those with a Linux installation anymore, since they implement in your system the most important parts of a Linux development environment.</p></div></div>
+<div class="book" title="Error handling" id="1MBG21-ad3e09b384df46aea690d9c8897d5fe7"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch09lvl1sec51" class="calibre1"/>Error handling</h1></div></div></div><p class="calibre9">By <a id="id506" class="calibre1"/>extending <code class="email">yii\rest\Controller</code> (or <code class="email">yii\rest\ActiveController</code>), we can easily implement error handling in our application by defining a proper error handler within our configuration, as illustrated in previous chapters:</p><div class="note"><pre class="programlisting">&lt;?php return [
+    // [...],
+    'components' =&gt; [
+        // [...],
+        'errorHandler' =&gt; [
+            'errorAction' =&gt; 'user/error',
+        ],
+        // [...]
+    ],
+];</pre></div><p class="calibre9">Unlike view-based responses, we do not need to include a definition within the <code class="email">actions()</code> method of our controller for the error handler that we want to use. Instead, we can simply return the error as it occurs, or we can override the error to display a more generic response:</p><div class="note"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+use yii\rest\ActiveController;
+
+class UserController extends ActiveController
+{
+    public function actionError()
+    {
+        $exception = Yii::$app-&gt;errorHandler-&gt;exception;
+
+        if ($exception !== null)
+            return ['exception' =&gt; $exception];
+        
+    }
+}</pre></div></div>
+
+<div id="page" style="height:0pt"/><div class="book" title="Custom API controllers" id="1NA0K1-ad3e09b384df46aea690d9c8897d5fe7"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch09lvl1sec52" class="calibre1"/>Custom API controllers</h1></div></div></div><p class="calibre9">While<a id="id507" class="calibre1"/> convenient, <code class="email">yii\rest\ActiveController</code> doesn't solve every problem with creating APIs. When not using <code class="email">yii\rest\ActiveController</code>, you'll want to extend your controller classes from <code class="email">yii\rest\Controller</code> in order to take full advantage the built-in REST API defaults implemented by <code class="email">yii\rest\Controller</code>. The following sections illustrate some additional information on creating custom API controllers.</p></div>
+
+<div class="book" title="Custom API controllers" id="1NA0K1-ad3e09b384df46aea690d9c8897d5fe7">
+<div class="book" title="Returning data"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_1"><a id="ch09lvl2sec114" class="calibre1"/>Returning data</h2></div></div></div><p class="calibre9">There are several <a id="id508" class="calibre1"/>way in which we can think about custom API controllers in Yii2. The easiest way to think about passing data to our clients is to bypass the view portion of our MVC model and directly return data from our controllers. For example, if we were to create a new controller called <code class="email">SiteController</code> within our controller's namespace, we could directly return data from our newly created controller, as follows:</p><div class="note"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use Yii;
+
+class SiteController extends \yii\rest\Controller
+{
+    public function actionIndex()
+    {
+        return [ 'foo' =&gt; 'bar'];
+    }
+}</pre></div><div class="note" title="Note"><h3 class="title2"><a id="tip159" class="calibre1"/>Tip</h3><p class="calibre9">Remember, once we start making changes to our default URL manager rules, we'll need to add the rules required to route data to other controllers. This rule will ensure that <code class="email">site/&lt;action&gt; maps</code> back to our site controller: <code class="email">['class' =&gt; 'yii\web\UrlRule', 'pattern' =&gt; 'site/&lt;action&gt;', 'route' =&gt; 'site/index']</code>.</p></div><p class="calibre9">Curling <a id="id509" class="calibre1"/>against the site/index endpoint of our API will return the following:</p><div class="note"><pre class="programlisting"><span class="strong"><strong class="calibre2">$ curl –I -H "Accept:application/json" /</strong></span>
+<span class="strong"><strong class="calibre2">https://www.example.com/site/index | jq .</strong></span>
+</pre></div><div class="note"><pre class="programlisting">{
+    "foo": "bar"
+}</pre></div></div></div>
+
+<div class="book" title="Custom API controllers" id="1NA0K1-ad3e09b384df46aea690d9c8897d5fe7">
+<div class="book" title="Response Formatting"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_2"><a id="ch09lvl2sec115" class="calibre1"/>Response Formatting</h2></div></div></div><p class="calibre9">Yii2 has <a id="id510" class="calibre1"/>a very specific response structure that it will return with the default <code class="email">yii\rest\Controller</code>. When creating an API, you may already have a specific response structure you may want to use (for instance, if you're refactoring an existing but outdated API with a Yii2 API). You may also want to have a uniform structure in your API responses as the responses provided by <code class="email">yii\rest\Controller</code> and <code class="email">yii\rest\ActiveController</code> don't match up (as illustrated by the previous sections).</p><p class="calibre9">In these situations, you'll need to modify the response structure. To do this, we simply need to override the <code class="email">response</code> component of our application and modify the <code class="email">$response-&gt;data</code> variable within the <code class="email">beforeSend</code> event with the actual response that we want. In this example, we will have the following response structure:</p><div class="note"><pre class="programlisting">{
+    "status": &lt;http_status_code&gt;,
+    "message": &lt;exceptions_or_messages&gt;,
+    "response": &lt;response_data_from_controllers&gt;
+}</pre></div><p class="calibre9">The code required to make this change is shown as follows:</p><div class="note"><pre class="programlisting">&lt;?php return [
+    // [...],
+    'components' =&gt; [
+        // [...],
+        'response' =&gt; [
+            'format'  =&gt; yii\web\Response::FORMAT_JSON,
+            'charset' =&gt; 'UTF-8',
+               'on beforeSend'  =&gt; function ($event) {
+                $response = $event-&gt;sender;
+
+                if ($response-&gt;data !== null)
+                {
+                    $return = ($response-&gt;statusCode == 200 ? $response-&gt;data : $response-&gt;data['message']);
+
+                    $response-&gt;data = [
+                        'success'   =&gt; ($response-&gt;statusCode === 200),
+                        'status'    =&gt; $response-&gt;statusCode,
+                        'response'  =&gt; $return
+                    ];
+                }
+            }
+        ],
+        // [...],
+    ]
+];</pre></div><p class="calibre9">Now, if <a id="id511" class="calibre1"/>we were to query our API, we would receive a uniform response structure for both our <code class="email">SiteController</code> and <code class="email">UserController</code>. This is for <code class="email">SiteController</code>:</p><div class="note"><pre class="programlisting"><span class="strong"><strong class="calibre2">$ curl –I -H "Accept:application/json" /</strong></span>
+<span class="strong"><strong class="calibre2">https://www.example.com/site/index | jq .</strong></span>
+</pre></div><div class="note"><pre class="programlisting">{
+    "success": true,
+    "status": 200,
+    "response": {
+        "foo": "bar"
+    }
+}</pre></div><p class="calibre9">This query regards <code class="email">UserController</code>:</p><div class="note"><pre class="programlisting"><span class="strong"><strong class="calibre2">$ curl –I -H "Accept:application/json" /</strong></span>
+<span class="strong"><strong class="calibre2">https://www.example.com/users | jq .</strong></span>
+</pre></div><div class="note"><pre class="programlisting">{
+    "success": true,
+    "status": 200,
+    "response": {
+        "users": [
+            {
+                "id": 1,
+                "email_address": "jane.doe@example.com",
+                "first_name": "Jane",
+                "last_name": "Joe",
+                "full_name": "Jane Joe",
+                "updated_at": 1442602004,
+                "created_at": 1442602004
+            },
+          {...},
+        ],
+        "_links": {
+            "self": {
+                "href": "https://www.example.com/users?page=1"
+            }
+        },
+        "_meta": {
+            "totalCount": 4,
+            "pageCount": 1,
+            "currentPage": 1,
+            "perPage": 20
+        }
+    }
+}</pre></div></div></div>
+<div class="book" title="Summary" id="1O8H61-ad3e09b384df46aea690d9c8897d5fe7"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch09lvl1sec53" class="calibre1"/>Summary</h1></div></div></div><p class="calibre9">In this chapter, we expanded upon our knowledge of everything we've learned thus far and also learned how to create RESTful JSON and XML APIs in Yii2. First, we covered the usage of <code class="email">yii\rest\ActiveController</code>, which enabled us to quickly create CRUD APIs based upon our model classes. We then covered Yii2's built-in authentication filters and covered how we can protect our resources by requiring authentication. We also covered the creation of our own authentication filters to support different authentication schemes. We then covered several other useful API classes, including <code class="email">yii\filters\VerbFilter, yii\filters\Cors</code>, and learned how to handle errors within our API. Additionally, we detailed some important information about creating our own API endpoints by extending <code class="email">yii\rest\Controller</code>.</p><p class="calibre9">Having covered all the information required to build applications in Yii2, we'll spend the remaining chapters of this book exploring ways in which we can enhance our applications. In the next chapter, we'll specifically go over one of the most important aspect of building applications: testing. We'll cover how to set up testing within our application using a powerful called Codeception, and we will detail how to set up and create function, unit, and acceptance testing as well as how to create data fixtures to test with.</p></div></body></html>

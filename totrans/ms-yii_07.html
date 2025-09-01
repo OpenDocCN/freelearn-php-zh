@@ -1,0 +1,544 @@
+<html><head></head><body>
+<div id="page" style="height:0pt"/><div class="book" title="Chapter&#xA0;7.&#xA0;Authenticating and Authorizing Users"><div class="book" id="181NK2-ad3e09b384df46aea690d9c8897d5fe7"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch07" class="calibre1"/>Chapter 7. Authenticating and Authorizing Users</h1></div></div></div><p class="calibre9">When working with modern web applications, we often need to authenticate our users to ensure that they are who they claim to be and that they have the appropriate permissions (authorization) required to access information. In this chapter, we'll cover the basics of authenticating users with Yii2 and granting them access to specific pages within our applications using basic access control filters and more complex role-based access control filters.</p><div class="note" title="Note"><h3 class="title2"><a id="tip119" class="calibre1"/>Tip</h3><p class="calibre9">In this chapter, we'll be building upon the migration scripts and models we created in <a class="calibre1" title="Chapter 4. Active Record, Models, and Forms" href="part0030_split_000.html#SJGS2-ad3e09b384df46aea690d9c8897d5fe7">Chapter 4</a>, <span class="strong"><em class="calibre13">Active Record, Models, and Forms</em></span>. Before starting this chapter, make sure you have a good understanding of the models and migrations we created in that chapter.</p></div></div>
+
+<div class="book" title="Chapter&#xA0;7.&#xA0;Authenticating and Authorizing Users">
+<div class="book" title="Authentication of users"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_1"><a id="ch07lvl1sec36" class="calibre1"/>Authentication of users</h1></div></div></div><p class="calibre9">With <a id="id360" class="calibre1"/>nearly every sufficiently sized web application, we will ultimately need our application to support the storage and authentication of users in order to ensure that the users working with our application are who they claim to be. With web applications, we typically handle authentication through a public identity (such as an e-mail address) and a secret that the user knows (such as a password). Depending upon the sensitivity of our data and our threat model, we can also extend our authentication process to include a two-factor authentication code issued either through an SMS text message or a two-factor authentication application, such as Authy or Google Authenticator. In this section, we'll cover how to implement basic authentication with Yii2 and explore how we can enhance the security of our users through the authentication process.</p><p class="calibre9">In Yii2, authentication is managed through the user component and is defined in our <code class="email">config/web.php</code> application configuration file. Before we can start authenticating users in our application, we first need to define this component in our configuration file. Specifically, we need to tell Yii2 where it can find the identity class we'll use to handle the <a id="id361" class="calibre1"/>authentication logic within our application. In the following code block, we've defined our identity class as our User model that we created in <a class="calibre1" title="Chapter 3. Migrations, DAO, and Query Building" href="part0023_split_000.html#LTSU1-ad3e09b384df46aea690d9c8897d5fe7">Chapter 3</a>, <span class="strong"><em class="calibre13">Migrations, DAO, and Query Building</em></span>:</p><div class="note"><pre class="programlisting">return [
+    // [...],
+
+    'components' =&gt; [
+        'user' =&gt; [
+            'identityClass' =&gt; 'app\models\User',
+        ],
+    ],
+
+    // [...],
+];</pre></div><p class="calibre9">In the upcoming sections, we'll go over how to extend our <code class="email">User</code> class to support authentication.</p></div></div>
+
+<div class="book" title="Chapter&#xA0;7.&#xA0;Authenticating and Authorizing Users">
+<div class="book" title="Authentication of users">
+<div class="book" title="Implementing the user identity interface"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_2"><a id="ch07lvl2sec76" class="calibre1"/>Implementing the user identity interface</h2></div></div></div><p class="calibre9">To<a id="id362" class="calibre1"/> implement our identity <a id="id363" class="calibre1"/>class with the required authentication logic, we must first have our identity class (<code class="email">app\models\User</code>, defined in <code class="email">models\User.php</code>) implement <code class="email">yii\web\IdentityInterface</code>.</p><div class="note" title="Note"><h3 class="title2"><a id="tip120" class="calibre1"/>Tip</h3><p class="calibre9">Remember, in PHP 5+, interfaces are PHP constructs that define which methods the implemented class must contain.</p></div><p class="calibre9">In PHP 5+, we can enhance our <code class="email">User</code> object with the required interface methods by first using the <code class="email">implements</code> keyword in our class, as follows:</p><div class="note"><pre class="programlisting">class User extends \yii\db\ActiveRecord implements \yii\web\IdentityInterface</pre></div><p class="calibre9">Then, we can implement the methods outlined in the <code class="email">IdentityInterface</code> interface. These methods are <code class="email">findIdentity($id)</code>, <code class="email">findIdentityByAccessToken()</code>, <code class="email">getId()</code>, <code class="email">getAuthKey($token, $type)</code>, and <code class="email">validateAuthKey($authKey)</code>:</p><div class="book"><ol class="orderedlist"><li class="listitem" value="1">The first method we need to implement is <code class="email">findIdentity($id)</code>. This method is responsible for finding an instance of the <code class="email">identity</code> class with the specified <code class="email">$id</code> attribute, and is primarily used when Yii2 needs to authenticate the user from the session data.</li><li class="listitem" value="2">To implement this<a id="id364" class="calibre1"/> method, we need to define the static method and return an instance<a id="id365" class="calibre1"/> of our <code class="email">User</code> class, as shown in the following example:<div class="note"><pre class="programlisting">/**
+ * @inheritdoc
+ */
+public static function findIdentity($id)
+{ 
+    return static::findOne($id);
+}</pre></div></li><li class="listitem" value="3">The next method defined in <code class="email">yii\web\IdentityInterface</code> that we need to define is <code class="email">findIdentityByAccessToken($token, $type)</code>. In Yii2, authentication can be handled through a frontend web form, a cookie (if we're using cookie-based authentication), or a RESTful API. The <code class="email">findIdentityByAccessToken</code> method is used when we're using RESTful authentication. Since our application doesn't have a REST API yet, we can simply define this method with an empty body, as follows:<div class="note"><pre class="programlisting">/** 
+ * @inheritdoc
+ */
+public static function findIdentityByAccessToken($token, $type=null) { }</pre></div><div class="note1" title="Note"><h3 class="title2"><a id="tip121" class="calibre1"/>Tip</h3><p class="calibre9">If we want to add basic support for token-based authentication, we will need to perform the following steps:</p><p class="calibre9">1. Add a new migration to store an access token with our user data.</p><p class="calibre9">2. Create an API-based authentication method that generates an access token and store it alongside our user data</p><p class="calibre9">3. Implement the <code class="email">findIdentityByAccessToken()</code> method, as follows:</p><div class="note"><pre class="programlisting">    public static function findIdentityByAccessToken($token, $type=null)
+    {
+        return static::findOne(['access_token' =&gt; $token]);
+    }</pre></div><p class="calibre9">We'll cover RESTful API authentication in more detail in <a class="calibre1" title="Chapter 9. RESTful APIs" href="part0052_split_000.html#1HIT82-ad3e09b384df46aea690d9c8897d5fe7">Chapter 9</a>, <span class="strong"><em class="calibre13">RESTful APIs</em></span>.</p></div></li><li class="listitem" value="4">Next, we need to explicitly <a id="id366" class="calibre1"/>define <a id="id367" class="calibre1"/>the <code class="email">getId()</code> method, which will return the ID of our user:<div class="note"><pre class="programlisting">/**
+ * @inheritdoc
+ */
+public function getId()
+{
+    return $this-&gt;id;
+}</pre></div><div class="note1" title="Note"><h3 class="title2"><a id="tip123" class="calibre1"/>Tip</h3><p class="calibre9">While <code class="email">yii\base\Object</code>, which <code class="email">yii\base\ActiveRecord</code> extends from, defines a magic method <code class="email">__getter</code> for all of our public properties defined in our <code class="email">ActiveRecord</code> instance, interfaces in PHP 5+ require all methods listed in the interface to be explicitly defined.</p></div></li><li class="listitem" value="5">Finally, we need to implement the <code class="email">getAuthKey()</code> and <code class="email">validateAuthKey()</code> methods within our application. As stated previously, these two methods are explicitly used for cookie-based authentication. Since we won't be using cookie-based authentication in this chapter, we can leave these two methods, as follows:<div class="note"><pre class="programlisting">    /**
+     * @return string current user auth key
+     */
+    public function getAuthKey() {}
+
+    /**
+     * @param string $authKey
+     * @return boolean if auth key is valid for current user
+     */
+    public function validateAuthKey($authKey)
+    {
+        return true;
+    }</pre></div></li></ol><div class="calibre15"/></div><div class="book" title="Cookie-based authentication"><div class="book"><div class="book"><div class="book"><h3 class="title2"><a id="ch07lvl3sec42" class="calibre1"/>Cookie-based authentication</h3></div></div></div><p class="calibre9">When <a id="id368" class="calibre1"/>working with users, we often need to include a feature similar to the <span class="strong"><em class="calibre13">Remember me</em></span> feature in our application so that our users can seamlessly log in to our application after they have been away for some time. To make cookie-based authentication work in Yii2, we need to make several changes to our application:</p><div class="book"><ol class="orderedlist"><li class="listitem" value="1">First, we need to set the <code class="email">enableAutoLogin</code> property of our user component in our web configuration file to <code class="email">true</code>. This will allow Yii2 to automatically log users in if they have the appropriate cookie set:<div class="note"><pre class="programlisting">return [
+    'components' =&gt; [
+        // [...],
+        'user' =&gt; [
+            'identityClass' =&gt; 'app\models\User',
+            'enableAutoLogin' =&gt; true,
+        ],
+        // [...],
+    ]
+];</pre></div></li><li class="listitem" value="2">Next, we'll need to define a location to store and persist our user's cookie-based authentication token. One way to achieve this would be to add an additional migration that adds an <code class="email">auth_key</code> column to our user table. During the creation of our user, we can then seed this value, as follows:<div class="note"><pre class="programlisting">public function beforeSave($insert)
+{
+    if (parent::beforeSave($insert))
+    {
+        if ($this-&gt;isNewRecord)
+        {
+            $this-&gt;auth_key = \Yii::
+            $app-&gt;security-&gt;generateRandomString();
+        }
+        return true;
+    }
+
+    return false;
+}</pre></div><div class="note1" title="Note"><h3 class="title2"><a id="tip124" class="calibre1"/>Tip</h3><p class="calibre9">Alternatively, we can make this value persist into a secondary storage system, such as in Memcached or Redis. We'll cover how to use cache data using Redis and Memcached in <a class="calibre1" title="Chapter 12. Performance and Security" href="part0075_split_000.html#27GQ62-ad3e09b384df46aea690d9c8897d5fe7">Chapter 12</a>, <span class="strong"><em class="calibre13">Performance and Security</em></span>.</p></div></li><li class="listitem" value="3">Finally, when<a id="id369" class="calibre1"/> we define our login form method that instantiates our <code class="email">IdentityInterface</code> object, we'll need to log the user in with a duration, as follows:<div class="note"><pre class="programlisting">Yii::$app-&gt;user-&gt;login($identity, 3600*24*30);</pre></div><p class="calibre14">Yii2 will consequently create a cookie that it will use internally and that will automatically log the user in as long as the cookie is valid. If the duration is not set, session-based authentication will be used instead of a cookie-based one, which means that our user session will expire when the user closes their browser rather than when the user's cookie expires.</p></li></ol><div class="calibre15"/></div></div><div class="book" title="Working with user identities"><div class="book"><div class="book"><div class="book"><h3 class="title2"><a id="ch07lvl3sec43" class="calibre1"/>Working with user identities</h3></div></div></div><p class="calibre9">Now<a id="id370" class="calibre1"/> that we've defined the methods required for our identity interface, let's take a look at the <code class="email">yii\web\User</code> object in more detail.</p><div class="note" title="Note"><h3 class="title2"><a id="tip125" class="calibre1"/>Tip</h3><p class="calibre9">Remember, the <code class="email">yii\web\User</code> class is distinct from the <code class="email">app\models\User</code> class.</p></div><p class="calibre9">The <code class="email">yii\web\User</code> object is referenced in Yii2 through <code class="email">\Yii::$app-&gt;user</code>, which contains information on the current user. Information about our user can be retrieved through the <code class="email">\Yii::$app-&gt;user-&gt;identity</code> property. If a user isn't authenticated, this property will be <code class="email">NULL</code>. However, if a user is authenticated, it will be populated with information about the current user. For instance, if we want to fetch the complete name of the user as defined in the <code class="email">app\models\User</code> class we extended in <a class="calibre1" title="Chapter 4. Active Record, Models, and Forms" href="part0030_split_000.html#SJGS2-ad3e09b384df46aea690d9c8897d5fe7">Chapter 4</a>, <span class="strong"><em class="calibre13">Active Record, Models, and Forms</em></span>, we can do that as follows:</p><div class="note"><pre class="programlisting">$name = \Yii::$app-&gt;user-&gt;identity-&gt;getFullName(); // "Jane Doe";</pre></div><p class="calibre9">Alternatively, we can detect whether a user is logged in by checking the <code class="email">isGuest</code> property of <code class="email">yii\web\User</code>, as follows. This property will return <code class="email">true</code> if the user is not authenticated and <code class="email">false</code> if they are:</p><div class="note"><pre class="programlisting">\Yii::$app-&gt;user-&gt;isGuest;</pre></div><p class="calibre9">Moreover, if we want to retrieve the ID of the user, we can access it through the <code class="email">getId()</code> method we defined in our <code class="email">User</code> class:</p><div class="note"><pre class="programlisting">\Yii::$app-&gt;user-&gt;getId();</pre></div><p class="calibre9">Finally, we<a id="id371" class="calibre1"/> can log our user in and out of our application using the respective <code class="email">login()</code> and <code class="email">logout()</code> methods in <code class="email">Yii::$app-&gt;user</code>. To log a user in, we first need to create an instance of the identity we established earlier. In the following example, we're fetching the identity information from the user's e-mail address. As mentioned previously, we can also supply a duration parameter as part of the <code class="email">login()</code> method for cookie-based authentication:</p><div class="note"><pre class="programlisting">$identity = User::findOne([ 'email' =&gt; $emailAddress ]);
+Yii::$app-&gt;user-&gt;login($identity);</pre></div><p class="calibre9">After we're authenticated, we can log users out of our application by calling <code class="email">\Yii::$app-&gt;user-&gt;logout()</code>. By default, this parameter will destroy all the session data associated with the current user. If we want to preserve this data, we can pass <code class="email">false</code> as the first parameter to the <code class="email">logout()</code> method.</p></div></div></div></div>
+
+<div class="book" title="Chapter&#xA0;7.&#xA0;Authenticating and Authorizing Users">
+<div class="book" title="Authentication of users">
+<div class="book" title="Authenticating users with forms"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_3"><a id="ch07lvl2sec77" class="calibre1"/>Authenticating users with forms</h2></div></div></div><p class="calibre9">Now that we've implemented<a id="id372" class="calibre1"/> our identity interface and know the basics of the <code class="email">yii\web\User</code> component, let's piece these components together with the user data we created in <a class="calibre1" title="Chapter 3. Migrations, DAO, and Query Building" href="part0023_split_000.html#LTSU1-ad3e09b384df46aea690d9c8897d5fe7">Chapter 3</a>, <span class="strong"><em class="calibre13">Migrations, DAO, and Query Building</em></span>, and the <code class="email">UserForm</code> class and scenario we created in <a class="calibre1" title="Chapter 4. Active Record, Models, and Forms" href="part0030_split_000.html#SJGS2-ad3e09b384df46aea690d9c8897d5fe7">Chapter 4</a>, <span class="strong"><em class="calibre13">Active Record, Models, and Forms</em></span>. As a reminder, here is the <code class="email">UserForm</code> class we started with in <a class="calibre1" title="Chapter 4. Active Record, Models, and Forms" href="part0030_split_000.html#SJGS2-ad3e09b384df46aea690d9c8897d5fe7">Chapter 4</a>, <span class="strong"><em class="calibre13">Active Record, Models, and Forms</em></span>:</p><div class="note"><pre class="programlisting">&lt;?php
+
+namespace app\models;
+use Yii;
+
+class UserForm extends \yii\base\Model
+{
+    public $email;
+    public $password;
+    public $name;
+
+    public function rules()
+    {
+        return [
+            [['email', 'password'], 'required'],
+            [['email'], 'email'],
+            [['email', 'password', 'name'], 'string', 'max' =&gt; 255],
+            [['email', 'password'], 'required', 'on' =&gt; 'login'],
+            [['email', 'password', 'name'], 'required', 'on' =&gt; 'register']
+        ];
+    }
+
+    public function scenarios()
+    {
+        return [
+            'login' =&gt; ['email', 'password'],
+            'register' =&gt; ['email', 'password', 'name']
+        ];
+    }
+}</pre></div><p class="calibre9">To <a id="id373" class="calibre1"/>enhance our <code class="email">UserForm</code> class to facilitate logging in, we need to make a couple of changes:</p><div class="book"><ol class="orderedlist"><li class="listitem" value="1">First, since we'll be working with our identity object in multiple places, we should create a private variable to store it. This will help reduce the number of queries we need to make to our database when working with our form. We'll also want to define a method to retrieve this property:<div class="note"><pre class="programlisting">private $_user = false;
+/**
+* Finds user by [[email]]
+* @return User|null
+*/
+    public function getUser()
+    {
+        if ($this-&gt;_user === false)
+            $this-&gt;_user = User::findOne(['email' =&gt; $this-&gt;email]);
+
+        return $this-&gt;_user;
+    }</pre></div></li><li class="listitem" value="2">Next, we'll need to implement a method to validate our user's password. As mentioned in <a class="calibre1" title="Chapter 3. Migrations, DAO, and Query Building" href="part0023_split_000.html#LTSU1-ad3e09b384df46aea690d9c8897d5fe7">Chapter 3</a>, <span class="strong"><em class="calibre13">Migrations, DAO, and Query Building</em></span>, we're hashing<a id="id374" class="calibre1"/> the user's password using the PHP 5 <code class="email">password_hash</code> method. To validate passwords that are hashed this way, we can use the PHP 5 <code class="email">password_verify</code> method. For our application, let's add a <code class="email">verifyPassword()</code> method to our <code class="email">app\models\User</code> class:<div class="note"><pre class="programlisting">/**
+ * Validates password
+ *
+ * @param  string  $password password to validate
+ * @return boolean if password provided is valid for current user
+ */
+public function validatePassword($password)
+{
+    return password_verify($password, $this-&gt;password);
+}</pre></div></li><li class="listitem" value="3">To call this method, we're going to add a new validator to the <code class="email">rules()</code> method of our <code class="email">UserForm</code> class that only executes on the login scenario we defined previously:<div class="note"><pre class="programlisting">public function rules()
+{
+  return [
+    // [...],
+    [['password'], 'validatePassword', 'on' =&gt; 'login'],
+  ];
+}</pre></div></li><li class="listitem" value="4">Recalling the information we covered in <a class="calibre1" title="Chapter 4. Active Record, Models, and Forms" href="part0030_split_000.html#SJGS2-ad3e09b384df46aea690d9c8897d5fe7">Chapter 4</a>, <span class="strong"><em class="calibre13">Active Record, Models, and Forms</em></span>, we know that in the login scenario, the <code class="email">validatePassword</code> method will be called to satisfy the new validation rule we added to our <code class="email">rules()</code> method. We can define this method as follows:<div class="note"><pre class="programlisting">/**
+ * Validates the password.
+ * This method serves as the inline validation for password.
+ *
+ * @param string $attribute the attribute currently being validated
+ * @param array $params the additional name-value pairs given in the rule
+ */
+public function validatePassword($attribute, $params)
+{
+    if (!$this-&gt;hasErrors())
+    {
+        if (!$this-&gt;getUser() || !$this-&gt;getUser()-&gt;validatePassword($this-&gt;password)) {
+            $this-&gt;addError($attribute, 'Incorrect email or password.');
+        }
+    }
+}</pre></div></li><li class="listitem" value="5">We'll <a id="id375" class="calibre1"/>finalize our <code class="email">UserForm</code> class by adding a <code class="email">login()</code> method that will validate the email and password submitted by our user and then log the user in.<div class="note"><pre class="programlisting">/**
+ * Logs in a user using the provided email and password.
+ * @return boolean whether the user is logged in successfully
+ */
+public function login()
+{
+    if ($this-&gt;validate())
+{
+    if (Yii::$app-&gt;user-&gt;login($this-&gt;getUser()))
+         return true;
+}
+    
+    return false;
+}</pre></div></li><li class="listitem" value="6">With our form finalized, we can then implement the login action in our controller that will finish the workflow. In our case, let's have our login action redirect the user to a page that will display some information about the user after they're logged in. Since we've already defined the bulk of this action back in <a class="calibre1" title="Chapter 4. Active Record, Models, and Forms" href="part0030_split_000.html#SJGS2-ad3e09b384df46aea690d9c8897d5fe7">Chapter 4</a>, <span class="strong"><em class="calibre13">Active Record, Models, and Forms</em></span>, a small change is required for this action:<div class="note"><pre class="programlisting">public function actionLogin()
+{
+    $model = new \app\models\UserForm(['scenario' =&gt; 'login']);
+
+    if ($model-&gt;load(Yii::$app-&gt;request-&gt;post()))
+    {
+        if ($model-&gt;login())
+            return $this-&gt;redirect('secure');
+    }
+
+    return $this-&gt;render('login', [
+        'model' =&gt; $model,
+    ]);
+}</pre></div><p class="calibre14">For illustration purposes, let's also dump the information from <code class="email">\Yii::$app-&gt;user-&gt;identity</code> on this page so that we can see it. We can do this by creating the secure action we mentioned previously and then using the <code class="email">VarDumper</code> helper to print this information.</p><div class="note"><pre class="programlisting">public function actionSecure()
+{
+    echo "&lt;pre&gt;";
+    \yii\helpers\VarDumper::dump(\Yii::$app-&gt;user-&gt;identity-&gt;attributes);
+    echo "&lt;/pre&gt;";
+}</pre></div></li></ol><div class="calibre15"/></div><p class="calibre9">Since we <a id="id376" class="calibre1"/>already created our login view in <a class="calibre1" title="Chapter 4. Active Record, Models, and Forms" href="part0030_split_000.html#SJGS2-ad3e09b384df46aea690d9c8897d5fe7">Chapter 4</a>, <span class="strong"><em class="calibre13">Active Record, Models, and Forms</em></span>, we can authenticate ourselves into the application using the credentials listed in that chapter. For example, we can log in as an admin using the following credentials:</p><div class="book"><ul class="itemizedlist"><li class="listitem">Username: <code class="email">admin@example.com</code></li><li class="listitem">Password: <code class="email">admin</code></li></ul></div><p class="calibre9">If authenticated successfully, we will be redirected to the secure page that dumps our user attributes on the page.</p><div class="note"><pre class="programlisting">[
+    'id' =&gt; 4
+    'email' =&gt; 'admin@example.com'
+    'password' =&gt; '$2y$13$f.1jE/cSFP42bHbqjtmJ5.6VkcOtKPp7Vu3UBC6clL7cHj84fltUC'
+    'first_name' =&gt; 'Site'
+    'last_name' =&gt; 'Administrator'
+    'role_id' =&gt; 2
+    'created_at' =&gt; 1439233885
+    'updated_at' =&gt; 1439233885
+] </pre></div></div></div></div>
+
+<div id="page" style="height:0pt"/><div class="book" title="Authorization"><div class="book" id="190862-ad3e09b384df46aea690d9c8897d5fe7"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch07lvl1sec37" class="calibre1"/>Authorization</h1></div></div></div><p class="calibre9">Though we're now <a id="id377" class="calibre1"/>able to authenticate ourselves against our database, we need to implement the necessary methods in order to ensure that the right people can access the right pages. To do this, we need to implement either an access control filter or a role-based access control filter.</p></div>
+
+<div class="book" title="Authorization">
+<div class="book" title="Access control filters"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_1"><a id="ch07lvl2sec78" class="calibre1"/>Access control filters</h2></div></div></div><p class="calibre9">One<a id="id378" class="calibre1"/> way to control access to certain pages is to create access control filters. Access control filters in Yii2 are behaviors we can bind to our controllers to ensure that the right people have access to the right content. The access control filter is implemented through <code class="email">yii\filter\AccessControl</code> and is primarily used when simple access control is needed, such when needing to make sure users are logged in or not (although it can be configured for rules that are more complex). As a filter, <code class="email">yii\filter\AccessControl</code> is implemented in the <code class="email">behaviors()</code> method of our controller, as shown in the following example:</p><div class="note"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use yii\web\Controller;
+use yii\filters\AccessControl;
+
+class SiteController extends Controller
+{
+    public function behaviors()
+    {
+        return [
+            'access' =&gt; [
+                'class' =&gt; AccessControl::className(),
+                'only' =&gt; ['login', 'logout', 'register'],
+                'rules' =&gt; [
+                    [
+                        'allow' =&gt; true,
+                        'actions' =&gt; ['login', 'register'],
+                        'roles' =&gt; ['?'],
+                    ],
+                    [
+                        'allow' =&gt; true,
+                        'actions' =&gt; ['logout'],
+                        'roles' =&gt; ['@'],                     ],
+                ],
+            ],
+        ];
+    }
+}</pre></div><p class="calibre9">The <a id="id379" class="calibre1"/>previously mentioned code does several things, so let's break it down:</p><div class="book"><ol class="orderedlist"><li class="listitem" value="1">As mentioned in previous chapters, behaviors return an array of options. In this case, the first behavior we're returning is the access behavior, which specifies the <code class="email">yii\filter\AccessControl</code> filter as the class this behavior should use:<div class="note"><pre class="programlisting">return [
+  'access' =&gt; [
+    'class' =&gt; AccessControl::className(),
+    // [...]
+  ]
+];</pre></div></li><li class="listitem" value="2">Next, we define the actions we want our filter to apply. In this case, we only want <code class="email">yii\filter\AccessControl</code> to be applied to the login, logout, and register actions of our <code class="email">SiteController</code> object.<div class="note"><pre class="programlisting">'only' =&gt; ['login', 'logout', 'register'],</pre></div></li><li class="listitem" value="3">Finally, we define the rules that our filter should obey. In the following snippet, we declare that we want unauthenticated users (designated by the special character <code class="email">?</code> within the roles section) to access the login and register action and allow any authenticated user (designated by the special character <code class="email">@</code> within the roles section) to access the logout action:<div class="note"><pre class="programlisting">'rules' =&gt; [
+    [
+        'allow' =&gt; true,
+        'actions' =&gt; ['login', 'register'],
+        'roles' =&gt; ['?'],
+    ],
+    [
+        'allow' =&gt; true,
+        'actions' =&gt; ['logout'],
+        'roles' =&gt; ['@'],
+    ],
+]</pre></div></li></ol><div class="calibre15"/></div><p class="calibre9">By<a id="id380" class="calibre1"/> default, if a user is unauthenticated, our access control filter will redirect the user to our login page, and if they do not have access, <code class="email">yii\web\ForbiddenHttpException</code> will be thrown. As this isn't always desirable, we can modify our filter by setting the <code class="email">denyCallback</code> parameter of our filter. Also, we can, within the rules section of our filter, define the conditions upon which an error can occur by setting the <code class="email">matchCallback</code> property. As an example, if we want to make our secure action accessible to only administrators, we can write the following code:</p><div class="note"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use Yii;
+use yii\filters\AccessControl;
+use yii\web\Controller;
+use yii\web\HttpException;
+use yii\helpers\Url;
+
+class SiteController extends Controller
+{
+    public function behaviors()
+    {
+        return [
+            'access' =&gt; [
+                'class' =&gt; AccessControl::className(),
+                // Specifies the actions that the rules should be applied to
+                'only' =&gt; ['secure'],
+                // The rules surrounding who should and should not have access to the page
+                'rules' =&gt; [
+                    [
+                        'allow' =&gt; true,
+                        <span class="strong"><strong class="calibre2">'matchCallback' =&gt; function($rule, </strong></span>
+<span class="strong"><strong class="calibre2">$action) {</strong></span>
+                            <span class="strong"><strong class="calibre2">return !\Yii::$app-&gt;user-&gt;isGuest &amp;&amp; </strong></span>
+<span class="strong"><strong class="calibre2">\Yii::$app-&gt;user-&gt;identity-&gt;role-&gt;id</strong></span> <span class="strong"><strong class="calibre2">=== 2;</strong></span>
+                        }
+                    ],
+                ],
+                // The action that should happen if the user shouldn't have access to the page
+                <span class="strong"><strong class="calibre2">'denyCallback' =&gt; function ($rule, $action) {</strong></span>
+                    <span class="strong"><strong class="calibre2">if (\Yii::$app-&gt;user-&gt;isGuest)</strong></span>
+                        <span class="strong"><strong class="calibre2">return $this-&gt;redirect</strong></span>
+<span class="strong"><strong class="calibre2">(Url::to('/site/login'));</strong></span>
+                    <span class="strong"><strong class="calibre2">else</strong></span>
+                        <span class="strong"><strong class="calibre2">throw new HttpException('403', 'You are </strong></span>
+<span class="strong"><strong class="calibre2">not allowed to access this page');</strong></span>
+                },
+            ],
+        ];
+    }
+}</pre></div><p class="calibre9">In this <a id="id381" class="calibre1"/>section, users are only allowed to use the secure action if they have a role of <code class="email">2</code> (which is the role we designated as an administrator in <a class="calibre1" title="Chapter 3. Migrations, DAO, and Query Building" href="part0023_split_000.html#LTSU1-ad3e09b384df46aea690d9c8897d5fe7">Chapter 3</a>, <span class="strong"><em class="calibre13">Migrations, DAO, and Query Building</em></span>). If they aren't authenticated, we redirect them to the login page, and if they are authenticated but don't have sufficient permissions, we throw an HTTP 403 error.</p><div class="note" title="Note"><h3 class="title2"><a id="tip126" class="calibre1"/>Tip</h3><p class="calibre9">The example shown previously is to illustrate what we can do with the <code class="email">matchCallback</code> and <code class="email">denyCallback</code> properties of our access control filter.</p></div><p class="calibre9">With an access control filter, we can restrict access to certain actions by the IP address by setting the <code class="email">ips</code> parameter within our rules section, as shown. IP addresses can be restricted either by a specific IP or by a subnet using the wildcard character, as shown in the following example:</p><div class="note"><pre class="programlisting">return [
+    'access' =&gt; [
+        'class' =&gt; AccessControl::className(),
+        // [..]
+        'rules' =&gt; [
+            [
+                'allow' =&gt; true,
+                'ips' =&gt; [
+                    '10.0.0.5', // Allow 10.0.0.5
+                    '192.168.*' // Allow 192.168.0.0/24 subnet
+                ]
+            ]
+        ]
+    ],
+];</pre></div><p class="calibre9">Additionally, we<a id="id382" class="calibre1"/> can restrict access to our action by specifying which HTTP verbs are permitted using the <code class="email">yii\filter\VerbFilter</code> filter. For instance, if we want to ensure that only <code class="email">GET</code> requests can be run against our secure action, we can define the following behavior:</p><div class="note"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use Yii;
+use yii\web\Controller;
+use yii\filters\VerbFilter;
+
+class SiteController extends Controller
+{
+    public function behaviors()
+    {
+        return [
+            // [...]
+            <span class="strong"><strong class="calibre2">'verbs' =&gt; [</strong></span>
+                <span class="strong"><strong class="calibre2">'class' =&gt; VerbFilter::className(),</strong></span>
+                <span class="strong"><strong class="calibre2">'actions' =&gt; [</strong></span>
+                    <span class="strong"><strong class="calibre2">'secure' =&gt; ['get'],</strong></span>
+                <span class="strong"><strong class="calibre2">],</strong></span>
+            <span class="strong"><strong class="calibre2">],</strong></span>
+        ];
+    }
+}</pre></div><p class="calibre9">By default, our access control filter will attempt to apply itself to every action within our controller. To specify the actions that our filter should be restricted to, we can set the <code class="email">only</code> property of our filter:</p><div class="note"><pre class="programlisting">'only' =&gt; ['secure'],</pre></div><p class="calibre9">Additionally, we<a id="id383" class="calibre1"/> can specify actions that our access control rules should be applied to by setting the <code class="email">actions</code> property of our <code class="email">rules</code> array:</p><div class="note"><pre class="programlisting">'rules' =&gt; [
+    [
+        'allow' =&gt; true,
+        <span class="strong"><strong class="calibre2">'actions' =&gt; [ 'secure' ],</strong></span>
+        'matchCallback' =&gt; function($rule, $action) {
+            return !\Yii::$app-&gt;user-&gt;isGuest &amp;&amp; \Yii::$app-&gt;user-&gt;identity-&gt;role-&gt;id === 2;
+        }
+    ],
+    [
+        'allow' =&gt; true,
+        'actions' =&gt; [ 'authenticated' ],
+        'roles' =&gt; ['@']
+    ]
+],</pre></div><p class="calibre9">In a manner similar to the <code class="email">only</code> parameter, we can exclude certain actions from the authentication filter by setting the <code class="email">except</code> filter:</p><div class="note"><pre class="programlisting">'except' =&gt; ['secure'],</pre></div><div class="note" title="Note"><h3 class="title2"><a id="tip127" class="calibre1"/>Tip</h3><p class="calibre9">Access control filters are broken down into rules, as shown in the previous example. Each rule applies only to a specific set of actions, which allows us to specify custom allow or deny callbacks for these rules. The parent options of <code class="email">only</code> and <code class="email">except</code>, however, specify when the parent access control filter should be applied.</p></div></div></div>
+
+<div class="book" title="Authorization">
+<div class="book" title="Role-based access control"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_2"><a id="ch07lvl2sec79" class="calibre1"/>Role-based access control</h2></div></div></div><p class="calibre9">As an<a id="id384" class="calibre1"/> alternative to managing access<a id="id385" class="calibre1"/> with the user identity object, we can also manage access to actions by configuring <span class="strong"><strong class="calibre2">role-based access control</strong></span> (<span class="strong"><strong class="calibre2">RBAC</strong></span>) within our application. In Yii2, RBAC works by creating roles that represent a collection of permissions and then assigning roles to a specific user. Roles are represented by a check to determine if a given role or permission is applicable to the user in question. In this section, we'll<a id="id386" class="calibre1"/> cover the basics of configuring and working with RBAC in Yii2.</p><div class="note" title="Note"><h3 class="title2"><a id="tip128" class="calibre1"/>Tip</h3><p class="calibre9">Yii2's implementation of RBAC follows the NIST RBAC model through the <code class="email">authManager</code> component. The complete implementation details of the NIST RBAC <a id="id387" class="calibre1"/>model are located at <a class="calibre1" href="http://csrc.nist.gov/rbac/sandhu-ferraiolo-kuhn-00.pdf">http://csrc.nist.gov/rbac/sandhu-ferraiolo-kuhn-00.pdf</a>.</p></div></div></div>
+
+<div class="book" title="Authorization">
+<div class="book" title="Configuring RBAC"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_3"><a id="ch07lvl2sec80" class="calibre1"/>Configuring RBAC</h2></div></div></div><p class="calibre9">To start <a id="id388" class="calibre1"/>working with RBAC, we first need to configure our <code class="email">authManager</code> component for RBAC and define the authorization manager we want to use. Yii2 provides two different authorization managers, the first being <code class="email">yii\rbac\PhpManager</code>, which uses a PHP script to store authorization data, and <code class="email">yii\rbac\DbManager</code>, which utilizes the application database to manage authorization data. For simple applications with nondynamic permissions and roles, <code class="email">yii\rbac\PhpManager</code> may be preferred.</p><p class="calibre9">To configure <code class="email">authManager</code>, we simply need to define the class that we want to use, as follows:</p><div class="note"><pre class="programlisting">return [
+    // [...],
+    'components' =&gt; [
+        'authManager' =&gt; [
+            'class' =&gt; 'yii\rbac\PhpManager',
+        ],
+    ],
+    // [...],
+];</pre></div><div class="note" title="Note"><h3 class="title2"><a id="tip129" class="calibre1"/>Tip</h3><p class="calibre9">By default, <code class="email">yii\rbac\PhpManager</code> will store authorization data in the <code class="email">@app/rbac</code> directory, which must be writable by your web server.</p></div><p class="calibre9">Alternatively, if we're using a database to manage our authorization data, we will configure <code class="email">authManager</code> as follows:</p><div class="note"><pre class="programlisting">return [
+    // [...],
+    'components' =&gt; [
+        'authManager' =&gt; [
+            'class' =&gt; 'yii\rbac\DbManager',
+        ],
+    ],
+    // [...],
+];</pre></div><p class="calibre9">When<a id="id389" class="calibre1"/> using our database to manage our authorization data, we need to run RBAC migrations to configure our database appropriately, which can be done by running the following command from our command-line interface:</p><div class="note"><pre class="programlisting"><span class="strong"><strong class="calibre2">./ yii migrate --migrationPath=@yii/rbac/migrations</strong></span>
+</pre></div><p class="calibre9">This will result in output similar to the following:</p><div class="note"><pre class="programlisting"><span class="strong"><strong class="calibre2">Yii Migration Tool (based on Yii v2.0.6)</strong></span>
+<span class="strong"><strong class="calibre2">Total 1 new migration to be applied:</strong></span>
+<span class="strong"><strong class="calibre2">    m140506_102106_rbac_init</strong></span>
+<span class="strong"><strong class="calibre2">*** applying m140506_102106_rbac_init</strong></span>
+<span class="strong"><strong class="calibre2">    &gt; create table {{%auth_rule}} ... done (time: 0.006s)</strong></span>
+<span class="strong"><strong class="calibre2">    &gt; create table {{%auth_item}} ... done (time: 0.005s)</strong></span>
+<span class="strong"><strong class="calibre2">    &gt; create index idx-auth_item-type on {{%auth_item}} (type) ... /</strong></span>
+<span class="strong"><strong class="calibre2">    done (time: 0.006s)</strong></span>
+<span class="strong"><strong class="calibre2">    &gt; create table {{%auth_item_child}} ... done (time: 0.005s)</strong></span>
+<span class="strong"><strong class="calibre2">    &gt; create table {{%auth_assignment}} ... done (time: 0.005s)</strong></span>
+<span class="strong"><strong class="calibre2">*** applied m140506_102106_rbac_init (time: 0.050s)</strong></span>
+<span class="strong"><strong class="calibre2">Migrated up successfully.</strong></span>
+</pre></div><p class="calibre9">After configuring RBAC, our <code class="email">authManager</code> component can be accessed by <code class="email">\Yii::$app-&gt;authManager</code>.</p></div></div>
+
+<div class="book" title="Authorization">
+<div class="book" title="Creating permissions and permission relationships"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_4"><a id="ch07lvl2sec81" class="calibre1"/>Creating permissions and permission relationships</h2></div></div></div><p class="calibre9">After <a id="id390" class="calibre1"/>configuring our <code class="email">authManager</code> component, we <a id="id391" class="calibre1"/>need to define the permissions we want our users to have and the relationships between them. For most applications with fixed permission hierarchies, this can be achieved by writing an RBAC console command to initialize the data in our database. In the following example, we'll create three permissions for an imaginary issue management application, a permission for a user to create new issues, support for newly created issues, a supervisor to oversee supervisors, and an administrator permission:</p><div class="note"><pre class="programlisting">// Save to @app/commands
+&lt;?php
+namespace app\commands;
+
+use Yii;
+use yii\console\Controller;
+
+class RbacController extends Controller
+{
+    public function actionInit()
+    {
+        $auth = \Yii::$app-&gt;authManager;
+
+        // Create the user permissions
+        $user = $auth-&gt;createPermission('createIssue');
+        $user-&gt;description = 'A permission to create a new issue within our incident management system';
+        $auth-&gt;add($user);
+
+        // Create the supporter permissions
+        $supporter = $auth-&gt;createPermission('supportIssue');
+        $supporter-&gt;description = 'A permission to apply supporter specific actions to an issue';
+        $auth-&gt;add($supporter);
+
+        // A supporter should have all the permissions of a user
+        $auth-&gt;addChild($supporter, $user);
+
+        // Create a permission to manage issues
+        $supervisor = $auth-&gt;createPermission('manageIssue')
+        $supervisor-&gt;description = 'A permission to apply management specific actions to an issue';
+        $auth-&gt;add($supervisor);
+
+        // A supervisor should have all the permissions of a supporter and a end user
+        $auth-&gt;addChild($supervisor, $supporter);
+        $auth-&gt;addChild($supervisor, $user);
+
+        $admin = $auth-&gt;createRole('admin');
+        $admin-&gt;description = 'A permission to perform admin actions on an issue';
+        $auth-&gt;add($admin);
+
+        // Allow an admin to perform all related tasks.
+        $auth-&gt;addChild($admin, $supervisor);
+        $auth-&gt;addChild($admin, $supporter);
+        $auth-&gt;addChild($admin, $user);
+    }
+}</pre></div><p class="calibre9">Our<a id="id392" class="calibre1"/> newly created permission scheme can then be<a id="id393" class="calibre1"/> initialized by running the <code class="email">rbac/init</code> command from our command line:</p><div class="note"><pre class="programlisting"><span class="strong"><strong class="calibre2">./yii rbac/init</strong></span>
+</pre></div><p class="calibre9">After defining our roles, we can apply them to our users during our registration step or in the administrative dashboard, as shown. In this example, we're fetching the admin role and assigning it to our administrative user, which has a user ID of <code class="email">4</code>:</p><div class="note"><pre class="programlisting">$auth = \Yii::$app-&gt;authManager;
+$role = $auth-&gt;getRole('admin');
+$auth-&gt;assign($role, User::findOne([ 'email' =&gt; 'admin@example.com' ]));</pre></div><p class="calibre9">Alternatively, we can define an implicit default role within our <code class="email">authManager</code> component. This way, we do not need to explicitly assign new users to the lowest-level user role. This can be achieved as follows:</p><div class="note"><pre class="programlisting">return [
+    // [...],
+    'components' =&gt; [
+        'authManager' =&gt; [
+            'class' =&gt; 'yii\rbac\PhpManager',
+            'defaultRoles' =&gt; ['user'],
+        ],
+       // [...],
+    ],
+];</pre></div></div></div>
+
+<div class="book" title="Authorization">
+<div class="book" title="Custom authorization rules"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_5"><a id="ch07lvl2sec82" class="calibre1"/>Custom authorization rules</h2></div></div></div><p class="calibre9">In <a id="id394" class="calibre1"/>addition to basic authentication roles and permissions, we can also define custom rules by extending <code class="email">yii\rbac\Rule</code> and implementing the <code class="email">execute()</code> method, as shown in the following example:</p><div class="note"><pre class="programlisting">// Save to @app/rbac
+&lt;?php
+namespace app\rbac;
+
+use yii\rbac\Rule;
+
+/**
+ * Checks if a user can edit their own issue
+ */
+class SupervisorRule extends Rule
+{
+    public $name = 'isAuthor';
+
+    /**
+     * @param string|integer $user the user ID.
+     * @param Item $item the role or permission that this rule is associated with
+     * @param array $params parameters passed to ManagerInterface::checkAccess().
+     * @return boolean a value indicating whether the rule permits the role or permission it is associated with.
+     */
+    public function execute($user, $item, $params)
+    {
+        return isset($params['issue']) ? $params['issue']-&gt;author == $user : false;
+    }
+}</pre></div><p class="calibre9">Custom rules can be added to our <code class="email">authManager</code> component, as follows:</p><div class="note"><pre class="programlisting">$auth = Yii::$app-&gt;authManager;
+
+// Add a rule
+$rule = new \app\rbac\SupervisorRule;
+$auth-&gt;add($rule);
+
+// Create a permission and associate the rule to it
+$modifyOwnIssue = $auth-&gt;createPermission('modifyOwnIssue');
+$modifyOwnIssue-&gt;description = 'Modify a issue that was self submitted';
+$modifyOwnIssue-&gt;ruleName = $rule-&gt;name;
+$auth-&gt;add($modifyOwnIssue);
+// Assign the supervisor role to the superviseIssue permissions
+$superviseIssue = $auth-&gt;getRole('superviseIssue');
+$auth-&gt;addChild($modifyOwnIssue, $superviseIssue); </pre></div></div></div>
+
+<div class="book" title="Authorization">
+<div class="book" title="Checking if a user has access to a role"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_6"><a id="ch07lvl2sec83" class="calibre1"/>Checking if a user has access to a role</h2></div></div></div><p class="calibre9">After<a id="id395" class="calibre1"/> configuring RBAC, creating the required roles, and assigning users to these roles, we can check to see if a user has access to a particular role using the <code class="email">yii\web\User::can()</code> method, as shown here:</p><div class="note"><pre class="programlisting">if (\Yii::$app-&gt;user-&gt;can('createIssue'))
+{
+    // Create a new issue
+}</pre></div><p class="calibre9">We can also check accessibility against our newly created rule by checking against the parent role and passing in the required data, as shown here:</p><div class="note"><pre class="programlisting">if (\Yii::$app-&gt;user-&gt;can('superviseIssue', ['issue' =&gt; Yii::$app-&gt;request-&gt;post('Issue')]))
+{
+    // Can modify an issue that they created
+}</pre></div><div class="note" title="Note"><h3 class="title2"><a id="tip130" class="calibre1"/>Tip</h3><p class="calibre9">Though more explicit through the naming of roles and rules, using RBAC can quickly become confusing. When using RBAC, thoroughly document permissions, relationships, and rules for reference later.</p></div></div></div>
+<div class="book" title="Flash messages" id="19UOO1-ad3e09b384df46aea690d9c8897d5fe7"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch07lvl1sec38" class="calibre1"/>Flash messages</h1></div></div></div><p class="calibre9">Rather<a id="id396" class="calibre1"/> than blindly redirecting users without information, we can utilize flash messages in Yii2 to display one-time useful pieces of information to the user, such as what action they need to perform in order to complete another action (such as them having to log in to view the secure page).</p><p class="calibre9">In Yii1, user-specified flash messages can be tied directly to the user component. In Yii2, they're solely managed by the session object. In this section, we'll show how to use flash messages by example by enhancing our login view. We'll also take advantage of several of the other widgets and helpers we've covered in previous chapters.</p><p class="calibre9">As shown in<a id="id397" class="calibre1"/> the previous section, when a user is a guest and they try to access a secure page, we simply redirect them back to the login page without any information. To provide good user experience, we can set a flash message before redirecting the user and then display that flash message in our login view. As an example, the <code class="email">behaviors()</code> method of our controller will change to the following. Note the use of the <code class="email">setFlash()</code> method:</p><div class="note"><pre class="programlisting">public function behaviors()
+{
+    return [
+        'access' =&gt; [
+            'class' =&gt; AccessControl::className(),
+            'denyCallback' =&gt; function ($rule, $action) {
+                if (\Yii::$app-&gt;user-&gt;isGuest)
+                {
+                    <span class="strong"><strong class="calibre2">\Yii::$app-&gt;session-&gt;setFlash('warning', 'You</strong></span> <span class="strong"><strong class="calibre2">must be authenticated to access this page');</strong></span>
+                    return $this-&gt;redirect(Url::to('/site/login'));
+                }
+                else
+                    throw new HttpException('403', 'You are not allowed to access this page');
+            },
+            'only' =&gt; ['secure'],
+            'rules' =&gt; [
+                [
+                    'allow' =&gt; true,
+                    'matchCallback' =&gt; function($rule, $action) {
+                        return !\Yii::$app-&gt;user-&gt;isGuest &amp;&amp; \Yii::$app-&gt;user-&gt;identity-&gt;role-&gt;id === 2;
+                    }
+                ],
+            ],
+        ],
+    ];
+}</pre></div><p class="calibre9">Within our login view file, we can then check for the presence of a specific type of flash message<a id="id398" class="calibre1"/> using the <code class="email">hasFlash()</code> method and then displaying a particular flash message using the <code class="email">getFlash()</code> method, as shown here:</p><div class="note"><pre class="programlisting">&lt;?php use yii\bootstrap\Alert; ?&gt;
+
+&lt;div class="site-login"&gt;
+    &lt;?php if (\Yii::$app-&gt;user-&gt;isGuest): ?&gt;
+        &lt;div class="body-content"&gt;
+            &lt;?php if (\Yii::$app-&gt;session-&gt;hasFlash('warning')): ?&gt;
+            &lt;?php echo Alert::widget([
+                    'options' =&gt; [
+                    'class' =&gt; 'alert alert-warning'
+                    ],
+                    'body' =&gt; \Yii::$app-&gt;session-&gt;getFlash('warning')
+                ]); ?&gt;
+                &lt;?php endif; ?&gt;
+            &lt;?php echo $this-&gt;render('forms/LoginForm', [ 'model' =&gt; $model ]); ?&gt;
+        &lt;/div&gt;
+    &lt;?php else: ?&gt;
+        &lt;?php echo Alert::widget([
+            'options' =&gt; [
+                'class' =&gt; 'alert alert-info'
+            ],
+            'body' =&gt; 'You are already logged in. To login as a different user, logout first'
+        ]); ?&gt;
+    &lt;?php endif; ?&gt;
+&lt;/div&gt;</pre></div><p class="calibre9">Now if we navigate our browser to site/secure without being authenticated, we are shown the following. Moreover, if we refresh the page again, the flash message disappears, as flash messages are only intended to be displayed once.</p><div class="mediaobject"><img src="../images/00038.jpeg" alt="Flash messages" class="calibre10"/></div><p class="calibre11"> </p></div>
+
+<div id="page" style="height:0pt"/><div class="book" title="Hashing and encryption" id="1AT9A1-ad3e09b384df46aea690d9c8897d5fe7"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch07lvl1sec39" class="calibre1"/>Hashing and encryption</h1></div></div></div><p class="calibre9">When<a id="id399" class="calibre1"/> dealing with user information, it's essential to be mindful of best security<a id="id400" class="calibre1"/> practices in order to ensure that user information such as passwords is stored in a way that if your database is compromised, the user's bare passwords are not exposed in plain text. As shown in <a class="calibre1" title="Chapter 3. Migrations, DAO, and Query Building" href="part0023_split_000.html#LTSU1-ad3e09b384df46aea690d9c8897d5fe7">Chapter 3</a>, <span class="strong"><em class="calibre13">Migrations, DAO, and Query Building</em></span>, we're using the native PHP <code class="email">password_hash()</code> and <code class="email">password_verify()</code> functions to encrypt and decrypt our users' passwords. While these standards are easy to use, in the development of your application, you may find it easier to take advantage of the Yii2 security component used to hash user passwords and for the encryption of sensitive data:</p><div class="note"><pre class="programlisting">Yii::$app-&gt;getSecurity();</pre></div></div>
+
+<div class="book" title="Hashing and encryption" id="1AT9A1-ad3e09b384df46aea690d9c8897d5fe7">
+<div class="book" title="Hashing and verifying passwords"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_1"><a id="ch07lvl2sec84" class="calibre1"/>Hashing and verifying passwords</h2></div></div></div><p class="calibre9">With<a id="id401" class="calibre1"/> Yii2, we <a id="id402" class="calibre1"/>can hash and verify user passwords using the <code class="email">generatePasswordHash()</code> and <code class="email">validatePassword()</code> methods of the security component. Like the <code class="email">password_hash()</code> and <code class="email">password_verify()</code> functions, the <code class="email">generatePasswordHash()</code> and <code class="email">validatePassword()</code> methods use <code class="email">bcrypt</code> to hash the user passwords:</p><div class="note"><pre class="programlisting">$hash = \Yii::$app-&gt;getSecurity()-&gt;generatePasswordHash($password);</pre></div><p class="calibre9">Passwords<a id="id403" class="calibre1"/> can<a id="id404" class="calibre1"/> then be verified, as follows:</p><div class="note"><pre class="programlisting">if (Yii::$app-&gt;getSecurity()-&gt;validatePassword($plainTextPassword, $hashedPassword))
+{
+    // Valid Password
+}
+else
+{
+    // Invalid Password
+}</pre></div><p class="calibre9">By default, Yii2 will use the PHP <code class="email">crypt()</code> function to generate password hashes, but can, optionally, be configured to use the raw <code class="email">password_hash()</code> methods using the <code class="email">PASSWORD_DEFAULT</code> algorithm by setting the <code class="email">passwordHashStrategy</code> property of the security component within the application configuration:</p><div class="note"><pre class="programlisting">return [
+    // [...],
+    'security' =&gt; [
+        'passwordHashStrategy' =&gt; 'password_hash'
+    ],
+    // [...],
+];</pre></div><div class="note" title="Note"><h3 class="title2"><a id="tip131" class="calibre1"/>Tip</h3><p class="calibre9">It's highly recommended that you use the <code class="email">password_hash</code> strategy over crypt as PHP will continue to strengthen the hashing algorithm of <code class="email">PASSWORD_DEFAULT</code> to increase the security of PHP.</p><p class="calibre9">The password hashing methods implemented by Yii2, however, are simply wrappers around native PHP functions. Both the native functions and Yii2 implementations will remain backward-compatible with each other. For a more object-oriented approach, it's recommended that you use Yii2 methods.</p></div></div></div>
+
+<div class="book" title="Hashing and encryption" id="1AT9A1-ad3e09b384df46aea690d9c8897d5fe7">
+<div class="book" title="Data encryption and decryption"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_2"><a id="ch07lvl2sec85" class="calibre1"/>Data encryption and decryption</h2></div></div></div><p class="calibre9">For <a id="id405" class="calibre1"/>convenience, Yii2 provides<a id="id406" class="calibre1"/> a way to encrypt and decrypt data using a secret key or a user's passwords. To encrypt data with Yii2, we can use the <code class="email">encryptByPassword()</code> method of the security component, as shown in the following example:</p><div class="note"><pre class="programlisting">$encrypted = \Yii::$app-&gt;getSecurity()-&gt;encryptByPassword($data, $secretPassword);</pre></div><p class="calibre9">Data<a id="id407" class="calibre1"/> can <a id="id408" class="calibre1"/>then be decrypted using the <code class="email">decryptByPassword()</code> method:</p><div class="note"><pre class="programlisting">$data = \Yii::$app-&gt;getSecurity()-&gt;decryptByPassword($encrypted, $secretPassword);</pre></div><div class="note" title="Note"><h3 class="title2"><a id="tip132" class="calibre1"/>Tip</h3><p class="calibre9">The secret password used for the encrypt and decrypt methods should be unique to the user and be stored in a format that if our database is compromised, the secret password itself is not compromised. A good secret to use would be the separate password submitted by the user.</p></div></div></div>
+
+<div class="book" title="Hashing and encryption" id="1AT9A1-ad3e09b384df46aea690d9c8897d5fe7">
+<div class="book" title="Data hashing"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_3"><a id="ch07lvl2sec86" class="calibre1"/>Data hashing</h2></div></div></div><p class="calibre9">In<a id="id409" class="calibre1"/> addition to hashing passwords and encrypting data, we can also hash data for integrity verification using the <code class="email">hashData()</code> and <code class="email">validateData()</code> methods. These methods will be beneficial to present and validate checksums of files or raw data:</p><div class="note"><pre class="programlisting">$hash = Yii::$app-&gt;getSecurity()-&gt;hashData($data, $secretKey);
+$data = Yii::$app-&gt;getSecurity()-&gt;validateData($hash, $secretKey);</pre></div><div class="note" title="Note"><h3 class="title2"><a id="tip133" class="calibre1"/>Tip</h3><p class="calibre9">Unlike encrypted data, hashed data cannot be recovered to its original state. Hashes are beneficial in order to verify that information hasn't been tampered with, and it ensures that the integrity of files or data is consistent after transmission.</p></div></div></div>
+<div class="book" title="Summary" id="1BRPS1-ad3e09b384df46aea690d9c8897d5fe7"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch07lvl1sec40" class="calibre1"/>Summary</h1></div></div></div><p class="calibre9">In this chapter, we covered the basics of authenticating the identity of our users and granting them access to certain pages based upon attributes we set in the user identity interface, and how to implement Yii2's hierarchical role-based authentication. We also explored how to use flash messages to enhance our user experience. Additionally, we explored a few components of the security component, which enabled us to hash the user's passwords, hash and verify data, and encrypt and decrypt information utilizing the user's password.</p><p class="calibre9">In the next chapter, we'll cover more complex routing within our application, how to work with and modify our responses directly with Yii2, and the basics of listening and responding to events.</p></div></body></html>
