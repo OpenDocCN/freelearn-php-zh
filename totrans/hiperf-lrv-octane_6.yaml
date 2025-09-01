@@ -1,32 +1,44 @@
 - en: '6'
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: '6'
 - en: Using Queues to Apply the Asynchronous Approach in Your Application
+  id: totrans-1
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 在您的应用程序中使用队列实现异步方法
 - en: 'In the previous chapter, we saw how delegating some tasks to external functions
     in the controller while creating the HTTP request can have a positive impact from
     a performance perspective. However, the case analyzed in the previous chapter
     was limited to a scoped topic: querying the database and populating the cache.
     This strategy is also known as the *cache-only strategy*. The process only needs
     the data to be retrieved from the cache.'
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 在前一章中，我们看到了在创建 HTTP 请求时将一些任务委托给控制器中的外部函数，从性能角度来看可以产生积极的影响。然而，前一章分析的情况仅限于一个范围有限的主题：查询数据库和填充缓存。这种策略也被称为
+    *仅缓存策略*。这个过程只需要从缓存中检索数据。
 - en: This type of approach works in a case where information needs to be retrieved
     from a data source. Typically, applications are more complex than this, such as
     when executing specific tasks that need to modify and process data.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种方法适用于需要从数据源检索信息的情况。通常，应用程序比这更复杂，例如在执行需要修改和处理数据的特定任务时。
 - en: Think about a scenario where there is a request that starts a backup process.
     Typically, a backup process takes time to be completed. Implementing a synchronous
     approach means that the controller (who serves the request) keeps the client (the
     web page) on hold until the process is completed. Two bad things about this solution
     are that the user sees a long waiting loader in the browser, and the solution
     could fall into the *request* *time-out* scenario.
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 想象一个场景，其中有一个启动备份过程的请求。通常，备份过程需要一段时间才能完成。实现同步方法意味着服务请求的控制器（谁处理请求）会一直保持客户端（网页）等待，直到过程完成。这种解决方案的两个缺点是用户会在浏览器中看到一个漫长的等待加载器，并且解决方案可能会陷入
+    *请求超时* 的场景。
 - en: For asynchronous implementation, an additional tool is typically used to manage
     the list of task execution requests. To allow asynchronous implementation, we
     need a mechanism that works as a queue where we have a producer that needs the
@@ -35,489 +47,736 @@
     one at a time. Typically, a queue system adds some features to monitor the queues,
     manage the queues (empty the queues), manage prioritization, and manage multiple
     channels or queues.
+  id: totrans-5
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于异步实现，通常需要使用额外的工具来管理任务执行请求的列表。为了允许异步实现，我们需要一个作为队列的机制，其中有一个生产者需要执行工作（生产者产生工作请求并填充队列）和一个消费者从队列中提取工作请求并执行工作，一次一个。通常，队列系统会添加一些功能来监控队列、管理队列（清空队列）、管理优先级和管理多个通道或队列。
 - en: Laravel provides a mechanism to implement all the queue logic management, such
     as putting a task in the queue, extracting a job from a queue, managing failed
     tasks, and notifying the user about executions.
+  id: totrans-6
   prefs: []
   type: TYPE_NORMAL
+  zh: Laravel 提供了一种机制来实现所有队列逻辑管理，例如将任务放入队列、从队列中提取工作、管理失败的任务以及通知用户关于执行情况。
 - en: 'To store the list of tasks, Laravel allows the developer to select one of the
     queue backends available: the database, Redis, Amazon SQS, or beanstalkd.'
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了存储任务列表，Laravel 允许开发者选择可用的队列后端之一：数据库、Redis、Amazon SQS 或 beanstalkd。
 - en: This chapter aims to help you understand what a queuing mechanism is, how it
     can be used with Laravel, and how it is configured – because an asynchronous approach
     with queues not only reduces the response time but also implements a different
     user experience, especially when time-consuming tasks have to be handled.
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章旨在帮助你了解什么是队列机制，如何在 Laravel 中使用它以及如何配置它——因为使用队列的异步方法不仅减少了响应时间，还实现了不同的用户体验，尤其是在处理耗时任务时。
 - en: 'In this chapter, we will cover the following:'
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们将介绍以下内容：
 - en: Introducing the queue mechanism in Laravel
+  id: totrans-10
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 介绍 Laravel 中的队列机制
 - en: Installing and configuring the queue
+  id: totrans-11
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 安装和配置队列
 - en: Managing the queues
+  id: totrans-12
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 管理队列
 - en: Managing queues with Redis and monitoring them
+  id: totrans-13
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使用 Redis 管理队列并监控它们
 - en: Technical requirements
+  id: totrans-14
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 技术要求
 - en: Thanks to the previous chapters, we assume you have your basic Laravel application
     installed with Laravel Octane. For the current chapter, you can use Octane with
     Swoole, Open Swoole, or RoadRunner.
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: 感谢前几章的内容，我们假设你已经安装了带有 Laravel Octane 的基本 Laravel 应用程序。对于当前章节，你可以使用 Octane 与
+    Swoole、Open Swoole 或 RoadRunner 一起使用。
 - en: 'The source code for the example described in the current chapter is available
     here: [https://github.com/PacktPublishing/High-Performance-with-Laravel-Octane/tree/main/octane-ch06](https://github.com/PacktPublishing/High-Performance-with-Laravel-Octane/tree/main/octane-ch06).'
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 当前章节中描述的示例源代码在此处可用：[https://github.com/PacktPublishing/High-Performance-with-Laravel-Octane/tree/main/octane-ch06](https://github.com/PacktPublishing/High-Performance-with-Laravel-Octane/tree/main/octane-ch06)。
 - en: Introducing the queue mechanism in Laravel
+  id: totrans-17
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 在 Laravel 中引入队列机制
 - en: We will implement a simple use case in order to shed light on the asynchronous
     aspects and how much a queuing mechanism can improve the user experience for the
     end users of our web application.
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将实现一个简单的用例，以便阐明异步方面以及队列机制如何提高我们网络应用最终用户的用户体验。
 - en: For every request, a time-consuming task will be executed. To simulate the time-consuming
     task, we will call `sleep()` to last 3 seconds. The `sleep()` function, which
     suspends execution for a certain number of seconds, is intended to simulate the
     execution of a task that may take some time to implement. In a real case, the
     `sleep()` function is replaced with complex business logic that could take a certain
     amount of time to complete.
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于每个请求，都会执行一个耗时任务。为了模拟耗时任务，我们将调用 `sleep()` 以持续 3 秒。`sleep()` 函数，暂停执行一定时间，旨在模拟可能需要一些时间来实现的任务。在实际情况下，`sleep()`
+    函数将被替换为可能需要一定时间来完成的复杂业务逻辑。
 - en: With the synchronous approach, the request will hold the response to the browser
     for 3 seconds. As a user, you will request the page, wait for 3 seconds, and then
     the page will be shown. The page will contain the message that the operation is
     completed – so you are safe and sure that the process is correctly executed in
     3 seconds, but you have to wait for the answer.
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用同步方法，请求将保持对浏览器的响应 3 秒。作为用户，你会请求页面，等待 3 秒，然后页面将显示。页面将包含操作已完成的消息——因此你可以确信过程在
+    3 秒内正确执行，但你必须等待答案。
 - en: With the asynchronous approach, the routing mechanism takes charge of the request;
     a job is created in the queue to call the logic, which includes a call to the
     `sleep(3)` function to simulate a time-consuming operation, provided by the `ProcessSomething::handle()`
     function. After the job is created in the queue, the response is generated and
     sent to the client.
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用异步方法，路由机制负责请求；在队列中创建一个作业来调用逻辑，包括调用 `sleep(3)` 函数来模拟耗时操作，由 `ProcessSomething::handle()`
+    函数提供。作业创建在队列中后，将生成并发送给客户端响应。
 - en: The user will receive a response in a few milliseconds without waiting for the
     task to be completed. You know that the task has been pushed into the queue, and
     some workers will execute the job.
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 用户将在几毫秒内收到响应，无需等待任务完成。你知道任务已被推入队列，并且一些工作进程将执行该作业。
 - en: 'To carry out the asynchronous approach, we are going to do the following:'
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 要执行异步方法，我们将进行以下操作：
 - en: Install the queue mechanism, creating a table in the database to store the job
     queued.
+  id: totrans-24
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 安装队列机制，在数据库中创建一个表来存储排队作业。
 - en: Create the class for implementing the logic of the job.
+  id: totrans-25
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 创建实现作业逻辑的类。
 - en: Implement a time-consuming logic in the `handle()` method of the job class.
+  id: totrans-26
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在作业类的 `handle()` 方法中实现耗时逻辑。
 - en: Create a route for calling the `handle()` method in the classical synchronous
     way.
+  id: totrans-27
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 创建一个用于以经典同步方式调用 `handle()` 方法的路由。
 - en: Create another route for asynchronously calling the job through the queue mechanism.
+  id: totrans-28
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 创建另一个用于通过队列机制异步调用作业的路由。
 - en: Analyze the result of calling the two routes.
+  id: totrans-29
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 分析调用两个路由的结果。
 - en: First, we will create the data structure that will allow the queue mechanism
     to store the list of jobs. We can use a MySQL database or Redis. To simplify understanding,
     we will initially use the MySQL database-based queuing mechanism (because it is
     more basic and simpler). Subsequently, we will use the more advanced Redis-based
     system.
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，我们将创建一个数据结构，以便队列机制能够存储作业列表。我们可以使用 MySQL 数据库或 Redis。为了简化理解，我们最初将使用基于 MySQL
+    数据库的队列机制（因为它更基础且更简单）。随后，我们将使用更先进的基于 Redis 的系统。
 - en: Redis
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: Redis
 - en: Redis is an open source data store used for storing data, caching values, and
     queuing data/messages. Working mainly in memory, one of its main features is speed.
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: Redis 是一个开源数据存储，用于存储数据、缓存值和队列数据/消息。主要在内存中工作，其主要特性之一是速度。
 - en: Now, we are going to configure the database-based queuing mechanism in a Laravel
     application.
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，我们将配置 Laravel 应用程序中的基于数据库的队列机制。
 - en: Installing and configuring the queue
+  id: totrans-34
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 安装和配置队列
 - en: 'To create the data structure to store the jobs in the queue, we can execute
     the command in the terminal in our Laravel project directory:'
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 要在 Laravel 项目目录的终端中创建存储队列作业的数据结构，我们可以执行以下命令：
 - en: '[PRE0]'
+  id: totrans-36
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: The command is provided by Laravel without the need to install additional packages.
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: 该命令由 Laravel 提供，无需安装额外的包。
 - en: The `queue:table` command creates a new migration file for creating the `jobs`
     table.
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: '`queue:table` 命令创建一个用于创建 `jobs` 表的新迁移文件。'
 - en: The file is created in the `database/migrations/` directory.
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 文件创建在 `database/migrations/` 目录中。
 - en: '![Figure 6.1: The migration file for creating the jobs table](img/Figure_6.01_B17728.jpg)'
+  id: totrans-40
   prefs: []
   type: TYPE_IMG
+  zh: '![图 6.1：创建作业表的迁移文件](img/Figure_6.01_B17728.jpg)'
 - en: 'Figure 6.1: The migration file for creating the jobs table'
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 6.1：创建作业表的迁移文件
 - en: 'The migration will create the following:'
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: 迁移将创建以下内容：
 - en: A new table named `'jobs'`
+  id: totrans-43
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 一个名为 `'jobs'` 的新表
 - en: '`''id''`: For the unique identifier'
+  id: totrans-44
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`''id''`: 用于唯一标识符'
 - en: '`''queue''`: The queue name, helpful for controlling the queue via the command
     line'
+  id: totrans-45
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`''queue''`: 队列名称，有助于通过命令行控制队列'
 - en: '`''payload''`: The data in JSON format that contains information to manage
     and launch the task by the consumer of the queue'
+  id: totrans-46
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`''payload''`: 以 JSON 格式包含信息的数据，这些信息由队列的消费者用于管理和启动任务'
 - en: '`''attempts''`: The number of attempts to execute the jobs'
+  id: totrans-47
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`''attempts''`: 执行作业的尝试次数'
 - en: '`''reserved_at''`: The timestamp when the task is taken in charge by the consumer'
+  id: totrans-48
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`''reserved_at''`: 消费者接管任务的时间戳'
 - en: '`''available_at''`: When the task is available to be consumed'
+  id: totrans-49
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`''available_at''`: 当任务可被消费时'
 - en: '`''created_at''`: When the job is created in the queue'
+  id: totrans-50
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`''created_at''`: 作业在队列中创建的时间'
 - en: 'An example of the JSON payload (in the payload field) is as follows:'
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: JSON 负载（在负载字段中）的一个示例如下：
 - en: '[PRE1]'
+  id: totrans-52
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: 'The JSON payload has some attributes:'
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: JSON 负载有一些属性：
 - en: '`failOnTimeout`: The Boolean field indicating whether the job should fail when
     it times out'
+  id: totrans-54
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`failOnTimeout`: 布尔字段，指示作业在超时时是否应该失败'
 - en: '`retryUntil`: The timestamp (integer field) indicating when the job should
     time out'
+  id: totrans-55
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`retryUntil`: 指示作业应该超时的时间戳（整数字段）'
 - en: '`maxExceptions`: The number (integer field) of times to attempt a job after
     an exception'
+  id: totrans-56
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`maxExceptions`: 在异常后尝试作业的次数（整数字段）'
 - en: '`maxTries`: The number (integer field) of times to attempt a job'
+  id: totrans-57
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`maxTries`: 尝试作业的次数（整数字段）'
 - en: '`uuid`: The UUID (string field) of the job'
+  id: totrans-58
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`uuid`: 作业的 UUID（字符串字段）'
 - en: '`timeout`: The number (integer field) of seconds the job can run'
+  id: totrans-59
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`timeout`: 作业可以运行的秒数（整数字段）'
 - en: '`backoff`: The number of seconds to wait before retrying a job that encountered
     an uncaught exception – can be an array of integers to track the seconds for each
     attempt (a job could be attempted more than once because of errors)'
+  id: totrans-60
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`backoff`: 在重试遇到未捕获异常的作业之前等待的秒数 - 可以是一个整数数组，用于跟踪每次尝试的秒数（由于错误，作业可能需要尝试多次）'
 - en: '`job`: The name (string field) of the queued job class'
+  id: totrans-61
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`job`: 队列作业类的名称（字符串字段）'
 - en: Once we have created the schema definition for the table with the `php artisan
     queue:table` command, we can create the `jobs` table in the database via the `migrate`
     command.
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦我们使用 `php artisan queue:table` 命令创建了表的架构定义，我们就可以通过 `migrate` 命令在数据库中创建 `jobs`
+    表。
 - en: 'For creating the table in the database, you can launch the `migrate` command:'
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: 要在数据库中创建表，你可以启动 `migrate` 命令：
 - en: '[PRE2]'
+  id: totrans-64
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: 'To check that the correct table has been created, you can use the `db:table`
     command:'
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: 要检查是否已创建正确的表，你可以使用 `db:table` 命令：
 - en: '[PRE3]'
+  id: totrans-66
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: Now that all the data structure is in place, we have to create the files to
     implement the logic of our jobs.
+  id: totrans-67
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在所有数据结构都已就绪，我们必须创建文件以实现作业的逻辑。
 - en: Managing the queues
+  id: totrans-68
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 管理队列
 - en: For managing the jobs, in Laravel, by convention, we have one class for each
     job. The job class has to implement the `handle()` method. The method `handle()`
     is invoked by the framework when the job has to be executed.
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 Laravel 中管理作业时，按照惯例，我们为每个作业有一个类。作业类必须实现 `handle()` 方法。当作业需要执行时，`handle()`
+    方法由框架调用。
 - en: 'For creating the class to manage the jobs, see the following:'
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 要创建管理作业的类，请参阅以下内容：
 - en: '[PRE4]'
+  id: totrans-71
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: With the `make:job` command, a new file, `app/Jobs/ProcessSomething.php`, that
     includes the `ProcessSomething` class with some methods ready to be filled with
     the logic is created. The primary methods are the constructor and the method invoked
     for managing the job, the `handle()` method.
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 `make:job` 命令，创建一个新文件 `app/Jobs/ProcessSomething.php`，其中包含 `ProcessSomething`
+    类和一些准备填充逻辑的方法。主要方法包括构造函数和用于管理作业的方法 `handle()`。
 - en: 'We will implement the logic into the `handle()` method. In the `app/Jobs/ProcessSomething.php`
     file, insert the following:'
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将逻辑实现到`handle()`方法中。在`app/Jobs/ProcessSomething.php`文件中，插入以下内容：
 - en: '[PRE5]'
+  id: totrans-74
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: As an example of a time-consuming operation, we are going to pause the execution
     of the `handle()` method for 3 seconds via the `sleep()` function. This means
     that the thread will be suspended for 3 seconds. We will log the method execution’s
     start and end to track more information. You can find the logs in the `storage/logs/laravel.log`
     file with the default configuration.
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 作为耗时操作的示例，我们将通过`sleep()`函数暂停`handle()`方法的执行3秒钟。这意味着线程将被挂起3秒钟。我们将记录方法执行的开始和结束以跟踪更多信息。您可以在默认配置下在`storage/logs/laravel.log`文件中找到日志。
 - en: The classical synchronous approach
+  id: totrans-76
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 经典的同步方法
 - en: Typically, with a synchronous approach, if you call the method, the response
     takes 3 seconds.
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: 通常，使用同步方法，如果你调用方法，响应需要3秒钟。
 - en: 'In the `routes/web.php` file, we are going to add a new `/time` route for dispatching
     (requesting the execution of) the job synchronously:'
+  id: totrans-78
   prefs: []
   type: TYPE_NORMAL
+  zh: 在`routes/web.php`文件中，我们将添加一个新的`/time`路由用于调度（请求同步执行）工作：
 - en: '[PRE6]'
+  id: totrans-79
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: Calling the static `dispatchSync()` method allows you to invoke the `handle()`
     method (through the queue mechanism) synchronously. This is the classic scenario
     we have in PHP when we call a method.
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: 调用静态的`dispatchSync()`方法允许您同步调用`handle()`方法（通过队列机制）。这是我们在PHP中调用方法时的经典场景。
 - en: To render the view, we have to implement the *result* view, a basic blade template
     to render the title, description, and time set in the `view()` function.
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了渲染视图，我们必须实现*结果*视图，一个基本的blade模板，用于渲染`view()`函数中设置的标题、描述和时间。
 - en: 'Create the `resources/views/result.blade.php` blade file:'
+  id: totrans-82
   prefs: []
   type: TYPE_NORMAL
+  zh: 创建`resources/views/result.blade.php` blade文件：
 - en: '[PRE7]'
+  id: totrans-83
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: 'The blade file will show the result on the page displaying the `$description`
     and `$time` parameters. If you request the page via your web browser at `http://localhost:8000/time-consuming-request-sync`,
     you must wait at least 3 seconds before the page is fully rendered. This figure
     shows that the time value is slightly more than 3,000 milliseconds:'
+  id: totrans-84
   prefs: []
   type: TYPE_NORMAL
+  zh: blade文件将在显示`$description`和`$time`参数的页面上显示结果。如果您通过您的网络浏览器在`http://localhost:8000/time-consuming-request-sync`请求页面，您必须至少等待3秒钟，页面才能完全渲染。此图显示时间值略大于3,000毫秒：
 - en: '![Figure 6.2: The synchronous job execution](img/Figure_6.02_B17728.jpg)'
+  id: totrans-85
   prefs: []
   type: TYPE_IMG
+  zh: '![图6.2：同步工作执行](img/Figure_6.02_B17728.jpg)'
 - en: 'Figure 6.2: The synchronous job execution'
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: 图6.2：同步工作执行
 - en: This means your job takes 3 seconds, and Laravel waits to send the response
     until the job is completed.
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 这意味着你的工作需要3秒钟，Laravel会等待发送响应，直到工作完成。
 - en: This is probably nothing special because, as PHP developers, we are used to
     managing synchronous jobs. Even if we are not managing queues, the PHP engine
     synchronously drives the methods and functions. Some other languages have the
     async call for functions – so now, let’s see how to dispatch the execution to
     another process that can asynchronously execute the job.
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: 这可能没有什么特别之处，因为作为PHP开发者，我们已经习惯了管理同步工作。即使我们不管理队列，PHP引擎也是同步驱动方法和函数的。其他一些语言有函数的异步调用——所以现在，让我们看看如何将执行调度到另一个可以异步执行工作的进程。
 - en: The asynchronous approach
+  id: totrans-89
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 异步方法
 - en: Instead of using the sync method, we will dispatch the jobs through the queue.
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: 而不是使用同步方法，我们将通过队列调度工作。
 - en: 'To extract the jobs from the queue, it is necessary to start a specific process
     for the consumer to take over the various tasks. To begin the process, you can
     execute the `artisan` command:'
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: 从队列中提取工作，需要启动一个特定的进程，以便消费者接管各种任务。要开始此进程，您可以执行`artisan`命令：
 - en: '[PRE8]'
+  id: totrans-92
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: The command checks whether any jobs are in the `jobs` table and *consumes* the
     queue by deleting the row after the job is completed.
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 命令检查`jobs`表中是否有任何工作，并在工作完成后*消费*队列，删除该行。
 - en: 'From the *producer* side, in the router logic, we can call the `dispatch()`
     functions available:'
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: 从*生产者*端，在路由逻辑中，我们可以调用可用的`dispatch()`函数：
 - en: '[PRE9]'
+  id: totrans-95
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: The `dispatch()` functions need the instance of the job class as a parameter.
     The `dispatch()` function will send the job instance to the queue and release
     the control to the caller, with no need to wait for the complete execution of
     the job. In the end, the response is created immediately without waiting for the
     job to be completed, instead of the typical behavior where the response is created
     once the job is completed.
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: '`dispatch()` 函数需要一个作业类的实例作为参数。`dispatch()` 函数会将作业实例发送到队列并释放对调用者的控制，无需等待作业的完整执行。最后，响应立即创建，无需等待作业完成，而不是典型的在作业完成后创建响应的行为。'
 - en: We are just sending an instance of the `ProcessSomething` class to the `dispatch()`
     method. The convention is that the *consumer* will execute the `handle()` method
     when taking care of the job.
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们只是将 `ProcessSomething` 类的实例发送到 `dispatch()` 方法。惯例是，*消费者* 在处理作业时会执行 `handle()`
+    方法。
 - en: 'Now, you can open the browser and call the URL, `http://localhost:8000/time-consuming-request-async`:'
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，您可以打开浏览器并调用 URL，`http://localhost:8000/time-consuming-request-async`：
 - en: '![Figure 6.3: The asynchronous execution](img/Figure_6.03_B17728.jpg)'
+  id: totrans-99
   prefs: []
   type: TYPE_IMG
+  zh: '![图 6.3：异步执行](img/Figure_6.03_B17728.jpg)'
 - en: 'Figure 6.3: The asynchronous execution'
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 6.3：异步执行
 - en: 'To allow the browser to receive the response, we have to be sure that we launched
     two commands:'
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了允许浏览器接收响应，我们必须确保我们启动了两个命令：
 - en: '`php artisan octane:start`: For launching the Octane server, listening on port
     `8000`'
+  id: totrans-102
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`php artisan octane:start`：用于启动 Octane 服务器，监听端口 `8000`'
 - en: '`php artisan queue:work`: For launching the *consumer* service, for executing
     the jobs'
+  id: totrans-103
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`php artisan queue:work`：用于启动 *消费者* 服务，用于执行作业'
 - en: 'If you want to see the status of the queue, you can execute it via the command
     line:'
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您想查看队列的状态，您可以通过命令行执行：
 - en: '[PRE10]'
+  id: totrans-105
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: 'The `queue:monitor` command will show the status of the queues and the jobs
     in the queue for each queue:'
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: '`queue:monitor` 命令将显示每个队列的队列状态和队列中的作业：'
 - en: '![Figure 6.4: The queue monitor tool](img/Figure_6.04_B17728.jpg)'
+  id: totrans-107
   prefs: []
   type: TYPE_IMG
+  zh: '![图 6.4：队列监控工具](img/Figure_6.04_B17728.jpg)'
 - en: 'Figure 6.4: The queue monitor tool'
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 6.4：队列监控工具
 - en: 'If you have pending jobs in the queue, you will see the number of waiting jobs
     in the square brackets:'
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果队列中有待处理的作业，您将在方括号中看到等待作业的数量：
 - en: '![Figure 6.5: The queue with some waiting jobs](img/Figure_6.05_B17728.jpg)'
+  id: totrans-110
   prefs: []
   type: TYPE_IMG
+  zh: '![图 6.5：带有一些等待作业的队列](img/Figure_6.05_B17728.jpg)'
 - en: 'Figure 6.5: The queue with some waiting jobs'
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 6.5：带有一些等待作业的队列
 - en: In the example, we have 76 jobs in the queue.
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: 在示例中，队列中有 76 个作业。
 - en: If you use a database as a backend for managing queues, I suggest increasing
     your confidence directly by querying the jobs table with SQL.
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您使用数据库作为管理队列的后端，我建议通过查询 SQL 的作业表来直接提高您的信心。
 - en: 'You can access the database with the `artisan` `db` command:'
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: 您可以使用 `artisan` `db` 命令访问数据库：
 - en: '[PRE11]'
+  id: totrans-115
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: 'Then, you can execute SQL queries; for example, you could count how many rows
     each queue has:'
+  id: totrans-116
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，您可以执行 SQL 查询；例如，您可以计算每个队列有多少行：
 - en: '[PRE12]'
+  id: totrans-117
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: The SQL command counts the number of identifiers (the count) from the `jobs`
     table, grouping the rows by the `queue` field.
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: SQL 命令计算 `jobs` 表中标识符（计数）的数量，按 `queue` 字段分组行。
 - en: '![Figure 6.6: Executing queries on the jobs table](img/Figure_6.06_B17728.jpg)'
+  id: totrans-119
   prefs: []
   type: TYPE_IMG
+  zh: '![图 6.6：在作业表上执行查询](img/Figure_6.06_B17728.jpg)'
 - en: 'Figure 6.6: Executing queries on the jobs table'
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 6.6：在作业表上执行查询
 - en: 'If you have more than one job in the queue, please be sure that you are running
     the consumer:'
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果队列中有多个任务，请确保您正在运行消费者：
 - en: '[PRE13]'
+  id: totrans-122
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: If you want to have more than one consumer that executes your jobs in parallel,
     you can launch `queue:work` more than once. If you launch `queue:work` twice,
     you will have two consumers that extract the jobs from the queue.
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您想要有多个消费者并行执行您的任务，您可以多次启动 `queue:work`。如果您启动 `queue:work` 两次，您将有两个消费者从队列中提取作业。
 - en: If you have to manage time-consuming tasks, using a queue is not just implementing
     an asynchronous approach to manage tasks. It is a way to control the level of
     parallelism and contain the number of concurrent time-consuming tasks that your
@@ -525,197 +784,301 @@
     if there were a high number of requests, you could reach a high number of concurrent
     requests on the web server, and your system could collapse due to the high resource
     usage.
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你必须管理耗时任务，使用队列不仅是一种实现异步任务管理的方法。它是一种控制并行级别和限制你的架构可以处理或处理的并发耗时任务数量的方式。通过同步管理耗时任务，如果有大量请求，你可能会在
+    web 服务器上达到大量的并发请求，并且由于高资源使用，你的系统可能会崩溃。
 - en: Delegating tasks to specific workers means that you keep the load on the workers
     used for serving the requests lighter, and you can launch the consumer processes
     on a dedicated instance or virtual machine. You can also increase the number of
     processes for the consumers.
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: 将任务委托给特定的工人意味着你保持了用于处理请求的工人的负载较轻，你可以在专用实例或虚拟机上启动消费者进程。你也可以增加消费者进程的数量。
 - en: Managing multiple queues
+  id: totrans-126
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 管理多个队列
 - en: You can use more than one queue – for example, `first` and `second`.
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以使用多个队列——例如，`first` 和 `second`。
 - en: 'When you have to assign the job to a queue, you can use the `onQueue()` method:'
+  id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你需要将任务分配到队列时，你可以使用 `onQueue()` 方法：
 - en: '[PRE14]'
+  id: totrans-129
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: 'You can control both queues:'
+  id: totrans-130
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以控制两个队列：
 - en: '[PRE15]'
+  id: totrans-131
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: 'Then, you can launch the consumer for the `"``first"` queue:'
+  id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，你可以启动第一个队列的消费者：
 - en: '[PRE16]'
+  id: totrans-133
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: 'And then for the queue named `"second"`:'
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后对于名为 `"second"` 的队列：
 - en: '[PRE17]'
+  id: totrans-135
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: 'You can, for example, launch two consumers for the `"first"` queue and only
     one for the `"second"` queue, giving more priority to the `"first"` queue (because
     it has two dedicated consumers instead of one). To achieve this, in different
     shell environments, you can launch the following:'
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，你可以为 `"first"` 队列启动两个消费者，而为 `"second"` 队列只启动一个，给 `"first"` 队列更高的优先级（因为它有两个专门的消费者而不是一个）。为了实现这一点，在不同的
+    shell 环境中，你可以启动以下命令：
 - en: '[PRE18]'
+  id: totrans-137
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: 'If you need to clear the queue and delete all pending tasks, you can use the
     `queue:clear` command:'
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你需要清空队列并删除所有挂起的任务，你可以使用 `queue:clear` 命令：
 - en: '[PRE19]'
+  id: totrans-139
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: 'Here, `database` is the name of the connection (we are using the database now;
     in the next section, we will use another type of connection), and we can also
     define the queue via the `--queue` parameter. You can also specify more than one
     queue:'
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这里，`database` 是连接的名称（我们现在正在使用数据库；在下一节中，我们将使用另一种类型的连接），我们也可以通过 `--queue` 参数定义队列。你也可以指定多个队列：
 - en: '[PRE20]'
+  id: totrans-141
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: The connection is optional; if we don’t specify `database` (the connection)
     on the command line, the `QUEUE_CONNECTION` environment parameter (from `.env`
     file) will be used.
+  id: totrans-142
   prefs: []
   type: TYPE_NORMAL
+  zh: 连接是可选的；如果我们没有在命令行上指定 `database`（连接），则将使用 `.env` 文件中的 `QUEUE_CONNECTION` 环境参数。
 - en: Now we have seen how to create and manage queues with the database as the backend,
     let’s try to configure Redis as the backend.
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们已经看到了如何使用数据库作为后端创建和管理队列，让我们尝试配置 Redis 作为后端。
 - en: Managing queues with Redis and monitoring them
+  id: totrans-144
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使用 Redis 管理队列并进行监控
 - en: Using `database` as the connection is convenient for people who start using
     the queue and have already had the database set up for storing application data,
     for example. Why use Redis instead of a database? Because Redis has more optimization
     for managing queues than a database, and you can use Laravel Horizon to monitor
     the queue. Laravel Horizon provides a web dashboard for monitoring your queues
     and the metrics about the usage of the queues.
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 `database` 作为连接对刚开始使用队列并且已经为存储应用程序数据设置了数据库的人来说很方便。为什么使用 Redis 而不是数据库？因为 Redis
+    在管理队列方面比数据库有更多的优化，并且你可以使用 Laravel Horizon 来监控队列。Laravel Horizon 提供了一个用于监控你的队列及其使用指标的网页仪表板。
 - en: As the first step of managing queues with Redis, first, let’s install the Redis
     service.
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: 在使用 Redis 管理队列的第一步，首先，让我们安装 Redis 服务。
 - en: Installing Redis
+  id: totrans-147
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 安装 Redis
 - en: 'Installing Redis means that you have added software and service to your stack.
     If you are a macOS user, you can install it via **Homebrew**:'
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: 安装 Redis 意味着你已经向你的堆栈中添加了软件和服务。如果你是 macOS 用户，你可以通过 **Homebrew** 安装它：
 - en: '[PRE21]'
+  id: totrans-149
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: The first command installs the software; the second one starts the service.
+  id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: 第一个命令安装软件；第二个命令启动服务。
 - en: You can use your package manager if you have a GNU/Linux distribution; Redis
     is included in most GNU/Linux distributions.
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你有一个 GNU/Linux 发行版，你可以使用你的包管理器；Redis 包含在大多数 GNU/Linux 发行版中。
 - en: Alternatively, you can use Sail (as shown previously in [*Chapter 3*](B17728_03.xhtml#_idTextAnchor048),
     *Configuring the Swoole Application Server*, in the *Setting up Laravel Sail*
     section, during the installation of Swoole).
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: 或者，你可以使用Sail（如前所述，在[*第3章*](B17728_03.xhtml#_idTextAnchor048)，*配置Swoole应用程序服务器*，在*设置Laravel
+    Sail*部分，在安装Swoole时）。
 - en: 'Execute the following `sail:install` command:'
+  id: totrans-153
   prefs: []
   type: TYPE_NORMAL
+  zh: 执行以下`sail:install`命令：
 - en: '[PRE22]'
+  id: totrans-154
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: Be sure you also select the Redis service (option number **3**).
+  id: totrans-155
   prefs: []
   type: TYPE_NORMAL
+  zh: 确保你也选择了Redis服务（选项编号**3**）。
 - en: '![Figure 6.7: The Laravel Sail configuration for Redis](img/Figure_6.07_B17728.jpg)'
+  id: totrans-156
   prefs: []
   type: TYPE_IMG
+  zh: '![图6.7：Laravel Sail的Redis配置](img/Figure_6.07_B17728.jpg)'
 - en: 'Figure 6.7: The Laravel Sail configuration for Redis'
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 图6.7：Laravel Sail的Redis配置
 - en: In the case that you need more than one service (for example, both MySQL and
     Redis), you can select `0,3` (comma-separated).
+  id: totrans-158
   prefs: []
   type: TYPE_NORMAL
+  zh: 在需要多个服务（例如，MySQL和Redis）的情况下，你可以选择`0,3`（逗号分隔）。
 - en: Once the Redis service runs, we can start configuring the queue mechanism to
     use Redis as the connection.
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦Redis服务启动，我们就可以开始配置队列机制，使用Redis作为连接。
 - en: Configuring Redis
+  id: totrans-160
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 配置Redis
 - en: 'In the environment configuration file placed in the Laravel project directory
     (the `.env` file), we have to adjust some parameters:'
+  id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: 在Laravel项目目录中放置的环境配置文件（`.env`文件），我们必须调整一些参数：
 - en: '[PRE23]'
+  id: totrans-162
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: With `QUEUE_CONNECTION`, you define the connection to be used (`redis`).
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用`QUEUE_CONNECTION`，你定义要使用的连接（`redis`）。
 - en: 'With `REDIS_CLIENT`, you can define the client to be used by Laravel to connect
     to the Redis service. The default is `phpredis` (which uses the PECL module),
     or you can use `predis`, which uses the PHP package: [https://github.com/predis/predis](https://github.com/predis/predis).
     The `phpredis` module is written in C, so could be faster than a `predis` implementation
     (which is pure PHP). On the other hand, a `predis` implementation has a lot of
     features and the community and the development team are really supportive.'
+  id: totrans-164
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用`REDIS_CLIENT`，你可以定义Laravel用于连接Redis服务的客户端。默认是`phpredis`（它使用PECL模块），或者你可以使用`predis`，它使用PHP包：[https://github.com/predis/predis](https://github.com/predis/predis)。`phpredis`模块是用C编写的，所以可能比`predis`实现（它是纯PHP）更快。另一方面，`predis`实现有很多功能，社区和开发团队都非常支持。
 - en: 'If you want to change the name of the default queue (typically, “`default`”),
     you can add the `REDIS_QUEUE` parameter into the `.``env` file:'
+  id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你想要更改默认队列的名称（通常是“`default`”），你可以在`.env`文件中添加`REDIS_QUEUE`参数：
 - en: '[PRE24]'
+  id: totrans-166
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: 'About the connection between Laravel and Redis service, if you are not familiar
     with Redis, my suggestion is to start by using the `predis` package just because
     it requires adding a package:'
+  id: totrans-167
   prefs: []
   type: TYPE_NORMAL
+  zh: 关于Laravel与Redis服务之间的连接，如果你不熟悉Redis，我的建议是先使用`predis`包，因为它需要添加一个包：
 - en: '[PRE25]'
+  id: totrans-168
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: 'If you are installing the `predis/predis` package, you have to set the `REDIS_CLIENT`
     parameter to `predis`:'
+  id: totrans-169
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你正在安装`predis/predis`包，你必须将`REDIS_CLIENT`参数设置为`predis`：
 - en: '[PRE26]'
+  id: totrans-170
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: All of these configurations are related to the `.``env` file.
+  id: totrans-171
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有这些配置都与`.env`文件相关。
 - en: 'If you are using the Predis package to complete the configuration correctly,
     you must set an alias in the Laravel bootstrap configuration. To do that, in the
     `config/app.php` file, in the `''aliases''` section, add a specific entry for
     Redis:'
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你使用Predis包正确完成配置，必须在Laravel引导配置中设置别名。为此，在`config/app.php`文件中，在`'aliases'`部分，为Redis添加一个特定的条目：
 - en: '[PRE27]'
+  id: totrans-173
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: Setting the alias is useful for Laravel to access the Redis object correctly
     and helps Laravel to correctly resolve the reference to the Redis object because
     we could have a name conflict with the `Redis` object provided by the Predis package
@@ -724,248 +1087,379 @@
     application, but you could face some unexpected application behavior. For example,
     when you want to clear the queue on a specific connection, the queue selected
     is not removed.
+  id: totrans-174
   prefs: []
   type: TYPE_NORMAL
+  zh: 设置别名对于Laravel正确访问Redis对象非常有用，并帮助Laravel正确解析对Redis对象的引用，因为我们可能会与Predis包提供的`Redis`对象以及`phpredis`模块提供的Redis对象发生名称冲突。如果你忘记设置此配置，执行Laravel应用程序时不会收到错误，但你可能会遇到一些意外的应用程序行为。例如，当你想要清除特定连接的队列时，选定的队列没有被移除。
 - en: If you switch the connection, for example, from the database to Redis, you don’t
     have to change anything in your application code. The Laravel queue mechanism
     provides an abstraction layer that hides all the different implementations specific
     to each connection (under the hood, managing a database connection uses other
     implementations than a Redis connection).
+  id: totrans-175
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您切换连接，例如，从数据库切换到Redis，您不需要在您的应用程序代码中做任何更改。Laravel队列机制提供了一个抽象层，隐藏了每个连接特有的所有不同实现（在底层，管理数据库连接使用的是与Redis连接不同的实现）。
 - en: 'If you are using the code (in the `routes/web.php` file), see the following:'
+  id: totrans-176
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您使用的是代码（在`routes/web.php`文件中），请参阅以下内容：
 - en: '[PRE28]'
+  id: totrans-177
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE28]'
 - en: We are using the `"first"` queue on the configured connection.
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们正在配置的连接上使用`"first"`队列。
 - en: 'To see the configured connection, you can use the `about` command:'
+  id: totrans-179
   prefs: []
   type: TYPE_NORMAL
+  zh: 要查看配置的连接，您可以使用`about`命令：
 - en: '[PRE29]'
+  id: totrans-180
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE29]'
 - en: 'The command displays the information on the drivers used by your Laravel application
     for the queue:'
+  id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: 命令显示您的Laravel应用程序用于队列的驱动器信息：
 - en: '![Figure 6.8: The driver configuration](img/Figure_6.08_B17728.jpg)'
+  id: totrans-182
   prefs: []
   type: TYPE_IMG
+  zh: '![图6.8：驱动器配置](img/Figure_6.08_B17728.jpg)'
 - en: 'Figure 6.8: The driver configuration'
+  id: totrans-183
   prefs: []
   type: TYPE_NORMAL
+  zh: 图6.8：驱动器配置
 - en: The command shows that for the queue, we are using Redis as the backend connection
     for queues.
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: 命令显示对于队列，我们正在使用Redis作为队列的后端连接。
 - en: 'Now, opening the page at `http://127.0.0.1:8000/time-consuming-request-async`,
     you will see that deferring the task to a Redis queue is faster than a database.
     For example, the dispatch method takes less than a millisecond on my local machine.
     With the database connection in our example, the same code takes 7 milliseconds:'
+  id: totrans-185
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，打开`http://127.0.0.1:8000/time-consuming-request-async`页面，您将看到将任务推迟到Redis队列比数据库更快。例如，在我的本地机器上，调度方法的时间少于1毫秒。在我们的示例中，使用数据库连接，相同的代码需要7毫秒：
 - en: '![Figure 6.9: Dispatching a job on the Redis queue](img/Figure_6.09_B17728.jpg)'
+  id: totrans-186
   prefs: []
   type: TYPE_IMG
+  zh: '![图6.9：在Redis队列上调度一个作业](img/Figure_6.09_B17728.jpg)'
 - en: 'Figure 6.9: Dispatching a job on the Redis queue'
+  id: totrans-187
   prefs: []
   type: TYPE_NORMAL
+  zh: 图6.9：在Redis队列上调度一个作业
 - en: With the queue mechanism, we improved the *responsiveness* of the application,
     allowing the user to receive an immediate response about the task. Then, with
     the Redis connection, we reduced the time taken to queue the job.
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过队列机制，我们提高了应用程序的*响应性*，使用户能够立即收到关于任务的响应。然后，通过Redis连接，我们减少了排队作业所需的时间。
 - en: Thanks to the Redis connection, we can also use Laravel Horizon for monitoring
     the queues.
+  id: totrans-189
   prefs: []
   type: TYPE_NORMAL
+  zh: 多亏了Redis连接，我们还可以使用Laravel Horizon来监控队列。
 - en: Monitoring queues with Laravel Horizon
+  id: totrans-190
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 使用Laravel Horizon监控队列
 - en: We are going to add Horizon to our application. This means that you can access
     the Horizon dashboard using the `/horizon` path at the end.
+  id: totrans-191
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将把Horizon添加到我们的应用程序中。这意味着您可以通过末尾的`/horizon`路径访问Horizon仪表板。
 - en: 'To install Laravel Horizon, you have to install the package:'
+  id: totrans-192
   prefs: []
   type: TYPE_NORMAL
+  zh: 要安装Laravel Horizon，您必须安装以下包：
 - en: '[PRE30]'
+  id: totrans-193
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE30]'
 - en: 'Then ,you need to publish the files needed by Horizon: the configuration file
     (`config/horizon.php`), the assets (in the `public/vendor/horizon`/ directory),
     and the service provider (in the `app/Providers/HorizonServiceProvider.php` file):'
+  id: totrans-194
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，您需要发布Horizon所需的文件：配置文件（`config/horizon.php`）、资产（在`public/vendor/horizon`目录中），以及服务提供者（在`app/Providers/HorizonServiceProvider.php`文件中）：
 - en: '[PRE31]'
+  id: totrans-195
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE31]'
 - en: '`horizon:install` will copy all needed files into the correct directories.'
+  id: totrans-196
   prefs: []
   type: TYPE_NORMAL
+  zh: '`horizon:install`将所有必需的文件复制到正确的目录中。'
 - en: 'Launch Laravel Octane with the following:'
+  id: totrans-197
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用以下命令启动Laravel Octane：
 - en: '[PRE32]'
+  id: totrans-198
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE32]'
 - en: 'With the default Horizon configuration, you can access `http://127.0.0.1:8000/horizon`:'
+  id: totrans-199
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用默认的Horizon配置，您可以通过`http://127.0.0.1:8000/horizon`访问：
 - en: '![Figure 6.10: The Laravel Horizon dashboard](img/Figure_6.10_B17728.jpg)'
+  id: totrans-200
   prefs: []
   type: TYPE_IMG
+  zh: '![图6.10：Laravel Horizon仪表板](img/Figure_6.10_B17728.jpg)'
 - en: 'Figure 6.10: The Laravel Horizon dashboard'
+  id: totrans-201
   prefs: []
   type: TYPE_NORMAL
+  zh: 图6.10：Laravel Horizon仪表板
 - en: 'The status indicates whether the supervisor of Horizon processes is up and
     running. To collect all the metrics correctly, launch the supervisor:'
+  id: totrans-202
   prefs: []
   type: TYPE_NORMAL
+  zh: 状态指示Horizon进程的监督器是否正在运行。为了正确收集所有指标，启动监督器：
 - en: '[PRE33]'
+  id: totrans-203
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE33]'
 - en: 'Then, if you load the page `http://127.0.0.1:8000/time-consuming-request-async`
     multiple times, multiple jobs are created in the queue. Launch the consumer:'
+  id: totrans-204
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，如果您多次加载`http://127.0.0.1:8000/time-consuming-request-async`页面，队列中会创建多个作业。启动消费者：
 - en: '[PRE34]'
+  id: totrans-205
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE34]'
 - en: You will have a consumer up and running, ready to execute jobs from the queue.
+  id: totrans-206
   prefs: []
   type: TYPE_NORMAL
+  zh: 您将有一个正在运行的消费者，准备从队列中执行作业。
 - en: 'So, you have Octane, Horizon, and the queue worker up and running. Load the
     page multiple times, and then go to the dashboard at `http://127.0.0.1:8000/horizon/dashboard`.
     You will see the dashboard page filled with the metrics:'
+  id: totrans-207
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，你有了 Octane、Horizon 和队列工作者的运行。多次加载页面，然后转到 `http://127.0.0.1:8000/horizon/dashboard`
+    上的仪表板。你将看到仪表板页面充满了指标：
 - en: '![Figure 6.11: The Horizon Dashboard page elaborating on the metrics](img/Figure_6.11_B17728.jpg)'
+  id: totrans-208
   prefs: []
   type: TYPE_IMG
+  zh: '![图 6.11：详细说明指标的 Horizon 仪表板页面](img/Figure_6.11_B17728.jpg)'
 - en: 'Figure 6.11: The Horizon Dashboard page elaborating on the metrics'
+  id: totrans-209
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 6.11：详细说明指标的 Horizon 仪表板页面
 - en: The metrics are retrieved and calculated in `/horizon/api/stats` endpoint implemented
     by Horizon.
+  id: totrans-210
   prefs: []
   type: TYPE_NORMAL
+  zh: 这些指标是通过 Horizon 实现的 `/horizon/api/stats` 端点检索和计算的。
 - en: If you look at the API’s response, you could programmatically retrieve the same
     information you can see in the dashboard UI.
+  id: totrans-211
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你查看 API 的响应，你可以以编程方式检索在仪表板 UI 中可以看到的相同信息。
 - en: Note
+  id: totrans-212
   prefs: []
   type: TYPE_NORMAL
+  zh: 备注
 - en: In a scenario such as this one, where you have the UI that calls multiple endpoints
     (APIs) via polling (every 3 seconds), if you have the APIs served by Octane, you
     can inherit all the benefits that come from using Octane. Octane reduces latency
     thanks to all its optimization.
+  id: totrans-213
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这种场景下，如果你有一个 UI 通过轮询（每 3 秒）调用多个端点（API），如果你使用 Octane 提供的 API，你可以继承使用 Octane
+    所带来的所有好处。Octane 通过其所有优化降低了延迟。
 - en: 'For the statistics API, the JSON response has this structure:'
+  id: totrans-214
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于统计 API，JSON 响应具有以下结构：
 - en: '[PRE35]'
+  id: totrans-215
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE35]'
 - en: 'Here, you can retrieve the following:'
+  id: totrans-216
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这里，你可以检索以下内容：
 - en: The count of recently failed jobs, `"failedJobs"`.
+  id: totrans-217
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 最近失败的作业数量，`"failedJobs"`。
 - en: The jobs processed per minute since the last snapshot, `"jobsPerMinute"`.
+  id: totrans-218
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 自上次快照以来每分钟处理的作业数量，`"jobsPerMinute"`。
 - en: The number of master supervisors that are currently paused, `"pausedMasters"`.
+  id: totrans-219
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 当前暂停的主监督器的数量，`"pausedMasters"`。
 - en: The configuration for how long (in minutes) Horizon has managed the recent and
     failed jobs. The values are expressed in seconds, and the configuration is defined
     in `config/horizon.php` in the `trim` section.
+  id: totrans-220
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: Horizon 管理近期和失败作业的配置（以分钟为单位）。这些值以秒为单位表示，配置在 `config/horizon.php` 文件的 `trim`
+    部分中定义。
 - en: The process count, `"processes"`.
+  id: totrans-221
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 进程数量，`"processes"`。
 - en: The name of the queue that has the most extended runtime, `"queueWithMaxRuntime"`.
+  id: totrans-222
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 具有最长运行时间的队列名称为 `"queueWithMaxRuntime"`。
 - en: The name of the queue that has the highest throughput, `"queueWithMaxThroughput"`.
+  id: totrans-223
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 具有最高吞吐量的队列名称为 `"queueWithMaxThroughput"`。
 - en: The count of recent jobs, `"recentJobs"`.
+  id: totrans-224
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 近期作业的数量，`"recentJobs"`。
 - en: The status of the supervisor (the supervisor is the process run via `php artisan`
     `horizon`), `"status"`.
+  id: totrans-225
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 监督器的状态（通过 `php artisan horizon` 运行的进程），`"status"`。
 - en: The time to clear per queue, `"wait"` (in seconds).
+  id: totrans-226
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 每个队列的清除时间，`"wait"`（以秒为单位）。
 - en: 'The Horizon dashboard is a convenient way to monitor the status and statistics
     of all running queues. Via Horizon, you can’t control the queues; for managing
     the queues, you can use the commands explained here:'
+  id: totrans-227
   prefs: []
   type: TYPE_NORMAL
+  zh: Horizon 仪表板是监控所有运行队列的状态和统计信息的便捷方式。通过 Horizon，你不能控制队列；对于管理队列，你可以使用这里解释的命令：
 - en: '`queue:monitor`: For monitoring the status of the queue and the number of waiting
     jobs'
+  id: totrans-228
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`queue:monitor`：用于监控队列的状态和等待作业的数量'
 - en: '`queue:clear`: For deleting all the jobs in a connection or queue'
+  id: totrans-229
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`queue:clear`：用于删除连接或队列中的所有作业'
 - en: '`queue:flush`: For deleting all failed jobs'
+  id: totrans-230
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`queue:flush`：用于删除所有失败作业'
 - en: '`queue:forget`: For deleting a specific failed job (to avoid retrying the execution
     of a failed job)'
+  id: totrans-231
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`queue:forget`：用于删除特定的失败作业（以避免重试失败作业的执行）'
 - en: '`queue:retry`: Retrying the execution of a previously failed job'
+  id: totrans-232
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`queue:retry`：重试之前失败的作业的执行'
 - en: '`queue:work`: Processing the queue (or the queues specified via the `–``queue`
     parameter)'
+  id: totrans-233
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`queue:work`：处理队列（或通过 `–queue` 参数指定的队列）'
 - en: Thanks to all these commands, you can control the queue’s status and health.
+  id: totrans-234
   prefs: []
   type: TYPE_NORMAL
+  zh: 多亏了所有这些命令，你可以控制队列的状态和健康。
 - en: With Horizon, you can monitor the queues’ execution and status.
+  id: totrans-235
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用 Horizon，你可以监控队列的执行和状态。
 - en: So now, we have an architecture for running and monitoring queues with Redis
     as the backend.
+  id: totrans-236
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，我们有一个使用 Redis 作为后端的运行和监控队列的架构。
 - en: Summary
+  id: totrans-237
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 摘要
 - en: With an asynchronous approach, we can defer the execution of some tasks and
     be more responsive to the user’s request. In other words, the job is queued, and
     it will be taken care of later. The behavior is different from the classic approach
@@ -978,32 +1472,47 @@
     via the `php artisan queue:work` command – and if your hardware architecture has
     more virtual machines for running backend processes, you can run the consumer
     processes across multiple virtual machines.
+  id: totrans-238
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用异步方法，我们可以推迟某些任务的执行，并更快速地响应用户请求。换句话说，工作被排队，稍后处理。这种行为的差异在于经典方法中工作立即执行，但好处是应用程序的UI控制始终对用户可用。因此，应用程序的用户体验更流畅，用户在此期间还可以使用您的应用程序做其他事情。除了提高用户体验外，异步方法更具可扩展性，因为您可以以细粒度控制将负责工作的进程。您还可以通过`php
+    artisan queue:work`命令执行多个工作进程——如果您的硬件架构有更多用于运行后端进程的虚拟机，您可以在多个虚拟机上运行消费者进程。
 - en: 'To achieve asynchronous architecture in the current chapter, we introduced
     the queue mechanism; we have shown the following:'
+  id: totrans-239
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了在本章中实现异步架构，我们介绍了队列机制；我们展示了以下内容：
 - en: How to install and set up the queue in Laravel first with a database as the
     backend connection, then with a more powerful backend with Redis
+  id: totrans-240
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 如何首先使用数据库作为后端连接，然后在更强大的后端Redis上安装和设置队列
 - en: The differences between executing a job in a synchronous way and in an asynchronous
     way
+  id: totrans-241
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 同步方式和异步方式执行工作的差异
 - en: The benefit of using the queues in terms of the responsiveness of the system
     and the impact on the user experience
+  id: totrans-242
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使用队列在系统响应性和对用户体验的影响方面的好处
 - en: Installing Horizon to monitor the queue usage
+  id: totrans-243
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 安装Horizon以监控队列使用情况
 - en: In the next chapter, we will see how to prepare the application and how to set
     up the tools to deploy a Laravel Octane application in a production environment.
+  id: totrans-244
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下一章中，我们将看到如何准备应用程序以及如何设置工具以在生产环境中部署Laravel Octane应用程序。

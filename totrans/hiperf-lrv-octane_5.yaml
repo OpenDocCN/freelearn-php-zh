@@ -1,29 +1,39 @@
 - en: '5'
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: '5'
 - en: Reducing Latency and Managing Data with an Asynchronous Approach
+  id: totrans-1
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使用异步方法减少延迟和管理数据
 - en: In the previous chapter, we created a new Laravel Octane application, and we
     applied some features provided by Laravel Octane to improve performance and reduce
     the response time of our application.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 在上一章中，我们创建了一个新的Laravel Octane应用程序，并应用了Laravel Octane提供的某些功能来提高性能和减少应用程序的响应时间。
 - en: In this chapter, we will try to optimize more things, such as access to a database
     and changing and improving the caching strategy. To improve and make queries to
     data faster, we will explain the benefit that comes from indexing columns. For
     caching, we will also take a look at a cache-only approach.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章，我们将尝试优化更多的事情，例如数据库访问、更改和改进缓存策略。为了提高查询速度，我们将解释来自索引列的好处。对于缓存，我们还将查看仅缓存的方法。
 - en: For example, in the previous chapter, we executed queries in parallel. Now,
     we will optimize a query because parallelizing something fast is better than parallelizing
     something slower. Query optimization allows code to retrieve data from databases
     faster, reducing the latency that normally occurs when reading data from any source
     (a file, database, or network).
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，在上一章中，我们并行执行了查询。现在，我们将优化查询，因为并行化快速的事情比并行化慢的事情更好。查询优化允许代码更快地从数据库中检索数据，减少从任何来源（文件、数据库或网络）读取数据时通常发生的延迟。
 - en: Then, we will show how to make the query process faster using a caching mechanism.
     We will use a *cache-only* approach, which means that the code will always retrieve
     data from a cache. There is a task that performs queries and stores the result
@@ -31,504 +41,750 @@
     code that needs data. For this reason, we will refer to this approach as asynchronous
     because the running code that needs data has not had to wait for the process that
     retrieves data and then fill the cache.
+  id: totrans-5
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，我们将展示如何使用缓存机制来加快查询过程。我们将采用一种**仅缓存**的方法，这意味着代码将始终从缓存中检索数据。有一个任务执行查询并将结果存储在缓存中。因此，预缓存机制完全独立于需要数据的代码。因此，我们将这种方法称为异步的，因为需要数据的运行代码无需等待检索数据并填充缓存的过程。
 - en: The goal of this chapter is to reduce HTTP request response times. To achieve
     a reduction in response issues, we will see how to implement information retrieval
     through query optimization and a caching mechanism that separates cache retrieval
     times from cache fill times.
+  id: totrans-6
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章的目标是减少HTTP请求响应时间。为了减少响应问题，我们将看到如何通过查询优化和将缓存检索时间与缓存填充时间分离的缓存机制来实现信息检索。
 - en: 'In this chapter, we will cover the following topics:'
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章我们将涵盖以下主题：
 - en: Optimizing the queries with indexes
+  id: totrans-8
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使用索引优化查询
 - en: Making the cache mechanism asynchronous
+  id: totrans-9
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 使缓存机制异步
 - en: Technical requirements
+  id: totrans-10
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 技术要求
 - en: We will assume that you have the application set up from the previous chapter.
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们假设你已经从上一章设置了应用程序。
 - en: You need to set up your Laravel Octane application with the event migration
     and event seeder required for this chapter. The requirement for the current chapter
     is to have PHP 8 installed or, if you want to use a container approach, you have
     to install Docker Desktop ([https://www.docker.com/products/docker-desktop/](https://www.docker.com/products/docker-desktop/))
     or a similar tool to run the Docker images.
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: 你需要设置Laravel Octane应用程序，包括本章所需的事件迁移和事件生成器。当前章节的要求是安装PHP 8，或者如果你想使用容器方法，你必须安装Docker
+    Desktop（[https://www.docker.com/products/docker-desktop/](https://www.docker.com/products/docker-desktop/））或类似工具来运行Docker镜像。
 - en: Source code
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 源代码
 - en: 'You can find the source code of the examples used in this chapter in the official
     GitHub repository of this book: [https://github.com/PacktPublishing/High-Performance-with-Laravel-Octane/tree/main/octane-ch05](https://github.com/PacktPublishing/High-Performance-with-Laravel-Octane/tree/main/octane-ch05).'
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可以在本书的官方GitHub仓库中找到本章使用的示例源代码：[https://github.com/PacktPublishing/High-Performance-with-Laravel-Octane/tree/main/octane-ch05](https://github.com/PacktPublishing/High-Performance-with-Laravel-Octane/tree/main/octane-ch05)。
 - en: Optimizing queries with indexes
+  id: totrans-15
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使用索引优化查询
 - en: In the previous chapter, we made queries in parallel.
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 在上一章中，我们并行进行了查询。
 - en: What if the parallelized queries were slow? Most of the time, implementing an
     optimization means acting on multiple aspects. In the previous chapter, we saw
     how to parallelize queries. This approach, as we saw, brings great benefits, but
     there is something more we can do. What we want to achieve is to further reduce
     the latency of each individual parallelized task when retrieving data.
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果并行查询变慢了怎么办？大多数时候，实现优化意味着从多个方面进行操作。在前一章中，我们看到了如何并行化查询。正如我们所看到的，这种方法带来了巨大的好处，但我们还可以做更多的事情。我们想要实现的是进一步减少检索数据时每个并行任务的延迟。
 - en: To do just that, what we are going to do now is optimize each query that we
     parallelized in the previous chapter and explore the reasoning behind each one.
+  id: totrans-18
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了做到这一点，我们现在要优化前一章中并行化的每个查询，并探索每个查询背后的推理。
 - en: We are going to analyze what the characteristics of the query are and what fields
     are involved in the rows selection phase and the sorting phase.
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将分析查询的特征以及涉及行选择阶段和排序阶段的字段。
 - en: 'Let’s start with the following example query:'
+  id: totrans-20
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们从以下示例查询开始：
 - en: '[PRE0]'
+  id: totrans-21
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: We can see that in the query, we are performing some operations on some columns
     (filtering by type, filtering by description, etc.).
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以看到，在查询中，我们在一些列上执行了一些操作（按类型过滤、按描述过滤等）。
 - en: To make the query faster, on the columns involved in the query, we are going
     to create indexes. Indexes in a database are a data structure used by the database
     engine when a query is executed.
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了使查询更快，我们将在涉及查询的列上创建索引。数据库中的索引是数据库引擎在执行查询时使用的一种数据结构。
 - en: To use an analogy to explain indexes, it’s as if you want to look up a word
     in a dictionary. Starting on the first page and scrolling down each successive
     page, you get to the term you are looking for. The time it takes to find the term
     depends on the number of words and the placement of the word. Just think what
     it is like to find a word that begins with the letter *z* in a vocabulary of thousands
     and thousands of words.
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了用类比来解释索引，就像你想要在字典中查找一个单词。从第一页开始，逐页向下滚动，直到找到你想要的术语。找到术语所需的时间取决于单词的数量和单词的位置。想想在成千上万的单词中找到一个以字母*z*开头的单词是什么感觉。
 - en: An index in a database is like having an index in a dictionary, where each letter
     has a page number. Using an index, the access to a term is much more immediate.
     Nowadays, various databases have a very complex and performant index system, so
     the aforementioned analogy is straightforward compared to reality. Still, it allows
     us to understand how much the existence of an index on a field used for searching
     or sorting is crucial for performance.
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 数据库中的索引就像字典中的索引一样，每个字母都有一个页码。使用索引，对某个术语的访问会更加直接。如今，各种数据库都有一个非常复杂且性能优异的索引系统，所以与实际情况相比，上述类比是直接的。然而，它仍然使我们能够理解，在用于搜索或排序的字段上存在索引对于性能是多么关键。
 - en: In Laravel, if you want to create an index, you can do it in a migration file.
     A migration file is a file where you can define the structure of your database
     table. In the migration file, you can list the columns of your table and define
     the type of the columns (string, integer, date, time, etc.).
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 在Laravel中，如果你想创建索引，你可以在迁移文件中这样做。迁移文件是一个文件，你可以定义你的数据库表结构。在迁移文件中，你可以列出你的表列并定义列的类型（字符串、整数、日期、时间等）。
 - en: In [*Chapter 4*](B17728_04.xhtml#_idTextAnchor065), *Building a Laravel Octane
     Application*, we already created the structure of the `events` table (the table
     used for our examples). The goal now is to analyze which columns could benefit
     from index creation, and we will see how to create indexes in the migration file.
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 在[*第4章*](B17728_04.xhtml#_idTextAnchor065)“构建Laravel Octane应用程序”中，我们已经创建了`events`表的结构（用于我们示例的表）。现在的目标是分析哪些列可以从创建索引中受益，我们将看到如何在迁移文件中创建索引。
 - en: 'In the migration file created in the previous chapter (in the `database/migrations/`
     directory), we created a table with some fields:'
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 在前一章创建的迁移文件（在`database/migrations/`目录中），我们创建了一个具有一些字段的表：
 - en: '[PRE1]'
+  id: totrans-29
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: Some of these fields were used for filtering the rows.
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 其中一些字段被用于过滤行。
 - en: 'For example, in the model file in `app/Models`, we implemented the following
     query:'
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 例如，在`app/Models`中的模型文件中，我们实现了以下查询：
 - en: '[PRE2]'
+  id: totrans-32
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: This means the fields used in the query for filtering are `'type'` and `'description'`.
     The field used for sorting is the `'``date'` field.
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 这意味着用于过滤的字段是`'type'`和`'description'`。用于排序的字段是`'date'`字段。
 - en: Therefore, we are going to create three indexes (one for the `'type'` column,
     one for the `'description'` column, and one for the `'date'` column) in one migration.
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，我们将在一个迁移中创建三个索引（一个用于 `'type'` 列，一个用于 `'description'` 列，一个用于 `'date'` 列）。
 - en: 'Before creating the indexes, let’s look at the response time of the dashboard
     controller, just to have a baseline value so that we can later check the improvement
     in terms of time saved. The dashboard controller is the place where the query
     is called via the `ofType()` method:'
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 在创建索引之前，让我们先看看仪表板控制器的响应时间，以便有一个基线值，这样我们就可以稍后检查在节省时间方面的改进。仪表板控制器是查询通过 `ofType()`
+    方法调用的地方：
 - en: '[PRE3]'
+  id: totrans-36
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: 'To show the response time of the dashboard controller with all of these queries,
     you can start Laravel Octane via the following command:'
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: 要显示包含所有这些查询的仪表板控制器的响应时间，你可以通过以下命令启动 Laravel Octane：
 - en: '[PRE4]'
+  id: totrans-38
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: Then, you can access it with your web browser at `http://127.0.0.1:8000/dashboard`
     and see the response time in the console.
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，你可以通过你的网络浏览器在 `http://127.0.0.1:8000/dashboard` 访问它，并在控制台查看响应时间。
 - en: '![](img/Figure_5.01_B17728.jpg)'
+  id: totrans-40
   prefs: []
   type: TYPE_IMG
+  zh: '![](img/Figure_5.01_B17728.jpg)'
 - en: 'Figure 5.1: The response time of the dashboard controller without the index
     usage'
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 5.1：未使用索引的仪表板控制器的响应时间
 - en: As you can see, the response time is more than 200 milliseconds.
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: 如你所见，响应时间超过 200 毫秒。
 - en: Now, we are going to create indexes, and we will see the new response time.
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，我们将创建索引，我们将看到新的响应时间。
 - en: Creating indexes
+  id: totrans-44
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 创建索引
 - en: 'We can create a new migration with the `make:migration` command:'
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以使用 `make:migration` 命令创建一个新的迁移：
 - en: '[PRE5]'
+  id: totrans-46
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: 'Then, in the `yyyy_mm_dd_hhMMss _create_event_indexes.php` file, created in
     the `database/migrations/` directory, with the `up()` method, we are going to
     use the `index()` method to create an index for each column:'
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，在 `database/migrations/` 目录中创建的 `yyyy_mm_dd_hhMMss_create_event_indexes.php`
+    文件中，使用 `up()` 方法，我们将使用 `index()` 方法为每个列创建索引：
 - en: '[PRE6]'
+  id: totrans-48
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'The first parameter of the `index()` method is the column name; the second
     one is the index name. The index name is useful when, for example, you want to
     drop the column in the `down()` method. The `down()` method is used in case of
     rollback:'
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: '`index()` 方法的第一个参数是列名；第二个参数是索引名。索引名在例如你想在 `down()` 方法中删除列时很有用。`down()` 方法用于回滚情况：'
 - en: '[PRE7]'
+  id: totrans-50
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: 'To apply the newly created indexes, you have to run the migration via the `migrate`
     command:'
+  id: totrans-51
   prefs: []
   type: TYPE_NORMAL
+  zh: 要应用新创建的索引，你必须通过 `migrate` 命令运行迁移：
 - en: '[PRE8]'
+  id: totrans-52
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: 'If you want to check whether everything is fine, you can use the `db:table`
     command and see whether the new indexes are listed:'
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你想检查一切是否正常，你可以使用 `db:table` 命令并查看是否列出了新的索引：
 - en: '[PRE9]'
+  id: totrans-54
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: 'If the indexes are created, you will see them listed in the **Index** section:'
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果索引已创建，你将在 **索引** 部分看到它们列出来：
 - en: '![](img/Figure_5.02_B17728.jpg)'
+  id: totrans-56
   prefs: []
   type: TYPE_IMG
+  zh: '![](img/Figure_5.02_B17728.jpg)'
 - en: 'Figure 5.2: Executing db:table can show the new indexes'
+  id: totrans-57
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 5.2：执行 db:table 可以显示新的索引
 - en: 'Now that the indexes are created, we are going to analyze the query already
     implemented that uses the following fields: `type`, `description`, and `date`
     for filtering and sorting. The query that we are going to use is the query implemented
     in the `scopeOfType()` method in the `Event` model (in the `app/Models/Event.php`
     file):'
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在索引已创建，我们将分析已经实现的查询，该查询使用以下字段进行过滤和排序：`type`、`description` 和 `date`。我们将使用的查询是在
+    `Event` 模型（在 `app/Models/Event.php` 文件中）的 `scopeOfType()` 方法中实现的查询：
 - en: '[PRE10]'
+  id: totrans-59
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: 'To see the different response times with the index usage, after you have created
     the indexes, with your web browser again, you can access the dashboard controller
     via `http://127.0.0.1:8000/dashboard` and see the results in the console:'
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 在创建索引后，再次使用你的网络浏览器，通过 `http://127.0.0.1:8000/dashboard` 访问仪表板控制器，并在控制台查看结果：
 - en: '![](img/Figure_5.03_B17728.jpg)'
+  id: totrans-61
   prefs: []
   type: TYPE_IMG
+  zh: '![](img/Figure_5.03_B17728.jpg)'
 - en: 'Figure 5.3: The response time of the dashboard controller with database indexes'
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 5.3：带有数据库索引的仪表板控制器的响应时间
 - en: If you want to obtain more analytical metrics from the benefit of index usage,
     you can use some tools provided directly by the database. For example, in the
     case of MySQL, you can access MySQL Command Prompt (with `php artisan db`, as
     explained in the next few lines), execute the query, and retrieve the `Last_query_cost`
     value. You will obtain a value representing the query execution cost, based on
     the number of operations performed.
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您想从索引使用的优势中获得更多分析指标，您可以使用数据库直接提供的某些工具。例如，在 MySQL 的情况下，您可以通过 MySQL 命令提示符（使用
+    `php artisan db`，如下一几行所述）执行查询，并检索 `Last_query_cost` 值。您将获得一个表示查询执行成本的值，基于查询执行的操作数量。
 - en: In order to compare the last query costs, we are going to execute a query with
     indexes first and then without. In the example, we are going to extract the `Last_query_cost`
     metric.
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了比较最后查询的成本，我们将首先执行带索引的查询，然后不带索引。在示例中，我们将提取 `Last_query_cost` 指标。
 - en: 'This is how we do it:'
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: 这就是这样做的：
 - en: 'Make sure that you are using the latest version of your migration:'
+  id: totrans-66
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 确保您正在使用您迁移的最新版本：
 - en: '[PRE11]'
+  id: totrans-67
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: 'Then, open the MySQL command line with the `db` command:'
+  id: totrans-68
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 然后，使用 `db` 命令打开 MySQL 命令行：
 - en: '[PRE12]'
+  id: totrans-69
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: The `db` command executes the MySQL client according to Laravel configuration
     (database name, username, password, and table name).
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: '`db` 命令根据 Laravel 配置（数据库名称、用户名、密码和表名）执行 MySQL 客户端。'
 - en: 'In MySQL Command Prompt, you can execute the query on the `events` table:'
+  id: totrans-71
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在 MySQL 命令提示符中，您可以在 `events` 表上执行查询：
 - en: '[PRE13]'
+  id: totrans-72
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: Once you complete the query, the result will be shown.
+  id: totrans-73
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 一旦完成查询，结果将显示出来。
 - en: 'Then, execute the following:'
+  id: totrans-74
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 然后，执行以下命令：
 - en: '[PRE14]'
+  id: totrans-75
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: 'You will now see the metrics that represent the query costs (dependent on the
     number of operations performed by the query on the data):'
+  id: totrans-76
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 您现在将看到表示查询成本（依赖于查询在数据上执行的操作数量）的指标：
 - en: '[PRE15]'
+  id: totrans-77
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: '[PRE16]'
+  id: totrans-78
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: '[PRE17]'
+  id: totrans-79
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: '[PRE18]'
+  id: totrans-80
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: '[PRE19]'
+  id: totrans-81
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: '[PRE20]'
+  id: totrans-82
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: '[PRE21]'
+  id: totrans-83
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: 'If you now try to drop the indexes, a rollback on the migration will occur
     (because the latest step of our migration is index creation via the rollback command):'
+  id: totrans-84
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 如果您现在尝试删除索引，迁移将发生回滚（因为我们的迁移最新步骤是通过回滚命令创建索引）：
 - en: '[PRE22]'
+  id: totrans-85
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: 'Then, in the MySQL command prompt, execute the following again:'
+  id: totrans-86
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 然后，在 MySQL 命令提示符中，再次执行以下命令：
 - en: '[PRE23]'
+  id: totrans-87
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: 'And then, execute this:'
+  id: totrans-88
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 然后，执行以下命令：
 - en: '[PRE24]'
+  id: totrans-89
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: 'You will see the following:'
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: 您将看到以下内容：
 - en: '[PRE25]'
+  id: totrans-91
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: As you can see, without indexes, you have higher query costs.
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: 如您所见，没有索引，查询成本更高。
 - en: Without indexes, things get worse if you perform more complex queries like the
     query we have in your `Event` model, which is filtering using the type and description
     fields and sorting by date.
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您执行更复杂的查询，如您的 `Event` 模型中的查询，例如使用类型和描述字段进行过滤并按日期排序，则没有索引，情况会更糟。
 - en: 'Let’s try to execute the following query:'
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们尝试执行以下查询：
 - en: '[PRE26]'
+  id: totrans-95
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: 'And then, after you have executed the query, you ask MySQL to show the `Last_query_cost`
     metric without indexes:'
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，在执行查询后，您要求 MySQL 显示不带索引的 `Last_query_cost` 指标：
 - en: '[PRE27]'
+  id: totrans-97
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: 'Then, you ask MySQL to show the `Last_query_cost` metric with indexes:'
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，您要求 MySQL 显示带有索引的 `Last_query_cost` 指标：
 - en: '[PRE28]'
+  id: totrans-99
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE28]'
 - en: As you can see, the differences are enormous.
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 如您所见，差异是巨大的。
 - en: We have now compared the queries with and without indexes. With the acquired
     knowledge, we can improve the response time of the query by fine-tuning the types
     of indexes we are using.
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们现在已经比较了带索引和不带索引的查询。通过获得的知识，我们可以通过微调我们使用的索引类型来提高查询的响应时间。
 - en: 'In the query, we are filtering the rows with the `description` column that
     starts with a specific word. In the query, we are filtering all the descriptions
     that start with the word `something`. But what if we want to filter all the rows
     with the `description` column that includes the word `something`? In our model
     in our previous chapter, in order to select all the descriptions that include
     a specific word, we used the `LIKE` operator with a wildcard:'
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 在查询中，我们正在过滤以 `description` 列开头的行。在查询中，我们正在过滤所有以单词 `something` 开头的描述。但如果我们想过滤所有包含单词
+    `something` 的 `description` 列的行呢？在我们的前一章中，为了选择包含特定单词的所有描述，我们使用了 `LIKE` 操作符和通配符：
 - en: '[PRE29]'
+  id: totrans-103
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE29]'
 - en: However, if we want to optimize the query in order to reduce its response time,
     specifically for text, we have another powerful database feature for filtering
     and searching text – **full-text indexes**.
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，如果我们想优化查询以减少其响应时间，特别是对于文本，我们还有另一个强大的数据库功能用于过滤和搜索文本——**全文索引**。
 - en: Creating full-text indexes
+  id: totrans-105
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 创建全文索引
 - en: 'What we are going to do is to change the standard index for the `description`
     column to a full-text index, and we will see how it performs. This is how we do
     it:'
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将要做的就是将`description`列的标准索引更改为全文索引，然后我们将看到它的性能表现。这是我们的做法：
 - en: 'Create a new migration:'
+  id: totrans-107
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 创建一个新的迁移：
 - en: '[PRE30]'
+  id: totrans-108
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE30]'
 - en: In the `yyyy_mm_dd_hhMMss_create_event_fulltext_index.php` file, in the `database/migrations/`
     directory, in the `up()` method, we are going to drop the previous index and create
     a new full text.
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: 在`yyyy_mm_dd_hhMMss_create_event_fulltext_index.php`文件中，在`database/migrations/`目录下的`up()`方法中，我们将删除先前的索引并创建一个新的全文索引。
 - en: 'In the `up()` method, we have to drop the previous index on the `description`
     column and then create a full-text index via the `fullText()` method:'
+  id: totrans-110
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在`up()`方法中，我们必须删除`description`列上的先前索引，然后通过`fullText()`方法创建全文索引：
 - en: '[PRE31]'
+  id: totrans-111
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE31]'
 - en: 'Regarding which method is faster, the `LIKE` operator used to filter the description
     column that starts with a specific term (`''something%''`) is faster than a full-text
     search, but it only covers filtering a column that starts with a specific word.
     Full-text execution is quicker than a `LIKE` approach that searches with wildcards
     and is more powerful, especially if you want to search for one more term. Let’s
     try to use the `whereFullText()` method in the query:'
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: 关于哪种方法更快，用于过滤以特定术语（`'something%'`）开头的描述列的`LIKE`运算符比全文搜索更快，但它仅覆盖了以特定单词开头的列的过滤。全文搜索的执行速度比使用通配符进行搜索的`LIKE`方法更快，而且功能更强大，尤其是当你想要搜索一个或多个术语时。让我们尝试在查询中使用`whereFullText()`方法：
 - en: '[PRE32]'
+  id: totrans-113
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE32]'
 - en: The `whereFullText()` method is used with two parameters; the first one is the
     `description` parameter, which is the column name to filter, and the second parameter
     is the string to search for.
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: '`whereFullText()`方法使用两个参数；第一个参数是`description`参数，它是要过滤的列名，第二个参数是要搜索的字符串。'
 - en: Now that we have a full-text search in place, we can add another improvement
     – caching the result of the queries.
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们已经实现了全文搜索，我们可以添加另一个改进——缓存查询的结果。
 - en: Optimized queries and caching
+  id: totrans-116
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 优化查询和缓存
 - en: At this point, we have seen how to optimize queries through parallel execution,
     the use of a cache, and by applying indexes on search fields.
+  id: totrans-117
   prefs: []
   type: TYPE_NORMAL
+  zh: 到目前为止，我们已经看到了如何通过并行执行、使用缓存以及在搜索字段上应用索引来优化查询。
 - en: However, if we optimize queries by caching the result, the first query, or queries
     for which the cached result is obsolete or deleted, will have to deal with the
     cost of loading data from the database to update and refresh the cache.
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，如果我们通过缓存结果来优化查询，那么第一个查询，或者缓存结果已过时或被删除的查询，将不得不处理从数据库加载数据以更新和刷新缓存的成本。
 - en: With the caching strategy we are about to discuss, we will try to prevent cache
     refresh times from affecting the response time of our application.
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们即将讨论的缓存策略中，我们将尝试防止缓存刷新时间影响我们应用程序的响应时间。
 - en: This scenario can be optimized by changing the caching strategy to having queries
     in a request using only the values coming from a cache (a cache-only approach),
     and creating a process that takes care of the retrieval of the results and their
     caching. This process operates asynchronously and is decoupled from the queries
     generated by the requests.
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过将缓存策略更改为仅使用来自缓存的值（仅缓存的方法）来请求查询，并创建一个负责检索结果及其缓存的进程，可以优化这种场景。此进程异步运行，并且与请求生成的查询解耦。
 - en: This approach allows for improved performance because it tends to eliminate
     slow queries, and that should take care of data retrieval because the periodic
     refresh of the cache is done through an external command. We can add the external
     command that is executed every *n* second and retrieves new data, and then fill
     the cache. All requests get data from the cache. To execute the interval command,
     we can use another Octane functionality, the `tick()` method. Let’s see how.
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种方法可以提高性能，因为它倾向于消除慢查询，并且应该会处理数据检索，因为缓存的定期刷新是通过外部命令完成的。我们可以添加每*n*秒执行一次并检索新数据的外部命令，然后填充缓存。所有请求都从缓存中获取数据。要执行间隔命令，我们可以使用另一个Octane功能，即`tick()`方法。让我们看看如何。
 - en: Making the cache mechanism asynchronous
+  id: totrans-122
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 使缓存机制异步
 - en: In [*Chapter 3*](B17728_03.xhtml#_idTextAnchor048), *Configuring the Swoole
     Application Server*, we explored the `Octane::tick()` method.
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: 在[*第3章*](B17728_03.xhtml#_idTextAnchor048)，*配置Swoole应用程序服务器*中，我们探讨了`Octane::tick()`方法。
 - en: The `tick()` method allows you to execute a function every *n* seconds.
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: '`tick()`方法允许你每*n*秒执行一次函数。'
 - en: The caching strategy could be reviewed by delegating data loading to a specific
     function. This specific function is responsible for retrieving data with the query
     from the database (and not from the cache), and once the data is retrieved, the
@@ -536,127 +792,193 @@
     method and executed – for example, maybe every 60 seconds, fresh data from the
     database is retrieved, and it fills the cache. All the requests retrieve the data
     from the cache.
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
+  zh: 缓存策略可以通过将数据加载委托给特定函数来审查。这个特定函数负责从数据库（而不是从缓存）中检索数据，一旦数据被检索，该函数将结果存储在缓存中。该函数通过
+    `Octane::tick()` 方法调用并执行——例如，可能每 60 秒，从数据库检索新鲜数据并填充缓存。所有请求都从缓存中检索数据。
 - en: With the asynchronous caching strategy, all the requests retrieve data from
     the cache.
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用异步缓存策略，所有请求都从缓存中检索数据。
 - en: The cache is refreshed by the task called via `tick()`.
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 缓存通过通过 `tick()` 调用的任务刷新。
 - en: 'To implement the asynchronous caching strategy, we are doing the following:'
+  id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了实现异步缓存策略，我们正在进行以下操作：
 - en: Implementing the `tick()` function in the application service provider
+  id: totrans-129
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在应用程序服务提供者中实现 `tick()` 函数
 - en: Storing the result in the Octane Cache
+  id: totrans-130
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 将结果存储在 Octane 缓存中
 - en: Implementing the controller that reads the cache
+  id: totrans-131
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 实现读取缓存的控制器
 - en: Implementing the routing
+  id: totrans-132
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 实现路由
 - en: Implementing the tick() function in the application service provider
+  id: totrans-133
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 在应用程序服务提供者中实现 tick() 函数
 - en: 'In order to launch the caching task when the framework is bootstrapped, we
     can set the `tick()` method in the App Service Provider. The App Service Provider
     is a file called while the framework is instanced. So, in the `app/Providers/AppServiceProvider.php`
     file, in the `boot()` method, you have to implement the `Octane::tick()` function:'
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了在框架引导时启动缓存任务，我们可以在 App Service Provider 中设置 `tick()` 方法。App Service Provider
+    是在框架实例化时创建的文件。因此，在 `app/Providers/AppServiceProvider.php` 文件中的 `boot()` 方法中，您必须实现
+    `Octane::tick()` 函数：
 - en: '[PRE33]'
+  id: totrans-135
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE33]'
 - en: 'In the `tick()` function, we are going to execute all queries and then store
     the result in the Octane Cache (specifying the `octane` store): `Cache::store(''octane'')->put()`.'
+  id: totrans-136
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 `tick()` 函数中，我们将执行所有查询，然后将结果存储在 Octane 缓存中（指定 `octane` 存储）：`Cache::store('octane')->put()`。
 - en: The two essential methods are `seconds()`, where we can define the cadence,
     the interval in seconds, and `immediate()`, which sets an immediate execution
     of the `tick()` function.
+  id: totrans-137
   prefs: []
   type: TYPE_NORMAL
+  zh: 两个基本方法是 `seconds()`，其中我们可以定义节奏，即秒间隔，和 `immediate()`，它设置 `tick()` 函数的立即执行。
 - en: Every 60 seconds, the queries are executed automatically, and the result is
     stored in the cache.
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: 每 60 秒，查询会自动执行，并将结果存储在缓存中。
 - en: Implementing the controller that reads the cache
+  id: totrans-139
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 实现读取缓存的控制器
 - en: Now that we have implemented the `tick()` event that fills the cache, we can
     focus on the controller, where we can load data from the cache.
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们已经实现了填充缓存的 `tick()` 事件，我们可以专注于控制器，在那里我们可以从缓存中加载数据。
 - en: 'The method for retrieving data from the cache is `Cache::store(''octane'')->get()`.
     With the `Cache::store(''octane'')` method, you retrieve the `Cache` instance
     provided by Octane. With the `get()` method, you will retrieve the value stored
     in the cache. Here’s the code that retrieves the value from the cache in the `app/Http/Controllers/DashboardController.php`
     file:'
+  id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: 从缓存中检索数据的方法是 `Cache::store('octane')->get()`。使用 `Cache::store('octane')` 方法，您将检索
+    Octane 提供的 `Cache` 实例。使用 `get()` 方法，您将检索缓存中存储的值。以下是从 `app/Http/Controllers/DashboardController.php`
+    文件中检索缓存值的代码：
 - en: '[PRE34]'
+  id: totrans-142
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE34]'
 - en: In the controller, as you can see, there is an asynchronous approach because
     there are no more pending operations that depend on the databases, and we are
     delegating loading from the database to an external function. The only dependency
     in the controller is with the cache.
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 在控制器中，正如你所见，存在一种异步方法，因为没有更多依赖于数据库的挂起操作，我们将从数据库的加载委托给外部函数。控制器中的唯一依赖是缓存。
 - en: Implementing routing
+  id: totrans-144
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 实现路由
 - en: 'In the `routes/web.php` file, you can add a new route:'
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 `routes/web.php` 文件中，您可以添加一个新的路由：
 - en: '[PRE35]'
+  id: totrans-146
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE35]'
 - en: As already shown in previous chapters, we can optimize the routing loading with
     `Octane::route()`, which helps to reduce the response time. As you can see, we
     are using `Octane::route()` for performance reasons, and then we set the path
     as `/dashboard-tick-cached` and call the `indexTickCached()` method.
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: 如前几章所示，我们可以通过使用 `Octane::route()` 来优化路由加载，这有助于减少响应时间。正如你所见，我们出于性能原因使用 `Octane::route()`，然后将路径设置为
+    `/dashboard-tick-cached` 并调用 `indexTickCached()` 方法。
 - en: Showing the results
+  id: totrans-148
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 展示结果
 - en: 'If we open the browser to the initial dashboard route, where the queries were
     not optimized and not cached, and then open the browser to the new route, where
     the queries are cached, we can see a massive difference in terms of response time:'
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们打开浏览器到初始仪表板路由，那里的查询没有被优化也没有被缓存，然后打开浏览器到新的路由，那里的查询被缓存，我们可以看到在响应时间方面有巨大的差异：
 - en: '[PRE36]'
+  id: totrans-150
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE36]'
 - en: As you can see, the dashboard path has a response time of 30–40 milliseconds.
     The `dashboard-tick-cached` route is around 5 milliseconds.
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如你所见，仪表板路径的响应时间为30-40毫秒。`dashboard-tick-cached`路由大约为5毫秒。
 - en: It is a significant improvement, and again, when you think about performance,
     you have to think in terms of the impact of this improvement on thousands of requests.
+  id: totrans-152
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是一项重大的改进，再次强调，当你考虑性能时，你必须从这种改进对数千个请求的影响来思考。
 - en: This brings us to the end of the chapter.
+  id: totrans-153
   prefs: []
   type: TYPE_NORMAL
+  zh: 这就带我们结束了本章的内容。
 - en: Summary
+  id: totrans-154
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 摘要
 - en: In this chapter, we have seen how combining the caching mechanism, routing optimization,
     an asynchronous approach, and query optimization can benefit information retrieval.
     The caching mechanism combined with the asynchronous approach helps us reduce
@@ -664,36 +986,50 @@
     The query optimization reduces the time spent retrieving fresh data to fill a
     cache. The routing optimization helps us to save more milliseconds when the frameworks
     resolve the routes, reducing response time.
+  id: totrans-155
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们看到了如何通过结合缓存机制、路由优化、异步方法和查询优化来提高信息检索的效率。缓存机制与异步方法的结合帮助我们减少每个请求（即使缓存已过时）的数据检索响应时间。查询优化减少了检索新鲜数据以填充缓存所花费的时间。路由优化有助于在框架解析路由时节省更多毫秒，从而减少响应时间。
 - en: In the next chapter, we will try to address situations where we need to perform
     a time-consuming task – that is, operations that take some time to complete but
     where we cannot use caching mechanisms.
+  id: totrans-156
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下一章中，我们将尝试解决需要执行耗时任务的情况——即那些需要一些时间才能完成但无法使用缓存机制的作业。
 - en: Caching mechanisms can be beneficial when retrieving information. On the other
     hand, if we need to perform a task such as writing, sending, or transforming data,
     we most likely will need to use some other tool. In the next chapter, we will
     see how.
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 缓存机制在检索信息时可能是有益的。另一方面，如果我们需要执行诸如写入、发送或转换数据之类的任务，我们很可能需要使用其他工具。在下一章中，我们将看到如何操作。
 - en: 'Part 4: Speeding Up'
+  id: totrans-158
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第四部分：加速
 - en: 'This part shows how to configure tools to support Laravel Octane in a performant
     architecture. Tools such as queues and how to set up the system for the production
     environment are explained through practical examples. This part comprises the
     following chapters:'
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 这部分展示了如何配置工具以支持Laravel Octane在高效架构中。例如队列以及如何为生产环境设置系统，这些将通过实际示例进行解释。本部分包括以下章节：
 - en: '[*Chapter 6*](B17728_06.xhtml#_idTextAnchor107), *Using Queues to Apply the
     Asynchronous Approach in Your Application*'
+  id: totrans-160
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '[*第6章*](B17728_06.xhtml#_idTextAnchor107)，*在应用程序中使用队列实现异步方法*'
 - en: '[*Chapter 7*](B17728_07.xhtml#_idTextAnchor121), *Configuring the Laravel Octane
     Application for the Production Environment*'
+  id: totrans-161
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '[*第7章*](B17728_07.xhtml#_idTextAnchor121)，*配置Laravel Octane应用程序以适应生产环境*'
