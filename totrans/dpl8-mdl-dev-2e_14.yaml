@@ -825,6 +825,7 @@
   id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们有了我们的队列工作进程，它可以删除团队（据它所知，团队甚至不需要有任何玩家），如果我们不想使用cron选项，我们可以探索如何自己处理这个队列。如果我们想使用Drush命令来处理它，我们就不必自己编写。Drush自带一个，它的工作方式如下：
 - en: '[PRE16]'
   id: totrans-101
   prefs: []
@@ -836,6 +837,7 @@
   id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，我们可能想创建一个管理界面，某种形式的表单，允许用户触发队列处理。在这种情况下，我们可以这样做：
 - en: '[PRE17]'
   id: totrans-103
   prefs: []
@@ -850,6 +852,7 @@
   id: totrans-104
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这个例子中，我们获取我们的`QueueInterface`对象，就像之前做的那样。然后，我们还创建了我们自己的`QueueWorker`插件的一个实例。接下来，我们在一个*while*循环中使用`claimItem()`方法，该方法返回一个包含要传递给队列工作进程的数据的对象。此外，它会在一个（租约）时间周期内阻止该项目被另一个工作进程使用（默认为一个小时）。
 - en: Then, we try to use the worker to process the item, and if no exception is thrown,
     we delete the item. It's done! However, if we catch a `SuspendQueueException`,
     it means we expect the entire queue to be problematic. This exception type is
@@ -865,6 +868,7 @@
   id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，我们尝试使用工作进程来处理项目，如果没有抛出异常，我们就删除该项目。完成了！然而，如果我们捕获到`SuspendQueueException`，这意味着我们预计整个队列可能存在问题。这种异常类型是在预期所有其他项目也可能失败的情况下抛出的，在这种情况下，我们释放项目并退出循环。释放项目意味着其他工作进程现在可以自由地使用`claimItem()`方法来处理它。或者更好，我们的工作进程可以在稍后尝试。最后，我们还捕获任何其他异常，在这种情况下，我们只是记录错误，但不释放项目以防止无限循环。目前，该特定项目无法处理，因此我们需要跳到下一个；它需要保持阻塞，直到我们的循环完成。后者只能发生在`$queue->claimItem()`不再返回任何内容时。
 - en: 'And that is pretty much the logic behind processing a queue ourselves: we claim
     an item, throw it to a worker and delete it. If something goes wrong, we work
     with exceptions to determine whether the queue can be continued or whether it
@@ -872,11 +876,13 @@
   id: totrans-106
   prefs: []
   type: TYPE_NORMAL
+  zh: 这基本上是我们自己处理队列的逻辑：我们声明一个项目，将其传递给一个工作进程并删除它。如果出现问题，我们通过异常来确定队列是否可以继续，或者是否应该完全跳过。
 - en: The Lock API
   id: totrans-107
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 锁定API
 - en: Whenever we process data on a regular basis, especially if it takes a while
     to complete, we might run into a situation in which parallel requests want to
     trigger that process again, while the first is still running. Most of the time,
@@ -890,6 +896,7 @@
   id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: 当我们定期处理数据时，尤其是如果它需要一段时间才能完成，我们可能会遇到一个情况，即并行请求想要在第一个仍在运行时再次触发该过程。大多数时候，这不是一个好主意，因为它可能导致冲突和/或数据损坏。一个很好的例子是Drupal核心中的cron，如果启动它，整个过程可能需要几秒钟。记住，它需要收集`hook_cron()`实现并运行它们。所以当这个过程在进行时，如果我们再次触发cron运行，它会给我们一个友好的消息，让我们冷静下来，因为cron已经在运行了。它是通过锁定API来做到这一点的。
 - en: The Lock API is a low-level Drupal solution for ensuring that processes don't
     trample each other. Since in this chapter we are talking about things such as
     batch operations, queues, and other kinds of potentially time-consuming processes,
