@@ -1,0 +1,90 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;10.&#xA0;Going Further"><div class="titlepage"><div><div><h1 class="title"><a id="ch10"/>Chapter 10. Going Further</h1></div></div></div><p>In this chapter, we will try to cover a few things that we didn't use in this book. In April 2015, Phalcon released version 2.0. You don't have to worry about it because it is perfectly compatible with what you have learned so far.</p><p>The big difference is that version 2.0 was completely rewritten in the<a id="id585" class="indexterm"/> Zephir language (<a class="ulink" href="http://www.zephir-lang.com/">http://www.zephir-lang.com/</a>). You can upgrade to version 2.0.* if you want.</p><p>We will cover the following topics in this chapter:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Uploading files with Phalcon</li><li class="listitem" style="list-style-type: disc">Using the Annotation router</li></ul></div><div class="section" title="Uploading files with Phalcon"><div class="titlepage"><div><div><h1 class="title"><a id="ch10lvl1sec59"/>Uploading files with Phalcon</h1></div></div></div><p>Uploading files with Phalcon<a id="id586" class="indexterm"/> is a piece of cake. We just need to check whether <a id="id587" class="indexterm"/>the request object has files and move them to our upload directory. Let's create the following controller in the <code class="literal">Backoffice</code> module:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+namespace App\Backoffice\Controllers;
+
+use App\Core\Forms\MediaForm;
+
+class MediaController extends BaseController {
+  public function addAction() {
+    $this-&gt;view-&gt;form = new MediaForm();
+  }
+
+  public function uploadAction() {
+    if (true == $this-&gt;request-&gt;hasFiles() &amp;&amp; $this-&gt;request-&gt;isPost()) {
+      $upload_dir = __DIR__ . '/../../../public/uploads/';
+
+      if (!is_dir($upload_dir)) {
+        mkdir($upload_dir, 0755);
+      }
+      foreach ($this-&gt;request-&gt;getUploadedFiles() as $file) {
+        $file-&gt;moveTo($upload_dir . $file-&gt;getName());
+        $this-&gt;flashSession-&gt;success($file-&gt;getName().' has been successfully uploaded.');
+      }
+
+      $this-&gt;response-&gt;redirect('media/add');
+    }
+  }
+}</pre></div><p>The <code class="literal">uploadAction()</code> method<a id="id588" class="indexterm"/> first checks whether the request object has a <a id="id589" class="indexterm"/>file and the request method is <code class="literal">POST</code>. We assign the path to the upload directory to the <code class="literal">$upload_dir</code> variable. Then we check whether this directory exists in public, otherwise we create it. Next, we move each uploaded file to <code class="literal">public/uploads/</code>. You can find the forms and the views for this example in the source code for this chapter. The <code class="literal">file</code> object has some built-in methods that are very helpful:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">$file-&gt;getSize();</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">$file-&gt;getRealType();</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">$file-&gt;getName()</code></li></ul></div><p>Using these methods, we can implement a simple validator for an image. Let's assume that we only accept JPEG files that are no larger than 1 MB. This is what an improved version of the <code class="literal">uploadAction()</code> method can look like:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+class MediaController extends BaseController {
+  private $valid_mime = [
+    'image/jpeg'
+  ];
+
+  private $max_size = 125000;
+
+  public function uploadAction() {
+    if (true == $this-&gt;request-&gt;hasFiles() &amp;&amp; $this-&gt;request-&gt;isPost()) {
+      $upload_dir = __DIR__ . '/../../../public/uploads/';
+
+      if (!is_dir($upload_dir)) {
+        mkdir($upload_dir, 0755);
+      }
+
+      foreach ($this-&gt;request-&gt;getUploadedFiles() as $file) {
+
+        if (!in_array($file-&gt;getRealType(), $this-&gt;valid_mime)) {
+          $this-&gt;flashSession-&gt;error($file-&gt;getName().' is invalid');
+          continue;
+        }
+
+        if ($file-&gt;getSize() &gt; $this-&gt;max_size) {
+          $this-&gt;flashSession-&gt;error($file-&gt;getName().' is too big');
+          continue;
+        }
+
+        $file-&gt;moveTo($upload_dir . $file-&gt;getName());
+        $this-&gt;flashSession-&gt;success($file-&gt;getName().' has been successfully uploaded.');
+      }
+
+      $this-&gt;response-&gt;redirect('media/add');
+    }
+  }
+}</pre></div><p>Phalcon also<a id="id590" class="indexterm"/> supports image manipulation. Unfortunately, this <a id="id591" class="indexterm"/>is not documented, but you can take a look at the <a id="id592" class="indexterm"/>official repository at <a class="ulink" href="https://github.com/phalcon/cphalcon/tree/master/ext/phalcon/image">https://github.com/phalcon/cphalcon/tree/master/ext/phalcon/image</a> to find out the available methods, or the source code for the IDE stubs at <a class="ulink" href="https://github.com/phalcon/phalcon-devtools/tree/master/ide/1.3.4/Phalcon/Image">https://github.com/phalcon/phalcon-devtools/tree/master/ide/1.3.4/Phalcon/Image</a>.</p><p>A simple example of image manipulation can be as follows:</p><div class="informalexample"><pre class="programlisting">$image = new Phalcon\Image\Adapter\GD($file);
+$image-&gt;resize(200, 200)
+if ($image-&gt;save()) {
+  $this-&gt;flashSession-&gt;success('Image has been successfully resized');
+}</pre></div><p>We can also use an external library, such as <a class="ulink" href="https://github.com/avalanche123/Imagine">https://github.com/avalanche123/Imagine</a>, which you will find very well documented at <a class="ulink" href="http://imagine.readthedocs.org/en/latest/usage/introduction.html">http://imagine.readthedocs.org/en/latest/usage/introduction.html</a>.</p></div></div>
+<div class="section" title="Using the Annotation router"><div class="titlepage"><div><div><h1 class="title"><a id="ch10lvl1sec60"/>Using the Annotation router</h1></div></div></div><p>In this book, we used a <a id="id593" class="indexterm"/>configuration file for the router. If you come from Symfony, for example, you might want to use annotations. For this, you need to change the router information in the DI:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+use Phalcon\Mvc\Router\Annotations;
+
+$di['router'] = function() {
+    $router = new Annotations(false);
+    $router-&gt;addResource('Articles', '/api/v1/articles');
+
+    return $router;
+};</pre></div><p>Then you must modify <code class="literal">ArticlesController</code> to look like this:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+namespace App\Api\Controllers;
+
+/**
+ * @RoutePrefix("/api/v1/articles")
+ */
+class ArticlesController extends BaseController {
+  /**
+  * @Get("/")
+  */
+  public function listAction() {
+
+  }
+}</pre></div><p>You can read more about the <a id="id594" class="indexterm"/>Annotation router at <a class="ulink" href="http://docs.phalconphp.com/en/latest/reference/routing.html#annotations-router">http://docs.phalconphp.com/en/latest/reference/routing.html#annotations-router</a>. If you need/want, you can also develop your own router, implementing <code class="literal">Phalcon\Mvc\RouterInterface</code>.</p></div>
+<div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch10lvl1sec61"/>Summary</h1></div></div></div><p>In this chapter, we saw how we can upload files with Phalcon. Also, we saw how to use the Annotation router.</p><p>Phalcon is a completely decoupled framework. There are no real "best practices", so you, as a developer, can build your own conduit. I also recommend that you take a look at Vegas CMF for Phalcon at <a class="ulink" href="https://github.com/vegas-cmf">https://github.com/vegas-cmf</a>, especially if you are going to work with a big team.</p><p>Thank you for reading this book, and I really hope that it was helpful. You can now start developing your own application.</p></div></body></html>
