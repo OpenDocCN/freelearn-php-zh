@@ -1,0 +1,564 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;3.&#xA0;Scheduled Reminders"><div class="titlepage"><div><div><h1 class="title"><a id="ch03"/>Chapter 3. Scheduled Reminders</h1></div></div></div><p>In the previous two chapters, we developed simple reactionary applications that went over the basic components of the Yii framework. For our next project, we will expand upon the concepts previously covered by creating a scheduled reminders application that will allow our users to search for, create, and schedule both events and reminders for themselves. This application will also send the user notifications automatically when the reminder is <a id="id179" class="indexterm"/>scheduled to occur.</p><div class="section" title="Prerequisites"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec25"/>Prerequisites</h1></div></div></div><p>Before <a id="id180" class="indexterm"/>we start, there are a couple of things that we'll need to install and acquire:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Install the <a id="id181" class="indexterm"/>latest version of MySQL (at the time of writing this, MySQL 5.6). MySQL is the most popular open source database and is a key <a id="id182" class="indexterm"/>part of LAMP (Linux, Apache, MySQL, and PHP). Because of its popularity with web hosting providers, MySQL is often the de facto choice for modern web applications.<div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note07"/>Note</h3><p>MySQL can be installed from either your distributions package management <a id="id183" class="indexterm"/>system or downloaded from <a class="ulink" href="http://mysql.com">mysql.com</a>. More details can be found at <a class="ulink" href="http://dev.mysql.com/doc/refman/5.6/en/installing.html">http://dev.mysql.com/doc/refman/5.6/en/installing.html</a>.</p></div></div></li><li class="listitem" style="list-style-type: disc">Acquire an SMTP server or credentials to an SMTP server for our application to send e-mails with. The key details that we will need are a SMTP host, port, username, and password. Depending on the server, you may also need to know the type of security your server uses (such as SSL or TLS). If you do not have a SMTP server available, there is an abundant number of options available, ranging from setting up a Postfix SMTP server, using Gmail as an SMTP relay, or even obtaining a free SMTP account from SendGrid (<a class="ulink" href="http://www.sendgrid.com">http://www.sendgrid.com</a>).</li><li class="listitem" style="list-style-type: disc">Verify <a id="id184" class="indexterm"/>that our PHP instance <a id="id185" class="indexterm"/>has mcrypt libraries installed so that we can properly hash the passwords we'll be using. If your PHP instance already supports mcrypt, you should see an mcrypt section listed in <code class="literal">phpinfo()</code>. If mcrypt is not enabled in your PHP instance, install it either from your upstream provider, by enabling the mcrypt module, or by recompiling PHP.</li><li class="listitem" style="list-style-type: disc">Finally, we'll <a id="id186" class="indexterm"/>need to download and install Composer from <a class="ulink" href="https://getcomposer.org/">https://getcomposer.org/</a>. Composer is a PHP dependency manager that will allow us to declare and automatically install libraries that our application will use.</li></ul></div><p>Once we've obtained all of the prerequisites for our application, we can get started with development.</p></div></div>
+<div class="section" title="Describing the project"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec26"/>Describing the project</h1></div></div></div><p>Our <a id="id187" class="indexterm"/>scheduled reminders project can be broken down into four <a id="id188" class="indexterm"/>main components:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Users <a id="id189" class="indexterm"/>who will create events and reminders</li><li class="listitem" style="list-style-type: disc">Events<a id="id190" class="indexterm"/> that the user wants to be reminded of</li><li class="listitem" style="list-style-type: disc">Reminders <a id="id191" class="indexterm"/>for the actual event (of which there could be many)</li><li class="listitem" style="list-style-type: disc">A<a id="id192" class="indexterm"/> command-line task to process and send out the reminders to the user via e-mail</li></ul></div><div class="section" title="Users"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec38"/>Users</h2></div></div></div><p>The first<a id="id193" class="indexterm"/> component of our application is the users who will be using it. Users will be responsible to create both events and reminders for themselves. The users will also be the recipients of the reminder e-mails that they created. Using this information, we can simplify our database schema to the following structure:</p><div class="informalexample"><pre class="programlisting">ID INTEGER PRIMARY KEY
+email STRING
+password STRING
+created INTEGER
+updated INTEGER</pre></div><p>In <a class="link" href="ch01.html" title="Chapter 1. A Task-management Application">Chapter 1</a>, <span class="emphasis"><em>A Task-management Application</em></span>, we created a very primitive user authentication system that we'll be reusing and expanding upon and reusing in later chapters. In this chapter, we'll develop a system to create, delete, and manage the passwords of users with our application. We'll also cover several basic guidelines for properly securing, storing, and working with our users' credentials.</p></div><div class="section" title="Events"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec39"/>Events</h2></div></div></div><p>The<a id="id194" class="indexterm"/> second component of our application<a id="id195" class="indexterm"/> is events. Events are things that a particular user wants to be reminded of and will occur at a given time on a given date. Events should be easy to search through and intuitive to find. Additionally, events can have one, many, or no reminders associated with them. We can express this in our database schema, as follows:</p><div class="informalexample"><pre class="programlisting">ID INTEGER PRIMARY KEY
+user_id INTEGER
+title STRING
+data TEXT
+time INTEGER
+created INTEGER
+updated INTEGER</pre></div><p>A new concept that we'll be introducing in this chapter is the concept of database relations. Many times, data in our database will be associated with an attribute or data in another table of our database. In this case, an event is something that belongs to a given user. The relations that we create in this application will allow us to easily represent data in our tables without having to store that data in multiple places.</p></div><div class="section" title="Reminders"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec40"/>Reminders</h2></div></div></div><p>A reminder<a id="id196" class="indexterm"/> is a time-sensitive event that <a id="id197" class="indexterm"/>belongs to a user-created event and acts as an indicator to our task runner to notify the user of the details of the event itself. This can be expressed in our simplified database schema, as follows:</p><div class="informalexample"><pre class="programlisting">ID INTEGER PRIMARY KEY
+event_id INTEGER
+title STRING
+offset INTEGER
+time INTEGER
+created INTEGER
+updated INTEGER</pre></div><p>When we set up our Reminders model, we'll define a relationship between a reminder and the event. As events are already bound to a user, we can transitively determine the user a reminder should be sent to without having to add the <code class="literal">user_id</code> field to the reminder itself.</p><p>The final <a id="id198" class="indexterm"/>piece of our reminders has to do <a id="id199" class="indexterm"/>with how we handle timestamps. In previous chapters, timestamps served only as metadata to specific records. Our reminders, however, will have to take into account the time that an event will be triggered, which means that we'll be involving time zones. While using UTC solves a lot of the issues when dealing with time, our reminders have to be aware of what the time offset is for a particular reminder.</p><p>For our application, that means we'll need to store the time that the end user will see in addition to either the time zone offset of the user or a conversion of that time into the real UTC time.</p></div><div class="section" title="The task runner"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec41"/>The task runner</h2></div></div></div><p>The <a id="id200" class="indexterm"/>final component of our application is<a id="id201" class="indexterm"/> the task runner that will find reminders that need to be sent out and actually send them out to the user. While there are many ways to go about creating this task runner, we will be creating a command-line task that will run repeatedly after <span class="emphasis"><em>n</em></span> minutes and will process all events between the trigger time and the provided interval in minutes. This approach will allow us to define how frequently or infrequently we want our reminders to be processed without having to rewrite code.</p></div></div>
+<div class="section" title="Initializing the project"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec27"/>Initializing the project</h1></div></div></div><p>At this <a id="id202" class="indexterm"/>point, you should be fairly familiar with how to initialize a basic Yii framework project. Go ahead and create the base folder structures, and create the <code class="literal">index.php</code>, <code class="literal">yiic</code>, <code class="literal">yiic.bat</code>, and <code class="literal">yiic.php</code> files. Then in the <code class="literal">webroot</code> directory of our application, create a folder called <code class="literal">vendors</code>. This folder will be used for all of our Composer dependencies for us.</p><div class="section" title="Create a MySQL user and database"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec42"/>Create a MySQL user and database</h2></div></div></div><p>If you <a id="id203" class="indexterm"/>haven't already created a <a id="id204" class="indexterm"/>MySQL user, password, and database for the project, do so now. From the MySQL command line, you can run the following commands to do this:</p><div class="informalexample"><pre class="programlisting">CREATE USER 'ch3_reminders'@'localhost' IDENTIFIED BY 'ch3_reminders';
+CREATE DATABASE IF NOT EXISTS `ch3_reminders`;
+GRANT ALL PRIVILEGES ON `ch3\_reminders` . * TO 'ch3_reminders'@'localhost';</pre></div></div><div class="section" title="Creating a Yii configuration file"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec43"/>Creating a Yii configuration file</h2></div></div></div><p>Our <a id="id205" class="indexterm"/>Yii configuration file will be slightly different than our previous configuration files due to the use of our MySQL database. We'll start off with the base configuration <code class="literal">protected/config/main.php</code> and add the new components afterwards:</p><div class="informalexample"><pre class="programlisting">&lt;?php return array(
+   'basePath'=&gt;dirname(__FILE__).DIRECTORY_SEPARATOR.'..',
+   'name'=&gt;'Scheduled Reminders',
+   'import'=&gt;array(
+      'application.models.*',
+   ),
+   'components'=&gt;array(
+      
+      'errorHandler'=&gt;array(
+            'errorAction'=&gt;'site/error',
+        ),
+       'urlManager'=&gt;array(
+         'urlFormat'=&gt;'path',
+         'showScriptName'=&gt;false,
+         'rules'=&gt;array(
+            '/' =&gt; 'event/index',
+            'event/date/&lt;date:[\w-]+&gt;' =&gt; 'event/index', '&lt;controller:\w+&gt;/&lt;action:\w+&gt;/&lt;id:\d+&gt;'=&gt;'&lt;controller&gt;/&lt;action&gt;', &lt;controller:\w+&gt;/&lt;action:\w+&gt;'=&gt;'&lt;controller&gt;/&lt;action&gt;')
+      )
+   )
+);</pre></div><p>In order for our application to interact with MySQL, we'll need to update the database component <a id="id206" class="indexterm"/>so that Yii knows how to use the MySQL PDO adapter. We can do this by adding the following to our components array:</p><div class="informalexample"><pre class="programlisting">'db' =&gt; array(
+    'class' =&gt; 'CDbConnection',
+    'connectionString' =&gt; 'mysql:host=127.0.0.1;dbname=ch3_reminders',
+    'emulatePrepare' =&gt; true,
+    'username' =&gt; 'ch3_reminders',
+    'password' =&gt; 'ch3_reminders',
+    'charset' =&gt; 'utf8',
+    'schemaCachingDuration' =&gt; '3600'
+),</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note08"/>Note</h3><p>In this configuration, we've added <code class="literal">schemeaCachingDuration</code>, which outlines how long Yii will cache our MySQL schema. This will prevent unnecessary SQL commands, such as <code class="literal">DESCRIBE TABLE</code>, which will slow down our application. It's important to note that if you are using this option, you'll need to clear Yii's internal cache. You can find out more about MySQL-specific database configuration at <a class="ulink" href="http://www.yiiframework.com/doc/api/1.1/CDbConnection">http://www.yiiframework.com/doc/api/1.1/CDbConnection</a>.</p></div></div></div><div class="section" title="Creating a parameters configuration file"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec44"/>Creating a parameters configuration file</h2></div></div></div><p>Many<a id="id207" class="indexterm"/> times, we have sensitive information we'd like to store in our configuration file that we wouldn't necessarily want to store with our version control software for security reasons. One way we can get around this is by storing this information in a separate file and then excluding it from being committed to source control. When we deploy our application to our production servers, we can manually add this file.</p><p>In Yii, we can accomplish this by adding the following to our base array of our configuration file:</p><div class="informalexample"><pre class="programlisting">'params' =&gt; array(
+    'smtp' =&gt; require __DIR__ . '/params.php'
+)</pre></div><p>Next, create a new file in the <code class="literal">config</code> folder called <code class="literal">params.php</code>. This file will store our SMTP credentials for our application. Have a look at the following code:</p><div class="informalexample"><pre class="programlisting">&lt;?php return array(
+   'host' =&gt; '',
+   'username' =&gt; '',
+   'password' =&gt; '',
+   'from' =&gt; '',
+   'port' =&gt; ''
+);</pre></div><p>At<a id="id208" class="indexterm"/> this time, go ahead and add your SMTP credentials to the <code class="literal">params.php</code> file.</p></div><div class="section" title="Adding Composer dependencies"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec45"/>Adding Composer dependencies</h2></div></div></div><p>The last<a id="id209" class="indexterm"/> configuration change we'll need to make is the inclusion of a file called <code class="literal">composer.json</code> in our <code class="literal">webroot</code> directory. For this project, we'll be using a dependency called <code class="literal">PHPMailer</code> that will help us send e-mails from our application. We'll also include a package called <code class="literal">password-compat</code>, which will provide us with the necessary userland functions for working with Bcrypt, a password hashing library that we'll cover in more detail when we start working with users and authentication.</p><p>This file should look as follows:</p><div class="informalexample"><pre class="programlisting">{
+   "minimum-stability" : "dev",
+   "require": {
+       "phpmailer/phpmailer": "dev-master"
+	   "ircmaxell/password-compat": "dev-master"
+   }
+}</pre></div><p>With our Composer dependencies defined, we can now install them by running the following from our command line:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>cd /path/to/project</strong></span>
+<span class="strong"><strong>php /path/to/composer.phar</strong></span>
+</pre></div><p>If everything goes well, you should see something similar outputted to your screen. If not, Composer will return and notify you of the error for you to correct:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>Loading composer repositories with package information</strong></span>
+<span class="strong"><strong>Installing dependencies (including require-dev) from lock file</strong></span>
+<span class="strong"><strong>  - Installing phpmailer/phpmailer (dev-master f9d229a)</strong></span>
+<span class="strong"><strong>    Cloning f9d229af549d28d4c9fdd3273bf6525cde3bc472</strong></span>
+<span class="strong"><strong>Generating autoload files</strong></span>
+</pre></div><p>Finally, we need to load the dependencies into Yii. The easiest way to do this is to add the <a id="id210" class="indexterm"/>following to our <code class="literal">index.php</code> file before <code class="literal">require_once($yii)</code>:</p><div class="informalexample"><pre class="programlisting">require_once(__DIR__ . '/vendor/autoload.php');</pre></div></div></div>
+<div class="section" title="Creating the database"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec28"/>Creating the database</h1></div></div></div><p>With <a id="id211" class="indexterm"/>our dependencies and configuration files in<a id="id212" class="indexterm"/> place, we can now create our database. Using the <a id="id213" class="indexterm"/>
+<code class="literal">yiic</code> command, create a migration called users and a migration called reminders.</p><div class="section" title="The users migration"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec46"/>The users migration</h2></div></div></div><p>The <a id="id214" class="indexterm"/>users migration will create the <code class="literal">users</code> database and ensure that no duplicate e-mail address can be entered at the database level. Within the <code class="literal">protected/migrations</code> folder, open up the users migration:</p><p>In the <code class="literal">up()</code> method, add the following:</p><div class="informalexample"><pre class="programlisting">$this-&gt;createTable('users', array(
+   'id'           =&gt; 'pk',
+   'email'        =&gt; 'string',
+   'password'     =&gt; 'string',
+   'created'      =&gt; 'integer',
+   'updated'      =&gt; 'integer'
+));</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note09"/>Note</h3><p>You may notice that the column types we selected do not match up with MySQL column types. This is because we are allowing Yii to determine the appropriate column type for the database adapter we are using. This allows interoperability between multiple database drivers, meaning that we could seamlessly swap the underlying database technology from a MySQL database to a SQLite or Postgres database without having to change our migrations. The Yii manual has more<a id="id215" class="indexterm"/> information about valid column types at <a class="ulink" href="http://www.yiiframework.com/doc/api/1.1/CDbSchema#getColumnType-detail">http://www.yiiframework.com/doc/api/1.1/CDbSchema#getColumnType-detail</a>.</p></div></div><p>Next, we want to create a unique index on the <code class="literal">email</code> column, which we can do as follows:</p><div class="informalexample"><pre class="programlisting">$this-&gt;createIndex('email_index', 'users', 'email', true);</pre></div><p>Finally, in<a id="id216" class="indexterm"/> the <code class="literal">down()</code> method, add a call to drop the <code class="literal">users</code> table:</p><div class="informalexample"><pre class="programlisting">$this-&gt;dropTable('users');</pre></div></div><div class="section" title="The reminders and events migration"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec47"/>The reminders and events migration</h2></div></div></div><p>Now, we'll<a id="id217" class="indexterm"/> create reminders and <a id="id218" class="indexterm"/>events migrations that will create the <code class="literal">reminders</code> and <code class="literal">events</code> table in our database. These two tables will store the bulk of the data for our application.</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">In our reminders migration, add the following to the <code class="literal">up()</code> method to create the <code class="literal">events</code> table:<div class="informalexample"><pre class="programlisting">$this-&gt;createTable('events', array(
+   'id'        =&gt; 'pk',
+   'user_id'   =&gt; 'integer',
+   'title'     =&gt; 'string',
+   'data'      =&gt; 'text',
+   'time'      =&gt; 'integer',
+   'created'   =&gt; 'integer',
+   'updated'   =&gt; 'integer'
+));</pre></div></li><li class="listitem">Then create a foreign key relationship between <code class="literal">events</code> and <code class="literal">users</code>:<div class="informalexample"><pre class="programlisting">$this-&gt;addForeignKey('event_users', 'events', 'user_id', 'users', 'id', NULL, 'CASCADE', 'CASCADE');</pre></div></li><li class="listitem">Then create the <code class="literal">reminders</code> table, as follows:<div class="informalexample"><pre class="programlisting">   $this-&gt;createTable('reminders', array(
+   'id'          =&gt; 'pk',
+   'event_id'    =&gt; 'integer',
+   'offset'      =&gt; 'integer',
+   'time'        =&gt; 'integer',
+   'created'     =&gt; 'integer',
+   'updated'     =&gt; 'integer'
+));</pre></div></li><li class="listitem">Finally, create a foreign key relationship between <code class="literal">reminders</code> and <code class="literal">events</code>:<div class="informalexample"><pre class="programlisting">$this-&gt;addForeignKey('reminder_events', 'reminders', 'event_id', 'events', 'id', NULL, 'CASCADE', 'CASCADE');</pre></div></li></ol></div><p>Notice that for both foreign keys, we want everything to be removed if a parent record is removed. For instance, if we delete an event, all reminders associated with that event should <a id="id219" class="indexterm"/>be removed as well. And if a <a id="id220" class="indexterm"/>user is deleted, all events and all reminders associated with those events should also be removed.</p><p>Then, to the <a id="id221" class="indexterm"/>
+<code class="literal">down()</code> method, add the following to drop the foreign keys and the tables. Once data has been added to our database, we won't be able to drop the tables until the foreign key relationships have been removed:</p><div class="informalexample"><pre class="programlisting">$this-&gt;dropForeignKey('event_users', 'events');
+$this-&gt;dropForeignKey('reminder_events', 'reminders');
+$this-&gt;dropTable('events');
+$this-&gt;dropTable('reminders');</pre></div><p>Once everything has been added, apply the migrations.</p></div></div>
+<div class="section" title="Creating models"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec29"/>Creating models</h1></div></div></div><p>By <a id="id222" class="indexterm"/>now, you should be familiar with using the<a id="id223" class="indexterm"/> Gii tool to create models for our newly created tables. Go ahead and create the models for <code class="literal">Users</code>, <code class="literal">Reminders</code>, and <code class="literal">Events</code>. After creating each model, there are several changes we need to make to each of them.</p><div class="section" title="Model behaviors"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec48"/>Model behaviors</h2></div></div></div><p>The first change that will need to be made to our newly created models is the automatic setting <a id="id224" class="indexterm"/>of the created and updated timestamp. In previous chapters, we modified the <code class="literal">beforeSave()</code> method to do this; however, Yii<a id="id225" class="indexterm"/> provides an easier way to implement this feature that is database-agnostic and reduces the amount of code we have to add to our models. To do this, we are going to attach a behavior to each of our models.</p><p>Behaviors in Yii are objects that have methods that can be attached to a component (in our case, a model). These behaviors then listen for certain events on the attached component (such as the <code class="literal">beforeSave()</code> method) and execute when that event is triggered.</p><p>The behavior<a id="id226" class="indexterm"/> that we'll be adding to each of our models is called <code class="literal">CTimestampBehavior</code> and provides the necessary tools to automatically set the created and updated time. To attach this behavior, simply add the following method to our <code class="literal">Users.php</code>, <code class="literal">Events.php</code>, and <code class="literal">Reminders.php</code> files within the <code class="literal">protected/models</code> directory:</p><div class="informalexample"><pre class="programlisting">public function behaviors()
+{
+   return array(
+      'CTimestampBehavior' =&gt; array(
+         'class' =&gt; 'zii.behaviors.CTimestampBehavior',
+         'createAttribute'    =&gt; 'created',
+         'updateAttribute'    =&gt; 'updated',
+         'setUpdateOnCreate' =&gt; true
+      )
+   );
+}</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note10"/>Note</h3><p>More<a id="id227" class="indexterm"/> information about <code class="literal">CTimestampBehavior</code> can <a id="id228" class="indexterm"/>be found in the Yii documentation available at <a class="ulink" href="http://www.yiiframework.com/doc/api/1.1/CTimestampBehavior/">http://www.yiiframework.com/doc/api/1.1/CTimestampBehavior/</a>.</p></div></div></div><div class="section" title="The Users model"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec49"/>The Users model</h2></div></div></div><p>The first <a id="id229" class="indexterm"/>change we'll need to make to our Users model is the definition of the relations between users and events. If you used Gii to generate the models, it must have prepopulated the <code class="literal">relations()</code> method for you. Otherwise, add the following method to the <code class="literal">Users.php</code> model at <code class="literal">protected/models/</code>:</p><div class="informalexample"><pre class="programlisting">public function relations()
+{
+   return array(
+      'events' =&gt; array(self::HAS_MANY, 'Events', 'user_id'),
+   );
+}</pre></div><p>Next, we'll need to add a private attribute to our model that will store the old attributes of our model so that we can compare previous values to changed values without having to requery the database. Have a look at the following line of code:</p><div class="informalexample"><pre class="programlisting">private $_oldAttributes = array();</pre></div><p>We can automatically populate this attribute by adding an <code class="literal">afterFind()</code> method to our model:</p><div class="informalexample"><pre class="programlisting">public function afterFind()
+{
+   if ($this !== NULL)
+      $this-&gt;_oldAttributes = $this-&gt;attributes;
+   return parent::afterFind();
+}</pre></div><p>Finally, we'll want to add a <code class="literal">beforeSave()</code> method to our model that will not modify the user's <a id="id230" class="indexterm"/>password if we change the user's e-mail address, and that will properly encrypt the password if we do change it:</p><div class="informalexample"><pre class="programlisting">public function beforeSave()
+{
+   if ($this-&gt;password == NULL)
+      $this-&gt;password = $this-&gt;_oldAttributes['password'];
+   else
+      $this-&gt;password = password_hash($this-&gt;password, PASSWORD_BCRYPT, array('cost' =&gt; 13));
+
+   return parent::beforeSave();
+}</pre></div><div class="section" title="Bcrypt password hashing"><div class="titlepage"><div><div><h3 class="title"><a id="ch03lvl3sec20"/>Bcrypt password hashing</h3></div></div></div><p>When <a id="id231" class="indexterm"/>storing passwords<a id="id232" class="indexterm"/> in a database, it is extremely important that you store those passwords in such a way that makes it easy for us to verify that the user provided the right password but makes it difficult for attackers to guess the password. Since most users use the same e-mail address and password for all their online identities, it's extremely important that we keep that information as secure as possible.</p><p>One way of doing this is by using a symmetric block cipher cryptographic algorithm, such as Bcrypt. Bcrypt converts plain text passwords into a hash with a salted value, iterated multiple times as defined by a cost factor. When using Bcrypt, the cost factor increased the work effector required to both generate and verify a password. By increasing the time it takes to generate and verify passwords, we can make a brute force attack very costly to a potential attacker. This cost factor also allows us as developers to adjust the <a id="id233" class="indexterm"/>difficulty of the <a id="id234" class="indexterm"/>password over time as computing power increases.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note11"/>Note</h3><p>You can<a id="id235" class="indexterm"/> read more about the password functions that were introduced in PHP 5.5 at <a class="ulink" href="http://us2.php.net/manual/en/ref.password.php">http://us2.php.net/manual/en/ref.password.php</a>.</p></div></div></div></div><div class="section" title="The Reminders model"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec50"/>The Reminders model</h2></div></div></div><p>Next, we <a id="id236" class="indexterm"/>need to make a few changes to our Reminders model. First, let's verify that the relations have been properly set up. In <code class="literal">protected/models/Reminders.php</code>, add the following:</p><div class="informalexample"><pre class="programlisting">public function relations()
+{
+   return array(
+      'event' =&gt; array(self::BELONGS_TO, 'Events', 'event_id'),
+   );
+}</pre></div><p>Then, add <a id="id237" class="indexterm"/>a <code class="literal">beforeValidate()</code> method to convert the user submitted time to an integer timestamp and to store the offset time as UTC in our database:</p><div class="informalexample"><pre class="programlisting">public function beforeValidate()
+{
+   $this-&gt;time = (int)strtotime($this-&gt;time);
+   $this-&gt;offset = ($this-&gt;offset*60 + $this-&gt;time);
+
+   return parent::beforeValidate();
+}</pre></div></div><div class="section" title="The Events model"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec51"/>The Events model</h2></div></div></div><p>Next, we're <a id="id238" class="indexterm"/>going to add and update several methods in our <code class="literal">protected/models/Events.php</code> model. The steps are as follows:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">First verify that the relations have been properly set up:<div class="informalexample"><pre class="programlisting">public function relations()
+{
+   return array(
+      'user' =&gt; array(self::BELONGS_TO, 'Users', 'user_id'),
+      'reminders' =&gt; array(self::HAS_MANY, 'Reminders', 'event_id'),
+   );
+}</pre></div></li><li class="listitem">Then add a <code class="literal">beforeValidate()</code> method to automatically adjust the submission and time and to automatically set the user to the currently logged-in user:<div class="informalexample"><pre class="programlisting">public function beforeValidate()
+{
+   $this-&gt;time = (int)strtotime($this-&gt;time);
+
+   // Set the user_id to be the current user
+   $this-&gt;user_id = Yii::app()-&gt;user-&gt;id;
+
+   return parent::beforeValidate();
+}</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note12"/>Note</h3><p>
+<code class="literal">Yii::app()-&gt;user</code> is a reference to a <code class="literal">CWebUser</code> object that will handle the identity of our user once we are authenticated. To read more about <code class="literal">CWebUser</code>, check<a id="id239" class="indexterm"/> out <a class="ulink" href="http://www.yiiframework.com/doc/api/1.1/CWebUser">http://www.yiiframework.com/doc/api/1.1/CWebUser</a>.</p></div></div></li><li class="listitem">Next, add <a id="id240" class="indexterm"/>the following getter method to our model. This method will allow us to retrieve the requested data from the URL to search against our events database:<div class="informalexample"><pre class="programlisting">private function getDate()
+{
+    if (isset($_GET['date']))
+       return $_GET['date'];
+    
+    return gmdate("Y-m-d");
+}</pre></div></li><li class="listitem">Then, we're going to update our model's <code class="literal">search()</code> method to enable us to search for all events that occur between a certain time, specifically over the period<a id="id241" class="indexterm"/> of a single day. Modify the method signature to look as follows:<div class="informalexample"><pre class="programlisting">public function search($between = false)</pre></div></li><li class="listitem">Then, add the following before the method returns:<div class="informalexample"><pre class="programlisting">if ($between)
+    $criteria-&gt;addBetweenCondition('time', strtotime($this-&gt;getDate() . ' 00:00:00'), strtotime($this-&gt;getDate() . ' 23:59:59'));</pre></div></li></ol></div></div></div>
+<div class="section" title="Searching for events and displaying them"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec30"/>Searching for events and displaying them</h1></div></div></div><p>Before<a id="id242" class="indexterm"/> we get too involved with our controllers, let's <a id="id243" class="indexterm"/>take a look at what our frontend will look like to search for and display events as it will help to explain the model changes to the Events model and will help us identify what we still need to implement. Have a look at the following screenshot:</p><div class="mediaobject"><img src="graphics/7734OS_03_01.jpg" alt="Searching for events and displaying them"/></div><p>Our frontend view is broken down into several different components. First, we have a button in the top-right corner that should link to a simple CRUD form to create and update events. We also have a month and year picker that shows the current selected year and allows us to advance forwards or backwards in time by one month or one year increments. Directly below that, we have a date picker that shows the currently selected date (or the current date if none is selected) with fifteen days on each side of it.</p><p>On the left-hand side, we have the currently selected date displayed in text, followed by a sorter for both time and title of the events displayed below it, which occur on the selected day.</p><p>Finally, on the right-hand side, we have an Ajax view, which will appear when an event is clicked on showing the event details as well as all reminders associated with that event with some extra functionality to immediately remove that reminder. Additionally, we'll be providing the user with a link to edit the selected event.</p><p>To achieve this level of functionality, we're going to have to create a custom list view, which <a id="id244" class="indexterm"/>will extend <code class="literal">CListView</code>, add a custom <a id="id245" class="indexterm"/>URL route, and create several new controller methods. Let's get started.</p><div class="section" title="Custom routing for dates"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec52"/>Custom routing for dates</h2></div></div></div><p>The<a id="id246" class="indexterm"/> first change that we'll need to make is a change to the <code class="literal">urlManager</code> in our main configuration file. Within the <code class="literal">urlManager['rules']</code> array, add the following route:</p><div class="informalexample"><pre class="programlisting">'event/date/&lt;date:[\w-]+&gt;' =&gt; 'event/index',</pre></div><p>This custom route will allow us to arbitrarily set a date string in the URL and pass it as a <code class="literal">$_GET</code> parameter automatically to the <code class="literal">indexAction()</code> method of our <code class="literal">EventController</code> class, which we will create shortly.</p></div><div class="section" title="Creating the controller for events"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec53"/>Creating the controller for events</h2></div></div></div><p>Let's<a id="id247" class="indexterm"/> move on to our <code class="literal">EventController</code>. This <a id="id248" class="indexterm"/>controller will handle all of the actions necessary for working with events in our application. Create a new file in <code class="literal">protected/controllers</code> called <code class="literal">EventController.php</code> that has the following class definition:</p><div class="informalexample"><pre class="programlisting">&lt;?php class EventController extends CController{}</pre></div><p>Perform the following steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">The first method we should create is our <code class="literal">indexAction()</code>. The <code class="literal">$_GET</code> parameters passed to this method will determine what events will ultimately be displayed on the page. To do this, we'll take advantage of our event model's <code class="literal">search()</code> method. When searching, we'll also want to ensure that we only display data for the currently logged-in user:<div class="informalexample"><pre class="programlisting">public function actionIndex()
+{
+    $model = new Events('search');
+    $model-&gt;unsetAttributes();
+
+    if (isset($_GET['Events']))
+        $model-&gt;attributes = $_GET['Events'];
+
+    $model-&gt;user_id = Yii::app()-&gt;user-&gt;id;
+
+    $this-&gt;render('index', array('model' =&gt; $model));
+}</pre></div></li><li class="listitem">Next, we<a id="id249" class="indexterm"/> need to create a utility method to load our model by a given primary key. We'll be using this method throughout our model:<div class="informalexample"><pre class="programlisting">private function loadModel($id)
+{
+   if ($id == NULL)
+      throw new CHttpException(400, 'Bad Request');
+
+   $model = Events::model()-&gt;findByPk($id);
+
+   if ($model == NULL)
+      throw new CHttpException(404, 'No model with that ID was found');
+
+   return $model;
+}</pre></div></li><li class="listitem">Finally, we need to create an AJAX method to display the details of a particular event within our list view:<div class="informalexample"><pre class="programlisting">public function actionDetails($id = NULL)
+{
+   if (Yii::app()-&gt;request-&gt;isAjaxRequest)
+   {
+      $model = $this-&gt;loadModel($id);
+
+      $this-&gt;renderPartial('details', array('model' =&gt; $model));
+      Yii::app()-&gt;end();
+   }
+    Throw new CHttpException(400, 'Bad Request');
+}</pre></div></li><li class="listitem">While we are in our <code class="literal">EventController</code>, it's worthwhile implementing the remaining functionality necessary to both save and delete events. Our <code class="literal">save()</code> method will simply accept the <code class="literal">$_POST</code> input from the view file and should look as follows:<div class="informalexample"><pre class="programlisting">public function actionSave($id = NULL)
+{
+   if ($id != NULL)
+      $model = $this-&gt;loadModel($id);
+   else
+      $model = new Events;
+
+   if (isset($_POST['Events']))
+   {
+      $model-&gt;attributes = $_POST['Events'];
+
+      if ($model-&gt;save())
+         $this-&gt;redirect($this-&gt;createUrl('/event/save', array('id' =&gt; $model-&gt;id)));
+   }
+
+   $this-&gt;render('save', array('model' =&gt; $model));
+}</pre></div></li><li class="listitem">Finally, there's <a id="id250" class="indexterm"/>our <code class="literal">delete()</code> method, which will facilitate the deletion of events:<div class="informalexample"><pre class="programlisting">public function actionDelete($id = NULL)
+{
+   $model = $this-&gt;loadModel($id);
+
+   if ($model-&gt;delete())
+      $this-&gt;redirect($this-&gt;createUrl('/event'));
+
+   throw new CHttpException(400, 'Bad Request');
+}</pre></div></li></ol></div></div><div class="section" title="Creating the reminders controller"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec54"/>Creating the reminders controller</h2></div></div></div><p>The next <a id="id251" class="indexterm"/>controller we'll want to implement is<a id="id252" class="indexterm"/> our <code class="literal">ReminderController</code>. Unlike our <code class="literal">EventController</code>, this controller should only serve AJAX responses and won't require any views.</p><p>We'll start by creating a new file at <code class="literal">protected/controllers</code> called <code class="literal">ReminderController.php</code> and have the class extend <code class="literal">CController</code>. Perform the following steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">First, we'll want to make sure that only POST requests are sent to this controller. An easy way to force all requests to the controller to be POST requests is by checking the request type before each action runs. We can implement that check by using the <code class="literal">beforeAction()</code> method:<div class="informalexample"><pre class="programlisting">public function beforeAction($action)
+{
+   if (!Yii::app()-&gt;request-&gt;isPostRequest)
+      throw new CHttpException(400, 'Bad Request');
+
+   return parent::beforeAction($action);
+}</pre></div></li><li class="listitem">Next, we should implement a method to load a particular reminder and another method to verify that we have access to the associated event for a particular reminder, as follows:<div class="informalexample"><pre class="programlisting">private function loadEvent($event_id)
+{
+   $event = Events::model()-&gt;findByPk($event_id);
+   if ($event == NULL)
+      return false;
+
+   if ($event-&gt;user_id != Yii::app()-&gt;user-&gt;id)
+      return false;
+
+   return true;
+}
+
+private function loadModel($id)
+{
+   if ($id == NULL)
+      throw new CHttpException(400, 'Bad Request');
+
+   $model = Reminders::model()-&gt;findByPk($id);
+
+   if ($model == NULL)
+      throw new CHttpException(404, 'No model with that ID was found');
+
+   return $model;
+}</pre></div></li><li class="listitem">We'll then add in the functionality necessary to delete a reminder:<div class="informalexample"><pre class="programlisting">public function actionDelete($id = NULL)
+{
+   $model = $this-&gt;loadModel($id);
+
+   if (!$this-&gt;loadEvent($model-&gt;event_id))
+      return false;
+
+   if ($model-&gt;delete())
+      return true;
+
+   throw new CHttpException(400, 'Bad Request');
+}</pre></div></li><li class="listitem"> Finally, we'll<a id="id253" class="indexterm"/> add in the functionality necessary to save and modify a reminder:<div class="informalexample"><pre class="programlisting">public function actionSave($id = NULL)
+{
+   if ($id != NULL)
+      $model = $this-&gt;loadModel($id);
+   else
+      $model = new Reminders;
+
+   if (isset($_POST['Reminders']))
+   {
+      $model-&gt;attributes = $_POST['Reminders'];
+
+      if (!$this-&gt;loadEvent($model-&gt;event_id))
+         return false;
+
+      if ($model-&gt;save())
+         return true;
+      else
+         throw new CHttpException(400, print_r($model-&gt;getErrors(), true));
+   }
+
+   return true;
+}</pre></div></li></ol></div><p>Our <code class="literal">save()</code> method is built to allow reminders to both be created and modified through a single <a id="id254" class="indexterm"/>action rather than multiple actions.</p><div class="section" title="Creating the layout"><div class="titlepage"><div><div><h3 class="title"><a id="ch03lvl3sec21"/>Creating the layout</h3></div></div></div><p>The <a id="id255" class="indexterm"/>first view that we should implement is our <code class="literal">main.php</code> file at <code class="literal">views/layouts/</code>. Since this file will look identical to the layout we created in the previous two chapters, copy the <code class="literal">views/layouts/main.php</code> file from the project resources folder into your application.</p></div><div class="section" title="Creating the main view"><div class="titlepage"><div><div><h3 class="title"><a id="ch03lvl3sec22"/>Creating the main view</h3></div></div></div><p>Next, we'll<a id="id256" class="indexterm"/> implement our list view that will display all of our events. To do this, we'll be extending the <code class="literal">CListView</code> class. Perform the following steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">First, create the view file <code class="literal">index.php</code> in <code class="literal">protected/views/events</code> that will call this custom class, and then add a button to allow the user to create a new event:<div class="informalexample"><pre class="programlisting">&lt;?php echo CHtml::link('Create New Event', $this-&gt;createUrl('/event/save'), array('class' =&gt; 'pull-right btn btn-primary')); ?&gt;
+&lt;div class="clearfix"&gt;&lt;/div&gt;</pre></div></li><li class="listitem">Then, add the following to implement the list view. First, we'll need to instantiate a new widget that will contain our custom list view:<div class="informalexample"><pre class="programlisting">&lt;?php $this-&gt;widget('application.components.EventListView', array(</pre></div></li><li class="listitem">After that, we'll need to specify <code class="literal">dataProvider</code> that will populate our model. This is where our previous changes to the event model's <code class="literal">search() method</code> come into play:<div class="informalexample"><pre class="programlisting">    'dataProvider'=&gt;$model-&gt;search(true),</pre></div></li><li class="listitem">Next, we'll want to specify the template that our list view will use and also the element tag our list view should be contained in:<div class="informalexample"><pre class="programlisting">    'template' =&gt; '{items}',
+    'itemsTagName' =&gt; 'ul',</pre></div></li><li class="listitem">Then, we'll enable sorting with the list view and specify which model attributes can be sorted against:<div class="informalexample"><pre class="programlisting">    'enableSorting' =&gt; true,
+    'sortableAttributes' =&gt; array(
+       'time',
+       'title'
+    ),</pre></div></li><li class="listitem">Finally, we'll need to specify <code class="literal">itemView</code>, which will define what each item in our list will look like:<div class="informalexample"><pre class="programlisting">    'itemView'=&gt;'_event'
+));</pre></div></li></ol></div><p>At the<a id="id257" class="indexterm"/> end of this file, we should also register the CSS that will be used to make our view look pretty in addition to creating the CSS file <code class="literal">/css/calendar.css</code> so that Yii doesn't throw an error during the next steps. Please refer to the source code of this chapter to retrieve the <code class="literal">calendar.css</code> file:</p><div class="informalexample"><pre class="programlisting">Yii::app()-&gt;clientScript-&gt;registerCssFile(Yii::app()-&gt;baseUrl . '/css/calendar.css');</pre></div></div><div class="section" title="Creating the item view"><div class="titlepage"><div><div><h3 class="title"><a id="ch03lvl3sec23"/>Creating the item view</h3></div></div></div><p>The<a id="id258" class="indexterm"/> next file that we need to create is our <code class="literal">itemView</code> file, <code class="literal">protected/views/events/_event.php</code>, as follows:</p><div class="informalexample"><pre class="programlisting">&lt;li class="event" data-attr-id="&lt;?php echo $data-&gt;id; ?&gt;"&gt;
+   &lt;div class="time"&gt;&lt;?php echo gmdate("H:i", $data-&gt;time); ?&gt;&lt;/div&gt;
+   &lt;h2 class="title"&gt;&lt;?php echo CHtml::encode($data-&gt;title); ?&gt;&lt;/h2&gt;
+&lt;/li&gt;</pre></div><p>To save some time later, let's go ahead and implement a view to show the details of a particular event in <code class="literal">protected/views/events/details.php</code>. We'll add the JavaScript bindings to show this when we create <code class="literal">EventListView</code>. Grab this file from the project resources folder, and add it into your application.</p></div><div class="section" title="Creating the event list view"><div class="titlepage"><div><div><h3 class="title"><a id="ch03lvl3sec24"/>Creating the event list view</h3></div></div></div><p>With <a id="id259" class="indexterm"/>our views in place, we now need to implement our <code class="literal">EventListView</code> that will display our calendar picker and our events. The steps are as follows:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">To do this, create a new file in <code class="literal">protected/components</code> called <code class="literal">EventListView.php</code>. This class should extend <code class="literal">CListView</code>, which we will have to explicitly load to make Yii aware of it. By extending <code class="literal">CListView</code>, we immediately get access to several useful functions, such as sorting and displaying our events:<div class="informalexample"><pre class="programlisting">&lt;?php
+Yii::import('zii.widgets.CListView');
+class EventListView extends CListView {}</pre></div></li><li class="listitem">Next, we'll <a id="id260" class="indexterm"/>need to create another custom getter to retrieve the current date from the URL:<div class="informalexample"><pre class="programlisting">public function getDate()
+{
+    if (isset($_GET['date']))
+       return $_GET['date'];
+    
+    return gmdate("Y-m-d");
+}</pre></div></li><li class="listitem">Now, we're going to overload the <code class="literal">CListView</code> <code class="literal">renderItems()</code> method, which will allow us to display our events as we like. To do this, create the <code class="literal">renderItems()</code> method, as follows:<div class="informalexample"><pre class="programlisting">public function renderItems()
+{
+   echo CHtml::openTag('div', array('class' =&gt; 'event_container'));
+   echo CHtml::closeTag('div');
+}</pre></div></li><li class="listitem">Within the <code class="literal">events_container</code> <code class="literal">div</code> that we just created, we need to add our month/year picker. These links will determine what the next and previous month and year are by the current date, which it will retrieve from the <code class="literal">getDate()</code> method we defined earlier:<div class="informalexample"><pre class="programlisting">echo CHtml::openTag('div', array('class' =&gt; 'month_year_picker'));
+   echo CHtml::link(NULL, $this-&gt;controller-&gt;createUrl('/event', array('date' =&gt; gmdate("Y-m-d", strtotime($this-&gt;date ." previous year")))), array('class' =&gt; 'fa fa-angle-double-left pull-left'));
+   echo CHtml::link(NULL, $this-&gt;controller-&gt;createUrl('/event', array('date' =&gt; gmdate("Y-m-d", strtotime($this-&gt;date ." previous month")))), array('class' =&gt; 'fa fa-angle-left pull-left'));
+   echo CHtml::tag('span', array(), date('M Y', strtotime($this-&gt;date)));
+   echo CHtml::link(NULL, $this-&gt;controller-&gt;createUrl('/event', array('date' =&gt; gmdate("Y-m-d", strtotime($this-&gt;date ." next year")))), array('class' =&gt; 'fa fa-angle-double-right pull-right'));
+   echo CHtml::link(NULL, $this-&gt;controller-&gt;createUrl('/event', array('date' =&gt; gmdate("Y-m-d", strtotime($this-&gt;date ." next month")))), array('class' =&gt; 'fa fa-angle-right pull-right'));
+echo CHtml::closeTag('div');</pre></div></li><li class="listitem">Immediately following this closing <code class="literal">div</code>, we then need to add our date picker that <a id="id261" class="indexterm"/>will show 15 days on each side of the currently selected date. We can implement that as follows:<div class="informalexample"><pre class="programlisting">echo CHtml::openTag('div', array('class' =&gt; 'day_picker'));
+   echo CHtml::openTag('ul');
+      $this-&gt;renderDays(gmdate('Y-m-d', strtotime($this-&gt;date . ' -15 days')), $this-&gt;date);
+      $this-&gt;renderDays($this-&gt;date, gmdate('Y-m-d', strtotime($this-&gt;date . ' +15 days')));
+   echo CHtml::closeTag('ul');
+echo CHtml::closeTag('div');</pre></div></li><li class="listitem">To make our lives easier, we can create a utility method that will display a range of dates for us automatically, called <code class="literal">renderDays()</code>. This will allow our code to be more readable and easier to debug should we need to. This method should accept two arguments: a start date and an end date:<div class="informalexample"><pre class="programlisting">private function renderDays($start, $end)
+{
+   $start    = new DateTime($start);
+   $end      = new DateTime($end);
+   $interval = new DateInterval('P1D');
+   $period   = new DatePeriod($start, $interval, $end);
+
+   foreach ($period as $dt)
+      $this-&gt;renderDay($dt-&gt;format('Y-m-d'));
+}</pre></div></li><li class="listitem">Then, we'll need to create another utility method to display a particular date and provide a link to it:<div class="informalexample"><pre class="programlisting">private function renderDay($date)
+{
+   $class = 'day';
+   if ($this-&gt;date == $date)
+      $class .= ' selected';
+   echo CHtml::openTag('li', array('class' =&gt; $class));
+      echo CHtml::tag('span', array('class' =&gt; 'day_string'), gmdate('D', strtotime($date)));
+      echo CHtml::link(date('d', strtotime($date)), $this-&gt;controller-&gt;createUrl('/event', array('date' =&gt; gmdate('Y-m-d', strtotime($date)))), array('class' =&gt; 'day_date'));
+   echo CHtml::closeTag('li');
+}</pre></div></li></ol></div><p>The <a id="id262" class="indexterm"/>final part of our custom view is a container to display the sorter, the items, and the details for a particular item. We should add the <code class="literal">day_picker</code> <code class="literal">div</code> immediately that we opened earlier. Because we took advantage of <code class="literal">CListView</code>, we can simply reference the parent class' <code class="literal">renderItems()</code> method<a id="id263" class="indexterm"/> to display all of our items, and the parent <a id="id264" class="indexterm"/>class' <code class="literal">renderSorter()</code> method to display the sorter according to the configuration we passed in our index view:</p><div class="informalexample"><pre class="programlisting">echo CHtml::openTag('div', array('class' =&gt; 'outer_container'));
+   echo CHtml::openTag('div', array('class' =&gt; 'inner_container'));
+      echo CHtml::openTag('div', array('class' =&gt; 'selected_date'));
+         echo CHtml::tag('span', array('class' =&gt; 'selected_date_date'), gmdate("l F d Y", strtotime($this-&gt;date)));
+      echo CHtml::closeTag('div');
+      $this-&gt;renderSorter();
+      parent::renderItems();
+   echo CHtml::closeTag('div');
+
+   // Details container is populated via Ajax Request
+   echo CHtml::tag('div', array('class' =&gt; 'details'), NULL);
+   echo CHtml::tag('div', array('class' =&gt; 'clearfix'), NULL);
+echo CHtml::closeTag('div');</pre></div><p>Then, let's add some AJAX to display the details of an event when we click on an event and to remove a reminder if the event has any attached to it. We can add this right before we close our <code class="literal">renderItems()</code> method:</p><div class="informalexample"><pre class="programlisting">Yii::app()-&gt;clientScript-&gt;registerScript('li_click', '
+   $(".items li").click(function() {
+      var id = $(this).attr("data-attr-id");
+      $.get("/event/details/" + id, function(data) {
+         $(".details").replaceWith(data);
+
+         $(".fa-times").click(function() {
+            var id = $(this).parent().attr("id");
+            var self = $(this).parent();
+            $.post("/reminder/delete/id/" + id, function() {
+               $(self).remove();
+            })
+         });
+      });
+   });
+');</pre></div><p>Once <a id="id265" class="indexterm"/>you've added the CSS from the <code class="literal">calendar.css</code> file in the associated project source code, our view should be complete. Have a look at the following screenshot:</p><div class="mediaobject"><img src="graphics/7734OS_03_02.jpg" alt="Creating the event list view"/></div></div><div class="section" title="Creating and saving events"><div class="titlepage"><div><div><h3 class="title"><a id="ch03lvl3sec25"/>Creating and saving events</h3></div></div></div><p>Now<a id="id266" class="indexterm"/> that we have a way to display events, we <a id="id267" class="indexterm"/>need to actually create them. This view will allow us to both save events as well as dynamically add multiple reminders to an existing event. Begin by creating <code class="literal">protected/views/events/save.php</code>, as follows:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">First we're going to create the functionality necessary to modify the core attributes of the event: the title, date, and time:<div class="informalexample"><pre class="programlisting">&lt;h3&gt;&lt;?php echo $model-&gt;isNewRecord ? 'Create New' : 'Update'; ?&gt; Event&lt;/h3&gt;
+&lt;?php $form=$this-&gt;beginWidget('CActiveForm', array(
+   'id'=&gt;'project-form',
+   'htmlOptions' =&gt; array(
+      'class' =&gt; 'form-horizontal',
+      'role' =&gt; 'form'
+   )
+)); ?&gt;
+   &lt;?php echo $form-&gt;errorSummary($model); ?&gt;
+
+   &lt;div class="form-group"&gt;
+      &lt;?php echo $form-&gt;labelEx($model,'title', array('class' =&gt; 'col-sm-2 control-label')); ?&gt;
+      &lt;div class="col-sm-10"&gt;
+         &lt;?php echo $form-&gt;textField($model,'title', array('class' =&gt; 'form-control')); ?&gt;
+      &lt;/div&gt;
+   &lt;/div&gt;
+
+   &lt;div class="form-group"&gt;
+      &lt;?php echo $form-&gt;labelEx($model,'data', array('class' =&gt; 'col-sm-2 control-label')); ?&gt;
+      &lt;div class="col-sm-10"&gt;
+         &lt;?php echo $form-&gt;textArea($model,'data', array('class' =&gt; 'form-control')); ?&gt;
+      &lt;/div&gt;
+   &lt;/div&gt;
+
+   &lt;div class="form-group"&gt;
+      &lt;?php echo $form-&gt;labelEx($model,'time', array('class' =&gt; 'col-sm-2 control-label')); ?&gt;
+      &lt;div class="col-sm-10"&gt;
+         &lt;div class="input-append date"&gt;
+            &lt;?php echo $form-&gt;textField($model, 'time', array('value' =&gt; $model-&gt;isNewRecord ? NULL : gmdate('Y-m-d H:i:s', $model-&gt;time), 'class' =&gt; 'form-control')); ?&gt;
+         &lt;/div&gt;
+      &lt;/div&gt;
+   &lt;/div&gt;</pre></div></li><li class="listitem">Next, we'll <a id="id268" class="indexterm"/>want to display all of the <a id="id269" class="indexterm"/>reminders attached to our event if the event has been created. Since we've already established a relationship between reminders and events, we can do this simply by iterating through the  <code class="literal">$events-&gt;reminders</code> relations, which will be populated with all of the reminders associated with our event:<div class="informalexample"><pre class="programlisting">&lt;?php if (!$model-&gt;isNewRecord): ?&gt;
+   &lt;input type="hidden" id="event_id" value="&lt;?php echo $model-&gt;id; ?&gt;" /&gt;
+   &lt;hr /&gt;
+   &lt;h3&gt;Reminders&lt;/h3&gt;
+   &lt;div class="reminders_container"&gt;
+      &lt;?php foreach ($model-&gt;reminders as $reminder): ?&gt;
+         &lt;div class="form-group"&gt;
+            &lt;?php echo CHtml::tag('label', array('class' =&gt; 'col-sm-2 control-label'), 'Reminder'); ?&gt;
+            &lt;div class="col-sm-9"&gt;
+               &lt;?php echo CHtml::tag('input', array(
+                  'id' =&gt; $reminder-&gt;id,
+                  'name' =&gt; 'Reminders[' . $reminder-&gt;id . '][time]',
+                  'class' =&gt; 'form-control',
+                  'value' =&gt; gmdate('Y-m-d H:i:s', $reminder-&gt;time)
+               ), NULL); ?&gt;
+            &lt;/div&gt;
+            &lt;span class="fa fa-times"&gt;&lt;/span&gt;
+         &lt;/div&gt;
+      &lt;?php endforeach; ?&gt;
+   &lt;/div&gt;
+&lt;?php endif; ?&gt;</pre></div></li><li class="listitem">Within this <code class="literal">if</code> clause, we'll also want to create a template reminder that we can attach and clone with JavaScript. This will allow us to create as many reminders as we want for our events:<div class="informalexample"><pre class="programlisting">&lt;div class="form-group template" style="display:none"&gt;
+   &lt;?php echo CHtml::tag('label', array('class' =&gt; 'col-sm-2 control-label'), 'Reminder'); ?&gt;
+   &lt;div class="col-sm-9"&gt;
+      &lt;?php echo CHtml::tag('input', array(
+         'id' =&gt; NULL,
+         'name' =&gt; 'Reminders[0][time]',
+         'class' =&gt; 'form-control'
+      ), NULL); ?&gt;
+   &lt;/div&gt;
+&lt;/div&gt;</pre></div></li><li class="listitem">Finally, we<a id="id270" class="indexterm"/> need to add some buttons <a id="id271" class="indexterm"/>and close our widget:<div class="informalexample"><pre class="programlisting">&lt;div class="row buttons"&gt;
+   &lt;?php echo CHtml::submitButton($model-&gt;isNewRecord ? 'Create' : 'Save', array('class' =&gt; 'btn btn-primary pull-right col-md-offset-1')); ?&gt;
+
+   &lt;?php if (!$model-&gt;isNewRecord): ?&gt;
+      &lt;?php echo CHtml::link('Delete Event', $this-&gt;createUrl('/event/delete', array('id' =&gt; $model-&gt;id)), array('class' =&gt; 'btn btn-danger pull-right col-md-offset-1')); ?&gt;
+      &lt;?php echo CHtml::link('Add Reminder', '#', array('class' =&gt; 'btn btn-success pull-right', 'id' =&gt; 'add_reminder')); ?&gt;
+   &lt;?php endif; ?&gt;
+&lt;/div&gt;
+&lt;?php $this-&gt;endWidget(); ?&gt;</pre></div></li></ol></div><p>In its present state, our time fields aren't very user friendly as the user has to manually enter a specific date timestamp, such as <code class="literal">2014-02-21 19:50:00</code>. To make this experience easier on our users, we can download a plugin from GitHub called bootstrap-datetimepicker. Simply clone the repository to the <code class="literal">/js</code> directory of the application using <code class="literal">git</code> or download the package directly:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>git clone https://github.com/smalot/bootstrap-datetimepicker </strong></span>
+</pre></div><p>Then, register the relevant CSS and JavaScript:</p><div class="informalexample"><pre class="programlisting">&lt;?php Yii::app()-&gt;clientScript-&gt;registerCssFile(Yii::app()-&gt;baseUrl . '/js/bootstrap-datetimepicker/css/bootstrap-datetimepicker.min.css'); ?&gt;
+&lt;?php Yii::app()-&gt;clientScript-&gt;registerScriptFile(Yii::app()-&gt;baseUrl . '/js/bootstrap-datetimepicker/js/bootstrap-datetimepicker.js', CCLientScript::POS_END); ?&gt;</pre></div><p>Finally, we can add the JavaScript bindings necessary to display the date time picker and to dynamically add new reminders. Within the project resources folder, copy the remaining JavaScript code from the <code class="literal">save.php</code> file at<code class="literal"> protected/views/events/</code> into this file.</p><p>Since we've already created all the necessary controller actions to save and display events, we can now create and modify new events, add reminders, and view them in the interface<a id="id272" class="indexterm"/> that<a id="id273" class="indexterm"/> we built earlier. Check it out!</p></div></div></div>
+<div class="section" title="Creating the controller to manage users"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec31"/>Creating the controller to manage users</h1></div></div></div><p>Next, we'll need to implement the necessary methods to create and modify users within our<a id="id274" class="indexterm"/> application. Since our <code class="literal">users</code> table doesn't have any concept of roles yet, we'll manage our users from the command line<a id="id275" class="indexterm"/> through <code class="literal">CConsoleCommand</code>. This method will ensure that only authenticated users (users who have access to our server) can modify the user's information. In a real-world application, this functionality can be moved to a secured <code class="literal">UsersController</code> in our application.</p><div class="section" title="Creating users"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec55"/>Creating users</h2></div></div></div><p>To<a id="id276" class="indexterm"/> start with our user management, create a new console command in <code class="literal">protected/commands/UserCommand.php</code>, and add the following:</p><div class="informalexample"><pre class="programlisting">&lt;?php class UserCommand extends CConsoleCommand {}</pre></div><p>The <code class="literal">CConsoleCommand</code> class is very similar to our controllers. In that, we can define actions that we want to run as well as any parameters that we want added. The first action we should create is an action to create our users. Since we've already set up our Users model to handle the appropriate password hashing, we can simply use the following:</p><div class="informalexample"><pre class="programlisting">public function actionCreateUser($email, $password)
+{
+   $model = new Users;
+   $model-&gt;attributes = array(
+      'email' =&gt; $email,
+      'password' =&gt; $password
+   );
+
+   if (!$model-&gt;validate())
+      echo "Missing Required Attribute\n";
+   else
+   {
+      try {
+         if ($model-&gt;save())
+            echo "User Created\n";
+         else
+            print_r($model-&gt;getErrors);
+         return;
+      } catch (Exception $e) {
+         print_r($e-&gt;getMessage());
+      }
+   }
+}</pre></div><p>We<a id="id277" class="indexterm"/> can then create new users from the command line, as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>php protected/yiic.php user createuser --email=test@test.com --password=password123</strong></span>
+</pre></div><p>If successful, the command will output <code class="literal">User Created</code>; otherwise, it will return an error.</p></div><div class="section" title="Deleting users"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec56"/>Deleting users</h2></div></div></div><p>Deletion<a id="id278" class="indexterm"/> of users can also be a callable action that takes a user's e-mail address as an argument:</p><div class="informalexample"><pre class="programlisting">public function actionDeleteUser($email)
+{
+   $model = Users::model()-&gt;findByAttributes(array('email' =&gt; $email));
+   if ($model == NULL)
+   {
+      echo "No user with that email was found.\n";
+      return 0;
+   }
+
+   if ($model-&gt;delete())
+      echo "User has been deleted.\n";
+   else
+      echo "User could not be deleted.\n";
+}</pre></div><p>We <a id="id279" class="indexterm"/>can then call the action we just created by running the following command from our command line:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>php protected/yiic.php user deleteuser --email=test@test.com</strong></span>
+</pre></div></div><div class="section" title="Changing the user's password"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec57"/>Changing the user's password</h2></div></div></div><p>Next, we'll want to provide the functionality to change a user's password. Before we change<a id="id280" class="indexterm"/> the user's password, we need to verify the user's identity. Usually, we accomplish this by verifying that they have the password to their account. We can implement this, as follows, within <code class="literal">protected/commands/UserCommand.php</code>:</p><div class="informalexample"><pre class="programlisting">public function actionChangePassword($email, $oldPassword, $newPassword)
+{
+   $model = Users::model()-&gt;findByAttributes(array('email' =&gt; $email));
+
+   if ($model == NULL)
+   {
+      echo "No user with that email was found.\n";
+      return 0;
+   }
+
+   if (password_verify($oldPassword, $model-&gt;password))
+   {
+      $model-&gt;password = password_hash($newPassword, PASSWORD_BCRYPT, array('cost' =&gt; 13));
+
+      if ($model-&gt;save())
+         echo "Password has been changed.\n";
+      else
+         echo "Password could not be changed.\n";
+   }
+   else
+      echo "Unable to Verify Old Password.\n";
+}</pre></div><p>Once again, we're taking advantage of PHP's <code class="literal">password_*</code> functions, which include the ability to verify a password:</p><div class="informalexample"><pre class="programlisting">if (password_verify($oldPassword, $model-&gt;password))</pre></div><p>Assuming the user's password is valid, we can then hash the password they provided on the command line and store it with the model:</p><div class="informalexample"><pre class="programlisting">$model-&gt;password = password_hash($newPassword, PASSWORD_BCRYPT, array('cost' =&gt; 13));</pre></div><p>From the command line, this command can be run as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>php protected/yiic.php user changepassword --email=test@test.com --oldpassword=password123 --newpassword=newsecurepassword</strong></span>
+</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note13"/>Note</h3><p>While <a id="id281" class="indexterm"/>managing users from the command line is simple, it isn't very secure because user's passwords may be stored in plain text in your terminal's command history. In a real-world application, consider managing users from a web interface over a secure connection.</p></div></div></div><div class="section" title="Authenticating with Bcrypt"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec58"/>Authenticating with Bcrypt</h2></div></div></div><p>The last thing that we need to implement for our users is authentication. To do this, we'll expand<a id="id282" class="indexterm"/> upon the authentication process we developed in <a class="link" href="ch01.html" title="Chapter 1. A Task-management Application">Chapter 1</a>, <span class="emphasis"><em>A Task-management Application</em></span>, and modify it to work with our Bcrypt hashed passwords.</p><p>First, copy the following files from the source code of <a class="link" href="ch01.html" title="Chapter 1. A Task-management Application">Chapter 1</a>, <span class="emphasis"><em>A Task-management Application</em></span> (or from the source code in this chapter) into our project:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">css/signin.css</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">protected/views/layouts/signin.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">protected/views/site/login.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">protected/models/LoginForm.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">protected/controllers/SiteController.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">protected/components/UserIdentity.php</code></li></ul></div><p>Since the majority of the work involved in authenticating a user is done, the only changes we need to make to our authentication process is in our <code class="literal">UserIdentity</code> class. Begin by opening up <code class="literal">protected/components/UserIdentity.php</code>. We'll start by defining the class as follows:</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note14"/>Note</h3><p>Yii may have already generated this file for you. If so, delete the contents of it entirely, and follow the instructions as outlined in this section.</p></div></div><div class="informalexample"><pre class="programlisting">class UserIdentity extends CUserIdentity {}</pre></div><p>Perform the following steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">First, we want to ensure that each user's ID from the database is stored with our <code class="literal">WebUser</code> property. To do this, create a new private attribute called <code class="literal">$_id</code>:<div class="informalexample"><pre class="programlisting">private $_id;</pre></div></li><li class="listitem">Then, create a getter to retrieve it:<div class="informalexample"><pre class="programlisting">public function getId()
+{
+   return $this-&gt;_id;
+}</pre></div></li><li class="listitem">Next, we <a id="id283" class="indexterm"/>need to define our <code class="literal">authenticate()</code> method that will be called from <code class="literal">LoginForm</code>:<div class="informalexample"><pre class="programlisting">public function authenticate() {}</pre></div></li><li class="listitem">Within this method, we'll need to find the appropriate user model using the e-mail address that was provided to us by the user through <code class="literal">LoginForm</code>:<div class="informalexample"><pre class="programlisting">$record = Users::model()-&gt;findByAttributes(array('email'=&gt;$this-&gt;username));</pre></div></li><li class="listitem">With this information, we can then verify that a user with that e-mail address exists:<div class="informalexample"><pre class="programlisting">if ($record == NULL)
+    $this-&gt;errorCode = self::ERROR_UNKNOWN_IDENTITY;</pre></div></li><li class="listitem">Then, we need to verify that the user's password matches the one we have on record. If it does, we should make sure that no errors are returned to the <code class="literal">LoginForm</code> and set the <code class="literal">WebUser</code> ID:<div class="informalexample"><pre class="programlisting">else if (password_verify($this-&gt;password, $record-&gt;password))
+{
+   $this-&gt;errorCode = self::ERROR_NONE;
+   $this-&gt;_id        = $record-&gt;id;   
+}</pre></div></li><li class="listitem">Then, we should reject anything else that comes through the method:<div class="informalexample"><pre class="programlisting">else
+   $this-&gt;errorCode = self::ERROR_UNKNOWN_IDENTITY;</pre></div></li><li class="listitem">Finally, return the error code back to the <code class="literal">LoginForm</code>:<div class="informalexample"><pre class="programlisting">return !$this-&gt;errorCode;</pre></div></li></ol></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note15"/>Note</h3><p>In a <a id="id284" class="indexterm"/>real-world application, we will want to expose as little information as possible about a potential login attempt to the user or a potential attacker, which is why we return <code class="literal">ERROR_UNKNOWN_IDENTITY</code>. During debugging of your application, you may find it useful to return either <code class="literal">ERROR_USERNAME_INVALID</code> or <code class="literal">ERROR_PASSWORD_INVALID</code> to help you better understand why a login request failed.</p></div></div></div><div class="section" title="Requiring authentication"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec59"/>Requiring authentication</h2></div></div></div><p>Finally, we<a id="id285" class="indexterm"/> can force our users to authenticate against our database by adding the following to both <code class="literal">EventController</code> and <code class="literal">ReminderController</code>:</p><div class="informalexample"><pre class="programlisting">public function filters()
+{
+   return array(
+        'accessControl',
+   );
+}
+
+public function accessRules()
+{
+   return array(
+        array('allow',
+            'users'=&gt;array('@'),
+        ),
+        array('deny',  // deny all users
+            'users'=&gt;array('*'),
+        ),
+    );
+}</pre></div></div></div>
+<div class="section" title="Sending e-mail reminders"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec32"/>Sending e-mail reminders</h1></div></div></div><p>At this <a id="id286" class="indexterm"/>point, users can create new <a id="id287" class="indexterm"/>events and reminders for themselves through our web interface; however, they aren't able to receive these reminders yet. To send out these reminders, we'll <a id="id288" class="indexterm"/>create a new console command called <code class="literal">RemindersCommand</code> in <code class="literal">protected/commands/RemindersCommand.php</code>. When we're done, we'll be able to add this command to either our crontab or to our scheduled tasks and have it automatically process reminders in the background.</p><p>Once the <code class="literal">RemindersCommand</code> file has been created, create the class definition in addition to an action to send the reminders that takes a time interval as an argument. This interval will define the length of time in minutes that we should run our command for. It will find all of the reminders within that interval's timeframe to process:</p><div class="informalexample"><pre class="programlisting">class RemindersCommand extends CConsoleCommand
+{
+   public function actionSendReminders($interval) {}
+}</pre></div><p>Within our action, define the UNIX timestamp that we should begin at as well as the time we should end at for the particular interval we are working with. The end time should be all microseconds before the next interval begins so that we do not send duplicate reminders out:</p><div class="informalexample"><pre class="programlisting">$time = time();
+$start = $time - ($time % $interval * 60);
+$end = $start + (($interval *60) - 1));</pre></div><p>With our time interval defined, we can now create a database search criteria with <code class="literal">CDBCriteria</code> that we can pass to our <code class="literal">reminders</code> <code class="literal">find()</code> method:</p><div class="informalexample"><pre class="programlisting">$criteria = new CDbCriteria;
+$criteria-&gt;addBetweenCondition('offset', $start, $end);
+$reminders = Reminders::model()-&gt;findAll($criteria);</pre></div><p>The <code class="literal">find()</code> method<a id="id289" class="indexterm"/> will return all reminders within the time interval that we specified. We can now simply iterate through the <code class="literal">$reminders</code> array and send an e-mail to the user the reminder belongs to:</p><div class="informalexample"><pre class="programlisting">foreach ($reminders as $reminder)
+{
+   // Load the PHPMailer Class
+   $mail = new PHPMailer;
+
+   // Tell PHP Mailer to use SMTP with authentication
+   $mail-&gt;isSMTP();
+   $mail-&gt;SMTPAuth = true;
+
+      // Specify the Host and Port we should connect to
+   $mail-&gt;Host = Yii::app()-&gt;params['smtp']['host'];
+   $mail-&gt;Port = Yii::app()-&gt;params['smtp']['port'];
+
+   // Specify the username and password we should use
+   // (if required by our SMTP server)
+   $mail-&gt;Username = Yii::app()-&gt;params['smtp']['username'];
+   $mail-&gt;Password = Yii::app()-&gt;params['smtp']['password'];
+
+   // Set the security type of required
+   $mail-&gt;SMTPSecure = 'tls';
+
+   // Set the from and to addresses
+   $mail-&gt;from = Yii::app()-&gt;params['smtp']['from'];
+   $mail-&gt;addAddress($reminder-&gt;event-&gt;user-&gt;email);
+
+   // This should be an HTML email
+   $mail-&gt;isHTML(true);
+
+   // Set the subject and body
+   $mail-&gt;Subject ='Reminder from Scheduled Reminders';
+   $mail-&gt;Body = 'This is a reminder that '.$reminder-&gt;event-&gt;title.' is due on '. gmdate("Y-m-d H:i UTC", $reminder-&gt;offset) . '. This event has the following details:&lt;br /&gt;' . $reminder-&gt;event-&gt;data;
+
+   // Then send the email
+   if (!$mail-&gt;send())
+        echo $mail-&gt;ErrorInfo . "\n";
+   else
+        echo ".";
+}</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note16"/>Note</h3><p>If <a id="id290" class="indexterm"/>you<a id="id291" class="indexterm"/> are using a remote SMTP server and have already populated your <code class="literal">protected/config/params.php</code> file with your SMTP information, the previous code should work for you. If you're using a local mail server, such<a id="id292" class="indexterm"/> as Postfix or another setup, be sure to read the PHPMailer documentation at <a class="ulink" href="https://github.com/PHPMailer/PHPMailer">https://github.com/PHPMailer/PHPMailer</a> on how to propery configure PHPMailer.</p></div></div><p>From the command line, we can now send reminders by running the following command (in the example we are using a <code class="literal">5</code>-minute interval):</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>php protected/yiic.php reminders sendreminder --interval=5</strong></span>
+</pre></div><p>Once<a id="id293" class="indexterm"/> you have created events in your<a id="id294" class="indexterm"/> database, you can run the command or put this command on your crontab or scheduled tasks and have your application automatically send reminders to your users.</p></div>
+<div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec33"/>Summary</h1></div></div></div><p>We covered quite a bit of information in this chapter! We learned how to integrate our application with a MySQL database, started storing user information securely in our database, and expanded upon our knowledge of console commands. We also covered how to add behaviors and how to add relations to our models. Additionally, we went over including Composer and Composer dependencies into our project to reduce the amount of code that have to import manually.</p><p>In the next chapter, we'll be expanding on the knowledge we learned and the tools we developed to build even more complex and integrated web applications. Before continuing on, be sure to take a look at all the classes we referenced in the chapter in the official Yii documentation located at <a class="ulink" href="http://www.yiiframework.com/doc/">http://www.yiiframework.com/doc/</a>.</p></div></body></html>

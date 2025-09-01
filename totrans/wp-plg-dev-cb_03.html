@@ -1,0 +1,2305 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">User Settings and Administration Pages</h1>
+                </header>
+            
+            <article>
+                
+<p>This chapter is focused on setting up pages that enable users to configure plugin settings. It covers the following topics:</p>
+<ul>
+<li>Creating default user settings on plugin initialization</li>
+<li>Storing user settings using arrays</li>
+<li>Removing plugin data on deletion</li>
+<li>Creating an administration page menu item in the settings menu</li>
+<li>Creating a multi-level administration menu</li>
+<li>Adding menu items leading to external pages</li>
+<li>Hiding items that users should not access from the default menu</li>
+<li>Rendering the admin page content using HTML</li>
+<li>Processing and storing plugin configuration data</li>
+<li>Displaying a confirmation message when options are saved</li>
+<li>Adding custom help pages</li>
+<li>Rendering the admin page contents using the Settings API</li>
+<li>Accessing user settings from action and filter hooks</li>
+<li>Formatting admin pages using meta boxes</li>
+<li>Splitting admin code from the main plugin file to optimize site performance</li>
+<li>Storing style sheet data in user settings</li>
+<li>Managing multiple sets of user settings from a single admin page</li>
+<li>Creating a network level plugin with admin pages</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Introduction</h1>
+                </header>
+            
+            <article>
+                
+<p>As we saw in <a href="f7395811-9e4a-4913-8a02-cc68875d0071.xhtml" target="_blank">Chapter 2</a>, <em>Plugin Framework Basics,</em> it is very easy for a plugin to register custom functions with action and filter hooks to change or augment the way WordPress renders web pages. That being said, some of the examples covered in <a href="f7395811-9e4a-4913-8a02-cc68875d0071.xhtml" target="_blank">Chapter 2</a>, <em>Plugin Framework Basics,</em> have limitations when it comes to dealing with custom user information, such as the inability to easily specify a Google Analytics account number.</p>
+<p>To make plugins easy to use for a wide audience, it is usually important to create one or more administration pages where users will be able to provide details that are specific to their installation, enter information on external accounts, and customize some of the aspects of the plugin's functionality. As an example, the Akismet plugin, provided in default WordPress installations, offers a configuration page that can be found under the <span class="packt_screen">Settings</span> | <span class="packt_screen">Akismet</span> configuration menu. Thankfully, WordPress has a rich set of functions that allows plugin developers to easily put together configuration pages that will seamlessly blend with the rest of the administrative panels.</p>
+<p>This chapter covers how to use the WordPress Options <strong>Application</strong> <strong>Programming</strong> <strong>Interface</strong> (<strong>API</strong>) functions to store and access user options in the site database. It then goes on to explain how to create custom dialogs to provide users with complete control over the configuration of the plugins that you create.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating default user settings on plugin initialization</h1>
+                </header>
+            
+            <article>
+                
+<p>A typical first step of most user-configurable plugins is to create a default set of values for all options when the plugin is activated. These default options will subsequently be used to populate the plugin's settings page when it is visited by the site administrator. This recipe shows how to register a function that is called when a plugin is activated, and how to store option data in the site database.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Navigate to the WordPress plugin directory of your development installation.</li>
+<li>Create a new directory called <kbd>ch3-individual-options</kbd>.</li>
+<li>Navigate to this directory and create a new text file called <kbd>ch3-individual-options.php</kbd>.</li>
+<li>Open the new file in a code editor and add an appropriate header at the top of the plugin file, naming the plugin <kbd>Chapter 3 - Individual Options</kbd>.</li>
+<li>Add the following line of code to register a function that will be executed when the plugin is activated, after its initial installation or following an upgrade:</li>
+</ol>
+<pre style="padding-left: 60px">register_activation_hook( __FILE__, 'ch3io_set_default_options' );</pre>
+<ol start="6">
+<li>Add the following code section to provide an implementation for the <kbd>ch3io_set_default_options</kbd> function:</li>
+</ol>
+<pre style="padding-left: 60px">function ch3io_set_default_options() {<br/>    if ( false === get_option( 'ch3io_ga_account_name' ) ) {<br/>        add_option( 'ch3io_ga_account_name', 'UA-0000000-0' );  <br/>    }<br/>}</pre>
+<ol start="7">
+<li>Save and close the plugin file. Execute the activation function that was just added by clicking on the <span class="packt_screen">Activate</span> option of this <kbd>chapter 3 - Individual Options</kbd> plugin.</li>
+<li>In your web server's MySQL database administration tool, select your WordPress database (<kbd>wordpressdev</kbd> if you followed the recipe in <a href="bd54bb42-2b11-4ac9-ac09-5e6e66f285b6.xhtml" target="_blank">Chapter 1</a>, <em>Preparing a Local Development Environment</em>), then select the <kbd>wpdev_options</kbd> table. Click on the <span class="packt_screen">SQL</span> tab, replace the default query with the following statement, and click on <span class="packt_screen">Go</span>:</li>
+</ol>
+<pre style="padding-left: 60px">select * from wpdev_options where option_name = 'ch3io_ga_account_name'</pre>
+<ol start="9">
+<li>Your query should return a single row with the default value assigned to the new option:</li>
+</ol>
+<div class="CDPAlignCenter CDPAlign"><img height="221" width="541" class="image-border" src="assets/f13f7dfa-049d-41ed-802b-bf9c36286edf.png"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>register_activation_hook</kbd> function is used to indicate to WordPress the name of the function that should be called when it activates the plugin. Unlike other hooks, this function requires the name of the main plugin code file to be sent as its first argument, along with the name of the associated function. To do this easily, we can leverage the PHP <kbd>__FILE__</kbd> constant as the first argument, which will resolve to the filename.</p>
+<p>When the callback function is called, we can use the Options API to create, update, or, delete settings in the options table of the site's MySQL database. In this specific example, we are using the <kbd>add_option</kbd> function to easily create an option called <kbd>ch3io_ga_account_name</kbd> with a default value of <kbd>UA-0000000-0</kbd>.</p>
+<div class="mce-root packt_infobox">Just like function names, you should be careful when naming plugin options, to avoid conflicts with other plugins. A good practice is to add a unique prefix to the beginning of each variable name.</div>
+<p>Before making a call to create the new option, the activation function checks whether the option is present in the WordPress options table using the <kbd>get_option</kbd> function. If the return value is false, indicating that the option was not found, a new default option can be created. Any other result would show that the plugin has been activated on the site previously and that options may have been changed from their default values. It is important to keep in mind when writing this code that plugins get deactivated and reactivated each time they are updated using the WordPress update tool, resulting in a call to their activation function. It is also possible that a user might have deactivated a plugin temporarily to debug site issues and brought it back at a later time, also resulting in the activation function being called.</p>
+<p>Finally, it should be noted that it is possible to call the <kbd>add_option</kbd> function multiple times if more than one option is needed to implement a plugin's desired functionality. That being said, it is not necessary to verify the presence of all the options, as checking for a single one would indicate that they were all previously set.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>Beyond the creation of default values for a plugin, the activation hook can also be used to perform more advanced tasks, such as interacting with custom database tables or doing data initialization, as will be seen in later chapters. In contrast, the similar deactivation function hook does not have any real use within the creation of most plugins.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Deactivation function</h1>
+                </header>
+            
+            <article>
+                
+<p>Similar to the activation function that we used in this recipe, WordPress provides a way to register a deactivation function (using <kbd>register_deactivation_hook</kbd>). While it may be tempting to use this function to remove options created by the plugin, it is not possible to know why the activation function was called. The three situations that could trigger this call are a plugin upgrade, a temporary deactivation to debug a site problem, or just before the plugin gets deleted. Since it is best to keep user options in the first two situations, any cleanup and data removal code should be placed in a plugin's uninstallation file instead, as described in a later recipe.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<ul>
+<li>The <em>Removing plugin data on deletion</em> recipe</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Storing user settings using arrays</h1>
+                </header>
+            
+            <article>
+                
+<p>While the previous recipe worked quite well in creating entries in the site's options table for each individual plugin option, another way to manage user settings is to store them as arrays in the database.</p>
+<p>This recipe creates the same option as the previous one, but also adds a second option and uses an array instead of individual options to store them. It also incorporates an upgrade strategy to deal with the creation of additional options as a plugin evolves over time.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>You should have already followed the recipe entitled <em>Inserting link statistics tracking code in page body using plugin filters</em> in <a href="f7395811-9e4a-4913-8a02-cc68875d0071.xhtml" target="_blank">Chapter 2</a>, <em>Plugin Framework Basics</em><span class="ChapterrefPACKT">,</span> to have a starting point for this recipe. Alternatively, you can get the resulting code (<kbd>Chapter 2/ch2-page-header-output/ch2-page-header-output-v2.php</kbd>) from the code bundle downloaded from the Packt website (<a href="https://www.packtpub.com/support"><span class="URLPACKT">https://www.packtpub.com/support</span></a>) and rename the file <kbd>ch2-page-header-output.php</kbd>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Navigate to the <kbd>ch2-page-header-output</kbd> folder of the WordPress plugin directory of your development installation.</li>
+<li>Open the file <kbd>ch2-page-header-output.php</kbd> in a code editor.</li>
+<li>Add the following line of code to register a function to be called when the plugin is activated:</li>
+</ol>
+<pre style="padding-left: 60px">register_activation_hook( __FILE__, <br/>                          'ch2pho_set_default_options_array' );</pre>
+<ol start="4">
+<li>Add the following code section to provide an implementation for the <kbd>ch2pho_set_default_options_array</kbd> function:</li>
+</ol>
+<pre style="padding-left: 60px">function ch2pho_set_default_options_array() {<br/>    ch2pho_get_options();<br/>}</pre>
+<ol start="5">
+<li>Add the following code to provide an implementation for the <kbd>ch2pho_get_options</kbd> function:</li>
+</ol>
+<pre style="padding-left: 60px">function ch2pho_get_options() {<br/>    $options = get_option( 'ch2pho_options', array() );<br/><br/>    $new_options['ga_account_name'] = 'UA-0000000-0';<br/>    $new_options['track_outgoing_links'] = false;<br/> <br/>    $merged_options = wp_parse_args( $options, $new_options );<br/><br/>    $compare_options = array_diff_key( $new_options, $options );<br/>    if ( empty( $options ) || !empty( $compare_options ) ) {<br/>        update_option( 'ch2pho_options', $merged_options );<br/>    }<br/>    return $merged_options;<br/>}</pre>
+<ol start="6">
+<li>Save and close the plugin file.</li>
+<li>Go to the Plugins section of the administration interface.</li>
+<li>Click on the <span class="packt_screen">Deactivate</span> link for the <kbd>Chapter 2 - Page Header Output</kbd> plugin, followed by a click on the <span class="packt_screen">Activate</span> link to execute the activation function that was just added.</li>
+<li>Using your web server's MySQL database administration tool, query the <kbd>wpdev_options</kbd> table of your WordPress installation for an option with the name <kbd>ch2pho_options</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px">select * from wpdev_options where option_name = 'ch2pho_options'</pre>
+<ol start="10">
+<li>Your query should return a single row with a serialized set of data representing all of the fields in the array:</li>
+</ol>
+<div class="CDPAlignCenter CDPAlign"><img height="236" width="670" class="image-border" src="assets/9fbcb0e4-c7cf-4726-ab29-72c444984489.png"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>add_option</kbd>, <kbd>get_option</kbd>, and <kbd>update_option</kbd> functions accept values as single variables or arrays of data. When given an array, they transform the information received to a serialized array that gets stored in the site database. The main advantage of using arrays over multiple options is that all of the information can be retrieved with a single function call, optimizing the access to the MySQL database and simplifying your plugin's code. This is especially important when your plugin options need to be queried every time a site page needs to be rendered.</p>
+<p>Of course, this advantage is only true if you need to use most plugin options at the same time. Otherwise, your code will be managing large amounts of data for no reason.</p>
+<p>Another benefit of using arrays instead of individual options is that the names of each option can be much shorter and simpler, since you only need to worry about avoiding naming conflicts at the top option name level, as opposed to each key in the array. Finally, having all the options stored in a single array makes the bulk removal of these options much easier than if they were all stored separately, as we will see in the next recipe.</p>
+<p>The bulk of this recipe's code defines a utility function called <kbd>ch2pho_get_options</kbd>, which is used to make sure that we always get good values when retrieving options, even when our plugin runs for the first time or new options are introduced by an upgrade. As part of this utility function, we use the <kbd>wp_parse_args</kbd> function to quickly compare an existing set of options retrieved by the <kbd>get_option</kbd> function with the current set of default plugin options, specified by the <kbd>$new_options</kbd> array. For each array element that is not found in the existing options, <kbd>wp_parse_args</kbd> will simply merge it into the resulting array, which is returned at the end of the function. The last part of our option-retrieval function checks whether the previous option array was empty or whether any new keys were added to the new array, using the PHP <kbd>array_diff_key</kbd> function. In either of these cases, it will save the updated options array back to the site database.</p>
+<p>It should finally be noted that, while the <kbd>ch2pho_get_options</kbd> function returns an array of all the site options, we are not actually using this return value in this recipe; we will use it in later recipes in this chapter.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<ul>
+<li>The <em>Adding output content to page headers using plugin actions</em> recipe in <a href="f7395811-9e4a-4913-8a02-cc68875d0071.xhtml" target="_blank">Chapter 2</a>, <em>Plugin Framework Basics</em></li>
+<li>The <em>Inserting link statistics tracking code in page body using plugin filters</em> recipe in <a href="f7395811-9e4a-4913-8a02-cc68875d0071.xhtml" target="_blank">Chapter 2</a>, <em>Plugin Framework Basics</em></li>
+<li>The <em>Removing plugin data on deletion</em> recipe</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Removing plugin data on deletion</h1>
+                </header>
+            
+            <article>
+                
+<p>As with any piece of software, it is quite possible that users might decide to remove a plugin from their WordPress installation if they no longer require the functionality that it provides or they have found an alternative that they prefer.</p>
+<p>When this happens, the plugin author must decide if all of the configuration data stored in the site's database should be left in place, making it easier to re-install the plugin down the road, or to remove all of this information, leaving a clean database behind.</p>
+<p>This recipe shows how to create a de-installation function that will remove options data from a site's database.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>You should have already followed the <em>Storing user settings using arrays</em> recipe to have options data ready for deletion, <span>and the resulting plugin should still be active in your development site</span>. Alternatively, you can get the resulting code (<kbd>Chapter 3/ch2-page-header-output/ch2-page-header-output-v3.php</kbd>) from the downloaded code bundle. You should rename the file <kbd>ch2-page-header-output-v3.php</kbd> as <kbd>ch2-page-header-output.php</kbd>, and have activated the plugin once before starting this recipe.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Navigate to the <kbd>ch2-page-header-output</kbd> folder of the WordPress plugin directory of your development installation.</li>
+<li>Create a new file called <kbd>uninstall.php</kbd>.</li>
+<li>Open the new file in a text editor and add the following code to it:</li>
+</ol>
+<pre style="padding-left: 60px">&lt;?php<br/>// Check that code was called from WordPress with<br/>// uninstallation constant declared<br/>if ( !defined( 'WP_UNINSTALL_PLUGIN' ) ) {<br/>    exit;<br/>}<br/> <br/>// Check if options exist and delete them if present<br/>if ( false != get_option( 'ch2pho_options' ) ) {<br/>    delete_option( 'ch2pho_options' );<br/>}</pre>
+<ol start="4">
+<li>Save and close the plugin file.</li>
+<li>Navigate to the administration page of your development WordPress installation.</li>
+<li>Click on <span class="packt_screen">Plugins</span> on the left-hand navigation menu.</li>
+<li>Deactivate the <kbd>Chapter 2 - Page Header Output</kbd> plugin.</li>
+<li>Make a copy of your plugin and uninstallation files to avoid losing them upon deletion of the plugin in the following steps. The copy should be moved outside of the <kbd>plugins</kbd> folder to avoid WordPress seeing two copies of the plugin.</li>
+</ol>
+<p> </p>
+<ol start="9">
+<li>Click on the <span class="packt_screen">Delete</span> link under the <kbd>Chapter 2 - Page Header Output</kbd> plugin.</li>
+<li>Click on the <span class="packt_screen">OK</span> button to delete all the plugin files.</li>
+</ol>
+<div class="CDPAlignCenter CDPAlign"><img height="143" width="406" class="image-border" src="assets/2dc856af-5ff9-4c2e-9e5f-3b55b7b6b853.png"/></div>
+<div class="packt_infobox">Depending on the configuration of your development site, you may be prompted to provide FTP credentials before WordPress is able to delete the plugin files.</div>
+<ol start="11">
+<li>Using your web server's MySQL database administration tool, query the <kbd>wpdev_options</kbd> table of your WordPress installation for an option with the name <kbd>ch2pho_options</kbd> to see that the option has been deleted:</li>
+</ol>
+<pre style="padding-left: 60px">select * from wpdev_options where option_name = 'ch2pho_options'</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>When a plugin is inactive and a site administrator clicks on its deletion link, WordPress checks for the presence of a file called <kbd>uninstall.php</kbd> in the plugin directory. If the file exists and the user clicks the OK button to delete, WordPress proceeds with the deletion of all the plugin files and executes the content of the <kbd>uninstall.php</kbd> file. This file should contain straight PHP code that deletes all the plugin options and any other content created by the plugin's code. Once executed, the uninstall script will be deleted with the rest of the files.</p>
+<p>Looking at the content of the uninstall script, the first few lines of code check for the presence of a constant that WordPress should have set before calling the script. If it is not present, the script will abort immediately for security purposes. This ensures that an external visitor knowing that a certain plugin is installed won't be able to try to delete it. Once the intent has been verified, the rest of the code checks for the existence of the <kbd>ch2pho_options</kbd> array that was created in the previous recipe and deletes it. If you created more than one option to store your configuration data, you will need to delete each option with individual calls to the <kbd>delete_option</kbd> function.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<ul>
+<li>The <em>Storing user settings using arrays</em> recipe</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating an administration page menu item in the settings menu</h1>
+                </header>
+            
+            <article>
+                
+<p>After defining default values for plugin configuration options, the next step is to create a place where users will be able to view and change these values. By using the WordPress API, we are able to create new items in the administration menu that will later allow us to create custom plugin configuration pages. This recipe shows how to create a new menu item that will appear under the <span class="packt_screen">Settings</span> subsection of the administration menu.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>You should have already followed the <em>Storing user settings using arrays</em> recipe to have options data available to manage. Alternatively, you can get the resulting code (<kbd>Chapter 3/ch2-page-header-output/ch2-page-header-output-v3.php</kbd>) from the downloaded code bundle. You should rename the file <kbd>ch2-page-header-output-v3.php</kbd> as <kbd>ch2-page-header-output.php</kbd> before starting this recipe.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Navigate to the root directory of your WordPress development installation.</li>
+<li>Open the <kbd>wp-config.php</kbd> file in a text editor.</li>
+<li>Set the <kbd>WP_DEBUG</kbd> variable to be <kbd>true</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px">define('WP_DEBUG', true);</pre>
+<ol start="4">
+<li>Save the configuration file.</li>
+<li>Navigate to the <kbd>ch2-page-header-output</kbd> folder of the WordPress plugin directory of your development installation.</li>
+<li>Open the <kbd>ch2-page-header-output.php</kbd> file in a text editor.</li>
+<li>Add the following line of code to register a function to be called when WordPress is building the administration pages menu:</li>
+</ol>
+<pre style="padding-left: 60px">add_action( 'admin_menu', 'ch2pho_settings_menu' );</pre>
+<ol start="8">
+<li>Add the following code section to provide an implementation for the <kbd>ch2pho_settings_menu</kbd> function:</li>
+</ol>
+<pre style="padding-left: 60px">function ch2pho_settings_menu() {<br/>    add_options_page( 'My Google Analytics Configuration',<br/>                      'My Google Analytics', 'manage_options',<br/>                      'ch2pho-my-google-analytics', <br/>                      'ch2pho_config_page' );<br/>}</pre>
+<ol start="9">
+<li>Save and close the plugin file.</li>
+<li>Navigate to the administration page of your development WordPress installation.</li>
+<li><span class="packt_screen">Activate</span> the <kbd>Chapter 2 - Page Header Output</kbd> plugin if you left it deactivated after following the previous recipe.</li>
+</ol>
+<p> </p>
+<ol start="12">
+<li>Click on the <span class="packt_screen">Settings</span> section on the left-hand navigation menu to expand it. You will see a new menu item called <span class="packt_screen">My</span> <span class="packt_screen">Google</span> <span class="packt_screen">Analytics</span> in the tree, created from the code that was just added to the plugin.</li>
+</ol>
+<div class="CDPAlignCenter CDPAlign"><img height="196" width="132" class="image-border" src="assets/d75eb1d6-056d-435f-8b21-746c63f24711.png"/></div>
+<ol start="13">
+<li>Click on the <span class="packt_screen">My</span> <span class="packt_screen">Google</span> <span class="packt_screen">Analytics</span> menu item. You will see an error message displayed, since WordPress cannot find the function intended to populate the configuration page. This error will go away once you perform the recipe titled <em>Rendering the admin page contents using HTML</em>.</li>
+<li>Back in the <kbd>wp-config.php</kbd> file, return the <kbd>WP_DEBUG</kbd> variable to its default value of <kbd>false</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px">define('WP_DEBUG', false);</pre>
+<ol start="15">
+<li>Save and close the configuration file.</li>
+</ol>
+<div class="packt_infobox">If you had not set the <kbd>WP_DEBUG</kbd> variable to be <kbd>true</kbd> at the beginning of this recipe, WordPress would only display a blank page after performing step 13, instead of displaying an error message.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The first line of code of this recipe registers a function to be called when WordPress is building the administration menu. When it is executed, the custom function that we created makes a call to the <kbd>add_options_page</kbd> function to add an item to the <span class="packt_screen">Settings</span> menu. This function has a number of parameters that we will look at, as follows:</p>
+<pre>add_options_page( $page_title, $menu_title, $capability,<br/>                  $menu_slug, $function );</pre>
+<p>The first two parameters are text strings that will be visible to site administrators, with the first one appearing in the browser title bar or tab title, and the second being the text of the submenu item that will appear under the <span class="packt_screen">Settings</span> menu.</p>
+<p>The third parameter is a bit more complicated and refers to the <strong>user capability</strong> required to be able to see and access this menu item. When creating users in a WordPress installation, each user is assigned one of the five default user roles (Subscriber, Administrator, Editor, Author, or Contributor). Each of these roles is mapped to a number of permissions that determine the actions that users with this role can perform. For a full list of roles and their associated capabilities, please refer to the WordPress Codex page on the topic (<a href="https://codex.wordpress.org/Roles_and_Capabilities"><span class="URLPACKT">https://codex.wordpress.org/Roles_and_Capabilities</span></a>). In this example, we used the user capability <kbd>manage_options</kbd>, which is assigned to users who have administrative rights on the site and to super admins when working in a network WordPress installation.</p>
+<p>The fourth menu item, <kbd>menu_slug</kbd>, is a text string that will be used internally by WordPress to identify the menu item. This string should be unique to avoid conflicts with other plugins.</p>
+<div class="packt_infobox">The <kbd>menu_slug</kbd> name should be all lowercase to ensure that more advanced functionalities, such as WordPress meta boxes, work correctly.</div>
+<p>The last parameter specifies the name of the function to be called to display the contents of the configuration page when the submenu item is clicked.</p>
+<p>The <span class="packt_screen">Settings</span> menu is a perfect location for plugins that only require a single configuration page, as you may have seen when installing other plugins, while more complex plugins that require multiple menu sections should use the technique shown in the next recipe.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>While new items will always be located under the default <span class="packt_screen">Settings</span> menu items created by WordPress (General, Writing, Reading, and so on), plugin developers do have some control over the location of their plugin in the list.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Settings hook priority to determine menu order</h1>
+                </header>
+            
+            <article>
+                
+<p>As mentioned in the previous chapter, when action hooks were first introduced, the <kbd>add_action</kbd> function's third parameter is used to indicate the priority of a registered callback over other functions registered for the same hook (in this case, the <kbd>admin_menu</kbd> hook). To ensure that the newly created menu item is as high as possible in the menu, the priority of the registered function can be set to a value of <kbd>1</kbd>:</p>
+<pre>add_action( 'admin_menu', 'ch2pho_settings_menu', 1 );</pre>
+<div class="packt_infobox">It should be noted that other plugins can also set their callback to this priority. In such cases, alphabetical priority and activation sequence are other factors to determine which menu item will be displayed first after <strong>Permalinks</strong>.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<ul>
+<li>The <em>Storing user settings using arrays</em> recipe</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating a multi-level administration menu</h1>
+                </header>
+            
+            <article>
+                
+<p>When plugins grow in complexity, their configuration options often grow in numbers, giving users a high level of flexibility in choosing how the plugin behaves on their site. While it is possible to display all the plugin options on a single lengthy configuration page, creating a new top-level menu item with multiple sections can help organize parameters in logical groupings that will allow users to find what they are looking for more quickly.</p>
+<p>This recipe shows how to create a new top-level menu item in the administration menu with an accompanying submenu item.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Navigate to the WordPress plugin directory of your development installation.</li>
+<li>Create a new directory called <kbd>ch3-multi-level-menu</kbd>.</li>
+<li>Navigate to this directory and create a new text file called <kbd>ch3-multi-level-menu.php</kbd>.</li>
+<li>Open the new file in a code editor and add an appropriate header at the top of the plugin file, naming the plugin <kbd>Chapter 3 - Multi-level menu</kbd>.</li>
+<li>Add the following line of code to register a function that will be called when WordPress is preparing data to display the site's administration menu:</li>
+</ol>
+<pre style="padding-left: 60px">add_action( 'admin_menu', 'ch3mlm_admin_menu' );</pre>
+<ol start="6">
+<li>Add the following code section to provide an implementation for the <kbd>ch3mlm_admin_menu</kbd> function:</li>
+</ol>
+<pre style="padding-left: 60px">function ch3mlm_admin_menu() {<br/>    // Create top-level menu item<br/>    add_menu_page( 'My Complex Plugin Configuration Page',<br/>                   'My Complex Plugin', 'manage_options',<br/>                   'ch3mlm-main-menu', 'ch3mlm_my_complex_main',<br/>                   plugins_url( 'myplugin.png', __FILE__ ) );<br/><br/>    // Create a sub-menu under the top-level menu<br/>    add_submenu_page( 'ch3mlm-main-menu',<br/>                      'My Complex Menu Sub-Config Page', <br/>                      'Sub-Config Page',<br/>                      'manage_options', 'ch3mlm-sub-menu',<br/>                      'ch3mlm_my_complex_submenu' );<br/>}</pre>
+<ol start="7">
+<li>Save and close the plugin file.</li>
+<li>Find and download a PNG format 24 x 24 pixel icon from a site, such as IconArchive (<a href="http://www.iconarchive.com"><span class="URLPACKT">http://www.iconarchive.com</span></a>), resize it to 20 x 20 pixels, and save it as <kbd>myplugin.png</kbd> in the plugin directory.</li>
+<li>Navigate to the <span class="packt_screen">Plugins</span> section of your site's administration area.</li>
+<li><span class="packt_screen">Activate</span> your new plugin.</li>
+</ol>
+<p> </p>
+<ol start="11">
+<li>You will now see a new menu item in the administration menu.</li>
+</ol>
+<div class="CDPAlignCenter CDPAlign"><img height="98" width="151" class="image-border" src="assets/818ffe43-3165-4096-85d5-e426a5e392ec.png"/></div>
+<ol start="12">
+<li>Expand the top-level new menu item to see the submenu item.</li>
+</ol>
+<div class="packt_infobox">As with the previous recipe, clicking on the menu items will display an error, since we have not implemented a function to generate actual content for these menu items. We will not be implementing pages for these two menu items, but you can use a technique similar to what is shown in the <em>Rendering the admin page contents using HTML</em> recipe to create your own <kbd>ch3mlm_my_complex_main</kbd> and <kbd>ch3mlm_my_complex_submenu</kbd> functions.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>add_menu_page</kbd> function is very similar to the <kbd>add_options_page</kbd> function seen in the previous recipe, with its first five parameters being identical:</p>
+<pre>add_menu_page( $page_title, $menu_title, $capability,<br/>               $menu_slug, $function, $icon_url, $position );</pre>
+<p>The last two items are specific to this function, with the first allowing us to display a custom icon in the menu next to our new top-level item, and the second specifying where the new menu should be positioned within the administration menu.</p>
+<div class="packt_infobox">While it might seem interesting to use the <kbd>position</kbd> argument of the <kbd>add_menu_page</kbd> function to specify an exact position for a new menu item, doing so is risky, since only one menu item will be displayed if two plugins create entries with the same <kbd>position</kbd> value. If the <kbd>position</kbd> parameter is not specified, the new menu item will appear at the bottom of the menu structure, which should be fine in most cases.</div>
+<p>Once the first menu item has been created, the <kbd>add_submenu_page</kbd> function can be used to attach a submenu item. The following are its parameters, which are virtually identical to the <kbd>add_options_page</kbd> function, except for the first parameter, which should be the unique string identifier of the top-level menu item to which the submenu should be attached:</p>
+<pre>add_submenu_page( $parent_slug, $page_title, $menu_title,<br/>                  $capability, $menu_slug, $function );</pre>
+<p>While it is possible to use this technique to create top-level menu items for plugins with a single configuration page, these simpler extensions should create a single entry under the Settings menu, as shown in the previous recipe.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<ul>
+<li>The <em>Creating an administration page menu item in the Settings menu</em> recipe</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Adding menu items leading to external pages</h1>
+                </header>
+            
+            <article>
+                
+<p>While the WordPress plugin repository offers a number of useful sections under each plugin's page to host important information, including its description, FAQs, screenshots and support forums, a number of developers prefer to move documentation, FAQs, and even support to their own website. This allows them to create more feature-rich content for these sections and to create a more customized brand experience, especially in the case of plugins that offer free and premium versions.</p>
+<p>This recipe shows how to add menu items that will lead users to external web pages.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>You should have already followed the <em>Creating a multi-level administration menu</em> recipe to have a multi-level menu in place in your administration interface and the resulting plugin should still be active. Alternatively, you can get the resulting code (<kbd>Chapter 3/ch3-multi-level-menu/ch3-multi-level-menu.php</kbd>) from the downloaded code bundle.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Navigate to the <kbd>ch3-multi-level-menu</kbd> folder of the WordPress plugin directory of your development installation.</li>
+<li>Open the <kbd>ch3-multi-level-menu.php</kbd> file in a text editor.</li>
+<li>Add the following lines of code at the end of the <kbd>ch3mlm_admin_menu</kbd> function after the two calls to <kbd>add_submenu_page</kbd>:</li>
+</ol>
+<pre>   global $submenu;<br/>   $url = 'https://www.packtpub.com/books/info/packt/faq';<br/>   $submenu['ch3mlm-main-menu'][] = array( 'FAQ', 'manage_options', $url );</pre>
+<ol start="4">
+<li>Save and close the plugin file.</li>
+<li>Refresh the administration page of your development WordPress installation to see the new submenu item under the <span class="packt_screen">My Complex Plugin</span> menu:</li>
+</ol>
+<div class="CDPAlignCenter CDPAlign"><img height="118" width="147" class="image-border" src="assets/dd20aa1d-3145-4147-bc2f-d68947d222de.png"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>As calls to the menu creation functions are made by the core WordPress code and all active plugins, the system builds an array containing all the items that will be displayed to the current user based on their access level. This recipe's code accesses the WordPress global variable containing this array and simply inserts an extra element under the <kbd>ch3mlm-main-menu</kbd> parent menu that was created in the previous recipe. The data that gets added is an array containing three elements: the label of the menu item, the permissions required to see the item, and the URL that will be assigned to the new menu link.</p>
+<p>While this code works in current versions of WordPress, and has worked for many versions, there is a chance that it might no longer work at some point if WordPress changes the way it builds its menus. That being said, if changes are made to the way that menus are constructed, there will likely be new APIs introduced to reproduce this functionality, as it is widely used.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<ul>
+<li>The <em>Creating a multi-level administration menu</em> recipe</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Hiding items which users should not access from the default menu</h1>
+                </header>
+            
+            <article>
+                
+<p>Many users praise WordPress for its ease of use and streamlined administration interface. That being said, almost everyone who has deployed it to new users has instructed them to avoid certain menu items, as they do not need to enter these sections and could potentially introduce site malfunctions if they modify settings in these areas.</p>
+<p>A better solution than prevention through training is to use a few simple API functions to hide the undesired menu items. This recipe shows how to use these functions to remove the Comments editor and Permalinks settings menu items.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Navigate to the WordPress plugin directory of your development installation.</li>
+<li>Create a new directory called <kbd>ch3-hide-menu-item</kbd>.</li>
+<li>Navigate to this directory and create a new text file called <kbd>ch3-hide-menu-item.php</kbd>.</li>
+<li>Open the new file in a code editor and add an appropriate header at the top of the plugin file, naming the plugin <kbd>Chapter 3 - Hide Menu Item</kbd>.</li>
+<li>Add the following line of code to register a function that will be called when WordPress is preparing data to display the site's navigation menu:</li>
+</ol>
+<pre style="padding-left: 60px">add_action( 'admin_menu', 'ch3hmi_hide_menu_item' );</pre>
+<ol start="6">
+<li>Add the following code section to provide an implementation for the <kbd>ch3hmi_hide_menu_item</kbd> function, hiding the <span class="packt_screen">Comments</span> menu item:</li>
+</ol>
+<pre style="padding-left: 60px">function ch3hmi_hide_menu_item() {<br/>    remove_menu_page( 'edit-comments.php' );<br/>}</pre>
+<ol start="7">
+<li>Add an extra function call to the <kbd>ch3hmi_hide_menu_item</kbd> function to hide the Permalinks submenu item found under the Settings menu:</li>
+</ol>
+<pre style="padding-left: 60px">remove_submenu_page( 'options-general.php',<br/>                     'options-permalink.php' );</pre>
+<ol start="8">
+<li>Save and close the plugin file.</li>
+<li>Navigate to the <span class="packt_screen">Plugins</span> section of the administration interface.</li>
+<li><span class="packt_screen">Activate</span> your new plugin.</li>
+<li>Look at the administration menu to see that the <span class="packt_screen">Comments</span> menu is no longer visible:</li>
+</ol>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img height="109" width="85" class="image-border" src="assets/f65a53da-98a5-431f-9a66-aa4f8caf9f0e.png"/></div>
+<ol start="12">
+<li>Expand the <span class="packt_screen">Settings</span> menu to see that the <span class="packt_screen">Permalinks</span> submenu item is not visible either.</li>
+</ol>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The default WordPress administration menu uses the names of the PHP code files used to render each section as their unique identifiers. One way to quickly find out the identifier for a menu item is to hover the mouse cursor over it in a web browser and to look at the address that the link points to. In the case of the <span class="packt_screen">Comments</span> menu item, the URL is <kbd>http://localhost/wp-admin/edit-comments.php</kbd> ; thus the use of <kbd>edit-comments.php</kbd> in the call to <kbd>remove_menu_page</kbd>.</p>
+<div class="packt_infobox">A similar technique was used to determine the arguments to pass to the <kbd>remove_submenu_page</kbd> function, identifying that the <span class="packt_screen">Settings</span> section has a URL of <kbd>http://localhost/wp-admin/options-general.php</kbd> , while the <span class="packt_screen">Permalinks</span> section has the address <kbd>http://localhost/wp-admin/options-permalink.php</kbd>.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Rendering the admin page contents using HTML</h1>
+                </header>
+            
+            <article>
+                
+<p>Once a custom menu item has been created, WordPress will call the function associated with it when it gets visited. The assigned function's main purpose is to render a configuration page containing a form with all the options available to the user and to send the captured data back to WordPress for processing.</p>
+<p>There are two main methods that can be used to render plugin configuration pages: straight HTML and the Settings API. This recipe explores the use of HTML to create a configuration panel, while a later recipe will show how to use the Settings API to prepare the page output.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>You should have already followed the <em>Creating an administration page menu item in the Settings menu</em> recipe <span>and the resulting plugin should still be active in your development site</span>. Alternatively, you can get the resulting code (<kbd>Chapter 3/ch2-page-header-output/ch2-page-header-output-v4.php</kbd>) from the downloaded code bundle. You should rename the file <kbd>ch2-page-header-output-v4.php</kbd> as <kbd>ch2-page-header-output.php</kbd> before starting this recipe.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Navigate to the <kbd>ch2-page-header-output</kbd> folder of the WordPress plugin directory of your development installation.</li>
+<li>Open the <kbd>ch2-page-header-output.php</kbd> file in a text editor.</li>
+</ol>
+<p> </p>
+<ol start="3">
+<li>Add the following lines of code to implement the rendering code for the plugin options page:</li>
+</ol>
+<pre style="padding-left: 60px">function ch2pho_config_page() {<br/>    // Retrieve plugin configuration options from database<br/>    $options = ch2pho_get_options();<br/>    ?&gt;<br/> <br/>    &lt;div id="ch2pho-general" class="wrap"&gt;<br/>    &lt;h2&gt;My Google Analytics&lt;/h2&gt;&lt;br /&gt;<br/> <br/>    &lt;form method="post" action="admin-post.php"&gt; <br/>    &lt;input type="hidden" name="action"<br/>           value="save_ch2pho_options" /&gt;<br/> <br/>    &lt;!-- Adding security through hidden referrer field --&gt;<br/>    &lt;?php wp_nonce_field( 'ch2pho' ); ?&gt;<br/>    Account Name: &lt;input type="text" name="ga_account_name"<br/>     value="&lt;?php echo esc_html( $options['ga_account_name'] );<br/>     ?&gt;"/&gt;&lt;br /&gt;<br/>    Track Outgoing Links: &lt;input type="checkbox"<br/>     name="track_outgoing_links"<br/>     &lt;?php checked( $options['track_outgoing_links'] ); ?&gt;/&gt;<br/>    &lt;br /&gt;&lt;br /&gt;<br/>    &lt;input type="submit" value="Submit" class="button-primary"/&gt;<br/>    &lt;/form&gt;<br/>    &lt;/div&gt;<br/>&lt;?php }</pre>
+<ol start="4">
+<li>Save and close the plugin file.</li>
+<li>Click on the <span class="packt_screen">Settings</span> section in the administration pages.</li>
+<li>Click on the <span class="packt_screen">My</span> <span class="packt_screen">Google</span> <span class="packt_screen">Analytics</span> menu item to display the plugin configuration page.</li>
+</ol>
+<div class="CDPAlignCenter CDPAlign"><img height="114" width="201" class="image-border" src="assets/42f829d0-0345-462a-8cb6-2d11a589aaf3.png"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>Any output generated within the configuration page implementation function will be sent to the browser, enclosed within the WordPress administration interface layout. In this recipe's code, we first start by using the <kbd>ch2pho_get_options</kbd> function that we defined earlier in this chapter to retrieve all options for the plugin, conveniently organized in an array that we can store in a single variable.</p>
+<p>We then use a closing PHP bracket to be able to write direct HTML code for the rest of the function's body, sending this content directly to the browser. The HTML code takes care of creating a standard form, rendering a text field to display and accepting new values for the Google Analytics Account Number, and a checkbox for the user to specify whether or not outgoing links should be tracked. Finally, the HTML code adds a Submit button to allow users to submit any changes made to the plugin's configuration.</p>
+<p>Taking a closer look at the code, it also contains small snippets of PHP code that display the current configuration values when the options page is displayed and uses the <kbd>checked</kbd> WordPress utility function to output the correct HTML code when the passed argument is true.</p>
+<p>The biggest advantage of using straight HTML to render a plugin's configuration page is that it allows for the creation of intricate layouts to present all of the options to the end user. This is in sharp contrast to using the Settings API, as we will see in a later recipe. HTML is also easier to understand for many web designers than working with intricate functions.</p>
+<div class="packt_infobox">It should be noted that any changes submitted from this form in its current state won't be saved, since we have not implemented the code necessary to process the submitted data and store it back in the <kbd>options</kbd> database table. This will be covered in the next recipe.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>As soon as user submission processing comes into play, it is important to think about security, to be sure to avoid the most common application security risks (<a href="https://www.owasp.org/index.php/Top_10_2017-Top_10" target="_blank">https://www.owasp.org/index.php/Top_10_2017-Top_10</a>). The form that was created in this recipe is no exception.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">wp_nonce_field</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>wp_nonce_field</kbd> function that was used in this recipe is part of a security measure to ensure that the data being sent for submission comes from the WordPress administration pages and not an external source. By adding this function call, a hidden text field is added to the plugin configuration form with information that will be checked when the post data is received.</p>
+<p>While it is optional, the first argument of the function is a unique identifier that should always be set to ensure better security. If it is not set, default values will be used, facilitating security breaches. The function also has a number of other optional parameters, as follows:</p>
+<pre>wp_nonce_field( [$action], [$name], [$referer], [$echo] );</pre>
+<p>The other three arguments are used to specify a name for the nonce, which would need to be matched on the receiving end, a Boolean variable to indicate if the referer field should be set for validation, and another Boolean parameter to determine whether the hidden form field should be displayed immediately or returned.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<ul>
+<li>The <em>Creating an administration page menu item in the Settings menu</em> recipe</li>
+<li>The <em>Storing user settings using arrays</em> recipe</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Processing and storing plugin configuration data</h1>
+                </header>
+            
+            <article>
+                
+<p>With the configuration page in place, plugin users will be able to modify configuration options and submit them to be stored in the WordPress database. The missing link at this time is the creation of a data processing function that will receive the data posted by the user and store it in the site's <kbd>options</kbd> table.</p>
+<p>This recipe describes how to implement a data processing function to validate that the information being sent for storage is legitimate and to store the information in an options array.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>You should have already followed the <em>Rendering the admin page contents using HTML</em> recipe <span>and the resulting plugin should still be active in your development site</span>. Alternatively, you can get the resulting code (<kbd>Chapter 3/ch2-page-header-output/ch2-page-header-output-v5.php</kbd>) from the downloaded code bundle. You should rename the file <kbd>ch2-page-header-output-v5.php</kbd> as <kbd>ch2-page-header-output.php</kbd> before starting this recipe.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Navigate to the <kbd>ch2-page-header-output</kbd> folder of the WordPress plugin directory of your development installation.</li>
+<li>Open the <kbd>ch2-page-header-output.php</kbd> file in a text editor.</li>
+<li>Add the following line of code to register a function to be called when WordPress first identifies that the requested page is an administration page:</li>
+</ol>
+<pre style="padding-left: 60px">add_action( 'admin_init', 'ch2pho_admin_init' );</pre>
+<ol start="4">
+<li>Add the following code section to provide an implementation for the <kbd>ch2pho_admin_init</kbd> function:</li>
+</ol>
+<pre style="padding-left: 60px">function ch2pho_admin_init() {<br/>    add_action( 'admin_post_save_ch2pho_options',<br/>                'process_ch2pho_options' );<br/>}</pre>
+<ol start="5">
+<li>Add the following code section to provide an implementation for the <kbd>process_ch2pho_options</kbd> function that was declared in the previous step:</li>
+</ol>
+<pre style="padding-left: 60px">function process_ch2pho_options() { <br/>    // Check that user has proper security level<br/>    if ( !current_user_can( 'manage_options' ) ) {<br/>        wp_die( 'Not allowed' );<br/>    }<br/> <br/>    // Check if nonce field configuration form is present<br/>    check_admin_referer( 'ch2pho' );<br/> <br/>    // Retrieve original plugin options array<br/>    $options = ch2pho_get_options();<br/> <br/>    // Cycle through all text form fields and store their values<br/>    // in the options array<br/>    foreach ( array( 'ga_account_name' ) as $option_name ) {<br/>        if ( isset( $_POST[$option_name] ) ) {<br/>            $options[$option_name] =<br/>                sanitize_text_field( $_POST[$option_name] );<br/>        }<br/>    }<br/> <br/>    // Cycle through all check box form fields and set the options<br/>    // array to true or false values based on presence of variables<br/>    foreach ( array( 'track_outgoing_links' ) as $option_name ) {<br/>        if ( isset( $_POST[$option_name] ) ) {<br/>            $options[$option_name] = true;<br/>        } else {<br/>            $options[$option_name] = false;<br/>        }<br/>    }<br/> <br/>    // Store updated options array to database<br/>    update_option( 'ch2pho_options', $options );<br/> <br/>    // Redirect the page to the configuration form<br/>    wp_redirect( add_query_arg( 'page', <br/>                                'ch2pho-my-google-analytics',<br/>                            admin_url( 'options-general.php' ) ) );<br/>    exit;<br/>}</pre>
+<ol start="6">
+<li>Save and close the plugin file.</li>
+<li>Click on the <span class="packt_screen">Settings</span> section of the administration menu.</li>
+<li>Click on the <span class="packt_screen">My Google Analytics</span> menu item to display the configuration page.</li>
+<li>Change the value of one of the fields and click on the <span class="packt_screen">Submit</span> button.</li>
+<li>When the page refreshes, you will see that the values displayed reflect the values submitted.</li>
+</ol>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>This recipe is the first to introduce an action hook that has a variable name. Instead of writing a specific action hook name when calling <kbd>add_action</kbd>, this hook name starts with the words <kbd>admin_post_</kbd> and is followed by the name of an action that it expects to match with a hidden form field. In this case, the action name is <kbd>save_ch2pho_options</kbd>. Going back to the previous recipe, you can see that this text is the same as the one that was placed in the hidden form field called <kbd>action</kbd>:</p>
+<pre>&lt;input type="hidden" name="action" value="save_ch2pho_options" /&gt;</pre>
+<p>When the configuration page form is submitted, it sends all data to the <kbd>admin-post.php</kbd> script, which checks for an <kbd>action</kbd> field and then sends the data that it received to the associated function, if present.</p>
+<p class="CDPAlignLeft CDPAlign">Once the processing function is executed, the calls to <kbd>current_user_can</kbd> and <kbd>check_admin_referer</kbd> are security measures where we check to see whether the user who is currently logged in has administrative rights and whether the nonce field that was part of the form is present. An error in these permission checks will result in a specific error message, letting the user know that he does not have the rights to perform this action, while the nonce check will display a vague error message to throw off potential hackers:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="123" width="595" class="image-border" src="assets/d6d514ee-fb6b-4abd-8c0a-818b556db561.png"/></div>
+<p>The rest of the function focuses on retrieving the current set of plugin options using the <kbd>ch2pho_get_options</kbd> function, processing the posted fields, and storing the updated values back in the site database. While using <kbd>foreach</kbd> loops might seem to be overkill to store two simple data fields, this approach can easily scale up to support large amounts of configuration fields.</p>
+<p>The final step is a call to the <kbd>wp_redirect</kbd> function to send the browser back to the plugin options page after all the data has been stored. It is important to always call the <kbd>exit</kbd> PHP function after a call to <kbd>wp_redirect</kbd>, as shown in this recipe.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<ul>
+<li>The <em>Rendering the admin page contents using HTML</em> recipe</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Displaying a confirmation message when options are saved</h1>
+                </header>
+            
+            <article>
+                
+<p>An important usability aspect of any user interface is to display an acknowledgement message when users have completed a task successfully. As you may have noticed in the previous recipe, WordPress does not provide any user feedback by default after configuration data has been saved to the options table.</p>
+<p>This recipe explains how to display an acknowledgement message on the configuration page after the user has updated the plugin's configuration options.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>You should have already followed the <em>Processing and storing plugin configuration data</em> recipe <span>and the resulting plugin should still be active in your development site</span>. Alternatively, you can get the resulting code (<kbd>Chapter 3/ch2-page-header-output/ch2-page-header-output-v6.php</kbd>) from the downloaded code bundle. You should rename the file <kbd>ch2-page-header-output-v6.php</kbd> to <kbd>ch2-page-header-output.php</kbd> before starting this recipe.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Navigate to the <kbd>ch2-page-header-output</kbd> folder of the WordPress plugin directory of your development installation.</li>
+<li>Open the <kbd>ch2-page-header-output.php</kbd> file in a text editor.</li>
+</ol>
+<p> </p>
+<ol start="3">
+<li>Modify the call to <kbd>wp_redirect</kbd> at the end of the <kbd>process_ch2pho_options</kbd> function, as follows, with modifications shown in bold:</li>
+</ol>
+<pre style="padding-left: 60px">wp_redirect( add_query_arg(<br/>                 <strong>array( 'page' =&gt; 'ch2pho-my-google-analytics',</strong><br/><strong>                        'message' =&gt; '1' ),</strong><br/><strong>                 admin_url( 'options-general.php' )</strong> ) );</pre>
+<ol start="4">
+<li>Add the following code (in bold) after the configuration page title within the <kbd>ch2pho_config_page</kbd> function:</li>
+</ol>
+<pre style="padding-left: 60px">&lt;h2&gt;My Google Analytics&lt;/h2&gt;&lt;br /&gt;<br/><br/><strong>&lt;?php if ( isset( $_GET['message'] ) &amp;&amp;<br/>           $_GET['message'] == '1' ) { ?&gt;</strong><br/><strong>    &lt;div id='message' class='updated fade'&gt;<br/>    &lt;p&gt;&lt;strong&gt;Settings </strong><strong>Saved&lt;/strong&gt;&lt;/p&gt;&lt;/div&gt;<br/></strong><strong>&lt;?php } ?&gt;</strong></pre>
+<ol start="5">
+<li>Save and close the plugin file.</li>
+<li>Click on the Settings section of the administration menu.</li>
+<li>Click on the <span class="packt_screen">My</span> <span class="packt_screen">Google</span> <span class="packt_screen">Analytics</span> menu item.</li>
+<li>Change the value of one of the fields and click on the <span class="packt_screen">Submit</span> button to see the newly created message indicating that the settings have been saved.</li>
+</ol>
+<div class="CDPAlignCenter CDPAlign"><img height="202" width="410" class="image-border" src="assets/07a9b0a1-1c80-481e-be7c-c0d3ee60e4d4.png"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>When a redirection call is made, user-submitted fields and PHP variables do not carry forward to the target page. Therefore, we need to use another method, query arguments, to determine that a confirmation message should be displayed.</p>
+<p>The first part of the recipe modifies the existing call to <kbd>wp_redirect</kbd> slightly to add a new query variable called <kbd>message</kbd>, set to a value of <kbd>1</kbd>.</p>
+<p>Once it receives this variable, the code responsible for rendering the options page can display a message, following the standard WordPress styling.</p>
+<p>The same mechanism could be used to display different messages based on the outcome of the options storage. For example, if some fields need to receive data formatted a certain way, the <kbd>process_ch2pho_options</kbd> function could set the message value differently depending on the success or failure of the data processing operation.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<ul>
+<li>The <em>Processing and storing plugin configuration data</em> recipe</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Adding custom help pages</h1>
+                </header>
+            
+            <article>
+                
+<p>As descriptive as field labels can be, a good plugin always needs to be accompanied by a set of documentation to allow users to quickly understand how to activate the plugin and perform the right steps to get the expected results. While a <kbd>ReadMe</kbd> file is often what developers first think of producing, users almost never read an external file or instructions on the official WordPress plugin page, they just install the plugin and try to figure it out by themselves.</p>
+<p>To address this concern, WordPress introduced the ability to create elaborate multi-section help pages right in the plugin's administration pages to enable users to quickly get answers to their questions. This recipe shows you how to register the appropriate callback function to add a help section to your plugin configuration page, containing multiple tabs of information.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>You should have already followed the <em>Displaying a confirmation message when options are saved</em> recipe, <span>and the resulting plugin should still be active in your development site</span>. Alternatively, you can get the resulting code (<kbd>Chapter 3/ch2-page-header-output/ch2-page-header-output-v7.php</kbd>) from the downloaded code bundle. You should rename the file <kbd>ch2-page-header-output-v7.php</kbd> as <kbd>ch2-page-header-output.php</kbd> before starting this recipe.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Navigate to the <kbd>ch2-page-header-output</kbd> folder of the WordPress plugin directory of your development installation.</li>
+<li>Open the <kbd>ch2-page-header-output.php</kbd> file in a text editor.</li>
+<li>Find the <kbd>ch2pho_settings_menu</kbd> function in the existing code.</li>
+<li>Modify the code to store the return value of the <kbd>add_options_page</kbd> function call to a variable:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>$options_page =</strong> <br/>    add_options_page( 'My Google Analytics Configuration', <br/>                      'My Google Analytics',<br/>                      'manage_options',<br/>                      'ch2pho-my-google-analytics',<br/>                      'ch2pho_config_page' );</pre>
+<ol start="5">
+<li>Add the following block of code to the <kbd>ch2pho_settings_menu</kbd> function to register an action that will be called when the plugin's options page is loaded:</li>
+</ol>
+<pre style="padding-left: 60px">if ( !empty( $options_page ) ) {<br/>    add_action( 'load-' . $options_page, 'ch2pho_help_tabs' );<br/>}</pre>
+<ol start="6">
+<li>Add the following code at the end of the plugin file to implement the newly declared <kbd>ch2pho_help_tabs</kbd> function:</li>
+</ol>
+<pre style="padding-left: 60px">function ch2pho_help_tabs() {<br/>    $screen = get_current_screen();<br/>    $screen-&gt;add_help_tab( array(<br/>            'id'       =&gt; 'ch2pho-plugin-help-instructions',<br/>            'title'    =&gt; 'Instructions',<br/>            'callback' =&gt; 'ch2pho_plugin_help_instructions',<br/>        ) );<br/>   <br/>    $screen-&gt;add_help_tab( array(<br/>             'id'       =&gt; 'ch2pho-plugin-help-faq',<br/>             'title'    =&gt; 'FAQ',<br/>             'callback' =&gt; 'ch2pho_plugin_help_faq',<br/>        ) );<br/>     <br/>    $screen-&gt;set_help_sidebar( '&lt;p&gt;This is the sidebar<br/>        content&lt;/p&gt;' );<br/>}</pre>
+<ol start="7">
+<li>Add the following code section to provide an implementation for the <kbd>ch2pho_plugin_help_instructions</kbd> function:</li>
+</ol>
+<pre style="padding-left: 60px">function ch2pho_plugin_help_instructions() { ?&gt;<br/>    &lt;p&gt;These are instructions explaining how to use this <br/>       plugin.&lt;/p&gt;<br/>&lt;?php }</pre>
+<ol start="8">
+<li>Add the following code section to provide an implementation for the <kbd>ch2pho_plugin_help_faq</kbd> function:</li>
+</ol>
+<pre style="padding-left: 60px">function ch2pho_plugin_help_faq() { ?&gt;<br/>    &lt;p&gt;These are the most frequently asked questions on the use of<br/>       this plugin.&lt;/p&gt;<br/>&lt;?php }</pre>
+<ol start="9">
+<li>Save and close the plugin file.</li>
+<li>Click on the <span class="packt_screen">Settings</span> section of the administration menu.</li>
+<li>Click on the <span class="packt_screen">My</span> <span class="packt_screen">Google</span> <span class="packt_screen">Analytics</span> menu to display the plugin configuration page. You will now see a <span class="packt_screen">Help</span> tab appear in the top-right corner of the page.</li>
+<li>Click on the <span class="packt_screen">Help</span> tab to see all of the help content that has been added to the plugin.</li>
+</ol>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img height="222" width="624" class="image-border" src="assets/35b9891e-780b-4c86-96c4-dece2de0d7d7.png"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>As first discussed in the <em>Processing and storing plugin configuration data</em> recipe, some WordPress action hooks have names that contain a variable element that allows the plugin developer to get code executed when a specific page is rendered, or when data from a specific form is submitted. In this example, the <kbd>load-&lt;pagename&gt;</kbd> hook is used to register a function that gets executed when a specific administration page is accessed by the user.</p>
+<p>Once the callback occurs, the function's code retrieves a reference to the WordPress screen object, which contains data about the screen that is currently displayed, along with a number of utility functions to manipulate and add content to the page. The code from the recipe then proceeds to register functions to render the content of two sections in the <span class="packt_screen">Help</span> tab using the <kbd>add_help_tab</kbd> function.</p>
+<p>The <kbd>add_help_tab</kbd> function is a little different from the functions that we have seen before, expecting a single array of options as its parameter. These options indicate a unique identifier for the menu section, a title to be displayed on each tab, and the name of the function that will render the tab contents. It is also possible to replace the callback argument with a parameter called content, which would directly contain the HTML code intended to be displayed in the <span class="packt_screen">Help</span> tab. With this information, WordPress is able to integrate the provided HTML code when rendering the options page interface, including all of the necessary wrapper code to make the <span class="packt_screen">Help</span> tab open and close, as well as allowing the user to switch between the different sections.</p>
+<p>The other function used in this recipe, <kbd>set_help_sidebar</kbd>, is even simpler than <kbd>add_help_tab</kbd>, with a single argument indicating the HTML content to be displayed on the right-hand side of the help section.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<ul>
+<li>The <em>Rendering the admin page contents using HTML</em> recipe</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Rendering the admin page contents using the Settings API</h1>
+                </header>
+            
+            <article>
+                
+<p>In addition to creating administration pages through HTML code, WordPress also offers a set of functions referred to as the Settings API that can be used to automate the creation of complex configuration pages. While the work required to put this rendering technique in place is a bit overkill for plugins that only have a handful of options, it is definitely useful if you are dealing with tens or hundreds of configuration fields, simplifying the task of writing out HTML code for every single item to calling a single function for each of them. It also provides some automation around the processing and storing of plugin configuration data.</p>
+<p>This recipe explains how to specify the contents of a configuration page using the Settings API and how to provide rendering functions for the most commonly used types of form field used in configuration pages. It uses the same set of configuration options as the other recipes in this chapter to show how the two techniques compare.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Navigate to the WordPress plugin directory of your development installation.</li>
+<li>Create a new directory called <kbd>ch3-settings-api</kbd>.</li>
+<li>Navigate to this directory and create a new text file called <kbd>ch3-settings-api.php</kbd>.</li>
+<li>Open the new file in a code editor and add an appropriate header at the top of the plugin file, naming the plugin <kbd>Chapter 3 - Settings API</kbd>.</li>
+</ol>
+<p> </p>
+<ol start="5">
+<li>Add the following line of code to register a function that will be called when WordPress activates the plugin:</li>
+</ol>
+<pre style="padding-left: 60px">register_activation_hook( __FILE__, <br/>                          'ch3sapi_set_default_options' );</pre>
+<ol start="6">
+<li>Add the following code section to provide an implementation for the <kbd>ch3sapi_set_default_options</kbd> function to set default plugin options:</li>
+</ol>
+<pre style="padding-left: 60px">function ch3sapi_set_default_options() {<br/>    ch3sapi_get_options();<br/>}</pre>
+<ol start="7">
+<li>Add the following code to provide an implementation for the <kbd>ch3sapi_get_options</kbd> function:</li>
+</ol>
+<pre style="padding-left: 60px">function ch3sapi_get_options() {<br/>    $options = get_option( 'ch3sapi_options', array() );<br/><br/>    $new_options['ga_account_name'] = 'UA-0000000-0';<br/>    $new_options['track_outgoing_links'] = false;<br/><br/>    $merged_options = wp_parse_args( $options, $new_options );<br/><br/>    $compare_options = array_diff_key( $new_options, $options );<br/>    if ( empty( $options ) || !empty( $compare_options ) ) {<br/>        update_option( 'ch3sapi_options', $merged_options );<br/>    }<br/>    return $merged_options;<br/>}</pre>
+<ol start="8">
+<li>Add the following registration function to associate a callback with the <kbd>admin_init</kbd> action hook:</li>
+</ol>
+<pre style="padding-left: 60px">add_action( 'admin_init', 'ch3sapi_admin_init' );</pre>
+<ol start="9">
+<li>Add an implementation for the <kbd>ch3sapi_admin_init</kbd> function, creating the settings group for the plugin and defining its contents:</li>
+</ol>
+<pre style="padding-left: 60px">function ch3sapi_admin_init() {<br/>    // Register a setting group with a validation function<br/>    // so that post data handling is done automatically for us <br/>    register_setting( 'ch3sapi_settings',<br/>        'ch3sapi_options', 'ch3sapi_validate_options' );<br/> <br/>    // Add a new settings section within the group<br/>    add_settings_section( 'ch3sapi_main_section', 'Main Settings',<br/>        'ch3sapi_main_setting_section_callback',<br/>        'ch3sapi_settings_section' );<br/> <br/>    // Add each field with its name and function to use for<br/>    // our new settings, put them in our new section <br/>    add_settings_field( 'ga_account_name', 'Account Name',<br/>        'ch3sapi_display_text_field', 'ch3sapi_settings_section',<br/>        'ch3sapi_main_section',<br/>        array( 'name' =&gt; 'ga_account_name' ) );<br/> <br/>    add_settings_field( 'track_outgoing_links',<br/>        'Track Outgoing Links', 'ch3sapi_display_check_box',<br/>        'ch3sapi_settings_section', 'ch3sapi_main_section',<br/>        array( 'name' =&gt; 'track_outgoing_links' ) );<br/>}</pre>
+<ol start="10">
+<li>Declare a body for the <kbd>ch3sapi_validate_options</kbd> function, which was declared when registering the settings in the previous section:</li>
+</ol>
+<pre style="padding-left: 60px">function ch3sapi_validate_options( $input ) {<br/>    foreach ( array( 'ga_account_name' ) as $option_name ) { <br/>        if ( isset( $input[$option_name] ) ) { <br/>            $input[$option_name] = <br/>                sanitize_text_field( $input[$option_name] ); <br/>        } <br/>    } <br/> <br/>    foreach ( array( 'track_outgoing_links' ) as $option_name ) { <br/>        if ( isset( $input[$option_name] ) ) { <br/>            $input[$option_name] = true; <br/>        } else { <br/>            $input[$option_name] = false; <br/>        } <br/>    }<br/>    return $input;  <br/>}</pre>
+<ol start="11">
+<li>Declare a body for the <kbd>ch3sapi_main_setting_section_callback</kbd> function, declared when the settings section was created:</li>
+</ol>
+<pre style="padding-left: 60px">function ch3sapi_main_setting_section_callback() { ?&gt;<br/>    &lt;p&gt;This is the main configuration section.&lt;/p&gt;<br/>&lt;?php }</pre>
+<ol start="12">
+<li>Provide an implementation for the <kbd>ch3sapi_display_text_field</kbd> function, declared when a text field was added to the settings section:</li>
+</ol>
+<pre style="padding-left: 60px">function ch3sapi_display_text_field( $data = array() ) {<br/>    extract( $data );<br/>    $options = ch3sapi_get_options();<br/>    ?&gt;<br/>    &lt;input type="text" name="ch3sapi_options[&lt;?php echo $name; ?&gt;]"<br/>           value="&lt;?php echo esc_html( $options[$name] ); ?&gt;"/&gt;<br/>    &lt;br /&gt;<br/>&lt;?php }</pre>
+<ol start="13">
+<li>Declare and define the <kbd>ch3sapi_display_check_box</kbd> function, declared when a checkbox was added to the settings section:</li>
+</ol>
+<pre style="padding-left: 60px">function ch3sapi_display_check_box( $data = array() ) {<br/>    extract ( $data );<br/>    $options = ch3sapi_get_options();<br/>    ?&gt;<br/>    &lt;input type="checkbox" <br/>           name="ch3sapi_options[&lt;?php echo $name;  ?&gt;]"<br/>           &lt;?php checked( $options[$name] ); ?&gt;/&gt;<br/>&lt;?php }</pre>
+<ol start="14">
+<li>Add the following line of code to register a function that will be called when WordPress is preparing data to display the site's administration menu:</li>
+</ol>
+<pre style="padding-left: 60px">add_action( 'admin_menu', 'ch3sapi_settings_menu' );</pre>
+<ol start="15">
+<li>Provide code for the implementation of the <kbd>ch3sapi_settings_menu</kbd> function:</li>
+</ol>
+<pre style="padding-left: 60px">function ch3sapi_settings_menu() {<br/>    add_options_page( 'My Google Analytics Configuration',<br/>        'My Google Analytics - Settings API', 'manage_options',<br/>        'ch3sapi-my-google-analytics', 'ch3sapi_config_page' );<br/>}</pre>
+<ol start="16">
+<li>Add a definition for the <kbd>ch3sapi_config_page</kbd> function, defined when the new options page was declared:</li>
+</ol>
+<pre style="padding-left: 60px">function ch3sapi_config_page() { ?&gt;<br/>    &lt;div id="ch3sapi-general" class="wrap"&gt;<br/>    &lt;h2&gt;My Google Analytics - Settings API&lt;/h2&gt;<br/> <br/>    &lt;form name="ch3sapi_options_form_settings_api" method="post"<br/>          action="options.php"&gt;<br/> <br/>    &lt;?php settings_fields( 'ch3sapi_settings' ); ?&gt;<br/>    &lt;?php do_settings_sections( 'ch3sapi_settings_section' ); ?&gt;<br/> <br/>    &lt;input type="submit" value="Submit" class="button-primary" /&gt;<br/>    &lt;/form&gt;&lt;/div&gt;<br/>&lt;?php }</pre>
+<ol start="17">
+<li>Save and close the plugin file.</li>
+<li>Navigate to the <span class="packt_screen">Plugins</span> menu of the administration area.</li>
+<li><span class="packt_screen">Activate</span> your new plugin.</li>
+<li>Navigate to the <span class="packt_screen">Settings</span> menu and click on the <span class="packt_screen">My Google Analytics - Settings API</span> menu item to see the configuration page for this plugin.</li>
+</ol>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img height="174" width="321" class="image-border" src="assets/46d0c242-6298-4196-b7b4-f8990e31abe0.png"/></div>
+<ol start="21">
+<li>Make a change to the options and submit them to see that they are automatically handled by WordPress without having written express code to save options.</li>
+</ol>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The Settings API is an intricate series of callbacks that allow plugin developers to streamline the creation of administration pages and to automatically store user options.</p>
+<p>This self-contained plugin recipe starts with the creation of a new set of default options, to avoid inadvertently deleting options from previous recipes.</p>
+<p>The code continues with registering a function to be called whenever admin pages are prepared for display using the <kbd>admin_init</kbd> action hook. Upon getting called, the callback function takes care of registering a new setting group, a setting section belonging to this group, and two fields that will display the desired options within the section. As can be seen throughout this code, additional functions are registered to validate the user-submitted data, to display custom text at the beginning of the section, and to display the two different types of fields required to capture and display user input.</p>
+<p>Taking a closer look at each of the functions that were just used, the first function has three parameters, which are as follows:</p>
+<pre>register_setting( $option_group, $option_name, $sanitize_callback );</pre>
+<p>Within these parameters, the first option is a unique identifier for the settings group, the second is the name of the options array that will be used to store configuration data in the site database, while the third is the name of a callback function that will receive user input for validation.</p>
+<p>Moving on to the second function used in this example, <kbd>add_settings_section</kbd>, the four parameters that it requires respectively indicate a unique identifier for the section, the title string that will be displayed when the section is rendered, a callback function that will be used to display a description for the section, and finally a page identifier that will be used to render all similar functions later within the plugin code:</p>
+<pre>add_settings_section( $id, $title, $callback, $page );</pre>
+<p>The third function of the Settings API used in this recipe, <kbd>add_settings_field</kbd>, is called multiple times to define the fields that make up each section:</p>
+<pre>add_settings_field( $id, $title, $callback, $page, $section, [$args] );</pre>
+<p>Similar to the other functions, the first parameter is a unique identifier for the field, the second parameter is a label that will be displayed next to the field, and the third parameter is a callback function that will be executed to output the necessary HTML code to display the field. The next three parameters indicate the page that the field belongs to, the section that it is contained in, and an optional array of additional data to be sent to the callback function. As can be seen in the rest of this recipe, we are leveraging this optional additional data argument to send data to the field processing function to make them more generic.</p>
+<p>When the configuration page is visited, the top-level form is created using regular HTML code, setting the action to <kbd>options.php</kbd>. This script is responsible for automating the processing of user data. The rest of the form is quite simple, since it gets generated by the <kbd>settings_fields</kbd> and <kbd>do_settings_sections</kbd> functions.</p>
+<p>When they are called, the setting group created earlier is rendered, followed by calls to the functions designed to draw all the sections that it contains and all the registered fields within these sections.</p>
+<p>While the Settings API provides full control over the layout of the form fields themselves, its use dictates the general layout of the configuration page, creating a two-column table that contains the labels for each field in the first column and the code produced by the plugin's callback functions in the second one. As the functions for each type of field are called, they receive the array data that was associated with each of them and use it to retrieve the current field values and to specify the name of each field to be stored back upon user input.</p>
+<p>The last piece of the puzzle is the validation function that was registered when the setting group was first created. The purpose of this function is to allow plugin developers to perform data type or content validation as user data is submitted through the form, similar to the way we validate user-submitted data in the <em>Processing and storing plugin configuration data</em> recipe.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>While this recipe shows how to create rendering functions for two types of data fields, you may require other types of options for your plugin. The following are code examples that show how to handle most typical data types used in plugin options.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Rendering a drop-down list settings field</h1>
+                </header>
+            
+            <article>
+                
+<p>Before adding the select list itself, we would first add a line to initialize the <kbd>select_list</kbd> option in the <kbd>ch3sapi_get_options</kbd> function, if not found in the options retrieved from the database: <kbd>$new_options['select_list'] = 'First';</kbd><br/>
+<br/>
+The next step to rendering a drop-down list is to provide the list of all possible options, along with the option name, in the optional field data array. Here is an example of a call to the <kbd>add_settings_field</kbd> function call with such a list:</p>
+<pre>add_settings_field( 'select_list', 'Select List',<br/>    'ch3sapi_select_list', 'ch3sapi_settings_section',<br/>    'ch3sapi_main_section',<br/>    array( 'name' =&gt; 'select_list',<br/>           'choices' =&gt; array( 'First', 'Second', 'Third' ) ) );</pre>
+<p>With this information, we can provide an implementation for the <kbd>ch3sapi_select_list</kbd> function that will be able to render an HTML select element using the <kbd>choices</kbd> array to populate it:</p>
+<pre>function ch3sapi_select_list( $data = array() ) {<br/>    extract ( $data );<br/>    $options = ch3sapi_get_options();<br/>    ?&gt;<br/>    &lt;select name="ch3sapi_options[&lt;?php echo $name; ?&gt;]"&gt;<br/>        &lt;?php foreach( $choices as $item ) { ?&gt;<br/>        &lt;option value="&lt;?php echo $item; ?&gt;"<br/>        &lt;?php selected( $options[$name] == $item ); ?&gt;&gt;<br/>        &lt;?php echo $item; ?&gt;&lt;/option&gt;;<br/>    &lt;?php } ?&gt;<br/>    &lt;/select&gt;<br/>&lt;?php }</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Rendering a text area settings field</h1>
+                </header>
+            
+            <article>
+                
+<p>Another common field type used in configuration pages is a multi-line text area. Once again, we would need to update the <kbd>ch3sapi_get_options</kbd> <span>function to specify a default value for this new option if not found. Once this is done</span>, the <kbd>add_settings_field</kbd> function is identical to the text and checkbox examples shown in the recipe, while the field rendering code is as follows:</p>
+<pre>function ch3sapi_display_text_area( $data = array() ) {<br/>    extract ( $data );<br/>    $options = ch3sapi_get_options();<br/>    ?&gt;<br/>    &lt;textarea type="text" name="ch3sapi_options[&lt;?php echo $name; ?&gt;]"<br/>              rows="5" cols="30"&gt;<br/>        &lt;?php echo esc_html ( $options[$name] ); ?&gt;&lt;/textarea&gt;<br/>&lt;?php }</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<ul>
+<li>The <em>Rendering the admin page contents using HTML</em> recipe</li>
+<li>The <em>Processing and storing plugin configuration data</em> <span><span>recipe</span></span></li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Accessing user settings from action and filter hooks</h1>
+                </header>
+            
+            <article>
+                
+<p>After creating a default set of values for our plugin's configuration and creating an interface to allow users to modify and update those values, we are now ready to start using these options when pages are rendered using our additional plugin functionality. Going back to the Google Analytics example created in <a href="f7395811-9e4a-4913-8a02-cc68875d0071.xhtml" target="_blank">Chapter 2</a>, <em>Plugin Framework Basics,</em> this recipe shows how to access the plugin options data using a familiar function to make the existing code much more flexible.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>You should have already followed the <em>Adding custom help pages</em> recipe, <span>and the resulting plugin should be active in your development site</span>. Alternatively, you can get the resulting code (<kbd>Chapter 3/ch2-page-header-output/ch2-page-header-output-v8.php</kbd>) from the downloaded code bundle. You should rename the file <kbd>ch2-page-header-output-v8.php</kbd> as <kbd>ch2-page-header-output.php</kbd> before starting this recipe.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Navigate to the <kbd>ch2-page-header-output</kbd> folder of the WordPress plugin directory of your development installation.</li>
+<li>Open the <kbd>ch2-page-header-output.php</kbd> file in a text editor.</li>
+<li>Modify the implementation of the <kbd>ch2pho_page_header_output</kbd> function to retrieve the plugin options array and use the stored value for the account number to embed it in the page header code. The new sections are identified in bold:</li>
+</ol>
+<pre style="padding-left: 60px">function ch2pho_page_header_output() {<br/>    <strong>$options = ch2pho_get_options();</strong><br/>    ?&gt;<br/>    &lt;script&gt;<br/>        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;<br/>        i[r]=i[r]||function(){<br/>        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();<br/>        a=s.createElement(o),<br/>        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;<br/>        m.parentNode.insertBefore(a,m)})(window,document,'script',<br/>        'https://www.google-analytics.com/analytics.js','ga');<br/><br/>        ga( 'create', '<strong>&lt;?php echo $options['ga_account_name']; ?&gt;</strong>',<br/>            'auto' );<br/>        ga('send', 'pageview');<br/>    &lt;/script&gt;<br/>&lt;?php }</pre>
+<ol start="4">
+<li>Add code to check whether outgoing code tracking should be done before registering an action hook to filter all post and page content, with the changes made identified in bold:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>$options = ch2pho_get_options();</strong><br/> <br/><strong>if ( true == $options['track_outgoing_links'] ) {</strong><br/>    add_filter( 'the_content','ch2lfa_link_filter_analytics' );<br/><strong>}</strong></pre>
+<ol start="5">
+<li>Use the same check to determine whether page footer code should be added to provide the JavaScript necessary for outgoing link tracking to occur with the changes made identified in bold:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>if ( true == $options['track_outgoing_links'] ) {</strong> <br/>    add_action( 'wp_footer', 'ch2lfa_footer_analytics_code' ); <br/><strong>}</strong></pre>
+<ol start="6">
+<li>Save and close the plugin file.</li>
+<li>Visit the site and look at the page source to see that the previous <kbd>UA-0000000-0</kbd> has been replaced by the last value saved in the plugin's configuration page. You can also set the link tracking code to be displayed or not by changing the track outgoing links option.</li>
+</ol>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>As we saw earlier in this chapter, when creating administrative pages, our custom <kbd>ch2pho_get_options</kbd> function can query the site's database and return the plugin configuration data that it contains. This data can be in the form of a single variable or an array of information. In this case, following the <em>Storing user settings using arrays</em> recipe found earlier in this chapter, an array was used and accessed to inject values in the page output when header and footer action hooks are called and when page content is being filtered.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<ul>
+<li>The <em>Storing user settings using arrays</em> recipe</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Formatting admin pages using meta boxes</h1>
+                </header>
+            
+            <article>
+                
+<p>As a plugin's administration page becomes longer and more complex, it becomes important to divide its content into multiple sections. While standard HTML headers or fieldset tags could be used for this task, they lack the usefulness and nice visual appearance of meta boxes. Meta boxes are the containers that show up in most default WordPress content editors, as well as on the main administration Dashboard page.</p>
+<p>Beyond visually organizing content, meta boxes are very powerful, since they allow site administrators to collapse configuration sections that they don't use, re-order sections based on their needs, and even hide elements that they don't use.</p>
+<p>This recipe explains how to convert the HTML-based configuration page that was created earlier in this chapter to use the built-in meta box system.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>You should have already followed the <em>Accessing user settings from action and filter hooks</em> recipe. Alternatively, you can get the resulting code (<kbd>Chapter 3/ch2-page-header-output/ch2-page-header-output-v9.php</kbd>) from the downloaded code bundle. You should rename the file <kbd>ch2-page-header-output-v9.php</kbd> as <kbd>ch2-page-header-output.php</kbd> before starting the recipe.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Browse to the <span class="packt_screen">Plugins</span> section of the administration section of your site and deactivate the <kbd>Chapter 2 - Page Header Output</kbd> plugin.</li>
+<li>Navigate to the <kbd>ch2-page-header-output</kbd> folder of the WordPress plugin directory of your development installation.</li>
+<li>Copy the file <kbd>ch2-page-header-output.php</kbd> to <kbd>ch2-page-header-output-metaboxes.php</kbd>.</li>
+<li>Open the <kbd>ch2-page-header-output-metaboxes.php</kbd> file in a text editor.</li>
+</ol>
+<p> </p>
+<ol start="5">
+<li>Change the plugin name in the header from <kbd>Chapter 2 - Page Header Output</kbd> to <kbd>Chapter 2 - Page Header Output Meta Boxes</kbd>.</li>
+<li>Right under the top plugin header comment, add a line of code to declare a global variable to hold the identifier for the options page:</li>
+</ol>
+<pre style="padding-left: 60px">global $options_page;</pre>
+<ol start="7">
+<li>Find the <kbd>ch2pho_settings_menu</kbd> function in the existing code.</li>
+<li>Add a line at the top of the function to point to the global options page variable:</li>
+</ol>
+<pre style="padding-left: 60px">global $options_page;</pre>
+<ol start="9">
+<li>Find the <kbd>ch2pho_help_tabs</kbd> function within the plugin code.</li>
+<li>Add the following block of code at the end of the function body to create meta boxes to be drawn on the screen and specify functions to be called to populate these boxes:</li>
+</ol>
+<pre style="padding-left: 60px">global $options_page;<br/> <br/>add_meta_box( 'ch2pho_general_meta_box', 'General Settings',<br/>              'ch2pho_plugin_meta_box', $options_page,   <br/>              'normal', 'core' );<br/> <br/>add_meta_box( 'ch2pho_second_meta_box', 'Second Settings Section',<br/>              'ch2pho_second_meta_box', $options_page, <br/>              'normal', 'core' );</pre>
+<ol start="11">
+<li>Add a line of code at the end of the plugin code file to register a function to be called when administration page styles are placed in a queue:</li>
+</ol>
+<pre style="padding-left: 60px">add_action( 'admin_enqueue_scripts', 'ch2pho_load_admin_scripts' );</pre>
+<ol start="12">
+<li>Insert the following code segment to provide an implementation for the <kbd>ch2pho_load_admin_scripts</kbd> function:</li>
+</ol>
+<pre style="padding-left: 60px">function ch2pho_load_admin_scripts() {<br/>    global $current_screen;<br/>    global $options_page;<br/><br/>    if ( $current_screen-&gt;id == $options_page ) {<br/>        wp_enqueue_script( 'common' );<br/>        wp_enqueue_script( 'wp-lists' );<br/>        wp_enqueue_script( 'postbox' );<br/>    }<br/>}</pre>
+<ol start="13">
+<li>Create a new function to implement the <kbd>ch2pho_plugin_meta_box</kbd> function that was declared a few steps back. Notice that the body of the function is a direct copy and paste of the previous form code that was used to render the Account Name and Track Outgoing Links field:</li>
+</ol>
+<pre style="padding-left: 60px">function ch2pho_plugin_meta_box( $options ) { ?&gt;<br/>    Account Name: &lt;input type="text" name="ga_account_name"<br/>        value="&lt;?php echo esc_html( $options['ga_account_name'] );<br/>        ?&gt;"/&gt;&lt;br /&gt;<br/> <br/>    Track Outgoing Links &lt;input type="checkbox"<br/>        name="track_outgoing_links" <br/>        &lt;?php checked( $options['track_outgoing_links'] ); ?&gt;/&gt;<br/>        &lt;br /&gt; <br/>&lt;?php }</pre>
+<ol start="14">
+<li>Add the following code to provide an implementation for the <kbd>ch2pho_second_meta_box</kbd> function to display a second meta box. This second box will not have any real content. It will only be used to illustrate some of the meta box functionality:</li>
+</ol>
+<pre style="padding-left: 60px">function ch2pho_second_meta_box( $options ) { ?&gt;<br/>    &lt;p&gt;This is the content of the second metabox.&lt;/p&gt;<br/>&lt;?php }</pre>
+<ol start="15">
+<li>Find the code for the <kbd>ch2pho_config_page</kbd> function in your code and modify it as shown in the following code, where all the new code segments are in bold. Delete the original code that rendered the <kbd>ga_account_name</kbd> and <kbd>track_outgoing_links</kbd> fields:</li>
+</ol>
+<pre style="padding-left: 60px">function ch2pho_config_page() {<br/>    // Retrieve plugin configuration options from database<br/>    $options = ch2pho_get_options();<br/>    <strong>global $options_page;</strong><br/>    ?&gt;<br/> <br/>    &lt;div id="ch2pho-general" class="wrap"&gt;<br/>    &lt;h2&gt;My Google Analytics&lt;/h2&gt;&lt;br /&gt;<br/> <br/>    &lt;?php if ( isset( $_GET['message'] ) &amp;&amp; <br/>               $_GET['message'] == '1' ) { ?&gt;<br/>        &lt;div id='message' class='updated fade'&gt;<br/>        &lt;p&gt;&lt;strong&gt;Settings Saved&lt;/strong&gt;&lt;/p&gt;<br/>        &lt;/div&gt;<br/>    &lt;?php } ?&gt;<br/> <br/>    &lt;form action="admin-post.php" method="post"&gt;<br/>    &lt;input type="hidden" name="action"<br/>           value="save_ch2pho_options" /&gt;<br/> <br/>    &lt;!-- Adding security through hidden referrer field --&gt;<br/>    &lt;?php wp_nonce_field( 'ch2pho' ); ?&gt;<br/> <br/>    <strong>&lt;!-- Security fields for meta box save processing --&gt;</strong><br/><strong>    &lt;?php wp_nonce_field( 'closedpostboxes', <br/></strong><strong>                          'closedpostboxesnonce', false ); ?&gt;</strong><br/><strong>    &lt;?php wp_nonce_field( 'meta-box-order',<br/></strong><strong>                          'meta-box-order-nonce', false ); ?&gt;</strong><br/> <br/>    <strong>&lt;div id="poststuff" class="metabox-holder"&gt;</strong><br/><strong>        &lt;div id="post-body"&gt;</strong><br/><strong>            &lt;div id="post-body-content"&gt;</strong><br/><strong>            &lt;?php do_meta_boxes( $options_page, 'normal', <br/>                                                $options ); ?&gt;</strong><br/>            &lt;input type="submit" value="Submit"<br/>                   class="button-primary"/&gt;<br/>            <strong>&lt;/div&gt;</strong><br/><strong>        &lt;/div&gt;</strong><br/><strong>        &lt;br class="clear"/&gt;</strong><br/><strong>    &lt;/div&gt;</strong><br/>    &lt;/form&gt;<br/>    &lt;/div&gt;<br/> <br/>    <strong>&lt;script type="text/javascript"&gt;</strong><br/><strong>    //&lt;![CDATA[</strong><br/><strong>    jQuery( document ).ready( function( $ ) {</strong><br/><strong>        // close postboxes that should be closed</strong><br/><strong>        $( '.if-js-closed' ) .removeClass( 'if-js-closed' ).</strong><br/><strong>            addClass( 'closed' );</strong><br/> <br/><strong>        // postboxes setup</strong><br/><strong>        postboxes.add_postbox_toggles(<br/>            '&lt;?php echo $options_page; ?&gt;' );</strong><br/><strong>    });</strong><br/> <br/><strong>    //]]&gt;</strong><br/><strong>    &lt;/script&gt;</strong><br/>&lt;?php }</pre>
+<ol start="16">
+<li>Save and close the plugin file.</li>
+<li><span class="packt_screen">Activate</span> your new plugin.</li>
+<li>Click on the <span class="packt_screen">Settings</span> section on the left-hand navigation menu to expand it.</li>
+</ol>
+<p> </p>
+<ol start="19">
+<li>Click on the <span class="packt_screen">My</span> <span class="packt_screen">Google</span> <span class="packt_screen">Analytics</span> in the tree to display the re-designed administration page.</li>
+</ol>
+<div class="CDPAlignCenter CDPAlign"><img height="251" width="528" class="image-border" src="assets/84fe8de3-56c6-43af-a37f-2e5def467662.png"/></div>
+<ol start="20">
+<li>Drag and drop one of the meta boxes to re-order them.</li>
+<li>Click on one of the meta box titles to collapse that section.</li>
+<li>Click on the <span class="packt_screen">Screen</span> <span class="packt_screen">Options</span> menu in the top-right corner to open a menu to control the visibility of all the meta boxes.</li>
+<li>Move to another section of the administration menu and come back to the <span class="packt_screen">My</span> <span class="packt_screen">Google</span> <span class="packt_screen">Analytics</span> section to see that all the changes made to the layout of the configuration page have been retained.</li>
+</ol>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The setup of the meta box functionality is done in the <kbd>load-&lt;pagename&gt;</kbd> callback function by calling the <kbd>add_meta_box</kbd> function multiple times based on the desired number of boxes to be displayed on the screen.</p>
+<p>The function takes a number of arguments, as shown:</p>
+<pre>add_meta_box( $id, $title, $callback, [$page], [$context], [$priority],<br/>              [$callback_args] );</pre>
+<p>Going over the parameters in this function, the first is a unique identifier for the meta box, while the second is the string that will be displayed as the title of the box itself and is also the name that will show up in the Screen Options configuration tab. The third parameter is the name of the function to be called to render the contents of the meta box. The fourth argument identifies the page where the meta boxes will be rendered. In this case, we use the value of the global variable <kbd>$options_page</kbd> for this parameter, to be sure that it will be assigned the correct page identifier. Global PHP variables are powerful tools that can help us share data between functions in a plugin. By using the keyword <kbd>global</kbd> in front of the name of a variable, a website's PHP interpreter will know that it has to access a common memory space to store and access information.</p>
+<p>The fifth parameter is an arbitrary name that indicates the name of a section where the box should be displayed. This name will be used when making a request to WordPress to render all the meta boxes belonging to a specific section. The only requirement for this to work correctly is to use the same name when calling the <kbd>do_meta_boxes</kbd> function.</p>
+<p>The sixth argument indicates the priority of the registered meta box within the section it belongs to, relative to other meta boxes. If all the boxes have the same priority, the order in which the calls to the <kbd>add_meta_box</kbd> function were made will determine their original drawing order. Of course, as was seen in this recipe, this order can be overridden by the user through a simple drag-and-drop operation. The final parameter is optional and can be used to send information to the function that will render the meta box contents.</p>
+<div class="packt_infobox">While it is actually possible to call <kbd>add_meta_box</kbd> from other action hook callbacks, only meta boxes registered during a <kbd>load-&lt;pagename&gt;</kbd> callback will show up in the Screen Options list to allow the user to control their visibility. You may want to create meta boxes outside of this action hook on purpose, to be sure that important boxes are always shown and to provide a standard user experience for all users.</div>
+<p>In addition to the calls to <kbd>add_meta_box</kbd>, we must make multiple calls to <kbd>wp_enqueue_script</kbd> in the page load function to request for three JavaScript scripts to be loaded when our configuration page is rendered. These scripts provide the drag-and-drop, minimize, and hiding functionalities that were demonstrated at the end of the recipe, with only a few initialization calls needed to be done from our code through JavaScript functions.</p>
+<p>Once the meta boxes have been created, the bulk of the work is done within the options page rendering function. As we can see in the modified code, the first thing that is done is to create new nonce fields. These unique numbers will be generated as hidden data in the page and will be used for authentication to save layout changes within the configuration page. Next, we create a number of <kbd>div</kbd> sections with specific <kbd>id</kbd> names that contain a nested call to the <kbd>do_meta_boxes</kbd> function. These div tags are used to ensure that the meta boxes are styled using the WordPress administration pages style sheet.</p>
+<p>Once called, the <kbd>do_meta_boxes</kbd> function takes care of drawing all of the meta boxes that were created for the given page (specified in the first argument) and given section (second argument). It also passes along any data specified in the third function argument to the functions associated with each box.</p>
+<p>The remaining changes to the page rendering function is a block of JavaScript code that takes care of closing down any meta box section that was closed by the user during a previous visit to the page. It also assigns jQuery callbacks to the meta boxes so that any user interaction with them is saved to the site database by sending AJAX requests to the web server.</p>
+<p>Last, but not least, the meta box rendering functions are responsible for rendering the content inside each meta box. They can do this by outputting straight HTML. By passing along the complete options array to these functions, the code that is contained within them can be exactly the same as before to render the various options fields.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<ul>
+<li>The <em>Rendering the admin page contents using HTML</em> recipe</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Splitting admin code from the main plugin file to optimize site performance</h1>
+                </header>
+            
+            <article>
+                
+<p>As mentioned in <a href="f7395811-9e4a-4913-8a02-cc68875d0071.xhtml" target="_blank">Chapter 2</a>, <em>Plugin Framework Basics,</em> the entire content of the main code file of a WordPress plugin gets evaluated every time any page is rendered on the site, whether it's a visitor-facing page or a backend administration page. This means that large amounts of PHP code can potentially be parsed on every iteration, wasting processing power on the site's server, even though some of this code will never be active when regular visitors are browsing the site.</p>
+<p>A prime example of this waste is all of the code samples that we have been building in this chapter. While this code is extremely useful for site administrators, there is no sense in having the web server parse and validate that code when regular pages are displayed. For this reason, it is better to isolate this code in a separate file which will only be loaded and parsed when someone is visiting the site's dashboard. The following recipe shows how to isolate the less frequently required code to a separate file and only load it when a user is visiting the site administration section.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>You should have already followed the <em>Hiding items which users should not access from the default menu</em> recipe to have a starting point for this recipe, <span>and the resulting plugin should still be active in your development site</span>. Alternatively, you can get the resulting code (<kbd>Chapter 3/ch3-hide-menu-item/ch3-hide-menu-item.php</kbd>) from the downloaded code bundle.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Navigate to the <kbd>ch3-hide-menu-item</kbd> folder of the WordPress plugin directory of your development installation.</li>
+<li>Open the <kbd>ch3-hide-menu-item.php</kbd> file in a text editor.</li>
+<li>Create a new PHP code file called <kbd>ch3-hide-menu-item-admin-functions.php</kbd> in the same directory and open it in a text editor.</li>
+<li>Move the calls to the <kbd>add_action</kbd> function and the definition of the <kbd>ch3hmi_hide_menu_item</kbd> function to the new file, preceded by a standard PHP open tag and checking for the definition of a constant:</li>
+</ol>
+<pre style="padding-left: 60px">&lt;?php<br/><br/>if ( !defined( 'ch3hmi' ) ) {<br/>    exit;<br/>}</pre>
+<ol start="5">
+<li>Back in the main plugin code file (<kbd>ch3-hide-menu-item.php</kbd>), add code that will define a constant and check whether the current page being rendered is an administration page and proceed to load the administration functions if it is:</li>
+</ol>
+<pre style="padding-left: 60px">define( 'ch3hmi', 1 );<br/><br/>if ( is_admin() ) {<br/>    require plugin_dir_path( __FILE__ ) .<br/>        'ch3-hide-menu-item-admin-functions.php';<br/>}</pre>
+<ol start="6">
+<li>Save and close the plugin file.</li>
+<li>While the plugin will continue to work as it did before, the action hook registration code will only be processed when an administration page is displayed.</li>
+</ol>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>is_admin</kbd> function is used to quickly tell if the page currently being rendered is an administration page. If it is, our plugin code uses the standard PHP <kbd>include</kbd> function to load and execute the contents of a separate file. In this case, the file is a second PHP file located in the plugin directory. To be flexible with regards to the location of the plugin files, we build a path to the file containing the administration functions using the WordPress <kbd>plugin_dir_path</kbd> function.</p>
+<p>While the benefit of placing so little code in a separate file is minimal, this technique has a larger impact on performance when dealing with larger administration panels. In addition to not having to register an action hook on every page load, the PHP interpreter does not have to make sure that the syntax for the entire contents of that second file is valid when rendering front-facing pages.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<ul>
+<li>The <em>Hiding items which users should not access from the default menu</em> recipe</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Storing style sheet data in user settings</h1>
+                </header>
+            
+            <article>
+                
+<p>While most common plugin options are typically presented to users as simple textboxes, checkboxes, or drop-down lists, there are instances where more text needs to be stored for user settings. A good example of this are plugin-specific style sheets, which allow users to change the visual appearance of plugin output. While loading a separate style sheet file worked well in the <em>Loading a style sheet to format plugin output</em> recipe in <a href="f7395811-9e4a-4913-8a02-cc68875d0071.xhtml" target="_blank"><span class="ChapterrefPACKT">Chapter 2</span></a>, <em><span class="ChapterrefPACKT">Plugin Framework Basics</span></em>, this approach did not give users a lot of liberty in changing these styling rules to work better with their site design, since any changes that users make to the style sheet will get overwritten when the plugin is updated using the WordPress plugin upgrade process.</p>
+<p>A solution to this problem is to store style sheet data with the rest of the configuration options in the site database. This way, the information will remain intact when upgrades are performed. This recipe shows how to change the plugin created in the previous chapter to initialize the plugin options using an external file, how to create an administration panel to allow users to modify or reset the style sheet, and how to use the new data to output the style information to the page header. Many of the lessons learned in this chapter will be put to use to create the final result.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>You should have already followed the <em>Loading a style sheet to format plugin output</em> recipe in the previous chapter to have a starting point for this recipe. Alternatively, you can get the resulting code (<kbd>Chapter 2/ch2-private-item-text/ch2-private-item-text-v2.php</kbd>) from the downloaded code bundle and rename the file to <kbd>ch2-private-item-text.php</kbd> before starting the recipe.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol start="1">
+<li>Navigate to the <kbd>ch2-private-item-text</kbd> folder of the WordPress plugin directory of your development installation.</li>
+<li>Open the <kbd>ch2-private-item-text.php</kbd> file in a text editor.</li>
+<li>Add the following lines of code to implement an activation callback to initialize plugin options when it is installed or upgraded:</li>
+</ol>
+<pre style="padding-left: 60px">register_activation_hook( __FILE__, 'ch2pit_get_options' );<br/> <br/>function ch2pit_get_options() {<br/>    $options = get_option( 'ch2pit_options', array() );<br/><br/>    $stylesheet_location = plugin_dir_path( __FILE__ ) . <br/>                               'stylesheet.css';<br/>    $new_options['stylesheet'] = <br/>        file_get_contents( $stylesheet_location );<br/> <br/>    $merged_options = wp_parse_args( $options, $new_options );<br/>    $compare_options = array_diff_key( $new_options, $options );<br/>    if ( empty( $options ) || !empty( $compare_options ) ) {<br/>        update_option( 'ch2pit_options', $merged_options );<br/>    }<br/>    return $merged_options;<br/>}</pre>
+<ol start="4">
+<li>Add the following code segment to register a function to be called when the menu is built to add an additional item under the Settings menu:</li>
+</ol>
+<pre style="padding-left: 60px">add_action( 'admin_menu', 'ch2pit_settings_menu' );<br/> <br/>function ch2pit_settings_menu() {<br/>    add_options_page( 'Private Item Text Configuration',<br/>         'Private Item Text', 'manage_options',<br/>         'ch2pit-private-item-text', 'ch2pit_config_page' );<br/>}</pre>
+<ol start="5">
+<li>Insert the following code to render the options page.</li>
+</ol>
+<div class="packt_infobox">The line that prints the style sheet in the text area should start at the beginning of a new line to avoid having extra spaces at the beginning of the style sheet editor. Also, make sure you do not lose the hyphen in <kbd>font-family</kbd> if you are copying the code from a digital copy of this book.</div>
+<pre style="padding-left: 60px">function ch2pit_config_page() {<br/>    // Retrieve plugin configuration options from database<br/>    $options = ch2pit_get_options(); ?&gt;<br/> <br/>    &lt;div id="ch2pit-general" class="wrap"&gt;<br/>    &lt;h2&gt;Private Item Text&lt;/h2&gt;<br/> <br/>    &lt;!-- Code to display confirmation messages when settings<br/>         are saved or reset --&gt;<br/>    &lt;?php if ( isset( $_GET['message'] ) &amp;&amp;<br/>               $_GET['message'] == '1' ) { ?&gt;<br/>        &lt;div id='message' class='updated fade'&gt;&lt;p&gt;<br/>            &lt;strong&gt;Settings Saved&lt;/strong&gt;&lt;/p&gt;&lt;/div&gt;<br/>    &lt;?php } elseif ( isset( $_GET['message'] )<br/>                     &amp;&amp; $_GET['message'] == '2' ) { ?&gt;<br/>        &lt;div id='message' class='updated fade'&gt;&lt;p&gt;<br/>        &lt;strong&gt;Stylesheet reverted to original&lt;/strong&gt;&lt;/p&gt;&lt;/div&gt;<br/>    &lt;?php } ?&gt;<br/> <br/>    &lt;form name="ch2pit_options_form" method="post"<br/>          action="admin-post.php"&gt; <br/>    &lt;input type="hidden" name="action"<br/>           value="save_ch2pit_options" /&gt;<br/>    &lt;?php wp_nonce_field( 'ch2pit' ); ?&gt;<br/> <br/>    Stylesheet&lt;br /&gt;<br/>&lt;textarea name="stylesheet" rows="10" cols="40" style="font-family:Consolas,Monaco,monospace"&gt;&lt;?php echo esc_html ( $options['stylesheet'] ); ?&gt;&lt;/textarea&gt;&lt;br /&gt;<br/>    &lt;input type="submit" value="Submit" class="button-primary" /&gt;<br/>    &lt;input type="submit" value="Reset" name="resetstyle"<br/>           class="button-primary" /&gt;<br/>    &lt;/form&gt;<br/>    &lt;/div&gt;<br/>&lt;?php }</pre>
+<ol start="6">
+<li>Add the following block of code to register a function to be called when user options are saved and to provide an implementation for this function:</li>
+</ol>
+<pre style="padding-left: 60px">add_action( 'admin_init', 'ch2pit_admin_init' );<br/><br/>function ch2pit_admin_init() {<br/>    add_action( 'admin_post_save_ch2pit_options',<br/>                'process_ch2pit_options' );<br/>}<br/><br/>function process_ch2pit_options() {<br/>    // Check that user has proper security level<br/>    if ( !current_user_can( 'manage_options' ) ) {<br/>        wp_die( 'Not allowed' );<br/>    }<br/> <br/>    // Check if nonce field is present<br/>    check_admin_referer( 'ch2pit' );<br/> <br/>    // Retrieve original plugin options array<br/>    $options = ch2pit_get_options();<br/> <br/>    if ( isset( $_POST['resetstyle'] ) ) {<br/>        $stylesheet_location = plugin_dir_path( __FILE__ ) . <br/>                                   'stylesheet.css';<br/>        $options['stylesheet'] =<br/>            file_get_contents( $stylesheet_location ); <br/>        $message = 2;<br/>    } else {<br/>        // Cycle through all fields and store their values<br/>        // in the options array<br/>        foreach ( array( 'stylesheet' ) as $option_name ) {<br/>            if ( isset( $_POST[$option_name] ) ) {<br/>                $options[$option_name] = $_POST[$option_name];<br/>            }<br/>        } <br/>        $message = 1;<br/>    }<br/> <br/>    // Store updated options array to database<br/>    update_option( 'ch2pit_options', $options );<br/> <br/>    // Redirect the page to the configuration form<br/>    wp_redirect( add_query_arg(<br/>                     array(<br/>                         'page' =&gt; 'ch2pit-private-item-text',<br/>                         'message' =&gt; $message ),<br/>                         admin_url( 'options-general.php' ) ) );<br/>    exit;<br/>}</pre>
+<ol start="7">
+<li>Delete the call to the <kbd>add_action</kbd> function, which associated the function <kbd>ch2pit_queue_stylesheet</kbd> with the <kbd>wp_enqueue_scripts</kbd> action hook, along with the <kbd>ch2pit_queue_stylesheet</kbd> function itself.</li>
+<li>Add the following code to add the user-modifiable style sheet code to the page header:</li>
+</ol>
+<pre style="padding-left: 60px">add_action( 'wp_head', 'ch2pit_page_header_output' );<br/> <br/>function ch2pit_page_header_output() { ?&gt;<br/>    &lt;style type='text/css'&gt;<br/>    &lt;?php<br/>        $options = ch2pit_get_options();<br/>        echo $options['stylesheet'];<br/>    ?&gt;<br/>    &lt;/style&gt;<br/>&lt;?php }</pre>
+<ol start="9">
+<li>Save and close the plugin file.</li>
+<li>Deactivate and then <span class="packt_screen">Activate</span> the <kbd>Chapter 2 - Private Item Text</kbd> plugin from the administration interface.</li>
+</ol>
+<p> </p>
+<ol start="11">
+<li>Navigate to the <span class="packt_screen">Settings</span> menu and select the <span class="packt_screen">Private</span> <span class="packt_screen">Item</span> <span class="packt_screen">Text</span> submenu item to see the newly created configuration panel, with options to submit changes to the style sheet or reset it to its initial state, as shown in the following screenshot:</li>
+</ol>
+<div class="CDPAlignCenter CDPAlign"><img height="199" width="286" class="image-border" src="assets/f128f0fa-d390-4b75-ba55-4413f61e03f3.png"/></div>
+<ol start="12">
+<li>Visit the website and look at the page source to see that the style sheet data entered in the configuration page shows up in the HTML header:</li>
+</ol>
+<pre style="padding-left: 60px">&lt;style type='text/css'&gt;<br/>.private {<br/>    color: #6E6A6B;<br/>}<br/><br/>.register {<br/>    background-color: #ff4d4d;<br/>    color: #fff;<br/>    padding-left: 10px;<br/>}<br/>&lt;/style&gt;</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>Re-using many of the elements covered in this chapter, this recipe creates a simple yet effective configuration interface to allow users to make changes to the color that is used to highlight private text in posts, instead of this color being hardcoded in a plugin file.</p>
+<p>That being said, this recipe does introduce two new concepts. The first is the initialization of the plugin options by reading data from a file instead of having all of that information stored in the PHP code. This technique is useful when dealing with an option that has a lot of content, such as a style sheet.</p>
+<p>The next element of interest is within the data processing function, where the code checks to see which button was pressed between the one to reset the style sheet and the one to submit user changes to be stored in the site database. Based on the result, the processing code will either read back the initial style sheet from the file or use the user-posted data to update the configuration data.</p>
+<p>Beyond these two new concepts, the other main change is to the code that was outputting header code referencing an external style sheet file. In this new version, a change was made to echo the content of the style sheet that is stored in the options table directly to the browser.</p>
+<div class="packt_infobox">It should be noted that this recipe does not check to see if the user enters valid CSS code in the field before adding it to the page header, since verifying this would be too complex for now. A library such as CSSTidy (<a href="http://csstidy.sourceforge.net/"><span class="URLPACKT">http://csstidy.sourceforge.net/</span></a>) could be used to perform this task, as desired.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<ul>
+<li>The <em>Creating</em> <em>a</em> <em>new</em> <em>enclosing</em> <em>shortcode</em> recipe in <span class="ChapterrefPACKT"><a href="f7395811-9e4a-4913-8a02-cc68875d0071.xhtml" target="_blank">Chapter 2</a>, <em>Plugin Framework Basics</em></span></li>
+<li>The <em>Loading a style sheet to format plugin output</em> recipe in <span class="ChapterrefPACKT"><span class="ChapterrefPACKT"><a href="f7395811-9e4a-4913-8a02-cc68875d0071.xhtml" target="_blank">Chapter 2</a>, <em>Plugin Framework Basics</em></span></span></li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Managing multiple sets of user settings from a single admin page</h1>
+                </header>
+            
+            <article>
+                
+<p>Throughout this chapter, you have learned how to create configuration pages to manage single sets of configuration options for our plugins. In some cases, only being able to specify a single set of options will not be enough. For example, looking back at the Twitter embed shortcode plugin that was created in the previous chapter, a single configuration panel would only allow users to specify one set of options, such as the desired Twitter feed dimensions or the number of tweets to display.</p>
+<p>A more flexible solution would be to allow users to specify multiple sets of configuration options, which could then be called up by using an extra shortcode parameter (for example, <kbd>[twitterfeed user_name="WordPress" option_id="2"]</kbd>).</p>
+<p>While the first thought that might cross your mind to configure such a plugin is to create a multi-level menu item with submenus to store a number of different settings, this method would produce a very awkward interface for users to navigate. A better way is to use a single panel but give the user a way to select between multiple sets of options to be modified.</p>
+<p>In this recipe, you will learn how to enhance the previously created Twitter feed shortcode plugin to be able to control the embedded feed width and number of tweets to display from the plugin configuration panel and to give users the ability to specify multiple display sizes.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>You should have already followed the <em>Creating a new shortcode with parameters</em> recipe in the previous chapter to have a starting point for this recipe. Alternatively, you can get the resulting code (<kbd>Chapter 2/ch2-twitter-embed/ch2-twitter-embed.php</kbd>) from the downloaded code bundle.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Navigate to the <kbd>ch2-twitter-embed</kbd> folder of the WordPress plugin directory of your development installation.</li>
+<li>Open the <kbd>ch2-twitter-embed.php</kbd> file in a text editor.</li>
+<li>Add the following lines of code to implement an activation callback to initialize plugin options when it is installed or upgraded:</li>
+</ol>
+<pre style="padding-left: 60px">register_activation_hook( __FILE__, <br/>                          'ch2te_set_default_options_array' );<br/> <br/>function ch2te_set_default_options_array() {<br/>    ch2te_get_options();<br/>}<br/><br/>function ch2te_get_options( $id = 1 ) {<br/>    $options = get_option( 'ch2te_options_' . $id, array() );<br/><br/>    $new_options['setting_name'] = 'Default';<br/>    $new_options['width'] = 560;<br/>    $new_options['number_of_tweets'] = 3;<br/><br/>    $merged_options = wp_parse_args( $options, $new_options );<br/>    $compare_options = array_diff_key( $new_options, $options );<br/>    if ( empty( $options ) || !empty( $compare_options ) ) {<br/>        update_option( 'ch2te_options_' . $id, $merged_options );<br/>    }<br/>    return $merged_options;<br/>}</pre>
+<ol start="4">
+<li>Insert the following code segment to register a function to be called when the administration menu is put together. When this happens, the callback function adds an item to the <span class="packt_screen">Settings</span> menu and specifies the function to be called to render the configuration page:</li>
+</ol>
+<pre style="padding-left: 60px">// Assign function to be called when admin menu is constructed<br/>add_action( 'admin_menu', 'ch2te_settings_menu' );<br/> <br/>// Function to add item to Settings menu and<br/>// specify function to display options page content<br/>function ch2te_settings_menu() {<br/>    add_options_page( 'Twitter Embed Configuration',<br/>                      'Twitter Embed', 'manage_options',<br/>                      'ch2te-twitter-embed', 'ch2te_config_page' );<br/>}</pre>
+<ol start="5">
+<li>Add the following code to implement the configuration page rendering function:</li>
+</ol>
+<pre style="padding-left: 60px">// Function to display options page content <br/>function ch2te_config_page() { <br/>    // Retrieve plugin configuration options from database <br/>    if ( isset( $_GET['option_id'] ) ) {<br/>        $option_id = intval( $_GET['option_id'] ); <br/>    } elseif ( isset( $_POST['option_id'] ) ) {<br/>        $option_id = intval( $_POST['option_id'] ); <br/>    } else {<br/>        $option_id = 1;<br/>    }<br/><br/>    $options = ch2te_get_options( $option_id ); ?&gt;  <br/><br/>    &lt;div id="ch2te-general" class="wrap"&gt; <br/>    &lt;h2&gt;Twitter Embed&lt;/h2&gt; <br/><br/>    &lt;!-- Display message when settings are saved --&gt;<br/>    &lt;?php if ( isset( $_GET['message'] ) &amp;&amp;<br/>               $_GET['message'] == '1' ) { ?&gt;<br/>        &lt;div id='message' class='updated fade'&gt;<br/>            &lt;p&gt;&lt;strong&gt;Settings Saved&lt;/strong&gt;&lt;/p&gt;&lt;/div&gt;<br/>    &lt;?php } ?&gt;<br/><br/>    &lt;!-- Option selector --&gt;<br/>    &lt;div id="icon-themes" class="icon32"&gt;&lt;br&gt;&lt;/div&gt;<br/>    &lt;h2 class="nav-tab-wrapper"&gt;<br/>    &lt;?php for ( $counter = 1; $counter &lt;= 5; $counter++ ) {<br/>        $temp_options = ch2te_get_options( $counter ); <br/>        $class = ( $counter == $option_id ) ?<br/>                 ' nav-tab-active' : ''; ?&gt; <br/> <br/>    &lt;a class="nav-tab&lt;?php echo $class; ?&gt;" href="&lt;?php echo <br/>      add_query_arg( array( 'page' =&gt; 'ch2te-twitter-embed', 'option_id' =&gt; $counter ), admin_url(  'options-general.php' ) ); ?&gt;"&gt;&lt;?php echo $counter; ?&gt;&lt;?php if ( $temp_options !== false ) echo ' (' .  $temp_options['setting_name'] . ')'; else echo ' (Empty)'; ?&gt;&lt;/a&gt;<br/>    &lt;?php } ?&gt;<br/>    &lt;/h2&gt;&lt;br /&gt;    <br/>     <br/>    &lt;!-- Main options form --&gt; <br/>    &lt;form name="ch2te_options_form" method="post" <br/>          action="admin-post.php"&gt;     <br/>    &lt;input type="hidden" name="action"<br/>           value="save_ch2te_options" /&gt; <br/>    &lt;input type="hidden" name="option_id" <br/>                         value="&lt;?php echo $option_id; ?&gt;" /&gt; <br/>    &lt;?php wp_nonce_field( 'ch2te' ); ?&gt; <br/>    &lt;table&gt; <br/>        &lt;tr&gt;&lt;td&gt;Setting name&lt;/td&gt; <br/>            &lt;td&gt;&lt;input type="text" name="setting_name" <br/>      value="&lt;?php echo esc_html( $options['setting_name'] ); ?&gt;"/&gt;<br/>            &lt;/td&gt;<br/>        &lt;/tr&gt; <br/>        &lt;tr&gt;&lt;td&gt;Feed width&lt;/td&gt; <br/>            &lt;td&gt;&lt;input type="text" name="width"<br/>        value="&lt;?php echo esc_html( $options['width'] ); ?&gt;"/&gt;&lt;/td&gt;<br/>        &lt;/tr&gt; <br/>        &lt;tr&gt;&lt;td&gt;Number of Tweets to display&lt;/td&gt; <br/>            &lt;td&gt;&lt;input type="text" name="number_of_tweets" value=<br/>        "&lt;?php echo esc_html( $options['number_of_tweets'] ); ?&gt;"<br/>            /&gt;&lt;/td&gt;<br/>        &lt;/tr&gt;        <br/>    &lt;/table&gt;&lt;br /&gt; <br/>    &lt;input type="submit" value="Submit" class="button-primary" /&gt; <br/>    &lt;/form&gt; <br/>    &lt;/div&gt; <br/>&lt;?php }</pre>
+<ol start="6">
+<li>Add the following block of code to register a function that will process user options when submitted to the site:</li>
+</ol>
+<pre style="padding-left: 60px">add_action( 'admin_init', 'ch2te_admin_init' ); <br/> <br/>function ch2te_admin_init() { <br/>    add_action( 'admin_post_save_ch2te_options',<br/>                'process_ch2te_options' ); <br/>}</pre>
+<ol start="7">
+<li>Add the following code to implement the <kbd>process_ch2te_options</kbd> function, declared in the previous block of code:</li>
+</ol>
+<pre style="padding-left: 60px">// Function to process user data submission <br/>function process_ch2te_options() { <br/>    // Check that user has proper security level <br/>    if ( !current_user_can( 'manage_options' ) ) {<br/>        wp_die( 'Not allowed' ); <br/>    }<br/><br/>    // Check that nonce field is present <br/>    check_admin_referer( 'ch2te' );<br/><br/>    // Check if option_id field was present  <br/>    if ( isset( $_POST['option_id'] ) ) {<br/>        $option_id = intval( $_POST['option_id'] ); <br/>    } else {<br/>        $option_id = 1; <br/>    }<br/> <br/>    // Build option name and retrieve options <br/>    $options = ch2te_get_options( $option_id ); <br/>         <br/>    // Cycle through all text fields and store their values <br/>    foreach ( array( 'setting_name' ) as $param_name ) { <br/>        if ( isset( $_POST[$param_name] ) ) { <br/>            $options[$param_name] = sanitize_text_field(<br/>                                        $_POST[$param_name] ); <br/>        } <br/>    }<br/><br/>    // Cycle through all numeric fields, convert to int and store<br/>    foreach( array( 'width', <br/>                    'number_of_tweets' ) as $param_name ) { <br/>        if ( isset( $_POST[$param_name] ) ) { <br/>            $options[$param_name] = intval( $_POST[$param_name] ); <br/>        } <br/>    }<br/><br/>    // Store updated options array to database <br/>    $options_name = 'ch2te_options_' . $option_id; <br/>    update_option( $options_name, $options );<br/><br/>    $clean_address = add_query_arg( array( 'message' =&gt; 1,  <br/>                         'option_id' =&gt; $option_id, <br/>                         'page' =&gt; 'ch2te-twitter-embed' ), <br/>                         admin_url( 'options-general.php' ) );<br/>    wp_redirect( $clean_address ); <br/>    exit; <br/>}</pre>
+<ol start="8">
+<li>Find the <kbd>ch2te_twitter_embed_shortcode</kbd> function and modify it as follows to accept the new <kbd>option_id</kbd> parameter and load the plugin options to produce the desired output. The changes are identified in bold within the recipe:</li>
+</ol>
+<pre style="padding-left: 60px">function ch2te_twitter_embed_shortcode( $atts ) { <br/>    extract( shortcode_atts( array( <br/>                'user_name' =&gt; 'ylefebvre'<strong>,</strong> <br/>                <strong>'option_id' =&gt; '1'</strong> <br/>           ), $atts ) );<br/><br/><strong>    if ( intval( $option_id ) &lt; 1 || intval( $option_id ) &gt; 5 ) {          </strong><br/><strong>        $option_id = 1; </strong><br/><strong>    }<br/>    $options = ch2te_get_options( $option_id );<br/><br/></strong>    if ( !empty( $user_name ) ) {<br/>        $output = '&lt;a class="twitter-timeline" href="'; <br/>        $output .= esc_url( 'https://twitter.com/' . $user_name );<br/><strong>        $output .= '" data-width="' . $options['width'] . '" ';</strong><br/><strong>        $output .= 'data-tweet-limit="';<br/>        $output .= $options['number_of_tweets'];</strong><br/>        $output .= '"&gt;Tweets by ' . esc_html( $user_name );<br/>        $output .= '&lt;/a&gt;&lt;script async ';<br/>        $output .= 'src="//platform.twitter.com/widgets.js"';<br/>        $output .= ' charset="utf-8"&gt;&lt;/script&gt;';<br/>    } else {<br/>        $output = '';<br/>    }<br/>    return $output; <br/>}</pre>
+<ol start="9">
+<li>Save and close the plugin file.</li>
+</ol>
+<p> </p>
+<ol start="10">
+<li>Deactivate and then <span class="packt_screen">Activate</span> the <kbd>Chapter 2 - Twitter Embed</kbd> plugin from the administration interface to execute its activation function and create default settings.</li>
+<li>Navigate to the <span class="packt_screen">Settings</span> menu and select the <span class="packt_screen">Twitter</span> <span class="packt_screen">Embed</span> submenu item to see the newly created configuration panel with the first set of options being displayed and more sets of options accessible through the drop-down list shown at the top of the page.</li>
+</ol>
+<div class="CDPAlignCenter CDPAlign"><img height="164" width="336" class="image-border" src="assets/dc7ea1be-f6e8-4f68-bb7a-9d92a7d827fe.png"/></div>
+<ol start="12">
+<li>To select the set of options to be used, add the parameter <kbd>option_id</kbd> to the shortcode used to display a Twitter feed, as follows:</li>
+</ol>
+<pre style="padding-left: 60px">[twitterfeed user_name="WordPress" option_id="1"]</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>This recipe shows how we can leverage <kbd>options</kbd> arrays to create multiple sets of options simply by creating the name of the <kbd>options</kbd> array on the fly. Instead of having a specific option name in the first parameter of the <kbd>get_option</kbd> function call, we create a string with an option ID. This ID is sent through as a URL parameter on the configuration page and as a hidden text field when processing the form data.</p>
+<p>The rest of the code is very similar to the other examples that we have seen in this chapter, since the way to access the array elements remains the same.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<ul>
+<li>The <em>Rendering the admin page contents using HTML</em> recipe</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating network-level admin pages</h1>
+                </header>
+            
+            <article>
+                
+<p>A very powerful feature of WordPress is its ability to run multiple websites from a single installation of the platform. Each site can have its own content and its own visual identity, while administrators can manage all sites from one Dashboard. When you run WordPress as a multi-site network, it adds an additional section to the Dashboard, for network-level management. All of the plugins we have created so far in this chapter present configuration panels at the site level, allowing for the custom configuration of options on a per-site basis. While this will be the desired behavior for most plugins, it might be preferable for some configuration elements to be set in a single place by a network-level administrator and apply to all the sites in the network.</p>
+<p>In this recipe, you will learn how to modify our Google Analytics plugin to be configured at the network level when running on a multi-site installation and at the site level on regular WordPress configurations.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>You should have already followed the <em>Accessing user settings from action and filter hooks</em> recipe, <span>and the resulting plugin should be active in your development site</span>. Alternatively, you can get the resulting code (<kbd>Chapter 3/ch2-page-header-output/ch2-page-header-output-v9.php</kbd>) from the downloaded code bundle and rename the file <kbd>ch2-page-header-output-v9.php</kbd> as <kbd>ch2-page-header-output.php</kbd> before starting this recipe. You should also have access to a WordPress installation configured in Network mode. You can read more about the steps required to configure WordPress to run as a multisite at <a href="https://codex.wordpress.org/Create_A_Network">https://codex.wordpress.org/Create_A_Network</a>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Navigate to the <kbd>ch2-page-header-output</kbd> folder of the WordPress plugin directory of your development installation.</li>
+<li>Open the <kbd>ch2-page-header-output.php</kbd> file in a text editor.</li>
+</ol>
+<p> </p>
+<ol start="3">
+<li>Modify the implementation of the <kbd>ch2pho_get_options</kbd> function to replace both option functions with network-level versions. The code section shows the two lines that need to be changed with modifications in bold:</li>
+</ol>
+<pre style="padding-left: 60px">$options = <strong>get_site_option</strong>( 'ch2pho_options', array() );<br/><strong><br/>update_site_option</strong>( 'ch2pho_options', $merged_options );</pre>
+<ol start="4">
+<li>Locate the <kbd>add_action</kbd> function call that adds a callback to populate the admin menu and add code to check whether the installation is a single site or multisite before registering callbacks. The following code shows new elements in bold:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>if ( is_multisite() ) {</strong><br/><strong>    add_action( 'network_admin_menu', 'ch2pho_settings_menu' );</strong><br/><strong>} else {</strong><br/>    add_action( 'admin_menu', 'ch2pho_settings_menu' );<br/><strong>}</strong></pre>
+<ol start="5">
+<li>Modify the <kbd>ch2pho_settings_menu</kbd> function to add new items to different menus based on whether the site is a regular site or a multisite with the new sections identified in bold:</li>
+</ol>
+<pre style="padding-left: 60px">function ch2pho_settings_menu() {<br/><strong>    if ( is_multisite() ) {</strong><br/><strong>        $options_page = add_submenu_page( 'settings.php',</strong><br/><strong>            'My Google Analytics Configuration', <br/>            'My Google Analytics',</strong><br/><strong>            'manage_options', 'ch2pho-my-google-analytics',<br/>            'ch2pho_config_page' );</strong><br/><strong>    } else {</strong><br/><strong>        $options_page = add_submenu_page( 'options-general.php',</strong><br/><strong>            'My Google Analytics Configuration',<br/>            'My Google Analytics',</strong><br/><strong>            'manage_options', 'ch2pho-my-google-analytics',   <br/>            'ch2pho_config_page' );</strong><br/><strong>    }</strong> <br/>    if ( !empty( $options_page ) ) {<br/>        add_action( 'load-' . $options_page, 'ch2pho_help_tabs' ); <br/>    }<br/>}</pre>
+<ol start="6">
+<li>In the <kbd>process_ch2pho_options</kbd> function, replace the call to <kbd>update_option</kbd> with a call to <kbd>update_site_option</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>update_site_option</strong>( 'ch2pho_options', $options ); </pre>
+<ol start="7">
+<li>Still in the <kbd>process_ch2pho_options</kbd> function, make the following changes around the <kbd>wp_redirect</kbd> function call with new elements shown in bold:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>if ( is_multisite() ) {</strong><br/><strong>    $redirect_page = '/network/settings.php';</strong><br/><strong>} else {</strong><br/><strong>    $redirect_page = 'options-general.php';</strong><br/><strong>}<br/></strong><br/>wp_redirect( add_query_arg( <br/>             array( 'page' =&gt; 'ch2pho-my-google-analytics', <br/>                    'message' =&gt; '1' ), <br/>             admin_url( <strong>$redirect_page</strong> ) ) );</pre>
+<ol start="8">
+<li>Modify the <kbd>ch2pho_config</kbd> page function to modify the form action so that it finds <kbd>admin-post.php</kbd> in the multisite installations with the new code shown in bold:</li>
+</ol>
+<pre style="padding-left: 60px">&lt;form method="post"<br/>      action="<strong>&lt;?php echo admin_url( 'admin-post.php' ); ?&gt;</strong>"&gt;</pre>
+<ol start="9">
+<li>Save and close the plugin file.</li>
+<li>In a Network installation of WordPress, visit the <span class="packt_screen">Plugins</span> section of Network Admin.</li>
+<li><span class="packt_screen">Network Activate</span> the <kbd>Chapter 2 - Page Header Output</kbd> plugin. You will see that a new item is now available under the Settings menu.</li>
+</ol>
+<div class="CDPAlignCenter CDPAlign"><img height="163" width="119" class="image-border" src="assets/3a47ed63-d281-4ec4-9b86-fefb71c4ba15.png"/></div>
+<ol start="12">
+<li>Visit any site in the network and look at the page source to see that the Google Analytics code is added to the page header with the user account configured on our administration page.</li>
+</ol>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>When creating a network-level plugin, the <kbd>is_multisite</kbd> function becomes very useful to determine whether or not a site is configured as a multisite. In the recipe, we used it to register callbacks to be called when building different menus (the regular single site administration menu and the network management menu). We also used the <kbd>is_multisite</kbd> function when registering the actual menu item and to determine where users should be redirected after saving options.</p>
+<p>The other useful functions in these modifications are <kbd>get_site_option</kbd> and <kbd>update_site_option</kbd>. When called in a multisite configuration, these functions will retrieve network-level options from the database. Alternatively, when running on a regular single site, they will default to access site-level options. By using these functions in our updated code, we make all the interactions with site options compatible with single and multisite installations.</p>
+<p>The last element of this recipe relates to how we activated this plugin at the network level. This means that it will be active in all sites created in the network. More specifically, in the case of our plugin, this means that all the sites will output Google Analyics code in their header, with the associated account being specified once on the network configuration.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<ul>
+<li>The <em>Accessing user settings from action and filter hooks</em> recipe</li>
+</ul>
+<p> </p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

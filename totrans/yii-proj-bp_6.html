@@ -1,0 +1,892 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;6.&#xA0;Building a Content Management System"><div class="titlepage"><div><div><h1 class="title"><a id="ch06"/>Chapter 6. Building a Content Management System</h1></div></div></div><p>For our next project, we will develop a scalable, multiuser content management system that will allow our users to create and update blog posts and enable them to comment on these blog posts. In addition to reutilizing many of the features we've developed for previous<a id="id491" class="indexterm"/> applications, this system will be optimized for optimal placement in search engines. Moreover, this system will feature a social sign-on feature that will allow users to register and log in from a third-party social network provider. We'll also explore the use of themes within our application, which will enable us to change the presentation layer of our application with minimal effort.</p><p>When we're finished, our CMS will look as follows:</p><div class="mediaobject"><img src="graphics/7734OS_06_01.jpg" alt="Building a Content Management System"/></div><div class="section" title="Prerequisites"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec50"/>Prerequisites</h1></div></div></div><p>Before <a id="id492" class="indexterm"/>we get started, there are a couple of things that we'll need to have set up and working:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Once again, we'll need to have a web server with a public-facing IP address. This <a id="id493" class="indexterm"/>will allow e-mails to be sent to our application. Many cloud Virtual Private Server (VPS) providers are available to use for low month or hourly prices. Such services include <a class="ulink" href="https://www.digitalocean.com">https://www.digitalocean.com</a>, <a class="ulink" href="http://www.linode.com">www.linode.com</a>, and <a class="ulink" href="http://www.rackspace.com/cloud/servers">www.rackspace.com/cloud/servers</a>.</li><li class="listitem" style="list-style-type: disc">In order to<a id="id494" class="indexterm"/> send e-mails in our application, we'll once again utilize a free SendGrid Developer Account, which can be set up at <a class="ulink" href="https://www.sendgrid.com/developers">https://www.sendgrid.com/developers</a>.</li><li class="listitem" style="list-style-type: disc">In this chapter, we'll once again use the latest version of MySQL (at the time of this writing, MySQL 5.6). Make sure that your MySQL server is set up and running on your server.<div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note31"/>Note</h3><p>Do you want to try something more challenging? After completing this project, try to figure out what changes you need to make to this application to make it work with Postgres rather than MySQL.</p></div></div></li><li class="listitem" style="list-style-type: disc">For this project, we'll once again manage our dependencies through Composer, which <a id="id495" class="indexterm"/>you can download and install from <a class="ulink" href="https://getcomposer.org/">https://getcomposer.org/</a>.</li><li class="listitem" style="list-style-type: disc">We'll also be using <span class="strong"><strong>Disqus</strong></span>, a third-party commenting system that we will integrate<a id="id496" class="indexterm"/> with to display comments on our site. For this project, you'll <a id="id497" class="indexterm"/>need to register an account with <a class="ulink" href="https://www.disqus.com">https://www.disqus.com</a>.</li><li class="listitem" style="list-style-type: disc">Finally, you'll need a Twitter Developer account, obtained from <a class="ulink" href="https://dev.twitter.com/">https://dev.twitter.com/</a>. This account will allow us to enable the social <a id="id498" class="indexterm"/>sign-on feature of our application through Twitter's OAuth API.</li></ul></div><p>Once you <a id="id499" class="indexterm"/>have acquired the listed prerequisites, create a subdomain on the domain name you are using and point it to your server. In this chapter, I'll use <code class="literal">chapter6.example.com</code> to refer to this subdomain. After everything is set up and your server is responding to that domain name, we can get started.</p></div></div>
+<div class="section" title="Describing the project"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec51"/>Describing the project</h1></div></div></div><p>Our CMS can <a id="id500" class="indexterm"/>be broken down into several different components:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Users who will be responsible for viewing and managing the content</li><li class="listitem" style="list-style-type: disc">Content to be managed</li><li class="listitem" style="list-style-type: disc">Categories for our content to be placed into</li><li class="listitem" style="list-style-type: disc">Metadata to help us further define our content and users</li><li class="listitem" style="list-style-type: disc">Search engine optimizations</li></ul></div><div class="section" title="Users"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec96"/>Users</h2></div></div></div><p>The first <a id="id501" class="indexterm"/>component of our application is the users who will <a id="id502" class="indexterm"/>perform all the tasks in our application. For this application, we're going to largely reuse the <code class="literal">user</code> database and authentication system we expanded upon in <a class="link" href="ch05.html" title="Chapter 5. Creating a Microblogging Platform">Chapter 5</a>, <span class="emphasis"><em>Creating a Microblogging Platform</em></span>. In this chapter, we'll enhance this functionality by allowing social authentication. Our CMS will allow users to register new accounts from the data <a id="id503" class="indexterm"/>provided by Twitter; <a id="id504" class="indexterm"/>after they have registered, the CMS will allow them to sign-in to our application by signing in to Twitter.</p><p>To enable us to know if a user is a socially authenticated user, we have to make several changes to both our database and our authentication scheme. First, we're going to need a way to indicate whether a user is a socially authenticated user. Rather than hardcoding a <code class="literal">isAuthenticatedViaTwitter</code> column in our database, we'll create a new database table called <code class="literal">user_metadata</code>, which will be a simple table that contains the user's ID, a unique key, and a value. This will allow us to store additional information about our users without having to explicitly change our user's database table every time we want to make a change:</p><div class="informalexample"><pre class="programlisting">ID INTEGER PRIMARY KEY
+user_id INTEGER
+key STRING
+value STRING
+created INTEGER
+updated INTEGER</pre></div><p>We'll also need to modify our <code class="literal">UserIdentity</code> class to allow socially authenticated users to sign in. To do this, we'll be expanding upon this class to create a <code class="literal">RemoteUserIdentity</code> class that will work off the OAuth codes that Twitter (or any other third-party source that works with HybridAuth) provides to us rather than authenticating against a username and password.</p></div><div class="section" title="Content"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec97"/>Content</h2></div></div></div><p>At the core <a id="id505" class="indexterm"/>of our CMS is our content that we'll manage. For<a id="id506" class="indexterm"/> this project, we'll manage simple blog posts that can have additional metadata associated with them. Each post will have a title, a body, an author, a category, a unique URI or slug, and an indication whether it has been published or not. Our database structure for this table will look as follows:</p><div class="informalexample"><pre class="programlisting">ID INTEGER PRIMARY KEY
+title STRING
+body TEXT
+published INTEGER
+author_id INTEGER
+category_id INTEGER
+slug STRING
+created INTEGER
+updated INTEGER</pre></div><p>Each post will also have one or many metadata columns that will further describe the posts we'll be <a id="id507" class="indexterm"/>creating. We can use this table (we'll call<a id="id508" class="indexterm"/> it <code class="literal">content_metadata</code>) to have our system store information about each post automatically for us, or add information to our posts ourselves, thereby eliminating the need to constantly migrate our database every time we want to add a new attribute to our content:</p><div class="informalexample"><pre class="programlisting">ID INTEGER PRIMARY KEY
+content_id INTEGER
+key STRING
+value STRING
+created INTEGER
+updated INTEGER</pre></div></div><div class="section" title="Categories"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec98"/>Categories</h2></div></div></div><p>Each post<a id="id509" class="indexterm"/> will be associated with a category in our system. These <a id="id510" class="indexterm"/>categories will help us further refine our posts. As with our content, each category will have its own slug. Before either a post or a category is saved, we'll need to verify that the slug is not already in use. Our table structure will look as follows:</p><div class="informalexample"><pre class="programlisting">ID INTEGER PRIMARY KEY
+name STRING
+description TEXT
+slug STRING
+created INTEGER
+updated INTEGER</pre></div></div><div class="section" title="Search engine optimizations"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec99"/>Search engine optimizations</h2></div></div></div><p>The last core component of our application is optimization for search engines so that our content <a id="id511" class="indexterm"/>can be indexed quickly. SEO is important because it increases our discoverability and availability<a id="id512" class="indexterm"/> both on search engines and on other marketing materials. In our application, there are a couple of things we'll perform to improve our SEO:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The first SEO enhancement we'll add is a <code class="literal">sitemap.xml</code> file, which we can submit to popular search engines to index. Rather than crawl our content, search engines can very quickly index our <code class="literal">sitemap.xml</code> file, which means that our content will show up in search engines faster.</li><li class="listitem" style="list-style-type: disc">The <a id="id513" class="indexterm"/>second enhancement we'll be adding is the<a id="id514" class="indexterm"/> slugs that we discussed earlier. Slugs allow us to indicate what a particular post is about directly from a URL. So rather than have a URL that looks like <code class="literal">http://chapter6.example.com/content/post/id/5</code>, we can have URL's that look like: <code class="literal">http://chapter6.example.com/my-awesome-article</code>. These types of URLs allow search engines and our users to know what our content is about without even looking at the content itself, such as when a user is browsing through their bookmarks or browsing a search engine.</li></ul></div></div></div>
+<div class="section" title="Initializing the project"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec52"/>Initializing the project</h1></div></div></div><p>To provide<a id="id515" class="indexterm"/> us with a common starting ground, a skeleton project has<a id="id516" class="indexterm"/> been included with the project resources for this chapter. Included with this skeleton project are the necessary migrations, data files, controllers, and views to get us started with developing. Also included in this skeleton project are the user authentication classes we worked on in <a class="link" href="ch05.html" title="Chapter 5. Creating a Microblogging Platform">Chapter 5</a>, <span class="emphasis"><em>Creating a Microblogging Platform</em></span>. Copy this skeleton project to your web server, configure it so that it responds to <code class="literal">chapter6.example.com</code> as outlined at the beginning of the chapter, and then perform the following steps to make sure everything is set up:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Adjust the permissions on the <code class="literal">assets</code> and <code class="literal">protected/runtime</code> folders so that they are writable by your web server.</li><li class="listitem">In this chapter, we'll once again use the latest version of MySQL (at the time of writing MySQL 5.6). Make sure that your MySQL server is set up and running on your server. Then, create a username, password, and database for our project to use, and update your <code class="literal">protected/config/main.php</code> file accordingly. For simplicity, you can use <code class="literal">ch6_cms</code> for each value.</li><li class="listitem">Install our Composer dependencies:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>Composer install</strong></span>
+</pre></div></li><li class="listitem">Run the <code class="literal">migrate</code> command and install our mock data:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>php protected/yiic.php migrate up --interactive=0</strong></span>
+<span class="strong"><strong>psql ch6_cms -f protected/data/postgres.sql</strong></span>
+</pre></div></li><li class="listitem">Finally, add <a id="id517" class="indexterm"/>your SendGrid credentials to your <code class="literal">protected/config/params.php</code> file:<div class="informalexample"><pre class="programlisting">'sendgrid' =&gt; array(
+'username' =&gt; '&lt;username&gt;',
+   'password' =&gt; '&lt;password&gt;',
+   'from' =&gt; 'noreply@ch6.home.erianna.net'
+)</pre></div></li></ol></div><p>If everything is <a id="id518" class="indexterm"/>loaded correctly, you should see a 404 page similar to the following:</p><div class="mediaobject"><img src="graphics/7734OS_06_02.jpg" alt="Initializing the project"/></div></div>
+<div class="section" title="Exploring the skeleton project"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec53"/>Exploring the skeleton project</h1></div></div></div><p>There<a id="id519" class="indexterm"/> are actually a lot of different things going on in the background to make this work even if this is just a 404 error. Before we start doing any development, let's take a look at a few of the classes that have been provided in our skeleton project in the <code class="literal">protected/components</code> folder.</p><div class="section" title="Extending models from a common class"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec100"/>Extending models from a common class</h2></div></div></div><p>The<a id="id520" class="indexterm"/> first class that has been provided to us is an ActiveRecord extension called <code class="literal">CMSActiveRecord</code> that all of our models will stem from. This class allows us to reduce the amount of code that we have to write in each class. For now, we'll simply add <code class="literal">CTimestampBehavior</code> and the <code class="literal">afterFind()</code> method we've used in previous chapters to store the old attributes for the time the need arises to compare the changed attributes with the new attributes:</p><div class="informalexample"><pre class="programlisting">class CMSActiveRecordCMSActiveRecord extends CActiveRecord
+{
+   public $_oldAttributes = array();
+
+   public function behaviors()
+   {
+      return array(
+         'CTimestampBehavior' =&gt; array(
+            'class'          =&gt; 'zii.behaviors.CTimestampBehavior',
+            'createAttribute'    =&gt; 'created',
+            'updateAttribute'    =&gt; 'updated',
+            'setUpdateOnCreate' =&gt; true
+         )
+      );
+   }
+
+   public function afterFind()
+   {
+      if ($this !== NULL)
+         $this-&gt;_oldAttributes = $this-&gt;attributes;
+      return parent::afterFind();
+   }
+}</pre></div></div><div class="section" title="Creating a custom validator for slugs"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec101"/>Creating a custom validator for slugs</h2></div></div></div><p>Since <a id="id521" class="indexterm"/>both <code class="literal">Content</code> and <code class="literal">Category</code> classes have slugs, we'll need to add a custom validator to each class that will enable <a id="id522" class="indexterm"/>us to ensure that the slug is not already in use by either a post or a category. To do this, we have another class called <code class="literal">CMSSlugActiveRecord</code> that extends <code class="literal">CMSActiveRecord</code> with a <code class="literal">validateSlug()</code> method that we'll implement as follows:</p><div class="informalexample"><pre class="programlisting">class CMSSLugActiveRecord extends CMSActiveRecord
+{
+   public function validateSlug($attributes, $params)
+   {
+      // Fetch any records that have that slug
+      $content = Content::model()-&gt;findByAttributes(array('slug' =&gt; $this-&gt;slug));
+      $category = Category::model()-&gt;findByAttributes(array('slug' =&gt; $this-&gt;slug));
+
+      $class = strtolower(get_class($this));
+
+      if ($content == NULL &amp;&amp; $category == NULL)
+         return true;
+      else if (($content == NULL &amp;&amp; $category != NULL) || ($content != NULL &amp;&amp; $category == NULL))
+      {
+         $this-&gt;addError('slug', 'That slug is already in use');
+         return false;
+      }
+      else
+      {
+         if ($this-&gt;id == $$class-&gt;id)
+            return true;
+      }
+      
+      $this-&gt;addError('slug', 'That slug is already in use');
+      return false;
+   }
+}</pre></div><p>This <a id="id523" class="indexterm"/>implementation simply <a id="id524" class="indexterm"/>checks the database for any item that has that slug. If nothing is found, or if the current item is the item that is being modified, then the validator will return true. Otherwise, it will add an error to the <code class="literal">slug</code> attribute and return false. Both our Content model and Category model will extend from this class.</p></div><div class="section" title="View management with themes"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec102"/>View management with themes</h2></div></div></div><p>One of the largest challenges of working with larger applications is changing their appearance <a id="id525" class="indexterm"/>without locking functionality into our <a id="id526" class="indexterm"/>views. One way to further separate our business logic from our presentation logic is to use themes. Using themes in Yii, we can dynamically change the presentation layer of our <a id="id527" class="indexterm"/>application simply <a id="id528" class="indexterm"/>by utilizing the <code class="literal">Yii::app()-&gt;setTheme('themename)</code> method. Once this method is called, Yii will look for view files in <code class="literal">themes/themename/views</code> rather than <code class="literal">protected/views</code>. Throughout the rest of the chapter, we'll be adding views to a custom theme called <code class="literal">main</code>, which is located in the <code class="literal">themes</code> folder. To set this theme globally, we'll be creating a custom class called <code class="literal">CMSController</code>, which all of our controllers will extend from. For now, our theme name will be hardcoded within our application. This value could easily be retrieved from a database though, allowing us to dynamically change themes from a cached or database value rather than changing it in our controller. Have a look at the following lines of code:</p><div class="informalexample"><pre class="programlisting">class CMSController extends CController
+{
+   public function beforeAction($action)
+   {
+      Yii::app()-&gt;setTheme('main');
+      return parent::beforeAction($action);
+   }
+}</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note32"/>Note</h3><p>Alternatively, you can use the <code class="literal">theme</code> attribute from within the <code class="literal">protected/config/main.php</code> file as outlined in the official documentation <a class="ulink" href="http://www.yiiframework.com/doc/guide/1.1/en/topics.theming">http://www.yiiframework.com/doc/guide/1.1/en/topics.theming</a>. While <a id="id529" class="indexterm"/>manipulating the theme there is simple, it requires our end user to have knowledge of how to manipulate PHP arrays. If you intend on allowing your end users to manipulate the theme of their site, it is recommended that you do so programmatically via <code class="literal">Yii::app()-&gt;setTheme</code> from a cached or database value. Be sure to check out the documentation for more information about using themes.</p></div></div></div><div class="section" title="Truly dynamic routing"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec103"/>Truly dynamic routing</h2></div></div></div><p>In our previous applications, we had long, boring URLs that had lots of IDs and parameters<a id="id530" class="indexterm"/> in them. These URLs provided a <a id="id531" class="indexterm"/>terrible user experience and prevented search engines and users from knowing what the content was about at a glance, which in turn would hurt our SEO rankings on many search engines. To get around this, we're going to heavily modify our <code class="literal">UrlManager</code> class to allow truly dynamic routing, which means that, every time we create or update a post or a category, our URL rules will be updated.</p><div class="section" title="Telling Yii to use our custom UrlManager"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl3sec32"/>Telling Yii to use our custom UrlManager</h3></div></div></div><p>Before <a id="id532" class="indexterm"/>we can start working on <a id="id533" class="indexterm"/>our controllers, we need to create a custom <code class="literal">UrlManager</code> to handle routing of our content so that we can access our content by its slug. The steps are as follows:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">The first change we need to make to allow for this routing is to update the <code class="literal">components</code> section of our <code class="literal">protected/config/main.php</code> file. This will tell Yii what class to use for the <code class="literal">UrlManager</code> component:<div class="informalexample"><pre class="programlisting">'urlManager' =&gt; array(
+         'class'          =&gt; 'application.components.CMSUrlManager',
+        'urlFormat'      =&gt; 'path',
+        'showScriptName' =&gt; false
+)</pre></div></li><li class="listitem">Next, within our <code class="literal">protected/components</code> folder, we need to create <code class="literal">CMSUrlManager.php</code>:<div class="informalexample"><pre class="programlisting">class CMSUrlManager extends CUrlManager {}</pre></div></li><li class="listitem"><code class="literal">CUrlManager</code> works by populating a rules array. When Yii is bootstrapped, it will trigger the <code class="literal">processRules()</code> method to determine which route should be executed. We <a id="id534" class="indexterm"/>can overload this method to inject our own rules, which will ensure that the action that we want to be executed is executed.</li><li class="listitem">To get started, let's first define a set of default routes that we want loaded. The routes defined in the following code snippet will allow for pagination on our search and home page, enable a static path for our <code class="literal">sitemap.xml</code> file, and provide a route for HybridAuth to use for social authentication:<div class="informalexample"><pre class="programlisting">public $defaultRules    = array(
+   '/sitemap.xml'           =&gt; '/content/sitemap',
+   '/search/&lt;page:\d+&gt;'     =&gt; '/content/search',
+   '/search'                =&gt; '/content/search',
+   '/blog/&lt;page:\d+&gt;'       =&gt; '/content/index',
+   '/blog'                  =&gt; '/content/index',
+   '/'                      =&gt; '/content/index',
+   '/hybrid/&lt;provider:\w+&gt;' =&gt; '/hybrid/index',
+);</pre></div></li><li class="listitem">Then, we'll implement our <code class="literal">processRules()</code> method:<div class="informalexample"><pre class="programlisting">protected function processRules() {}</pre></div></li><li class="listitem"><code class="literal">CUrlManager</code> already has a public property that we can interface to modify the rules, so we'll inject our own rules into this. The <code class="literal">rules</code> property is the same property that can be accessed from within our config file. Since <code class="literal">processRules()</code> gets called on every page load, we'll also utilize caching so that <a id="id535" class="indexterm"/>our rules don't <a id="id536" class="indexterm"/>have to be generated every time. We'll start by trying to load any of our pregenerated rules from our cache, depending upon whether we are in debug mode or not:<div class="informalexample"><pre class="programlisting">$this-&gt;rules = !YII_DEBUG ? Yii::app()-&gt;cache-&gt;get('Routes') : array();</pre></div><p>If the rules we get back are already set up, we'll simple return them; otherwise, we'll generate the rules, put them into our cache, and then append our basic URL rules that we've used throughout the previous chapters:</p><div class="informalexample"><pre class="programlisting">if ($this-&gt;rules == false || empty($this-&gt;rules))
+{
+   $this-&gt;rules = array();
+   $this-&gt;rules = $this-&gt;generateClientRules();
+   $this-&gt;rules = CMap::mergearray($this-&gt;addRssRules(), $this-&gt;rules);
+
+   Yii::app()-&gt;cache-&gt;set('Routes', $this-&gt;rules);
+}        
+
+$this-&gt;rules['&lt;controller:\w+&gt;/&lt;action:\w+&gt;/&lt;id:\w+&gt;'] = '&lt;controller&gt;/&lt;action&gt;';
+$this-&gt;rules['&lt;controller:\w+&gt;/&lt;action:\w+&gt;'] = '&lt;controller&gt;/&lt;action&gt;';
+
+return parent::processRules();</pre></div></li><li class="listitem">For abstraction purposes, within our <code class="literal">processRules()</code> method, we've utilized two methods we'll need to create: <code class="literal">generateClientRules</code>, which will generate the rules for content and categories, and <code class="literal">addRSSRules</code>, which will generate the RSS routes for each category.<p>The first method, <code class="literal">generateClientRules()</code>, simply loads our default rules that we defined earlier with the rules generated from our content and categories, which are populated by the <code class="literal">generateRules()</code> method:</p><div class="informalexample"><pre class="programlisting">private function generateClientRules()
+{
+   $rules = CMap::mergeArray($this-&gt;defaultRules, $this-&gt;rules);
+   return CMap::mergeArray($this-&gt;generateRules(), $rules);
+}
+
+private function generateRules()
+{
+   return CMap::mergeArray($this-&gt;generateContentRules(), $this-&gt;generateCategoryRules());
+}</pre></div></li><li class="listitem">The <code class="literal">generateRules()</code> method, that we just defined, actually calls the methods <a id="id537" class="indexterm"/>that build our <a id="id538" class="indexterm"/>routes. Each route is a key-value<a id="id539" class="indexterm"/> pair that will take the following form:<div class="informalexample"><pre class="programlisting">array(
+    '&lt;slug&gt;' =&gt; '&lt;controller&gt;/&lt;action&gt;/id/&lt;id&gt;'
+)</pre></div><p>Content rules will consist of an entry that is published. Have a look at the following code:</p><div class="informalexample"><pre class="programlisting">private function generateContentRules()
+{
+   $rules = array();
+   $criteria = new CDbCriteria;
+   $criteria-&gt;addCondition('published = 1');
+
+   $content = Content::model()-&gt;findAll($criteria);
+   foreach ($content as $el)
+   {
+      if ($el-&gt;slug == NULL)
+         continue;
+
+      $pageRule = $el-&gt;slug.'/&lt;page:\d+&gt;';
+      $rule = $el-&gt;slug;
+
+      if ($el-&gt;slug == '/')
+         $pageRule = $rule = '';
+
+      $pageRule = $el-&gt;slug . '/&lt;page:\d+&gt;';
+   $rule = $el-&gt;slug;
+
+   $rules[$pageRule] = "content/view/id/{$el-&gt;id}";
+   $rules[$rule] = "content/view/id/{$el-&gt;id}";
+   }
+
+   return $rules;
+}</pre></div></li><li class="listitem">Our<a id="id540" class="indexterm"/> category rules will <a id="id541" class="indexterm"/>consist of all categories in our database. Have a look at the following code:<div class="informalexample"><pre class="programlisting">private function generateCategoryRules()
+{
+   $rules = array();
+   $categories = Category::model()-&gt;findAll();
+   foreach ($categories as $el)
+   {
+      if ($el-&gt;slug == NULL)
+         continue;
+
+      $pageRule = $el-&gt;slug.'/&lt;page:\d+&gt;';
+      $rule = $el-&gt;slug;
+
+      if ($el-&gt;slug == '/')
+         $pageRule = $rule = '';
+
+      $pageRule = $el-&gt;slug . '/&lt;page:\d+&gt;';
+   $rule = $el-&gt;slug;
+
+   $rules[$pageRule] = "category/index/id/{$el-&gt;id}";
+   $rules[$rule] = "category/index/id/{$el-&gt;id}";
+   }
+
+   return $rules;
+}</pre></div></li><li class="listitem">Finally, we'll add our RSS rules that will allow RSS readers to read all content <a id="id542" class="indexterm"/>for the entire site or for a particular category, as follows:<div class="informalexample"><pre class="programlisting">private function addRSSRules()
+{
+   $categories = Category::model()-&gt;findAll();
+   foreach ($categories as $category)
+      $routes[$category-&gt;slug.'.rss'] = "category/rss/id/{$category-&gt;id}";
+
+   $routes['blog.rss'] = '/category/rss';
+   return $routes;
+}</pre></div></li></ol></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note33"/>Note</h3><p>
+<code class="literal">CUrlManager</code> has <a id="id543" class="indexterm"/>many different components. If you have questions, be sure to reference the Yii Class Reference for this class <a id="id544" class="indexterm"/>at <a class="ulink" href="http://www.yiiframework.com/doc/api/1.1/CUrlManager">http://www.yiiframework.com/doc/api/1.1/CUrlManager</a>.</p></div></div></div></div></div>
+<div class="section" title="Displaying and managing content"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec54"/>Displaying and managing content</h1></div></div></div><p>Now that <a id="id545" class="indexterm"/>Yii knows how to route our content, we can begin work on<a id="id546" class="indexterm"/> displaying and managing it. Begin by creating a new controller called <code class="literal">ContentController</code> in <code class="literal">protected/controllers</code> that extends <code class="literal">CMSController</code>. Have a look at the following line of code:</p><div class="informalexample"><pre class="programlisting">class ContentController extends CMSController {}</pre></div><p>To start with, we'll define our <code class="literal">accessRules()</code> method and the default layout that we're going to use. Here's how:</p><div class="informalexample"><pre class="programlisting">public $layout = 'default';
+
+public function filters()
+{
+   return array(
+      'accessControl',
+   );
+}
+
+public function accessRules()
+{
+   return array(
+      array('allow',
+         'actions' =&gt; array('index', 'view', 'search'),
+         'users' =&gt; array('*')
+      ),
+      array('allow',
+         'actions' =&gt; array('admin', 'save', 'delete'),
+         'users'=&gt;array('@'),
+         'expression' =&gt; 'Yii::app()-&gt;user-&gt;role==2'
+      ),
+      array('deny',  // deny all users
+         'users'=&gt;array('*'),
+      ),
+   );
+}</pre></div><div class="section" title="Rendering the sitemap"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec104"/>Rendering the sitemap</h2></div></div></div><p>The first <a id="id547" class="indexterm"/>method we'll be implementing is our sitemap action. In our <code class="literal">ContentController</code>, create a new method called <code class="literal">actionSitemap()</code>:</p><div class="informalexample"><pre class="programlisting">public function actionSitemap() {}</pre></div><p>The steps to be performed are as follows:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Since sitemaps come in XML formatting, we'll start by disabling <code class="literal">WebLogRoute</code> defined in our <code class="literal">protected/config/main.php</code> file. This will ensure that our XML validates when search engines attempt to index it:<div class="informalexample"><pre class="programlisting">Yii::app()-&gt;log-&gt;routes[0]-&gt;enabled = false;</pre></div></li><li class="listitem">We'll then send the appropriate XML headers, disable the rendering of the layout, and flush any content that may have been queued to be sent to the browser:<div class="informalexample"><pre class="programlisting">ob_end_clean();
+header('Content-type: text/xml; charset=utf-8');
+$this-&gt;layout = false;</pre></div></li><li class="listitem">Then, we'll load all the published entries and categories and send them to our sitemap <a id="id548" class="indexterm"/>view:<div class="informalexample"><pre class="programlisting">$content = Content::model()-&gt;findAllByAttributes(array('published' =&gt; 1));
+$categories = Category::model()-&gt;findAll();
+
+$this-&gt;renderPartial('sitemap', array(
+   'content'      =&gt; $content,
+   'categories'   =&gt; $categories,
+   'url'          =&gt; 'http://'.Yii::app()-&gt;request-&gt;serverName . Yii::app()-&gt;baseUrl
+));</pre></div></li><li class="listitem">Finally, we have two options to render this view. We can either make it a part of our theme in <code class="literal">themes/main/views/content/sitemap.php</code>, or we can place it in <code class="literal">protected/views/content/sitemap.php</code>. Since a sitemap's structure is unlikely to change, let's put it in the <code class="literal">protected/views</code> folder:<div class="informalexample"><pre class="programlisting">&lt;?php echo '&lt;?xml version="1.0" encoding="UTF-8"?&gt;'; ?&gt;
+&lt;urlset &gt;
+   &lt;?php foreach ($content as $v): ?&gt;
+      &lt;url&gt;
+         &lt;loc&gt;&lt;?php echo $url .'/'. htmlspecialchars(str_replace('/', '', $v['slug']), ENT_QUOTES, "utf-8"); ?&gt;&lt;/loc&gt;
+         &lt;lastmod&gt;&lt;?php echo date('c', strtotime($v['updated']));?&gt;&lt;/lastmod&gt;
+         &lt;changefreq&gt;weekly&lt;/changefreq&gt;
+         &lt;priority&gt;1&lt;/priority&gt;
+      &lt;/url&gt;
+   &lt;?php endforeach; ?&gt;
+   &lt;?php foreach ($categories as $v): ?&gt;
+      &lt;url&gt;
+         &lt;loc&gt;&lt;?php echo $url .'/'. htmlspecialchars(str_replace('/', '', $v['slug']), ENT_QUOTES, "utf-8"); ?&gt;&lt;/loc&gt;
+         &lt;lastmod&gt;&lt;?php echo date('c', strtotime($v['updated']));?&gt;&lt;/lastmod&gt;
+         &lt;changefreq&gt;weekly&lt;/changefreq&gt;
+         &lt;priority&gt;0.7&lt;/priority&gt;
+      &lt;/url&gt;
+   &lt;?php endforeach; ?&gt;
+&lt;/urlset&gt;</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note34"/>Note</h3><p>Even though we've told Yii to look for view files within a theme, it's still going to look in the <code class="literal">protected/views</code> folder if it cannot find the view file within the <code class="literal">themes</code> folder. This feature allows us to separate views that shouldn't change (such as sitemaps and RSS feeds) from views that will actually be presented to a user.</p></div></div></li></ol></div><p>You <a id="id549" class="indexterm"/>can now load <code class="literal">http://chapter6.example.com/sitemap.xml</code> in your browser to see the sitemap. Before you make your site live, be sure to submit this file to search engines for them to index.</p></div><div class="section" title="Displaying a list view of content"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec105"/>Displaying a list view of content</h2></div></div></div><p>Next, we'll implement the actions necessary to display all of our content and a particular post. We'll <a id="id550" class="indexterm"/>start by providing a paginated view of our posts. Since <code class="literal">CListView</code> and the Content model's <code class="literal">search()</code> method already provide this functionality, we can utilize those classes to generate and display this data:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">To begin with, open <code class="literal">protected/models/Content.php</code> and modify the return value <a id="id551" class="indexterm"/>of the <code class="literal">search()</code> method as follows. This will ensure that Yii's pagination uses the correct variable in our <code class="literal">CListView</code>, and tells Yii how many results to load per page.<div class="informalexample"><pre class="programlisting">return new CActiveDataProvider($this, array(
+'criteria'    =&gt;$criteria,
+'pagination'  =&gt; array(
+'pageSize'    =&gt; 5,
+'pageVar'     =&gt;'page'
+)
+));</pre></div></li><li class="listitem">Next, implement the <code class="literal">actionIndex()</code> method with the <code class="literal">$page</code> parameter. We've already told our <code class="literal">UrlManager</code> how to handle this, which means that we'll get pretty URI's for pagination (for example, <code class="literal">/blog</code>, <code class="literal">/blog/2</code>, <code class="literal">/blog/3</code>, and so on):<div class="informalexample"><pre class="programlisting">public function actionIndex($page=1)
+{
+   // Model Search without $_GET params
+   $model = new Content('search');
+   $model-&gt;unsetAttributes();
+   $model-&gt;published = 1;
+
+   $this-&gt;render('//content/all', array(
+      'dataprovider' =&gt; $model-&gt;search()
+   ));
+}</pre></div></li><li class="listitem">Then <a id="id552" class="indexterm"/>we'll create a view in <code class="literal">themes/main/views/content/all.php</code>; this will display the data within our <code class="literal">dataProvider</code>:<div class="informalexample"><pre class="programlisting">&lt;?php $this-&gt;widget('zii.widgets.CListView', array(
+    'dataProvider'=&gt;$dataprovider,
+    'itemView'=&gt;'//content/list',
+    'summaryText' =&gt; '',
+    'pager' =&gt; array(
+       'htmlOptions' =&gt; array(
+          'class' =&gt; 'pager'
+       ),
+       'header' =&gt; '',
+       'firstPageCssClass'=&gt;'hide',
+       'lastPageCssClass'=&gt;'hide',
+       'maxButtonCount' =&gt; 0
+    )
+));</pre></div></li><li class="listitem">Finally, copy <code class="literal">themes/main/views/content/all.php</code> from the project resources folder so that our views can render.</li></ol></div><p>Since our database has already been populated with some sample data, you can start playing around with the results right away, as shown in the following screenshot:</p><div class="mediaobject"><img src="graphics/7734OS_06_03.jpg" alt="Displaying a list view of content"/></div></div><div class="section" title="Displaying content by ID"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec106"/>Displaying content by ID</h2></div></div></div><p>Since our <a id="id553" class="indexterm"/>routing rules are already set up, displaying our content is extremely simple. All that we have to do is search for a published model with the ID passed to the view action and render it:</p><div class="informalexample"><pre class="programlisting">public function actionView($id=NULL)
+{
+   // Retrieve the data
+   $content = Content::model()-&gt;findByPk($id);
+   // beforeViewAction should catch this
+   if ($content == NULL || !$content-&gt;published)
+      throw new CHttpException(404, 'The article you specified does not exist.');
+   $this-&gt;render('view', array(
+      'id'   =&gt; $id,
+      'post' =&gt; $content
+   ));
+}</pre></div><p>After copying <code class="literal">themes/main/views/content/view.php</code> from the project resources folder into<a id="id554" class="indexterm"/> your project, you'll be able to click into a particular post from the home page. In its present form, this action has introduced an interesting side effect that could negatively impact our SEO rankings on search engines—the same entry can now be accessed from two URI's. For example, <code class="literal">http://chapter6.example.com/content/view/id/1</code> and <code class="literal">http://chapter6.example.com/quis-condimentum-tortor</code> now bring up the same post. Fortunately, correcting this bug is fairly easy. Since the goal of our slugs is to provide more descriptive URIs, we'll simply block access to the view if a user tries to access it from the non-slugged URI.</p><p>We'll do this by creating a new method called <code class="literal">beforeViewAction()</code> that takes the entry ID as a parameter and gets called right after the <code class="literal">actionView()</code> method is called. This private method will simply check the URI from <code class="literal">CHttpRequest</code> to determine how <code class="literal">actionView</code> was accessed and return a 404 if it's not through our beautiful slugs:</p><div class="informalexample"><pre class="programlisting">private function beforeViewAction($id=NULL)
+{
+   // If we do not have an ID, consider it to be null, and throw a 404 error
+   if ($id == NULL)
+      throw new CHttpException(404,'The specified post cannot be found.');
+   
+   // Retrieve the HTTP Request
+   $r = new CHttpRequest();
+   
+   // Retrieve what the actual URI
+   $requestUri = str_replace($r-&gt;baseUrl, '', $r-&gt;requestUri);
+   
+   // Retrieve the route
+   $route = '/' . $this-&gt;getRoute() . '/' . $id;
+   $requestUri = preg_replace('/\?(.*)/','',$requestUri);
+   
+   // If the route and the uri are the same, then a direct access attempt was made, and we need to block access to the controller
+   if ($requestUri == $route)
+      throw new CHttpException(404, 'The requested post cannot be found.');
+    
+    return str_replace($r-&gt;baseUrl, '', $r-&gt;requestUri);
+}</pre></div><p>Then, right <a id="id555" class="indexterm"/>after our <code class="literal">actionView</code> starts, we can simultaneously set the correct return URL and block access to the content if it wasn't accessed through the slug as follows:</p><div class="informalexample"><pre class="programlisting">Yii::app()-&gt;user-&gt;setReturnUrl($this-&gt;beforeViewAction($id));</pre></div><div class="section" title="Adding comments to our CMS with Disqus"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl3sec33"/>Adding comments to our CMS with Disqus</h3></div></div></div><p>Presently, our<a id="id556" class="indexterm"/> content is only informative <a id="id557" class="indexterm"/>in nature—we have no way for our users to communicate with us what they thought about our entry. To encourage engagement, we can add a commenting system to our CMS to further engage with our readers. Rather than writing our own commenting system, we can leverage comment through Disqus, a free, third-party commenting system. Even through Disqus, comments are implemented in JavaScript and we can create a custom widget wrapper for it to display comments on our site. The steps are as follows:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">To begin with, log in to the Disqus account you created at the beginning of this <a id="id558" class="indexterm"/>chapter as outlined in the prerequisites section. Then, navigate to <a class="ulink" href="http://disqus.com/admin/create/">http://disqus.com/admin/create/</a> and fill out the form fields as prompted and as shown in the following screenshot:<div class="mediaobject"><img src="graphics/7734OS_06_04.jpg" alt="Adding comments to our CMS with Disqus"/></div></li><li class="listitem">Then, add a <code class="literal">disqus</code> section to your <code class="literal">protected/config/params.php</code> file with<a id="id559" class="indexterm"/> your site <code class="literal">shortname</code>:<div class="informalexample"><pre class="programlisting">'disqus' =&gt; array(
+    'shortname' =&gt; 'ch6disqusexample',
+)</pre></div></li><li class="listitem">Next, create <a id="id560" class="indexterm"/>a new widget in <code class="literal">protected/components</code> called <code class="literal">DisqusWidget.php</code>. This widget will be loaded within our view and will be populated by our Content model:<div class="informalexample"><pre class="programlisting">class DisqusWidget extends CWidget {}</pre></div></li><li class="listitem">Begin by specifying the public properties that our view will be able to inject into as follows:<div class="informalexample"><pre class="programlisting">public $shortname = NULL;
+
+public $identifier = NULL;
+
+public $url = NULL;
+
+public $title = NULL;</pre></div></li><li class="listitem">Then, overload the <code class="literal">init()</code> method to load the Disqus JavaScript callback and to populate the JavaScript variables with those populated to the widget as follows:<div class="informalexample"><pre class="programlisting">public function init()
+{
+   parent::init();
+   if ($this-&gt;shortname == NULL)
+      throw new CHttpException(500, 'Disqus shortname is required');
+   
+   echo "&lt;div id='disqus_thread'&gt;&lt;/div&gt;";
+   Yii::app()-&gt;clientScript-&gt;registerScript('disqus', "
+       var disqus_shortname = '{$this-&gt;shortname}';
+       var disqus_identifier = '{$this-&gt;identifier}';
+       var disqus_url = '{$this-&gt;url}';
+       var disqus_title = '{$this-&gt;title}';
+
+        /* * * DON'T EDIT BELOW THIS LINE * * */
+        (function() {
+            var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+            dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+            (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        })();
+   ");
+}</pre></div></li><li class="listitem">Finally, within <a id="id561" class="indexterm"/>our <code class="literal">themes/main/views/content/view.php</code> file, load the widget as follows:<div class="informalexample"><pre class="programlisting">&lt;?php $this-&gt;widget('DisqusWidget', array(
+      'shortname'  =&gt; Yii::app()-&gt;params['includes']['disqus']['shortname'],
+      'url'        =&gt; $this-&gt;createAbsoluteUrl('/'.$post-&gt;slug),
+      'title'     =&gt; $post-&gt;title,
+      'identifier' =&gt; $post-&gt;id
+   )); ?&gt;</pre></div></li></ol></div><p>Now, when <a id="id562" class="indexterm"/>you load any given post, Disqus comments will also be loaded with that post. Go ahead and give it a try!</p><div class="mediaobject"><img src="graphics/7734OS_06_07.jpg" alt="Adding comments to our CMS with Disqus"/></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note35"/>Note</h3><p>The <a id="id563" class="indexterm"/>greatest benefit of using <a id="id564" class="indexterm"/>Disqus as a service provider is that it enables us to focus solely on the integration of a product rather than raw implementation. By not having to reinvent the wheel each time we need <a id="id565" class="indexterm"/>a service, we can save a lot of time and money. When relying on a third party, however, be cognizant of the <a id="id566" class="indexterm"/>fact that the service provider may not exist the next day. While unlikely, a large service provider can go out of business overnight, so be prepared to have a plan in place to replace or substitute any third-party service you integrate into your application.</p></div></div></div></div><div class="section" title="Searching for content"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec107"/>Searching for content</h2></div></div></div><p>Next, we'll implement a search method so that our users can search for posts. To do this, we'll <a id="id567" class="indexterm"/>implement an instance of <code class="literal">CActiveDataProvider</code> and pass that data to our <code class="literal">themes/main/views/content/all.php</code> view to be rendered and paginated:</p><div class="informalexample"><pre class="programlisting">public function actionSearch()
+{
+    $param = Yii::app()-&gt;request-&gt;getParam('q');
+
+    $criteria = new CDbCriteria;
+
+    $criteria-&gt;addSearchCondition('title',$param,'OR');
+    $criteria-&gt;addSearchCondition('body',$param,'OR');
+
+    $dataprovider = new CActiveDataProvider('Content', array(
+        'criteria'=&gt;$criteria,
+        'pagination' =&gt; array(
+            'pageSize' =&gt; 5,
+            'pageVar'=&gt;'page'
+        )
+    ));
+
+    $this-&gt;render('//content/all', array(
+      'dataprovider' =&gt; $dataprovider
+   ));
+}</pre></div><p>Since our view file already exists, we can now search for content in our CMS.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note36"/>Note</h3><p>In previous chapters, we would have simply queried the <code class="literal">$_POST</code> array for our search parameter. A more Yii way of retrieving these variables is to use the <code class="literal">Yii::app()-&gt;request-&gt;getParam()</code> method from the <code class="literal">CHttpRequest</code> class. Be warned, however, that this method operates on both <code class="literal">$_GET</code> and <code class="literal">$_POST</code> parameters. If the same parameter is sent via both HTTP methods (you should <a id="id568" class="indexterm"/>avoid doing this when possible), only the <code class="literal">$_GET</code> method will be returned. Be sure to read the <code class="literal">CHttpRequest</code> Class Reference<a id="id569" class="indexterm"/> page for more information at <a class="ulink" href="http://www.yiiframework.com/doc/api/1.1/CHttpRequest">http://www.yiiframework.com/doc/api/1.1/CHttpRequest</a>.</p></div></div></div><div class="section" title="Managing content"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec108"/>Managing content</h2></div></div></div><p>Next, we'll <a id="id570" class="indexterm"/>implement a basic set of management tools that will allow us to create, update, and delete entries:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">We'll start by defining our <code class="literal">loadModel()</code> method and the <code class="literal">actionDelete()</code> method:<div class="informalexample"><pre class="programlisting">private function loadModel($id=NULL)
+{
+   if ($id == NULL)
+      throw new CHttpException(404, 'No category with that ID exists');
+
+   $model = Content::model()-&gt;findByPk($id);
+
+   if ($model == NULL)
+      throw new CHttpException(404, 'No category with that ID exists');
+
+   return $model;
+}
+
+public function actionDelete($id)
+{
+   $this-&gt;loadModel($id)-&gt;delete();
+   
+   $this-&gt;redirect($this-&gt;createUrl('content/admin'));
+}</pre></div></li><li class="listitem">Next, we can implement our admin view, which will allow us to view all the content in our system and to create new entries. Be sure to copy the <code class="literal">themes/main/views/content/admin.php</code> file from the project resources folder into your project before using this view:<div class="informalexample"><pre class="programlisting">public function actionAdmin()
+{
+   $model = new Content('search');
+
+   $model-&gt;unsetAttributes();
+
+   if (isset($_GET['Content']))
+      $model-&gt;attributes = $_GET;
+
+   $this-&gt;render('admin', array(
+      'model' =&gt; $model
+   ));
+}</pre></div></li><li class="listitem">Finally, we'll implement a save view to create and update entries. Saving content <a id="id571" class="indexterm"/>will simply pass it through our content model's validation rules. The only override we'll be adding is ensuring that the author is assigned to the user editing the entry. Before using this view, be sure to copy the <code class="literal">themes/main/views/content/save.php</code> file from the project resources folder into your project:<div class="informalexample"><pre class="programlisting">public function actionSave($id=NULL)
+{
+   if ($id == NULL)
+      $model = new Content;
+   else
+      $model = $this-&gt;loadModel($id);
+
+   if (isset($_POST['Content']))
+   {
+      $model-&gt;attributes = $_POST['Content'];
+
+      $model-&gt;author_id = Yii::app()-&gt;user-&gt;id;
+
+      if ($model-&gt;save())
+      {
+         Yii::app()-&gt;user-&gt;setFlash('info', 'The articles was saved');
+         $this-&gt;redirect($this-&gt;createUrl('content/admin'));
+      }
+   }
+
+   $this-&gt;render('save', array(
+      'model' =&gt; $model
+   ));
+}</pre></div></li></ol></div><p>At this <a id="id572" class="indexterm"/>point, you can now log in to the system using the credentials provided in the following table and start managing entries:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Username</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Password</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">user1@example.com</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">test</code>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">user2@example.com</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">test</code>
+</p>
+</td></tr></tbody></table></div></div></div>
+<div class="section" title="Viewing and managing categories"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec55"/>Viewing and managing categories</h1></div></div></div><p>Now, let's <a id="id573" class="indexterm"/>move to viewing and managing categories. As outlined <a id="id574" class="indexterm"/>previously, each category will be accessible via a dedicated route and will only display content within that category. We'll start by defining our default access rules and layout name in <code class="literal">protected/controllers/CategoryController.php</code>:</p><div class="informalexample"><pre class="programlisting">public $layout = 'default';
+
+public function filters()
+{
+   return array(
+      'accessControl',
+   );
+}
+
+public function accessRules()
+{
+   return array(
+      array('allow',
+         'actions' =&gt; array('index', 'view', 'rss'),
+         'users' =&gt; array('*')
+      ),
+      array('allow',
+         'actions' =&gt; array('admin', 'save', 'delete'),
+         'users'=&gt;array('@'),
+         'expression' =&gt; 'Yii::app()-&gt;user-&gt;role==2'
+      ),
+      array('deny',  // deny all users
+         'users'=&gt;array('*'),
+      ),
+   );
+}</pre></div><div class="section" title="Viewing entries in a category"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec109"/>Viewing entries in a category</h2></div></div></div><p>Displaying<a id="id575" class="indexterm"/> entries in each category will be nearly identical to displaying all entries, so we can implement our index action as follows. Note that the parameters passed to this method are simply passed from the routes we generated earlier.</p><div class="informalexample"><pre class="programlisting">public function actionIndex($id=1, $page=1)
+{
+   $category = $this-&gt;loadModel($id);
+   
+   // Model Search without $_GET params
+   $model = new Content('search');
+   $model-&gt;unsetAttributes();
+
+   $model-&gt;attributes = array(
+      'published' =&gt; 1,
+      'category_id' =&gt; $id
+   );
+
+   $_GET['page'] = $page;
+
+   $this-&gt;render('//content/all', array(
+      'dataprovider' =&gt; $model-&gt;search()
+   ));
+}</pre></div><div class="section" title="Viewing an RSS feed for categories"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl3sec34"/>Viewing an RSS feed for categories</h3></div></div></div><p>An alternative<a id="id576" class="indexterm"/> way of viewing entries in a particular <a id="id577" class="indexterm"/>category is through an RSS feed. RSS feeds are a very popular medium that allows your users to subscribe to your content and be regularly notified of updates without having to visit each site individually. Our action to display our category entries in an RSS feed look as follows:</p><div class="informalexample"><pre class="programlisting">public function actionRss($id=NULL)
+{
+   Yii::app()-&gt;log-&gt;routes[0]-&gt;enabled = false;
+
+   ob_end_clean();
+   header('Content-type: text/xml; charset=utf-8');
+
+   $this-&gt;layout = false;
+
+   $criteria = new CDbCriteria;
+               
+   if ($id != NULL)
+      $criteria-&gt;addCondition("category_id = " . $id);
+            
+   $criteria-&gt;order = 'created DESC';
+   $data = Content::model()-&gt;findAll($criteria);
+   
+   $this-&gt;renderPartial('rss', array(
+      'data'   =&gt; $data,
+      'url'   =&gt; 'http://'.Yii::app()-&gt;request-&gt;serverName . Yii::app()-&gt;baseUrl
+   ));
+}</pre></div><p>Then, add the following to your <code class="literal">protected/views/category/rss.php</code> file:</p><div class="informalexample"><pre class="programlisting">&lt;?php echo '&lt;?xml version="1.0" encoding="UTF-8" ?&gt;'; ?&gt;
+&lt;rss version="2.0" &gt;
+   &lt;channel&gt;
+      &lt;atom:link href="&lt;?php echo $url.Yii::app()-&gt;request-&gt;requestUri; ?&gt;" rel="self" type="application/rss+xml" /&gt;
+      &lt;title&gt;&lt;?php echo Yii::app()-&gt;name; ?&gt;&lt;/title&gt;
+      &lt;link&gt;&lt;?php echo $url; ?&gt;&lt;/link&gt;
+      &lt;description&gt;&lt;?php echo Yii::app()-&gt;name; ?&gt; Blog&lt;/description&gt;
+      &lt;language&gt;en-us&lt;/language&gt;
+      &lt;pubDate&gt;&lt;?php echo date('D, d M Y H:i:s T'); ?&gt;&lt;/pubDate&gt;
+      &lt;lastBuildDate&gt;&lt;?php echo date('D, d M Y H:i:s T'); ?&gt;&lt;/lastBuildDate&gt;
+      &lt;docs&gt;http://blogs.law.harvard.edu/tech/rss&lt;/docs&gt;
+   
+      &lt;?php foreach ($data as $k=&gt;$v): ?&gt;
+         &lt;item&gt;
+            &lt;title&gt;&lt;?php echo htmlspecialchars(str_replace('/', '', $v['title']), ENT_QUOTES, "utf-8"); ?&gt;&lt;/title&gt;
+            &lt;link&gt;&lt;?php echo $url.'/'.htmlspecialchars(str_replace('/', '', $v['slug']), ENT_QUOTES, "utf-8"); ?&gt;&lt;/link&gt;
+            &lt;description&gt;
+               &lt;?php
+                  $md = new CMarkdownParser;
+                  echo htmlspecialchars(strip_tags($md-&gt;transform($v['body'])), ENT_QUOTES, "utf-8");
+               ?&gt;
+            &lt;/description&gt;
+            &lt;category&gt;&lt;?php echo htmlspecialchars(Category::model()-&gt;findByPk($v['category_id'])-&gt;name,  ENT_QUOTES, "utf-8"); ?&gt;&lt;/category&gt;
+            &lt;author&gt;&lt;?php echo User::model()-&gt;findByPk($v['author_id'])-&gt;email; ?&gt; (&lt;?php echo User::model()-&gt;findByPk($v['author_id'])-&gt;username; ?&gt;)&lt;/author&gt;
+            &lt;pubDate&gt;&lt;?php echo date('D, d M Y H:i:s T', strtotime($v['created'])); ?&gt;&lt;/pubDate&gt;
+            &lt;guid&gt;&lt;?php echo $url.'/'.htmlspecialchars(str_replace('/', '', $v['slug']), ENT_QUOTES, "utf-8"); ?&gt;&lt;/guid&gt;
+         &lt;/item&gt;
+      &lt;?php endforeach; ?&gt;
+   &lt;/channel&gt;
+&lt;/rss&gt;</pre></div><p>Now, if <a id="id578" class="indexterm"/>you navigate to <code class="literal">3</code>, you can view an RSS feed of all <a id="id579" class="indexterm"/>uncategorized entries. Each category will have its own RSS feed, allowing users to subscribe to the content they are interested in rather than all the content on your site.</p></div></div><div class="section" title="Managing categories"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec110"/>Managing categories</h2></div></div></div><p>Next, we<a id="id580" class="indexterm"/> need to implement management of our categories:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">We'll start with our <code class="literal">loadModel()</code> and <code class="literal">actionDelete()</code> methods:<div class="informalexample"><pre class="programlisting">public function actionDelete($id)
+{
+   $this-&gt;loadModel($id)-&gt;delete();
+   
+   $this-&gt;redirect($this-&gt;createUrl('content/admin'));
+}
+
+public function loadModel($id=NULL)
+{
+   if ($id == NULL)
+      throw new CHttpException(404, 'No category with that ID exists');
+
+   $model = Category::model()-&gt;findByPk($id);
+
+   if ($model == NULL)
+      throw new CHttpException(404, 'No category with that ID exists');
+
+   return $model;
+}</pre></div></li><li class="listitem">Then, we'll implement the admin action. Be sure to copy the <code class="literal">themes/main/views/category/admin.php</code> file from the project resources folder. Have a look at the following code:<div class="informalexample"><pre class="programlisting">public function actionAdmin()
+{
+   $model = new Category('search');
+   $model-&gt;unsetAttributes();
+
+   if (isset($_GET['Category']))
+      $model-&gt;attributes = $_GET;
+
+   $this-&gt;render('admin', array(
+      'model' =&gt; $model
+   ));
+}</pre></div></li><li class="listitem">Finally, we'll implement the <code class="literal">save()</code> method. Be sure to copy the <code class="literal">themes/main/views/category/save.php</code> file from the project resources folder. Have a look at the following code:<div class="informalexample"><pre class="programlisting">public function actionSave($id=NULL)
+{
+   if ($id == NULL)
+      $model = new Category;
+   else
+      $model = $this-&gt;loadModel($id);
+
+   if (isset($_POST['Category']))
+   {
+      $model-&gt;attributes = $_POST['Category'];
+
+      if ($model-&gt;save())
+      {
+         Yii::app()-&gt;user-&gt;setFlash('info', 'The category was saved');
+         $this-&gt;redirect($this-&gt;createUrl('category/admin'));
+      }
+   }
+
+   $this-&gt;render('save', array(
+      'model' =&gt; $model
+   ));
+}</pre></div></li></ol></div><p>We've <a id="id581" class="indexterm"/>now finished the core of our content management system. The structure that we've built for our CMS, while being extremely simple, provides a lot of flexibility for us to expand upon with very minimal effort.</p></div></div>
+<div class="section" title="Social authentication with HybridAuth"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec56"/>Social authentication with HybridAuth</h1></div></div></div><p>In the <a id="id582" class="indexterm"/>previous chapter, <a class="link" href="ch05.html" title="Chapter 5. Creating a Microblogging Platform">Chapter 5</a>, <span class="emphasis"><em>Creating a Microblogging Platform</em></span>, we used HybridAuth to sign in as a user to, and <a id="id583" class="indexterm"/>share content with, Twitter. In this chapter, we use HybridAuth to register accounts in our CMS and to sign in to our CMS without having to enter a username and password. To achieve this, we'll create three new forms, a new <code class="literal">UserIdentity</code> class, and a control that will enable us to take advantage of all the providers that HybridAuth has to offer.</p><p>Before <a id="id584" class="indexterm"/>we get started with any <a id="id585" class="indexterm"/>coding, however, we need to first create a new Twitter application similar to the one we created in <a class="link" href="ch05.html" title="Chapter 5. Creating a Microblogging Platform">Chapter 5</a>, <span class="emphasis"><em>Creating a Microblogging Platform</em></span>. This will allow us to focus on development rather than configuration once we start writing code. Once your Twitter application has been created and permissions have been set, add a <code class="literal">hybridauth</code> section to your <code class="literal">protected/config/params.php</code> file, containing your OAuth secret token and key:</p><div class="informalexample"><pre class="programlisting">'hybridauth' =&gt; array(
+   'providers' =&gt; array(
+      'Twitter' =&gt; array(
+         'enabled' =&gt; true,
+         'keys' =&gt; array(
+            'key' =&gt; '&lt;key&gt;',
+            'secret' =&gt; '&lt;secret&gt;
+         )
+      )
+   )
+)</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note37"/>Note</h3><p>When<a id="id586" class="indexterm"/> we're done, you'll be able to add any of the supported HybridAuth providers listed in the HybridAuth documentation at <a class="ulink" href="http://hybridauth.sourceforge.net/userguide.html">http://hybridauth.sourceforge.net/userguide.html</a>.</p></div></div><div class="section" title="Validating remote identities"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec111"/>Validating remote identities</h2></div></div></div><p>For our <a id="id587" class="indexterm"/>application, we need to register users from a social network, authenticate users from a social network to users in our database, and link existing users to a social identity. We're also going to authenticate users into our system. To achieve this, we're going to create three separate forms, <code class="literal">RemoteRegistrationForm</code>, <code class="literal">RemoteLinkAccountForm</code>, and <code class="literal">RemoteIdentityForm</code>, which will serve as our <code class="literal">LoginForm</code> for remote users. We'll also create a <code class="literal">RemoteUserIdentity</code> class that we'll use to authenticate users into our system. Let's get started.</p><div class="section" title="Remote registrations"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl3sec35"/>Remote registrations</h3></div></div></div><p>The first class we'll need to create is <code class="literal">RemoteRegistrationForm</code>. This form will allow us to <a id="id588" class="indexterm"/>register users using information from their social identity. The steps are as follows:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">To get started, create a new class in <code class="literal">protected/models</code> called <code class="literal">RemoteRegistrationForm.php</code> with the following definition. To keep things simple, we're going to be reusing much of the functionality already available from our <code class="literal">RegistrationForm</code> class. Have a look at the following line of code:<div class="informalexample"><pre class="programlisting">class RemoteRegistrationForm extends RegistrationForm {}</pre></div></li><li class="listitem">We'll then specify two additional attributes, the HybridAuth adapter that we'll provide from the controller we'll create later on and the provider name that we're authenticating with. We'll also set up validators for these attributes to ensure that they are set. Notice that we're using the <code class="literal">mergeArray()</code> method from the <code class="literal">CMap</code> class to take advantage of the validation rules that are already in place:<div class="informalexample"><pre class="programlisting">public $adapter;
+
+public $provider;
+
+public function rules()
+{
+    return CMap::mergeArray(parent::rules(), array(
+        array('adapter, provider', 'required')
+    ));
+}</pre></div></li><li class="listitem">Finally, we'll overload our <code class="literal">save()</code> method so that the provider name and OAuth token are written to our database. We'll take advantage of this metadata when we create our <code class="literal">RemoteIdentityForm</code> class:<div class="informalexample"><pre class="programlisting">public function save()
+{
+    // If the parent form saved and validated
+    if (parent::save())
+    {
+        // Then bind the identity to this user permanently
+        $meta = new UserMetadata;
+        $meta-&gt;attributes = array(
+            'user_id' =&gt; $this-&gt;_user-&gt;id,
+            'key' =&gt; $this-&gt;provider.'Provider',
+            'value' =&gt; (string)$this-&gt;adapter-&gt;identifier
+        );
+
+        // Save the associative object
+        return $meta-&gt;save();
+    }
+
+    return false;
+}</pre></div></li></ol></div></div><div class="section" title="Linking a social identity to an existing account"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl3sec36"/>Linking a social identity to an existing account</h3></div></div></div><p>To assist<a id="id589" class="indexterm"/> in linking a social identity to an existing account in our system, we're going to create a new class called <code class="literal">RemoteLinkAccountForm</code>. This form will prompt an already logged-in user for their password to verify their identity and then bind the OAuth token provided by HybridAuth to that user, so that they can log in using their social identity in the future. The steps are as follows:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">To get started, create a new class in <code class="literal">protected/models</code> called <code class="literal">RemoteLinkAccountForm.php</code> with the following definition:<div class="informalexample"><pre class="programlisting">class RemoteLinkAccountForm extends CFormModel {}</pre></div></li><li class="listitem">We'll then define the public attributes we'll want to collect and create a validator for them. We'll also define a private attribute to store the user information of the user we want to link our social identity to. Have a look at the following lines of code:<div class="informalexample"><pre class="programlisting">public $password;
+
+public $adapter;
+
+public $provider;
+
+private $_user;
+
+public function rules()
+{
+    return array(
+        array('password, adapter, provider', 'required'),
+        array('password', 'validateUserPassword')
+    );
+}</pre></div></li><li class="listitem">For security reasons, we only want the authenticated user to be able to link a social identity to their account. To verify that we are dealing with the account owner, we'll prompt the user for their password. To validate their password, we'll <a id="id590" class="indexterm"/>create a custom validator called <code class="literal">validateUserPassword</code>. Have a look at the following lines of code:<div class="informalexample"><pre class="programlisting">public function validateUserPassword($attributes, $params)
+{
+    $this-&gt;_user = User::model()-&gt;findByPk(Yii::app()-&gt;user-&gt;id);
+
+    if ($this-&gt;_user == NULL)
+    {
+        $this-&gt;addError('password', 'Unable to identify user.');
+        return false;
+    }
+
+    $result = password_verify($this-&gt;password, $this-&gt;_user-&gt;password);
+
+    if ($result == false)
+    {
+        $this-&gt;addError('password', 'The password you entered is invalid.');
+        return false;
+    }
+
+    return true;
+}</pre></div></li><li class="listitem">Finally, we create a <code class="literal">save()</code> method that will save the social identity information to our <code class="literal">user_metdata</code> table provided that the user is able to verify their identity:<div class="informalexample"><pre class="programlisting">public function save()
+{
+    if (!$this-&gt;validate())
+        return false;
+
+    $meta = new UserMetadata;
+    $meta-&gt;attributes = array(
+        'user_id' =&gt; $this-&gt;_user-&gt;id,
+        'key' =&gt; $this-&gt;provider.'Provider',
+        'value' =&gt; (string)$this-&gt;adapter-&gt;identifier
+    );
+
+    // Save the associative object
+    return $meta-&gt;save();
+}</pre></div></li></ol></div></div><div class="section" title="Authenticating with a social identity"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl3sec37"/>Authenticating with a social identity</h3></div></div></div><p>To <a id="id591" class="indexterm"/>authenticate with a social identity, we'll need to create a form similar to our <code class="literal">LoginForm</code>; however, instead of taking a username and password as inputs, it will take the provider name and the HybridAuth adapter we're working with. The steps are as follows:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Begin by creating a new form in <code class="literal">protected/models</code> called <code class="literal">RemoteIdentityForm.php</code>:<div class="informalexample"><pre class="programlisting">class RemoteIdentityForm extends CFormModel {}</pre></div></li><li class="listitem">As stated previously, we'll collect the provider name and the HybridAuth adapter instead of a username and password, so let's declare those properties. We'll also declare properties to store our user's information if they exist and the <code class="literal">RemoteUserIdentity</code> class, which we'll ultimately authenticate with:<div class="informalexample"><pre class="programlisting">public $adapter;
+
+public $provider;
+
+private $_identity;
+
+public $_user;</pre></div></li><li class="listitem">We'll then define our validation rules and create a custom validator that will retrieve the appropriate user from within our system. This will prevent unauthorized users from authenticating into our CMS without being able to first authenticate with the social network that the user's account is linked to:<div class="informalexample"><pre class="programlisting">public function rules()
+{
+    return array(
+        array('adapter, provider', 'required'),
+        array('adapter', 'validateIdentity')
+    );
+}
+
+public function validateIdentity($attributes, $params)
+{
+    // Search the database for a user with that information
+    $metadata = UserMetadata::model()-&gt;findByAttributes(array(
+        'key' =&gt; $this-&gt;provider.'Provider',
+        'value' =&gt; (string)$this-&gt;adapter-&gt;identifier
+    ));
+
+    // Return an error if we didn't find them
+    if ($metadata == NULL)
+    {
+        $this-&gt;addError('adapter', 'Unable to determine local user for identity');
+        return false;
+    }
+
+    // Otherwise load that user
+    $this-&gt;_user = User::model()-&gt;findByPk($metadata-&gt;user_id);
+    if ($this-&gt;_user == NULL)
+    {
+        $this-&gt;addError('adapter', 'Unable to determine local user for identity');
+        return false;
+    }
+
+    // And return true
+    return true;
+}</pre></div></li><li class="listitem">Then <a id="id592" class="indexterm"/>we'll create an <code class="literal">authenticate()</code> method that will behave in the same manner as the <code class="literal">authenticate()</code> method of our <code class="literal">LoginForm</code>; however, it will use the <code class="literal">RemoteUserIdentity</code> class as opposed to the <code class="literal">UserIdentity</code> class. Have a look at the following code:<div class="informalexample"><pre class="programlisting">public function authenticate()
+{
+    if (!$this-&gt;validate())
+        return false;
+
+    // Load the RemoteUserIdentity model, and return if we successfully could authenticate against it
+    $this-&gt;_identity = new RemoteUserIdentity($this-&gt;adapter, $this-&gt;provider, $this-&gt;_user);
+    return $this-&gt;_identity-&gt;authenticate();
+}</pre></div></li><li class="listitem">Finally, we'll<a id="id593" class="indexterm"/> create a <code class="literal">login()</code> method that will actually log our user in to our CMS:<div class="informalexample"><pre class="programlisting">public function login()
+{
+    if (!$this-&gt;authenticate())
+        return false;
+
+    if($this-&gt;_identity-&gt;errorCode===RemoteUserIdentity::ERROR_NONE)
+   {
+      $duration = 3600*24*30;
+        Yii::app()-&gt;user-&gt;allowAutoLogin = true;
+        Yii::app()-&gt;user-&gt;login($this-&gt;_identity,$duration);
+        return true;
+   }
+   else
+      return false;
+}</pre></div></li></ol></div></div><div class="section" title="Creating a Yii CWebUser object from a remote identity"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl3sec38"/>Creating a Yii CWebUser object from a remote identity</h3></div></div></div><p>The<a id="id594" class="indexterm"/> last class we'll need to<a id="id595" class="indexterm"/> create before linking everything together is a <code class="literal">RemoteUserIdentity</code> class. This class will retrieve all the information from our forms; if validated, it will log the user in to our CMS in the same way that our <code class="literal">UserIdentity</code> class does. The steps are as follows:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">To get started, create a new class in <code class="literal">protected/components</code> called <code class="literal">RemoteUserIdentity.php</code>.<div class="informalexample"><pre class="programlisting">class RemoteUserIdentity extends CUserIdentity {}</pre></div></li><li class="listitem">Then, define the attributes that we'll be collecting from our constructor as follows:<div class="informalexample"><pre class="programlisting">public $adapter;
+
+public $provider;
+
+public $_user;
+
+public function __construct($adapter, $provider, $user)
+{
+    $this-&gt;adapter  = $adapter;
+    $this-&gt;provider = $provider;
+    $this-&gt;_user    = $user;
+}</pre></div></li><li class="listitem">We <a id="id596" class="indexterm"/>should <a id="id597" class="indexterm"/>also define a way to retrieve the user's ID as stored in our system. We'll follow the pattern laid out in our <code class="literal">UserIdentity</code> class to keep things consistent:<div class="informalexample"><pre class="programlisting">private $_id;
+
+public function getId()
+{
+    return $this-&gt;_id;
+}</pre></div></li><li class="listitem">Finally, we'll create an <code class="literal">authenticate()</code> method that will set our <code class="literal">CWebUser</code> states. As we need to check that the data is available to us, the information provided to us should already be validated:<div class="informalexample"><pre class="programlisting">public function authenticate($force=false)
+{
+    // Set the error code first
+    this-&gt;errorCode = self::ERROR_UNKNOWN_IDENTITY;
+
+    // Check that the user isn't NULL, or that they're not in a locked state
+    if ($this-&gt;_user == NULL)
+        $this-&gt;errorCode = Yii_DEBUG ? self::ERROR_USERNAME_INVALID : self::ERROR_UNKNOWN_IDENTITY;
+
+    // The user has already been provided to us, so immediately log the user in using that information
+    $this-&gt;errorCode = self::ERROR_NONE;
+
+    $this-&gt;_id       = $this-&gt;_user-&gt;id;
+    $this-&gt;setState('email', $this-&gt;_user-&gt;email);
+    $this-&gt;setState('role', $this-&gt;_user-&gt;role_id);
+
+    return !$this-&gt;errorCode;
+}</pre></div></li></ol></div></div></div><div class="section" title="Putting it all together"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec112"/>Putting it all together</h2></div></div></div><p>With all <a id="id598" class="indexterm"/>of the necessary components in place, we can now create our controller that will handle the authentication component with HybridAuth. The steps are as follows:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">To begin with, create a new controller in <code class="literal">protected/controllers</code> called <code class="literal">HybridController.php</code>:<div class="informalexample"><pre class="programlisting">class HybridController extends CMSController {}</pre></div></li><li class="listitem">Next, we'll create three properties to hold the HybridAuth adapter, the provider name, and the user profile that we'll get back from Twitter:<div class="informalexample"><pre class="programlisting">protected $_provider;
+
+private $_adapter = NULL;
+
+private $_userProfile = NULL;</pre></div><p>We'll also create custom getter and setter methods to set the adapter as follows:</p><div class="informalexample"><pre class="programlisting">public function setAdapter($adapter)
+{
+    return $this-&gt;_adapter = $adapter;
+}
+
+public function getAdapter()
+{
+    return $this-&gt;_adapter;
+}</pre></div></li><li class="listitem">Then we'll add in a block to retrieve the user's profile information from the social network they are signing in from:<div class="informalexample"><pre class="programlisting">public function getUserProfile()
+{
+    if ($this-&gt;_userProfile == NULL)
+        $this-&gt;_userProfile = $this-&gt;getAdapter()-&gt;getUserProfile();
+
+    return $this-&gt;_userProfile;
+}</pre></div></li><li class="listitem">Then, to<a id="id599" class="indexterm"/> get and set the provider's name that will be provided from the URI, the following code needs to be used:<div class="informalexample"><pre class="programlisting">public function setProvider($provider=NULL)
+{
+    // Prevent the provider from being NULL
+    if ($provider == NULL)
+        throw new CException("You haven't supplied a provider");
+
+    // Set the property
+    $this-&gt;_provider = $provider;
+
+    return $this-&gt;_provider;
+}
+
+public function getProvider()
+{
+    return $this-&gt;_provider;
+}</pre></div></li><li class="listitem">By referencing the HybridAuth documentation (<a class="ulink" href="http://hybridauth.sourceforge.net/userguide/Configuration.html">http://hybridauth.sourceforge.net/userguide/Configuration.html</a>), we <a id="id600" class="indexterm"/>can determine what variables HybridAuth will require to initialize correctly. Rather than hardcoding all of this information in our configuration file, we can dynamically populate it from within our controller. This method will ensure that our base URLs will always be set correctly, and that logging information will be sent to the correct place. It has the additional benefit of only logging when we enable <code class="literal">YII_DEBUG</code>, which means we only have to make one change to our configuration file when debugging rather than multiple changes. Have a look at the following code:<div class="informalexample"><pre class="programlisting">public function getConfig()
+{
+    return array(
+        'baseUrl' =&gt; Yii::app()-&gt;getBaseUrl(true),
+        'base_url' =&gt; Yii::app()-&gt;getBaseUrl(true) . '/hybrid/callback', // URL for Hybrid_Auth callback
+        'debug_mode' =&gt; YII_DEBUG,
+        'debug_file' =&gt; Yii::getPathOfAlias('application.runtime.hybridauth').'.log',
+        'providers' =&gt; Yii::app()-&gt;params['includes']['hybridauth']['providers']
+    );
+}</pre></div></li><li class="listitem">Next, we'll <a id="id601" class="indexterm"/>define our <code class="literal">actionIndex()</code>. This action will serve both as the initialization URL for HybridAuth and our callback URL for our social networks to authenticate against. Within this action, we'll set the provider and start the HybridAuth process:<div class="informalexample"><pre class="programlisting">public function actionIndex($provider=NULL)
+{
+    // Set the provider
+    $this-&gt;setProvider($provider);
+
+    if (isset($_GET['hauth_start']) || isset($_GET['hauth_done']))
+        Hybrid_Endpoint::process();
+
+    try {
+       $this-&gt;hybridAuth();
+    } catch (Exception $e) {
+        throw new CHttpException(400, $e-&gt;getMessage());
+    }
+}</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note38"/>Note</h3><p>Internally, HybridAuth will throw an exception whenever it encounters an error while dealing with the remote network. To prevent our application from exposing too much information, we can simply inform the user that an error occurred.</p></div></div></li><li class="listitem">Then, we'll define the <code class="literal">hybridauth()</code> method we started to use earlier. We'll start by initializing the HybridAuth object and setting the adapter if it is not already set:<div class="informalexample"><pre class="programlisting">private function hybridAuth()
+{
+    // Preload some configuration options
+    if (strtolower($this-&gt;getProvider()) == 'openid')
+   {
+      if (!isset($_GET['openid-identity']))
+         throw new CException("You chose OpenID but didn't provide an OpenID identifier");
+      else
+         $params = array("openid_identifier" =&gt; $_GET['openid-identity']);
+   }
+   else
+      $params = array();
+
+   $hybridauth = new Hybrid_Auth($this-&gt;getConfig());
+
+    if (!$this-&gt;adapter)
+        $this-&gt;setAdapter($hybridauth-&gt;authenticate($this-&gt;getProvider(),$params));
+}</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note39"/>Note</h3><p>We've <a id="id602" class="indexterm"/>declared a custom getter and setter for our adapter so that we only load it once during our flow. This will prevent us from hitting the rate limits of the Twitter API during a single request.</p></div></div></li><li class="listitem">At this point, HybridAuth is going to perform several different redirects to authenticate our user against their system. When the request is returned to us, we'll be able to verify that a user is connected to our adapter. If one isn't, it's safe to throw an exception. Have a look at the following code:<div class="informalexample"><pre class="programlisting">if ($this-&gt;adapter-&gt;isUserConnected())
+{
+    // We'll add our actions here...
+}
+else
+    throw new CHttpException(403, 'Failed to establish remote identity');</pre></div></li><li class="listitem">Within our <code class="literal">if</code> statement, we'll try to authenticate the user using our <code class="literal">RemoteIdentityForm</code> class that we created earlier. We'll display a flash message and redirect the user to the home page if we're able to. If we're not able to authenticate the user, we'll either display the <code class="literal">LinkAccountForm</code> class if the user is authenticated in our system but not socially, or the <code class="literal">RemoteRegistrationForm</code> class so that the user can register a new account in our CMS:<div class="informalexample"><pre class="programlisting">if ($this-&gt;authenticate())
+{
+    Yii::app()-&gt;user-&gt;setFlash('success', 'You have been successfully logged in!');
+
+    $this-&gt;redirect(Yii::app()-&gt;getBaseUrl(true));
+}
+else
+{
+    if (!Yii::app()-&gt;user-&gt;isGuest)
+        $this-&gt;renderLinkForm();
+    else
+        $this-&gt;renderRegisterForm();
+}</pre></div></li><li class="listitem">Our <code class="literal">authenticate()</code> method will simply return the result of the <code class="literal">RemoteIdentityForm</code> <code class="literal">login()</code> method:<div class="informalexample"><pre class="programlisting">private function authenticate()
+{
+    $form = new RemoteIdentityForm;
+    $form-&gt;attributes = array(
+        'adapter'  =&gt; $this-&gt;getUserProfile(),
+        'provider' =&gt; $this-&gt;getProvider()
+    );
+
+    return $form-&gt;login();
+}</pre></div></li><li class="listitem">If a <a id="id603" class="indexterm"/>user is already authenticated in our CMS but hasn't been authenticated with this provider, we'll assume that they want to link their social network identity to their login information; thus, we'll present <code class="literal">RemoteLinkAccountForm</code> and prompt them for their password. Then, be sure to copy over <code class="literal">themes/main/views/users/linkaccount.php</code> from the project resources folder into your project:<div class="informalexample"><pre class="programlisting">private function renderLinkForm()
+{
+    $form = new RemoteLinkAccountForm;
+
+    if (Yii::app()-&gt;request-&gt;getParam('RemoteLinkAccountForm'))
+    {
+        // Populate the model
+        $form-&gt;Attributes = Yii::app()-&gt;request-&gt;getParam('RemoteLinkAccountForm');
+        $form-&gt;provider   = $this-&gt;getProvider();
+        $form-&gt;adapter    = $this-&gt;getUserProfile();
+
+        if ($form-&gt;save())
+        {
+            if ($this-&gt;authenticate())
+            {
+                Yii::app()-&gt;user-&gt;setFlash('success', 'You have been successfully logged in');
+                $this-&gt;redirect($this-&gt;createAbsoluteUrl('content/index'));
+            }
+        }
+    }
+
+    // Reuse the register form
+    $this-&gt;render('//user/linkaccount', array('model' =&gt; $form));
+}</pre></div></li><li class="listitem">Finally, if a <a id="id604" class="indexterm"/>user is not logged in to our CMS, we'll display our <code class="literal">RemoteRegisterForm</code> and reutilize the view from <code class="literal">themes/main/views/user/register.php</code>:<div class="informalexample"><pre class="programlisting">private function renderRegisterForm()
+{
+    $form = new RemoteRegistrationForm;
+
+    if (Yii::app()-&gt;request-&gt;getParam('RemoteRegistrationForm'))
+    {
+        // Populate the model
+        $form-&gt;attributes = Yii::app()-&gt;request-&gt;getParam('RemoteRegistrationForm');
+        $form-&gt;provider   = $this-&gt;getProvider();
+        $form-&gt;adapter    = $this-&gt;getUserProfile();
+
+        if ($form-&gt;save())
+        {
+            if ($this-&gt;authenticate())
+            {
+                Yii::app()-&gt;user-&gt;setFlash('success', 'You have been successfully logged in');
+                $this-&gt;redirect($this-&gt;createUrl('content/index'));
+            }
+        }
+    }
+
+    // Reuse the register form
+    $this-&gt;render('//user/register', array('user' =&gt; $form));
+}</pre></div></li></ol></div><p>Now that <a id="id605" class="indexterm"/>we have everything in place, we can test our social authentication. For our first test, log out of our CMS, navigate to <code class="literal">http://chapter6.example.com/site/login</code>, and click on the <span class="strong"><strong>sign in with Twitter</strong></span> link at the bottom. Click on the link, and enter your Twitter credentials. Upon being redirected, you should see a registration form where you can enter your information for a new account, as shown in the following screenshot:</p><div class="mediaobject"><img src="graphics/7734OS_06_05.jpg" alt="Putting it all together"/></div><p>Enter your <a id="id606" class="indexterm"/>new user's information and then click on <span class="strong"><strong>Register</strong></span>. If successful, you'll be logged in to the CMS as the user you just created, and the activation e-mail we created in the previous chapter will be sent to that e-mail address. Now, if you log out of the CMS and log in using the <span class="strong"><strong>Login with Twitter</strong></span> link, you'll be automatically logged in to the CMS without having to enter your username and password.</p><p>After verifying that registering with a social identity works, log out of the CMS and then log in as <code class="literal">user1@example.com</code> using the credentials previously provided. Log out of Twitter and then navigate to <code class="literal">http://chapter6.example.com/hybrid/twitter</code>. After signing in to Twitter with a different account from the one you previous signed in with, you'll be prompted to enter your current password as shown in the following screenshot:</p><div class="mediaobject"><img src="graphics/7734OS_06_06.jpg" alt="Putting it all together"/></div><p>After<a id="id607" class="indexterm"/> entering your password, your social identity will be linked to your account, and you'll be able to login via Twitter rather than having to enter your username and password.</p><div class="section" title="Exploring other HybridAuth providers"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl3sec39"/>Exploring other HybridAuth providers</h3></div></div></div><p>Due to the <a id="id608" class="indexterm"/>way we implemented our controller, we can easily and seamlessly add additional providers to the <code class="literal">hybridauth</code> section of our <code class="literal">protected/config/params.php</code> file without having to modify any other code in our system. Be sure to check out the HybridAuth user guide located at <a class="ulink" href="http://hybridauth.sourceforge.net/userguide.html#index">http://hybridauth.sourceforge.net/userguide.html#index</a> for more information on how to integrate with other third-party providers, such as Google+ and Facebook, and give it a try!</p></div></div></div>
+<div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec57"/>Summary</h1></div></div></div><p>Wow, we really did implement a lot in this chapter. In this chapter, we created a very robust and reusable content management system that featured both content and categories. We also dug deeper into Yii framework by manipulating our <code class="literal">CUrlManager</code> class to generate completely dynamic and clean URIs. We also covered the use of Yii's built-in theming to dynamically change the frontend appearance of our site by simply changing a configuration value. Finally, we learned how to integrate with third-party social networks to provide a social sign-on functionality that seamlessly integrates without our application.</p><p>In the next chapter, we'll be reusing much of the code built in this chapter to further separate the management functionality of our application from the presentation logic. We'll also dig deeper into Yii framework by learning how to create modules. Before continuing to the next chapter, be sure to go over the Yii Class Reference at <a class="ulink" href="http://www.yiiframework.com/doc/api/">http://www.yiiframework.com/doc/api/</a> and review all the classes that we used in this chapter. Then, when you're ready, head over to the next chapter, and let's build a custom dashboard module for our CMS!</p></div></body></html>
