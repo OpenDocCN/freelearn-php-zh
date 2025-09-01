@@ -1,26 +1,34 @@
 - en: Chapter 7. Implementing Socket IPC and WebSocket Server/Client
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 第7章. 实现套接字IPC和WebSocket服务器/客户端
 - en: In the previous chapter, we had a sneak peek at the application we're about
     to build in this chapter. We already know that we'll use the PHP Streams API for
     interprocess communication. We'll also write WebSocket servers and, later, a simple
     WebSocket client. We also emphasized the importance of understanding how event
     loops work in an asynchronous and non-blocking application, and this will apply
     for both server and client applications in this chapter.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 在上一章中，我们提前看了一下本章将要构建的应用。我们已经知道我们将使用PHP流API进行进程间通信。我们还将编写WebSocket服务器，稍后是一个简单的WebSocket客户端。我们还强调了理解异步和非阻塞应用中事件循环工作的重要性，这在本章的服务器和客户端应用中都将适用。
 - en: 'This chapter will also be very source code-intensive, so we''ll split it into
     three smaller sections covering three different applications:'
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章也将非常注重源代码，因此我们将将其分为三个更小的部分，涵盖三个不同的应用：
 - en: '**Server Manager application**: This is the application we''ll run when testing
     this whole project. It''ll spawn subprocesses and communicate with them via Unix
     socket streams (wrapped with the PHP Streams API). Each subprocess represents
     a single WebSocket server that listens to a specific port.'
+  id: totrans-3
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**服务器管理应用**: 这是我们将运行以测试整个项目的应用。它将启动子进程，并通过Unix套接字流（用PHP流API包装）与它们通信。每个子进程代表一个单独的WebSocket服务器，它监听特定的端口。'
 - en: '**WebSocket Server application**: This is a single instance of the WebSocket
     server that allows multiple clients to be connected at the same time, enabling
     them to chat. This means we''ll have to distribute each message to all clients
@@ -28,301 +36,448 @@
     be populated to each new client. This application will communicate with the Server
     Manager via the Unix socket and provide its current status (the number of clients
     currently connected and the number of messages in the chat history).'
+  id: totrans-4
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**WebSocket服务器应用**: 这是一个WebSocket服务器的单个实例，允许同时连接多个客户端，使他们能够聊天。这意味着我们必须实时将每条消息分发给所有客户端。我们还将保留一些最近的消息历史，这些历史将被填充到每个新客户端。这个应用将通过Unix套接字与服务器管理器通信，并提供其当前状态（当前连接的客户端数量和聊天历史中的消息数量）。'
 - en: '**WebSocket Client application**: This is our test client that''ll connect
     to  WebSocket servers and listen to the user input that''ll be sent to the server.'
+  id: totrans-5
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**WebSocket客户端应用**: 这是我们的测试客户端，它将连接到WebSocket服务器并监听发送到服务器的用户输入。'
 - en: Before we start working on the Server Manager application, we should talk about
     one more concept that arises mostly in an RxJS environment, but which is also
     very relevant to this chapter.
+  id: totrans-6
   prefs: []
   type: TYPE_NORMAL
+  zh: 在我们开始工作于服务器管理应用之前，我们应该讨论一个在RxJS环境中出现频率较高，但同时也与本章非常相关的概念。
 - en: Backpressure in Reactive Extensions
+  id: totrans-7
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 反压在反应式扩展中
 - en: We usually think of Observables as streams of data that are produced by the
     source Observable on one end and consumed by an observer at the other end. While
     this is still correct, we're not aware of situations where the Observable is emitting
     values so fast that the consumer (the observer) is not able to handle them.
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们通常将Observables视为由源Observable在一端产生并由观察者在另一端消费的数据流。虽然这仍然是正确的，但我们不知道有Observables发出值如此之快，以至于消费者（观察者）无法处理它们的情况。
 - en: This could lead to significant memory or CPU usage, which we definitely want
     to avoid.
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: 这可能会导致显著的内存或CPU使用，这是我们肯定想避免的。
 - en: 'There''re two groups of operators suitable for backpressure, although most
     of them aren''t available in RxPHP and are related mostly to RxJS:'
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 虽然大多数都不在RxPHP中可用，但有两个操作符组适合反压，它们主要与RxJS相关：
 - en: '**Lossy**: In this group, some values are discarded and never arrive at the
     observers. For example, this could be the mouse position sampled over a certain
     timespan. We''re usually interested in the current mouse position right now; we
     don''t care about position in the past, and so this can be completely ignored.'
+  id: totrans-11
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**有损的**: 在这个组中，一些值被丢弃并且永远不会到达观察者。例如，这可能是某个时间段内鼠标位置的采样。我们通常对现在的鼠标位置感兴趣；我们不在乎过去的位置，因此这可以完全忽略。'
 - en: '**Loss-less**: In this group, values are stacked in operators and are typically
     emitted in batches. We don''t want to lose any data, so a typical inner implementation
     of a loss-less operator is a buffer.'
+  id: totrans-12
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '**无损的**: 在这个组中，值在操作符中堆叠，并且通常以批量的形式发出。我们不想丢失任何数据，因此一个典型的无损操作符的内部实现是一个缓冲区。'
 - en: As we said, backpressure is more typical for RxJS than RxPHP, but let's have
     a look at examples of both of these types in RxPHP.
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如我们所说的，背压在 RxJS 中比在 RxPHP 中更典型，但让我们看看这两种类型在 RxPHP 中的示例。
 - en: Lossy backpressure
+  id: totrans-14
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 有损背压
 - en: In the previous chapter, we used the `switchLatest()` operator to work with
     higher-order Observables. This automatically subscribed only to the latest Observable
     emitted from the source Observable and unsubscribed from the previous source.
     This is, in fact, a lossy operator because we know we're not guaranteed to receive
     all values.
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: 在前面的章节中，我们使用了 `switchLatest()` 操作符来处理高阶 Observables。这个操作符会自动订阅源 Observable 发出的最新
+    Observable，并取消订阅之前的源。实际上，这是一个有损操作符，因为我们知道我们无法保证接收所有值。
 - en: In practice, we usually deal with use cases similar to the RxJS operator `throttleTime()`.
     This operator takes the timespan as a parameter, which defines how long after
     emitting a value it'll ignore all subsequent emissions from the source Observable.
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 实际上，我们通常处理与 RxJS 操作符 `throttleTime()` 类似的用例。这个操作符接受一个时间段作为参数，它定义了在发出一个值后，它会忽略源
+    Observable 的所有后续发射。
 - en: 'We can have a look at its marble diagram to be clear as to what it does:'
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以查看它的宝石图来清楚地了解它做了什么：
 - en: '![Lossy backpressure](img/00027.jpeg)'
+  id: totrans-18
   prefs: []
   type: TYPE_IMG
+  zh: '![有损背压](img/00027.jpeg)'
 - en: This operator is already implemented in RxPHP, but we can implement it ourselves
     using just `filter()`, or even better, by creating a custom operator to see how
     this and similar functionality can be implemented internally.
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个操作符已经在 RxPHP 中实现，但我们可以仅使用 `filter()` 来自己实现它，或者更好的方法是创建一个自定义操作符来了解如何内部实现这种和类似的功能。
 - en: Implementing throttleTime() with the filter() operator
+  id: totrans-20
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 使用 filter() 操作符实现 throttleTime()
 - en: We can simulate a hot source Observable with the `IntervalObservable` class,
     which periodically emits values, and we'll filter out everything that arrives
     less than a second after the previous emission.
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以使用 `IntervalObservable` 类来模拟一个热源 Observable，它定期发出值，然后我们会过滤掉所有在上一发射后不到一秒到达的值。
 - en: 'The following example simulates a similar functionality as the `throttleTime()`
     operator:'
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下示例模拟了与 `throttleTime()` 操作符类似的功能：
 - en: '[PRE0]'
+  id: totrans-23
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: Note
+  id: totrans-24
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: From now on in this book we won't include the `use` statements for classes we've
     been using so far to keep the examples as short as possible.
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 从现在起，在这本书中，我们不会包括我们之前使用的类的 `use` 语句，以使示例尽可能简短。
 - en: 'If we run this example, we''ll see that it does what we need:'
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们运行这个示例，我们会看到它确实做了我们需要的：
 - en: '[PRE1]'
+  id: totrans-27
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: As we can see, the `IntervalObservable` class emits ever-increasing counter
     values, where most of them are ignored. However, this is not a very systematic
     approach. We have to keep the last timestamp in a variable, which is what we usually
     want to avoid with Rx.
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 如我们所见，`IntervalObservable` 类会发出不断增加的计数器值，其中大部分都被忽略了。然而，这并不是一个非常系统化的方法。我们必须在变量中保留最后一个时间戳，这是我们通常想避免使用
+    Rx 来做的。
 - en: Note that our callable for `filter()` doesn't take any arguments (the current
     value) because it doesn't matter to us.
+  id: totrans-29
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，我们的 `filter()` 的可调用函数不接受任何参数（当前值），因为这对我们来说并不重要。
 - en: 'So let''s reimplement this into a standalone `ThrottleTimeOperator` class:'
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，让我们将其重新实现为一个独立的 `ThrottleTimeOperator` 类：
 - en: '[PRE2]'
+  id: totrans-31
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: As we saw multiple times in previous chapters, when implementing custom operators
     we need to be aware of correctly propagating not only `onNext` signals, but also
     `onError` and `onComplete`. We can delegate all this responsibility by reusing
     already existing operators, which is in fact a recommended way of implementing
     new operators to Rx. This means that our operator just sets up a `filter()` operator
     that takes care of everything for us.
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如我们在前面的章节中多次看到的，在实现自定义操作符时，我们需要注意正确传播 `onNext` 信号，以及 `onError` 和 `onComplete`。我们可以通过重用现有的操作符来委派所有这些责任，这实际上是在
+    Rx 中实现新操作符的一种推荐方式。这意味着我们的操作符只是设置了一个 `filter()` 操作符，它会为我们处理所有事情。
 - en: 'Using this operator is simple with the `lift()` method:'
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用这个操作符很简单，可以通过 `lift()` 方法：
 - en: '[PRE3]'
+  id: totrans-34
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: The result printed to the console is exactly the same as we saw in the preceding
     code, so we don't need to list it here again.
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 打印到控制台的结果与我们之前看到的代码完全相同，所以我们不需要再次列出它。
 - en: So this is a lossy operator. All values that don't pass the predicate function
     to `filter()` are lost forever.
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，这是一个有损操作符。所有没有通过 `filter()` 的谓词函数的值都将永远丢失。
 - en: In RxJS 5, typical lossy operators are `audit()`, `auditTime()`, `throttle()`,
     `throttleTime()`, `debounce()`, `debounceTime()`, `sample()`, and `sampleTime()`.
     In RxJS 4, we also have the `pause()` operator.
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 RxJS 5 中，典型的损耗性操作符有 `audit()`、`auditTime()`、`throttle()`、`throttleTime()`、`debounce()`、`debounceTime()`、`sample()`
+    和 `sampleTime()`。在 RxJS 4 中，我们还有 `pause()` 操作符。
 - en: Loss-less backpressure
+  id: totrans-38
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 无损背压
 - en: Loss-less operators are those that don't discard any values. Values are just
     stacked and sent to observers in batches.
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 无损操作符是指不丢弃任何值的操作符。值只是堆叠起来，并以批量形式发送给观察者。
 - en: In RxPHP, we can use the `bufferWithCount()` operator that takes as an argument
     the number of items stored in the buffer before emitting them to the observers.
     Optionally, we can also specify the number of items from the beginning of the
     previous buffer we want to skip.
+  id: totrans-40
   prefs: []
   type: TYPE_NORMAL
+  zh: 在 RxPHP 中，我们可以使用 `bufferWithCount()` 操作符，它接受一个参数，即缓冲区在向观察者发射之前存储的项目数量。可选地，我们还可以指定从上一个缓冲区开始我们想要跳过的项目数量。
 - en: 'The marble diagram explains this very well (this operator is available in RxJS
     5 as `bufferCount()`):'
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 水晶球图很好地解释了这一点（此操作符在 RxJS 5 中作为 `bufferCount()` 提供）：
 - en: '![Loss-less backpressure](img/00028.jpeg)'
+  id: totrans-42
   prefs: []
   type: TYPE_IMG
+  zh: '![无损背压](img/00028.jpeg)'
 - en: 'As you can see, using the `bufferWithCount()` operator is very simple. We''ll
     use the same example as shown previously and just switch operators:'
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: 如您所见，使用 `bufferWithCount()` 操作符非常简单。我们将使用之前显示的相同示例，只是切换操作符：
 - en: '[PRE4]'
+  id: totrans-44
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: 'We''re always buffering four values, so when the source `IntervalObservable`
     class emits a value every 500 ms, the observer will receive a value every two
     seconds:'
+  id: totrans-45
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们总是缓冲四个值，所以当源 `IntervalObservable` 类每 500 毫秒发射一个值时，观察者将每两秒接收一个值：
 - en: '[PRE5]'
+  id: totrans-46
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: RxJS 5 has five different buffer operator variants.
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: RxJS 5 有五种不同的缓冲操作符变体。
 - en: Both lossy and loss-less operators are useful, and we'll use the `throttleTime()`
     operator in a moment when implementing the Server Manager application.
+  id: totrans-48
   prefs: []
   type: TYPE_NORMAL
+  zh: 无论是损耗性还是无损操作符都很有用，我们将在实现服务器管理应用程序时稍后使用 `throttleTime()` 操作符。
 - en: Implementing ProcessObservable
+  id: totrans-49
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 实现 ProcessObservable
 - en: 'The application in this chapter is going to spawn subprocesses a lot so it
     makes sense to wrap this functionality into a self-sufficient Observable. This
     Observable will spawn a new subprocess, emit its output with `onNext` and also
     properly handle `onError` and `onComplete` notifications:'
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章中的应用程序将生成很多子进程，因此将此功能封装到一个自给自足的可观察对象中是有意义的。这个可观察对象将生成一个新的子进程，使用 `onNext` 发射其输出，并正确处理
+    `onError` 和 `onComplete` 通知：
 - en: '[PRE6]'
+  id: totrans-51
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: This Observable internally uses the `Symfony\Component\Process\Process` class
     from Symfony3 components, which makes working with subprocesses easier.
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个可观察对象内部使用来自 Symfony3 组件的 `Symfony\Component\Process\Process` 类，这使得处理子进程变得更容易。
 - en: It periodically checks for any available output from the subprocess and emits
     it. When the process terminates, we send proper `onError` or `onComplete` notifications.
     We can also optionally create a file with the process PID if we need to.
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 它会定期检查子进程是否有任何可用的输出，并将其发射出来。当进程终止时，我们发送适当的 `onError` 或 `onComplete` 通知。如果我们需要，我们还可以可选地创建一个包含进程
+    PID 的文件。
 - en: Notice that we used the `AutoDetachObserver` class to wrap the original observer
     and assigned it the `$disposable` object. For now it's just important to know
     that this class automatically calls `dispose()` on the disposable we passed it
     when it receives `onError` or `onComplete` notification.
+  id: totrans-54
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，我们使用了 `AutoDetachObserver` 类来包装原始观察者，并将其分配给 `$disposable` 对象。现在重要的是要知道，当它收到
+    `onError` 或 `onComplete` 通知时，这个类会自动调用我们传递给它的可丢弃对象的 `dispose()` 方法。
 - en: We'll explain the `AutoDetachObserver` class in more detail in [Chapter 10](part0070_split_000.html#22O7C1-bd355a22cf10407cb10df27e65585b8d
     "Chapter 10. Using Advanced Operators and Techniques in RxPHP"), *Using Advanced
     Operators and Techniques in RxPHP*.
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将在第 10 章 [使用 RxPHP 的高级操作符和技术](part0070_split_000.html#22O7C1-bd355a22cf10407cb10df27e65585b8d
+    "第 10 章。使用 RxPHP 的高级操作符和技术")中更详细地解释 `AutoDetachObserver` 类，*使用 RxPHP 的高级操作符和技术*。
 - en: 'We can test this Observable with a small script simulating a long-running process:'
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以使用一个小脚本测试这个可观察对象，模拟一个长时间运行的过程：
 - en: '[PRE7]'
+  id: totrans-57
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: 'Then we use the `ProcessObservable` to spawn this process and re-emit all its
     output:'
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后我们使用 `ProcessObservable` 来生成这个进程并重新发射所有输出：
 - en: '[PRE8]'
+  id: totrans-59
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: 'This will just print one line every second and then end:'
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 这将每秒打印一行，然后结束：
 - en: '[PRE9]'
+  id: totrans-61
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: Now let's start with the main application for this chapter.
+  id: totrans-62
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，让我们从本章的主要应用程序开始。
 - en: Server Manager application
+  id: totrans-63
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 服务器管理应用程序
 - en: Finally, we can start writing the largest application so far. The Server Manager
     is going to be a CLI application that will be responsible for spawning WebSocket
     servers, where each server is a standalone application itself, with its own clients
     and chat history.
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，我们可以开始编写迄今为止最大的应用程序。服务器管理器将是一个CLI应用程序，负责启动WebSocket服务器，其中每个服务器本身就是一个独立的应用程序，拥有自己的客户端和聊天历史。
 - en: A typical use-case could be a Unix server that manages multiple instances of
     some game server. Each server needs to be isolated. If any of them crashed, we
     don't want all games servers on this machine to crash as well. At the same time,
     we want to be able to collect some status information from servers and monitor
     them in real time with the Server Manager.
+  id: totrans-65
   prefs: []
   type: TYPE_NORMAL
+  zh: 一个典型的用例可能是一个Unix服务器，它管理着多个游戏服务器的实例。每个服务器都需要隔离。如果其中任何一个崩溃，我们不希望这台机器上的所有游戏服务器也跟着崩溃。同时，我们希望能够从服务器收集一些状态信息，并使用服务器管理器实时监控它们。
 - en: 'We can describe the structure of this entire application and what role the
     Server Manager has with the following diagram:'
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以用以下图表描述整个应用程序的结构以及服务器管理器所扮演的角色：
 - en: '![Server Manager application](img/00029.jpeg)'
+  id: totrans-67
   prefs: []
   type: TYPE_IMG
+  zh: '![服务器管理器应用程序](img/00029.jpeg)'
 - en: In this diagram, we can see the **Server Manager** application on the right.
     It communicates via Unix sockets with a single instance of **Game Server**. This
     instance of **Game Server** has two clients connected to it via WebSockets.
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这个图中，我们可以看到右侧的**服务器管理器**应用程序。它通过Unix套接字与单个**游戏服务器**实例进行通信。这个**游戏服务器**实例通过WebSockets连接了两个客户端。
 - en: Communication between the **Server Manager** and the **Game Server** is only
     one way; the **Game Server** will actively send its status to the **Server Manager**
     itself. Communication between the **Game Server** and all its clients has to be
     two-way. When a user sends a message, we need to resend it to all other clients
     connected to the same **Game Server**.
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: '**服务器管理器**与**游戏服务器**之间的通信是单向的；**游戏服务器**将主动将其状态发送给**服务器管理器**本身。**游戏服务器**与其所有客户端之间的通信必须是双向的。当用户发送消息时，我们需要将其重新发送给连接到同一**游戏服务器**的所有其他客户端。'
 - en: 'We''ll start with just creating a basic class stub that listens to user input
     via `stdin`, and, based on that, calls some action:'
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将从创建一个基本的类存根开始，该存根通过`stdin`监听用户输入，并根据这些输入调用一些操作：
 - en: '[PRE10]'
+  id: totrans-71
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: We created a stream from `php://stdin` and added it to the event loop. This
     is exactly what we've seen in the previous chapter when talking about the PHP
     Streams API. To make adding new commands easy, we created a `Subject` instance
     where we call `onNext()` on any user input.
+  id: totrans-72
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们从`php://stdin`创建了一个流并将其添加到事件循环中。这正是我们在上一章讨论PHP Streams API时所见到的。为了使添加新命令变得容易，我们创建了一个`Subject`实例，在用户输入时调用`onNext()`。
 - en: We don't subscribe to the `Subject` instance directly, but rather to an Observable
     returned from its `asObservable()` method. Of course, we could subscribe directly
     to the `Subject` instance since it acts as an Observable and an observer at the
@@ -331,134 +486,191 @@
     which might cause unpredictable behavior. For this reason, it's good practice
     to hide the fact that we're using `Subject` internally and expose only Observables
     using `asObservable()`.
+  id: totrans-73
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们不是直接订阅`Subject`实例，而是订阅其`asObservable()`方法返回的可观察对象。当然，我们也可以直接订阅`Subject`实例，因为它同时充当可观察对象和观察者。然而，如果有人可以访问`Subject`实例，那么我们无法保证不会有人错误地调用其`onNext()`或`onComplete()`，这可能会导致不可预测的行为。因此，隐藏我们内部使用`Subject`的事实，只通过`asObservable()`暴露可观察对象是一种良好的实践。
 - en: 'We have two commands at this moment:'
+  id: totrans-74
   prefs: []
   type: TYPE_NORMAL
+  zh: 目前我们有两个命令：
 - en: '`n`: This command spawns a new subprocess using `ProcessObservable` and adds
     its disposable to the list of running processes. We''ll use these disposables
     to unsubscribe later. Each subprocess will be assigned a unique port number. This
     port will be used by the Game Server to start the WebSocket server.'
+  id: totrans-75
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`n`：这个命令使用`ProcessObservable`启动一个新的子进程，并将其可处置项添加到正在运行的进程列表中。我们将使用这些可处置项稍后取消订阅。每个子进程将被分配一个唯一的端口号。这个端口号将由游戏服务器用于启动WebSocket服务器。'
 - en: '`q`: This command is used to quit this application. This means we need to call
     `dispose()` on all disposables from the array of active processes, close all Unix
     socket connections, and then stop the event loop.'
+  id: totrans-76
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`q`：这个命令用于退出应用程序。这意味着我们需要调用所有活动进程数组中的`dispose()`，关闭所有Unix套接字连接，然后停止事件循环。'
 - en: We'll now implement creating new subprocesses and quitting the application.
     To quit the application, we'll need the array of all socket connections (`$processes`
     private property) that we don't have yet.
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们将实现创建新的子进程和退出应用程序的功能。要退出应用程序，我们需要所有套接字连接的数组（`$processes`私有属性），我们还没有这些。
 - en: Creating new subprocesses with ProcessObservable
+  id: totrans-78
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 使用ProcessObservable创建新的子进程
 - en: 'We don''t need anything special to create a new subprocess, because we''ll
     use the `ProcessObservable` class that we created previously. Each subprocess
     will have its own port number assigned, where it''ll run its WebSocket server:'
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: 创建新的子进程不需要任何特殊操作，因为我们将使用我们之前创建的`ProcessObservable`类。每个子进程都将分配一个自己的端口号，其中它将运行WebSocket服务器：
 - en: '[PRE11]'
+  id: totrans-80
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: We spawn a new subprocess and then subscribe to it to read its output. We're
     not, in fact, expecting to receive any output; we're doing this just in case the
     subprocess crashed and we want to see what happened.
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们启动一个新的子进程，然后订阅它以读取其输出。实际上，我们并不期望收到任何输出；我们这样做只是为了以防子进程崩溃，我们想看看发生了什么。
 - en: Note that we're also passing the single instance of Scheduler to `subscribeCallback()`
     using `$this->scheduler`. We need to do this because `ProcessObservable` adds
     its own periodic timer to check for output from the subprocess. This is one of
     the cases where we need to be sure to use just a single event loop, as we were
     talking about in the previous chapter.
+  id: totrans-82
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，我们还通过`$this->scheduler`将单个调度器实例传递给`subscribeCallback()`。我们需要这样做，因为`ProcessObservable`会添加自己的周期性计时器来检查子进程的输出。这是我们确实需要确保只使用单个事件循环的情况之一，正如我们在上一章中讨论的那样。
 - en: All disposables will be stored in the `$processes` array organized by their
     port numbers. It's important to keep references to all disposables so that we
     can end all subprocesses gently by just disposing them (`ProcessObservable` will
     send a `SIGTERM` signal).
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: 所有可丢弃的对象都将存储在按端口号组织的`$processes`数组中。保持对所有可丢弃对象的引用很重要，这样我们就可以通过简单地丢弃它们（`ProcessObservable`将发送一个`SIGTERM`信号）来温和地结束所有子进程。
 - en: Game Server application
+  id: totrans-84
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 游戏服务器应用程序
 - en: We'll switch for a moment to the Game Server application. We'll only make the
     most essential part of it, the one that connects to the Unix socket server and
     periodically sends a value from `IntervalObservable`.
+  id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将暂时切换到游戏服务器应用程序。我们只会制作其最基本的部分，即连接到Unix套接字服务器并定期从`IntervalObservable`发送值的那个部分。
 - en: We want to do this to be able to test that the Server Manager receives and displays
     statuses correctly. This is the part where we'll use `switchMap()` and `combineLatest()`
     operators to work with higher-order Observables.
+  id: totrans-86
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们想这样做，以便能够测试服务器管理器是否正确接收并显示了状态。这是我们使用`switchMap()`和`combineLatest()`运算符与高阶Observables一起工作的部分。
 - en: 'We won''t bother with WebSocket implementation right now - that''ll come later:'
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们现在不会处理WebSocket实现 - 这将在以后进行：
 - en: '[PRE12]'
+  id: totrans-88
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: Using the `stream_socket_client()` function, we connect to the Unix socket server.
+  id: totrans-89
   prefs: []
   type: TYPE_NORMAL
+  zh: 使用`stream_socket_client()`函数，我们连接到Unix套接字服务器。
 - en: Note that right after the connection is established we send two messages to
     the Server Manager. The first one is indicating that the subprocess is running
     with `init`, and it also indicates which port it's using (the port for the WebSocket
     server). The second message is `status` with just a string, `ready`". This is
     what we'll display in the Server Manager. Then we create `IntervalObservable`,
     which sends a status via the Unix socket stream every 500 ms.
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，在连接建立后，我们向服务器管理器发送了两条消息。第一条消息是表示子进程正在以`init`状态运行，并且它还指示了它使用的端口号（WebSocket服务器的端口号）。第二条消息是带有字符串`ready`的`status`。这是我们将在服务器管理器中显示的内容。然后我们创建`IntervalObservable`，它通过Unix套接字流每500毫秒发送一个状态。
 - en: We're using some mystery `StreamObservable` class that we haven't implemented
     yet. The Unix socket stream is, in fact, a two-way channel, so it makes sense
     to wrap its connection with an Observable for convenience. When it receives data,
     it calls `onNext()`, and when we close the connection, it calls `onComplete()`.
+  id: totrans-91
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们正在使用一些尚未实现的神秘`StreamObservable`类。实际上，Unix套接字流是一个双向通道，因此用Observable包装其连接以方便是有意义的。当它接收到数据时，它调用`onNext()`，当我们关闭连接时，它调用`onComplete()`。
 - en: This Observable also sends data, so it might look like a `Subject` instance
     could better fit this purpose. Although it sends data via the `send()` method,
     it, in fact, writes directly to the stream with `fwrite()`. Subjects are designed
     to send data to observers, which is not our case.
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个Observable也会发送数据，所以看起来`Subject`实例可能更适合这个目的。尽管它通过`send()`方法发送数据，但实际上它是通过`fwrite()`直接写入流的。Subjects是为向观察者发送数据而设计的，这并不是我们的情况。
 - en: 'The `StreamObservable` class is then a relatively simple Observable that adds
     its stream to the event loop and emits all the data it receives:'
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: '`StreamObservable` 类是一个相对简单的 Observable，它将其流添加到事件循环中，并发出它接收到的所有数据：'
 - en: '[PRE13]'
+  id: totrans-94
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: Now it should be obvious how the `GameServer` class works. After we implement
     the WebSocket server, we'll use the `send()` method on `StreamObservable` to report
     its status to the Server Manager. However, instead of using `IntervalObservable`
     and its incrementing counter, we'll send the number of clients connected and the
     number of messages in the chat history.
+  id: totrans-95
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在应该很明显 `GameServer` 类是如何工作的。在我们实现了 WebSocket 服务器之后，我们将使用 `StreamObservable`
+    上的 `send()` 方法向服务器管理器报告其状态。然而，我们不会使用 `IntervalObservable` 和其递增的计数器，而是发送已连接客户端的数量和聊天历史中的消息数量。
 - en: Let's go back to the Server Manager and implement the Unix socket server that
     is required to establish the connection between the Game Server and Server Manager.
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们回到服务器管理器，并实现所需的 Unix 套接字服务器，以便在游戏服务器和服务器管理器之间建立连接。
 - en: Server Manager and the Unix socket server
+  id: totrans-97
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 服务器管理器和 Unix 套接字服务器
 - en: 'In order to be able to use `stream_socket_client()` to connect to a socket
     server, we need to first create the server with `stream_socket_server()`. The
     principle is identical to what we saw in the previous chapter when explaining
     the example with a simple HTTP server, made just using `stream_socket_server()`,
     `stream_socket_accept()`, and `StreamSelectLoop`:'
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了能够使用 `stream_socket_client()` 连接到套接字服务器，我们首先需要使用 `stream_socket_server()`
+    创建服务器。其原理与我们之前在解释使用 `stream_socket_server()`、`stream_socket_accept()` 和 `StreamSelectLoop`
+    的简单 HTTP 服务器示例时看到的是相同的：
 - en: '[PRE14]'
+  id: totrans-99
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: Accepting new connections via Unix sockets is analogous to TCP connections.
     In the `GameServer` class, we saw that the first status call it always makes after
     establishing the connection is "init", along with its port number to tell the
@@ -467,49 +679,72 @@
     order to be able to close them when we want to quit the application. Collecting
     statuses from each subprocess requires us to be able to distinguish which socket
     connection belongs to which subprocess (and which port we assigned to it).
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
+  zh: 通过 Unix 套接字接受新连接类似于 TCP 连接。在 `GameServer` 类中，我们看到了在建立连接后它总是首先发起的状态调用是 "init"，以及它的端口号，以便告诉服务器管理器哪个游戏服务器已初始化并准备好开始接收
+    WebSocket 客户端。我们还提到，我们需要跟踪所有活动连接，以便在我们想要退出应用程序时能够关闭它们。从每个子进程收集状态需要我们能够区分哪个套接字连接属于哪个子进程（以及我们分配给它的端口号）。
 - en: This is why, when we accept a new connection, we wrap it with the `GameServerStreamEndpoint`
     class that has an `onInit()` method returning an instance of the `Promise` class.
     This `Promise` class is then resolved with the subprocess port number (see `GameServer`
     class) when the new connection sends its `init` status. After this, we finally
     add the connection into the array of connections (with port numbers as keys) using
     the `addServer()` method.
+  id: totrans-101
   prefs: []
   type: TYPE_NORMAL
+  zh: 这就是为什么，当我们接受一个新的连接时，我们会用具有 `onInit()` 方法的 `GameServerStreamEndpoint` 类来包装它，该方法返回
+    `Promise` 类的一个实例。当新的连接发送其 `init` 状态时，这个 `Promise` 类随后会使用子进程端口号（见 `GameServer`
+    类）进行解析。之后，我们最终使用 `addServer()` 方法将连接添加到连接数组中（以端口号作为键）。
 - en: Note that we're keeping one array for processes (the `$processes` property)
     and another array for stream connections wrapped with `GameServerStreamEndpoint`
     (the `$servers` property).
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，我们保留了一个用于进程的数组（`$processes` 属性）和另一个用于包装在 `GameServerStreamEndpoint` 中的流连接的数组（`$servers`
+    属性）。
 - en: Also note that at the end of the `addServer()` method, we call `$statusSubject->onNext(null)`.
     This will trigger an update to the collection of subscriptions to subprocess statuses.
     We'll come to this in a moment.
+  id: totrans-103
   prefs: []
   type: TYPE_NORMAL
+  zh: 还要注意，在 `addServer()` 方法的末尾，我们调用 `$statusSubject->onNext(null)`。这将触发对子进程状态订阅集合的更新。我们稍后会讨论这个问题。
 - en: Implementing the GameServerStreamEndpoint class
+  id: totrans-104
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 实现 `GameServerStreamEndpoint` 类
 - en: 'This class is going to combine the `StreamObservable` that we created a moment
     ago, Promises, the `Deferred` class, and Observables. This way, we can completely
     hide its internals where we decode the JSON strings received from the stream,
     and filter messages by their type:'
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个类将结合我们刚才创建的 `StreamObservable`、Promises、`Deferred` 类和 Observables。这样，我们可以完全隐藏其内部，其中我们解码从流中接收到的
+    JSON 字符串，并按类型过滤消息：
 - en: '[PRE15]'
+  id: totrans-106
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: We subscribe to the `StreamObservable` instance to decode any incoming messages
     (the `$decodedMessage` variable). Then, with `filter()` operators, we pass through
     only messages of particular types.
+  id: totrans-107
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们订阅`StreamObservable`实例以解码任何传入的消息（`$decodedMessage`变量）。然后，通过`filter()`操作符，我们只传递特定类型的消息。
 - en: If the message type is `init,` we resolve the `Promise` object returned from
     `onInit()`. We know there should never be multiple `init` calls, so we can unsubscribe
     right after that.
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果消息类型是`init`，我们解析`onInit()`返回的`Promise`对象。我们知道不应该有多个`init`调用，所以我们可以在之后立即取消订阅。
 - en: A slightly more complicated situation is when we receive the `status` message.
     We chain `$decodedMessage` with the `multicast()` operator. This is an operator
     we haven't met yet, and we'll look into it in more detail in the next chapter.
@@ -518,29 +753,41 @@
     Then, it returns a `ConnectableObservable` (see [Chapter 3](part0033_split_000.html#VF2I2-bd355a22cf10407cb10df27e65585b8d
     "Chapter 3. Writing a Reddit Reader with RxPHP") , *Writing a Reddit Reader with
     RxPHP*).
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: 当我们收到`status`消息时，情况会稍微复杂一些。我们将`$decodedMessage`与`multicast()`操作符链式连接。这是一个我们尚未遇到的操作符，我们将在下一章中更详细地探讨它。目前，我们只需要知道这个操作符使用我们提供的`Subject`实例订阅其源Observable，在这个例子中是`ReplaySubject`。然后，它返回一个`ConnectableObservable`（参见[第3章](part0033_split_000.html#VF2I2-bd355a22cf10407cb10df27e65585b8d
+    "第3章。使用RxPHP编写Reddit阅读器")，*使用RxPHP编写Reddit阅读器*）。
 - en: The important thing with `multicast()` is that it creates a single subscription
     to its source Observable. We're using `ReplaySubject` purposely because it remembers
     the last value it emitted, so if we subscribe to the Observable returned from
     `getStatus()` multiple times, we'll always receive the most recent value immediately.
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: '`multicast()`操作符的重要之处在于它为其源Observable创建单个订阅。我们故意使用`ReplaySubject`是因为它记得它发出的最后一个值，所以如果我们多次订阅`getStatus()`返回的Observable，我们总是会立即接收到最新的值。'
 - en: There're multiple variants of the `multicast()` operator, each with a slightly
     different purpose, but more on that in [Chapter 8](part0061_split_000.html#1Q5IA1-bd355a22cf10407cb10df27e65585b8d
     "Chapter 8. Multicasting in RxPHP and PHP7 pthreads Extension"), *Multicasting
     in RxPHP and PHP7 pthreads Extension*.
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: '`multicast()`操作符有多种变体，每个变体都有稍微不同的目的，但更多内容将在[第8章](part0061_split_000.html#1Q5IA1-bd355a22cf10407cb10df27e65585b8d
+    "第8章。在RxPHP和PHP7 pthreads扩展中进行多播")，*在RxPHP和PHP7 pthreads扩展中进行多播*中介绍。'
 - en: Displaying real-time statuses from subprocesses
+  id: totrans-112
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 显示子进程的实时状态
 - en: In order to display the status of a single `GameServerStreamEndpoint`, we can
     subscribe to the Observable returned from `getStatus()`, which is, in fact, a
     `ConnectableObservable`.
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了显示单个`GameServerStreamEndpoint`的状态，我们可以订阅`getStatus()`返回的Observable，实际上它是一个`ConnectableObservable`。
 - en: However, our use-case isn't that simple. What if we spawn a new subprocess and
     want to subscribe to it as well? For *N* subprocesses, we need *N* subscriptions.
     Also, our requirement is to monitor all statuses in real time, so this looks like
@@ -548,8 +795,10 @@
     of Observables emitting statuses). The problem is that we don't know how many
     Observables we'll have because we're going to add them on the go by spawning new
     subprocesses.
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，我们的用例并不那么简单。如果我们启动一个新的子进程并想订阅它怎么办？对于*N*个子进程，我们需要*N*个订阅。此外，我们的要求是实时监控所有状态，所以这似乎可以使用`combineLatest()`操作符与一个Observable数组（一个发出状态的Observable数组）来实现。问题是，我们不知道我们将有多少个Observable，因为我们将通过启动新的子进程来动态添加它们。
 - en: One solution could be using `combineLatest()` to subscribe to all current status
     Observables and, when a new subprocess is created, unsubscribing and creating
     a new array of status Observables for the `combineLatest()` operator. This is,
@@ -557,43 +806,65 @@
     operator and higher-order Observables from [Chapter 6](part0050_split_000.html#1FLS41-bd355a22cf10407cb10df27e65585b8d
     "Chapter 6. PHP Streams API and Higher-Order Observables"), *PHP Streams API and
     Higher-Order Observables*.
+  id: totrans-115
   prefs: []
   type: TYPE_NORMAL
+  zh: 一种可能的解决方案是使用`combineLatest()`来订阅所有当前状态Observable，并在创建新的子进程时取消订阅并创建一个新的状态Observable数组供`combineLatest()`操作符使用。这当然是可行的，但有一个更好、更优雅的解决方案，即使用来自[第6章](part0050_split_000.html#1FLS41-bd355a22cf10407cb10df27e65585b8d
+    "第6章。PHP Streams API和高级Observable")，*PHP Streams API和高级Observable*的`switchLatest()`操作符和高阶Observable。
 - en: We'll first demonstrate the principle on a separate example and then apply it
     to the `ServerManager` class.
+  id: totrans-116
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将首先在一个单独的示例中演示这个原理，然后将其应用于 `ServerManager` 类。
 - en: Combining the switchLatest() and combineLatest() operators
+  id: totrans-117
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 结合 `switchLatest()` 和 `combineLatest()` 操作符
 - en: Let's say we add a new server every 1000 ms, but one of the existing servers
     updates its status every 600 ms. This means we need to recreate a new Observable
     with `combineLatest()` every second from the current array of servers.
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 假设我们每 1000 毫秒添加一个新的服务器，但其中一个现有的服务器每 600 毫秒更新其状态。这意味着我们需要每秒从当前的服务器数组中重新创建一个新的包含
+    `combineLatest()` 的可观察对象。
 - en: 'Consider the following example where we simulate this situation using two `IntervalObservables`:'
+  id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 考虑以下示例，我们使用两个 `IntervalObservables` 来模拟这种情况：
 - en: '[PRE16]'
+  id: totrans-120
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: Instead of the array of servers, we use a `$range` variable that we're constantly
     expanding, and instead of real statuses, we just wrap values with `Observable::just()`.
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们不使用服务器数组，而使用一个不断扩展的 `$range` 变量，并且不使用真实的状态，我们只是用 `Observable::just()` 包装值。
 - en: The Observable `$statusUpdate` emits independently on the `$statusUpdate` Observable,
     which makes the `combineLatest()` operator sometimes re-emit the same values without
     any change, while being subscribed to the same array of Observables.
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 可观察对象 `$statusUpdate` 在 `$statusUpdate` 可观察对象上独立发出，这使得 `combineLatest()` 操作符有时会在没有任何变化的情况下重新发出相同的值，同时订阅到相同的可观察对象数组。
 - en: The core parts of this Observable chain are obviously `combineLatest()` and
     `switchLatest()`. Since `$newServerTrigger` represents adding a new server, we
     need to provide `combineLatest()` with a fresh array of Observables that we want
     to subscribe to. Then `switchLatest()` unsubscribes from the previous Observable
     returned by `combineLatest()` and subscribes to the new one.
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个可观察对象链的核心部分显然是 `combineLatest()` 和 `switchLatest()`。由于 `$newServerTrigger`
+    代表添加一个新的服务器，我们需要为 `combineLatest()` 提供一个包含我们想要订阅的新可观察对象的数组。然后 `switchLatest()`
+    从 `combineLatest()` 返回的先前可观察对象取消订阅，并订阅新的一个。
 - en: You might wonder why we're using `func_get_args()` and `array_shift()` to get
     the values passed to the callable. The Operator `combineLatest()` passes values
     for each source Observable unpacked (*N* source Observables result in *N* function
@@ -601,257 +872,386 @@
     That's why we take all arguments as a single array and then remove the first item.
     The first item is a value from `$statusUpdate` that is also included by `combineLatest()`
     as a source Observable, but for us it has no purpose, so we won't re-emit it.
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 你可能会想知道为什么我们使用 `func_get_args()` 和 `array_shift()` 来获取传递给可调用的值。操作符 `combineLatest()`
+    为每个源可观察对象传递值（*N* 个源可观察对象产生 *N* 个函数参数），但我们不知道我们将有多少个源可观察对象。这就是为什么我们将所有参数作为一个数组来获取，然后移除第一个项目。第一个项目是
+    `$statusUpdate` 的值，它也被 `combineLatest()` 作为源可观察对象包含，但对我们来说它没有任何作用，所以我们不会重新发出它。
 - en: Note
+  id: totrans-125
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: Note that the selector function for the `combineLatest()` is optional. If we
     don't provide it, the operator will just pass all values from all source Observables
     in a single array.
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，`combineLatest()` 的选择器函数是可选的。如果我们不提供它，操作符将只将所有源可观察对象的所有值作为一个数组传递。
 - en: 'The output in the console will look as follows:'
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 控制台中的输出将如下所示：
 - en: '[PRE17]'
+  id: totrans-128
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: 'The following is the timestamped order of events in this example:'
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
+  zh: 以下是这个示例中事件的按时间戳顺序：
 - en: '`1000` ms: The `$newServerTrigger` Observable fires for the first time and
     appends the second item to the `$range` array. The operator `combineLatest()`
     is now subscribed to two Observables created with `Observable::just()`. Since
     these are both cold, the `combineLatest()` re-emits their values immediately because
     it already has a value for each of them.'
+  id: totrans-130
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`1000` 毫秒：`$newServerTrigger` 可观察对象首次触发，并将第二个项目添加到 `$range` 数组中。此时 `combineLatest()`
+    订阅到了由 `Observable::just()` 创建的两个可观察对象。由于这两个都是冷可观察对象，`combineLatest()` 立即重新发出它们的值，因为它已经为每个可观察对象有了值。'
 - en: '`1200` ms: The `$statusUpdate` Observable fires (it''s a hot Observable thanks
     to `publish()` and `connect()`, so it was emitting the event even though we weren''t
     subscribed to it). This makes `combineLatest()` fire again.'
+  id: totrans-131
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`1200` 毫秒：`$statusUpdate` 可观察对象再次触发（由于 `publish()` 和 `connect()`，它是一个热可观察对象，因此即使在未订阅的情况下也会发出事件）。这使得
+    `combineLatest()` 再次触发。'
 - en: '`1800` ms: The `$statusUpdate` Observable fires yet again, which makes `combineLatest()`
     emit for the third time. We get the same result as before because there''re still
     only two Observables at this moment.'
+  id: totrans-132
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`1800` 毫秒：`$statusUpdate` 可观察对象再次触发，这使得 `combineLatest()` 第三次发出。由于此刻仍然只有两个可观察对象，所以我们得到与之前相同的结果。'
 - en: '`2000` ms: The `$newServerTrigger` Observable fires and appends a new item
     to `$range`. Now the `combineLatest()` operator subscribes to three Observables.'
+  id: totrans-133
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`2000` ms: `$newServerTrigger` 可观察对象触发并将在 `$range` 中添加一个新项目。现在 `combineLatest()`
+    操作符订阅了三个可观察对象。'
 - en: This goes on until we collect eight emissions in total (thanks to the `take(8)`
     operator). This was a really practical example of higher-order Observables in
     action.
+  id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: 这会一直进行，直到我们总共收集到八个发射（多亏了 `take(8)` 操作符）。这是一个更高阶可观察对象在实际中应用的真正实用的例子。
 - en: 'We can reimplement it with the Server Manager application now:'
+  id: totrans-135
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们可以使用服务器管理应用程序重新实现它：
 - en: '[PRE18]'
+  id: totrans-136
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: This is exactly the same chain of operators, just a little enhanced by adding
     port numbers for each status.
+  id: totrans-137
   prefs: []
   type: TYPE_NORMAL
+  zh: 这正是相同的操作符链，只是通过为每个状态添加端口号进行了一点点增强。
 - en: When we add a new server in the `addServer()` method, we trigger `$statusSubject`,
     which recreates the array of Observables with statuses. Then, when the status
     of any of the servers is updated, it triggers `combineLatest()` directly because
     that's the only subscriber for them.
+  id: totrans-138
   prefs: []
   type: TYPE_NORMAL
+  zh: 当我们在 `addServer()` 方法中添加一个新的服务器时，我们触发 `$statusSubject`，它重新创建包含状态的观察对象数组。然后，当任何服务器的状态更新时，它直接触发
+    `combineLatest()`，因为它们唯一的订阅者是它。
 - en: Now it should also make sense why we used `ReplaySubject` when writing `GameServerStreamEndpoint`.
     When we resubscribe to already existing status Observables, we want to have at
     latest one value always available, so that `combineLatest()` doesn't have to wait
     until all of its source Observables emit a value. They already did thanks to `ReplaySubject`,
     which emits the latest value right on subscription.
+  id: totrans-139
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在也应该明白为什么我们在编写 `GameServerStreamEndpoint` 时使用了 `ReplaySubject`。当我们重新订阅已经存在的状态观察对象时，我们希望始终至少有一个值可用，这样
+    `combineLatest()` 就不必等待所有源观察对象都发射一个值。由于 `ReplaySubject`，它们已经发射了最新的值，直接在订阅时发射。
 - en: We can test how this works by running the `ServerManager.php` script. The `GameServer`
     instances will periodically emit values with `IntervalObservable` now, so we should
     already be getting status updates.
+  id: totrans-140
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们可以通过运行 `ServerManager.php` 脚本来测试这是如何工作的。现在，`GameServer` 实例将定期使用 `IntervalObservable`
+    发射值，因此我们应该已经收到了状态更新。
 - en: 'So let''s start the `ServerManager.php` application:'
+  id: totrans-141
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们开始启动 `ServerManager.php` 应用程序：
 - en: '[PRE19]'
+  id: totrans-142
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: This command takes a path to the Unix socket file as an argument. It automatically
     passes this file path to all subprocesses so they know where they should try to
     connect. Now, we can press *n* characters followed by the ***Enter*** key to spawn
     a couple of subprocesses. Each subprocess first sends the `ready` status and then
     starts emitting values from the `IntervalObservable` class.
+  id: totrans-143
   prefs: []
   type: TYPE_NORMAL
+  zh: 此命令将 Unix 套接字文件的路径作为参数。它自动将此文件路径传递给所有子进程，这样它们就知道它们应该尝试连接的位置。现在，我们可以按 *n* 个字符，然后按
+    ***Enter*** 键来生成几个子进程。每个子进程首先发送 `ready` 状态，然后开始从 `IntervalObservable` 类发射值。
 - en: 'The output could look like the following:'
+  id: totrans-144
   prefs: []
   type: TYPE_NORMAL
+  zh: 输出可能看起来像以下内容：
 - en: '[PRE20]'
+  id: totrans-145
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: Then you can press ***Q*** followed by the ***Enter*** key to gracefully quit
     the application.
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，你可以按下 ***Q*** 键，然后按 ***Enter*** 键优雅地退出应用程序。
 - en: Note
+  id: totrans-147
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 注意
 - en: Notice that we used the operator chain `map(callback)->switchLatest()`. This
     combination of operators has a shortcut `flatMapLatest(callback)`. However, to
     make our code more explicit we'll typically use the longer and more obvious variant.
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意，我们使用了操作符链 `map(callback)->switchLatest()`。这种操作符的组合有一个快捷方式 `flatMapLatest(callback)`。然而，为了使我们的代码更加明确，我们通常会使用更长且更明显的变体。
 - en: Finally, we can implement the WebSocket server and client.
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，我们可以实现 WebSocket 服务器和客户端。
 - en: Implementing a WebSocket server
+  id: totrans-150
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 实现WebSocket服务器
 - en: 'To implement a WebSocket server, we''ll use a library called `cboden/ratchet`:'
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了实现 WebSocket 服务器，我们将使用一个名为 `cboden/ratchet` 的库：
 - en: '[PRE21]'
+  id: totrans-152
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: A WebSocket server is represented by a class implementing the `MessageComponentInterface`
     interface with four methods `onOpen()`, `onClose()`, `onError()`, and `onMessage()`.
     How this class behaves on each of the events is up to the developer. Usually in
     chat applications, we want to keep all active connections in an array of clients
     and read messages, with `onMessage()` to resend them to all clients.
+  id: totrans-153
   prefs: []
   type: TYPE_NORMAL
+  zh: WebSocket服务器由一个实现了 `MessageComponentInterface` 接口并具有四个方法 `onOpen()`、`onClose()`、`onError()`
+    和 `onMessage()` 的类表示。这个类在每个事件上的行为取决于开发者。通常在聊天应用程序中，我们希望将所有活跃的连接保存在客户端数组中，并通过 `onMessage()`
+    读取消息，然后将它们重新发送给所有客户端。
 - en: 'We''ll first implement only the required methods and then add some custom ones
     as well:'
+  id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们首先实现所需的方法，然后添加一些自定义的方法：
 - en: '[PRE22]'
+  id: totrans-155
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: It should be obvious what this code does without any further explanation. Just
     note that we're using `$subject` to signal that its status has changed and needs
     to be sent to the Server Manager via Unix sockets.
+  id: totrans-156
   prefs: []
   type: TYPE_NORMAL
+  zh: 没有任何进一步的解释，这个代码的作用应该是显而易见的。只需注意，我们正在使用`$subject`来表示其状态已更改并需要通过Unix套接字发送到服务器管理器。
 - en: 'Now we can add more methods. In particular, we''ll need `getObservable()`,
     where we''ll subscribe to be notified with the current statuses:'
+  id: totrans-157
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，我们可以添加更多方法。特别是，我们需要`getObservable()`，我们将订阅以接收当前状态的通知：
 - en: '[PRE23]'
+  id: totrans-158
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: This class itself isn't enough to start a WebSocket server.
+  id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个类本身不足以启动WebSocket服务器。
 - en: The WebSocket connection is first established as a normal HTTP connection, and
     then it's upgraded to a WebSocket connection.
+  id: totrans-160
   prefs: []
   type: TYPE_NORMAL
+  zh: WebSocket连接首先被建立为一个正常的HTTP连接，然后升级为WebSocket连接。
 - en: 'Back in the `GameServer` class, we subscribe to the Observable returned from
     the `getObservable()` method to be notified when the status for this chat server
     changes and needs to be sent to the Server Manager. The status of the chat server
     is represented by the current number of clients and the total number of messages
     in the chat history:'
+  id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: 在`GameServer`类中，我们订阅`getObservable()`方法返回的Observable，以便在聊天服务器的状态更改并需要发送到服务器管理器时得到通知。聊天服务器的状态由当前客户端数量和聊天历史中的总消息数表示：
 - en: '[PRE24]'
+  id: totrans-162
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE24]'
 - en: 'When we''re already in the `GameServer` class, we can see how to use backpressure
     in practice. With multiple Game Servers, where each is emitting values multiple
     times a second, we might want to use `ThrottleTimeOperator` to limit emissions
     via the Unix socket stream:'
+  id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: 当我们已经在`GameServer`类中时，我们可以看到如何在实践中使用背压。在有多个游戏服务器的情况下，每个服务器每秒都会多次发出值，我们可能想要使用`ThrottleTimeOperator`通过Unix套接字流来限制发射：
 - en: '[PRE25]'
+  id: totrans-164
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE25]'
 - en: Now, each `GameServer` class will send its status at most once every two seconds.
     In a real-world application, we'll obviously not use `IntervalObservable`, and
     leave emitting statuses to `$webSocketServer->getObservable()`. Either way, the
     use of backpressure and `ThrottleTimeOperator` remains the same.
+  id: totrans-165
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，每个`GameServer`类最多每两秒发送一次状态。在实际应用中，我们显然不会使用`IntervalObservable`，而是将发射状态留给`$webSocketServer->getObservable()`。无论如何，背压和`ThrottleTimeOperator`的使用方式保持不变。
 - en: Implementing a WebSocket client
+  id: totrans-166
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 实现WebSocket客户端
 - en: 'To implement a WebSocket client, we''re going to use another PHP library called
     `ratchet/pawl`:'
+  id: totrans-167
   prefs: []
   type: TYPE_NORMAL
+  zh: 要实现WebSocket客户端，我们将使用另一个名为`ratchet/pawl`的PHP库：
 - en: '[PRE26]'
+  id: totrans-168
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE26]'
 - en: 'The client will read input from `php://stdin` and send it via WebSocket to
     the server. It''ll also watch for any incoming messages and print them to the
     console:'
+  id: totrans-169
   prefs: []
   type: TYPE_NORMAL
+  zh: 客户端将从`php://stdin`读取输入并通过WebSocket发送到服务器。它还将监视任何传入的消息并将它们打印到控制台：
 - en: '[PRE27]'
+  id: totrans-170
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE27]'
 - en: The WebSocket client is created using the `connect()` function, where, as a
     protocol, we use `ws`. This method returns a Promise that's resolved with the
     WebSocket connection object when the connection is established or otherwise rejected.
     This function also requires an event loop where we have to provide our single
     instance of `StreamSelectLoop`. The same event loop is used to read from the `fopen()`
     stream.
+  id: totrans-171
   prefs: []
   type: TYPE_NORMAL
+  zh: WebSocket客户端是通过`connect()`函数创建的，其中，作为一个协议，我们使用`ws`。这个方法返回一个Promise，当连接建立时，它会被解析为WebSocket连接对象，否则会被拒绝。这个函数还需要一个事件循环，我们必须提供我们的单个`StreamSelectLoop`实例。同一个事件循环用于从`fopen()`流中读取。
 - en: If we didn't provide the event loop directly, the `connect()` function would
     create its own instance internally. This loop would cause exactly what we described
     in the previous chapter, and the inner loop reading from the `php://stdin` stream
     would never run.
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果我们没有直接提供事件循环，`connect()`函数会在内部创建自己的实例。这个循环会导致我们在上一章中描述的情况，从`php://stdin`流中读取的内部循环将永远不会运行。
 - en: We also use this connection object to set up event listeners with the `on()`
     method and to send data to the server with the `send()` method. All sent messages
     are prefixed with `>`, while all received messages are prefixed with `<`.
+  id: totrans-173
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们还使用这个连接对象通过`on()`方法设置事件监听器，并通过`send()`方法向服务器发送数据。所有发送的消息都以前缀`>`开头，而所有接收到的消息都以前缀`<`开头。
 - en: 'Now we can use this client to test the real usage of the Server Manager. If
     we run three instances of `GameClient` and send some example messages, the output
     might look like the following:'
+  id: totrans-174
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，我们可以使用这个客户端来测试服务器管理器的实际使用。如果我们运行三个`GameClient`实例并发送一些示例消息，输出可能如下所示：
 - en: '[PRE28]'
+  id: totrans-175
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE28]'
 - en: 'Then, monitoring real-time statuses might look like this:'
+  id: totrans-176
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，实时监控状态可能看起来像这样：
 - en: '[PRE29]'
+  id: totrans-177
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE29]'
 - en: Any new WebSocket client or any new message causes an immediate update to this
     overview.
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
+  zh: 任何新的WebSocket客户端或任何新的消息都会立即更新这个概览。
 - en: Summary
+  id: totrans-179
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 摘要
 - en: This chapter was really code intensive, with a lot of examples based on using
     Unix sockets and WebSockets. We also utilized a lot of what we've learned in this
     and the previous chapter, including higher-order Observables, with `swtichLatest()`
     and `combineLatest()`, backpressure and which operators we can use, using event
     loops with multiple streams, and using the `multicast()` operator to share a single
     subscription among multiple observers.
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: 本章内容非常注重代码，包含大量基于使用 Unix 套接字和 WebSocket 的示例。我们还利用了本章及上一章学到的很多知识，包括高阶 Observables，使用
+    `switchLatest()` 和 `combineLatest()`，背压以及我们可以使用的算子，使用多个流的事件循环，以及使用 `multicast()`
+    算子来在多个观察者之间共享单个订阅。
 - en: In the next chapter, we'll have a look at multicasting in Rx and start using
     the `pthreads` PHP extension to leverage true parallelism with threads that would
     normally be hardly achievable.
+  id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下一章中，我们将探讨 Rx 中的多播，并开始使用 `pthreads` PHP 扩展来利用线程实现真正的并行性，这些线程通常很难实现。
