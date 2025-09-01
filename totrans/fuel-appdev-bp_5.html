@@ -1,0 +1,1427 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;5.&#xA0;Building Your Own Restful API"><div class="titlepage"><div><div><h1 class="title"><a id="ch05"/>Chapter 5. Building Your Own Restful API</h1></div></div></div><p>In this chapter, we will create our own microblogging application similar to Twitter. The social component will be fairly simple: users will post on their walls messages containing up to 140 characters. The real input of this chapter will reside in setting up a JSON API that can be accessed by external applications and adding automated tests that will allow you to track regressions. In order to limit the amount of data exchanged, we will make our application use this API as often as possible.</p><p>By the end of the chapter, you should know:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">How to create a signup form</li><li class="listitem" style="list-style-type: disc">How to implement a JSON API without duplicating any code</li><li class="listitem" style="list-style-type: disc">What is the <code class="literal">Parser</code> package</li><li class="listitem" style="list-style-type: disc">What are language-agnostic template systems and why use such systems</li><li class="listitem" style="list-style-type: disc">What is the Mustache engine and how to implement views using it</li><li class="listitem" style="list-style-type: disc">What is a magic migration</li><li class="listitem" style="list-style-type: disc">How to implement unit tests and run them</li></ul></div><div class="section" title="Specifications"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec44"/>Specifications</h1></div></div></div><p>It is possible for<a id="id397" class="indexterm"/> visitors to subscribe to our micro blogging application. Once they do, they are able to write small posts of 140 characters which will be displayed on their profile page. Anyone, even non-users, can see a user's profile page.</p><p>In order to avoid authentication<a id="id398" class="indexterm"/> issues and keep this project simple, we will only provide a read-only JSON API. Also, we won't track applications using our API and therefore no limitations will be implemented (this could be an important point if you are thinking of publishing your own API). Therefore, only the users' profile information (username, creation date, and so on) and published posts will be available through the API.</p></div></div>
+<div class="section" title="Conception"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec45"/>Conception</h1></div></div></div><p>We will need the following two models:</p><div class="mediaobject"><img src="graphics/5401OS_05_01.jpg" alt="Conception"/><div class="caption"><p>Entity Relationship diagram (Min-Max notation)</p></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>User</strong></span>: Since the model's table will be generated from<a id="id399" class="indexterm"/> the <code class="literal">Auth</code> package's  migration, the columns will already be generated. The columns <a id="id400" class="indexterm"/>we need are <code class="literal">username</code> and <code class="literal">password</code>.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Post</strong></span>: Each post has a <code class="literal">content</code> and a <code class="literal">created_at</code> property. Since each post can only be published by a <a id="id401" class="indexterm"/>single user and each user can publish many posts, there is a <code class="literal">belongs_to</code> relationship between posts and<a id="id402" class="indexterm"/> users and a <code class="literal">has_many</code> relationship between users and posts. Thus, an additional <code class="literal">user_id</code> property must be added for the relationship.</li></ul></div></div>
+<div class="section" title="FuelPHP installation and configuration"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec46"/>FuelPHP installation and configuration</h1></div></div></div><p>You first <a id="id403" class="indexterm"/>need to perform the<a id="id404" class="indexterm"/> following steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Install a new <a id="id405" class="indexterm"/>FuelPHP instance.</li><li class="listitem">Configure Apache and the host file to handle it. In this chapter, we will access our application by requesting the <code class="literal">http://mymicroblog.app</code> URL.</li><li class="listitem">Update<a id="id406" class="indexterm"/> Composer if necessary.</li><li class="listitem">Create a new database for your application.</li><li class="listitem">Finally, configure FuelPHP in order to allow your application to access this database.</li></ol></div><p>This project will also<a id="id407" class="indexterm"/> need the <code class="literal">ORM</code>, the <code class="literal">Auth</code>, and the <code class="literal">Parser</code> packages. We used the <code class="literal">ORM</code> and the <code class="literal">Auth</code> packages in previous chapters, but we never used the <code class="literal">Parser</code> <a id="id408" class="indexterm"/>package; we will explain its role later in <span class="emphasis"><em>The Parser package and template engines</em></span> section. Since they are already installed, we just need to enable them. For doing this, simply open the <code class="literal">APPPATH/config/config.php</code> file and insert the following lines of code at the end of the returned array:</p><div class="informalexample"><pre class="programlisting">'always_load'  =&gt; array(
+    'packages'  =&gt; array(
+        'orm',
+        'auth',
+        'parser',
+    ),
+),</pre></div><p>Alternatively, you can uncomment the appropriate lines. This will load the <code class="literal">ORM</code>, the <code class="literal">Auth</code>, and the <code class="literal">Parser</code> package every time a FuelPHP instance is loaded. We also need to change a few configuration items for the <code class="literal">Auth</code> package.</p><p>First, copy the file located at <code class="literal">PKGPATH/auth/config/auth.php</code> to <code class="literal">APPPATH/config/auth.php</code> and <code class="literal">PKGPATH/auth/config/simpleauth.php</code> to <code class="literal">APPPATH/config/simpleauth.php</code>.</p><p>Then, open the configuration file <code class="literal">APPPATH/config/auth.php</code> and change the <code class="literal">salt</code> value to a random string (this is a security precaution). We will use the <code class="literal">Simpleauth</code> driver here, as we don't need many features in our authentication system.</p><p>Then, open the file <code class="literal">APPPATH/config/simpleauth.php</code> and set the value of <code class="literal">login_hash_salt</code> to a random string (again, for security precaution). Install the <code class="literal">Auth</code> tables by executing their migration files:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>php oil refine migrate --packages=auth</strong></span>
+</pre></div><p>If you take a look at the <a id="id409" class="indexterm"/>database, you should see that several tables<a id="id410" class="indexterm"/> have been<a id="id411" class="indexterm"/> generated:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">users</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">users_clients</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">users_providers</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">users_scopes</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">users_sessions</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">users_sessionscopes</code></li></ul></div><p>However, as expected, there are much fewer tables generated than for the <code class="literal">Ormauth</code> driver.</p></div>
+<div class="section" title="The Parser package and template engines"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec47"/>The Parser package and template engines</h1></div></div></div><p>You may notice that we added the <code class="literal">parser</code> package into the <code class="literal">always_load.package</code> key. Thanks to this package, instead of <a id="id412" class="indexterm"/>writing our view in PHP, we are able to use template engines. For those of you that are not familiar with template engines, they allows us to write our <a id="id413" class="indexterm"/>view files in a different syntax.</p><p>For instance, a list of items might be displayed by writing the following code in PHP:</p><div class="informalexample"><pre class="programlisting">&lt;h1&gt;Items&lt;/h1&gt;
+&lt;?php foreach ($items as $item) { ?&gt;
+    &lt;li&gt;&lt;?php echo $item-&gt;title ?&gt;&lt;/li&gt;
+&lt;?php } ?&gt;
+&lt;a href="item/create"&gt;Create an item&lt;/a&gt;</pre></div><p>But, using the HAML template engine, it can be written like this:</p><div class="informalexample"><pre class="programlisting">%h1 Items
+- foreach ($items as $item)
+  %li
+    = $item-&gt;title
+%a(href="item/create") Create an item</pre></div><p>Alternatively, by using the Mustache template engine, it can be written like this:</p><div class="informalexample"><pre class="programlisting">&lt;h1&gt;Items&lt;/h1&gt;
+{{#items}}
+  &lt;li&gt;{{title}}&lt;/li&gt;
+{{/items}}
+&lt;a href="item/create"&gt;Create an item&lt;/a&gt;</pre></div><p>There are various reasons you<a id="id414" class="indexterm"/> might want to use template engines:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">It allows you to write much more concise and elegant code, for example as in the HAML language.</li><li class="listitem" style="list-style-type: disc">It allows you to keep a consistent code format.</li><li class="listitem" style="list-style-type: disc">It forces you to separate logic from presentation. Thus, you can easily hand your code to a designer who can change it without having to understand any PHP.</li></ul></div><p>For our project, we are going to use the Mustache template engine, but for none of the preceding reasons.</p></div>
+<div class="section" title="A major benefit of language-agnostic template engines"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec48"/>A major benefit of language-agnostic template engines</h1></div></div></div><p>If you open the main web page of the Mustache template engine (<a class="ulink" href="http://mustache.github.io/">http://mustache.github.io/</a>), you<a id="id415" class="indexterm"/> are going to see that the engine is available in many different languages (Ruby, JavaScript, Python, Node.js, PHP, Java, C++, ASP, C#, and so on). However, it doesn't matter which<a id="id416" class="indexterm"/> language you are going to use the engine: the syntax of the template will remain the same and the language won't have any influence <a id="id417" class="indexterm"/>on the code you will write. This is because Mustache is a language-agnostic template engine. This is a great advantage if you work with a team using many different languages such as PHP, JavaScript, Ruby, or Python; your <a id="id418" class="indexterm"/>views can be written in the same common markup language. We are going to use this feature to our own advantage.</p><p>The following diagram shows the most common way that websites work right now:</p><div class="mediaobject"><img src="graphics/5401OS_05_02.jpg" alt="A major benefit of language-agnostic template engines"/></div><p>But you often need to dynamically load new content once your webpage is displayed in your browser:</p><div class="mediaobject"><img src="graphics/5401OS_05_03.jpg" alt="A major benefit of language-agnostic template engines"/></div><p>In order to further illustrate this, let’s say we are displaying a user’s profile page, and thus displaying its list of posts. If the user has already published 1000 posts, we won’t display them all at once. We will first display<a id="id419" class="indexterm"/> the last 30 posts, for instance, using PHP views, so at some point the web page should look like this:</p><div class="informalexample"><pre class="programlisting">...
+&lt;div class="posts_list"&gt;
+    &lt;div class="post" id="post_232"&gt;
+       &lt;div class="post_author"&gt;first_user&lt;/div&gt;
+       &lt;div class="post_content"&gt;My last post.&lt;/div&gt;
+       &lt;div class="post_date"&gt;5 minutes ago&lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class="post" id="post_214"&gt;
+       &lt;div class="post_author"&gt;first_user&lt;/div&gt;
+       &lt;div class="post_content"&gt;Hello everyone.&lt;/div&gt;
+       &lt;div class="post_date"&gt;21 minutes ago&lt;/div&gt;
+    &lt;/div&gt;
+    ...
+&lt;/div&gt;
+...</pre></div><p>When the visitor will scroll through the bottom of the web page, it will send an AJAX request to the server <a id="id420" class="indexterm"/>API that will replace the 30 previous posts, but in JSON format. The returned code should look like this:</p><div class="informalexample"><pre class="programlisting">{
+    ...
+    "posts": [
+        {
+            "id": 142,
+            "content": "previous post.",
+            "created_at": 1409741475,
+            "author": {
+                "id": 24,
+                "username": "first_user"
+            }
+        },
+        {
+            "id": 125,
+            "content": "very old post.",
+            "created_at": 1209751372,
+            "author": {
+                "id": 24,
+                "username": "first_user"
+            }
+        },
+        ...
+    ]
+    ...
+}</pre></div><p>We have all the necessary data, but we need to transform it to HTML code so that the user can see it. Whether you use jQuery or direct DOM manipulations, you will need to use JavaScript code to do this (that code will act as JavaScript views). This will lead to code duplication, in the sense that, if you change the way posts are displayed in the PHP views, you will need to change the JavaScript code as well. For large projects, this will quickly become unmanageable. However, all this can change if we use the mustache template engine</p><div class="mediaobject"><img src="graphics/5401OS_05_04.jpg" alt="A major benefit of language-agnostic template engines"/></div><p>Nothing exceptional here. However, the process is improved when loading dynamic content:</p><div class="mediaobject"><img src="graphics/5401OS_05_05.jpg" alt="A major benefit of language-agnostic template engines"/></div><p>Since the Mustache <a id="id421" class="indexterm"/>template engine is language agnostic, it is possible to interpret a single template in both PHP and JavaScript. If we want to change, let's say, how posts are displayed, all we have to do is to change this one template. No duplication always means a more robust and maintainable application.</p><p>Of course, we could always write a full JavaScript application that would load data from the API without using any PHP views. This way, no template engine would be necessary, as we would only write JavaScript views. However, being able to return HTML content directly from the server has two benefits. First, if the client doesn't support JavaScript—as is the case for most search engines—it will still be able to access the website (so the indexing of your application will be better). Secondly, when the client is accessing your website for the first time, you can speed up the process by returning the cached HTML code of the requested web page.</p><p>In order to use the Mustache template engine, we need to install it. In the <code class="literal">composer.json</code> file, add the following line in the <code class="literal">require</code> list (don't forget to add a comma in the previous line):</p><div class="informalexample"><pre class="programlisting">"mustache/mustache": "2.7.0"</pre></div><p>Then update Composer.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note27"/>Note</h3><p>We chose the Mustache engine mainly because of its simplicity, but you have a lot of other choices. If you want to use the API strategy we are going to implement in a more<a id="id422" class="indexterm"/> complex project, I recommend you take a look at more complete solutions. For instance, though they are not per se language-agnostic template engines, you could take a look at Smarty and its JavaScript port jSmart.</p></div></div></div>
+<div class="section" title="Subscription and authentication features"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec49"/>Subscription and authentication features</h1></div></div></div><p>Instead<a id="id423" class="indexterm"/> of generating <a id="id424" class="indexterm"/>entire scaffolds, we will manually create controllers and views as we <a id="id425" class="indexterm"/>won't need most CRUD<a id="id426" class="indexterm"/> features.</p><div class="section" title="Implementing the subscription and authentication forms"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec53"/>Implementing the subscription and authentication forms</h2></div></div></div><p>First, let's create the user controller. Create<a id="id427" class="indexterm"/> a file at <code class="literal">APPPATH/classes/controller/user.php</code> and set its contents to:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+class Controller_User extends Controller_Template
+{
+
+}</pre></div><p>The home page, which <a id="id428" class="indexterm"/>will be handled by the <code class="literal">index</code> action of the <code class="literal">User</code> controller, displays the user's posts if the user is logged in, otherwise it will display the subscription and authentication forms.</p><p>Since we have no user in our system, nobody can log in. Thus, we will begin the subscription and authentication forms.</p><p>First, add the following method in the <code class="literal">User</code> controller:</p><div class="informalexample"><pre class="programlisting">public function action_index()
+{
+    if (false /* is the user logged ? */) {
+        // @todo: handle response if user is logged.
+    } else {
+        $this-&gt;template-&gt;content = 
+            View::forge(
+                'user/connect.mustache',
+                array(),
+                // By default, mustache escapes displayed
+                // variables, so no need to escape them here
+                false
+            );
+    }
+}</pre></div><p>We will come back to this action later, but so far<a id="id429" class="indexterm"/> it should be pretty straightforward for you.</p><p>As we are using<a id="id430" class="indexterm"/> <code class="literal">Controller_Template</code>, we need to define a template. Create the template view file at <code class="literal">APPPATH/views/template.php</code> and set its contents to:</p><div class="informalexample"><pre class="programlisting">&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+&lt;?php
+echo '&lt;base '.array_to_attr(array('href' =&gt; Uri::base())).' /&gt;';
+?&gt;
+    &lt;meta charset="utf-8"&gt;
+    &lt;title&gt;My microblog&lt;/title&gt;
+    &lt;?php echo Asset::css('bootstrap.css'); ?&gt;
+    &lt;?php echo Asset::css('website.css'); ?&gt;
+    &lt;style&gt;
+        body { margin: 50px; }
+    &lt;/style&gt;
+    &lt;?php echo Asset::js(array(
+        'http://code.jquery.com/jquery-1.11.2.min.js',
+        'bootstrap.js'
+    )); ?&gt;
+    &lt;script&gt;
+        $(function(){ $('.topbar').dropdown(); });
+    &lt;/script&gt;
+&lt;/head&gt;
+&lt;body&gt;
+
+    &lt;div class="navbar navbar-inverse navbar-fixed-top"&gt;
+        &lt;div class="container"&gt;
+            &lt;div class="navbar-header"&gt;
+                &lt;a class="navbar-brand"
+&lt;?php echo array_to_attr(array('href' =&gt; Uri::base())) ?&gt;
+                &gt;
+                    My microblog
+                &lt;/a&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;div class="container"&gt;
+        &lt;div class="row"&gt;
+			&lt;div class="col-md-12"&gt;
+&lt;?php if (Session::get_flash('success')): ?&gt;
+				&lt;div class="alert
+                            alert-success
+                            alert-dismissable"&gt;
+					&lt;button
+                            type="button"
+                            class="close"
+                            data-dismiss="alert"
+                            aria-hidden="true"&gt;
+                        &amp;times;
+                    &lt;/button&gt;
+					&lt;p&gt;
+&lt;?php
+echo implode(
+    '&lt;/p&gt;&lt;p&gt;',
+    (array) Session::get_flash('success')
+); ?&gt;
+					&lt;/p&gt;
+				&lt;/div&gt;
+&lt;?php endif; ?&gt;
+&lt;?php if (Session::get_flash('error')): ?&gt;
+				&lt;div class="alert
+                            alert-danger
+                            alert-dismissable"&gt;
+					&lt;button
+                            type="button"
+                            class="close"
+                            data-dismiss="alert"
+                            aria-hidden="true"&gt;
+                        &amp;times;
+                    &lt;/button&gt;
+					&lt;p&gt;
+&lt;?php
+echo implode(
+    '&lt;/p&gt;&lt;p&gt;',
+    (array) Session::get_flash('error')
+); ?&gt;
+					&lt;/p&gt;
+				&lt;/div&gt;
+&lt;?php endif; ?&gt;
+			&lt;/div&gt;
+&lt;?php echo $content; ?&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre></div><p>It is inspired<a id="id431" class="indexterm"/> by the admin template generated in <a class="link" href="ch03.html" title="Chapter 3. Building a Blog Application">Chapter 3</a>, <span class="emphasis"><em>Building a Blog Application</em></span> you can compare it to the file used for the scaffold generation located at <code class="literal">PKGPATH/oil/views/admin/template.php</code>. We use the Bootstrap framework<a id="id432" class="indexterm"/> to easily structure our web pages in a responsive way; we will use its CSS classes from time to time. You can take a look at the official <a id="id433" class="indexterm"/>documentation for Bootstrap at <a class="ulink" href="http://getbootstrap.com/">http://getbootstrap.com/</a>.</p><p>We will also define some custom CSS classes inside the <code class="literal">website.css</code> file. Since we are already including it in our template, create the style sheet file at <code class="literal">public/assets/css/website.css</code> and set its contents to:</p><div class="informalexample"><pre class="programlisting">body {
+    background-color: #f8f8f8;
+}
+
+h1.home {
+    font-size: 45px;
+    text-align: center;
+}
+
+.alert {
+    margin-top: 10px;
+}</pre></div><p>Now, we need to create the <code class="literal">APPPATH/views/user/connect.mustache</code> view. We need to add the sign up and <a id="id434" class="indexterm"/>sign in forms there, so no rocket science:</p><div class="informalexample"><pre class="programlisting">&lt;h1 class="home"&gt;
+    My microblog
+&lt;/h1&gt;
+&lt;div class="signup_or_signin"&gt;
+    &lt;div class="signin col-md-1"&gt;&lt;/div&gt;
+    &lt;div class="signup col-md-4"&gt;
+        &lt;h2&gt;Signup&lt;/h2&gt;
+        &lt;form action="user/signup" method="post"&gt;
+            &lt;div class="form-group"&gt;
+                &lt;input
+                       type="text"
+                       name="username"
+                       placeholder="Username"
+                       class="form-control" /&gt;
+            &lt;/div&gt;
+            &lt;div class="form-group"&gt;
+                &lt;input
+                       type="email"
+                       name="email"
+                       placeholder="Email"
+                       class="form-control" /&gt;
+            &lt;/div&gt;
+            &lt;div class="form-group"&gt;
+                &lt;input
+                       type="password"
+                       name="password"
+                       placeholder="Password"
+                       class="form-control" /&gt;
+            &lt;/div&gt;
+            &lt;div class="form-group"&gt;
+                &lt;input
+                       type="submit"
+                       value="Signup"
+                       class="btn btn-lg
+                              btn-primary
+                              btn-block" /&gt;
+            &lt;/div&gt;
+        &lt;/form&gt;
+    &lt;/div&gt;
+    &lt;div class="signin col-md-2"&gt;&lt;/div&gt;
+    &lt;div class="signin col-md-4"&gt;
+        &lt;h2&gt;Signin&lt;/h1&gt;
+        &lt;form action="user/signin" method="post"&gt;
+            &lt;div class="form-group"&gt;
+                &lt;input
+                       type="text"
+                       name="username"
+                       placeholder="Email or Username"
+                       class="form-control" /&gt;
+            &lt;/div&gt;
+            &lt;div class="form-group"&gt;
+                &lt;input
+                       type="password"
+                       name="password"
+                       placeholder="Password"
+                       class="form-control" /&gt;
+            &lt;/div&gt;
+            &lt;div class="form-group"&gt;
+                &lt;input
+                       type="submit"
+                       value="Signin"
+                       class="btn btn-lg
+                              btn-primary
+                              btn-block" /&gt;
+            &lt;/div&gt;
+        &lt;/form&gt;
+    &lt;/div&gt;
+    &lt;div class="signin col-md-1"&gt;&lt;/div&gt;
+&lt;/div&gt;
+</pre></div><p>Since there are no <a id="id435" class="indexterm"/>dynamic parts in our view yet, you can see it is very similar to a classic PHP or HTML view.</p><p>Finally, as we want<a id="id436" class="indexterm"/> the <code class="literal">index</code> action of the <code class="literal">User</code> controller to be our home page, we need to define its URI in the <code class="literal">_root_</code> key of our <code class="literal">routes</code> configuration file. Open the <code class="literal">APPPATH/config/routes.php</code> configuration file and set its contents to:</p><div class="informalexample"><pre class="programlisting">
+&lt;?php
+return array(
+  '_root_'  =&gt; 'user/index',
+);</pre></div><p>If you request the following URL:</p><p>
+<code class="literal">http://mymicroblog.app/</code>
+</p><p>You should see a simple yet responsive <a id="id437" class="indexterm"/>web page with sign up and sign in forms.</p><p>In the following screenshot, you<a id="id438" class="indexterm"/> can see what the web page looks like on large screens:</p><div class="mediaobject"><img src="graphics/5401OS_05_06.jpg" alt="Implementing the subscription and authentication forms"/></div><p>This is what the web page looks like on smaller screens and devices:</p><div class="mediaobject"><img src="graphics/5401OS_05_07.jpg" alt="Implementing the subscription and authentication forms"/></div></div><div class="section" title="Handling the signup form"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec54"/>Handling the signup form</h2></div></div></div><p>As no user <a id="id439" class="indexterm"/>exists right now, it is time to create the <code class="literal">signup</code> action in the <code class="literal">User</code> controller (targeted by the signup form) so that we can create our first user. Create the following method and read comments (you should already be familiar with all these methods):</p><div class="informalexample"><pre class="programlisting">public function action_signup()
+{
+    /*
+    Validating our form (checks if the username, the
+    password and the email have a correct value). We
+    are using the same Validation class as we saw on
+    numerous generated models
+    */
+    $val = Validation::forge('signup_validation');
+    $val-&gt;add_field(
+        'username',
+        'Username',
+        'required|valid_string[alpha,lowercase,numeric]'
+    );
+    $val-&gt;add_field(
+        'password',
+        'Password',
+        'required|min_length[6]'
+    );
+    $val-&gt;add('email', 'Email')
+        -&gt;add_rule('required')
+        -&gt;add_rule('valid_email');
+
+    // Running validation
+    if ($val-&gt;run())
+    {
+        try {
+            // Since validation passed, we try to create
+            // a user
+            $user_id = Auth::create_user(
+                Input::post('username'),
+                Input::post('password'),
+                Input::post('email')
+            );
+
+            /*
+            Note: at this point, we could send a
+            confirmation email, but for the sake of this
+            chapter conciseness, we will leave the
+            implementation of this feature to you as a
+            training exercise.
+            */
+
+            // If no exceptions were triggered, the user
+            // was succesfully created.
+            Session::set_flash(
+                'success',
+                e('Welcome '.Input::post('username').'!')
+            );
+        } catch (\SimpleUserUpdateException $e) {
+            // Either the username or email already exists
+            Session::set_flash('error', e($e-&gt;getMessage());
+        }
+
+    }
+    else
+    {
+        // At least one field is not correct
+        Session::set_flash('error', e($val-&gt;error()));
+    }
+
+    /*
+    Sending the signup form fields information so that they
+    are already filled when the user is redirected to the
+    the index action (useful if the user could not be created)
+    */
+    Session::set_flash('signup_form', Input::post());
+
+    // No matter what, we return to the home page.
+    Response::redirect('/');
+}</pre></div><p>If you now request the home page and fill the signup form correctly, a new user should be created in the <code class="literal">users</code> table. If something goes wrong (you enter an incomplete e-mail address or the username already exists<a id="id440" class="indexterm"/> for instance), an error message will be displayed but the form will be emptied since we go back to the home page. This is no big deal, but it could lower your transformation ratio. We saved the form data in the signup_form flash variable; therefore, it is now accessible in the <code class="literal">index</code> action. We will pass it to the view by replacing, in the <code class="literal">index</code> action:</p><div class="informalexample"><pre class="programlisting">View::forge(...);</pre></div><p>with:</p><div class="informalexample"><pre class="programlisting">View::forge(
+    'user/connect.mustache',
+    array(
+       'signup_form' =&gt; Session::get_flash('signup_form'),
+    ),
+    // By default, mustache escape displayed
+    // variables, so no need to escape them here
+    false
+);</pre></div><p>To autofill the <code class="literal">username</code> field, open the <code class="literal">APPPATH/views/user/connect.mustache</code> view file and replace the <code class="literal">username</code> input in the signup form with the following code snippet:</p><div class="informalexample"><pre class="programlisting">&lt;input
+       type="text"
+       name="username"
+       placeholder="Username"
+       class="form-control"
+       value="{{signup_form.username}}"/&gt;</pre></div><p>As you can see, we displayed the <code class="literal">$signup_form['username']</code> variable by writing <code class="literal">{{signup_form.username}}</code>. In a Mustache file, a <code class="literal">$var</code> variable is displayed by writing <code class="literal">{{var}}</code> and <code class="literal">$var['val_1']</code> is displayed by writing <code class="literal">{{var.val_1}}</code>. If <code class="literal">$var</code> is an object, <code class="literal">$var-&gt;val_1</code> is also displayed by writing <code class="literal">{{var.val_1}}</code>.</p><p>You can also autofill the<a id="id441" class="indexterm"/> <code class="literal">email</code> field by adding <code class="literal">value="{{signup_form.email}}"</code> in the <code class="literal">email</code> input of the signup form.</p></div><div class="section" title="Handling the signin form"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec55"/>Handling the signin form</h2></div></div></div><p>Now that we can <a id="id442" class="indexterm"/>create new users, we need to handle the signin form. We will therefore create the <code class="literal">signin</code> action in the <code class="literal">User</code> controller:</p><div class="informalexample"><pre class="programlisting">public function action_signin()
+{
+    // If already logged in, redirecting to home page.
+    if (Auth::check()) {
+        Session::set_flash(
+            'error',
+            e('You are already logged in, '.
+            Auth::get_screen_name().'.')
+        );
+        Response::redirect('/');
+    }
+
+    $val = Validation::forge();
+    $val-&gt;add('username', 'Email or Username')
+        -&gt;add_rule('required');
+    $val-&gt;add('password', 'Password')
+        -&gt;add_rule('required');
+
+    // Running validation
+    if ($val-&gt;run())
+    {
+        $auth = Auth::instance();
+
+        // Checking the credentials.
+        if (
+            Auth::check() or
+            $auth-&gt;login(
+                Input::post('username'),
+                Input::post('password')
+            )
+        )
+        {
+            Session::set_flash(
+                'success',
+                e('Welcome, '.Auth::get_screen_name().'!')
+            );
+        }
+        else
+        {
+            Session::set_flash(
+                'error',
+                'Incorrect username and / or password.'
+            );
+        }
+    } else {
+        Session::set_flash(
+            'error',
+            'Empty username or password.'
+        );
+    }
+
+    // No matter what, we return to the home page.
+    Response::redirect('/');
+}</pre></div><p>This is again very <a id="id443" class="indexterm"/>much inspired from the <code class="literal">admin</code> controller generated by the administration panel generator in <code class="literal">oil</code>; take a look at the <code class="literal">login</code> action of the <code class="literal">admin</code> controller (used for the administration panel generation) located at <code class="literal">PKGPATH/oil/views/admin/orm/controllers/admin.php</code>.</p></div><div class="section" title="Allowing the user to sign out"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec56"/>Allowing the user to sign out</h2></div></div></div><p>You probably noticed while testing the form that, once you successfully log in, you are unable to log out. Also, unless you have just successfully logged in, you don't have any idea whether you are logged in or not.</p><p>To solve this problem, we will <a id="id444" class="indexterm"/>display the username in the navigation bar and allow the user to sign out in a dropdown, as we did in the administration panel.</p><p>Open the template file located at <code class="literal">APPPATH/views/template.php</code>, and replace <code class="literal">&lt;div class="navbar-header"&gt;...&lt;/div&gt;</code> with the following lines of code:</p><div class="informalexample"><pre class="programlisting">&lt;div class="navbar-header"&gt;
+    &lt;!-- Allows the navbar to collapse when
+         the screen width is too small --&gt;
+    &lt;button
+            type="button"
+            class="navbar-toggle"
+            data-toggle="collapse"
+            data-target=".navbar-collapse"&gt;
+        &lt;span class="icon-bar"&gt;&lt;/span&gt;
+        &lt;span class="icon-bar"&gt;&lt;/span&gt;
+        &lt;span class="icon-bar"&gt;&lt;/span&gt;
+    &lt;/button&gt;
+    &lt;a class="navbar-brand"
+&lt;?php echo array_to_attr(array('href' =&gt; Uri::base())); ?&gt;
+    &gt;
+        My microblog
+    &lt;/a&gt;
+&lt;/div&gt;
+&lt;div class="navbar-collapse collapse"&gt;
+&lt;?php if (Auth::check()): ?&gt;
+    &lt;ul class="nav navbar-nav pull-right"&gt;
+        &lt;li class="dropdown"&gt;
+            &lt;a
+               data-toggle="dropdown"
+               class="dropdown-toggle"
+               href="#"&gt;
+                &lt;?php echo e(Auth::get_screen_name()) ?&gt;
+                &lt;b class="caret"&gt;&lt;/b&gt;
+            &lt;/a&gt;
+            &lt;ul class="dropdown-menu"&gt;
+                &lt;li&gt;
+&lt;?php
+echo Html::anchor('user/signout', 'Sign out');
+?&gt;
+                &lt;/li&gt;
+            &lt;/ul&gt;
+        &lt;/li&gt;
+    &lt;/ul&gt;
+&lt;?php endif; ?&gt;
+&lt;/div&gt;</pre></div><p>If you are logged in, your username should now appear in the upper right side of your screen. If you click <a id="id445" class="indexterm"/>on your username, the <span class="strong"><strong>Sign out</strong></span> link should appear.</p><p>We now have to implement this <code class="literal">signout</code> action inside the <code class="literal">User</code> controller. This step is pretty simple:</p><div class="informalexample"><pre class="programlisting">public function action_signout()   
+{
+    Auth::logout();
+    Response::redirect('/');
+}</pre></div></div></div>
+<div class="section" title="Allowing the user to create and view posts"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec50"/>Allowing the user to create and view posts</h1></div></div></div><p>We will now allow users<a id="id446" class="indexterm"/> to create their own posts and display them in their profile page. Posts <a id="id447" class="indexterm"/>will also be the main information displayed by our API.</p><div class="section" title="Generating the Post model"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec57"/>Generating the Post model</h2></div></div></div><p>We need first to<a id="id448" class="indexterm"/> generate the Post model. As usual, we will use <code class="literal">oil</code>. Enter the following command line:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>php oil generate model post content:varchar[140] user_id:int created_at:int --no-timestamp</strong></span>
+</pre></div><p>The output is as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>Creating model: APPPATH/classes/model/post.php</strong></span>
+<span class="strong"><strong>Creating migration: APPPATH/migrations/001_create_posts.php</strong></span>
+</pre></div><p>You can see that we used<a id="id449" class="indexterm"/> the <code class="literal">--no-timestamp</code> parameter here. It simply prevents the automatic generation of the <code class="literal">created_at</code> and <code class="literal">updated_at</code> columns. Since we can have a lot of posts and the <code class="literal">updated_at</code> column then be useless, we generate the <code class="literal">created_at</code> column manually. As a consequence, we need to specify the <code class="literal">CreatedAt</code> observer ourselves. Open the Post model located at <code class="literal">APPPATH/classes/model/post.php</code> and add the following attribute:</p><div class="informalexample"><pre class="programlisting">protected static $_observers = array(
+    'Orm\Observer_CreatedAt' =&gt; array(
+        'events' =&gt; array('before_insert'),
+        'mysql_timestamp' =&gt; false,
+    ),
+);</pre></div><p>Then, simply<a id="id450" class="indexterm"/> execute your application migrations using <code class="literal">oil</code>:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>php oil refine migrate</strong></span>
+</pre></div></div><div class="section" title="Allowing the user to create new posts"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec58"/>Allowing the user to create new posts</h2></div></div></div><p>We will begin by<a id="id451" class="indexterm"/> implementing the user interface, and then<a id="id452" class="indexterm"/> we will implement the post creation action.</p><div class="section" title="Implementing the user interface"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lvl3sec42"/>Implementing the user interface</h3></div></div></div><p>First, let's add a <span class="strong"><strong>New post</strong></span> button<a id="id453" class="indexterm"/> in the right side of the navigation bar. Open the template file located at <code class="literal">APPPATH/views/template.php</code> and just after <code class="literal">&lt;ul class="nav navbar-nav pull-right"&gt;</code>, add the following lines of code:</p><div class="informalexample"><pre class="programlisting">&lt;li&gt;
+    &lt;a href="#"
+       data-toggle="modal"
+       data-target="#create_post_modal"&gt;
+        &lt;!-- Displays the pencil icon.
+             http://glyphicons.com/ --&gt;
+        &lt;span class="glyphicon glyphicon-pencil"&gt;&lt;/span&gt;
+        New post
+    &lt;/a&gt;
+&lt;/li&gt;</pre></div><p>If you refresh the home page and are signed in, you should see the button appear with a pencil icon inside it on the right-hand side of the navigation bar. We extensively used the Bootstrap framework, so it is<a id="id454" class="indexterm"/> recommended that you read the official documentation at <a class="ulink" href="http://getbootstrap.com/">http://getbootstrap.com/</a>.</p><p>The important things to notice are the two attributes declared inside the link:</p><div class="informalexample"><pre class="programlisting">data-toggle="modal" data-target="#create_post_modal"</pre></div><p>This means that when we click on the link, we want Bootstrap to display a modal window using the content <a id="id455" class="indexterm"/>of the <code class="literal">div</code> element with <code class="literal">id = create_post_modal</code>. Thus, we need to define this <code class="literal">div</code> element. Before <code class="literal">&lt;/body&gt;</code>, add the following lines of code:</p><div class="informalexample"><pre class="programlisting">&lt;!-- Post modal window --&gt;
+&lt;div
+     class="modal fade"
+     id="create_post_modal"
+     tabindex="-1"
+     role="dialog"
+     aria-labelledby="myModalLabel"
+     aria-hidden="true"&gt;
+    &lt;div class="modal-dialog"&gt;
+        &lt;div class="modal-content"&gt;
+            &lt;div class="modal-header"&gt;
+                &lt;button
+                        type="button"
+                        class="close"
+                        data-dismiss="modal"&gt;
+                    &lt;span aria-hidden="true"&gt;&amp;times;&lt;/span&gt;
+                    &lt;span class="sr-only"&gt;Close&lt;/span&gt;
+                &lt;/button&gt;
+                &lt;h4 class="modal-title" id="myModalLabel"&gt;
+                    Compose new Post
+                &lt;/h4&gt;
+            &lt;/div&gt;
+            &lt;div class="modal-body"&gt;
+                &lt;!-- Will be displayed conditionally --&gt;
+                &lt;div id="post_success" class="alert
+                            alert-success"&gt;
+                    Your post has been successfully
+                    published!
+                &lt;/div&gt;
+                &lt;!-- Will be displayed conditionally --&gt;
+                &lt;div id="post_fail" class="alert
+                            alert-danger"&gt;&lt;/div&gt;
+                
+                &lt;textarea
+                          id="post_content"
+                          rows="4"
+                          class="form-control"&gt;&lt;/textarea&gt;
+            &lt;/div&gt;
+            &lt;div class="modal-footer"&gt;
+                &lt;span id="post_remaining_characters"&gt;&lt;/span&gt;
+                &lt;button
+                        type="button"
+                        class="btn btn-primary"
+                        id="post_submit_button"&gt;
+                    Submit
+                &lt;/button&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;</pre></div><p>This code was inspired<a id="id456" class="indexterm"/> from the live demo in the official<a id="id457" class="indexterm"/> documentation at <a class="ulink" href="http://getbootstrap.com/javascript/#modals">http://getbootstrap.com/javascript/#modals</a>.</p><p>Add the following style in the <code class="literal">website.css</code> file:</p><div class="informalexample"><pre class="programlisting">textarea {
+    resize: none;
+}
+
+#post_success, #post_fail {
+    display: none;
+}
+
+#post_remaining_characters.too_much {
+    color: red;
+}</pre></div><p>On clicking on the <span class="strong"><strong>New post</strong></span> button, you should now see the following modal window:</p><div class="mediaobject"><img src="graphics/5401OS_05_08.jpg" alt="Implementing the user interface"/></div><p>However, if you try to click on the <span class="strong"><strong>Submit</strong></span> button, nothing will happen. We need to add some JavaScript <a id="id458" class="indexterm"/>code to do that.</p><p>Since this won't be very short, first create a new JavaScript file at <code class="literal">public/assets/js/post_form.js</code> and include it in the template by adding <code class="literal">'post_form.js'</code>, after <code class="literal">'bootstrap.js'</code>, inside the <code class="literal">Asset::js</code> call in the template.</p><p>Next, open the newly created JavaScript file and set its contents to:</p><div class="informalexample"><pre class="programlisting">// When the DOM is ready
+$(function(){
+    // jQuery elements initialization
+    var $postContent = $('#post_content');
+    var $postRemainingCharacters =
+        $('#post_remaining_characters');
+    var $postSuccess = $('#post_success');
+    var $postFail = $('#post_fail');
+    var $postSubmitButton = $('#post_submit_button');
+
+    // Defining the max number of characters of a post
+    var postMaxNbCharacters = 140; // will be improved
+
+    /*
+    Refreshes the remaining number of characters indicator,
+    and whether or not the submission button is enabled.
+    */
+    function refreshPostWindow() {
+        var postLength = $postContent.val().length;
+        var remainingCharacters =
+            postMaxNbCharacters - postLength;
+
+        $postRemainingCharacters
+        .text(remainingCharacters)
+        .attr(
+            'class',
+            remainingCharacters &gt;= 0 ? '' : 'too_much'
+        );
+
+        $postSubmitButton.prop(
+            'disabled',
+            postLength == 0 || remainingCharacters &lt; 0
+        );
+    }
+
+    // Initialization
+    refreshPostWindow();
+
+    /*
+    When showing the post creation modal window, clearing
+    all previous messages. Useful if a user publishes many
+    posts in a row.
+    */
+    $('#create_post_modal')
+    .on('show.bs.modal', function() {
+        $postFail.hide();
+        $postSuccess.hide();
+    });
+
+    // When the user type in the post textarea
+    $postContent.keyup(function() {
+        // In case he writes two posts in a row
+        $postSuccess.hide();
+        // See comments above
+        refreshPostWindow();
+    });
+
+    // When clicking on the submit button
+    $postSubmitButton.click(function() {
+
+        // Sending an AJAX POST request to post/create.json
+        // with the post content.
+        $.post(
+            'post/create.json',
+            {post_content: $postContent.val()}
+        )
+        .done(function(data) {
+            // In case the connection succeeded
+
+            /*
+            The action will define whether or not the
+            post passed validation using the data.success
+            variable.
+            */ 
+            if (data.success) {
+                // If succeeded
+                $postFail.hide();
+                $postContent.val('');
+                refreshPostWindow();
+                $postSuccess.show();
+            } else {
+                // If failed, the error message will be
+                // defined in data.error.
+                $postFail
+                .text(data.error)
+                .show();
+            }
+        })
+        .fail(function() {
+            // In case the connection failed
+            $postFail
+            .text('Sorry, it seems there was an issue ' +
+                  'somewhere. Please try again later.')
+            .show();
+        });
+    });
+});</pre></div><p>Read the comments in the preceding code. If you refresh the home page and try to submit a new post, the message <span class="strong"><strong>Sorry, it seems there was an issue somewhere. Please try again later.</strong></span> will appear because we didn't implement the <code class="literal">post</code>/<code class="literal">create</code> action yet.</p><p>You might have noticed the following line:</p><div class="informalexample"><pre class="programlisting">var postMaxNbCharacters = 140; // will be improved</pre></div><p>This line is problematic, because we are defining here the maximum number of characters a post <a id="id459" class="indexterm"/>can have, and we will need this information later when implementing our action (for validation). The best option is to define this information once so that, if we have to change it in the future, we only need to change one line. Therefore, we will write this variable in a configuration file.</p><p>Create the configuration file at <code class="literal">APPPATH/config/mymicroblog.php</code> and set its contents to:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+return array(
+    'post_max_nb_characters' =&gt; 140,
+);</pre></div><p>Its access will be easy later in our action, but the configuration file's content is currently inaccessible by our JavaScript code. In order to solve this issue, open the template view file located at <code class="literal">APPPATH/views/template.php</code>, and add the following lines of code after <code class="literal">$(function(){ $('.topbar').dropdown(); });</code> inside the <code class="literal">script</code> tag:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+// Converts the mymicroblog configuration to json.
+$json_configuration = Format::forge(
+    \Config::load('mymicroblog', true)
+)-&gt;to_json();
+
+echo '        ';
+echo 'var MMBConfiguration = '.$json_configuration.";\n";
+?&gt;</pre></div><p>Then, go back to the <code class="literal">post_form.js</code> JavaScript file and replace <code class="literal">var postMaxNbCharacters = 140; // will be improved</code> with the following lines of code:</p><div class="informalexample"><pre class="programlisting">var postMaxNbCharacters =
+    MMBConfiguration['post_max_nb_characters'];</pre></div><p>When you have some common variables and constants between your JavaScript and your PHP code, it is always a good idea to adopt a similar solution.</p></div><div class="section" title="Implementing the post creation action"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lvl3sec43"/>Implementing the post creation action</h3></div></div></div><p>We will now handle the <a id="id460" class="indexterm"/>AJAX request, check the sent data, and create the post if everything is ok.</p><p>First, we will need to create the <code class="literal">Post</code> controller. Create the <code class="literal">APPPATH/classes/controller/post.php</code> file and, for the moment, set its contents to:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+class Controller_Post extends Controller_Rest 
+{
+}</pre></div><p>You can see that we are extending a different controller class here; instead of <code class="literal">Controller_Template</code>, we are extending <code class="literal">Controller_Rest</code>. It is a basic controller with a RESTful support built in. It will allow us to easily implement the JSON response we will send, and it will also help us later when we will implement the API.</p><p>To illustrate this, add the following test action:</p><div class="informalexample"><pre class="programlisting">public function action_test() {
+    return $this-&gt;response(array(
+        'test_1' =&gt; 42,
+        'test_2' =&gt; 'Answer to the Ultimate Question',
+        'test_3' =&gt; array(
+            'test_4' =&gt; array(
+                'test_5', 'test_6', 'test_7'
+            ),
+            'test_8' =&gt; true,
+            'test_9' =&gt; null,
+        ),
+    ));
+}</pre></div><p>If you request the following URL now:</p><p>
+<code class="literal">http://mymicroblog.app/post/test</code>
+</p><p>The following output should appear:</p><p>
+<span class="strong"><strong>The requested REST method returned an array or object:</strong></span>
+</p><p>
+<span class="strong"><strong>{ "test_1": 42, "test_2": "Answer to the Ultimate Question", "test_3": { "test_4": [ "test_5", "test_6", "test_7" ], "test_8": true, "test_9": null } }</strong></span>
+</p><p>If you request the following URL:</p><p>
+<code class="literal">http://mymicroblog.app/post/test.json</code>
+</p><p>It will return:</p><div class="informalexample"><pre class="programlisting">{
+    "test_1":42,
+    "test_2":"Answer to the Ultimate Question",
+    "test_3":{
+        "test_4":["test_5","test_6","test_7"],
+        "test_8":true,
+        "test_9":null
+    }
+}</pre></div><p>If you request the<a id="id461" class="indexterm"/> following URL:</p><p>
+<code class="literal">http://mymicroblog.app/post/test.xml</code>
+</p><p>It will return:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0" encoding="utf-8"?&gt;
+&lt;xml&gt;
+    &lt;test_1&gt;42&lt;/test_1&gt;
+    &lt;test_2&gt;Answer to the Ultimate Question&lt;/test_2&gt;
+    &lt;test_3&gt;
+        &lt;test_4&gt;
+            &lt;item&gt;test_5&lt;/item&gt;
+            &lt;item&gt;test_6&lt;/item&gt;
+            &lt;item&gt;test_7&lt;/item&gt;
+        &lt;/test_4&gt;
+        &lt;test_8&gt;1&lt;/test_8&gt;
+        &lt;test_9/&gt;
+    &lt;/test_3&gt;
+&lt;/xml&gt;</pre></div><p>If you request the following URL:</p><p>
+<code class="literal">http://mymicroblog.app/post/test.php</code>
+</p><p>It will return:</p><div class="informalexample"><pre class="programlisting">array (
+    'test_1' =&gt; 42,
+    'test_2' =&gt; 'Answer to the Ultimate Question',
+    'test_3' =&gt;
+    array (
+        'test_4' =&gt;
+        array (
+            0 =&gt; 'test_5',
+            1 =&gt; 'test_6',
+            2 =&gt; 'test_7',
+        ),
+        'test_8' =&gt; true,
+        'test_9' =&gt; NULL,
+    ),
+)</pre></div><p>You should have understood by now that, depending on the extension defined in the requested URL, the action will return a result in the associated format. I recommend you to read the official <a id="id462" class="indexterm"/>documentation at <a class="ulink" href="http://fuelphp.com/docs/general/controllers/rest.html#/formats">http://fuelphp.com/docs/general/controllers/rest.html#/formats</a> to see which formats <a id="id463" class="indexterm"/>are supported.</p><p>The documentation can be accessed by opening the FuelPHP website and navigating to <span class="strong"><strong>DOCS</strong></span> | <span class="strong"><strong>FuelPHP</strong></span> | <span class="strong"><strong>General</strong></span> | <span class="strong"><strong>Controllers</strong></span> | <span class="strong"><strong>Rest</strong></span>.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note28"/>Note</h3><p>A specific property of the REST controllers is that they allow you to implement actions that only answer to specific HTTP methods. For instance, if we had named our <code class="literal">action_test</code> method as <code class="literal">get_test</code>, the <code class="literal">test</code> action would have only responded to <code class="literal">GET</code> requests. The same is true for <code class="literal">POST</code>, <code class="literal">PUT</code>, <code class="literal">DELETE</code>, and <code class="literal">PATCH</code> requests; you are again recommended to read the official FuelPHP documentation about REST controllers.</p></div></div><p>Delete the <code class="literal">test</code> action and add the following <code class="literal">create</code> action:</p><div class="informalexample"><pre class="programlisting">public function action_create()
+{
+    $post_content = Input::post('post_content');
+
+    $response = array();
+
+    if (!Auth::check()) {
+        // In case the user has been signed out before
+        // he submits his post.
+        $response = array(
+            'success' =&gt; false,
+            'error' =&gt; 'You are not authenticated.',
+        );
+    } else {
+        // Checking if the post is correct. The JavaScript
+        // should have tested that already, but never trust
+        // the client.
+        $val = Validation::forge('post');
+        $val-&gt;add_field(
+            'post_content',
+            'post',
+            'required|max_length[140]'
+        );
+
+        if ($val-&gt;run())
+        {
+            // Creating the post.
+            list(, $user_id) = Auth::get_user_id();
+            $post = Model_Post::forge();
+            $post-&gt;content = $post_content;
+            $post-&gt;user_id = $user_id;
+            if ($post and $post-&gt;save()) {
+                $response = array(
+                    'success' =&gt; true,
+                );
+            } else {
+                $response = array(
+                    'success' =&gt; false,
+                    'error' =&gt; 'Internal error: Could'.
+                        ' not save the post.',
+                );
+            }
+        } else {
+            // The error can only occur on the only field...
+            $error = $val-&gt;error()['post_content'];
+            $response = array(
+                'success' =&gt; false,
+                'error' =&gt; $error-&gt;get_message(),
+            );
+        }
+    }
+
+    return $this-&gt;response($response);
+}</pre></div><p>Now if you try to add a new valid post, a new row should be added in the <code class="literal">posts</code> table and the following message should appear:</p><p>
+<span class="strong"><strong>Your post has been successfully published!</strong></span>
+</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note29"/>Note</h3><p>Though we <a id="id464" class="indexterm"/>are sending a JSON response, we don't consider the <code class="literal">create</code> action as a part of the application API. As written earlier, our API will only allow read-only access and no authentication will be required; the action doesn't observe any of those requirements. However, the fact that it returns JSON content (as well as other formats) is a good start if you want to integrate it into an API.</p></div></div></div></div><div class="section" title="Implementing the profile page"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec59"/>Implementing the profile page</h2></div></div></div><p>Since we can create <a id="id465" class="indexterm"/>posts now, it would be great to display them. As we wrote in the specification, the user profile page displays the list of <a id="id466" class="indexterm"/>published posts, so we will implement it.</p><div class="section" title="Configuring the routes"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lvl3sec44"/>Configuring the routes</h3></div></div></div><p>We would like to display<a id="id467" class="indexterm"/> this profile page when requesting the following URL:</p><p>
+<code class="literal">http://mymicroblog.app/USERNAME</code>
+</p><p>We could add a parameter to the <code class="literal">index</code> action of the <code class="literal">User</code> controller, but that would unnecessarily complicate the action. Instead of doing that, we are going to use routes to transparently reroute those URLs to the <code class="literal">show</code> action of the <code class="literal">User</code> controller:</p><p>
+<code class="literal">http://mymicroblog.app/user/show/USERNAME</code>
+</p><p>To do this, open the <code class="literal">APPPATH/config/routes.php</code> configuration file and add the following line at the end of the returned array:</p><div class="informalexample"><pre class="programlisting">'(:segment)' =&gt; 'user/show/$1',</pre></div></div><div class="section" title="Creating the user model"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lvl3sec45"/>Creating the user model</h3></div></div></div><p>Inside the <code class="literal">show</code> action, we <a id="id468" class="indexterm"/>will have to request a user from the database. We will create the user model to do this more easily. Create the <code class="literal">APPPATH/classes/model/user.php</code> file and set its contents to:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+class Model_User extends \Orm\Model
+{
+  protected static $_properties = array(
+      'id',
+      'username',
+        'password',
+        'group',
+        'email',
+        'last_login',
+        'login_hash',
+        'profile_fields',
+        'created_at',
+        'updated_at',
+  );
+
+
+  protected static $_table_name = 'users';
+
+    protected static $_observers = array(
+      'Orm\Observer_CreatedAt' =&gt; array(
+          'events' =&gt; array('before_insert'),
+          'mysql_timestamp' =&gt; false,
+      ),
+      'Orm\Observer_UpdatedAt' =&gt; array(
+          'events' =&gt; array('before_save'),
+          'mysql_timestamp' =&gt; false,
+      ),
+  );
+}</pre></div></div><div class="section" title="Implementing the show action"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lvl3sec46"/>Implementing the show action</h3></div></div></div><p>We will now<a id="id469" class="indexterm"/> implement the <code class="literal">show</code> action inside the <code class="literal">User</code> controller, as we had done previously:</p><div class="informalexample"><pre class="programlisting">public function action_show($username) {
+    // Finding a user with a similar username
+    $user = Model_User::find('first', array(
+        'where' =&gt; array(
+            array('username' =&gt; $username),
+        ),
+    ));
+
+    if (!$user) {
+        Session::set_flash(
+            'error',
+            'The user '.e($username).' does not exists.'
+        );
+        Response::redirect('/');
+    }
+
+    // Finding 20 latest posts (will be improved)
+    $posts = Model_Post::find('all', array(
+        'related' =&gt; 'user',
+        'where' =&gt; array(
+            array('user_id' =&gt; $user-&gt;id),
+        ),
+        'order_by' =&gt; array('id' =&gt; 'DESC'),
+        'limit' =&gt;
+        \Config::get('mymicroblog.pagination_nb_posts'),
+    ));
+
+    // Displaying the profile page
+    $this-&gt;template-&gt;content =
+        View::forge(
+            'user/show.mustache',
+            array(
+                'user' =&gt; $user,
+                /*
+                As Model_Post::find returns an associative
+                array, with ids as keys and posts as
+                values, we need to transform it to a
+                classic array, otherwise mustache will
+                process as an object and not the list,
+                hence the use of array_values.
+                */
+                'posts' =&gt; array_values($posts),
+            ),
+            // By default, mustache escape displayed
+            // variables...
+            false
+        );
+}</pre></div><p>There are a few more things that we need to do. First, you can see we specified <code class="literal">'related' =&gt; 'user'</code> when finding posts, but we didn't declare this relation inside the Post model. Fix that by opening the Post model and adding the following attribute:</p><div class="informalexample"><pre class="programlisting">protected static $_belongs_to = array('user');</pre></div><p>Then, in the User model, you might have seen that we get the number of posts to load from the<a id="id470" class="indexterm"/> configuration <code class="literal">\Config::get('mymicroblog.pagination_nb_posts')</code>. We need to specify this configuration item inside the <code class="literal">APPPATH/config/mymicroblog.php</code> file. Inside the returned array, add the following line:</p><div class="informalexample"><pre class="programlisting">'pagination_nb_posts' =&gt; 20,</pre></div><p>But there is still an issue; we haven't loaded the configuration file yet, so <code class="literal">\Config::get('mymicroblog.pagination_nb_posts')</code> will return <code class="literal">null</code>. We could load the configuration file in the same action, but since we are going to need it elsewhere, we are going to load it in the <code class="literal">before</code> method. This method is called before any action is executed. Add the following line in the beginning of the <code class="literal">User</code> controller:</p><div class="informalexample"><pre class="programlisting">public function before() {
+    parent::before();
+
+    \Config::load('mymicroblog', true);
+}</pre></div><p>If we want this action to work, we still need to implement the <code class="literal">user/show.mustache</code> view.</p></div><div class="section" title="Implementing views"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lvl3sec47"/>Implementing views</h3></div></div></div><p>First, create<a id="id471" class="indexterm"/> the <code class="literal">APPPATH/views/user/show.mustache</code> view file and set its contents to:</p><div class="informalexample"><pre class="programlisting">&lt;div class="col-md-3"&gt;&lt;/div&gt;
+&lt;div class="col-md-6 profile"&gt;
+    &lt;div class="row profile_informations"&gt;
+        &lt;h1&gt;
+            {{user.username}}
+        &lt;/h1&gt;
+    &lt;/div&gt;
+    {{&gt; post/list}}
+&lt;/div&gt;
+&lt;div class="col-md-3"&gt;&lt;/div&gt;</pre></div><p>The only new syntax that is <code class="literal">{{&gt; post/list}};</code> it means we want to display the <code class="literal">post/list</code> partial, and its PHP equivalent looks like this:</p><div class="informalexample"><pre class="programlisting">echo \View::forge(
+    'post/list.mustache',
+    array(/* all current variables */),
+    false
+);</pre></div><p>We have separated<a id="id472" class="indexterm"/> the <code class="literal">post</code> listing because we will need to display it on other actions. Therefore, the next logical step is to implement this partial. Create the <code class="literal">APPPATH/views/post/list.mustache</code> view file and set its contents to:</p><div class="informalexample"><pre class="programlisting">&lt;div class="row post_list"&gt;
+    {{&gt; post/inside_list}}
+&lt;/div&gt;</pre></div><p>We just implemented a simple <code class="literal">div</code> element and called another partial inside it. This new partial will only display the content of the list. Create the <code class="literal">APPPATH/vi</code>
+<code class="literal">ews/post/inside_list.mustache</code> view file and set its contents to:</p><div class="informalexample"><pre class="programlisting">{{#posts}}
+    &lt;div class="post"&gt;
+        &lt;div class="post_content"&gt;{{content}}&lt;/div&gt;
+        &lt;div class="post_additional_infos"&gt;
+            By
+            &lt;a
+                class="post_author"
+                href="/{{user.username}}"&gt;
+                {{user.username}}
+            &lt;/a&gt;
+            &amp;middot;
+            &lt;span
+                class="post_date"
+                data-timestamp="{{created_at}}"&gt;
+            &lt;/span&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+{{/posts}}</pre></div><p>To understand this, you need to understand a new Mustache tag. The <code class="literal">{{#posts}}</code> and <code class="literal">{{/posts}}</code> tags are implemented here to loop over the <code class="literal">posts</code> array. The content within these two tags will be repeated for each post. Variables displayed inside this loop will either be previously declared variables, or the properties of the current post in the loop; for instance, <code class="literal">{{created_at}}</code> is the <code class="literal">created_at</code> attribute of the current post in the loop, but we could display <code class="literal">{{independent_variable}}</code>, which would not be an attribute of the current post but of a previously declared variable. Take a look at the official <a id="id473" class="indexterm"/>documentation to understand how variables are resolved (the second link is hosted on the repository of the PHP port of Mustache<a id="id474" class="indexterm"/> but is quite complete and clear):</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><a class="ulink" href="http://mustache.github.io/mustache.5.html">http://mustache.github.io/mustache.5.html</a></li><li class="listitem" style="list-style-type: disc"><a class="ulink" href="https://github.com/bobthecow/mustache.php/wiki/Variable-Resolution">https://github.com/bobthecow/mustache.php/wiki/Variable-Resolution</a></li></ul></div><p>However, if you now try to access a profile page, only the username will be displayed even if this user created posts. This is because Mustache doesn't know where to find partials. To solve this issue, open back the <code class="literal">User</code> controller and add the following lines of code at the end of the <code class="literal">before</code> method:</p><div class="informalexample"><pre class="programlisting">\Parser\View_Mustache::parser()
+    -&gt;setPartialsLoader(
+    new Mustache_Loader_FilesystemLoader(
+        APPPATH.'views'
+    )
+);</pre></div><p>If you plan to use Mustache on modules, you will need to set other paths when calling the <code class="literal">setPartialsLoader</code> method.</p><p>We will now add some styles. Open the <code class="literal">public/assets/css/website.css</code> file and append the following code:</p><div class="informalexample"><pre class="programlisting">.profile {
+    border-left: 1px solid #e8e8e8;
+    border-right: 1px solid #e8e8e8;
+    background-color: white;
+}
+
+.profile_informations {
+    text-align: center;
+    padding-top: 10px;
+    padding-bottom: 40px;
+    border-bottom: 1px solid #e8e8e8;
+}
+
+.post {
+    padding: 5px 10px 5px 10px;
+    border-bottom: 1px solid #e8e8e8;
+}
+
+.post_content {
+    margin-bottom: 10px;
+    word-break: break-all;
+    white-space: pre-wrap;
+}
+
+.post_additional_infos {
+    color: #888;
+}</pre></div><p>If you refresh the <a id="id475" class="indexterm"/>profile page, the posts' list should appear now.</p><p>There is still an issue though: no date is displayed. However, you have probably read how we displayed <code class="literal">created_at</code> in the <code class="literal">APPPATH/views/post/inside_list.mustache</code> view file, as shown in the following lines:</p><div class="informalexample"><pre class="programlisting">&lt;span&gt;
+    class="post_date"
+    data-timestamp="{{created_at}}"&gt;
+&lt;/span&gt;</pre></div><p>Nothing is visible, but the timestamp can be accessed inside a <code class="literal">span</code> element with the <code class="literal">post_date</code> class. We want to display those dates in a relative format (for example, 5 minutes ago) and regularly update them. We will do this using JavaScript and jQuery. As this is a complex operation, we will create a new JavaScript file. Create the <code class="literal">public/assets/js/posts_dates.js</code> file and set its contents to:</p><div class="informalexample"><pre class="programlisting">/*
+Converts a timestamp to relative format.
+You could use plugins as jquery.timeago for doing that, and
+it would probably be better that way, but we implemented
+ourselves the method for being sure we won't have any
+compatibility issues in the future. It is far from a perfect
+solution: for instance, it supposes the client and the server
+share the same time zone.
+*/
+function relativeFormat(timestamp) {
+    var timeLabels = [
+        {
+            divider: 31536000,
+            label: '(:nb) year ago',
+            label_plural: '(:nb) years ago'
+        },
+        {
+            divider: 2592000,
+            label: '(:nb) month ago',
+            label_plural: '(:nb) months ago'
+        },
+        {
+            divider: 86400,
+            label: '(:nb) day ago',
+            label_plural: '(:nb) days ago'
+        },
+        {
+            divider: 3600,
+            label: '(:nb) hour ago',
+            label_plural: '(:nb) hours ago'
+        },
+        {
+            divider: 60,
+            label: '(:nb) minute ago',
+            label_plural: '(:nb) minutes ago'
+        }
+    ];
+
+    var seconds = Math.floor(
+        (new Date() - timestamp) / 1000);
+
+    for (var i = 0; i &lt; timeLabels.length; i++) {
+        var nb = Math.floor(seconds / timeLabels[i].divider);
+
+        if (nb &gt; 0) {
+            var label = timeLabels[i][
+                (nb == 1 ? 'label' : 'label_plural')];
+            return label.replace('(:nb)', nb);
+        }
+    }
+    return 'Few seconds ago';
+}
+
+// Refresh all posts dates
+function refreshPostsDates() {
+    $('.post_date').each(function() {
+        var $this = $(this);
+        $this.text(
+            relativeFormat(
+                parseInt($this.data('timestamp')) * 1000
+            )
+        );
+    });
+}
+
+// When the DOM is ready
+$(function(){
+    refreshPostsDates();
+
+    // Regularly refresh posts dates (every 30000ms = 30s)
+    setInterval(refreshPostsDates, 30000);
+});</pre></div><p>Finally, we need to<a id="id476" class="indexterm"/> include this script inside the template located at <code class="literal">APPPATH/views/template.php</code>. Add <code class="literal">'posts_dates.js'</code>, after <code class="literal">'post_form.js'</code>.</p></div></div><div class="section" title="Implementing the API"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec60"/>Implementing the API</h2></div></div></div><p>Now that we have <a id="id477" class="indexterm"/>developed the first version of the<a id="id478" class="indexterm"/> profile pages, we will begin to implement the API to access our website data.</p><div class="section" title="Implementing the base controller"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lvl3sec48"/>Implementing the base controller</h3></div></div></div><p>As we will need methods<a id="id479" class="indexterm"/> on both the <code class="literal">User</code> and <code class="literal">Post</code> controllers, we will first implement a base controller that will be extended by both controllers. Create the <code class="literal">APPPATH/classes/controller/base.php</code> file and set its contents to:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+class Controller_Base extends Controller_Hybrid 
+{
+
+}</pre></div><p>You can see that <code class="literal">Controller_Base</code> is extending a new native controller named <code class="literal">Controller_Hybrid</code>. As its name suggests, it is a hybrid version implementing features from both <code class="literal">Controller_Template</code> and <code class="literal">Controller_Rest</code>. It is exactly what we need if we want an action to return JSON or HTML, depending on the context.</p><p>First, move the <code class="literal">before</code> method we implemented in the <code class="literal">User</code> controller inside this new <code class="literal">Base</code> controller.</p><p>Next, implement the<a id="id480" class="indexterm"/> following methods:</p><div class="informalexample"><pre class="programlisting">/*
+Overriding the is_restful method to make the controller go into
+rest mode when an extension is specified in the URL. Ex:
+http://mymicroblog.com/first_user.json
+*/
+public function is_restful()
+{
+    return !is_null(\Input::extension());
+}
+
+/*
+Handles an hybrid response: when no extension is specified
+the action returns HTML code by setting the template's content
+attribute with the specified view and data, and when an
+extension is specified, the action returns data in the expected 
+format(if available).
+*/
+public function hybrid_response($view, $data) {
+    if (is_null(\Input::extension())) {
+        $this-&gt;template-&gt;content =
+        View::forge(
+            $view.'.mustache',
+            $data,
+            // By default, mustache escape displayed
+            // variables...
+            false
+        );
+    } else {
+        $this-&gt;response($data);
+    }
+}</pre></div><p>Each time we want a hybrid response (HTML, JSON, or XML depending on the extension requested), we will have to call the <code class="literal">hybrid_response</code> method.</p><p>Finally, make the <code class="literal">Post</code> and<a id="id481" class="indexterm"/> the <code class="literal">User</code> controllers extend this new <code class="literal">Base</code> controller.</p></div><div class="section" title="Implementing your first hybrid action"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lvl3sec49"/>Implementing your first hybrid action</h3></div></div></div><p>Inside the <code class="literal">show</code> action <a id="id482" class="indexterm"/>of the <code class="literal">User</code> controller, replace <code class="literal">$this-&gt;template-&gt;content = ...;</code> with the following lines of code:</p><div class="informalexample"><pre class="programlisting">return $this-&gt;hybrid_response(
+    'user/show',
+    array(
+        'user' =&gt; $user,
+        'posts' =&gt; array_values($posts),
+    )
+);</pre></div><p>Now if you request the following URL:</p><p>
+<code class="literal">http://mymicroblog.app/USERNAME.json</code>
+</p><p>(Or <code class="literal">http://mymicroblog.app/USERNAME.xml</code>, as browsers generally display this format better)</p><p>You will see that the data is now accessible. The problem is that you can read too much information:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The most urgent issue is that we display all the attributes for each object. It is very problematic for user objects as we display their hashed passwords, their login hash, their e-mails, and possibly other confidential information. This is a very serious security issue.</li><li class="listitem" style="list-style-type: disc">We don't need to display every time the same attributes of an object. For instance, we might want to release more information about a user when displaying its profile page, but only its username when displaying the <code class="literal">user</code> attribute of a post. This is less urgent, but still an important issue.</li></ul></div></div><div class="section" title="Implementing mappers to control how the information is shared"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lvl3sec50"/>Implementing mappers to control how the information is shared</h3></div></div></div><p>In order to <a id="id483" class="indexterm"/>control which information is sent through the API, we will implement mappers that will transform our objects to appropriate <a id="id484" class="indexterm"/>associative arrays containing only the attributes we want to show. The mappers will map differently objects depending on the context.</p><p>Create the <code class="literal">APPPATH/classes/mapper.php</code> file and set its contents to:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+// This class will be extended by all our mappers and
+// contains general purpose methods.
+class Mapper
+{
+    /**
+    * Transforms an object or objects to their mapped
+    * associative arrays. No matter what mapper we
+    * will use, the idea is to always call
+    * Mapper_CLASS::get('CONTEXT', $objects)
+    *
+    * @param string $context The context
+    * @param mixed $objects Array of objects or single object
+    *
+    * @return array Array of associative array or associative
+    *               array
+    */
+    static function get($context, $objects) {
+        if (is_array($objects)) {
+            $result = array();
+            foreach ($objects as $object) {
+                $result[] = static::get($context, $object);
+            }
+            return $result;
+        } else {
+            return static::$context($objects);
+        }
+    }
+
+    /**
+    * Extracts specified properties of an object and
+    * returns them as an associative array.
+    *
+    * @param object $object The object to convert
+    * @param array $attributes The list of attributes to extract
+    *
+    * @return array The associative array
+    */
+    static function extract_properties($object, $properties) {
+        $result = array();
+        foreach ($properties as $property) {
+            $result[$property] = $object-&gt;{$property};
+        }
+        return $result;
+    }
+}</pre></div><p>We will now create<a id="id485" class="indexterm"/> the mappers for our Post and User models. First, create<a id="id486" class="indexterm"/> the <code class="literal">APPPATH/classes/mapper/post.php</code> file and set its contents to:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+// Mapper for posts
+class Mapper_Post extends Mapper
+{    
+    static function item($post) {
+        $result = static::extract_properties(
+            $post,
+            array('id', 'content', 'created_at')
+        );
+        $result['user'] = Mapper_User::get(
+            'minimal',
+$post-&gt;user
+        );
+        return $result;
+    }
+}</pre></div><p>Then, create the <code class="literal">APPPATH/classes/mapper/user.php</code> file and set its contents to:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+// Mapper for users
+class Mapper_User extends Mapper
+{
+    static function minimal($user) {
+        return array('username' =&gt; $user-&gt;username);
+    }
+
+    static function profile($user) {
+        $result = static::extract_properties(
+            $user,
+            array('id', 'username', 'created_at')
+        );
+
+        /*
+        profile_fields is always empty, but this is just here
+        to illustrate that you can also send other information
+        than object attributes.
+        */
+        $result['profile_fields'] = unserialize(
+            $user-&gt;profile_fields
+        );
+        return $result;
+    }
+}</pre></div><p>Now, we just have<a id="id487" class="indexterm"/> to use these mappers in our <code class="literal">show</code> action of the <code class="literal">User</code> controller. Inside the action, replace:</p><div class="informalexample"><pre class="programlisting">'user' =&gt; $user,
+'posts' =&gt; array_values($posts),</pre></div><p>With the following lines of code:</p><div class="informalexample"><pre class="programlisting">'user' =&gt; Mapper_User::get('profile', $user),
+'posts' =&gt; Mapper_Post::get('item', $posts),</pre></div><p>Now if you request<a id="id488" class="indexterm"/> the following URLs:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">http://mymicroblog.app/USERNAME.json</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">http://mymicroblog.app/USERNAME.xml</code></li></ul></div><p>You should see that only the useful information appears. You can always access <code class="literal">http://mymicroblog.app/USERNAME</code>, as the Mustache template engine processes objects and associative<a id="id489" class="indexterm"/> arrays in the same way.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note30"/>Note</h3><p>Some open source libraries provide tools that allow you to do a similar job that we did with our <code class="literal">mapper</code> classes, but in a standardized and more sophisticated way. If you are <a id="id490" class="indexterm"/>searching for one, I recommend that you take a look at the <code class="literal">fractal</code> library at <a class="ulink" href="http://fractal.thephpleague.com/">http://fractal.thephpleague.com/</a>.</p></div></div></div></div><div class="section" title="Improving the listing"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec61"/>Improving the listing</h2></div></div></div><p>The profile web pages are still incomplete as we only show the users' last 20 posts. It would be great to<a id="id491" class="indexterm"/> improve this listing by adding a <span class="strong"><strong>See more</strong></span> button that allows us to read older posts.</p><p>I recommended you to generate many posts (you could do that programmatically) on a profile in order to test<a id="id492" class="indexterm"/> our interface.</p><div class="section" title="Giving JavaScript access to our Mustache views"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lvl3sec51"/>Giving JavaScript access to our Mustache views</h3></div></div></div><p>In this section, we are going to transform JSON data to HTML content using JavaScript. Indeed, when you will for<a id="id493" class="indexterm"/> instance click on the <span class="strong"><strong>See more</strong></span> button, an AJAX request will be sent toward our API that will return JSON data. We need to transform this JSON code to HTML content so that the viewer can read it but as we don't want any code duplication, we will give the JavaScript code access to<a id="id494" class="indexterm"/> our Mustache views. This will be done by copying all the Mustache files content into an object in the <code class="literal">public/assets/js/templates.js</code> JavaScript file.</p><div class="section" title="Generating the templates.js file"><div class="titlepage"><div><div><h4 class="title"><a id="ch05lvl4sec34"/>Generating the templates.js file</h4></div></div></div><p>We will<a id="id495" class="indexterm"/> discuss two<a id="id496" class="indexterm"/> alternatives to generate the <code class="literal">template.js</code> file.</p><div class="section" title="The easy and dirty way"><div class="titlepage"><div><div><h5 class="title"><a id="ch05lvl5sec03"/>The easy and dirty way</h5></div></div></div><p>The easy and dirty solution<a id="id497" class="indexterm"/> is to regenerate this file each time someone accesses your application in development mode. To do this, open a <code class="literal">APPPATH/bootstrap.php</code> file and add the following lines of code at the end:</p><div class="informalexample"><pre class="programlisting">// Executed each time the application is requested in
+// development mode
+if (Fuel::$env == Fuel::DEVELOPMENT &amp;&amp; !\Fuel::$is_cli) {
+    $view_directory = APPPATH.'views/';
+    $extension = '.mustache';
+
+    /*
+    The following searches for mustache files in APPPATH/views/
+    and saves its content into the $template associative array.
+    Each key will be the template relative path; for instance,
+    if a template is located at
+    APPPATH/views/dir_1/file.mustache the value of the key
+    will be dir_1/file.
+    Each value will be the template content.
+    */
+    $templates = array();
+    $it = new RecursiveDirectoryIterator($view_directory);
+    foreach(new RecursiveIteratorIterator($it) as $file)
+    {
+        if (substr($file, -strlen($extension)) == $extension) {
+            // Deducing the key from the filename
+            // APPPATH/views/dir_1/file.mustache -&gt; dir_1/file
+            $file_key = substr(
+                $file,
+                strlen($view_directory)
+            );
+            $file_key = substr(
+                $file_key,
+                0,
+                -strlen($extension)
+            );
+
+            $templates[$file_key] = file_get_contents($file);
+        }
+    }
+    $template_file_content = 'MyMicroblog.templates = '.
+        json_encode($templates).';';
+
+    // Saves the templates in the templates.js file
+    file_put_contents(
+        DOCROOT.'assets/js/templates.js',
+        $template_file_content
+    );
+}</pre></div><p>Even though we generate the file only on development mode, it can become unsustainable if you have a big application containing lots of templates; you will have latency and memory issues. You also might need to change some permission to allow the file to be<a id="id498" class="indexterm"/> created. In most cases, you should be ok though, and a good point of this solution is that it doesn't require any dependency.</p></div><div class="section" title="Using guard-templates"><div class="titlepage"><div><div><h5 class="title"><a id="ch05lvl5sec04"/>Using guard-templates</h5></div></div></div><p>Instead of generating the JavaScript file each time you request your application, you could use a utility such <a id="id499" class="indexterm"/>as guard-templates. The idea is that you launch this utility when you are coding your application, and that utility will track any file<a id="id500" class="indexterm"/> change and regenerate the JavaScript file when necessary.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note31"/>Note</h3><p>Please note that, at the time of writing, this utility doesn't seem to work on Ubuntu: if that is still the case when you read the book, you are recommended to use the solution we provided in the last section.</p></div></div><p>You first need Ruby and gem installed on your computer. Then, you must install the <code class="literal">guard-template</code> gem by executing:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>sudo gem install guard-templates</strong></span>
+</pre></div><p>Then execute the following command at the root of your website directory (as you did for <code class="literal">oil</code>):</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>guard init templates</strong></span>
+</pre></div><p>Open the generated <code class="literal">Guardfile</code> file at the root of your website directory; it contains a sample configuration of the guard-templates utility. Replace its content with:</p><div class="informalexample"><pre class="programlisting">guard 'templates',
+      :output =&gt; 'public/assets/js/templates.js',
+      :namespace =&gt; 'MyMicroblog' do
+    watch(/fuel\/app\/views\/(.*)\.mustache$/)
+end</pre></div><p>Understanding this configuration <a id="id501" class="indexterm"/>should be fairly easy. If you have any doubt, you can always check the official documentation at <a class="ulink" href="https://github.com/thegreatape/guard-templates">https://github.com/thegreatape/guard-templates</a>.</p><p>You can then launch <code class="literal">guard</code> by executing the following command:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>guard</strong></span>
+</pre></div><p>It will then generate the JavaScript file and regenerate it each time any Mustache template is changed.</p></div></div><div class="section" title="Integrating template.js and Mustache.js"><div class="titlepage"><div><div><h4 class="title"><a id="ch05lvl4sec35"/>Integrating template.js and Mustache.js</h4></div></div></div><p>Now that our Mustache<a id="id502" class="indexterm"/> templates are stored into a JavaScript file, we have to integrate it into our website.</p><p>First, we must install <code class="literal">mustache.js</code>, which is the JavaScript port of Mustache. In order to do this, go to the <code class="literal">mustache.js</code> repository <a id="id503" class="indexterm"/>at <a class="ulink" href="https://github.com/janl/mustache.js">https://github.com/janl/mustache.js</a>.</p><p>Clone the repository or download and unzip the archive in the <code class="literal">public/assets/js/mustache</code> folder.</p><p>We will also implement the <code class="literal">render</code> function, which is inspired from the <code class="literal">render</code> function of FuelPHP (the equivalent of <code class="literal">View::forge(...)-&gt;render()</code>). To do this, create the <code class="literal">public/assets/js/view.js</code> file and set its contents to:</p><div class="informalexample"><pre class="programlisting">// We need to initialize the MyMicroblog for our templates
+// to work
+MyMicroblog = {};
+
+// Inspired from FuelPHP's render method
+function render(view, data) {
+    return Mustache.render(
+        MyMicroblog.templates[view],
+        data,
+        MyMicroblog.templates
+    );
+}</pre></div><p>We now need to include our JavaScript files in the template. Open the <code class="literal">APPPATH/views/template.php</code> file and add the following lines of code after the <code class="literal">'bootstrap.js'</code>, line:</p><div class="informalexample"><pre class="programlisting">'mustache/mustache.js',
+'view.js',
+'templates.js',</pre></div><p>Refresh your web page. If you open the JavaScript console (in your browser's developer tools) now and execute:</p><div class="informalexample"><pre class="programlisting">render('user/connect', {})</pre></div><p>You should see that it returns the correct HTML code.</p></div></div><div class="section" title="Implementing the post/list action"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lvl3sec52"/>Implementing the post/list action</h3></div></div></div><p>We will also need to<a id="id504" class="indexterm"/> retrieve the posts data from the server. For this, we will implement two actions inside the <code class="literal">Post</code> controller: the <code class="literal">list</code> and <code class="literal">count</code> actions. Add the following code at the end of the <code class="literal">Post</code> controller:</p><div class="informalexample"><pre class="programlisting">// Get the posts list depending on $_GET parameters
+// limited to 20 posts maximum
+public function action_list() {
+    $query = static::get_posts_query(Input::get(), true);
+    $posts = $query-&gt;limit(
+        \Config::get('mymicroblog.pagination_nb_posts')
+    )-&gt;get();
+
+    return $this-&gt;response(
+        Mapper_Post::get('item', $posts)
+    );
+}
+
+// Get the number of posts depending on $_GET parameters
+public function action_count() {
+    $query = static::get_posts_query(Input::get(), false);
+    return $this-&gt;response($query-&gt;count());
+}</pre></div><p>The <code class="literal">get</code> and <code class="literal">count</code> actions call the <code class="literal">static::get_posts_query</code> method. We need to implement this method, and we <a id="id505" class="indexterm"/>will do that in the <code class="literal">Base</code> controller:</p><div class="informalexample"><pre class="programlisting">// Getting the posts query
+public static function get_posts_query($params) {
+    $user_id = Arr::get($params, 'user_id', null);
+    // id &gt; since_id
+    $after_id = intval(
+        Arr::get($params, 'after_id', null)
+    );
+    // id &lt; from_id
+    $before_id = intval(
+        Arr::get($params, 'before_id', null)
+    );
+
+    $query = Model_Post::query();
+    $query-&gt;related('user');
+    $query-&gt;where('user_id', '=', $user_id);
+    if ($after_id != 0) {
+        $query-&gt;where('id', '&gt;', $after_id);
+    }
+    if ($before_id != 0) {
+        $query-&gt;where('id', '&lt;', $before_id);
+    }
+    $query-&gt;order_by(array('id' =&gt; 'DESC'));
+
+    return $query;
+}</pre></div><p>Now, if you request the following URL:</p><p>
+<code class="literal">http://mymicroblog.app/post/list.json?user_id=ID</code>
+</p><p>It will return the 20 latest posts of the user with <code class="literal">id = ID</code>.</p><p>If you request the following URL:</p><p>
+<code class="literal">http://mymicroblog.app/post/list.json?user_id=ID&amp;before_id=30</code>
+</p><p>It will return the 20 latest posts with an <code class="literal">id</code> value less than <code class="literal">30</code> that have been published by the user with <code class="literal">id = ID</code>.</p><p>If you request the following URL:</p><p>
+<code class="literal">http://mymicroblog.app/post/list.json?user_id=ID&amp;after_id=30</code>
+</p><p>It will return the 20<a id="id506" class="indexterm"/> latest posts with an <code class="literal">id</code> value greater than <code class="literal">30</code> that have been published by the user with <code class="literal">id = ID</code>.</p><p>Now, if you request the following URL:</p><p>
+<code class="literal">http://mymicroblog.app/post/count.json?user_id=ID</code>
+</p><p>It will return the number of posts published by the user with <code class="literal">id = ID</code>.</p><p>If you request the following URL:</p><p>
+<code class="literal">http://mymicroblog.app/post/count.json?user_id=ID&amp;before_id=30</code>
+</p><p>It will return the number of posts with an <code class="literal">id</code> value less than <code class="literal">30</code> that have been published by the user with <code class="literal">id = ID</code>.</p><p>If you request the following URL:</p><p>
+<code class="literal">http://mymicroblog.app/post/count.json?user_id=ID&amp;after_id=30</code>
+</p><p>It will return the number of posts with an <code class="literal">id</code> value greater than <code class="literal">30</code> that have been published by the user with <code class="literal">id = ID</code>.</p><p>We will use the <code class="literal">count</code> action later, when we will need to know if any posts have been published since we displayed a user profile.</p><p>To limit code duplication, in the <code class="literal">show</code> action of the <code class="literal">User</code> controller, replace <code class="literal">$posts = Model_Post::find('all', ...);</code> with the following lines of code:</p><div class="informalexample"><pre class="programlisting">$query = static::get_posts_query(
+    array('user_id' =&gt; $user-&gt;id),
+    true
+);
+$posts = $query-&gt;limit(
+\Config::get('mymicroblog.pagination_nb_posts')
+)-&gt;get();</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note32"/>Note</h3><p>Preventing any duplication inside the controllers is ok, but if you need to implement a lot of code and methods similar to <code class="literal">get_posts_query</code> inside a controller, something is wrong with your implementation. You should think about moving some pieces of code in models, helpers, or libraries. I must say I hesitated a bit about where this method should be implemented, but I decided to implement it in the <code class="literal">Base</code> controller since it would be more convenient. In general, be wary of long pieces of code inside a controller, as they should not contain too much logic.</p></div></div></div><div class="section" title="Implementing the See more button"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lvl3sec53"/>Implementing the See more button</h3></div></div></div><p>We will need to do <a id="id507" class="indexterm"/>some changes in the views. First, open <code class="literal">APPPATH/views/post/inside_list.mustache</code> and replace <code class="literal">&lt;div class="post"&gt;</code> with the following line:</p><div class="informalexample"><pre class="programlisting">&lt;div class="post" data-post_id="{{id}}"&gt;</pre></div><p>It will allow us to identify which posts are already displayed. Then, open the <code class="literal">APPPATH/views/post/list.mustache</code> view and replace <code class="literal">&lt;div class="row post_list"&gt;</code> with the following line:</p><div class="informalexample"><pre class="programlisting">&lt;div class="row post_list" data-user_id="{{user.id}}"&gt;</pre></div><p>This will allow us to know the user identifier when requesting for more posts. Then, add the following lines of code after <code class="literal">{{&gt; post/inside_list}}</code>:</p><div class="informalexample"><pre class="programlisting">&lt;div class="load_more see_more"&gt;
+    &lt;button type="button" class="btn btn-default btn-lg"&gt;
+        &lt;span
+            class="glyphicon glyphicon-arrow-down"&gt;&lt;/span&gt;
+        See more...
+    &lt;/button&gt;
+    &lt;div class="loading_message"&gt;
+        Loading...
+    &lt;/div&gt;
+&lt;/div&gt;</pre></div><p>Now that the button is added, we need to specify what will happen when we click on it so we will code it on a new JavaScript file. Create the <code class="literal">public/assets/js/posts_list.js</code> file and set its contents to:</p><div class="informalexample"><pre class="programlisting">// When the DOM is ready
+$(function() {
+
+// Triggered when the user clicks on the see more button
+    $('body').on(
+'click',
+'.post_list .see_more button',
+        function() {
+            // JQuery elements initialization
+            var $this = $(this);
+            var $post_list = $this.closest('.post_list');
+            var $see_more = $this.closest('.see_more');
+
+            // Getting user_id and before_id (last displayed
+            // post id)
+            var user_id = $post_list.data('user_id');
+            var before_id =
+                $post_list.find('.post:last').data('post_id');
+
+            /*
+            Adding the loading class to the see more in order
+            to tell the user we are loading older posts.
+            */
+            $see_more.addClass('loading');
+
+            // Getting the older posts
+            $.get(
+                'post/list.json',
+                {
+                    user_id: user_id,
+                    before_id: before_id
+                }
+            )
+            .done(function(data) {
+                if (data != null) {
+                    // Displaying loaded posts
+                    $see_more.before(
+                        render('post/inside_list', {posts: data})
+                    );
+                } else {
+                    // Everything has been loaded, no need
+                    // to show the See more button anymore
+                    $see_more.addClass('all_loaded');
+                }
+                $see_more.removeClass('loading');
+
+                // Refreshing posts dates
+                refreshPostsDates();
+            })
+            .fail(function() {
+                $see_more.removeClass('loading');
+                alert('Sorry, it seems there was an issue ' +
+                      'somewhere. Please try again later.');
+            });
+
+        }
+    );
+
+    // @note: we will add more code here later
+});</pre></div><p>Don't forget to include this JavaScript file in the template. Open the template and add <code class="literal">'posts_list.js'</code>, after <code class="literal">'posts_dates.js'</code>.</p><p>Then, add the<a id="id508" class="indexterm"/> following CSS code at the end of the <code class="literal">public/assets/css/website.css</code> file:</p><div class="informalexample"><pre class="programlisting">.load_more {
+    padding: 10px 0px 10px 0px;
+    text-align: center;
+    border-bottom: 1px solid #e8e8e8;
+}
+
+.loading_message,
+.load_more.loading button,
+.load_more.all_loaded {
+    display: none;
+}
+
+.load_more.loading .loading_message {
+    display: block;
+}</pre></div><p>The <span class="strong"><strong>See more</strong></span> button should now work when you have more than 20 posts in a profile page. It could be perfected in many ways. For instance, when there are less than 20 posts in a profile, the button is first visible, but if you click on it, it will simply disappear as there are no more posts to show. There are many easy ways to solve this small problem, so we will leave it to you.</p><p>One improvement that could come in handy for those readers that are not very familiar with JavaScript is<a id="id509" class="indexterm"/> infinite scrolling. Open the <code class="literal">public/assets/js/posts_list.js</code> file and replace:</p><div class="informalexample"><pre class="programlisting">// @note: we will add more code here later</pre></div><p>With the following code:</p><div class="informalexample"><pre class="programlisting">// When the See more button appears in the screen, the following
+// code triggers a click on it to load older posts, resulting in
+// an infinite scroll
+$(document).scroll(function() {
+    var $this = $(this);
+    var $see_more_button = $('.see_more button');
+    if ($see_more_button.length &gt; 0 &amp;&amp;
+        $see_more_button.is(':visible')) {
+        if (
+            $this.scrollTop() + $(window).height() &gt;
+            $see_more_button.offset().top) {
+            $see_more_button.click();
+        }
+    }
+});</pre></div></div><div class="section" title="Redirecting the home page to the logged user's web page"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lvl3sec54"/>Redirecting the home page to the logged user's web page</h3></div></div></div><p>When the user is connected, we want to redirect the home page to his web page so they can take a look<a id="id510" class="indexterm"/> at their posts. In order to do this, go to the <code class="literal">index</code> action of the <code class="literal">User</code> controller and in place of the following line:</p><div class="informalexample"><pre class="programlisting">if (false /* is the user logged ? */) {</pre></div><p>Write the following lines:</p><div class="informalexample"><pre class="programlisting">if (Auth::check()) { 
+Response::redirect('/'.Auth::get_screen_name());</pre></div><p>That is optional, but you might also want to change and add some <code class="literal">Response::redirect</code> calls inside the <code class="literal">signin</code> action of the <code class="literal">User</code> controller to make things a bit cleaner (without changing anything the user will be redirected twice when signing in).</p></div></div></div>
+<div class="section" title="Unit tests"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec51"/>Unit tests</h1></div></div></div><p>Unit tests are<a id="id511" class="indexterm"/> particularly suitable for this project, as it is important to regularly check if the API is returning the correct data. We will in this section quickly introduce you to how unit tests are implemented in<a id="id512" class="indexterm"/> FuelPHP. These tests will be very superficial as this is just an introduction. If you are not familiar with unit tests, you<a id="id513" class="indexterm"/> can start by reading the FuelPHP documentation about unit testing at <a class="ulink" href="http://fuelphp.com/docs/general/unit_testing.html">http://fuelphp.com/docs/general/unit_testing.html</a>.</p><p>The documentation can be accessed at the FuelPHP website by navigating to <span class="strong"><strong>DOCS</strong></span> | <span class="strong"><strong>FuelPHP</strong></span> | <span class="strong"><strong>General</strong></span> | <span class="strong"><strong>Unit Testing</strong></span>.</p><p>For more general information, you can<a id="id514" class="indexterm"/> look at the Wikipedia web page for more references (<a class="ulink" href="http://en.wikipedia.org/wiki/Unit_testing">http://en.wikipedia.org/wiki/Unit_testing</a>).</p><p>To make things short, unit tests allow you to test individual units in your code, such as methods or classes, to check if they work as intended. In most cases, they are executed regularly to check if there is no regression in your project. In the Test Driven Development process, tests are even written before the code and are used as some sort type of unit specification. In that development process, developers first define how a method should work in unit tests, and then they implement the method and check that it passes all the tests and assertions (assertions are conditions that must be met) they have previously written.</p><p>Unit tests should be separated from Integration tests, that test a group of units and how they function together, Functional tests that check that your projects follow its functional requirements, and Acceptance tests that check that final features accessed by users are working as it is expected.</p><p>When writing unit tests, you<a id="id515" class="indexterm"/> should try at least to stick with the following guidelines:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Each unit test should only test a single code unit (generally methods, but sometimes classes) at a time.</li><li class="listitem" style="list-style-type: disc">Try to write as few assertions as possible to test features, as unnecessary assertions lead to less maintainability.</li><li class="listitem" style="list-style-type: disc">Tests should be independent from each other. For instance, you should not write a unit test that supposes another unit test has been run before.</li><li class="listitem" style="list-style-type: disc">Each unit test purpose should be clear: Its name should be explicit and the code should be easy to understand (don't hesitate to use comments).</li></ul></div><p>Now let's see in practice how to<a id="id516" class="indexterm"/> run unit tests in FuelPHP.</p><p>First, you need to install PHPUnit. To do that, enter the following command line:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>php composer.phar require phpunit/phpunit:4.4.*</strong></span>
+</pre></div><p>While PHPUnit is downloaded and installed, create the <code class="literal">APPPATH/config/oil.php</code> configuration file and set its contents to:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+return array(
+  'phpunit' =&gt; array(
+      'autoload_path' =&gt;
+            VENDORPATH.'phpunit/phpunit/PHPUnit/Autoload.php',
+      'binary_path' =&gt; VENDORPATH.'bin/phpunit',
+  ),
+);</pre></div><p>Once PHPUnit is installed, you can launch tests. First, simply execute the following command line:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>php oil test</strong></span>
+</pre></div><p>The output will be something like this:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>Tests Running...This may take a few moments.</strong></span>
+<span class="strong"><strong>...</strong></span>
+<span class="strong"><strong>Time: 512 ms, Memory: 20.25Mb</strong></span>
+<span class="strong"><strong>OK (375 tests, 447 assertions)</strong></span>
+</pre></div><p>As you can see, <code class="literal">375</code> tests already exist and the <code class="literal">php oil test</code> command line executed all of them. These tests are all in the FuelPHP core and can be found in the <code class="literal">fuel/core/tests</code> directory.</p><p>We are going to create<a id="id517" class="indexterm"/> our own tests. Create the <code class="literal">APPPATH/tests/examples.php</code> file and set its contents to:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+namespace Fuel\App;
+
+/**
+ * Examples tests 
+ *
+ * @group App
+ */
+class Test_Examples extends \TestCase
+{
+    // This method is executed before all tests are executed.
+    // If your unit test require some initialization, you can
+    // do it here.
+    public static function setUpBeforeClass() {
+        \Config::load('mymicroblog', true);
+
+        // Executing migrations (we are on a test database)
+        \Migrate::latest('auth', 'package');
+        \Migrate::latest();
+
+        // Truncating the tables since we might already have data
+        \DBUtil::truncate_table('users');
+        \DBUtil::truncate_table('posts');
+
+        // Generating test data
+        \Auth::create_user(
+            'first_user',
+            'test',
+            'email@email.com'
+        );
+        for ($i = 1; $i &lt; 100; $i++) {
+            $post = \Model_Post::forge(array(
+                'content' =&gt; 'post 1',
+                'user_id' =&gt; 1
+            ));
+            $post-&gt;save();
+        }
+
+        // ...
+    }
+
+    /**
+   * Tests the User mapper.
+   *
+   * @test
+   */
+    public function test_extract_properties() {
+        $object = new \stdClass();
+        $object-&gt;a = '1';
+        $object-&gt;b = 2;
+        $object-&gt;c = true;
+
+        $res = \Mapper::extract_properties(
+            $object,
+            array('a', 'c')
+        );
+
+        $expected_res = array('a' =&gt; '1', 'c' =&gt; true);
+
+        $this-&gt;assertEquals($res, $expected_res);
+
+        // A lot more should be tested...
+    }
+  
+  /**
+   * Tests the User mapper.
+   *
+   * @test
+   */
+  public function test_user_mapper() {
+        // Getting any user.
+        // Note: In order not to depend on the database and on
+        // the ORM, you might want to create mock users objects
+        // (simulated users objects) and test features on these
+        // objects instead...
+        $user = \Model_User::find('first');
+
+        // Testing that the profile context returns 4
+        // attributes
+        $profile = \Mapper_User::get('profile', $user);
+        $this-&gt;assertCount(4, $profile);
+
+        // Testing that the minimal context returns 1 attribute
+        $minimal = \Mapper_User::get('minimal', $user);
+        $this-&gt;assertCount(1, $minimal);
+
+        // A lot more should be tested...
+  }
+  
+  // This method is executed after all tests have been
+  // executed
+  static function tearDownAfterClass() {} 
+}</pre></div><p>All methods beginning with <code class="literal">test</code> will be executed when running this test file. Read the comments in the preceding code and read the official documentation <a id="id518" class="indexterm"/>of PHPUnit for more information (<a class="ulink" href="https://phpunit.de">https://phpunit.de</a>).</p><p>When you<a id="id519" class="indexterm"/> are running test files, FuelPHP is in the test environment. Therefore, you have to configure the database <a id="id520" class="indexterm"/>access in the <code class="literal">APPPATH/config/test/db.php</code> file. It is recommended that you create a separate database for unit tests.</p><p>Now, run only your application tests by executing the following command line:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>php oil test --group=App</strong></span>
+</pre></div><p>The output will be something like this:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>Tests Running...This may take a few moments.</strong></span>
+<span class="strong"><strong>..</strong></span>
+<span class="strong"><strong>Time: 22 ms, Memory: 18.50Mb</strong></span>
+<span class="strong"><strong>OK (2 tests, 3 assertions)</strong></span>
+</pre></div><p>The tests have been correctly executed. However, as explained at the beginning of this section, we have written very superficial tests. If you want to have good test coverage of your application, you will need to write many more tests.</p></div>
+<div class="section" title="Possible improvements"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec52"/>Possible improvements</h1></div></div></div><p>First, you should <a id="id521" class="indexterm"/>protect all your forms from <span class="strong"><strong>Cross-Site Request Forgery</strong></span> (<span class="strong"><strong>CSRF</strong></span>) attacks as we did in <a class="link" href="ch03.html" title="Chapter 3. Building a Blog Application">Chapter 3</a>, <span class="emphasis"><em>Building a Blog Application</em></span>. As you are using<a id="id522" class="indexterm"/> Mustache templates, you will need to do things a little bit differently here (for instance, you will need to write <a id="id523" class="indexterm"/>your CSRF input in plain HTML). I recommend you read the official documentation at <a class="ulink" href="http://fuelphp.com/docs/general/security.html#csrf">http://fuelphp.com/docs/general/security.html#csrf</a>.</p><p>The documentation can be accessed on the FuelPHP website by navigating to <span class="strong"><strong>DOCS</strong></span> | <span class="strong"><strong>FuelPHP</strong></span> | <span class="strong"><strong>General</strong></span> | <span class="strong"><strong>Security</strong></span>.</p><p>Secondly, if you<a id="id524" class="indexterm"/> want to make your API easily available using JavaScript on an external website, you have to set the Access-Control-Allow-Origin header to <code class="literal">*</code>. This can be done in the <code class="literal">before</code> method inside the <code class="literal">Base</code> controller.</p><p>Next, we only used the <code class="literal">post/inside_list</code> partial in the JavaScript side of our application, but we could have done much more. For instance, since all the data is available, instead of loading the profile page HTML version when we click on a username, we could load the JSON data and use our partials to display the profile page.</p><p>Our microblog application is still very basic. However, we could manage subscriptions, notifications, mentions, and direct messages; allow the users to search for posts and other users; automatically transform URLs in posts; improve the user interface...</p></div>
+<div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec53"/>Summary</h1></div></div></div><p>In this chapter, we built a basic microblogging application that supports several features such as user subscription, authentication, post creation, and profile pages. We have seen that an API can be implemented without any code duplication and much effort, if it is handled correctly. We have also used Mustache, a language-agnostic template engine, which allowed us to use the same views in the server (PHP) and client (JavaScript) sides. Finally, we have used unit tests to check whether the features of our application are behaving as expected.</p><p>In the next chapter, we will introduce you to Novius OS, a Content Management System based on the FuelPHP framework.</p></div></body></html>
