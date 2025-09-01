@@ -1,0 +1,1190 @@
+- en: '10'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Continuous Delivery
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We’ve built a software solution complete with automated tests and have set up
+    a continuous integration pipeline to run those automated tests. Now, if a developer
+    in your team pushes some code that changes the expected behavior of the solution,
+    our automated tests and continuous integration solution will catch those issues
+    and will help you and your team stop releasing detrimental code. But what if all
+    the tests have passed after pushing all the new code to the repository? Wouldn’t
+    it be great if we had a solution to help us prepare and deploy the application
+    into a development, staging, or production server?
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we will add the last missing piece to our development process.
+    We will prepare a remote server in AWS, and we will automatically deploy our application
+    into that server using **continuous delivery** (**CD**).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Figure 10**.1* shows the steps we are going to take to deploy our solution
+    code to a public-facing web server. We will go through the process of pushing
+    new code to the repository, which, in turn, will trigger the CI pipeline we configured
+    in the previous chapter. The CI pipeline will run the automated tests we’ve built
+    and, when successful, the CD process will upload our solution code into AWS S3\.
+    Then, we will use AWS CodeDeploy to deploy our application into an AWS EC2 instance
+    that will serve as our example production server:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.1 – Entire flow](img/Figure_10.01_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.1 – Entire flow
+  prefs: []
+  type: TYPE_NORMAL
+- en: From a developer pushing new code and running all automated tests in the cloud
+    to automatically deploying the solution code into a Linux server, we will be covering
+    all of that!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will go through the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up an AWS EC2 instance
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating an AWS CodeDeploy application
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Installing Docker and other dependencies inside the AWS EC2 instance
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Continuous delivery with Bitbucket Pipelines and AWS CodeDeploy
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you should follow the instructions provided in the previous
+    chapter and configure a Bitbucket Pipelines pipeline. You are also expected to
+    have basic knowledge of AWS and should use the code in this book’s code base at
+    [https://github.com/PacktPublishing/Test-Driven-Development-with-PHP-8/tree/main/Chapter%2010](https://github.com/PacktPublishing/Test-Driven-Development-with-PHP-8/tree/main/Chapter%2010).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To see all the tests running properly, you can run the following command to
+    download the complete code of this chapter, and run the Docker containers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: To run the containers and execute the commands in this chapter, you should be
+    inside the `docker-server-web-1` container.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Run the following command to confirm the container name for our web server:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To run the containers, run the following command from the `/phptdd/docker`
+    directory from the repository in your host machine:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once inside the container, run the following command to install the libraries
+    required through Composer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Within the `/var/www/html/symfony` directory, run the following command to
+    see all the tests passing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: After running the `runCoverage.sh` command, it should execute all our Symfony
+    tests, and you can make sure that they all pass.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up an AWS EC2 instance
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: If you don’t already have an AWS account, you can follow the instructions at
+    [https://aws.amazon.com/premiumsupport/knowledge-center/create-and-activate-aws-account/](https://aws.amazon.com/premiumsupport/knowledge-center/create-and-activate-aws-account/)
+    to create one.You will also have to create an AWS IAM User group. The instructions
+    can be found on https://docs.aws.amazon.com/IAM/latest/UserGuide/id_groups_create.html.
+    You will need an AWS IAM User, and follow the official documentation from AWS
+    to create an IAM user in your AWS account at [https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html.](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will also need the following AWS resources to complete the EC2 setup:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: AWS EC2 key pair
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: IAM instance profile
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Why do we need an EC2 instance? Well, this will serve as our remote server.
+    You can think of it as your host computer running in the cloud. We will use this
+    server to host our Docker containers to run and serve our application:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.1 – EC2 instance](img/Figure_10.02_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.1 – EC2 instance
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see from the diagram, it’s going to serve as almost a replica of
+    your local development environment. That’s the big benefit of using containers,
+    as we discussed in [*Chapter 3*](B18318_03.xhtml#_idTextAnchor039), *Setting Up
+    Our Development Environment Using* *Docker Containers.*
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Follow these steps to create an EC2 instance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sign in to the AWS console and search for `EC2` in the **Services** search bar
+    to go to the EC2 dashboard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'In the EC2 dashboard, click on the **Launch** **instance** button:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.2 – The Launch instance button](img/Figure_10.03_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.2 – The Launch instance button
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will be shown the **Launch an instance** wizard.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the `tddphp-instance1`. This name tag is going to be very important. We
+    will use this tag for our CodeDeploy application later in this chapter:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.3 – Instance name tag](img/Figure_10.04_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.3 – Instance name tag
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, in the **Application and OS Images (Amazon Machine Image)** area, select
+    **Amazon Linux** **2 AMI**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.4 – Amazon Linux 2 AMI](img/Figure_10.05_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.4 – Amazon Linux 2 AMI
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, you can select the EC2 instance type. For this example, you can stick
+    to the **t2.micro** instance as this type is free tier eligible. You can also
+    select a more powerful instance configuration – that’s entirely up to you:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.5 – t2.micro instance type](img/Figure_10.06_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.5 – t2.micro instance type
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will need a key pair to be able to SSH into this machine instance. If you
+    don’t already have one set up, just click on the **Create new key pair** link;
+    a popup will appear for you to create a new key pair:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.6 – Creating a new key pair](img/Figure_10.07_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.6 – Creating a new key pair
+  prefs: []
+  type: TYPE_NORMAL
+- en: After creating the key pair, you can assign it to the key pair field in the
+    EC2 instance wizard.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Next, in the **Network settings** section, allow all HTTP and HTTPs traffic.
+    This is so that we can easily access the web application from a browser:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.7 – Network settings; allow HTTP and HTTPS](img/Figure_10.08_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.7 – Network settings; allow HTTP and HTTPS
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, in the **Advanced details** section, if you don’t already have an IAM
+    instance profile, you can easily create one by clicking on the **Create new IAM**
+    **profile** link:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.8 – Creating a new IAM profile link](img/Figure_10.09_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.8 – Creating a new IAM profile link
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will be redirected to the IAM wizard. Enter any IAM role name you want
+    to use; then, select the **Custom trust policy** option in the **Trusted entity**
+    **type** section:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.9 – Custom trust policy text area](img/Figure_10.10_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.9 – Custom trust policy text area
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the text area, use the following policy:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE19]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE20]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Since I am in Australia, I usually use the `Sydney ap-southeast-2` region. You
+    can replace this with any region you prefer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click the **Next** button to proceed.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'In the **Add permissions** section, search for the following policies, and
+    tick the checkbox before the policy name:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**AmazonEC2FullAccess**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**AmazonS3FullAccess**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**AWSCodeDeployFullAccess**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: After selecting these policies, click **Next**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Make sure these policies are displayed in the IAM wizard review screen before
+    creating the role:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.10 – Access policies](img/Figure_10.11_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.10 – Access policies
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, click on the **Create role** button, then go back to the **EC2 instance**
+    wizard. You can now select the IAM role you just created from the **Advanced**
+    **details** section:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.11 – Newly created IAM instance profile](img/Figure_10.12_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.11 – Newly created IAM instance profile
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'And that’s it – scroll to the very bottom of the page and click on the **Launch
+    instance** button. It will take a few minutes for AWS to launch your new EC2 instance.
+    After a few minutes, go back to the dashboard; you should now see your EC2 instance
+    running:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.12 – Amazon Linux 2 instance running](img/Figure_10.13_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.12 – Amazon Linux 2 instance running
+  prefs: []
+  type: TYPE_NORMAL
+- en: We now have a running Amazon Linux 2 instance; we will use this instance to
+    run our containers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before proceeding with the CodeDeploy setup, we need to create an S3 bucket.
+    This bucket will be used both by our Bitbucket Pipelines and the CodeDeploy application:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'While in the AWS console, search for `S3` and click the **S3** service item:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.13 – S3 service](img/Figure_10.14_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.13 – S3 service
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will be redirected to the Amazon S3 dashboard.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Click on the **Create** **bucket** button:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.14 – The Create bucket button](img/Figure_10.15_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.14 – The Create bucket button
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Use any unique name you want for the bucket and select the same region you
+    used for your EC2 instance. For me, it’s **ap-southeast-2**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.15 – Creating an S3 bucket](img/Figure_10.16_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.15 – Creating an S3 bucket
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can leave all the default settings as-is and click on the **Create bucket**
+    button.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: And that’s it. We can now proceed with creating the CodeDeploy application.
+    The CodeDeploy application will use the EC2 instance and S3 bucket we just created.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating an AWS CodeDeploy application
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We will be using AWS CodeDeploy to automate the deployment of our PHP application
+    into an EC2 server. But where will CodeDeploy get the files to deploy? It will
+    get them from an S3 bucket. But how will our solution code end up in S3 in the
+    first place? Well, we will tell Bitbucket Pipelines to upload it there! We will
+    cover that later in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.16 – CodeDeploy flow](img/Figure_10.17_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.16 – CodeDeploy flow
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Follow these steps to set up AWS CodeDeploy, which will be triggered by our
+    Bitbucket CI pipeline once all of our automated tests have passed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the AWS console, search for the CodeDeploy service and click on the **Create**
+    **application** button:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.17 – Creating the CodeDeploy application](img/Figure_10.18_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.17 – Creating the CodeDeploy application
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the CodeDeploy wizard, use any name you want in the **Application configuration**
+    section. Then, in the **Compute platform** field, select the **EC2/On-premises**
+    option and click on the **Create** **application** button:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.18 – Application configuration section](img/Figure_10.19_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.18 – Application configuration section
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will be redirected to the CodeDeploy **Applications** page.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, click on the **Create deployment** **group** button:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/Figure_10.20_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.19 – The Create deployment group button
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the `codedeploy_group1`:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![Figure 10.20 – Deployment group wizard – group name](img/Figure_10.21_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.20 – Deployment group wizard – group name
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, in the **Service role** section, select the IAM role we created earlier
+    in this chapter:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.21 – Deployment group wizard – IAM role](img/Figure_10.22_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.21 – Deployment group wizard – IAM role
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, in the `tddphp-instance1`. This is very important. This is how we tell
+    CodeDeploy that we want to deploy the application in this specific instance. You
+    can add more tags here if you want to deploy to other instances as well:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.22 – Deployment group wizard – EC2 instance details](img/Figure_10.23_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.22 – Deployment group wizard – EC2 instance details
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, in the **Load balancer** section, uncheck the **Enable load balancing**
+    checkbox, then click on the **Create deployment** **group** button:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: "![Figure 10.23 – Deployment group wizard – \uFEFFLoad balancer](img/Figure_10.24_B18318.jpg)"
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.23 – Deployment group wizard – Load balancer
+  prefs: []
+  type: TYPE_NORMAL
+- en: Great! That’s it for the CodeDeploy configuration from the AWS console.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we will need to get inside the EC2 instance we just created and install
+    some applications we need for it to be able to connect to CodeDeploy, and for
+    us to be able to run Docker containers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Installing Docker and other dependencies inside the AWS EC2 instance
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We will need three very important applications inside the EC2 instance. First,
+    we will need the AWS CodeDeploy agent, after which we’ll need to install Docker
+    and docker-compose so that we can build and run the Docker containers we need
+    for our application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Connecting to the EC2 instance
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We need to get inside the instance before we can install anything. Thankfully,
+    we can do this by using the AWS console from a browser:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the EC2 dashboard, select the running instance we created earlier and click
+    on the **Connect** button at the top of the table:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.24 – EC2 table – the Connect button](img/Figure_10.25_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.24 – EC2 table – the Connect button
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will be redirected to the **Connect to instance** page.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Click on the **Connect** button on that page. Finally, you will be redirected
+    to the browser’s terminal window:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.25 – EC2 terminal window](img/Figure_10.26_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.25 – EC2 terminal window
+  prefs: []
+  type: TYPE_NORMAL
+- en: Great! Now, we can install the applications we need for CD and our PHP solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Installing CodeDeploy Agent
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The CodeDeploy application we created earlier in the chapter will need additional
+    software installed inside our EC2 instance so that it can communicate with it.
+    This is why we need CodeDeploy Agent. You can read more about it on the official
+    AWS documentation page for CodeDeploy Agent: [https://docs.aws.amazon.com/codedeploy/latest/userguide/codedeploy-agent.html](https://docs.aws.amazon.com/codedeploy/latest/userguide/codedeploy-agent.html).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Follow these steps to install CodeDeploy Agent:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the terminal, enter the following commands to install the agent:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE22]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE23]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE24]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE25]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE26]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE27]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'After running those commands, verify that the agent is running by running the
+    following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should now get the following result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.26 – CodeDeploy Agent is running](img/Figure_10.27_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.26 – CodeDeploy Agent is running
+  prefs: []
+  type: TYPE_NORMAL
+- en: Awesome! Our EC2 instance can now be used by our CodeDeploy application. Next,
+    we can proceed with installing Docker.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Installing Docker
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We’ve been using Docker containers to run our PHP solution. Now, CodeDeploy
+    will try to deploy our code in the EC2 instance we just created, but our solution
+    code depends on Docker and docker-compose being installed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Follow these steps to install Docker:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Run the following commands in the AWS terminal window:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE30]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE31]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE32]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'After running the installation commands, check whether Docker is installed
+    correctly by running the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should see the following result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.27 – Docker installed](img/Figure_10.28_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.27 – Docker installed
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we will need to reboot the instance to make sure that we can execute
+    Docker with the correct permissions. Run the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'After running the command, the terminal window will hang up. Give it a few
+    minutes, then connect to the EC2 portal again, as we did earlier:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.28 – Terminal error while rebooting](img/Figure_10.29_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.28 – Terminal error while rebooting
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you see the preceding error message, don’t fret. Just wait a few minutes
+    and then try connecting again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lastly, we’ll need to install docker-compose.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Installing docker-compose
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We’ve been using the docker-compose tool to run and configure our multi-container
+    setup in our local development environment. We will also need to install it in
+    the EC2 instance. Follow these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Back in the AWS terminal window, run the following commands:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE36]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'After running those two commands, to make sure that docker-compose has been
+    installed properly, run the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: You should see the version that is installed. Great! At this stage, we have
+    installed everything we need for CodeDeploy to be able to deploy our PHP application
+    in this EC2 instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we will add an Elastic IP to our EC2 instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Attaching Elastic IP to the EC2 instance
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To make our EC2 instance easily accessible through a web browser, we will add
+    an AWS Elastic IP to the EC2 instance. We can also easily attach this Elastic
+    IP to a different EC2 instance when we need to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To create an Elastic IP, follow these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Go back to the EC2 dashboard in the AWS console, then click on the **Elastic**
+    **IPs** button:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.29 – The Elastic IPs button](img/Figure_10.30_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.29 – The Elastic IPs button
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'On the next screen, select the **Amazon’s pool of Ipv4 addresses** radio button
+    in the **Public Ipv4 address pool** section. Then, click on the **Allocate** button:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.30 – Allocate Elastic IP address](img/Figure_10.31_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.30 – Allocate Elastic IP address
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, click on the newly created Elastic IP address, then click on the **Associate
+    Elastic IP** **address** button:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.31 – The Associate Elastic IP address button](img/Figure_10.32_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.31 – The Associate Elastic IP address button
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'On the next screen, in the **Instance** field, select the EC2 instance we created
+    earlier. Then, click on the **Associate** button:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.32 – Associating the Elastic IP address with the EC2 instance](img/Figure_10.33_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.32 – Associating the Elastic IP address with the EC2 instance
+  prefs: []
+  type: TYPE_NORMAL
+- en: At this stage, we will have a permanent IP address pointed to our EC2 instance.
+    Once we deploy the PHP application into the EC2 instance, we will use this IP
+    to access the web application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we will need to configure Bitbucket Pipelines to tell it that we want
+    to automatically deploy our code using AWS CodeDeploy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Continuous delivery with Bitbucket Pipelines and AWS CodeDeploy
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous section, we prepared an AWS EC2 instance for our PHP application.
+    Now, we will need a way to get our solution code from Bitbucket into the EC2 instance
+    itself. For this, we will need to configure Bitbucket Pipelines to use AWS CodeDeploy.
+    You can read more about Bitbucket Pipelines to AWS CodeDeploy deployments at [https://support.atlassian.com/bitbucket-cloud/docs/deploy-to-aws-with-codedeploy/](https://support.atlassian.com/bitbucket-cloud/docs/deploy-to-aws-with-codedeploy/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bitbucket Pipelines settings
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We will need to add some AWS-specific information into Bitbucket as we will
+    be using this information to connect to our AWS CodeDeploy application. To add
+    this information, follow these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the Bitbucket repository dashboard, click on the **Repository** **settings**
+    option:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.32 – Repository settings](img/Figure_10.34_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.32 – Repository settings
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, select the **Repository variables** link from the left menu. You should
+    be redirected to the **Repository variables** page. In the **Name** and **Value**
+    fields, add the following names and values:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**AWS_ACCESS_KEY_ID**: Use the value from the key pair file'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**AWS_SECRET_ACCESS_KEY**: Use the value from the key pair file'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**AWS_DEFAULT_REGION**: **ap-southeast-2**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**S3_BUCKET**: <your unique S3 bucket name>'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**DEPLOYMENT_GROUP**: **codedeploy_group1**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**APPLICATION_NAME**: **mycodedeployapp**:'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![Figure 10.33 – Repository variables; AWS values](img/Figure_10.35_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.33 – Repository variables; AWS values
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we will need to tell Bitbucket Pipelines that we want to zip and upload
+    our application to AWS S3\. Then, we will deploy it to our EC2 instance using
+    AWS CodeDeploy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Back to our code base, in the root directory, you will find the `bitbucket-pipelines.yml`
+    file we created in the previous chapter. Add the following lines to the file:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: /bitbucket-pipelines.yml
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, we will be using the AWS values we entered in the repository variables
+    page in the previous section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we need to tell CodeDeploy what scripts to run when deploying our application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a CodeDeploy configuration file
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: CodeDeploy will need a base configuration file called `appspec.yml`. Here, we
+    can tell CodeDeploy to run scripts for us, such as running docker-compose and
+    running our Symfony application’s `setup.sh` script.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create the `/appspec.yml` file and add the following content to it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In this file, we are telling CodeDeploy that we want our code to be copied
+    into `/home/ec2-user/phptdd directory`. Then, after the installation process,
+    we want to run the `containers_setup_php.sh` file, which we will create next.
+    Create this file with the following content:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: aws/codedeploy/containers_setup_php.sh
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: You will notice that we are running docker-compose. After that, we are running
+    the custom `setup.sh` files we created for the Symfony and Behat applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we need to run the entire CI/CD process using Bitbucket Pipelines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Running Bitbucket Pipelines
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Now that we have everything we need, just commit and push the files to your
+    repository to trigger a Bitbucket pipeline to run, or just manually run a pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our pipeline is now divided into three steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Run automated tests**: These will run our Symfony and Behat tests'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Package and upload**: This will zip and upload our code to AWS S3'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Deploy to AWS**: This will use CodeDeploy to deploy our solution inside the
+    EC2 instance we configured'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'It will take a few minutes to run everything, but imagine replacing the manual
+    process of testing tens, hundreds, or thousands of features and server deployment
+    manually:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.34 – CI/CD result](img/Figure_10.36_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.34 – CI/CD result
+  prefs: []
+  type: TYPE_NORMAL
+- en: Great – after 18 minutes, we have completed the entire process! This setup and
+    process can still be tweaked and optimized, but in just a few minutes, we were
+    able to automatically run all our test scenarios, and automatically deploy them
+    into a remote server!
+  prefs: []
+  type: TYPE_NORMAL
+- en: But did the deployment work? Let’s find out.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Go back to the AWS console and connect to the EC2 instance again:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.35 – New phptdd directory](img/Figure_10.37_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.35 – New phptdd directory
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first thing you’ll notice if the code deployment worked is that there should
+    be a new `/phptdd` directory. Let’s see whether it’s got something in it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.36 – /phptdd content](img/Figure_10.38_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.36 – /phptdd content
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, we have all the files we pushed into our Bitbucket repository!
+    But what about our Docker containers? Let’s see whether they are running.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Run the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If everything got installed properly by CodeDeploy, we should see our containers
+    running:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.37 – Docker containers running](img/Figure_10.39_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.37 – Docker containers running
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'That’s good – all our containers are running! Now, what if we run our automated
+    tests? Let’s see how it goes. Run the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You should see the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.38 – Running a Symfony coverage test in EC2](img/Figure_10.40_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.38 – Running a Symfony coverage test in EC2
+  prefs: []
+  type: TYPE_NORMAL
+- en: Great! All our Symfony PHP tests are passing! But what about the actual web
+    application? The automated tests won’t make sense to our visitors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Go back to the EC2 dashboard and click on the EC2 instance we created. Then,
+    click on the **Elastic IP** **addresses** link:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: "![Figure 10.39 – Elastic IP address\uFEFFes link](img/Figure_10.41_B18318.jpg)"
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.39 – Elastic IP addresses link
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Elastic IP address details will be loaded. Then, copy the **Public** **DNS**
+    value:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.40 – Elastic IP – Public DNS](img/Figure_10.42_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.40 – Elastic IP – Public DNS
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After copying the public DNS, just simply paste it into your web browser and
+    see whether it loads:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 10.41 – HomeController](img/Figure_10.43_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.41 – HomeController
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, we can now access our web application from a web browser. You
+    can try to register an account, log in, and add new toy car entries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s try the registration feature first:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Click on the **Register** link and enter an email address and a password:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.42 – Register](img/Figure_10.44_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.42 – Register
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Click **Register**. Next, click on the **login** button:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.40 – Login](img/Figure_10.45_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.40 – Login
+  prefs: []
+  type: TYPE_NORMAL
+- en: If it works properly, it will redirect you to the **Add Toy Car** page.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'On the **Add Toy Car** page, add some values in the fields:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.41 – Add Toy Car](img/Figure_10.46_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.41 – Add Toy Car
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Click on the **Add Toy Car** button. If it works, it should redirect you to
+    the table controller:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 10.42 – Table controller](img/Figure_10.47_B18318.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 10.42 – Table controller
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the table controller, the toy car entries we have created will all be displayed.
+    If we want to add more features to the application, we can simply start with a
+    Jira ticket, create a new branch, write some code, commit it, and push the code
+    – that’s it. The CI/CD process will take care of the rest!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we covered the process of setting up an AWS EC2 instance, AWS
+    CodeDeploy, and all the other AWS resources we need to host our PHP application.
+    We integrated Bitbucket Pipelines with our AWS CodeDeploy application, and we
+    used custom scripts to automatically configure our Docker containers inside the
+    AWS EC2 instance whenever CodeDeploy runs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We covered this process from a developer pushing new code changes to the application,
+    running all the automated tests, and deploying the entire solution to a Linux
+    server through AWS. We are also able to manually test our web application using
+    a web browser to make sure consumers can use the application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will investigate some tools to help us monitor our application.
+    This will be very helpful when working on large applications as this will help
+    us, as developers, analyze our application’s performance and health.
+  prefs: []
+  type: TYPE_NORMAL

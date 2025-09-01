@@ -1,0 +1,1565 @@
+- en: Chapter 2. Reactive Programming with RxPHP
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we're going to have a better look at how we can use PHP's reactive
+    extension library RxPHP. We'll mostly build on what we saw in the previous chapter,
+    but going into greater detail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In particular, we''ll go through the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Various components of RxPHP that we'll use in this and all further chapters.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We'll quickly have a look at how to read and understand the Rx documentation.
+    In particular, we'll have a look at marble diagrams that explain the functionality
+    of Rx operators.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: List a few basic operators that we'll use throughout the entire book and explain
+    their functionality.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Write custom operator that decodes JSON strings into their appropriate array
+    representations while properly handling errors.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implement a simple script that downloads an HTML page via cURL. Then compare
+    the same approach when utilizing RxPHP.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to write a custom Observable for our cURL example.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We'll dig into RxPHP's source code and see what happens when we use built-in
+    Observables and operators.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Before we look into each part of RxPHP separately, we'll quickly mention some
+    very common terms that we'll use when talking about various aspects of Reactive
+    Extensions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Basic principles of Reactive Extensions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Let's have a look at a very simple example of RxPHP, similar to what we did
+    in the previous chapter, and use it to demonstrate some of the basic principles
+    behind Reactive Extensions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We won''t bother with defining an observer right now and will focus only on
+    Observables and operators:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this example, we have one Observable, two operators and one observer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An Observable can be chained with operators. In this example, the operators
+    are `map()` and `filter()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Observables have the `subscribe()` method that is used by observers to start
+    receiving values at the end of the chain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can represent this chain by the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Basic principles of Reactive Extensions](img/00005.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Each arrow shows the direction of propagation of items and notifications
+  prefs: []
+  type: TYPE_NORMAL
+- en: We should probably explain the difference between using Observables and just
+    iterating the array.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Observables are like a push model, where a value is pushed down the operator
+    chain when it's ready. This is very important because it's the Observable that
+    decides when it should emit the next value. The internal logic of Observables
+    can do whatever it needs to (for example, it can run some asynchronous task) and
+    still remain completely hidden.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A similar concept to Observables are Promises. However, while a Promise represents
+    a single value that will exist in the future, an Observable represents a stream
+    of values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the other hand, iterating the array is like a pull model. We'd be pulling
+    one item after another. The important consequence is that we'd have to have the
+    array prepared beforehand (that's before we start iterating it).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another important difference is that Observables behave like a data stream (or
+    data flow). We talked about streams in [Chapter 1](part0015_split_000.html#E9OE1-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 1. Introduction to Reactive Programming"), *Introduction to Reactive
+    Programming*. In practice, this means that an Observable knows when it has emitted
+    all its items, or when an error has occurred and is able to send proper notification
+    down the chain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For this reason, Observables can call three different methods on their observers
+    (we''ll see how this is implemented later in this chapter when we write a custom
+    operator and a custom Observable):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`onNext`: This method is called when the next item is ready to be emitted.
+    We typically say that "an Observable emits an item".'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`onError`: Notification called when an error has occurred. This could be any
+    type of error represented by an instance of the `Exception` class.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`onComplete`: Notification called when there''re no more items to be emitted.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Each Observable can emit zero or more items.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each Observable can send one error, or one complete notification; but never
+    both.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is why the `CallbackObserver` class we used in [Chapter 1](part0015_split_000.html#E9OE1-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 1. Introduction to Reactive Programming"), *Introduction to Reactive
+    Programming*, takes three callables as arguments. These callables are called when
+    the observer receives a next item, on error notification or on complete notification,
+    respectively. All three callables are optional parameters and we can decide to
+    ignore any of them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, we can make an observer like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This observer defines all three callables. We can test it on the Observable
+    we defined above and have a look at its output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can see that only three values passed the `filter()` operator, followed by
+    a proper complete notification at the end.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In RxPHP, every operator that takes a callable as an argument wraps its call
+    internally with `try…catch` block. If the callable throws `Exception`, then this
+    `Exception` is sent as `onError` notification. Consider the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With the same observer that we defined previously, this example will have the
+    following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: It's important to see that, when an error occurred, no more items were emitted,
+    there's also no complete notification. This is because, when the observer received
+    an error, it automatically unsubscribed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll talk more about the process behind subscribing and unsubscribing in [Chapter
+    3](part0033_split_000.html#VF2I2-bd355a22cf10407cb10df27e65585b8d "Chapter 3. Writing
+    a Reddit Reader with RxPHP"), *Writing a Reddit Reader with RxPHP*, and in [Chapter
+    10](part0070_split_000.html#22O7C1-bd355a22cf10407cb10df27e65585b8d "Chapter 10. Using
+    Advanced Operators and Techniques in RxPHP"), *Using Advanced Operators and Techniques
+    in RxPHP*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In [Chapter 8](part0061_split_000.html#1Q5IA1-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 8. Multicasting in RxPHP and PHP7 pthreads Extension"), *Multicasting
+    in RxPHP and PHP7 pthreads Extension*, we'll look more in-depth into what happens
+    inside observers when they receive an error or complete notification.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One last thing before we move on. We said that Observables represent data streams.
+    The great advantage of this is that we can easily combine or split streams, similar
+    to what we saw in [Chapter 1](part0015_split_000.html#E9OE1-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 1. Introduction to Reactive Programming"), *Introduction to Reactive
+    Programming*, when talking about the `gulp` build tool.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s have a look at a slightly more advanced example of merging two Observables:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: We used the `merge()` operator to combine the existing Observable with another
+    Observable. Notice that we can add the operator anywhere we want. Since we added
+    it after the `filter()` operator and before the `subscribe()` call, the items
+    from the second Observable are going to be emitted right into the observer and
+    will skip the preceding operator chain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can represent this chain by the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Basic principles of Reactive Extensions](img/00006.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The output for this example looks like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: These principles apply to all Rx implementations. Now, we should have a basic
+    idea of what working with Observables, observers and operators in Rx looks like
+    and we can talk more about each of them separately.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Naming conventions in Reactive Extensions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When talking about Observables, we use terms such as **emit/send value/item**.
+    Commonly, we say that **an Observable emits an item**, but we understand the same
+    from **an Observable sends a value** as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By **emit/send** we mean that an Observable is calling the `onNext` method on
+    an observer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When talking about Observables, we use terms such as **send error/complete notification/signal**.
+    We also often mention that **an Observable completes**, which means that an Observable
+    has sent a complete notification.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By **notification/signal** we mean that an Observable is calling the `onError`
+    or `onComplete` method on an observer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the preceding paragraph, we worked with a simple RxPHP demo that had one
+    Observable, two operators and one observer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This structure formed an **operator/Observable chain**. We'll understand the
+    same thing from both of the terms **operator chain** and **Observable chain**
+    (sometimes also referred to as a **chain of Observable operators**). This is because,
+    from our perspective, we're chaining operators; but under the hood, each operator
+    returns another instance of the `Observable` class, so, in fact, we're chaining
+    Observables. In practice, this doesn't matter, so we'll just remember that these
+    have the same meaning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When talking about Observable chains, we sometimes use the term **source Observable**.
+    This is the source of items in the chain. In other words, it's the first Observable
+    in the chain. In the preceding example, the source Observable was `Observable::fromArray($fruits)`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When talking about operators, we use the term source Observable to also describe
+    the Observable directly preceding this particular operator (because it's the source
+    of items for this operator).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sometimes instead of the `onNext`, `onError` and `onComplete` terms and method
+    names, you'll encounter just `next`, `error` and `complete`. This comes from RxJS
+    5, which follows the ES7 Observable specification ( [https://github.com/tc39/proposal-observable](https://github.com/tc39/proposal-observable)
+    ), but their meaning is exactly the same. Most Rx implementations use the names 
+    `onNext`, `onError` and `onComplete`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: All these terms are used in various literature and articles regarding Rx, so
+    we'll tolerate all of them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Components of RxPHP
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Since this chapter is going to be mostly about Observables, observers and operators,
+    we're going to start with them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We've already seen a sneak peak in this chapter, and now we'll go into more
+    detail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Observables
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Observables emit items. In other words, Observables are sources of values. Observers
+    can subscribe to Observables in order to be notified when the next item is ready,
+    all items have been emitted, or an error has occurred.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The main difference between an Observable (in the sense of reactive programming)
+    and the observer pattern is that an Observable can tell you when all of the data
+    has been emitted and when an error occurs. All three types of events are consumed
+    by observers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'RxPHP comes with several basic types of Observables for general usage. Here
+    are a few that are easy to use:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`ArrayObservable`: This creates an Observable from an array and emits all values
+    right after the first observer subscribes.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`RangeObservable`: This generates a sequence of numbers from a predefined range.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`IteratorObservable`: This iterates and emits each item in the iterable. This
+    can be any array wrapped as Iterator. Consider the following example, where we
+    iterate an array instead of using `ArrayObservable`:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Note that this also includes generators. Consider another example with an anonymous
+    function and `yield` keyword.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Calling the `$iterator()`function returns an instance of a `Generator` class
+    that implements the Iterator interface. However, these basic Observables are good
+    mostly for demonstration purposes and are not very practical in real-world usage.
+    In a PHP environment, we can't create Observables from mouse events as in JavaScript
+    and RxJS, so we'll have to learn how to write custom Observables very soon in
+    this chapter in order to create some real-world examples. In [Chapter 3](part0033_split_000.html#VF2I2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 3. Writing a Reddit Reader with RxPHP"), *Writing a Reddit Reader with
+    RxPHP*, we'll learn about the `Observable::create()` static method to create Observables
+    with some basic custom logic. But, more on that later.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Observables can be divided into two groups based on when they start emitting
+    values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Hot**: In this group, values are emitted even when there are no observers
+    subscribed. This is, for example, `Rx.Observable.fromEvent` from RxJS that we
+    used in  [Chapter 1](part0015_split_000.html#E9OE1-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 1. Introduction to Reactive Programming") , *Introduction to Reactive
+    Programming*. This creates an Observable from any JavaScript event. Values are
+    emitted immediately, so when you subscribe to this Observable some time later,
+    you receive only new values and no previously emitted values.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Cold**: In this group, values are emitted when at least one observer has
+    been subscribed. This is, for example, RxPHP''s `ArrayObservable`. It creates
+    an Observable and, every time we subscribe, we receive all values passed as an
+    input to the `fromArray()` method.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'All built-in Observables in RxPHP can be instantiated easily by calling static
+    methods from the `Rx\Observable` namespace. The following list represents the
+    three Observables mentioned above:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `RxObservable::fromArray()` method returns `Rx\Observable\ArrayObservable`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `RxObservable::range()` method returns `Rx\Observable\RangeObservable`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `RxObservable::fromIterator()` method returns `Rx\Observable\IteratorObservable`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Don't be surprised that static method names don't necessarily match returned
+    class names. Also, it's usually easier to use static calls than to instantiate
+    Observables directly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Observers
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Observers are consumers of Observables. In other words, observers react to Observables.
+    We've already seen the `CallbackObserver` class, which takes three optional arguments
+    representing callables for each type of signal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consider a similar example that we used at the end of [Chapter 1](part0015_split_000.html#E9OE1-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 1. Introduction to Reactive Programming") , *Introduction to Reactive
+    Programming*, where we defined our observer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `CallbackObserver` class lets us create a custom observer without necessarily
+    extending the base class. Its constructor takes three optional arguments:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`onNext`: This callable is called when a new item from the source Observable
+    is emitted. This is the most common callback we''ll use.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`onComplete`: This callable is called when there are no items left and the
+    Observable is done emitting items. Some Observables produce an infinite number
+    of items and this callback is never called.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`onError`: This callable is called when an error has occurred somewhere in
+    the chain.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'We can write the same example in a more reusable form to quickly test what''s
+    going on inside Observable chains:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: When extending `AbstractObserver`, the methods we need to implement are `completed()`, `next()`,
+    and `error()`, with the same functionality as described previously.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We're using the `subscribe()` method to subscribe an observer to an Observable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's also the `subscribeCallback()` method that takes just three callables
+    as arguments. Since RxPHP 2, the `subscribeCallback()` method is deprecated and
+    its functionality has been merged with `subscribe()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This means that, in RxPHP 2, we can also write the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: We made a single callable instead of subscribing with an observer. This handles
+    only `onNext` signals.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Singles
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Singles are like Observables; the only difference is that they always emit
+    just one value. In RxPHP, we don''t distinguish any difference between Observables
+    and Singles, so we can use the `Observable::just()` static method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This creates a new Observable that calls `onNext()` with the value `42`, and
+    immediately after that `onComplete()`. The output for this very simple example
+    is the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Similar to the preceding explanation, calling `RxObservable::just()` static
+    method returns an instance of `Rx\Observable\ReturnObservable`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The term "Single" was used mostly in RxJS 4\. Since RxPHP was originally ported
+    from RxJS 4, and later also took things from RxJS 5, you might encounter this
+    term sometimes. If you're familiar only with RxJS 5, then you've probably never
+    heard of it. Nonetheless, we'll always refer to all sources of values as Observables,
+    even when they emit just a single, or no value at all.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Subject
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The `Subject` is a class that acts as an Observable and observer at the same
+    time. This means that it can subscribe to an Observable just like an observer,
+    and also emit values like an Observable does. Eventually, it can also emit its
+    own values independently of its source Observable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In order to see how the `Subject` class can be used in different situations,
+    we'll work through three examples based on the same example we used at the beginning
+    of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can use a `Subject` class instead of an Observable. However, we need to
+    emit items manually by calling `onNext()` on the `Subject` instance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This code produces the same output as the original example with Observable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Another use case could be using `Subject` to subscribe to an Observable. We''ll
+    reuse the `PrintObserver` class we made a moment ago to print all of the items
+    and notifications that went through the `Subject` instance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that we subscribed `PrintObserver` to the `Subject` and then subscribed
+    the `Subject` at the end of the operator chain. As we can see, by default the `Subject`
+    class just passes through both items and notifications. The output is the same
+    as in the previous example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The final situation we want to demonstrate is using an instance of Subject
+    in the middle of an operator chain:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: Yet again, the console output is the same.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Later in this chapter, we'll write the `DebugSubject` class, that we'll use
+    many times throughout this book, to quickly see what's going on in our Observable
+    chains.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Disposable
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'All Rx implementations internally use the Dispose pattern. This design decision has
+    two reasons:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To be able to unsubscribe from an Observable
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To be able to release all data used by that Observable
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For example, if we had an Observable that downloads a large file from the Internet
+    and saves it to a temporary location until it's completely downloaded, we'd like
+    to remove the temporary file if its observer unsubscribed, or any error occurred.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There're already a couple of classes available out-of-the-box with RxPHP, each
+    with a different purpose. We don't need to worry about Disposables right now.
+    We'll have a look at how they are used inside built-in Observables and operators
+    in the next [Chapter 3](part0033_split_000.html#VF2I2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 3. Writing a Reddit Reader with RxPHP"), *Writing a Reddit Reader with
+    RxPHP*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You can read more about the dispose pattern on Wikipedia [https://en.wikipedia.org/wiki/Dispose_pattern](https://en.wikipedia.org/wiki/Dispose_pattern)
+    or, more specifically, why it's used in reactive extensions on StackOverflow 
+    [http://stackoverflow.com/a/7707768/310726](http://stackoverflow.com/a/7707768/310726)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, it's good to know that something like releasing resources in Rx is
+    important and we need to aware of it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scheduler
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Observables and operators usually don't execute their work directly, but use
+    an instance of the `Scheduler` class to decide how and when it should be executed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In practice, a `Scheduler` receives an action as an anonymous function and schedules
+    its execution according to its internal logic. This is particularly relevant to
+    all Observables and operators that need to work with time. For example, all delayed
+    or periodical emissions need to schedule via a Scheduler.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In languages such as JavaScript, this is relatively simple with, for example,
+    the  `setTimeout()` function and the event-based nature of JavaScript interpreters.
+    However, in PHP, where all code is executed strictly sequentially, we'll have
+    to use an event loop.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In most situations in RxPHP, we don't have to even worry about Schedulers because,
+    if not set differently, all Observables and operators internally use the `ImmediateScheduler`
+    class, which executes all actions immediately without any further logic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll encounter Schedulers once more at the end of this chapter, when talking
+    about event loops.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In [Chapter 6](part0050_split_000.html#1FLS41-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 6. PHP Streams API and Higher-Order Observables"), *PHP Streams API and
+    Higher-Order Observables*, we'll go into much more detail about event loops in
+    PHP. We'll also talk about the Event Loop Interopability specification ([https://github.com/async-interop/event-loop](https://github.com/async-interop/event-loop))
+    and how it's related to RxPHP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In RxPHP 2, using Schedulers has been significantly simplified and, most of
+    the time, we don't need to worry about event loops at all, as we'll see in [Chapter
+    6](part0050_split_000.html#1FLS41-bd355a22cf10407cb10df27e65585b8d "Chapter 6. PHP
+    Streams API and Higher-Order Observables"), *PHP Streams API and Higher-Order
+    Observables*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Operators
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We've used operators already without any further explanation, but now that we
+    know how to use Observables, observers, and Subjects, it's time to see how operators
+    glue this all together.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The core principle of Rx is using various operators to modify data flow. Typically,
+    an operator returns another Observable and therefore allows the chaining of operator
+    calls.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In Rx, there are tons of operators, and in RxPHP in particular, there are about
+    40 already. Other implementations such as RxJS have even more. Those include all
+    we saw in the previous chapter when talking about functional programming, such
+    as `map()`, `filter()`, and a lot more. This also includes operators for very
+    specific use cases, such as `merge()`, `buffer()`, or `retry()`, just to name
+    a few.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The process of creating operator chains is a little more complicated under the
+    hood than it seems. We don't need to worry about it for now because we'll talk
+    about it again in [Chapter 3](part0033_split_000.html#VF2I2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 3. Writing a Reddit Reader with RxPHP"), *Writing a Reddit Reader with
+    RxPHP*. Before we start using more advanced operators in practice, we should have
+    a look at how each operator is described in the documentation. This is mostly
+    because some functionality isn't obvious at first sight and, when it comes to
+    asynchronous events, it's sometimes hard to understand what each operator does.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding the operator diagrams
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Each operator is described in the documentation using a diagram called the **marble
+    diagram**, where each marble represents an emitted value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The filter() operator
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: First, we'll have a look at how the `filter()` operator is defined. We used
+    the PHP function `array_filter()` in the previous chapter, so we know that it
+    takes values and a predicate function as input. Then it evaluates each value with
+    the predicate and, based on whether it returns true or false, it adds or skips
+    the value in its response array. The behavior of the `filter()` operator is the
+    same, it just works with data flows instead of arrays. This means it receives
+    items from its source (the preceding Observable) and propagates them to its consequent
+    observer (or chained operator).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Using a marble diagram, it will look like the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The filter() operator](img/00007.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Marble diagram representing the filter() Operator from http://reactivex.io/documentation/operators/filter.html
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s exaplain this diagram in more detail:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: At the top and bottom, we have two timelines that represent Observables. The
+    arrow in the top right corner suggests that time goes from left to right.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can think of everything above the rectangle as input Observable and everything
+    below the rectangle as output Observable. There're usually one or more input and
+    only one output.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Each circle (marble) represents a single value in time emitted by its respective
+    Observable. The number inside each circle stands for its value. All values are
+    ordered by the time they were emitted, which goes from left to right. Different
+    colors are used to make it obvious that values at the top and bottom are the same
+    (for example the blue "30" at the top is the same value as the bottom "30").
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The rectangle in the middle represents the transformation between the top and
+    bottom Observables. Its functionality is usually described in words or pseudocode.
+    In this case, we have an expression that looks like ES6 syntax, which says that
+    it returns `true` if `x` is greater than `10`. Rewritten to PHP, it''s equal to
+    the following:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: The bottom line, therefore, only contains circles with a value greater than `10`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Vertical lines on the right side of each line mark the point where these Observables
+    complete. This means they have emitted all values and sent an `onComplete` notification.
+    The `filter()` operator has no effect on the `onComplete` notification, so both
+    Observables end at the same time.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This was pretty simple. Marble diagrams are a very comfortable way of representing
+    data flows without worrying about implementation details (this reminds us of declarative
+    programming, as we defined it in the first chapter, doesn't it?).
+  prefs: []
+  type: TYPE_NORMAL
+- en: In some diagrams, you can also see a cross sign on the timeline, which represents
+    an error (an `onError` notification to be precise). We'll see further on in this
+    chapter that we can work with `onComplete` and `onError` notifications just as
+    with `onNext`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The debounceTime() operator
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Let''s have a look at another diagram. This time we have a `debounceTime()`
+    operator from RxJS 5, which we saw in the first chapter, in the *Autocomplete
+    with RxJS* example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The debounceTime() operator](img/00008.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Marble diagram representing the debounceTime() operator from http://reactivex.io/documentation/operators/debounce.html
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the rectangle in the middle, we don't have any pseudocode this time; just
+    a single expression `debounceTime(20)`. Well, in order to figure out what it does,
+    we need to look at the documentation, or try to analyze the diagram.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When the `debounceTime()` operator receives a value, it waits a certain interval
+    before reemitting it. If any other values arrive before the interval expires,
+    the original value is discarded and the later value is used instead; the interval
+    is restarted as well. This can go on for an infinite number of values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The diagram exactly describes the previous paragraph:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, value **a** arrives. The transformation function waits until 20ms interval
+    expires, and after that, the operator reemits the value further. The interval
+    is represented by shifting the bottom values on the timeline slightly to the right.
+    As we said previously, the horizontal lines represent values in time. When the
+    bottom circle, labeled **a**, is shifted to the right, it means this event happened
+    after the top **a** circle.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Then, two more values arrive, both of them in a very short time. The first one
+    is discarded, but after the second one, there's another longer time gap, so only
+    the second value gets reemitted.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The process with the last value **d** is analogous to the first one.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This operator is useful when we know we can ignore some events that occur quickly
+    after one another. A prime example is using `debounceTime()` for autocomplete
+    features when we want to start searching after a user has stopped typing a keyword.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The concat operator
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Now we can have a look at a slightly more complicated operator, which is `concat()`.
+    Look at the following diagram and try to guess what it does:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The concat operator](img/00009.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Marble diagram representing the concat() operator from http://reactivex.io/documentation/operators/concat.html
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s analyze this together before looking to the documentation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: At the top, we have two Observables as inputs to the operator.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Both Observables should emit a value at the same time, but only the value from
+    the first Observable is passed through. The same applies for the second and third
+    values as well.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Then the first Observable reaches the end and sends an `onComplete` notification.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Right after that, the operator starts emitting values from the second Observable.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `concat()` operator merges multiple Observables into one. It internally
+    subscribes to each input Observable in order, one after another. This means that,
+    when the first Observable completes, it subscribes to the next one. It's important
+    to know that there's only ever one source Observable subscribed at a time (we'll
+    work with `concat()` and a similar `merge()` operator in [Chapter 4](part0039_split_000.html#1565U2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 4. Reactive versus a Typical Event-Driven Approach"), *Reactive versus
+    a typical Event-Driven Approach*).
+  prefs: []
+  type: TYPE_NORMAL
+- en: In other words, the `concat()` operator concatenates multiple data streams into
+    a single stream.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the first chapter, we talked about functional programming and how most principles
+    are the same in reactive programming. Implementing such a feature would be rather
+    complicated because there's no built-in PHP function designed to deal with such
+    a use case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we go back to the first chapter once more, we said that one key concept of
+    reactive programming is to "express data flows with ease". This operator shows
+    what that means in action.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Other common operators
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'These were only three operators out of more than 40 available in RxPHP. Apart
+    from very simple ones like `filter()` and `map()`, there''re also more sophisticated
+    ones. We''ve seen `concat()` already, but here are a few interesting ones that
+    we''ll use in further chapters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`buffer()`: This operator has multiple variants, but all of them collect received
+    values and reemits them in groups of a predefined size. For example, we can create
+    groups of three items as follows:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Which prints the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_IND
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Note that the last array contains just one value because the Observable sent
+    an `onComplete` notification.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '`merge()`: This operator merges all input Observables into a single output
+    Observable, reemitting all values immediately (in contrast to `concat()`).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`distinct()`: This operator reemits only those values that haven''t passed
+    this operator before.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`take()`: This operator reemits only a set number of values that arrive to
+    the operator first, then sends an `onComplete` notification.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`retry()`: When source Observable sends `onError`, this operator tries to resubscribe
+    automatically. You can also tell it to retry only a limited number of times until
+    signaling `onError` (we''ll use this operator in [Chapter 4](part0039_split_000.html#1565U2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 4. Reactive versus a Typical Event-Driven Approach"), *Reactive versus
+    a Typical Event-Driven Approach*).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`catchError()`: This operator lets us continue by subscribing to another Observable
+    returned from its callback when an `onError` notification occurs.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`toArray()`: This operator collects all items from its source Observable and
+    reemits them as a single array when the source Observable completes.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`timeout()`: This operator sends an `onError` notification if no values arrived
+    within a certain time span.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Enough theory; let's start writing our first custom class, which we'll utilize
+    a few times throughout this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing the DebugSubject class
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: One common use case for `Subject` class is proxying all values and notifications
+    from its source Observable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In one of the preceding paragraphs, we wrote the `PrintObserver` class, which
+    prints all values it receives. However, a more common situation is where we want
+    to output values from an Observable while being able to chain it with another
+    operator or observer. The `Subject` class exactly fits this use case, so we''ll
+    rewrite the preceding `PrintObserver` class and inherit `Subject` instead of `AbstractObserver`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: This `DebugSubject` class prints all values, their types, and the time they
+    were received by the `DebugSubject`. It also allows us to set a unique identifier
+    for each `DebugSubject` instance to be able to distinguish their output. We're
+    going to use this class a couple of times throughout this book to quickly see
+    what's going on inside our Observable chains.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, using this class is just like using any other observer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output in the console is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Chaining Subjects and operators works just as with Observables:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In this example, we first created an instance of `DebugSubject`, then we chained
+    it with the `map()` operator, which returns the lengths of each item. Finally,
+    we subscribed another `DebugSubject` that will print only numbers because it''s
+    placed after `map()`. Then we created an Observable from an array (we''ve seen
+    this static method previously), which is going to be the source emitting all items.
+    The result is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that the order of messages matches our assumption that the source Observable
+    emits one value at a time, which is propagated through the entire chain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: There's one important side effect of using Subjects as we did that isn't very
+    obvious. Since we subscribe it to the preceding Observable, it turns it from "cold"
+    into "hot", which might be unwanted in some use cases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: RxPHP provides a series of operators all starting with the "doOn" prefix that
+    are intended to be placed inside the operator chain to execute side effects without
+    subscribing to an Observable. We'll have a better look at them in [Chapter 5](part0043_split_000.html#190861-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 5. Testing RxPHP Code"), *Testing RxPHP Code*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing JSONDecodeOperator
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We're going to work with calls to remote API's a few times throughout this book,
+    so it would be very handy to have an operator that transforms JSON string responses
+    into their PHP array representations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This example looks like something that could be easily done with just the `map()`
+    operator:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This prints the correct result for sure, as we can see in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Well, but what about malformed JSON strings? What happens if we try to decode
+    the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The function `json_decode()` doesn''t throw an exception when trying to process
+    an invalid JSON string; it just returns `null`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is probably not what we want. If the JSON string is invalid, then something
+    is wrong because this situation should never happen and we want to send an `onError`
+    notification.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we wanted to know any further information about which error occurred, we'd
+    have to call `json_last_error()`. So, this is a perfect opportunity to write a
+    custom operator that decodes JSON strings that, if any error occurs, will send
+    an `onError`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'All operators implement the `OperatorInterface` and `__invoke()` method. This
+    so-called "magic" method is supported from PHP 5.3+ and allows the use of objects
+    as functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When class implements `__invoke()`, it''s automatically considered as callable
+    as well:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Writing operators is very similar. A stub for our class will look like the
+    following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Method `__invoke()` takes three arguments and returns a Disposable object.
+    Right now, we''ll use just the first two and not worry about the `$scheduler`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`ObservableInterface $observable`: This is our input Observable that we''ll
+    subscribe to'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`ObserverInterface $observer`: This is where we''ll emit all output values
+    from this operator'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'We''ll follow almost the same principle as when writing a custom `Subject`
+    class. We''re going to use `CallbackObserver` to subscribe to the Observable and
+    perform all of our logic:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'There''re a few interesting things to notice:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When `onError` or `onComplete` notifications occur, we just pass them along
+    without any further logic.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The operator can send any signal any time it wants. Inside `CallbackObserver`
+    class's `onNext` closure, we check whether any error occurred while decoding the
+    input JSON string coming from the source Observable using `json_last_error()`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The operator has full access to the source Observable.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The operator can emit values independently on values from the source Observable.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'In order to use our operator, we have to use the `Observable::lift()`, method
+    which takes a Closure as an argument that needs to return an instance of an operator
+    (this function is a so-called operator factory):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: Using custom operators was significantly simplified in RxPHP 2, but using the `lift()`
+    method is universal and works in both versions of RxPHP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Valid JSON string is decoded as expected:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'On the other hand, the same invalid JSON string that we used above doesn''t
+    call `onNext`, but `onError` instead. It sends this notification with an instance
+    of `InvalidArgumentException` class and the error message from `json_last_error_msg()`,
+    as shown in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: As usual, we're going to reuse this class throughout this book. The next chapter
+    is going to work with remote APIs a lot, so this operator is going to be very
+    handy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Simplifying propagation of notifications
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In the `JSONDecodeOperator` class, we didn''t want to modify either `onError`
+    nor `onComplete` notifications and we just passed them along. However, there''s
+    an easier way to do this thanks to how PHP works with callables. A valid callable
+    is also an array with two items: an object and a method name.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This means we can rewrite the above `CallbackObserver` instantiation as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: The functionality is exactly the same. Instead of creating an anonymous function
+    for each notification, we can just pass the callable directly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using custom operators in RxPHP 2
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In [Chapter 1](part0015_split_000.html#E9OE1-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 1. Introduction to Reactive Programming"), *Introduction to Reactive
+    Programming*, we mentioned a magic `__call()` method. RxPHP 2 uses this method
+    to allow the use of custom operators by auto-discovering them in two namespace
+    formats.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first option is defining our operator class in the `Rx\Operator` namespace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It''s the same `JSONDecodeOperator` class, just updated for RxPHP 2\. Using
+    this operator is, then, very simple:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: Since our operator resides under the `Rx\Operator` namespace, it's expanded
+    by the `__call()` method to `Rx\Operator\JSONDecodeOperator`. This means we don't
+    need to use the `lift()` method at all.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Another way is to prefix the operator name and namespace with underscores `_`
+    which are then merged into a full class name. This means we can put all application
+    specific operators under a custom namespace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now we can use the operator as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: Writing CURLObservable
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As we said, we're going to work with API calls and, for this reason, we need
+    a comfortable way of creating HTTP requests. It's probably no surprise that we'll
+    write a custom Observable that downloads a URL and passes it's response to its
+    observers, where we'll decode it from JSON using the operator we created just
+    a couple of lines above.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We're going to use PHP's cURL module, which is a wrapper around libcurl ( [https://curl.haxx.se/libcurl/](https://curl.haxx.se/libcurl/)
+    ) - a C library for transferring data via any protocols imaginable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll start by using plain simple cURL in PHP and we'll see that it supports
+    some sort of asynchronous approach out-of-the-box.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Imperative approach and cURL
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: If we just wanted to download a single URL, we wouldn't need anything special.
+    However, we want to make this, and all future applications of `CURLObservable`
+    class, more interactive, so we'll also keep track of the downloading progress.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A plain and simple approach could look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: We're using `CURLOPT_PROGRESSFUNCTION` option to set a callback function which
+    is invoked internally by the cURL module. It takes four arguments that help us
+    keep track of how much of the page's total size already has been downloaded.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We probably don't need to show its output because it's pretty obvious.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's also a small subset of cURL functions that work with multiple cURL handles
+    simultaneously. These are all prefixed with `curl_multi_` and are executed by
+    calling `curl_multi_exec()`. Nonetheless, the `curl_multi_exec()` function is
+    blocking and the interpreter needs to wait until it finishes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing cURL into a custom Observable
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We've already seen how to write a custom observer, Subject and operator. Now
+    is the right time to write an Observable as well. We want the Observable to emit
+    values when downloading the URL and, at the end, return a complete response. We
+    can distinguish between the two types of messages by checking their type. Progress
+    will always be a double, while response will always be a string.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s start with our class synopsis to see how it''s going to work and then
+    implement each method separately with a short description:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: Every time we write an Observable, we'll extend the base `Rx\Observable` class.
+    We could theoretically just implement `Rx\ObservableInterface`, but, most of the
+    time, we also want to inherit all its internal logic and all existing operators.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The constructor and method `startDownload()` are going to be very simple. In `startDownload()`,
+    we start downloading the URL while monitoring its progress.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Please note that this code goes inside the `CURLObservable` class; we''re just
+    trying to keep the code short and easy to read, so we have omitted indentation
+    and class definition in this example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is mostly the same as the example using an imperative approach. The only
+    interesting difference is that we're using a callable `[$this,'progress']` instead
+    of just a function name, as we did earlier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The actual emission of values happens inside the `progress()` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: Since we inherited the original Observable, we can make use of its protected
+    property `$observers` that holds all subscribed observers, as its name suggests.
+    To emit a value to all of them, we can simply iterate the array and call `onNext`
+    on each observer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The only method we haven''t seen so far is `subscribe()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This method combines many of the things we''ve seen in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We definitely want to keep the original functionality of the Observable, so
+    we'll call its parent implementation. This adds the observer to the array of observers,
+    as mentioned a moment ago.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `parent::subscribe()` method returns a disposable. That's the object we
+    can use to unsubscribe the observer from this Observable.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If we don't specify what Scheduler this Observable should use, it'll fall back
+    to `ImmediateScheduler`. We've already mentioned `ImmediateScheduler` when we
+    were talking about Schedulers in general. In RxPHP 2, we'd use `Scheduler::getImmediate()`
+    instead of directly using the class name.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Right after that, we schedule the work (in terms of Schedulers, it's usually
+    referred to as "action") to be executed by the Scheduler. Note that the action
+    itself is a closure.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Then, we start downloading the URL. If we subscribe another observer to the
+    same Observable, it'll re-download the same URL again. Download progress is then
+    emitted with frequency according to cURL's internals. We'll talk more about the
+    subscription process in the next chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When downloading finishes, we emit the response or an error.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: At the end of this method, it returns another disposable. This time, it's `CompositeDisposable`
+    that is used to wrap other disposables. When calling its `dispose()` method, these
+    wrapped ones are properly disposed as well.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'So, that''s it. Now we can test our Observable and see what its output is.
+    We can try to grab a list of the most recent questions on [www.stackoverflow.com](http://www.stackoverflow.com)
+    tagged with *functional-programming*":'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This prints a couple of numbers and then the response JSON string:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can see that one value was emitted twice. This is because of the timing
+    and network latency when cURL evaluates the callback, which is nothing unusual.
+    If we didn't want to see repeated values, we could use the `distinct()` operator
+    that we saw when talking about "marble diagrams".
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now let''s combine it with our `JSONDecodeOperator`. Since we''re now interested
+    only in the string response and want to ignore all progress emissions, we''ll
+    also use the `filter()` operator:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This returns part of the response array (for demonstration purposes, we added
+    indentation and made the output a little longer):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: When we used the `filter()` operator, you might notice that we called it `Observable::filter()`
+    without necessarily using the `lift()` method. This is because almost all operators
+    are, in fact, just `lift()` calls with predefined Closures that return an appropriate
+    operator class. A good question is whether we can write our own shorthand for `JSONDecodeOperator`
+    when we're already extending the base Observable class. Maybe something like `Observable::jsonDecode()`?
+  prefs: []
+  type: TYPE_NORMAL
+- en: The answer is yes, we can. However, in RxPHP 1.x, it wouldn't help us a lot.
+    When we chain operators, they return other instances of Observables that aren't
+    under our control. We could theoretically use `Observable::jsonDecode()` right
+    after creating `CurlObservable` because we'd know that it's going to be an instance
+    of this class, but chaining it with `filter()` brings us back to the original
+    Observable that doesn't know any `jsonDecode()` methods. In particular, the `filter()`
+    operator returns an instance of `Rx\Observable\AnonymousObservable`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Running multiple requests asynchronously
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: An interesting use case could be to start multiple requests asynchronously.
+    All calls to `curl_exec()` are blocking, which means that they block the execution
+    context until they're finished.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unfortunately, this is a very tricky problem that's hard to solve without using
+    any extra PHP modules, such as **pthreads**, as we'll see much later in [Chapter
+    9](part0066_split_000.html#1UU542-bd355a22cf10407cb10df27e65585b8d "Chapter 9. Multithreaded
+    and Distributed Computing with pthreads and Gearman"), *Multithreaded and Distributed
+    Computing with pthreads and Gearman*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can, however, make use of PHP's standard `proc_open()` to spawn non-blocking
+    subprocesses that can run in parallel and then just ask for their output.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The proc_open() and non-blocking fread()
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Our goal is to have the means to start various subprocesses asynchronously.
+    In this example, we''ll use a simple PHP script that''ll just sleep for a couple
+    of seconds and represent our asynchronous task:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This script takes two arguments. The first one is an identifier of our choice
+    that we''ll use to distinguish between multiple processes. The second one is the number
+    of seconds this script will run while printing its name and the elapsed time every
+    second. For example, we can run:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we''ll write another PHP script that uses `proc_open()` to spawn a subprocess.
+    Also, as we said, we need the script to be non-blocking. This means that we need
+    to be able to read output from the subprocess as it is printed using `printf()`
+    above, while being able to spawn more subprocess, if needed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: We spawn a subprocess `php sleep.php proc1 3` and then go into a loop. With
+    a 100ms delay, we check whether there's any new output from the subprocess using `fread()`.
+    If there is, we print it; otherwise, just write the word "tick". The loop will
+    end when the subprocess terminates (that's the condition with the `proc_get_status()`
+    function).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The most important thing in this example is calling the `stream_set_blocking()`
+    function, which makes operations with this stream non-blocking.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Event loop and RxPHP
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Applying event loop to Observables would work in a similar way. We'd create
+    Observables, start an event loop and periodically check their progress. Luckily
+    for us, RxPHP is prepared for this. In combination with the ReactPHP library (
+    [https://github.com/reactphp/react](https://github.com/reactphp/react) ), we can
+    use a Scheduler that's designed exactly for what we need.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As an example, we can have a look at `IntervalObservable` that periodically
+    emits values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This prints three values with 1s delays:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In RxPHP 2, using event loops has been simplified and, most of the time, we
+    don't even need to worry about starting the loop ourselves. We'll talk about differences
+    between RxPHP 1.x and RxPHP 2 regarding event loops in [Chapter 6](part0050_split_000.html#1FLS41-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 6. PHP Streams API and Higher-Order Observables"), *PHP Streams API and
+    Higher-Order Observables*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we had a closer look at all the components of RxPHP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In particular, we've seen all three types of notifications used in Rx, Observables,
+    observers, Subjects, Singles and operators. On practical examples, we have designed
+    our custom observer, Subject, Observable and an operator. We'll use all these
+    in the upcoming chapters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We saw that documentation regarding Rx operators is very often described in
+    the form of "marble diagrams".
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next chapter is going to utilize all we did in this chapter. We're going
+    to create a CLI Reddit reader using RxPHP and Symfony Console component. We'll
+    also talk in more depth about the subscription process in Observable chains.
+  prefs: []
+  type: TYPE_NORMAL

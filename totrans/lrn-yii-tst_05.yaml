@@ -1,0 +1,528 @@
+- en: Chapter 5. Summoning the Test Doubles
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we are going to take a close look at test doubles in order
+    to control our tests with more accuracy and avoid having to rely on interfaces
+    we don't know anything about.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We're going to complete the work we started in the previous chapter and understand
+    how to deal with external dependencies, particularly the difference between stubs
+    and mocks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will then spend the rest of the chapter on understanding how to organize
+    our tests to improve legibility and maintainability, using some BDD-oriented tools
+    we've introduced earlier in the book, such as **Specify** and **Verify**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'On a high level, these are the topics that we will cover in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dealing with external dependencies
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Isolating components with stubs
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Listening for calls with an observer
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Writing maintainable unit tests
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Dealing with external dependencies
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We left our suite of unit tests at an almost complete status. What we had left
+    to cover with tests was the `validatePassword()` method from our `User` model
+    class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The problem that this method is giving us is that we are planning to use our
+    beloved security component, kindly provided by Yii, to encrypt and decrypt the
+    password and verify its correctness. This component is available throughout the
+    life of the application via `Yii::$app->getSecurity()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `yii\base\Security` class exposes a series of methods to help you strengthen
+    your application. The use we will make of it is quite limited, but I would recommend
+    reading a bit more about it on the official documentation available at [http://www.yiiframework.com/doc-2.0/guide-security-authentication.html](http://www.yiiframework.com/doc-2.0/guide-security-authentication.html)
+    and the following sections that will cover all aspects of authentication, encryption,
+    and so forth.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s then define how we think our implementation should work for this method.
+    The documented use for validating the password is the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: This means that we will need to create the password hash first by using the
+    aforementioned helper class, set it in the user, and then can use the `$user->validatePassword()`
+    method to check whether the actual cleartext password that is passed matches the
+    internal one. Some sort of encryption/decryption should happen behind the curtains,
+    ideally by using `Security::validatePassword()` from the security component.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A possible implementation of `User::validatePassword()` in the user model can
+    be the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: If we try to run the tests, this specific method will pass without problems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This might be a good solution, but we need to be extremely conscious that this
+    is not a true unit test; it's more of an integration test, as we still have the
+    dependency on the security component.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Isolating components with stubs
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The problem we are facing right now is that we don't really want to use the
+    actual security component, as it's not part of the test itself. Keep in mind that
+    we're working in a black box environment, and we don't know what other dependencies
+    the security component might have in the future. We just need to ensure that our
+    implemented method will behave correctly, given the interface of the (fake) object
+    works as expected. We can later add an integration method to ensure that the security
+    component actually works, but that's a completely different matter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In order to do that, PHPUnit provides an interesting system for stubbing and
+    mocking classes and injecting them into your application to provide a more controlled
+    environment. Generically, these are normally called **test doubles** and the method
+    used to create them is through the Mock Builder.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The latest versions of PHPUnit (4.x or above) suggest the use of the Mock Builder
+    in order to configure the stub and behavior. Previously, this was done through
+    a lengthy series of arguments to be passed to it. I won't indulge in saying that
+    if you're working with PHPUnit 3.x or earlier versions, it might be time to upgrade!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Please note that the `final`, `private`, and `static` methods *cannot* be stubbed
+    or mocked as a PHPUnit test double functionality does not support this.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Stubbing** in particular refers to the practice of replacing an object with
+    a test double that might return configured values.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, how are we doing this? I''ve decided to take the approach of using a separate
+    private function to delegate the stubbing logic to a reusable piece of code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: We start by creating the stub of our security class by using `getMockBuilder()`.
+    By default, the Mock Builder will replace all the class methods with test doubles
+    that return `null`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can also decide selectively which ones are to be replaced by specifying
+    them in an array and then passing it to `setMethods()`; for example: `setMethods([''validatePassword'',
+    ''generatePasswordHash''])`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can also pass `null` to it; we can avoid any method from having a test double,
+    but without it, we won't be able to set any expectation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'If the class you''re mocking performs unneeded initializations in the `__constructor()`
+    method, you can disable it by using `disableOriginalConstructor()` or passing
+    custom arguments with `setConstructorArguments()`. There are more methods that
+    can be applied to modify the behavior of the Mock Builder; refer to the following
+    documentation: [https://phpunit.de/manual/current/en/test-doubles.html#test-doubles.stubs](https://phpunit.de/manual/current/en/test-doubles.html#test-doubles.stubs).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Any method that is a test double can be configured and be monitored with the
+    use of `expects()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This seems to be pretty much straightforward to read: any (`any()`) time the
+    method (`method()`) ''`validatePassword`'' is invoked with (`with()`) the `$expectedPassword`,
+    it will return (`willReturn()`) true.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are a number of ways you can configure your replaced functions: having
+    them return only once a certain value, or different values in consecutive calls,
+    or throw exceptions, when invoked.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Much more is available and documented in the official PHPUnit documentation
+    available at [https://phpunit.de/manual/current/en/test-doubles.html](https://phpunit.de/manual/current/en/test-doubles.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can then implement the negative test to cover a wrong password passed to
+    `validatePassword()` with the logic we wanted:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For this to happen, we will need to slightly refactor the private method we
+    just implemented:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, we can finally see how to configure our replaced method to throw the exception
+    using `willThrowException()`. With it, we can ensure an exception is being thrown
+    by a method; for this reason, tests that check for exceptions are to be separated
+    from the others.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The official documentation provides a more detailed explanation of the use of
+    the Mock Builder API and it is available at [https://phpunit.de/manual/current/en/test-doubles.html](https://phpunit.de/manual/current/en/test-doubles.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Listening for calls with an observer
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As `User::validatePassword()` is now using `Security::validatePassword()` in
+    its implementation in a transparent way, we don't want to expose any of this when
+    setting the password to whoever is going to use the User model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, we'd like to think that when setting the password, our implementation will
+    use `Security::generatePasswordHash()` in some way, so that when calling `User::validatePassword()`,
+    we close the circle and everything should work without having to worry too much
+    about encryption schemes and what not.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'An immediate, somewhat logical, but quite abused way to implement a test that
+    could cover this bit is the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let''s stop one second and understand what we''re doing here: ideally we want
+    to set a password and read it back encrypted, doing the related and needed assertions.
+    This means that we are both testing the setter and the getter of the password
+    in the same test, which, once again, defies the basic principle of doing unit
+    testing.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As a side note, however we implement the stubbing of the security component,
+    our logic won't look much different from the initial implementation we had at
+    the beginning of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introducing mocking
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Mocking refers to the act of replacing an object with a test double that verifies
+    the expectations, for instance ensuring that a method has been called. This seems
+    to meet our needs exactly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In a proper black box scenario, we won't know what `setPassword()` does and
+    we would need to rely on the code coverage purely to understand if we've covered
+    any possible branch of the programming flow, as previously said in [Chapter 4](ch04.html
+    "Chapter 4. Isolated Component Testing with PHPUnit"), *Isolated Component Testing
+    with PHPUnit*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Purely as an example for our purposes, we want to make sure that when calling
+    `setPassword()`, we call `Security::generatePasswordHash()` at least once and
+    that the argument is passed over to the method without any modification.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s try the following approach to test this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you might have noticed, we don't have any specific assertion in this test.
+    Our mocked class will just mark the test as passed once its method has been called
+    with the specified value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting to know the Yii virtual attributes
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In the example we just discussed, it would have been great if we could have
+    hidden the functionality of transforming the cleartext password into an hash from
+    the user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are multiple reasons why this isn't happening, but the most important
+    of them is that Yii already provides a quite interesting and well-done system
+    for virtual attributes. This system is in place since Yii 1, and once you get
+    used to it, you can achieve satisfying results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By implementing a model that inherits from `yii\base\Component`, such as `ActiveRecord`
+    or `Model`, you will also inherit the already implemented magic functions `__get()`
+    and `__set()` that help you deal with virtual attributes. This ends up being particularly
+    useful when you are in need of creating additional attributes without any effort.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's see a more practical example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s assume that our User model had a first name and a last name field in
+    the database, but we would need to create the full name attribute without adding
+    a new column in the user table:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'So, we can access the field as if it was a normal attribute of the class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Plain and simple public attributes work as you would expect them to. In the
+    following snippets of code, I''m introducing a new class `Dog`, purely for example
+    purposes, which extends from `Model`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Therefore, our tests would pass without problems:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This shouldn''t be a surprise to you at all, but let''s see what happens if
+    we have both:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we are expecting `setAge()` to be triggered on assignment, while reading
+    directly the value of the public attribute:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'However, running this test will only reveal the sad truth:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: Yes, the test is exactly the same.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Having getters and setters automatically handled by our classes comes at an
+    expense. The sequence of checks that are performed by the magic setter can be
+    summarized with the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you have implemented a model extending from `yii\base\ActiveRecord`, its
+    base class will first check if the attribute is already available as a table column;
+    otherwise, it will pass the call over to `Component::__set()`. This method is
+    available not only for models extending from `yii\base\Model`, but also for any
+    other that implicitly inherits from `yii\base\Component`, such as behaviors and
+    events.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Following this, we can see that the setter will ensure that the `'set'.$name`
+    method is available in our class, and if there's only a getter, then it will raise
+    an exception.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In our initial definition of the `firstname` getter, we could have had the
+    following additional test:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: There are a couple or more things regarding events and behaviors done in the
+    setter, but we won't touch them as of now.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, going back to our `setPassword()` conundrum, we need to be aware that if
+    we were to trigger the magic method by using `$user->password` for the left assignment,
+    this won't trigger our method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, the best solution would ideally have been to call the stored password in
+    a more declarative way, such as `password_hash`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing maintainable unit tests
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As the last part, before leaving the unit tests behind, I wanted to show some
+    additional features provided by Codeception that have been already introduced
+    in [Chapter 1](ch01.html "Chapter 1. The Testing Mindset"), *The Testing Mindset*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Codeception has been created with modularity and flexibility in mind, so anything
+    else is your responsibility. In particular, you might have already noticed that
+    our `UserTest` class has grown quite a bit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, what would happen if a change in the interface or in the way our model works
+    breaks our tests?
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's quite clear, especially if you're working in a team or even more if your
+    code gets handed over to other people to maintain, that you need clear rules so
+    that everybody agrees on how to write the code, as a starter, and tests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I've already highlighted in [Chapter 4](ch04.html "Chapter 4. Isolated Component
+    Testing with PHPUnit"), *Isolated Component Testing with PHPUnit*, that one of
+    the very basic things I've started doing with the teams I've worked with and with
+    my own code, is to define precise and simple rules, which aim at the clarity and
+    readability of the code. I've seen way too many "developer rockstars" that show
+    off how good they are at writing compressed code, nesting variables, and hiding
+    multiple assignments. Writing code that ends up being obfuscated might be fun
+    if that code is a throwaway.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Code legibility ends up being one of the ways I've seen companies select candidates,
+    and a very quick test is to have someone read your code and be able to get what
+    it does without asking.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Tests shouldn''t be treated with less care than your application code: if done
+    properly, tests represent a way of documenting how things are supposed to be working
+    and how they should be used. As soon as your class provides more and more functionality,
+    your test classes will start to grow and you need to be prepared to face a refactor
+    and introduce regression testing when a change in the application happens or a
+    bug is introduced.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using BDD specification testing
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Codeception provides a nice and compact tool called **Specify**, which we have
+    already introduced previously.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With PHPUnit alone, we only have methods to split our tests; using Specify,
+    we have another layer of organization: The method becomes our *story* and our
+    specification blocks our *scenarios*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Just for documentation purposes, it should be noted that PHPUnit has its own
+    BDD-compatible syntactic sugar with the `given()`, `when()` and `then()` methods,
+    as explained at [https://phpunit.de/manual/3.7/en/behaviour-driven-development.html](https://phpunit.de/manual/3.7/en/behaviour-driven-development.html).
+    You can still use this syntax, if you are more used to it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As a clearer example, we can group all validation rules within the same test
+    and split the definition of what we''re doing by using Specify blocks, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: As we can see, we are now aggregating two of our previous tests within a single
+    method and grouping them within two blocks of `specify()` calls.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Specify is defined as a trait; this is the reason why you need to both use
+    the namespace in the outermost global scope and load it within the test class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As you can see `specify()` requires only two arguments: a simple description
+    of the scenario that we are about to define, and an anonymous function that contains
+    the assertions we want to do.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: At this point, we can either use the PHPUnit classic assertions we've used until
+    now or try to empower BDD style assertions. **Verify**, a small and nifty package,
+    will provide you this capability, allowing you to use methods such as `verify()`,
+    `verify_that()`, and `verify_not()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'From the earlier specified scenarios, consider the following line of code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is exactly the same as using the PHPUnit assertion:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In order to perform more elaborate assertions, we can instead use `verify()`
+    in the following way:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: There are plenty of other assertions that can be used and can be found at the
+    project homepage at [https://github.com/Codeception/Verify](https://github.com/Codeception/Verify).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we've covered the long-awaited mocks and stubs that will allow
+    you to perform proper component tests. In the final part, we've taken a better
+    look at code organization for your tests and a BDD-like way of writing them by
+    using Specify and Verify.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the following chapter, we're going to take a look at the next step of implementing
+    the functional tests that should define the REST interface for our user.
+  prefs: []
+  type: TYPE_NORMAL

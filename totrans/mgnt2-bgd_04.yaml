@@ -1,0 +1,1353 @@
+- en: Chapter 4. Models and Collections
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Like most modern frameworks and platforms, these days Magento embraces an **Object
+    Relational Mapping** (**ORM**) approach over raw SQL queries. Though the underlying
+    mechanism still comes down to SQL, we are now dealing strictly with objects. This
+    makes our application code more readable, manageable, and isolated from vendor-specific
+    SQL differences. Model, resource, and collection are three types of classes working
+    together to allow us full entity data management, from loading, saving, deleting,
+    and listing entities. The majority of our data access and management will be done
+    via PHP classes called Magento models. Models themselves don't contain any code
+    for communicating with the database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The database communication part is decoupled into its own PHP class called resource
+    class. Each model is then assigned a resource class. Calling `load`, `save`, or
+    `delete` methods on models get delegated to resource classes, as they are the
+    ones to actually read, write, and delete data from the database. Theoretically,
+    with enough knowledge, it is possible to write new resource classes for various
+    database vendors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next to the model and resource classes, we have collection classes. We can think
+    of a collection as an array of individual model instances. On a base level, collections
+    extend from the `\Magento\Framework\Data\Collection` class, which implements `\IteratorAggregate`
+    and `\Countable` from **Standard PHP Library** (**SPL**) and a few other Magento-specific
+    classes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: More often than not, we look at model and resource as a single unified thing,
+    thus simply calling it a model. Magento deals with two types of models, which
+    we might categorize as simple and EAV models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a miniature module
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating a simple model
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The EAV model
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Understanding the flow of schema and data scripts
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating an install schema script (`InstallSchema.php`)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating an upgrade schema script (`UpgradeSchema.php`)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating an install data script (`InstallData.php`)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating an upgrade data script (`UpgradeData.php`)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Entity CRUD actions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Managing collections
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating a miniature module
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For the purpose of this chapter, we will create a miniature module called `Foggyline_Office`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The module will have two entities defined as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Department`: a simple model with the following fields:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`entity_id`: primary key'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`name`: name of department, string value'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Employee`: an EAV model with the following fields and attributes:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Fields:**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`entity_id`: primary key'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`department_id`: foreign key, pointing to `Department.entity_id`'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`email`: unique e-mail of an employee, string value'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`first_name`: first name of an employee, string value'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`last_name`: last name of an employee, string value'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Attributes:**'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`service_years`: employee''s years of service, integer value'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`dob`: employee''s date of birth, date-time value'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`salary` – monthly salary, decimal value'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`vat_number`: VAT number, (short) string value'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`note`: possible note on employee, (long) string value'
+  prefs:
+  - PREF_IND
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Every module starts with the `registration.php` and `module.xml` files. For
+    the purpose of our chapter module, let''s create the `app/code/Foggyline/Office/registration.php`
+    file with content as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `registration.php` file is sort of an entry point to our module.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now let''s create the `app/code/Foggyline/Office/etc/module.xml` file with
+    the following content:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: We will get into more details about the structure of the `module.xml` file in
+    later chapters. Right now, we will only focus on the `setup_version` attribute
+    and `module` element within `sequence`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The value of `setup_version` is important because we might use it within our
+    schema install script (`InstallSchema.php`) files, effectively turning the install
+    script into an update script, as we will show soon.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `sequence` element is Magento's way of setting dependencies for our module.
+    Given that our module will make use of EAV entities, we list `Magento_Eav` as
+    a dependency.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a simple model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The `Department` entity, as per requirements, is modeled as a simple model.
+    We previously mentioned that whenever we talk about models, we implicitly think
+    of `model` class, `resource` class, and `collection` class forming one unit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s start by first creating a `model` class, (partially) defined under the
+    `app/code/Foggyline/Office/Model/Department.php` file as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: All that is happening here is that we are extending from the `\Magento\Framework\Model\AbstractModel`
+    class, and triggering the `$this->_init` method within `_construct` passing it
+    our `resource` class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `AbstractModel` further extends `\Magento\Framework\Object`. The fact that
+    our `model` class ultimately extends from `Object` means that we do not have to
+    define a property name on our `model` class. What `Object` does for us is that
+    it enables us to get, set, unset, and check for a value existence on properties
+    magically. To give a more robust example than `name`, imagine our entity has a
+    property called `employee_average_salary` in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: The reason why this works is due to `Object` implementing the `setData`, `unsetData`,
+    `getData`, and magic `__call` methods. The beauty of the magic `__call` method
+    implementation is that it understands method calls like `getEmployeeAverageSalary`,
+    `setEmployeeAverageSalary`, `unsEmployeeAverageSalary`, and `hasEmployeeAverageSalary`
+    even if they do not exist on the `Model` class. However, if we choose to implement
+    some of these methods within our `Model` class, we are free to do so and Magento
+    will pick it up when we call it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is an important aspect of Magento, sometimes confusing to newcomers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once we have a `model` class in place, we create a model `resource` class,
+    (partially) defined under the `app/code/Foggyline/Office/Model/ResourceModel/Department.php`
+    file as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: Our resource class that extends from `\Magento\Framework\Model\ResourceModel\Db\AbstractDb`
+    triggers the `$this->_init` method call within `_construct`. `$this->_init` accepts
+    two parameters. The first parameter is the table name `foggyline_office_department`,
+    where our model will persist its data. The second parameter is the primary column
+    name `entity_id` within that table.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`AbstractDb` further extends `Magento\Framework\Model\ResourceModel\AbstractResource`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The resource class is the key to communicating to the database. All it takes
+    is for us to name the table and its primary key and our models can save, delete,
+    and update entities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, we create our `collection` class, (partially) defined under the `app/code/Foggyline/Office/Model/ResourceModel/Department/Collection.php`
+    file as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `collection` class extends from `\Magento\Framework\Model\ResourceModel\Db\Collection\AbstractCollection`
+    and, similar to the `model` and `resource` classes, does a `$this->_init` method
+    call within `_construct`. This time, `_init` accepts two parameters. The first
+    parameter is the full `model` class name `Foggyline\Office\Model\Department`,
+    and the second parameter is the full resource class name `Foggyline\Office\Model\ResourceModel\Department`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`AbstractCollection` implements `Magento\Framework\App\ResourceConnection\SourceProviderInterface`,
+    and extends `\Magento\Framework\Data\Collection\AbstractDb`. `AbstractDb` further
+    extends `\Magento\Framework\Data\Collection`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is worth taking some time to study the inners of these `collection` classes,
+    as this is our go-to place for whenever we need to deal with fetching a list of
+    entities that match certain search criteria.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating an EAV model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The `Employee` entity, as per requirements, is modeled as an EAV model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s start by first creating an EAV `model` class, (partially) defined under
+    the `app/code/Foggyline/Office/Model/Employee.php` file as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, we are extending from the `\Magento\Framework\Model\AbstractModel` class,
+    which is the same as with the simple model previously described. The only difference
+    here is that we have an `ENTITY` constant defined, but this is merely syntactical
+    sugar for later on; it bears no meaning for the actual `model` class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we create an EAV model `resource` class, (partially) defined under the
+    `app/code/Foggyline/Office/Model/ResourceModel/Employee.php` file as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Our `resource` class extends from `\Magento\Eav\Model\Entity\AbstractEntity`,
+    and sets the `$this->_read`, `$this->_write` class properties through `_construct`.
+    These are freely assigned to whatever value we want, preferably following the
+    naming pattern of our module. The read and write connections need to be named
+    or else Magento produces an error when using our entities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `getEntityType` method internally sets the `_type` value to `\Foggyline\Office\Model\Employee::ENTITY`,
+    which is the string `foggyline_office_employee`. This same value is what's stored
+    in the `entity_type_code` column within the `eav_entity_type` table. At this point,
+    there is no such entry in the `eav_entity_type` table. This is because the install
+    schema script will be creating one, as we will be demonstrating soon.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, we create our `collection` class, (partially) defined under the `app/code/Foggyline/Office/Model/ResourceModel/Employee/Collection.php`
+    file as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `collection` class extends from `\Magento\Eav\Model\Entity\Collection\AbstractCollection`
+    and, similar to the model class, does a `$this->_init` method call within `_construct`.
+    `_init` accepts two parameters: the full model class name `Foggyline\Office\Model\Employee`,
+    and the full resource class name `Foggyline\Office\Model\ResourceModel\Employee`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`AbstractCollection` has the same parent tree as the simple model collection
+    class, but on its own it implements a lot of EAV collection-specific methods like
+    `addAttributeToFilter`, `addAttributeToSelect`, `addAttributeToSort`, and so on.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: As we can see, EAV models look a lot like simple models. The difference lies
+    mostly in the `resource` class and `collection` class implementations and their
+    first level parent classes. However, we need to keep in mind that the example
+    given here is the simplest one possible. If we look at the `eav_entity_type` table
+    in the database, we can see that other entity types make use of `attribute_model`,
+    `entity_attribute_collection`, `increment_model`, and so on. These are all advanced
+    properties we can define alongside our EAV model making it closer to the implementation
+    of the `catalog_product` entity type, which is probably the most robust one in
+    Magento. This type of advanced EAV usage is out of the scope of this book as it
+    is probably worth a book on its own.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have simple and EAV models in place, it is time to look into installing
+    the necessary database schema and possibly pre-fill it with some data. This is
+    done through schema and data scripts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding the flow of schema and data scripts
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Simply put, the role of the schema scripts is to create a database structure
+    supporting your module logic. For example, creating a table where our entities
+    would persist their data. The role of the data scripts is to manage the data within
+    existing tables, usually in the form of adding some sample data during module
+    installation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we look a few steps back, we can notice how `schema_version` and `data_version`
+    from the database match the `setup_version` number from our `module.xml` file.
+    They all imply the same thing. If we were to now change the `setup_version` number
+    in our `module.xml` file and run the `php bin/magento setup:upgrade` console command
+    again, our database `schema_version` and `data_version` would get updated to this
+    new version number.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is done through module''s `install` and `upgrade` scripts. If we take
+    a quick look at the `setup/src/Magento/Setup/Model/Installer.php` file, we can
+    see a function, `getSchemaDataHandler`, with content as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is what tells Magento which classes to pick up and run from the individual
+    module `Setup` directory. We will ignore the Recurring case for the moment, as
+    only the `Magento_Indexer` module uses it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For the first time, we run `php bin/magento setup:upgrade` against our module;
+    while it still has no entries under the `setup_module` table, Magento will execute
+    the files within the module `Setup` folder in following order:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`InstallSchema.php`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`UpgradeSchema.php`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`InstallData.php`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`UpgradeData.php`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Notice that this is the same order, top to bottom, as in the `getSchemaDataHandler`
+    method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Every subsequent upper module version number change, followed by the console
+    `php bin/magento setup:upgrade` command, would result in the following files being
+    run in the order as listed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`UpgradeSchema.php`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`UpgradeData.php`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Additionally, Magento would record the upped version number under the `setup_module`
+    database. Magento will only trigger install or upgrade scripts when the version
+    number in the database is less than the version number in the `module.xml` file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: We are not required to always provide these install or upgrade scripts, if ever.
+    They are only needed when we need to add or edit existing tables or entries in
+    a database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we look carefully at the implementation of the `install` and `update` methods
+    within the appropriate scripts, we can see they both accept `ModuleContextInterface
+    $context` as a second parameter. Since upgrade scripts are the ones triggering
+    on every upped version number, we can use `$context->getVersion()` to target changes
+    specific to the module version.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating an install schema script (InstallSchema.php)
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Now that we understand the flow of schema and data scripts and their relation
+    to the module version number, let us go ahead and start assembling our `InstallSchema`.
+    We start by defining the `app/code/Foggyline/Office/Setup/InstallSchema.php` file
+    with (partial) content as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`InstallSchema` conforms to `InstallSchemaInterface`, which requires the implementation
+    of the `install` method that accepts two parameters of type `SchemaSetupInterface`
+    and `ModuleContextInterface`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The install method is all that is required here. Within this method, we would
+    add any relevant code we might have to create the tables and columns we need.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Looking through the code base, we can see that `Magento\Setup\Module\Setup`
+    is the one extending `\Magento\Framework\Module\Setup` and implementing `SchemaSetupInterface`.
+    The two methods seen in the preceding code, `startSetup` and `endSetup`, are used
+    to run additional environment setup before and after our code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Going further, let''s replace the `/* #snippet1 */` bit with code that will
+    create our `Department` model entity table as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here, we are instructing Magento to create a table named `foggyline_office_department`,
+    add `entity_id` and `name` columns to it, and set the comment on the table. Assuming
+    we are using the MySQL server, when code executes, the following SQL gets executed
+    in the database:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `addColumn` method is the most interesting one here. It takes five parameters,
+    from column name, column data type, column length, array of additional options,
+    and column description. However, only column name and column data type are mandatory!
+    Accepted column data types can be found under the `Magento\Framework\DB\Ddl\Table`
+    class, and go as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'An additional options array might contain some of the following keys: `unsigned`,
+    `precision`, `scale`, `unsigned`, `default`, `nullable`, `primary`, `identity`,
+    `auto_increment`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Having gained insight into the `addColumn` method, let''s go ahead and create
+    the `foggyline_office_employee_entity` table for the `Employee` entity as well.
+    We do so by replacing the `/* #snippet2 */` bit from the preceding code with the
+    following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: Following good database design practices, we might notice one thing here. If
+    we agree that every employee can be assigned a single department, we should add
+    a foreign key to this table's `department_id` column. For the moment, we will
+    purposely skip this bit, as we want to demonstrate this through the update schema
+    script later on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: EAV models scatter their data across several tables, three at a minimum. The
+    table `foggyline_office_employee_entity` that we just created is one of them.
+    The other one is the core Magento `eav_attribute` table. The third table is not
+    a single table, rather a list of multiple tables; one for each EAV type. These
+    tables are the result of our install script.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Information stored within the core Magento `eav_attribute` table is not the
+    value of an attribute or anything like it; information stored there is an attribute's
+    metadata. So how does Magento know about our `Employee` attributes (`service_years`,
+    `dob`, `salary`, `vat_number`, `note`)? It does not; not yet. We need to add the
+    attributes into that table ourselves. We will do so later on, as we demonstrate
+    the `InstallData`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Depending on the EAV attribute data type, we need to create the following tables:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`foggyline_office_employee_entity_datetime`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`foggyline_office_employee_entity_decimal`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`foggyline_office_employee_entity_int`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`foggyline_office_employee_entity_text`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`foggyline_office_employee_entity_varchar`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The names of these attribute value tables come from a simple formula, which
+    says *{name of the entity table}+{_}+{eav_attribute.backend_type value}*. If we
+    look at the salary attribute, we need it to be a decimal value, thus it will get
+    stored in `foggyline_office_employee_entity_decimal`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Given the chunkiness of code behind defining attribute value tables, we will
+    focus only on a single, decimal type table. We define it by replacing `/* #snippet3
+    */` from the preceding code with the following bit:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice the `//->addIndex` part within code above. Lets replace it with the following
+    bit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code adds three indexes on the `foggyline_office_employee_entity_decimal`
+    table, resulting in a SQL as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`UNIQUE KEY ''FOGGYLINE_OFFICE_EMPLOYEE_ENTT_DEC_ENTT_ID_ATTR_ID_STORE_ID''
+    (''entity_id'',''attribute_id'',''store_id'')`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`KEY ''FOGGYLINE_OFFICE_EMPLOYEE_ENTITY_DECIMAL_STORE_ID'' (''store_id'')`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`KEY ''FOGGYLINE_OFFICE_EMPLOYEE_ENTITY_DECIMAL_ATTRIBUTE_ID'' (''attribute_id'')`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Similarly, we replace the `//->addForeignKey` part from the preceding code
+    with the following bit:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code adds foreign key relations into the `foggyline_office_employee_entity_decimal`
+    table, resulting in a SQL as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`CONSTRAINT ''FK_D17982EDA1846BAA1F40E30694993801'' FOREIGN KEY (''entity_id'')
+    REFERENCES ''foggyline_office_employee_entity'' (''entity_id'') ON DELETE CASCADE,`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`CONSTRAINT ''FOGGYLINE_OFFICE_EMPLOYEE_ENTITY_DECIMAL_STORE_ID_STORE_STORE_ID''
+    FOREIGN KEY (''store_id'') REFERENCES ''store'' (''store_id'') ON DELETE CASCADE,`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`CONSTRAINT ''FOGGYLINE_OFFICE_EMPLOYEE_ENTT_DEC_ATTR_ID_EAV_ATTR_ATTR_ID''
+    FOREIGN KEY (''attribute_id'') REFERENCES ''eav_attribute'' (''attribute_id'')
+    ON DELETE CASCADE`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Notice how we added the `store_id` column to our EAV attribute value tables.
+    Though our examples won't find use of it, it is a good practice to use `store_id`
+    with your EAV entities to scope the data for a possible multi-store setup. To
+    clarify further, imagine we had a multi-store setup, and with EAV attribute tables
+    set up like the preceding one, we would be able to store a different attribute
+    value for each store, since the unique entry in the table is defined as a combination
+    of `entity_id`, `attribute_id`, and `store_id` columns.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: For the reasons of performance and data integrity, it is important to define
+    indexes and foreign key as per good database design practice. We can do so within
+    `InstallSchema` when defining new tables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating an upgrade schema script (UpgradeSchema.php)
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'During the first-time module install, an upgrade schema is what gets run immediately
+    after an install schema. We define upgrade schema within the `app/code/Foggyline/Office/Setup/UpgradeSchema.php`
+    file with (partial) content as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`UpgradeSchema` conforms to `UpgradeSchemaInterface`, which requires the implementation
+    of the `upgrade` method that accepts two parameters of type `SchemaSetupInterface`
+    and `ModuleContextInterface`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is quite similar to `InstallSchemaInterface`, except the method name. The
+    `update` method is run when this schema gets triggered. Within this method, we
+    would add any relevant code we might want to execute.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Going further, let''s replace the `/* #snippet1 */` part from the preceding
+    code with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, we are instructing Magento to create a foreign key on the `foggyline_office_employee_entity`
+    table, more precisely on its `department_id` column, pointing to the `foggyline_office_department`
+    table and its `entity_id` column.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating an install data script (InstallData.php)
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'An install data script is what gets run immediately after upgrade schema. We
+    define install data schema within the `app/code/Foggyline/Office/Setup/InstallData.php`
+    file with (partial) content as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`InstallData` conforms to `InstallDataInterface`, which requires the implementation
+    of the `install` method that accepts two parameters of type `ModuleDataSetupInterface`
+    and `ModuleContextInterface`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `install` method is run when this script gets triggered. Within this method,
+    we would add any relevant code we might want to execute.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Going further, let''s replace the `/* #snippet1 */` part from the preceding
+    code with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: Using the `addAttribute` method on the instance of `\Foggyline\Office\Setup\EmployeeSetupFactory`,
+    we are instructing Magento to add a number of attributes (`service_years`, `dob`,
+    `salary`, `vat_number`, `note`) to its entity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will soon get to the inners of `EmployeeSetupFactory`, but right now notice
+    the call to the `addAttribute` method. Within this method, there is a call to
+    the `$this->attributeMapper->map($attr, $entityTypeId)` method. `attributeMapper`
+    conforms to `Magento\Eav\Model\Entity\Setup\PropertyMapperInterface`, which looking
+    at `vendor/magento/module-eav/etc/di.xml` has a preference for the `Magento\Eav\Model\Entity\Setup\PropertyMapper\Composite`
+    class, which further initializes the following mapper classes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Magento\Eav\Model\Entity\Setup\PropertyMapper`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Magento\Customer\Model\ResourceModel\Setup\PropertyMapper`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Magento\Catalog\Model\ResourceModel\Setup\PropertyMapper`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Magento\ConfigurableProduct\Model\ResourceModel\Setup\PropertyMapper`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Since we are defining our own entity types, the mapper class we are mostly
+    interested in is `Magento\Eav\Model\Entity\Setup\PropertyMapper`. A quick look
+    inside of it reveals the following mapping array in the `map` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: Looking at the preceding array keys and value strings gives us a clue as to
+    what is happening. The key strings match the column names in the `eav_attribute`
+    table, while the value strings match the keys of our array passed to the `addAttribute`
+    method within `InstallData.php`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s take a look at the `EmployeeSetupFactory` class within the `app/code/Foggyline/Office/Setup/EmployeeSetup.php`
+    file, (partially) defined as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'What''s happening here is that we are extending from the Magento\Eav\Setup\EavSetup
+    class, thus effectively telling Magento we are about to create our own entity.
+    We do so by overriding `getDefaultEntities`, replacing `/* #snippet1 */` with
+    content as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `getDefaultEntities` method returns an array of entities we want to register
+    with Magento. Within our `$entities` array, the key `$employeeEntity` becomes
+    an entry in the `eav_entity_type` table. Given that our `$employeeEntity` has
+    a value of `foggyline_office_employee`, running the following SQL query should
+    yield a result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: Only a handful of metadata values are required to make our new entity type functional.
+    The `entity_model` value should point to our EAV model `resource` class, not the
+    `model` class. The table value should equal the name of our EAV entity table in
+    the database. Finally, the attributes array should list any attribute we want
+    created on this entity. Attributes and their metadata get created in the `eav_attribute`
+    table.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we look back at all those `foggyline_office_employee_entity_*` attribute
+    value tables we created, they are not the ones that actually create attributes
+    or register a new entity type in Magento. What creates attributes and a new entity
+    type is the array we just defined under the `getDefaultEntities` method. Once
+    Magento creates the attributes and registers a new entity type, it simply routes
+    the entity save process to proper attribute value tables depending on the type
+    of attribute.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating an upgrade data script (UpgradeData.php)
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The upgrade data script is the last one to execute. We will use it to demonstrate
+    the example of creating the sample entries for our `Department` and `Employee`
+    entities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We start by creating the `app/code/Foggyline/Office/Setup/UpgradeData.php`
+    file with (partial) content as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`UpgradeData` conforms to `UpgradeDataInterface`, which requires the implementation
+    of the upgrade method that accepts two parameters of type `ModuleDataSetupInterface`
+    and `ModuleContextInterface`. We are further adding our own `__construct` method
+    to which we are passing `DepartmentFactory` and `EmployeeFactory`, as we will
+    be using them within the upgrade method as shown next, by replacing `/* #snippet1
+    */` with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding code creates an instance of the department entity and then saves
+    it. An instance of employee is then created and saved, passing it the newly created
+    department ID and other attributes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'A more convenient and professional-looking approach for saving an entity could
+    be given as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, we are utilizing the fact that each of the entity setter methods returns
+    `$this` (an instance of the entity object itself), so we can chain the method
+    calls.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Entity CRUD actions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Up to this point, we have learned how to create a simple model, an EAV model,
+    and install and upgrade types of schema and data script. Now, let us see how we
+    can create, read, update and delete our entities, operations that are commonly
+    referred to as CRUD.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Though this chapter is about models, collections, and related things, for the
+    purpose of demonstration, let's make a tiny detour into routes and controllers.
+    The idea is to create a simple `Test` controller with the `Crud` action we can
+    trigger in the browser via a URL. Within this `Crud` action, we will then dump
+    our CRUD-related code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To make Magento respond to the URL we punch into the browser, we need to define
+    the route. We do so by creating the `app/code/Foggyline/Office/etc/frontend/routes.xml`
+    file with the following content:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: Route definition requires a unique ID and `frontName` attribute values, which
+    in our case both equal `foggyline_office`. The `frontName` attribute value becomes
+    the part of our URL structure. Simply put, the URL formula for hitting the `Crud`
+    action goes like *{magento-base-url}/index.php/{route frontName}/{controller name}/{action
+    name}*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: For example, if our base URL were `http://shop.loc/`, the full URL would be
+    `http://shop.loc/index.php/foggyline_office/test/crud/`. If we have URL rewrites
+    turned on, we could omit the `index.php` part.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once the route has been defined, we can go ahead and create the `Test` controller,
+    defined in the `app/code/Foggyline/Office/Controller/Test.php` file with (partial)
+    code as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This really is the simplest controller we could have defined. The only thing
+    worth noting here is that the controller class needs to be defined as abstract
+    and extend the `\Magento\Framework\App\Action\Action` class. Controller actions
+    live outside of the controller itself and can be found under the subdirectory
+    on the same level and named as controller. Since our controller is called `Test`,
+    we place our `Crud` action under the `app/code/Foggyline/Office/Controller/Test/Crud.php`
+    file with content as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `Controller` action class is basically just an extension of the controller
+    defining the `execute` method. Code within the execute method is what gets run
+    when we hit the URL in the browser. Additionally, we have a `__construct` method
+    to which we are passing the `EmployeeFactory` and `DepartmentFactory` classes,
+    which we will soon use for our CRUD examples. Note that `EmployeeFactory` and
+    `DepartmentFactory` are not classes created by us. Magento will autogenerate them
+    under the `DepartmentFactory.php` and `EmployeeFactory.php` files within the `var/generation/Foggyline/Office/Model`
+    folder. These are factory classes for our `Employee` and `Department` model classes,
+    generated when requested.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With this, we finish our little detour and focus back on our entities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating new entities
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'There are three different flavors, if we might call them that, by which we
+    can set property (field and attribute) values on our entity. They all lead to
+    the same result. The following few code snippets can be copied and pasted into
+    our `Crud` class `execute` method for testing, simply by replacing `/* CRUD Code
+    Here */` with one of the following code snippets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `flavour #1` approach from the preceding code is probably the preferred
+    way of setting properties, as it is using the magic method approach we mentioned
+    previously. Both `flavour #2` and `flavour #3` use the `setData` method, just
+    in a slightly different manner. All three examples should yield the same result
+    once the `save` method is called on an `object` instance.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that we know how to save the simple model, let''s take a quick look at
+    doing the same with the EAV model. The following are analogous code snippets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As we can see, the EAV code for persisting the data is identical to the simple
+    model. There is one thing here worth noting. The `Employee` entity has a relation
+    defined toward department. Forgetting to specify `department_id` on a new `employee`
+    entity save would result in an error message similar to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: Magento saves these types of errors under its `var/report` directory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reading existing entities
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Reading an entity based on a provided entity ID value comes down to instantiating
+    the entity and using the load method to which we pass the entity ID as shown next:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'There is no real difference between loading the simple model or EAV model,
+    as shown in the following EAV model example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice how the EAV entity loads all of its field and attribute values, which
+    is not always the case when we obtain the entity through EAV collection, as we
+    will show later on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Updating existing entities
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Updating entities comes down to using the `load` method to read an existing
+    entity, reset its value, and calling the `save` method in the end, like shown
+    in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: Regardless of the entity being the simple model or an EAV, the code is the same.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deleting existing entities
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Calling the `delete` method on a loaded entity will delete the entity from
+    the database or throw `Exception` if it fails. Code to delete the entity looks
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: There is no difference in deleting the simple and EAV entities. We should always
+    use try/catch blocks when deleting or saving our entities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Managing collections
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Let''s start with EAV model collections. We can instantiate the collection
+    either through the entity `factory` class like follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Or we can use object manager to instantiate the collection as shown next:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: There is also a third way, which might be the preferred one, but it requires
+    us to define APIs so we will skip that one for the moment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once we instantiate the collection object, we can loop through it and do some
+    variable dumps to see the content on individual `$employee` entities, like shown
+    next:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding would yield results like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Notice how the individual `$employee` only has fields on it, not the attributes.
+    Let''s see what happens when we want to extend our collection by using `addAttributeToSelect`
+    to specify the individual attributes to add to it, like shown next:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding would yield results like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Though we are making progress, imagine if we had tens of attributes, and we
+    want each and every one to be included into collection. Using `addAttributeToSelect`
+    numerous times would make for cluttered code. What we can do is pass `''*''` as
+    a parameter to `addAttributeToSelect` and have collection pick up every attribute,
+    as shown next:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This would yield results like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Though the PHP part of the code looks seemingly simple, what''s happening in
+    the background on the SQL layer is relatively complex. Though Magento executes
+    several SQL queries prior to fetching the final collection result, let''s focus
+    on the last three queries as shown next:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Before we proceed any further, it is important to know that these queries are
+    not copy and paste applicable. The reason is that the `attribute_id` values will
+    for sure differ from installation to installation. Queries given here are for
+    us to gain a high-level understanding of what is happening in the backend on the
+    SQL layer when we use Magento collections on the PHP application level.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first query select simply counts the number of entries in the entity table,
+    and then passes that info to the application layer. The second select fetches
+    all entries from `foggyline_office_employee_entity`, then passes that info to
+    the application layer to use it to pass entity IDs in the third query as part
+    of `entity_id IN (24, 25, 26)`. Second and third queries here can be pretty resource
+    intense if we have a large amount of entries in our entity and EAV tables. To
+    prevent possible performance bottlenecks, we should always use the `setPageSize`
+    and `setCurPage` methods on collection, like shown next:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This would result in the first `COUNT` query still being the same, but the
+    second query would now look like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: This makes for a much smaller, thus performance-lighter dataset if we have thousands
+    or tens of thousands of entries. The point here is to always use `setPageSize`
+    and `setCurPage`. If we need to work with a really large set, then we need to
+    page through it, or walk through it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now we know how to limit the size of the result set and fetch the proper page,
+    let's see how we can further filter the set to avoid overusing PHP loops for the
+    same purpose. Thus effectively passing the filtering to the database and not the
+    application layer. To filter the EAV collection, we use its `addAttributeToFilter`
+    method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s instantiate a clean new collection like shown next:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that we are now using the `addAttributeToSelect` and `addAttributeToFilter`
+    methods on collection. We have already seen the database impact of `addAttributeToSelect`
+    on a SQL query. What `addAttributeToFilter` does is something completely different.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With the `addAttributeToFilter` method, the count query now gets transformed
+    into the following SQL query:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can see that this is much more complex than the previous count query, now
+    we have `INNER JOIN` stepping in. Notice how we have four `addAttributeToFilter`
+    method calls but only three `INNER JOIN`. This is because one of those four calls
+    is for e-mail, which is not an attribute but a field within the `foggyline_office_employee_entity`
+    table. That is why there is no need for `INNER JOIN` as the field is already there.
+    The three `INNER JOIN` then simply merge the required info into the query in order
+    to get the select.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The second query also becomes more robust, as shown next:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, we also see the usage of `INNER JOIN`. We also have three and not four
+    `INNER JOIN`, because one of the conditions is done against `email`, which is
+    a field. The result of the query is a flattened piece of rows where the attributes
+    `vat_number`, `salary`, and `service_years` are present. We can imagine the performance
+    impact if we haven't used `setPageSize` to limit the result set.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, the third query is also affected and now looks similar to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice here how `UNION ALL` has been reduced to a single occurrence now, thus
+    effectively making for two selects. This is because we have a total of five attributes
+    (`service_years`, `dob`, `salary`, `vat_number`, `note`), and three of them have
+    been pulled in through second query. Out of the preceding three queries demonstrated,
+    Magento basically pulls the collection data from second and third query. This
+    seems like a pretty optimized and scalable solution, though we should really give
+    it some thought on the proper use of `setPageSize`, `addAttributeToSelect`, and
+    `addAttributeToFilter` methods when creating collection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: During development, if working with collections that have lot of attributes,
+    filters, and possibly a future large dataset, we might want to use SQL logging
+    to record actual SQL queries hitting the database server. This might help us spot
+    possible performance bottlenecks and react on time, either by adding more limiting
+    values to `setPageSize` or `addAttributeToSelect`, or both.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the preceding examples, the use of `addAttributeToSelect` results in `AND`
+    conditions on the SQL layer. What if we want to filter collection using `OR` conditions?
+    `addAttributeToSelect` can also result in SQL `OR` conditions if the `$attribute`
+    parameter is used in the following way:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: Without going into the details of actual SQL queries this time, it is suffice
+    to say that they are near identical to the previous example with the `AND` condition
+    use of `addAttributeToFilter`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using collection methods like `addExpressionAttributeToSelect`, `groupByAttribute`,
+    and `addAttributeToSort`, collections offer further gradient filtering and even
+    shift some calculations from the PHP application layer to the SQL layer. Getting
+    into the ins and outs of those and other collection methods is beyond the scope
+    of this chapter, and would probably require a book on its own.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Collection filters
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Looking back at the preceding `addAttributeToFilter` method call examples,
+    questions pop out as to where can we see the list of all available collection
+    filters. If we take a quick look inside the `vendor/magento/framework/DB/Adapter/Pdo/Mysql.php`
+    file, we can see the method called `prepareSqlCondition` (partially) defined as
+    follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This method is what eventually gets called at some point during SQL query construction.
+    The `$condition` parameter is expected to have one of the following (partially
+    listed) forms:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`array("from" => $fromValue, "to" => $toValue)`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`array("eq" => $equalValue)`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`array("neq" => $notEqualValue)`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`array("like" => $likeValue)`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`array("in" => array($inValues))`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`array("nin" => array($notInValues))`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`array("notnull" => $valueIsNotNull)`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`array("null" => $valueIsNull)`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`array("gt" => $greaterValue)`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`array("lt" => $lessValue)`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`array("gteq" => $greaterOrEqualValue)`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`array("lteq" => $lessOrEqualValue)`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`array("finset" => $valueInSet)`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`array("regexp" => $regularExpression)`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`array("seq" => $stringValue)`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`array("sneq" => $stringValue)`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If `$condition` is passed as an integer or string, then the exact value will
+    be filtered (`'eq'` condition). If none of the conditions is matched, then a sequential
+    array is expected as a parameter and `OR` conditions will be built using the preceding
+    structure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The preceding examples covered EAV model collections, as they are slightly more
+    complex. Though the approach to filtering more or less applies to simple model
+    collections as well, the most notable difference is that there are no `addAttributeToFilter`,
+    `addAttributeToSelect`, and `addExpressionAttributeToSelect` methods. The simple
+    model collections make use of `addFieldToFilter`, `addFieldToSelect`, and `addExpressionFieldToSelect`,
+    among other subtle differences.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we first learned how to create simple model, its resource,
+    and collection class. Then we did the same for an EAV model. Once we had the required
+    model, resource, and collection classes in place, we took a detailed look at the
+    type and flow of schema and data scripts. Going hands-on, we covered `InstallSchema`,
+    `UpgradeSchema`, `InstallData`, and `UpgradeData` scripts. Once the scripts were
+    run, the database ended up having the required tables and sample data upon which
+    we based our entity CRUD examples. Finally, we took a quick but focused look at
+    collection management, mostly comprising filtering collection to get the desired
+    result set.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The full module code can be downloaded from [https://github.com/ajzele/B05032-Foggyline_Office](https://github.com/ajzele/B05032-Foggyline_Office).
+  prefs: []
+  type: TYPE_NORMAL

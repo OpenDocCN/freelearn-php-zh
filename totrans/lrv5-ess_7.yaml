@@ -1,0 +1,747 @@
+- en: Chapter 7. Authentication and Security
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will improve the application we built in [Chapter 3](ch03.html
+    "Chapter 3. Your First Application"), *Your First Application*, by adding a simple
+    authentication mechanism and addressing any security issues with the existing
+    code base. In doing so, you will learn about:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configuring and using the authentication service
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Middleware and how to apply it to specific routes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Data validation and form requests
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The most common security vulnerabilities in web applications
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How Laravel can help you write more secure code
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Authenticating users
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Allowing users to register and sign in is an extremely common feature in web
+    applications. Yet, PHP does not dictate how it should be done, nor does it give
+    you any helpers to implement it. This has led to the creation of disparate, and
+    sometimes insecure, methods of authenticating users and restricting access to
+    specific pages. In that respect, Laravel provides you with different tools to
+    make these features more secure and easier to integrate. It does so with the help
+    of its authentication service and functionality that we have not covered yet—**middleware**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating the user model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: First of all, we need to define the model that will be used to represent the
+    users of our application. Laravel already provides you with sensible defaults
+    inside `config/auth.php`, where you can change the model or table that is used
+    to store your user accounts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It also comes with an existing `User` model inside `app/User.php`. For the
+    purposes of this application, we are going to simplify it slightly, remove certain
+    class variables, and add new methods so that it can interact with the `Cat` model
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The first thing to note is that this model implements the `Authenticable` interface.
+    Remember that an interface does not give any implementation details. It is nothing
+    more than a **contract** that specifies the names of the methods that a class
+    should define when it implements the interface. In this case, the `Authenticable`
+    interface mandates that the following methods be implemented:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`getAuthIdentifier`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`getAuthPassword`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`getRememberToken`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`setRememberToken`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`getRememberTokenName`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'If you open the `app/User.php` file, you might wonder where these methods are.
+    These methods are actually provided by the `Authenticable` trait. You can see
+    the trait being included after the `User` class''s opening brace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Traits allow the reuse of code within classes. This is to make up for a shortcoming
+    of the PHP language, which does not allow **multiple inheritance** in classes.
+    So, as a workaround, you can compose methods that may be dropped into multiple
+    classes that might already be extending another base class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In our `User` model, the `cats()` method simply defines the `hasMany` relationship
+    with the `Cat` model. The last two methods will be used to check whether a given
+    `Cat` instance is owned or is editable by the current `User` instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, let''s create a helper method on the `User` model that will allow
+    us to check whether we have an administrator or not. This method will be suitably
+    named `isAdministrator` as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If using MySQL, this will return a string of either `0` or `1` (as MySQL doesn''t
+    have a native Boolean data type). We can, however, cast this model attribute to
+    be a Boolean to make value checking a bit better. At the top of your model, add
+    the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this array, we define the attribute and what data type we actually want.
+    Then, when we retrieve an attribute from the model, it will be cast to the specified
+    data type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Other data types that model attributes can be cast to are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`string`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`integer`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`real`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`float`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`double`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`array`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `array` type can be used for columns that contain a serialized JSON string,
+    which will de-serialize the data and present it as a plain PHP array.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `is_admin` attribute doesn't exist in our `users` table currently, so let's
+    fix that.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating the necessary database schema
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'As well as a `User` model, Laravel also comes pre-packaged with two migration
+    files: one for creating the `users` table and the other to create the `password_resets`
+    table.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: By default, the user's table migration creates a table with columns for each
+    user's ID, name, password, remember token, as well as the created at and updated
+    at timestamps. We need to extend that table by adding a new column designating
+    whether each user is an administrator of our application or not.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To do this, we can create another migration. Migrations can be used to alter
+    existing tables as well as creating entirely new ones. In this instance, we're
+    going to create a migration to add a Boolean column named `is_admin` to the `users`
+    table.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Run the following command to create the migration file in `database/migrations`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then change the `up` method as follows to contain the schema change:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: We set the default value to `false` so that we have to explicitly set it to
+    `true` for any users we want to be administrators, rather than every new user
+    (and any existing users in the database table) automatically being granted administrator
+    privileges on creation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As with any other migration, we also have to provide the `down` method to revert
+    any changes. As we''ve created a column, we need to remove it if a user decides
+    to roll back the migration:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we also need to update the `cats` database table to add a column associating
+    it with a user. By following the preceding steps, we create a new schema, as follows,
+    describing the change:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We then complete the methods as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: With the preceding code, we alter the `cats` table to have a `user_id` column
+    that stores the `id` of the `Cat` owner. After creating the column, we create
+    a **foreign key constraint** on the table so that a `user_id` value has to match
+    the primary key of a record in the `users` table. Foreign keys help you to enforce
+    the consistency of data (for example, you will not be able to assign `Cat` to
+    a nonexistent user). Cascading deletes also means that when a user is deleted,
+    their associated cat records will be deleted too; otherwise, the database will
+    end up containing cats that no longer have any owners!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The code to reverse this migration will simply remove the foreign key constraint
+    and the column and then drop the `user_id` column:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: Next, we prepare a database seeder to create two users for our application,
+    one of which will be an administrator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: Once you have saved this code inside a new file named `database/seeds/UsersTableSeeder.php`,
+    do not forget to call it inside the main `DatabaseSeeder` class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Laravel expects all passwords to be hashed with the `bcrypt` helper, which uses
+    the **Bcrypt** algorithm to create a strong hash. You should never store passwords
+    in *cleartext* or hash them with weak algorithms, such as `md5` or `sha1`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To run the migration and seed the database at the same time, enter the following
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: Authentication routes and views
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We have mentioned earlier that PHP has no standard way to authenticate users,
+    but this is not true of Laravel. Laravel realizes that the most modern web applications
+    will require users to register and log in, so it comes with controllers, routes,
+    and views to facilitate this from the get-go. You can find the main authentication
+    controller at `app/Http/Controllers/Auth/AuthController.php`. If you open the
+    file, you will see that all it contains is a constructor because like the `User`
+    model, it uses a trait to provide functionality, in this case, `AuthenticatesAndRegistersUsers`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `middleware` method will apply the guest middleware to all actions in the
+    controller, except the `getLogout()` action. We'll look at middleware in more
+    depth later in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This controller (as well as the controller used for handling password resets)
+    can be found in the application''s routes file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Laravel also includes two views, `login.blade.php` and `register.blade.php`,
+    at `resources/views/auth`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s look at integrating Laravel''s `auth` views into our application. We
+    will start by amending our master layout (`resources/views/layouts/master.blade.php`)
+    to display the login link to guests and the logout link to users who are logged
+    in. To check whether a visitor is logged in, we use the `Auth::check()` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can replace the login view, inside `resources/views/auth/login.blade.php`,
+    with a simpler form:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: We use the Blade syntax to get the raw value (`{!! $value !!}`) from the HTML
+    and Form helpers because they return HTML mark-up, and if we were to use the default
+    syntax (`{{ $value }}`) to render these, we'd instead get the HTML string printed
+    to the screen.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Middleware
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'If you refer back to the `AuthController`, you will notice the following line
+    in the constructor method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: Middleware includes classes that can be attached to requests coming into your
+    application, and used to alter the results of those requests. Middleware are a
+    replacement for **route filters** that were found in Laravel 4.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Middleware can be registered either when defining routes, or in controllers
+    as mentioned earlier. The preceding example attaches the `auth` middleware to
+    all requests that will be handled by the `AuthController`, except for requests
+    to the `getLogout` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Middleware classes can be found in the `app/Http/Middleware` directory. In
+    here, you can find the default `Authentication` middleware class, as well as two
+    others: `RedirectIfAuthenticated`, and `VerifyCsrfToken`. We can inspect the `Authentication`
+    class to see how a middleware class works:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'There are two methods: the `constructor` and the `handle` methods. In the preceding
+    example, the class is checking whether the current user is authenticated (using
+    the `guest()` method on the `Guard` class) and if they are a guest, returning
+    a response if the request was made via AJAX, or redirecting the user to the login
+    form. Because the response is returned then and there, the request will not be
+    processed any further.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can use this approach to not only check if users have authenticated, but
+    also to check whether they are administrators. We can use the in-built Artisan
+    generator to create a new middleware class as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will create a new file at `app/Http/Middleware/IsAdministrator.php`. Like
+    the `Authentication` class, we need the `Guard` implementation, so add a constructor
+    that type-hints the dependency so that the service container automatically injects
+    it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We''ll also need to import the full namespace at the top of the file as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now we have a `Guard` instance and we assign it to a class property; we can
+    now flesh out the `handle` method as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This time, we get the current user from the `Guard` (which will yield a `User`
+    Eloquent model instance). We can then call any methods on this model. In the preceding
+    example, we call our `isAdministrator()` method, which will return a Boolean value
+    as to whether the user should be treated as an administrator or not. If not—like
+    the `Authenticated` class—we return a simple string response (and the appropriate
+    HTTP status code) if the request was made via AJAX; otherwise, we throw an `AccessDeniedHttpException`.
+    This exception is actually part of the Symfony `HttpKernel` library, so we need
+    to import the class''s full namespace at the top of the file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The final step in creating a middleware is to tell the HTTP `Kernel` class
+    about it. You can find this file at `app/Http/Kernel.php`. By opening the file,
+    you will see two properties defined: `$middleware` and `$routeMiddleware`. Adding
+    the class''s full namespace to the `$middleware` array would add the middleware
+    to every request. We don''t want to do this because if we did, no one would be
+    able to access the login page as they''d be unauthenticated at this point! Instead,
+    we want to add an entry to the `$routeMiddleware` array as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: The key in the array is what we can then use on routes and in controllers, and
+    the corresponding class will be applied when requesting the specified resource.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following is an example applying it to a route:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, you can specify multiple middleware classes to apply to a single
+    request. In the previous route example, first the `Authenticated` middleware class
+    will be called; if all is good (and the user wasn't redirected to the login page),
+    it will then be passed to the `IsAdministrator` middleware class, which will check
+    whether the currently logged in user is an administrator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Validating user input
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Our application still has a major flaw—it does not perform any validation on
+    the data submitted by users. While you might end up with a series of conditions
+    with regular expressions here and there if you were to do this in plain PHP, Laravel
+    offers a far more straightforward and robust way to achieve this.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Validation is performed by passing an array with the input data and an array
+    with the validation rules to the `Validator::make($data, $rules)` method. In the
+    case of our application, here are the rules we could write:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Multiple validation rules can be separated by either pipes or passed as an
+    array (examples of both are shown in the preceding code). Laravel provides over
+    30 different validation rules, and they are all documented in here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[http://laravel.com/docs/validation#available-validation-rules](http://laravel.com/docs/validation#available-validation-rules)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is how we will check these rules with the data submitted in the form:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can then make your application act based on the output of `$validator->fails()`.
+    If this method call returns `true`, you will retrieve an object containing all
+    error messages with `$validator->messages()`. If you were validating data in a
+    controller action, you could attach this object to a redirection that sends the
+    user back to the form:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since each field can have zero or more validation errors, you will use a condition
+    and a loop with the following methods to display those messages:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You might also use a tool such as Ardent, which extends Eloquent and lets you
+    to write validation rules directly inside the model. You can download Ardent from
+    the following link:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/laravelbook/ardent](https://github.com/laravelbook/ardent)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Form requests
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In Laravel 4, you were free to place validation anywhere you wanted. This led
+    to developers implementing validation in a myriad of ways, including in the controller
+    or as a validation service. In version 5, Laravel introduced a way of standardizing
+    how validation was performed on submitted data, via **form requests**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Form requests are classes that wrap the standard `Request` class in Laravel,
+    but implements a trait named `ValidatesWhenResolved`. This trait contains a `Validator`
+    instance, and uses rules you define in your form request class to validate the
+    data in the request. If the validator passes, then the controller action it was
+    applied to will be executed as normal. If the validator fails, then the user is
+    redirected to the previous URL with the errors in the session. This means you
+    don't need to define validation routines in your controller actions, and you can
+    even re-use them across controller actions where the same data can be submitted
+    but in different scenarios.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s create a form request for saving a cat''s details. Again, Artisan comes
+    with a generator to create a new form request class for us:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will create the file at `app/Http/Requests/SaveCatRequest.php`. Inside
+    the file, you will find two methods: `authorize` and `rules`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before validation is performed, the form request authorizes the current request.
+    The implementation detail is up to you. You might want the current user to be
+    logged in, or to be an administrator. You can define that logic in this method.
+    By default, it simply returns `false`. This isn't ideal as it means *no one* would
+    be able to perform this request. Since we're handling user authentication via
+    middleware, we can simply switch this to return `true` instead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The second method, `rules`, is where we supply the array of validation rules
+    to be fed to the `Validator` instance. Taking the preceding `Validator` example,
+    this can be changed to the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The reason rules are defined in a method and not simply as a class property
+    is to allow for conditional validation. There may be times when you only want
+    to validate a certain field, for example, if a value is provided in another field.
+    Imagine a checkout form in an e-commerce website that asks a user for a billing
+    address and an optional shipping address if it''s different from the billing address.
+    Most online stores will have a checkbox that when checked, will display the fields
+    to enter the shipping address. If we were to create the validation for this scenario,
+    then it may look something like the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding example checks whether a field with `shipping_address_different`
+    (the checkbox) is present and, if so, appends a validation rule to specify that
+    `shipping_address` is required. As you can see, this makes validation in form
+    requests very powerful.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Form request classes are instantiated by specifying them as a parameter to
+    the controller action you want them to apply. In our case of saving cats, this
+    will apply to both the `create` and `update` methods in our `CatsController` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, whenever either of these actions is requested, the `SaveCatRequest` class
+    will first be called and checked to see whether the data is valid. This means
+    our controller methods can stay lean, and only deal with the actual persisting
+    of the new data to the database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Securing your application
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Before you deploy your application in a hostile environment, full of merciless
+    bots and malicious users, there are a number of security considerations that you
+    must keep in mind. In this section, we are going to cover several common attack
+    vectors for web applications and learn about how Laravel protects your application
+    against them. Since a framework cannot protect you against everything, we will
+    also look at the common pitfalls to avoid.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cross-site request forgery
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '**Cross-site request forgery** (**CSRF**) attacks are conducted by targeting
+    a URL that has side effects (that is, it is performing an action and not just
+    displaying information). We have already partly mitigated CSRF attacks by avoiding
+    the use of `GET` for routes that have permanent effects such as `DELETE/cats/1`,
+    since it is not reachable from a simple link or embeddable in an `<iframe>` element.
+    However, if an attacker is able to send his victim to a page that he controls,
+    he can easily make the victim submit a form to the target domain. If the victim
+    is already logged in on the target domain, the application would have no way of
+    verifying the authenticity of the request.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The most efficient countermeasure is to issue a token whenever a form is displayed
+    and then check that token when the form is submitted. `Form::open` and `Form::model`
+    both automatically insert a hidden `_token` input element, and middleware is applied
+    to check the supplied token on incoming requests to see whether it matches the
+    expected value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Escaping content to prevent cross-site scripting (XSS)
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '**Cross-site scripting** (**XSS**) attacks happen when attackers are able to
+    place client-side JavaScript code in a page viewed by other users. In our application,
+    assuming that the name of our cat is not escaped, if we enter the following snippet
+    of code as the value for the name, every visitor will be greeted with an alert
+    message everywhere the name of our cat is displayed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: While this is a rather harmless script, it would be very easy to insert a longer
+    script or link to an external script that steals the session or cookie values.
+    To avoid this kind of attack, you should never trust any user-submitted data or
+    escape any dangerous characters. You should favor the double-brace syntax (`{{
+    $value }}`) in your Blade templates, and only use the `{!! $value !!}` syntax,
+    where you're certain the data is safe to display in its raw format.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Avoiding SQL injection
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: An **SQL injection** vulnerability exists when an application inserts arbitrary
+    and unfiltered user input in an SQL query. This user input can come from cookies,
+    server variables, or, most frequently, through `GET` or `POST` input values. These
+    attacks are conducted to access or modify data that is not normally available
+    and sometimes to disturb the normal functioning of the application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By default, Laravel will protect you against this type of attack since both
+    the query builder and Eloquent use **PHP Data Objects** (**PDO**) class behind
+    the scenes. PDO uses **prepared statements**, which allows you to safely pass
+    any parameters without having to escape and sanitize them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In some cases, you might want to write more complex or database-specific queries
+    in SQL. This is possible using the `DB::raw` method. When using this method, you
+    must be very careful not to create any vulnerable queries like the following one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To protect this query from SQL injection, you need to rewrite it by replacing
+    the parameters with question marks in the query and then pass the values in an
+    array as a second argument to the `raw` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding query is known as a **prepared statement**, as we define the query
+    and what parameters are expected, and any harmful parameters that would alter
+    the query or data in the database in an unintended way are sanitized.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using mass assignment with care
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In [Chapter 3](ch03.html "Chapter 3. Your First Application"), *Your First Application*,
+    we used mass assignment, a convenient feature that allows us to create a model
+    based on the form input without having to assign each value individually.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This feature should, however, be used carefully. A malicious user could alter
+    the form on the client side and add a new input to it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, when the form is submitted, we attempt to create a new model using the
+    following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: Thanks to the `$fillable` array, which defines a white list of fields that can
+    be filled through mass assignment, this method call will throw a mass assignment
+    exception.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is also possible to do the opposite and define a blacklist with the `$guarded`
+    property. However, this option can be potentially dangerous since you might forget
+    to update it when adding new fields to the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cookies – secure by default
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Laravel makes it very easy to create, read, and expire cookies with its `Cookie`
+    class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will also be pleased to know that all cookies are automatically signed and
+    encrypted. This means that if they are tampered with, Laravel will automatically
+    discard them. This also means that you will not be able to read them from the
+    client side using JavaScript.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Forcing HTTPS when exchanging sensitive data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'If you are serving your application over HTTP, you need to bear in mind that
+    every bit of information that is exchanged, including passwords, is sent in *cleartext*.
+    An attacker on the same network could therefore intercept private information,
+    such as session variables, and log in as the victim. The only way we can prevent
+    this is to use HTTPS. If you already have an SSL certificate installed on your
+    web server, Laravel comes with a number of helpers to switch between `http://`
+    and `https://` and restrict access to certain routes. You can, for instance, define
+    an `https` filter that will redirect the visitor to the secure route as shown
+    in the following code snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we learned how to make use of many of Laravel's tools to add
+    authentication features to a website, validate data, and avoid common security
+    problems. You should now have all the necessary information to create a Laravel
+    application, test them, and secure them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the [Appendix](apa.html "Appendix A. An Arsenal of Tools"), *An Arsenal of
+    Tools*, you will be presented with a handy reference for many of the other helpful
+    features that Laravel offers out of the box.
+  prefs: []
+  type: TYPE_NORMAL

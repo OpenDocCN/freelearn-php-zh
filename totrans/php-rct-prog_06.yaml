@@ -1,0 +1,1117 @@
+- en: Chapter 6. PHP Streams API and Higher-Order Observables
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we'll introduce a lot of new features that we need for the
+    next chapter. Almost everything covered in this chapter is related to **PHP Streams
+    API**, Promises and event loops (`reactphp/event-loop` project in our case). This
+    also includes a couple of more advanced RxPHP operators working with so-called
+    higher-order Observables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In particular, in this chapter, we''ll do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Quickly look at using Promises in PHP with the `reactphp/promise` library
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Introduce PHP Streams API and, with examples, see what benefits it brings with
+    minimal or no effort
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Examine the internals of `StreamSelectLoop` class, this time in the context
+    of PHP Streams API
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: See what caveats we need to be aware of when working with non-blocking code
+    in event loops
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Talk about higher-order Observables
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Introduce four new and more advanced operators, `concatAll()`, `mergeAll()`, `combineLatest()`
+    and `switchMap()`, which are intended to work with higher-order Observables
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This chapter is going to introduce a lot of new things we haven't encountered
+    yet. However, all of them have their benefits in practice, as we'll see in the
+    next chapter, where we'll write an application that spawns multiple subprocesses
+    on the go. Each subprocess will be a self-sufficient WebSocket server itself,
+    and we'll use knowledge gained in this chapter to communicate with them and to
+    collect information from them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using Promises in PHP
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: While using Reactive Extensions, we think of data as continuous streams that
+    emit data over time. A similar, and probably more familiar, concept is Promises,
+    which represent a single value in the future.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You've probably met Promises in libraries such as jQuery, where it's commonly
+    used to handle responses from an AJAX request. There are multiple implementations
+    in PHP, but the principle is always the same. We're going to use a library called
+    `reactphp/promise` ( [https://github.com/reactphp/promise](https://github.com/reactphp/promise)
+    ), which follows Promises/A proposal ( [http://wiki.commonjs.org/wiki/Promises/A](http://wiki.commonjs.org/wiki/Promises/A)
+    ) and adds some extra functionality as well. Since we're going to use this library
+    for this and the next chapter, we will have a look at how to use it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Install `react/promise` package via composer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We will use two basic classes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Promise`: This class represents a result of a deferred computation that will
+    be available in the future.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Deferred`: This class represents an action that''s pending. It returns a single
+    instance of Promise, which is resolved or rejected. Usually, by resolving a Promise,
+    we understand that the action ended successfully, while rejection means it failed.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Each Promise is going to be resolved or rejected, and we can handle its results
+    via multiple methods (we can call them operators as well, since they serve a similar
+    purpose, like in Rx). Each of these methods returns a new Promise, so we''ll be
+    able to chain them in a very similar way to how we do it in Rx:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`then()`: This method takes two callbacks as arguments. The first one is called
+    only when the Promise is resolved, while the second one is called only when it''s
+    rejected. Each callback can return a modified value, which is passed to the next
+    operator.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`done()`: Similarly to `then()`, it takes two callbacks as arguments. However,
+    this method returns null, so it doesn''t allow chaining. It''s intended only to
+    consume the result and prevents you from modifying it any further.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`otherwise()`: This is a handler when the Promise is rejected or when the preceding `then()`
+    method throws an exception.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`always()`: This is the cleanup method called when the Promise is either resolved
+    or rejected.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using the then() and done() methods
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can demonstrate how to use a `Promise` and `Deferred` classes with the `then()`
+    and `done()` methods in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `promise()` method returns an instance of the `Promise` class, which is
+    then chained with two `then()` and one `done()` calls. We've mentioned that a `Promise`
+    class represents a single value in the future. For this reason, calling `promise()`
+    method multiple times always returns the same `Promise` object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the first `then()` call, we'll print the value and return `$val + 1`. This
+    modified value will be passed to the consecutive `then()` call, which again updates
+    the value and passes it to `done()`. The `done()` method returns `null`, so it
+    can't be chained with any more operators.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output is then as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that it's the instance of the `Deferred` class that is responsible for
+    resolving or rejecting the `Promise` class because it represents the asynchronous
+    action. The `Promise` class, on the other hand, represents just the result of
+    the `Deferred` class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the otherwise() and always() methods
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Similarly to using `then()` and `done()`, we''ll handle exceptions with `otherwise()`,
+    and we''ll also append `always()`, which will be called regardless of the `Promise`
+    class being resolved or rejected:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, the callable for `then()` throws an exception, which is caught by the following `otherwise()`
+    method. This chain of Promises is always finished by an `always()` call, even
+    when we threw an exception in `then()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we run this example, we''ll receive the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `otherwise()` method is, in fact, just a shortcut for `then(null, $onRejected)`,
+    so we could write it as a single call. However, this notation is split into two
+    separate method calls, making it easier to understand. We can also test a scenario
+    where we reject the `Promise` class instead of resolving it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This skips the `then()` call and triggers only the `otherwise()` callable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that the `always()` method was called in both situations. Also, note
+    that the `otherwise()` method allows creating multiple handlers for different
+    exception classes. If we don't specify the class type in the callable definition,
+    it'll be triggered on any exception.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PHP Streams API
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'If we want to work with sockets in PHP, we''re offered two sets of methods,
+    starting with one of these two prefixes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`socket_*`: Low-level API to the socket communication available since PHP 4.1\.
+    This extension needs to be enabled when compiling PHP with the `--enable-sockets`
+    option. You can check whether your PHP supports this API by running `php -i` in
+    the console and watching for `--enable-sockets` under the `Configure Command`
+    option.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`stream_*`: API introduced in PHP 4.3 that generalizes usage of file, network,
+    and other operations under a unified set of functions. Streams in the sense of
+    this API are resource objects that share some common behavior. This extension
+    is part of PHP and doesn''t require any extra steps to be enabled. More stream
+    functions were added in PHP 5, such as `stream_socket_server()`, which we''ll
+    use in a moment.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In general, we'll always want to use the newer `stream_*` API because it's a
+    built-in part of PHP and offers better functionality.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The core feature is that it's built around using resources. A resource in PHP
+    is a special variable holding a reference to some external resource (this can
+    be a socket connection, file handler, and so on). These have some limitations.
+    For instance, they can't be serialized, for obvious reasons, and certain methods
+    are not applicable with particular types of resources, such as `fseek()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Working with resources and streams is unified, so we can use `stream_*` functions
+    when, for example, writing data to files instead of the typical `fwrite()` function.
+    Consider the following example, where we copy the content of a file to another
+    file and instead of using `fwrite()`, or `file_get_content()` and `file_put_content()`,
+    we''ll use `stream_copy_to_stream()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Both `$source` and `$dest` are resources. The `stream_copy_to_stream()` function
+    just copies the content of one stream to another. How one resource reads the data
+    and how the second resource writes the data is up to the inner implementation
+    of this resource. We could also use `fseek()` to move the read cursor to some
+    position instead of reading data from the beginning of the file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now we have skipped the first five bytes of the file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are many types of resources. We can see what types we're supporting with
+    the `get_resource_type()` function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following example, we create three different types of resources:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can see that each resource type is identified by a different string:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: In [Chapter 3](part0033_split_000.html#VF2I2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 3. Writing a Reddit Reader with RxPHP") , *Writing a Reddit Reader with
+    RxPHP*, we read inputs from the console by opening a stream to `php://stdin` and
+    using `fread()` to periodically (with `IntervalObservable`) get content of the
+    current read buffer. We also used the `stream_set_blocking()` function to make
+    the read stream nonblocking, which makes `fread()` return an empty string if there
+    was no data available.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using an event loop is, of course, a viable option, but there's also a function
+    made exactly for this purpose, called `stream_select()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the stream_select() function
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Instead of looping over all streams and checking manually whether they have
+    any data available, we can use the `stream_select()` function ( [http://php.net/manual/en/function.stream-select.php](http://php.net/manual/en/function.stream-select.php)
+    ). This function takes arrays of streams as parameters and waits until there's
+    some activity on at least one of them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since any resource created with `fopen()` is a stream, we can use this function
+    to wait for user input instead of using a loop:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `stream_select()` function returns the number of active streams, or zero
+    if the timeout elapsed. It takes five arguments in total, where the first four
+    of them are required:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`array &$read`: This is the array of read streams (streams are checked for
+    any available data to be read).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`array &$write`: This is the array of write streams. Streams listed here need
+    to indicate they''re ready to write data.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`array &$except`: This is the array of streams with higher priority.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`int $tv_sec`: This is the maximum time in seconds spent waiting for at least
+    one of the streams to be active.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`int $tv_usec` (optional): This is the time in microseconds added to the timeout
+    in seconds.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Each array is passed by reference, so we can't leave it with just `[]`; we need
+    to pass it as a variable (`null` is also acceptable). The last integer parameter `5`
+    is the timeout after which this function returns, even though it didn't catch
+    any activity on any of its streams.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So in this example, we create a resource `$stdin` using `fopen()`, then wait
+    for five seconds for any user input (the data is sent to the buffer by terminal
+    after we press the ***Enter*** key) and then use `fgets()` to get the data from
+    buffer and print it in reversed order.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice that we had to make the `$stdin` stream nonblocking anyway. If we didn't,
+    the `stream_select()` would never end, regardless the timeout.
+  prefs: []
+  type: TYPE_NORMAL
+- en: StreamSelectLoop and stream_select() function
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We've been using the `StreamSelectLoop` class in  [Chapter 3](part0033_split_000.html#VF2I2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 3. Writing a Reddit Reader with RxPHP") , *Writing a Reddit Reader with
+    RxPHP*, to periodically emit values with `IntervalObservable`, or in  [Chapter
+    2](part0024_split_000.html#MSDG2-bd355a22cf10407cb10df27e65585b8d "Chapter 2. Reactive
+    Programming with RxPHP") , *Reactive Programming with RxPHP*, to check for user
+    input. Let's combine what we've learned about PHP streams, `stream_select()` function,
+    and `StreamSelectLoop` together and update the previous example to use `StreamSelectLoop`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `StreamSelectLoop` class has an `addReadStream()` method to add streams
+    (resources) and callables, which are executed when the stream is active. Then
+    it calls `stream_select()` internally and waits for activity on any of the streams
+    in a loop:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, it should be obvious why the event loop class is called `StreamSelectLoop`
+    and not `EventLoop` or just `Loop`: it uses `stream_select()` internally.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now we know how `StreamSelectLoop` is able to work with PHP streams. However,
+    a very good question is, how do Observables such as `IntervalObservable`, which
+    periodically emit values, work when they don't use any streams?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scheduling events with StreamSelectLoop
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Apart from using `StreamSelectLoop` to handle streams, we can also schedule
+    one-time or periodical events by just specifying an interval and a callable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consider the following example, which creates two timers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The periodic timer fires every second, while the one-time timer is fired just
+    once after 1500ms. Output in the console will print values for the increasing
+    `$counter` variable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: So how is `StreamSelectLoop` able to schedule events when we're not using streams
+    at all?
+  prefs: []
+  type: TYPE_NORMAL
+- en: The answer is the `stream_select()` function and its fourth and fifth arguments.
+    Even when we're not waiting for any stream activity, we can still make use of
+    the timeouts provided to `stream_select()`. We could, in fact, achieve the same
+    result if we used just the `usleep()` function to hold the script execution for
+    a period of time. However, if we did use `usleep()`, we wouldn't be able to combine
+    timers with streams.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we start the event loop with `$loop->run()`, it iterates all its times
+    and checks which timer is supposed to fire first. In our case it's the periodic
+    timer that'll fire after one second, so `StreamSelectLoop` calls `stream_select()`
+    and sets its fourth parameter (timeout) to one second. Since we didn't add any
+    streams to the loop, the `stream_select()` call will always end with a timeout,
+    which is intentional in this case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we did add a stream to the loop that would signal activity any time before
+    the timer is supposed to fire, then `stream_select()` might be interrupted and
+    the stream would be handled before the timer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can go back to our example where the `StreamSelectLoop` class works as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We scheduled a one-second timeout that makes `stream_select()`return even when
+    there's no stream activity.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `StreamSelectLoop` class checks what timers are due and calls their callables.
+    Then, if the timer was periodical, it reschedules the timer to fire again in the
+    future.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This was the first iteration of the internal loop where `stream_select()` caused
+    the pause.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: At the second iteration, it checks for the nearest timers again. This time it's
+    the one-time timer that'll fire in 500ms (1000ms already elapsed), so the timeout
+    for `stream_select()` is going to be just 500ms.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This goes on until we call `$loop->stop()` from one of the callables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can rewrite this example with a periodic timer to use `IntervalObservable`,
+    while also reading any input from `php://stdin`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: Observables don't work directly with `StreamSelectLoop`, so we need to wrap
+    it with a Scheduler. The `EventLoopScheduler` class inherits the `VirtualTimeScheduler`
+    class that we explained in detail in the previous chapter, when we talked about
+    testing and how it's used with the `TestScheduler` class. The principle with `EventLoopScheduler`
+    is the same.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `EventLoopScheduler` class schedules timers on the `StreamSelectLoop` instance,
+    which doesn't forbid us from using the same loop for streams also.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Minimalistic HTTP Server with StreamSelectLoop
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'A nice example of using just `StreamSelectLoop` to create a simple HTTP web
+    server is available on the GitHub page for the `react/event-loop` package:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: This demo uses `stream_socket_server()` to create a listening TCP socket server
+    accepting connections only from localhost on port `8080`. The `$server` stream
+    is then added to the event loop, and every time a new connection is established,
+    it's captured by `stream_select()`. Then, to actually accept the connection, we
+    need to call the `stream_socket_accept()` function, which returns another stream
+    representing the stream to this client. Then, with `addWriteStream()` we'll know
+    when the client is ready to start receiving data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are four important things to notice:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: With `stream_socket_server()`, we can use multiple different protocols. The
+    most common are `tcp`, `udp`, and `unix`. We can get a full list of all the available
+    protocols with `stream_get_transports()`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If we have *N* clients there are always *N+1* streams in the loop. This is because
+    the server stream that accepts connections is inside the event loop as well.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When we write data to the client stream, we need to be aware that it might not
+    be able to write the entire response at once and we'll need to send it in chunks.
+    That's why we always check how many bytes were written to the stream with `fwrite()`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: After we're done writing data to the write stream, we close it with `fclose()`
+    and remove it from the loop because we don't need it anymore. When a new client
+    connection is accepted it'll have its own write stream.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A note on nonblocking event loops
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The implementation details of `StreamSelectLoop` suggest that it can't guarantee
+    that all timers will fire exactly at the time they should. For example, if we
+    created two timers that both need to fire after 500ms, then we can predict pretty
+    accurately that the first callable will be executed after exactly 500ms. However,
+    the callable for the second timer is dependent on the execution time of the first
+    callable. This means that if the first callable took 100ms to execute; the second
+    callable will be trigger after 600ms instead of 500ms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An implication of this is that the event loop is nonblocking - as long as our
+    code is nonblocking.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's no parallelism in PHP, thus all code is strictly sequential. If we write
+    code that takes long to execute or needs to be blocking from its nature, it's
+    going to cause the entire event loop to also be blocking.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using multiple StreamSelectLoop instances
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In real-world PHP applications, where we need to work asynchronously with PHP
+    streams, Observables, HTTP servers/clients, or WebSocket servers/clients (and
+    basically any asynchronous code), we might need to use multiple event loops. This
+    means a situation where each nonblocking part of the application requires its
+    own event loop.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, we need to use an event loop to use `IntervalObservable`, but we
+    also need an event loop for a WebSocket server that needs to read data from a
+    PHP stream.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consider the following example, where we simulate a similar scenario:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this example, the second `$loop2` will never start. The PHP interpreter will
+    only stay in the first `$loop1`, which never ends because of the periodic timer.
+    If we did it in reverse order (calling `$loop2` first and then `$loop1`) it would
+    actually work. The second loop would just be delayed by two seconds because the
+    first loop runs just one action and then ends (there are no other timers active,
+    so it'll end automatically).
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is something we need to be aware of. In [Chapter 7](part0054_split_000.html#1JFUC2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 7. Implementing Socket IPC and WebSocket Server/Client") , *Implementing
+    Socket IPC and WebSocket Server/Client*, we'll write an app that uses a WebSocket
+    server and a Unix socket client that need to run at the same time. This means
+    they both need to be able to read data from streams in a loop. The good thing
+    is that the WebSocket server will use the same event loop implementation from `react/event-loop`
+    package.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The outcome of this is that, in PHP, we need to have just a single event loop,
+    which might be a problem with certain libraries that need to work with their own
+    event loop implementations, but don't expose any way we can hook them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, this doesn't necessarily apply to RxJS or, in general, to JavaScript
+    applications where the interpreter works differently to PHP. We'll talk about
+    the differences when using RxJS and RxPHP in more depth in the last chapter of
+    this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Event loop interoperability in PHP
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To tackle this problem there's an attempt to standardize even loop implementations
+    to follow the same API.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `async-interop/event-loop` package defines a set of interfaces that an even
+    loop needs to implement to be truly interchangeable. This means that we can write
+    a library that only relies on the interfaces provided by `async-interop/event-loop`
+    and the end user can decide which even loop implementation they want to use.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can have a look at an example of `StreamSelectLoop` we know already and use
+    it only via the interface provided by `async-interop/event-loop`. As of now, `StreamSelectLoop`
+    doesn't implement this interface natively so we'll need one more package `wyrihaximus/react-async-interop-loop`
+    that wraps the event loop implementation from `react/event-loop` with `async-interop/event-loop`
+    interface.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our `composer.json` file will be very simple because we''ll have just a single
+    required package:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `wyrihaximus/react-async-interop-loop` package requires as dependencies
+    both `async-interop/event-loop` and `react/event-loop` so we don't need to include
+    them ourselves.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then we''ll write a minimal example that schedules two actions using the `Loop`
+    interoperability interface:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that all our operations are done only on the `Loop` class which comes
+    from the `async-interop/event-loop` package and its static methods. We already
+    know that we always have to have only one event loop running at a time. This is
+    why all the methods on the `Loop` class are static.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `setFactory()` method tells the `Loop` class how to create an instance of
+    our event loop. In our case we're using `react/event-loop` that is wrapped inside `ReactDriverFactory`
+    to follow the `async-interop` interface.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Event loops and future versions of RxPHP
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Using event loops (and thus all operators requiring asynchronous scheduling)
+    has been significantly simplified in RxPHP 2 and most of the time we don't even
+    need to worry about starting the event loop ourselves.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: RxPHP 2 was supposed to be based on the async-interop/event-loop interface.
+    However, the specification is still unstable so the RxPHP team decided to rollback
+    to the RxPHP 1 style of event loops. The following paragraphs describe how the
+    event loops should be used in the future versions of RxPHP (maybe RxPHP 3). At
+    the end, RxPHP 2 is based on the `StreamSelectLoop` class from the `reactphp`
+    library as we're used to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'RxPHP in the future will rely on the `async-interop/event-loop` interface.
+    Since we don''t want to start the loop ourselves we can autoload a bootstrap script
+    from RxPHP to start the loop automatically at the end of the script execution
+    using PHP''s `register_shutdown_function()`. We''ll update our `composer.json`
+    again and add the `autoload` directive:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now we can write any asynchronous code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that we're neither creating a Scheduler nor starting the loop. In RxPHP
+    2 all operators have their default Scheduler predefined so we don't need to pass
+    it in the `subscribe()` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we wanted to follow a similar approach as with RxPHP 1 we could hardcode
+    the Scheduler:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: However, in some situations, we might not want to wait until the end of the
+    script for `register_shutdown_function()` to start the loop and we want to start
+    it ourselves.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s have a look at the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Both Observables will start emitting values at the same time when the loop
+    is started so the output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can also manually start the event loop after we create the first Observable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The loop will end after printing three values and then we carry on with the
+    second Observable. The event loop will be automatically started again at the end
+    the script execution. The output is then the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Note that at the time of writing this book (April 2017) both `async-interop/event-loop`
+    and RxPHP 2 are in pre-release state and their APIs might change.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Higher-order Observables
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When talking about the prerequisites for functional programming we mentioned
+    higher-order functions. These are functions that return other functions. A very
+    similar concept is applied in RxPHP as well, when using Observables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A higher-order Observable is an Observable that emits other Observables. To
+    illustrate how higher-order Observables differ from first-order Observables, consider
+    the following simple example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This example just prints three values and completes as expected. This is what
+    we expect from any first-order Observable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we can make this more complicated by adding the `map()` operator that,
+    instead of returning an integer, returns another Observable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: We create an Observable using `range()` for each value from the source Observable.
+    In our example, Observables that arrive to the `DebugSubject` instances are supposed
+    to emit values `[0]`, `[0, 1]`, and `[0,1,2]`, respectively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The output in console is not satisfactory. The `DebugSubject` instance prints
+    what it receives, which is an instance of `RangeObservable`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is correct behavior. We''re really returning Observables from the `map()`
+    operator, and `subscribe()` method doesn''t care what values it passes through:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The value for each `onNext` is `RangeObservable` (`Rx\Observable\RangeObservable`)
+    because `DebugSubject` receives an object and transforms it into a string. Then
+    it prints the class name, including its namespace, in parentheses.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, what if we want to flatten the inner Observables and re-emit all values
+    from them?
+  prefs: []
+  type: TYPE_NORMAL
+- en: RxPHP has a couple of operators intended to work with higher-order Observables.
+    In particular the most useful are `mergeAll()`, `concatAll()`, and `switchLatest()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For this purpose, we can choose `mergeAll()` or `concatAll()`. The difference
+    between these two is the same as `merge()` and `concat()`. The `mergeAll()` operator
+    subscribes to all inner Observables right when it receives them, and re-emits
+    all their values immediately. On the other hand, `concatAll()` will subscribe
+    to the inner Observables one at the time, in the order it receives them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The concatAll() and mergeAll() operators
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this example, it doesn't matter which one we choose. The `RangeObservable`
+    is a cold Observable that uses `ImmediateScheduler`, so all values are always
+    emitted in the correct order.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Implementation with `mergeAll()` could look like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now `Observable::range(1, 3)` emits three instances of `RangeObservable`. The `mergeAll()`
+    operator subscribes to each of them and re-emits all their values to its observer,
+    which is a `DebugSubject` instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'How `mergeAll()` works is obvious from the following marble diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The concatAll() and mergeAll() operators](img/00024.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Marble diagram representing the mergeAll() operator in RxJS (http://reactivex.io/rxjs/class/es6/Observable.js)
+  prefs: []
+  type: TYPE_NORMAL
+- en: The source Observable, represented as a horizontal line at the top, doesn't
+    emit values directly (there are no circles on the line). Instead, it emits other
+    Observables, represented by diagonal lines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we run this example, we''ll get values as described above, which are `0`, `0`,
+     `1`, `0`, `1`, and `2`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can also test what happens if we work with Observables that emit values asynchronously.
+    In this case, it matters whether we use `mergeAll()` or `concatAll()`, so we'll
+    test both scenarios.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s start with `mergeAll()` and an example similar to the previous one.
+    We''ll use `IntervalObservable` and `take(3)` to emit three Observables that asynchronously
+    emit three values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Each value from the inner Observable is transformed into a string to be easily
+    identifiable. We can describe what happens in this example by time-stamping each
+    value:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`1000ms`: The first value is emitted from the outer `IntervalObservable`, which
+    is via the `map()` operator turned into another `IntervalObservable`. At this
+    point, `mergeAll()` subscribes to this first inner Observable.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`1600ms`: The inner `IntervalObservable` emits a first-value (integer `0`),
+    which is converted to a string and printed by the `DebugSubject` instance.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`2000ms`: The second inner Observable is created. The `mergeAll()` operator
+    subscribes to it as well. It''s subscribed to two Observables now.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`2200ms`: The first inner `IntervalObservable` emits its second value `(1)`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`2600ms`: The second inner `IntervalObservable` emits its first value `(0)`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`2800ms`: The first inner `IntervalObservable` emits its last value `(2)`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`3000ms`: The third inner `IntervalObservable` is created.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This continues until all inner `IntervalObservable` emit three values, thanks
+    to the `take(3)` operator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can see that the values from inner Observables are really emitted asynchronously
+    and, if we want to consume them, it's very easy to use the `mergeAll()` operator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The full console output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Implementation using `concatAll()` is exactly the same. The only thing that
+    changes is how we use this operator:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Just like the `concat()` operator, `concatAll()` keeps the order of Observables
+    and subscribes to the next Observable only after the previous Observables are
+    completed. The output in the console is in the order the inner `IntervalObservables`
+    are created:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: The core principle of higher-order Observables isn't easy to grasp at first
+    sight, so feel free to experiment by yourself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although it's hard to see the real benefit of `concat()`, `concatAll()`, `merge()`,
+    and `mergeAll()` in RxPHP, these all are very common in RxJS. Typically, when
+    we need to run multiple HTTP requests in order or independently of each other,
+    it's very convenient to use one of these operators. More on this topic is in the
+    final chapter, which shows some interesting use-cases of RxJS.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The switchLatest Operator
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: With `concatAll()` or `mergeAll()`, we know we'll always receive all values
+    emitted from all inner Observables. In some use cases, we might care only about
+    values from the most recent Observable, while discarding all other Observables.
+    This is something we can't do with either `concatAll()` or `mergeAll()` because
+    these always wait until the current Observable completes or all Observables complete,
+    respectively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is why there's a `switchLatest()` operator that's always subscribed only
+    to the most recent Observable and automatically unsubscribes from the previous
+    one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following marble diagram explains this principle very well:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The switchLatest Operator](img/00025.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Marble diagram representing the switch() operator in RxJS (http://reactivex.io/rxjs/class/es6/Observable.js)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: This operator is called, simply, `switch()` in RxJS. There are also the `switchMap()`
+    and `switchMapTo()` operators, currently available only in RxJS.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this figure, we can see that the source Observable emits two Observables.
+    The first inner Observable emits four values, but only two of them ("a" and "b")
+    are re-emitted. Before the third value is emitted the source Observable emits
+    another inner Observable and the current one is unsubscribed. Then it carries
+    on by re-emitting values from the new inner Observable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Also, note that the inner Observable is consumed even after the source Observable
+    completes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, how is this operator going to change the output from the same example we
+    used for `concatAll()` and `mergeAll()`? Take a look at the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We know for sure we won''t receive all values from all inner Observables because
+    each one of them is created before the previous one completes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: Each inner Observable was able to emit only its first value, and then they were
+    unsubscribed except for the last Observable. Since there are no more emissions
+    from the source Observable, `switchLatest()` stays subscribed to it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The combineLatest() operator
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Both `concatAll()` and `mergeAll()` re-emit all values emitted by their inner
+    Observable (or Observables) one by one. There's one more operator with a similar
+    functionality, called `combineLatest()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In contrast to the previous two, `combineLatest()` takes arguments as an array
+    of Observables and immediately subscribes to all of them. Then, the last value
+    emitted by each Observable is internally stored in a buffer by `combineLatest()`
+    and when all source Observables have emitted at least one value, it emits the
+    entire buffer as a single array. Then on any emission from any of the source Observables
+    the updated buffer is re-emitted again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is demonstrated in the following marble diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The combineLatest() operator](img/00026.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Marble diagram representing the combineLatest() operator in RxJS (http://reactivex.io/rxjs/class/es6/Observable.js)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice that when the first Observable emitted **a**, it wasn't immediately re-emitted.
+    Only after the second Observable emits its first value the `combineLatest()` operator
+    reemitted both of them. This means that, if we have an array of *N* Observables,
+    the observer for `combineLatest()` will always receive an array of *N* values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An important implication of this is that, if we had an Observable in the source
+    array that, for some reason, didn't emit any value, then `combineLatest()` won't
+    emit any value either because it needs to have at least one value for each source
+    Observable. This can be easily avoided by using the `startWith()` or `startWithArray()`
+    operators that prepend value emissions before the source Observable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consider the following example, where we have an Observable with just a single
+    value, created using `Observable::just()`. We want to combine it using the `combineLatest()`
+    operator with an array of `IntervalObservable` instances:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: We know for sure that the output array will always start with integer `42`.
+    This array will be emitted for every change in the array of source Observables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice that the second `IntervalObservable` emits its first value after 250ms,
+    while the third `IntervalObservable` emits its first value after just 100ms. This
+    means that we'll never receive the first value from the third `IntervalObservable`.
+    It'll never be re-emitted, because `combineLatest()` needs all Observables to
+    emit at least one value, and in our case, it's going to wait for the second `IntervalObservable`,
+    which is the slowest one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The console output confirms our expected behavior:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: The last two emissions happened only because of the second `IntervalObservable`.
+    Also, notice that, since every emission from the source Observables triggers `combineLatest()`
+    to re-emit its current values, there's always only one updated value in the array.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we want to be sure we''ll catch all values emitted from all Observables,
+    we can use `startWith()` to set default values for each of them:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now the output is going to start with `null` values, and we can be sure we''ll
+    receive all values from all source Observables:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: These four operators belong to a category of more advanced Rx features. Although
+    these aren't commonly used in either RxPHP or RxJS, it's very useful to know that
+    they exist, because it leverages the true power of Reactive Extensions. The internal
+    logic provided by `switchMap()` or `combineLatest()` lets us avoid using any state
+    variables to keep track of where we need to subscribe/unsubscribe and what values
+    we need to store.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll encounter `combineLatest()` and `switchMap()` used in one operator chain
+    in the next chapter. Also, in the final chapter of this book, when talking about
+    similarities with RxJS, we'll use a slightly modified version of `combineLatest()`
+    in JavaScript. The `concatAll()` and `mergeAll()` Operators are useful in RxJS
+    as well, and we can do some tricks with them that aren't possible in RxPHP as
+    of now; but more on that in the final chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter covered a lot of new topics. We're going to use all of what we
+    just learned in the next chapter, where we'll use Unix sockets for inter-process
+    communication and WebSocket server for a simple chat application. Most importantly,
+    we're going to use spawning subprocesses with `ProcessObservable`, PHP Streams
+    API for Unix socket communication. We are also going to look into event loops,
+    including use cases, where we need to share the same instance of the event loop
+    among Unix socket streams and a WebSocket server. Then we will move on to higher-order
+    Observables to collect statuses from multiple subprocesses, and a WebSocket server
+    and client. PHP Streams API and higher-order Observables are, in principle, a
+    little harder to understand at first glance, so feel free to take your time and
+    experiment by yourself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we'll also introduce the concept of backpressure in Rx,
+    which is a common way to avoid overloading the consumer by emitting more values
+    that the observer is able to process.
+  prefs: []
+  type: TYPE_NORMAL

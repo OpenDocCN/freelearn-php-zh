@@ -1,0 +1,1166 @@
+- en: Chapter 3. Writing a Reddit Reader with RxPHP
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In previous chapters, we talked a lot about asynchronous programming in PHP
+    and how this relates to reactive programming, in particular, how to start using
+    RxPHP, and how to use common PHP functions such as `proc_open()` and `cURL` asynchronously.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chapter will cover writing a CLI Reddit reader app using RxPHP, Symfony
+    Console, and Symfony Process components. We''re also going to use most of what
+    we''ve learned in the previous chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll look in more depth into what happens internally when creating Observable
+    chains and subscribing to Observables.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We'll see how Disposables are used in the default classes that come with RxPHP,
+    and how these are going to be useful for unsubscribing from Observables in our
+    app.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Subjects can sometimes simplify our lives when working with operator chains.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to use `Observable::create()` and `Observable::defer()` static methods to
+    create new Observables with custom logic on subscription.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Symfony Console library is going to be our tool of choice for most CLI interactions
+    throughout this book. Before we start using it, we'll have a quick look at what
+    its practical benefits are.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The event loop from the previous chapter is going to be the center of our app.
+    We're going to use it to make the app responsive (we could also say, reactive)
+    at any given time.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To easily work with subprocesses, we'll use Symfony Process component, which
+    handles all the heavy work related to managing subprocesses for us.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We'll use non-blocking stream handling we've seen already in practice, in combination
+    with input from terminal and output from a subprocesses.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We'll list disposable classes provided by RxPHP.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Before we dive in, now is a good time to have a closer look at the internal
+    functionality of RxPHP, which hasn't been very important thus far. Nonetheless,
+    this knowledge is going to be crucial in this and most of the upcoming chapters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Examining RxPHP's internals
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In the previous chapter, we briefly mentioned disposables as a means for releasing
+    resources used by observers, Observables, Subjects, and so on. In practice, a
+    disposable is returned, for example, when subscribing to an Observable. Consider
+    the following code from the default `Rx\Observable::subscribe()` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: This method first adds the observer to the array of all subscribed observers.
+    It then marks this Observable as started (remember the difference between "cold"
+    and "hot" Observables from [Chapter 2](part0024_split_000.html#MSDG2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 2. Reactive Programming with RxPHP"), *Reactive Programming with RxPHP*)
+    and, at the end, it returns a new instance of the `CallbackDisposable` class.
+    This class takes a Closure as an argument and invokes it when it's disposed. This
+    is probably the most common use case for disposables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This disposable just removes the observer from the array, and therefore, it
+    receives no more values emitted from this Observable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A closer look at subscribing to Observables
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: It should be obvious that Observables need to work in such a way that all their
+    subscribed observers can be iterated. Then, unsubscribing via a disposable will
+    need to remove one particular observer from the array of all subscribed observers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, if we have a look at how most of the default Observables work, we
+    find out that they always override the `Observable::subscribe()` method and usually
+    completely omit the part where it should hold an array of subscribers. Instead,
+    they just emit all available values to the subscribed observer and finish with
+    the `onComplete()` signal immediately after that. For example, we can have a look
+    at the actual source code of the `subscribe()` method of the `Rx\ReturnObservable`
+    class in RxPP 1:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `ReturnObservable` class takes a single value in its constructor and emits
+    this value to every observer as they subscribe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following is a nice example of how the lifecycle of an Observable might
+    look:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When an observer subscribes, it checks whether a Scheduler was also passed as
+    an argument. Usually, it's not, so it creates an instance of`ImmediateScheduler`.
+    Note that in RxPHP 2 the Scheduler can be set only in the class constructor.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Then, an instance of `CompositeDisposable` is created, which is going to keep
+    an array of all disposables used by this method. When calling `CompositeDisposable::dispose()`,
+    it iterates all disposables it contains and calls their respective `dispose()`
+    methods.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Right after that, we start populating our `CompositeDisposable` with the following:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is something we''ll see very often. The  `SchedulerInterface::schedule()` method
+    returns a `DisposableInterface`, which is responsible for canceling the action
+    and releasing resources. In this case, when we''re using `ImmediateScheduler`,
+    which has no other logic, it just evaluates the Closure immediately:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Since `ImmediateScheduler::schedule()` doesn't need to release any resources
+    (it didn't use any), it just returns an instance of `Rx\Disposable\EmptyDisposable`
+    that does literally nothing.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Then the disposable is returned, and could be used to unsubscribe from this
+    Observable. However, as we saw in the preceding source code, this Observable doesn't
+    let you unsubscribe, and if we think about it, it doesn't even make sense because `ReturnObservable`
+    class's value is emitted immediately on subscription.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The same applies to other similar `Observables`, such as `IteratorObservable`, `RangeObservable`
+    or `ArrayObservable`. These just contain recursive calls with Schedulers, but
+    the principle is the same.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A good question is, why on Earth is this so complicated? All the preceding
+    code does could be stripped into the following three lines (assuming we''re not
+    interested in using Schedulers):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: Well, for `ReturnObservable` this might be true, but in real applications, we
+    very rarely use any of these primitive Observables. Another very important use
+    case for Schedulers is testing. We can provide a test Scheduler that simulates
+    delayed execution, to make sure our Observables and operators emit values in the
+    correct order. We'll go into this topic in depth in [Chapter 5](part0043_split_000.html#190861-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 5. Testing RxPHP Code"), *Testing RxPHP Code*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The ability to unsubscribe from Observables or clean up any resources when unsubscribing
+    is very important, and we'll use it in a few moments.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Emitting multiple values with Schedulers
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: We've seen how to use `RangeObservable` already. Now, when we know why using
+    `Scheduler->schedule()` is important, we can for tutorial purposes think about
+    how we could implement `RangeObservable` Observable's functionality ourselves.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, it could look like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When we run this example, we''ll see that it produces the correct results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: However, the original `RangeObservable` has one interesting feature. It's able
+    to unsubscribe inside the loop, which means that we can stop generating values
+    any time we want.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consider the following example, where we unsubscribe inside the observer''s
+    callable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: This example emits only the first three values and then unsubscribes using `$disposable->dispose()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: We had to use an asynchronous `EventLoopScheduler`, because we want to start
+    executing scheduled actions after we subscribe. With `EventLoopScheduler`, the
+    execution starts by calling `$scheduler->start()`. If we use the default `ImmediateScheduler`,
+    then the `$disposable` variable will always be null (unassigned), because all
+    the scheduled actions would be executed inside `subscribeCallback()` method and
+    the `$disposable` variable will never be assigned.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When we run this demo we''ll see just the first three numbers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: If we try the same with our `CustomRangeObservable` we've just created, we'll
+    see that it doesn't unsubscribe and we always receive all values. To deal with
+    such use cases, Scheduler has a `scheduleRecursive()` method that behaves just
+    like `schedule()` but its callable takes one argument, which is a callable itself
+    to reschedule another emission.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In practice, we can rewrite `CustomRangeObservable::subscribe()` method to
+    use `scheduleRecursive()` instead of `schedule()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Notice that we''re not creating any loops ourselves and we let `$reschedule()` recursively
+    call itself. Now we can properly call `dispose()` on the disposable object returned
+    from `$sched->scheduleRecursive()` to stop scheduling more actions. We can test
+    this with the same scenario as we used with `RangeObservable`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now it prints only the first three numbers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: A closer look at operator chains
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We already used operator chains in the previous chapter. Before we start writing
+    our Reddit reader, we should talk briefly about an interesting situation that
+    might occur, so that it doesn't catch us unprepared later.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''re also going to introduce a new type of Observable, called `ConnectableObservable`.
+    Consider this simple operator chain with two subscribers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `ConnectableObservable` class is a special type of Observable that behaves
+    similarly to the Subject (in fact, internally, it really uses an instance of the `Subject`
+    class). Any other Observable emits all available values right after you subscribe
+    to it. However,  `ConnectableObservable` takes another Observable (the source
+    Observable) as an argument and lets you subscribe observers to it without emitting
+    anything. When you call  `ConnectableObservable::connect()`, it subscribes to
+    the source Observables, and all values go one by one to all subscribers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Internally, it contains an instance of the `Subject` class, and when we called
+    the `subscribe()` method, it just subscribed each observer to its internal Subject.
+    Then when we called the `connect()` method, it subscribed the internal Subject
+    to the source Observable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the `$filteredObs` variable we keep a reference to the Observable returned
+    from `filter()` operator, which is an instance of `AnnonymousObservable` where,
+    on the next few lines, we subscribe both observers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let''s see what this operator chain prints:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As we can see, all values went through both observers in the order they were
+    emitted. Just out of curiosity, we can also have a look at what would happen if
+    we didn''t use `ConnectableObservable`, and used just the `RangeObservable` instead:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: This time, `RangeObservable` emitted all values to the first observer and then,
+    again, all values to the second observer. We can see that the source Observable
+    had to generate all the values twice, which is inefficient, and with a large dataset,
+    this might cause a performance bottleneck.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Subscribing to ConnectableObservable
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let''s go back to the first example with `ConnectableObservable`, and modify
+    the `filter()` call so it prints all the values that go through:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now we run the code again and see what happens:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: Well, this is unexpected! Each value is printed twice, even though we're using
+    `ConnectableObservable`. This doesn't always mean that the Observable has to generate
+    all the values twice, however (as we'll see in [Chapter 8](part0061_split_000.html#1Q5IA1-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 8. Multicasting in RxPHP and PHP7 pthreads Extension"), *Multicasting
+    in RxPHP and PHP7 pthreads Extension*). It's not obvious at first sight what happened,
+    but the problem is that we subscribed to the Observable at the end of the operator
+    chain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As stated previously, `$filteredObservable` is an instance of `AnnonymousObservable`
+    that holds many nested Closures. By calling its `subscribe()` method, it runs
+    a Closure that's created by its predecessor, and so on. This leads to the fact
+    that every call to `subscribe()` has to invoke the entire chain. While this might
+    not be an issue in many use cases, there are situations where we might want to
+    do a special operation inside one of the filters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The operator chain for this example looks like the following diagram, where
+    each subscription is represented by an arrow:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Subscribing to ConnectableObservable](img/00010.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The most important consequence of all this is that neither operators nor `AnnonymousObservable`
+    class share values that go through them. In fact, none of them keep track of subscribed
+    observers either.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Also, note that calls to the `subscribe()` method might be out of our control,
+    performed by another developer who wanted to use an Observable we created for
+    them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's good to know that such a situation might occur and could lead to unwanted
+    behavior.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: It's sometimes hard to see what's going on inside Observables. It's very easy
+    to get lost, especially when we have to deal with multiple nested Closures in
+    PHP. Schedulers are prime examples. Feel free to experiment with the examples
+    shown here and use debugger to examine step-by-step what code gets executed and
+    in what order.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, let''s figure out how to fix this. One way could be restructuring our code
+    where we''ll turn `$filteredObservable` into `ConnectableObservable` and not `RangeObservable`
+    directly. Consider the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When we run this code, we can see the `filter()` operator is called just once
+    for each value:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To better understand what is different to the previous example, we can have
+    a look at a diagram representing this operator chain:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Subscribing to ConnectableObservable](img/00011.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: We can see that the `ConnectableObservable` was moved down the chain and it
+    subscribes to the `filter()` operator instead of `RangeObservable`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using Subject instead of ConnectableObservable
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We said we don''t want to subscribe at the end of the chain multiple times,
+    so we can create an instance of `Subject` class, where we''ll subscribe both observers,
+    and the `Subject` class itself will subscribe to the `$filteredObservable`, as
+    discussed a moment ago:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can run the script and see that it returns exactly the same output as the
+    previous example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: This might look like an edge case, but soon we'll see that this issue, left
+    unhandled, could lead to some very unpredictable behavior. We'll bring out both
+    these issues (proper usage of disposables and operator chains) when we start writing
+    our Reddit reader.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Observable::create() and Observable::defer()
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We know how to create Observables using `ReturnObservable` or `RangeObservable`.
+    We've also written a custom `CURLObservable` as well. However, in some situations
+    we might want to create an Observable with some custom logic that isn't easily
+    reproducible with already existing Observable classes. Of course, we could write
+    another Observable inheriting the base Observable class, but if we need to deal
+    with a very specific, single use-case scenario, there's an easier way with static
+    methods `Observable::create()` and `Observable::defer()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating Observables with Observable::create()
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'With `Observable::create()`, we can create an Observable that automatically
+    pushes values into each of its observers on subscription. Consider the following
+    example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The callable passed to `Observable::create()` takes as a parameter an observer
+    where it can immediately start emitting values. It''s important to remember that
+    this callable is going to be called for each observer. This example prints the
+    following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that string `Observable::create` is printed twice. Also, notice we called
+    `onCompleted` ourselves to properly complete the Observable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The callable can optionally return an instance of `Rx\DisposableInterface`
+    that''ll be disposed when unsubscribing/completing the Observable. We can modify
+    the same example to return an instance of `CallbackDisposable`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now each `CallbackDisposable` will be called to properly cleanup resources for
+    each observer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating Observables with Observable::defer()
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Imagine a use case where we want to generate a random range of numbers for each
+    observer that subscribes to our Observable. This means we want each observer to
+    have a different range of numbers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Lets see what would happen if we used just `RangeObservable`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since we created a single source Observable, both observers will always receive
+    the same range of numbers. Range dimensions are set once when calling `Observable::range()`.
+    So, for example, the output from this script could look like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We could of course create two source Observables, but there''s a more elegant
+    way using `Observable::defer()` static method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: Static method `Observable::defer()` takes as argument a callable that is called
+    every time an observer subscribes similarly to `Observable::create()`. However,
+    this callable needs to return another Observable where the observer will subscribe.
+    Instead of creating a `RangeObservable` just once, we're creating a new one for
+    each observer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output for this example could look like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that each observer received a different range of numbers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing a Reddit reader using RxPHP
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'This and many upcoming apps we''re going to build will be pure CLI apps. That
+    said, it''ll be helpful to have some unified library that''ll help us with things
+    common in the CLI environment:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Writing a Reddit reader using RxPHP](img/00012.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The tool of choice for us is going to be Symfony Console component ( [http://symfony.com/doc/current/components/console.html](http://symfony.com/doc/current/components/console.html)
+    ). It's an  open-source library developed along with the Symfony framework, but
+    it's designed to be used independently in any project, which is ideal for us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It handles everything from inputs to outputs, and on top of that, it comes
+    with a few very nifty helpers as well. In particular, we''re going to use the
+    following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Coloring and formatting the console output
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Splitting a CLI app into multiple independent commands
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Automatically generating help from an input parameter definition
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Handling input parameters, including validation and default values
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating a unified set of functions to handle user input
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In this example, we're going to use just the first two bullet points, but in
+    later chapters, we'll use all the features listed here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the Symfony Console component
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Start by installing the Symfony Console component via composer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: Each CLI app is divided into multiple commands that can be run on their own.
+    We'll set one default command because our app is very simple and we can put all
+    its logic into a single command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The entrance point of our app is just going to register the command and then
+    let the Console library handle everything for us:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: Running the `$application::run()` method checks CLI parameters from PHP globals
+    and chooses the right command based on that. Since our app has only one command,
+    we don't need to pass any parameters from terminal; the app will use the default
+    one, `RedditCommand`, which we'll start writing right now.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Each command inherits the `Symfony\Component\Console\Command` class and should
+    at least define its name:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: This command's name is `reddit`, which needs to match the name we set using `setDefaultCommand()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Notice that we can use tags similar to HTML for some basic styling, which is
+    very limited, but it''s enough for the purposes of typical CLI apps. There are
+    four predefined colors that we''ll use, but if you want to go into more detail
+    feel free to check the documentation on coloring outputs at  [http://symfony.com/doc/current/console/coloring.html](http://symfony.com/doc/current/console/coloring.html)
+    :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`<info>` = `green`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`<comment>` = `yellow`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`<question>` = `black` on cyan background'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`<error>` = `white` text on red background'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When Symfony Console library recognizes a command, it calls its `execute()`
+    method while passing two objects used to handle inputs and outputs. We don't usually
+    want to handle input or output by ourselves because there are inconsistencies
+    across different platforms and Console library can do everything for us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'One suitable exception is when we want to use non-blocking user input instead
+    of the built-in question helper. As it happens, this is exactly what we''re going
+    to do in a moment, but let''s first see how to run this command from terminal:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since `RedditCommand` is also the default command, we didn''t have to set any
+    CLI parameters to execute it. This is actually identical to running the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'One CLI app can hold multiple commands, as stated previously. We can list all
+    commands supported by this app with the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This prints a nicely colored overview of all commands, and some common options
+    allowed by all apps by default:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Using the Symfony Console component](img/00013.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Among them, there's also our `reddit` command with the description we set above.
+    We could also use the `help` command to get detailed information about a particular
+    command, but since our `reddit` command has no input parameters, we won't see
+    anything interesting, so we'll keep it for later.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Notice that `help` and `list` are just commands like any other.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Non-blocking user input and an event loop
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: At the end of the previous chapter, we talked about blocking and non-blocking
+    streams in PHP using `proc_open()` and `stream_set_blocking()`. We also mentioned
+    that we need some kind of event loop that, while periodically checking for user
+    input, doesn't block the execution thread, in order to make the app responsive
+    at any time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The basic principles that we''re going to use for our command are as follows:
+    We''ll create an Observable that emits a value for every line of input it receives
+    (that''s a string followed by *Enter* key). This Observable will have multiple
+    observers that will subscribe and unsubscribe based on the current app''s internal
+    state. We''ll always have at least one observer active, which is going to look
+    for the `q` (quit) string that terminates the event loop and ends the app.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s extend the `execute()` method to read a user''s input from terminal
+    and the event loop itself:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'There are already a few concepts used worth noting, so let''s take a look at
+    each of them separately:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We opened an input stream with `fopen('php://stdin', 'r')` and made it non-blocking
+    using the `stream_set_blocking()` function. This is exactly the same principle
+    as we used in the previous chapter, with `proc_open()`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The event loop works exactly the same way as we saw in the previous chapter.
+    We use it here to create a stable timer that fires (or "ticks," as it's referred
+    in `EventLoopScheduler`) every 100 ms.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: All user input is buffered, which means that `fread()` will always return an
+    empty string until we hit the  ***Enter*** key.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: With the `filter()` operator, we filter out all empty strings.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Values that successfully go through this operator chain are then observed by
+    a `Subject` class. This is the class where we'll subscribe our observers later,
+    and it emits only valid user inputs.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using `EventLoopScheduler` is in fact very simple. It makes sure it emits values
+    at precise intervals, even though there's always some code executed down the operator
+    chain. It internally measures the time it fired the last time and the time it
+    spent in propagating the value and then sleeps only for the interval necessary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that we've already addressed the issue regarding operator chains we explained
+    at the beginning of this chapter. The Observable where we'll subscribe/unsubscribe
+    is always `$this->subject`, and never the `IntervalObservable` directly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Also, note that we're creating a `$disposable` variable that holds a `Disposable`
+    object created by calling `subscribe($this->subject)`. This is basically the subscription
+    to the `IntervalObservable`. If we unsubscribe (this means invoking `$disposable->dispose()`)
+    the event loop will end automatically, and so will the entire app.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Subscribing to user inputs
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We''ve already mentioned that when a user enters `q`, the app should gracefully
+    end. We can implement this functionality right now. Once we have our instance
+    of Subject prepared, we can start subscribing to it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To save space and keep code examples short, we're omitting class name, indentation,
+    and already defined methods that remain unchanged.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This works exactly the same as subscribing to any other Observable. What's interesting
+    here is that we pass the `$disposable` variable to the Closure, where we call
+    its `dispose()` method, which unsubscribes the Subject from the `IntervalObservable`
+    and in turn terminates the event loop. This time, we don't need to keep any reference
+    to a `Disposable` object return from `subscribeCallback()`, because we know we'll
+    never want to unsubscribe this observer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice that we're using `take(1)` to accept always at most one quit signal.
+    Then the following `subscribe()` call defines only one callable for complete signal
+    and completely ignores the remaining two.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We addressed this at the beginning of this chapter when we talked about disposables
+    and how these are, in fact, necessary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We obviously want to let users choose their favorite `subreddit`. This is going
+    to be just another subscriber to `$this->subject`, but this time we''ll keep its
+    disposable, because later, we need to be able to subscribe other observers and
+    unsubscribe this one, which needs to be subscribed only to enter `subreddit` name
+    and nothing more:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: Right before we start the event loop, we schedule an action that asks the user
+    for the name of the `subreddit` they want to download and then subscribe a new
+    observer. When it receives a valid value, we store it in the `$this->subreddit`
+    variable and then it unsubscribes itself using `$this->subredditDisposable->dispose()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can already see that there's a call to another method, called `refreshList()`.
+    This method will download posts for this `subreddit` via Reddit API in JSON and
+    print a list with their titles, where the user can choose which one of them they
+    want to read by entering the post's index number.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To download the list, we''re going to use the cURL PHP module. We''ve already
+    used it in [Chapter 2](part0024_split_000.html#MSDG2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 2. Reactive Programming with RxPHP"), *Reactive Programming with RxPHP*,
+    where we created `CURLObservable` for this purpose, which comes in handy here
+    as well. Also, we''ve already written `JSONDecodeOperator` for decoding JSON strings,
+    which we''ll also use:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is what we've already seen and it should be very easy to follow. We use
+    `CURLObservable` to download the URL, and then `JSONDecodeOperator` to decode
+    it from a JSON to a PHP array. We then iterate the list of all articles it contains
+    and print their indices and titles.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We introduced one more small method, called `printHelp()`, which only prints
+    a hint that typing `q` and hitting  ***Enter*** will quit the app. We then append
+    some more hints relative only to the current state, such as **[b] Back to the
+    list**, as we can see in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Subscribing to user inputs](img/00014.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Then, similarly, it calls `chooseArticleDetail()`, which lets the user enter
+    the index number of the article they want to see.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This could go on and on but the principle is always the same. We subscribe an
+    observer to the main `Subject` class stored in `$this->subject`, check only values
+    relevant to the current application state, perform some action, and then unsubscribe.
+    It's probably not necessary to include the complete source code here because it
+    would be very repetitive.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: If you want to see all methods for this app implemented, then check out the
+    full source codes for this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Instead, let's focus on another thing related to `CURLObservable` and subprocesses,
+    with Symfony Process component.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Non-blocking CURLObservable
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In our Reddit reader app, we download data from a remote API using PHP's cURL.
+    Even when using its asynchronous callbacks, such as `CURLOPT_PROGRESSFUNCTION`,
+    it's important to keep in mind that `curl_exec()` is still a blocking call, no
+    matter what options we choose.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is due to the fact that PHP runs in a single execution thread and when
+    it starts executing `curl_exec()`, everything else needs to wait until it finishes.
+    It's true that this method might call some callback functions, but if any of them
+    got stuck, for example, in an infinite loop, the `curl_exec()` function would
+    never end.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This has serious implications for the actual responsiveness of our Reddit reader.
+    While `CURLObservable` is downloading data, it doesn't respond to any user input,
+    which is probably not what we want.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we talked about `IntervalObservable` and how it's able to keep the desired
+    interval very precisely, we didn't mention that this is, in fact, a type of situation
+    it can't handle.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s make a small script that demonstrates such behavior. We''ll use `IntervalObservable`
+    to fire every second:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This example prints the current time very precisely, including microseconds.
+    If we keep it running for a while, we''ll still see that it holds to microseconds
+    pretty well while incrementing by one second:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can already observe that the `map()` operator is called shortly before the
+    observer. Now, let''s add a `usleep(1250 * 1000);` call into the `map()` operator.
+    We can see that the gap is even larger than the 1-second interval of `IntervalObservable`,
+    which makes it completely out of sync:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: This implies that, even when we rely on `IntervalObservable` to do all the timing
+    necessary, it can't do anything when there's code anywhere in the operator chain
+    blocking the execution. This is what happened to us with `CURLObservable`, and
+    the app not responding when `curl_exec()` is running.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unfortunately, PHP itself, without any extra modules, doesn't give us many options
+    to write non-blocking code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But in the previous chapter, we used `proc_open()` and `stream_set_blocking()`
+    to run a non-blocking subprocess, so we can use the same technique and wrap `CURLObservable`
+    into a standalone app that we can run as a subprocess.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since we already know how to write CLI apps using Symfony Console component,
+    we''re going to use it here as well:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: This command has one required argument, which is the URL it's supposed to download.
+    It uses `CURLObservable` internally to download the URL, and then just prints
+    the response to its standard output. It also sets proper UNIX return code when
+    an error occurs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we try to run the command without any arguments, it prints an error telling
+    us that this command has to have exactly one argument:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Non-blocking CURLObservable](img/00015.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We can test the command manually; for example with the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, we could use `proc_open()` like in the previous chapter, but apart from
+    just spawning the process, there are a lot of things to handle by ourselves, so
+    it's easier to leave all the heavy work to another library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using Symfony Process component
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'As usual, we''ll install this library using composer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: This library lets us create new processes, read their outputs in a non-blocking
+    way, send inputs, send signals, use timeouts, terminate processes, and so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To test things out, we''ll make a small script that uses `IntervalObservable`
+    to print a number every second while waiting for the subprocess to finish:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `Process` class takes in its constructor a full command it's supposed to
+    execute. Then, calling `Process::start()` will start the subprocess in an asynchronous
+    non-blocking way, just like we did before. We can check for available output anytime
+    with the `getOutput()` method. Then, the `isSuccessful()` and `isRunning()` methods
+    return `true` when the process has successfully terminated (return code equals
+    0), and whether the process is still running, respectively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The takeWhile() operator
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We have also used one new operator, called `takeWhile()`. This operator takes
+    a predicate Closure as an argument, which is executed for every value it receives.
+    If the predicate returns `true`, it passes the value down the chain (by calling `onNext()`
+    on its observer), but if the predicate returns `false`, it signals `onComplete()`,
+    and therefore, the loop ends because there are no other observers subscribed to
+    it. It''s exactly the same situation we saw earlier in this chapter, when we used
+    disposable to unsubscribe from `IntervalObservable` and end the app. The following
+    Marble diagram represents `takeWhile()` operator in RxJS ([http://reactivex.io/rxjs/class/es6/Observable.js](http://reactivex.io/rxjs/class/es6/Observable.js)):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The takeWhile() operator](img/00016.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: If we run this example, it'll print a few ticks, then dump the entire response
+    and end. This is exactly what we need. So, we can remove the temporary `printf()`
+    statement and use this subprocess in our Reddit reader app.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing subprocesses into the Reddit reader app
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This final improvement will require some modifications to the existing code.
+    First, the method `refreshList()` doesn't need to use either `CURLObservable`
+    or `JSONDecodeOperator`, because we'll read the response from the instance of
+    the `Process` class directly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Also, both the main `Subject` class checking for user input and the observer
+    checking whether the subprocess has terminated need to use the same instance of
+    Scheduler. It''s easier to share the same instance of `IntervalObservable` than
+    create a new one every time we want to refresh the list of posts, so we''ll keep
+    its reference as a `property` class in `$this->intervalObservable`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: Then, when we want to quit the app, we have to make sure the subprocess has
+    already terminated, or eventually terminate by ourselves. If we don't terminate
+    it, the PHP interpreter will have to wait until it finishes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is what the updated observer checking for the quit entry will look like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: So, at the end, this all allows us to quit (or perform any other action) any
+    time we want, even when cURL is downloading data at that very moment, because
+    we run the download as a separate non-blocking process that we check periodically
+    for a response in the same event loop as all user input.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In [Chapter 6](part0050_split_000.html#1FLS41-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 6. PHP Streams API and Higher-Order Observables"), *PHP Streams API and
+    Higher-Order Observables*, we'll see how to use `StreamSelectLoop` to directly
+    read from file handles created with `fopen()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Types of disposable classes
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Throughout this chapter, we've been subscribing and unsubscribing to Observables
+    a lot. Although we know what disposables are, we haven't talked about what different
+    types of disposable classes are available out of the box in RxPHP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We're not going to write examples for each one of them, because these are very
+    simple classes and if you're not sure about their implementation details, feel
+    free to check their source code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`BinaryDisposable`: A class internally containing two more disposable objects.
+    Then by calling its `dispose()` it automatically calls `dispose()` on the two
+    internal disposables as well.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`CallbackDisposable`: This class wraps a callable that is executed later when
+    calling `dispose()`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`CompositeDisposable`: A collection of disposables that''ll be disposed all
+    together.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`EmptyDisposable`: A dummy disposable that does nothing. Sometimes it''s required
+    to pass or return an instance of `DisposableInterface` even when we have nothing
+    to dispose.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`RefCountDisposable`: A disposable containing another disposable and a counter
+    that''ll be disposed when the counter reaches 0 (basically the same principle
+    as automatic reference counting in programming languages).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`ScheduledDisposable`: This class wraps another disposable that won''t be disposed
+    directly but scheduled with `Scheduler::schedule()` instead.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`SerialDisposable`: A collection of disposables where, when adding a new disposable,
+    the previous one is automatically disposed (the `Scheduler::scheduleRecursive()`
+    method returns this type of disposable).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`SingleAssignmentDisposable`: A wrapper around another disposable that can
+    be assigned only once. If we try to assign this disposable twice, it''ll result
+    in exception.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Since RxPHP is based mostly on RxJS 4, it uses its style of disposables. If
+    you're coming from RxJS 5, you're used to always using only `Subscription` class,
+    which is very similar to `CompositeDisposable`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we looked in more depth at how to use disposables and operators,
+    how these work internally, and what it means for us. We also saw how to use `Observable::create()`
+    and `Observable::defer()` to create new Observables with custom logic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The app that we have built was meant to be a simple Reddit reader that combines
+    all the aspects of RxPHP we've learned so far. We also saw how we can achieve
+    a truly responsive app by making all long running tasks non-blocking. We used
+    Symfony Console component to handle user input and output from terminal. Also,
+    we used Symfony Process component to easily spawn and have control over subprocesses.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also looked at a couple of new classes from RxPHP, such as `ConnectableObservable`, `CompositeDisposable`,
+    or `takeWhile()` operator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the following chapter, we'll work with some event-based systems used in popular
+    PHP frameworks, such as Symfony, Silex, and Zend Framework, and see how we can
+    combine them with the principles of reactive programming.
+  prefs: []
+  type: TYPE_NORMAL

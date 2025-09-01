@@ -1,0 +1,2076 @@
+- en: Chapter 10. Using Advanced Operators and Techniques in RxPHP
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This is the last chapter dedicated to explaining new RxPHP operators. There
+    are few topics that didn't fit into any of the preceding chapters, so we'll cover
+    them now. A couple of times we'll revisit Observable multicasting from [Chapter
+    8](part0061_split_000.html#1Q5IA1-bd355a22cf10407cb10df27e65585b8d "Chapter 8. Multicasting
+    in RxPHP and PHP7 pthreads Extension") , *Multicasting in RxPHP and PHP7 pthreads
+    Extension*, in practical examples and also four new operators, `zip()`, `window()`,
+    `materialize()`, and `dematerialize()`, which are more advanced techniques for
+    modifying Observable chains.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In particular, in this chapter we''ll cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `zip()` and `window()` operators that work with higher-order Observables
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `materialize()` and `dematerialize()` operators
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Error propagation in Observable chains and how to properly catch exceptions
+    from user-defined callbacks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Theory around creating hot/cold Observables and the difference in unsubscribing
+    and completing Observable chains
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating anonymous operators
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Writing a recursive `DirectoryIteratorObservable` that emits all files in a
+    directory and all its subdirectories
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Writing a variant of `DirectoryIteratorObservable` based on multicasting
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Writing an FTP client based on RxPHP
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using RxPHP in blocking and synchronous applications
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We've seen so many RxPHP operators throughout this entire book. All of them
+    worked with values in some way or another.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, there are also operators that are, in principle, similar to those used
+    by hot Observables or cold Observables when testing the RxPHP code that we saw
+    in [Chapter 5](part0043_split_000.html#190861-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 5. Testing RxPHP Code") , *Testing RxPHP Code*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The zip() operator
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The `zip()` operator is similar to the `ForkJoinObservable` that we implemented
+    ourselves in [Chapter 5](part0043_split_000.html#190861-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 5. Testing RxPHP Code"), *Testing RxPHP Code*. The main difference is
+    that it internally stores all emissions for each source Observable in a separate
+    queue and then re-emits their values when all sources have a value at a specific
+    index.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will be understood better by looking at the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: We have three source Observables where each of them emits a different number
+    of items. Then the `zip()` operator emits an array of values only when all the
+    sources have emissions at the same index. So we know that `DebugSubject` will
+    receive only two items because the `$obs2` Observable emits only two items.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In other words, the `zip()` operator can't make the third emission because it
+    doesn't have a third value for the second `$obs2` Observable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output from this example is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that it contains only the first two values for each source Observable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can have a look at another and more complicated example that simulates asynchronous
+    emission from multiple source Observables:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Since each source Observable emits with a different interval, the `zip()` operator
+    will have to emit according to the slowest one, which emits every 1000ms. Values
+    for the rest of the Observables are then stacked internally in queues.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This example will print the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that we're actually not losing values. All values that weren't re-emitted
+    yet are kept inside the `zip()` operator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The window() operator
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The `window()` operator belongs among the more advanced higher-order Observables.
+    We've seen the `switchLatest()` operator in [Chapter 6](part0050_split_000.html#1FLS41-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 6. PHP Streams API and Higher-Order Observables"), *PHP Streams API and
+    Higher-Order Observables*, and we know that it automatically subscribes to the
+    latest Observable emitted from its source Observable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The exact opposite is the `window()` operator that takes a so called "window
+    boundary" Observable as an argument and splits the source emissions into separate
+    Observables based on emission from the "window boundary" Observable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'An example will definitely make this more obvious:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: We have a source Observable emitting 10 items in total. The `window()` operator
+    splits them into chunks of three items because of the Observable in the `$windowBoundary`
+    variable that we pass as an argument to `window()`. This means that we'll make
+    four Observables in total where the first three emit three items (and then complete)
+    and the last one just a single item (and then it completes as well).
+  prefs: []
+  type: TYPE_NORMAL
+- en: To make this even more obvious, we added the `doOnNext()` operator to print
+    a log every time we create a new Observable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `switchLatest()` operator is then used to always subscribe only to the latest
+    Observable emitted by `window()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So in the console it''ll look like we split the source into chunks of three
+    items. In other words, we split the source into windows of three times:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: You're probably wondering what's this all good for. The `window()` operator,
+    optionally takes a selector function. This function receives as an argument the
+    current window before pushing it to its observers. For us this means that we can
+    further chain operators to it before it's passed further, which can be very useful.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Imagine we're in a situation where we're receiving messages of many different
+    types, but we want to be able to guarantee that we pass through only one message
+    of each type every 100 messages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can simulate such a situation by creating a source Observable with 500 items
+    where we repeat only three different characters. Then split it into windows with
+    100 items each and use the selector function to chain the new window Observables
+    with the `distinct()` operator:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Every Observable emitted by the `window()` operator has its own instance of
+    the `distinct()` operator, so after every 100 items we start comparing distinct
+    items all over again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This example prints the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that the order of characters is always going to be different because the
+    source is generated randomly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can see that even though each window contains 100 items, these are always
+    filtered by the `distinct()` operator that we chained to the window Observable
+    in the selector function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The `window()` operator definitely falls into the group of more advanced and
+    not so common operators in practice. In RxJS 5 there're even more variants of
+    this operator for more specific use cases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The materialize() and dematerialize() operators
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In [Chapter 5](part0043_split_000.html#190861-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 5. Testing RxPHP Code") , *Testing RxPHP Code*, when we talked about
+    testing in RxPHP, we weren't using real values, and instead were passing some
+    special recorded objects that wrapped the actual value with `OnNextNotification`
+    (or its `error` or `complete` variants). We did this because of the `TestScheduler`
+    class and because we had to be able to uniquely identify each value in order to
+    compare object references and not just their values. Comparing just values wouldn't
+    guarantee that they are identical because primitive types such as strings or integers
+    aren't passed by reference by default.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are two operators that use a similar principle. These are `materialize()`
+    and `dematerialize()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first one takes each value, wraps it with a notification object, and re-emits
+    it as a typical `onNext` signal. This includes `error` and `complete` signals
+    as well. These are wrapped and re-emitted like any other value, and after that
+    a complete signal is sent.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This means we can completely ignore error signals or handle them as regular
+    values. Before we talk more about what we can do with all this, let''s consider
+    the following example where we''ll see what the `materialize()` operator actually
+    does:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is just a `RangeObservable` that emits three values and then sends complete
+    signals. The `materialize()` operator converts each signal into an object, so
+    this example will print the following output to the console:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can see that `DebugSubject` received five signals in total. The first three
+    are just numbers emitted by the source `RangeObservable`. Then follows the complete
+    signal from the source, wrapped as well, and after that another complete signal,
+    but this time emitted by the `materialize()` operator itself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now let''s have a look at another example where we emit an error:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is very similar to the previous example, but this time we're forcing one
+    error signal among normal emissions. As we said, the `materialize()` operator
+    wraps the error and then calls `complete`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When we run this example, we''ll see that the wrapped value `4` never arrived
+    to `DebugSubject` since it has already unsubscribed because of the `complete`
+    signal:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: So what's all this actually good for when we can't, in fact, skip either the
+    `error` or the `complete` signals?
+  prefs: []
+  type: TYPE_NORMAL
+- en: While `materialize()` wraps signals with a notification object, there's also
+    the exact opposite operator called `dematerialize()`. And, of course, we can use
+    these two operators independently of each other.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Customizing error bubbling with dematerialize()
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Imagine that we have an Observable chain that needs to emit multiple errors,
+    but it can't decide which of these are severe and need to be propagated further
+    down the chain and which can be safely ignored. In a normal Observable chain,
+    the first error would cause immediate unsubscription.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With clever usage of notification objects and the `dematerialize()` operator,
+    we can let the error pop up when we want.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the following example, we generate a series of nine numbers. Every third
+    number is then converted into an error notification. The errors aren't important
+    and can be safely ignored. But the sixth number is different, and when it appears
+    we always want to signal an error.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consider the following example that generates multiple error signals and wraps
+    them with notifications:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: This example uses `materialize()` at the beginning to convert all values to
+    notifications. Then, inside the `map()` operator, we unwrap all notifications
+    with their `accept()` method that propagates their value to the appropriate callable
+    (it's like calling `subscribe()` on an Observable). This way we can see its value
+    and just return it as it is or eventually return `OnErrorNotification` instead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When we run this example, we''ll get the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is what we wanted to get. None of the errors actually did anything, and
+    they were all emitted as a normal `onNext` signal. Note that instead of number
+    six we have a `LogicException`. Now the last thing is to filter out all errors
+    that are unimportant for us. This means all errors except the single `LogicException`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll prepend the `filter()` and `dematerialize()` operators before the `subscribe()`
+    call. We have to use `dematerialize()` to turn notifications to their respective
+    signals. So the preceding example will look like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If we rerun this finalized example, we''ll get the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: All the other errors were ignored by the `filter()` operator and the only one
+    that was preserved and unwrapped with `dematerialize()` is the `LogicException`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This method of handling errors is obviously a hack that we typically don't want
+    to do, but it's good to know that even this is possible with RxPHP out of the
+    box, without creating custom observers or Observables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Error handling in RxPHP operator chains
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You may be wondering why we can't just emit multiple errors from an Observable
+    and then use `materialize()` to wrap them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consider the following example with `Observable::create` that emits two errors:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It might look like this example should wrap all the values and errors into
+    notifications because we put the `materialize()` operator right after the `Observable::create`.
+    Let''s see what happens when we run this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: So why can we only see the emissions up to the first error even though we used
+    `materialize()`?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Every time we use `lift()`, we're actually creating a new instance of `AnonymousObservable`.
+    This Observable creates an instance of `AutoDetachObserver` internally on subscription,
+    and after that, it calls its subscription callable. This `AutoDetachObserver`
+    class automatically calls `dispose()` on its internal disposable object (which
+    unsubscribes from the source) when it receives the `error` or `complete` signal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since almost all operators internally use `lift()`, they are also using `AutoDetachObserver`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This includes `Observable::create()`, which is just a static method that creates
+    a new `AnonymousObservable`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So this is why an Observable can never emit more than one `error` or `complete`
+    signal. They will always be ignored because the `AutoDetachObserver` class has
+    already unsubscribed when it received the first one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The default error handler
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We know that each observer can take as an optional parameter an error handler
+    that is called on error notification. Although the default behavior is different
+    than we might expect. If we do specify the error callable, we can handle the error
+    however we want to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, consider the following example where we specify only the error
+    handler:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When we run this example we''ll see that the handler is called properly:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now what happens if don''t set any error handler at all? We can see this situation
+    in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We''re using the `CallbackObserver` without any parameter, so the following
+    output is what we''ll get:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: The exception was simply rethrown. We didn't set any error callable, so this
+    is probably something we didn't expect to happen. It's good to be aware of this
+    behavior because it means that if we don't handle error notifications they might
+    cause unexpected script termination.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The default error handling is the same in RxJS 5; however, there's an ongoing
+    discussion whether this is the correct way Rx should behave. It's likely that
+    in the future versions of RxJS this behavior will change.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Catching exceptions inside operators
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A similar principle applies also when calling any user defined functions inside
+    an Observable or an operator. For example, when using the `map()` operator the
+    callable is wrapped with a try-catch block. Any exception thrown inside our callable
+    is then sent as an error notification.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This means that neither Observables nor operators are supposed to throw exceptions
+    unless something unexpected occurs that shouldn't happen under normal circumstances.
+    Throwing an exception inside a user defined callable is a valid use case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can test the difference on these two examples. First we''ll throw an exception
+    inside the selector function to the `zip()` operator from the same example we
+    saw previously:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The exception will be caught and sent as an error notification:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In this example, we will see what happens when we try to use a regular object
+    instead of a source Observable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Note that this type of error is catchable in PHP7:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: The exception was left to terminate the script execution because this is a situation
+    that shouldn't happen. It probably means that we have a bug in our code where
+    we unintentionally wanted to use an `stdClass` instance instead of an Observable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Observable::create() method versus the Subject class
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Apart from creating custom Observables, we know that we can use the `Observable::create()`
+    static method or an instance of the `Subject` class to emit items by ourselves,
+    but so far we haven't talked about which one we should choose over the other and
+    why.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As a rule of thumb it's usually better to use `Observable::create()`. It's not
+    always possible, but it has its advantages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For the next couple of examples, let''s consider that we want to work with
+    an API that implements the following interface. This could be any Facebook/Twitter/WebSocket
+    or system API:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: Hot/cold Observables and Observable::create()
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In the most general sense an Observable is just a function that connects an
+    observer with the producer of values. By producer we understand any source of
+    values that is unrelated to RxPHP. For example, this can be any class implementing
+    our `RemoteAPI` interface.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll see that this works well with our definitions of hot/cold Observables
+    from [Chapter 2](part0024_split_000.html#MSDG2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 2. Reactive Programming with RxPHP"), *Reactive Programming with RxPHP*.
+    A cold Observable creates its producer (in our case, connects to the remote API)
+    on subscription. This means that we don't want to make any remote calls to the
+    API until we have at least one observer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So a cold Observable internally using the RemoteAPI interface could look like
+    the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: This fulfills our expectations from a cold Observable. The producer doesn't
+    exist until we subscribe and it automatically also closes the connection when
+    unsubscribing because we returned the `CallbackDisposable` instance from the callback
+    to the `Observable::create()` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we wanted to create a hot Observable with the `Observable::create()` method
+    it would be similar, but this time the Observable is not responsible for neither
+    creating nor closing the producer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: The producer is created independently on the hot Observable and subscribing/unsubscribing
+    to it has no effect on the producer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You might be wondering how is this all related to comparing `Observable::create()`
+    and the `Subject` class?
+  prefs: []
+  type: TYPE_NORMAL
+- en: The point is that we can't simply do the same with Subjects. We could of course
+    use a Subject in this scenario, but than we'd have to handle all subscription
+    and unsubscription logic ourselves (including creating/closing the producer).
+    Nonetheless, in [Chapter 8](part0061_split_000.html#1Q5IA1-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 8. Multicasting in RxPHP and PHP7 pthreads Extension"), *Multicasting
+    in RxPHP and PHP7 pthreads Extension*, we talked about the internal states in
+    Subjects, which is also very relevant here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As a rule of thumb, every time you end up using a Subject think whether you
+    could achieve the same with `Observable::create()` instead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Call stack length and EventLoopScheduler
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When developing PHP applications, it's handy to enable the Xdebug extension
+    that we can use to debug our code. However this comes with the cost of reduced
+    performance, higher memory usage, and a limited number of possible nested function
+    calls.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The last issue is relevant to us in particular. For example, in RxPHP when
+    we make a long operator chain and use the `ImmediateScheduler` method. Consider
+    the following very long chain of operators:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: This example chains nine operators and then in the observer prints the entire
+    call stack. We know that the call stack will start at the subscriber's `onNext`
+    handler and traverse upwards via `onNext()` calls to the `RangeObservable` where
+    it starts emitting values. Then the stack goes back to the bottom via `subscribe()`
+    calls.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The shortened output looks as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can see that this call stack contains 103 nested function calls. This would
+    be obviously hard to debug, so we can reduce its length by using `EventLoopScheduler`
+    instead of `defaultImmediateScheduler`. This will make every callback to the `schedule()`
+    method run as a separate event by `EventLoopScheduler`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll set the Scheduler right in the `Observable::range()` call as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now when we run this example the call stack will contain only 65 nested calls:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: This obviously comes with a cost, so using the `EventLoopScheduler` class is
+    always going to be slower than using the default `ImmediateScheduler`. Also the
+    emissions that are wrapped with `schedule()` are called from the event loop and
+    not from the place the `schedule()` method was invoked.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This can make debugging even harder, but the `EventLoopScheduler` class is especially
+    useful when we don't want to block the execution thread and also want to let other
+    code be executed (thanks to its event loop). In [Chapter 6](part0050_split_000.html#1FLS41-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 6. PHP Streams API and Higher-Order Observables"), *PHP Streams API and
+    Higher-Order Observables*, we talked about even loops in great detail and how
+    it's important not to block the execution thread. In such cases, using `EventLoopScheduler`
+    is a very good choice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Using an asynchronous Scheduler is also relevant to RxJS because in a JavaScript
+    environment the call stack length is limited.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unsubscribing versus completing an Observable
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We know that when we have an observer we'll stop receiving items when the source
+    Observable completes or when we manually unsubscribe. However, we haven't talked
+    about why we might choose one over the other.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There''re basically two ways to stop receiving items:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unsubscribe from the source Observable
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using an operator that completes the chain (such as the `takeUntil()` operator)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: By unsubscribing we usually mean that we don't want to be receiving items any
+    more. This obviously doesn't mean that the source Observable stopped sending items
+    or sent the complete notification. We're just no longer interested in the items
+    coming from the source.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As an important consequence to manually unsubscribing, the complete handler
+    is never called. Consider the following example where we unsubscribe after receiving
+    a few items:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that we had to use the `EventLoopScheduler` class instead of the default
+    one because we need to run the observer callables as separate events in the loop.
+    If we used the `ImmediateScheduler` class then the `$subscription` variable would
+    always be null because all the callables would be called within the `subscribe()`
+    call. In other words, the `$subscription` variable would be unassigned.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When we run this demo we can see that it prints the first three items and then
+    ends and no complete handler was called:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'But what if we''re in a situation where the complete handler is important and
+    we always want to call it when we unsubscribe? In such cases we can use any operator
+    that sends a complete notification, for example, `takeUntil()` and an instance
+    of the `Subject` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: We're using the `$subject` variable to notify the `takeUntil()` operator that
+    we want to complete and then manually call the `onNext()` method inside a callable
+    passed to the `CallbackObserver` class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This way we ensured that apart from just unsubscribing the observer, we''ll
+    also call the complete handler, as we can see from the console output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: Whether we want to simply unsubscribe or send the complete notification is up
+    to us. A big advantage of using a `Subject` class and the `takeUntil()` operator
+    is that we can easily complete multiple chains by using a single `onNext()` call.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we wanted to just unsubscribe multiple chains, then we'd have to collect
+    and keep all their disposables and then call `dispose()` on all of them manually.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Anonymous operators
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We've been using the `lift()` method to use custom operators in Observable chains
+    a lot. In RxPHP v1, it's also the only way to implement custom operators. This
+    method takes as a parameter the so called **operator factory**, which is a callable
+    that returns an instance of the operator we want to use. This method is called
+    every time we subscribe, so it might be called just once in total.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When using operators, we're making use of PHP's magic `__invoke()` method that
+    allows us to use any object just as if it were a function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s consider this simple example that shows the `__invoke()` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We make an instance of `MyClass` that we used as if it was a regular function
+    with `$obj(3,4)`. If we run this example, we''ll get the correct result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Operators in RxPHP use the same principle. In fact the `lift()` method is deep
+    inside the `Observable` class, defined as the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: The callable `$operatorFactory` doesn't need to return an operator object at
+    all. It can just return another callable that'll take three arguments and do whatever
+    it wants to. This is useful when we want to do a one-time operation where it doesn't
+    make sense to make it reusable and write a custom operator for it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, we can make the same operations on the source Observable and the
+    observer just like in any other operator class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that we have a `$prevValue` variable that is kept in this context, and
+    we can use it among all invocations of the `onNext` signals.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing a custom DirectoryIteratorObservable
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we used a couple of `DirectoryIterators` to recursively
+    get all files in a directory and all its subdirectories. When iterating files,
+    we might want to filter not only by filenames, but also by file size or access
+    restrictions. Ideally, we could have a custom Observable that just checks the
+    files names to match a certain pattern and then emits `SplFileInfo` objects so
+    we can implement our filtering logic ourselves.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For this purpose, we''ll write our own `DirectoryIteratorObservable` that does
+    all this and has some extra options on top of that. We can split the implementation
+    into two smaller chunks:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: We're still using `RecursiveIteratorIterator` internally; however, we have full
+    control over it and won't let other developers fiddle with it. Somebody could,
+    for instance, use `rewind()` or `seek()` methods and unintentionally move the
+    inner pointer, not to mention that using three different iterators to traverse
+    a directory structure is a little too much and not easily reusable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: That's why our Observable hides all this from the user and has just a couple
+    of input parameters. We definitely want to be able to set a pattern to filter
+    files right away. Sometimes we might want to traverse several directories recursively
+    and other times just a single directory, so we'll have a separate parameter for
+    this. The last behavior we want to be able to modify is what this operator is
+    going to emit. By default, it's the `SplFileInfo` object, but if we set a custom
+    selector function we can emit, for example, just the file names.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The main logic is in the `subscribe()` method, which is built around a `scheduleRecursive()`
+    method from the `Scheduler` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Note that in RxPHP v2 the `subscribe()` method doesn't take the `Scheduler`
+    as a parameter. This means that we'd access the `Scheduler` class directly with
+    the `Scheduler::getImmediate()` static method instead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We're looping over all values produced by the iterator and emitting them until
+    we reach the end, where we emit just the complete signal. Note that we're wrapping
+    the call to the selector function, so if it throws an exception we'll emit it
+    as an `error` signal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can test this Observable on the same directory structure from the Symfony3
+    template, as we did in the previous chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will print a very long list of file names (when `SplFileInfo` objects are
+    type-casted to strings they return only filenames).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that, internally, this Observable works similarly to, for example, `RangeObservable`.
+    In fact, it doesn't keep an array of observers and instead immediately emits all
+    values to the observer that subscribed (we also move the iterator's inner pointer
+    to the start with `rewind()`). The consequences are obvious.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we subscribe twice to this Observable, it'll loop the entire iterable twice
+    as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: DirectoryIteratorSharedObservable
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'So this looks like a good use-case for multicasting. Of course, we could append
+    the `publish()` operator every time we use `DirectoryIteratorObservable`, but
+    this would be error prone as we could easily forget to use it. Instead, we can
+    make another Observable that wraps `DirectoryIteratorObservable`, and appends
+    the `publish()` operator to it every time:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: This Observable is just a wrapper around the original `DirectoryIteratorObservable`,
+    which is internally instantiated and then chained with `publish()`. We're purposely
+    using `publish()` and not `share()`. The `share()`operator also appends the `refCount()`
+    operator, which automatically subscribes/unsubscribes based on the number of observers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is useful with Observables that need to perform some asynchronous operation,
+    such as downloading data (our `CURLObservable`) or running code in parallel (our
+    `ThreadPoolOperator`). With Observables that emit all their values immediately
+    on subscription, such as `RangeObservable` or our fresh `DirectoryIteratorObservable`,
+    it wouldn't work as we expect. All values would be emitted to the first observer
+    because of the immediate call to the `connect()` method inside the `refCount()`
+    operator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now we can test this operator by subscribing multiple observers and then calling
+    the `connect()` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output for this demo will be a list of file names where each of the observers
+    will receive a single item at a time from the current directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: We avoided reemitting the same directory structure for each observer and multicasted
+    items from the source with the `public()` operator and manually called the `connect()`
+    method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: FTP client with RxPHP
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For this example, let's imagine that we're running an FTP server where we want
+    to perform a couple of operations. PHP has built-in support for FTP connections,
+    so we don't need to install any extra libraries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our goal is to be able to do some basic operations with an FTP connection while
+    utilizing what we know from RxPHP. When working with Observables, most of the
+    time we've been using them in operator chains, but Observables can be used as
+    asynchronous inputs or outputs as well. When returning a value from an asynchronous
+    function, we'd usually use a Promise, but the same principles work with Observables
+    too, and we can also benefit from chaining them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that all FTP calls in PHP are blocking. Some functions have their non-blocking
+    variants, such as functions to upload or download files, but others, such as functions
+    that change or list a directory, are always blocking. For this reason, we'll stay
+    only with their blocking variants. This way we can handle their correct and error
+    states with Observables. This is also going to be a nice example where we can
+    use multicasting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So this is going to be an example of how to use RxPHP in a synchronous and blocking
+    application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll split our first `FTPClient` class into two smaller chunks and see how
+    we can implement RxPHP in this use-case:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: These are the most basic methods we need. Many FTP functions in PHP return just
+    true or false based on whether they succeeded or not. We used this in the constructor
+    to throw exceptions if any of these cases fail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then there's the first method that returns an Observable. When we want to get
+    a list of all the files and directories in a directory, we'll call the `listFiles()`
+    method. This method returns an Observable from the array of files it received.
+    As we said, FTP functions in PHP are blocking, so we're not calling `ftp_nlist()`
+    asynchronously and need to wait until it finishes. The fact that we're returning
+    an Observable means that we can feed this Observable into another method in this
+    `FTPClient` class that takes an Observable as an argument.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We're purposely using `Observable::defer` in order to postpone the actual network
+    request until we subscribe to it. We'll see why this is important when we start
+    writing a test application for `FTPClient`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can now have a look at three more methods that''ll get the file size, download
+    files from the FTP server, or upload files to the server:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: The last two methods are very similar in principle. They both take an Observable as
+    an argument and subscribe to it. Then they create an internal Subject that is
+    used to emit successful uploads/downloads and errors. The same Subject is then
+    turned into an Observable with an `asObservable()` operator and returned.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What's interesting with this approach is that we don't need to know which files
+    we want to download/upload in advance. In other words, we can call these methods
+    with instances of Subject and just carry on executing our code. Then, sometime
+    later, we can start pushing items to these Subjects, which will cause the files
+    to be downloaded/uploaded. We'll see this in a moment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also implemented the `size()` method that takes as an argument an Observable
+    and subscribes to it. This method is internally implemented with `Observable::create()`
+    for the same reason as `listDir()`. We want to defer emitting any values until
+    there's at least one subscription.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now we can start using this class in a simple demo application that''ll first
+    just connect to an FTP server, list all files and directories, and then try to
+    change the current directory to the last one in the list:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: We're using `listDir()` to get the content of the current directory, which is
+    the root directory for this user. Then we take just the last item and try to go
+    inside that directory. We used the `ftp_nlist()` function internally in `listDir()`
+    where it returns all files and directories together, so how do we know that the
+    last item in the list is really a directory and not a file?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If it was a file, then the call to `chdir()` would throw an exception. A simple
+    way to distinguish files from directories is by checking their size. Directories
+    always have a size of `-1`, while ordinary files have a real size that is always
+    greater or equal to `0`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: This demonstrates very well what we talked about. We have a Subject that we
+    pass as an argument to the `size()` method. This method is not going to subscribe
+    to it until its own chain has an observer, which happens on the last line with
+    `DebugSubject`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We're still not calling any `ftp_size()` because the `Subject` class in the
+    `$getFileSizesSubject` variable hasn't emitted any items yet. This happens when
+    we call `listDir()`, which itself first calls `ftp_nlist()` to get a list of all
+    files and directories and then starts emitting items to the `Subject` class, which
+    then simply takes the item and re-emits it to its own observer, which is the callable
+    inside the `size()` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since `size()` is based on `Observable::create()` and `subscribe()` methods,
+    it doesn't make any network calls until we start sending it items. This might
+    happen any time after we called it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This all might look a little confusing, but all we're doing is just passing
+    items between a couple of Observables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another obvious use-case could be listing only files in a directory and then
+    downloading all of them. We have two methods that require an Observable as a source
+    of files. With `size()` they will be checked for their file size (to see whether
+    they're files at all) and for `download()` to download them. Of course, we don't
+    want to make two separate calls for each of these methods, so we'll use the output
+    from the Observable with only files (that is, the `$fileSizes` variable) as the
+    source Observable for the `download()` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In order to make this example a little more complicated, we''ll assume that
+    we want to use the list of files once more and, for example, just print the file
+    names and their sizes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the `$filesToDownload` variable, we're storing a predefined chain of operators
+    that emits only file names coming from `$fileSizes`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we run this demo application, we''ll get the following output (depending
+    on the FTP server we are connected to):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can see that both Observables based on emissions from `$fileSizes` are sharing
+    the same connection (the `doOnNext()` operator is called just once for each item).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We could also create methods listing only files or only directories. This could
+    look like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: These both use the same principle as postponing subscriptions, as we explained
+    previously.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter covered a couple of slightly unusual examples that are possible
+    with RxPHP, and which didn't fit into any of the previous chapters. These aren't
+    things that we use on a daily basis, but it's good to know that features such
+    as these are possible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In particular, we went through the operators `zip()`, `window()`, `materialize()`,
+    and `dematerialize()`. We saw how to propagate and handle errors in Observable
+    chains and what role `AutoDetachObserver` has. Also, we compared the `Observable::create()`
+    static method and the `Subject` class and when unsubscribing and completing an
+    Observable chain. Apart from this, we created anonymous operators and wrote the
+    `DirectoryIteratorObservable` class that recursively iterates a directory structure.
+    Finally, we used RxPHP to make a simple FTP client that uses Observables for inputs
+    and outputs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the last chapter, we're going to talk about implementations of Reactive Extension
+    in languages other than PHP. Most notably, we'll have a look at RxJS-what it is,
+    how it's related to RxPHP, and what differences we can encounter in a JavaScript
+    environment from PHP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Chapter Appendix.  Reusing RxPHP Techniques in RxJS
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Throughout this entire book, we've mentioned very often that certain functionality
+    (such as operators or certain Observables) work differently in RxPHP and RxJS.
+    Some operators from RxJS aren't even available in RxPHP yet. There're also features
+    of RxJS that aren't even possible to make in RxPHP because of the nature of PHP
+    interpreter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We've referred to RxJS a lot even though Reactive Extensions were first developed
+    for .NET as Rx.NET.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we're going to focus on the differences between current RxPHP
+    and RxJS. Also, the knowledge of RxJS is very useful today because its popularity
+    is still rising thanks to JavaScript frameworks such as Angular 2 that heavily
+    rely on RxJS.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Topics covered in this chapter are going to be a little unusual because these
+    will combine PHP and JavaScript (ECMAScript 6 - ES6, in particular):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll see what RxJS is, and we'll talk about where it stands in today's world
+    of JavaScript
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We'll write a few very simple demos of RxJS, introducing us to synchronous and
+    asynchronous code in JavaScript
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We'll talk about asynchronous events in JavaScript and how we can benefit from
+    them in RxJS
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We'll see how and why higher order Observables behave differently in RxJS and
+    RxPHP
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We'll talk about operators that aren't available in RxPHP right now but are
+    fully functional in RxJS
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We expect you to know at least the basics of JavaScript and ideally the new
+    ES6 standard (aka ES2015) as well. This isn't required of course since RxJS can
+    be used with plain old JavaScript (ES5.1 to be precise), but it's very relevant
+    to RxJS and its development process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Also, ES6 is already very well supported by Node.js, so we don't have any reason
+    not to use it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Don't worry if you can't get your head around the new ES6 syntax that we'll
+    use in this chapter. If you want to know more about ES6, you can have a look at
+    a quick summary of the new functionalities it provides at [https://github.com/lukehoban/es6features](https://github.com/lukehoban/es6features)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: We're going to run all examples in this chapter by Node.js runtime ( [https://nodejs.org](https://nodejs.org)
+    ). If you're not familiar with Node.js, it's basically an environment that uses
+    Chrome's V8 JavaScript engine and lets us run JavaScript code from a console.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What is RxJS?
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Very simply, RxJS is an implementation of Reactive Extensions in JavaScript.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, get ready to get super confused.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Until December 2016, there were two major implementations of RxJS:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**RxJS 4**: This is the older implementation most people are familiar with.
+    Its source code is available at [https://github.com/Reactive-Extensions/RxJS](https://github.com/Reactive-Extensions/RxJS)
+    , and it''s written in JavaScript (ES5). As we said at the beginning of this chapter,
+    RxPHP refers at this moment mostly to this older RxJS 4 version that''ll become
+    obsolete in the near future.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**RxJS 5**: The newer and completely rewritten RxJS that will replace the older
+    RxJS 4\. Its source code is available at [https://github.com/ReactiveX/rxjs](https://github.com/ReactiveX/rxjs)
+    , and it''s completely written in TypeScript 2.0.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Because we''ve mentioned yet another programming language called TypeScript,
+    we should quickly look at what JavaScript versions are actually out there and
+    where (and also if) we can use them:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**ES5.1**: The good old JavaScript that probably everybody has encountered
+    at some point.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**ES6** (also named **ES2015**): This is the newer standard of JavaScript.
+    It''s backward compatible with ES5.1, and it brings features such as classes,
+    generators, arrow functions, and the `let` keyword to create block scoped variables.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**ES7** (**ES2016**): This is the even newer standard of JavaScript that brings
+    in yet more features such as the `async`/`await` keyword to avoid creating callback
+    hells.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**TypeScript**: This is a superset of ES6 specification supplemented with type
+    checking and is in the latest versions, also with features from ES7 such as the
+    `async`/`await` keyword.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: So TypeScript was the language of choice for RxJS 5 because of its compatibility
+    with ES6 and type checking that helps prevent a lot of bugs in compile time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Well, while speaking of compiling, we should probably mention where we can
+    actually run any of these new and fancy languages:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: ES5.1 is supported by every current browser including mobile browsers and Node.js.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'ES6 can already be used with the two major JavaScript engines: Chrome''s V8
+    and SpiderMonkey (used by FireFox). Although current compatibility with ES6 is
+    pretty good (as we can see at [http://kangax.github.io/compat-table/es6/](http://kangax.github.io/compat-table/es6/)
+    ), it''s still not possible to rely only on ES6 for browser-based applications.
+    We obviously need to also support older browsers and mobile devices. For this
+    reason, any code written in ES6 needs to be compiled to ES5 using a compiler such
+    as babel ( [https://babeljs.io/](https://babeljs.io/) ) or traceur ( [https://github.com/google/traceur-compiler](https://github.com/google/traceur-compiler)
+    ). This doesn''t apply to Node.js where we can freely use ES6 since Node.js v4
+    is already pretty old, and the penetration of different Node.js versions isn''t
+    such a problem like those we''re used to from web browsers (there''s one important
+    exception with ES6 module imports that we''ll mention later).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: ES7 brings some features that are already implemented natively in JavaScript
+    engines (see [http://kangax.github.io/compat-table/es2016plus/](http://kangax.github.io/compat-table/es2016plus/)
+    ); however, this is still music of the future. We're not going to use ES7 features
+    in Node.js in this chapter, to avoid compiling our code from ES7 to ES6.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: TypeScript is a relatively new language made by Microsoft and the community
+    around it. It's not going to be natively supported by any JavaScript engines.
+    It uses different syntax and new keywords that aren't compatible with either ES6
+    or ES7\. This means that TypeScript code always needs to be compiled to ES6 or
+    more commonly to ES5.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: On the other hand, it's important to note that TypeScript is a superset of ES6\.
+    This means that any ES5 or ES6 code is also a valid TypeScript code that makes
+    reusing already existing JavaScript very easy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is in contrast to other languages that can be compiled to ES5, such as
+    Dart made by Google. Dart isn't compatible with JavaScript at all, and basically,
+    all code needs to be rewritten to Dart. This might be one of the reasons why TypeScript
+    is so popular today despite the fact that it came later than Dart.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So for this chapter, we're going to use Node.js (ideally, v6.9+, but basically,
+    any v4+ should be fine) and ES6.
+  prefs: []
+  type: TYPE_NORMAL
+- en: JavaScript module systems
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To add to the confusion when talking about current JavaScript standards, we
+    should also mention different module systems used today to define dependencies
+    between JavaScript files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Working with JavaScript was always tedious because there was never any unified
+    way to split code into multiple files and load it on demand or even to bundle
+    it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So now we have nice ES6 syntax for ES6 modules available, let''s consider the
+    following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: Can you tell in what environment we can run this code natively today?
+  prefs: []
+  type: TYPE_NORMAL
+- en: This was a trick question. We can't run it anywhere because no JavaScript engine
+    supports ES6 modules yet, not even Node.js.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: If you want to know more about why implementing ES6 modules into Node.js is
+    so complicated, read this article by one of the Node.js developers at [https://hackernoon.com/node-js-tc-39-and-modules-a1118aecf95e](https://hackernoon.com/node-js-tc-39-and-modules-a1118aecf95e)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Node.js at this moment supports only using the `require()` function to load
+    modules in the CommonJS format (in fact, it's not exactly the CommonJS format;
+    it's just very close to it). The `require()` function is natively available only
+    in Node.js. If we wanted to use `require()` also in the browser, we'd need a polyfill
+    or a bundler to merge multiple JavaScript files linked via `require()` calls into
+    a single bundle.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we really wanted to use ES6 module definitions right now, this would be another
+    reason we'd have to compile our code. Note that we could actually compile ES6
+    code into another ES6 code, only to transform ES6 imports to one of the current
+    module formats, such as UMD, CommonJS, AMD, SystemJS, or globals.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This has been resolved by various bundling tools, such as Browserify, webpack,
+    SystemJS-Builder, or rollup.js. However, this just added yet another layer of
+    complexity. Moreover, these tools just bundle multiple files into a single bundle.
+    If we have a more complicated application where we need to load third-party libraries
+    (that can be bundled in any format, which includes even the most basic Angular2
+    or React applications) we need to also care about module loaders.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Module loaders are, for example, SystemJS, require.js, require1k, curl.js, and
+    probably dozens more.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This all means that when we start working on a JavaScript project today, we
+    need to plan ahead the following four different things:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: What language I'm going to use? this has an effect on the features available
+    and also on the compiler you have to use
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To what module format am I going to compile my source code?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: What bundling tool I'm going to use?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How I am going to require my bundled project (by just including it via the `<script>`
+    tag or do I need a module loader)?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: So, RxJS 4 avoided almost all of this because it's written in ES5\. The only
+    necessary task is bundling it into a single file that can be loaded as easily
+    as just using the `<script>` tag.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With RxJS 5, it gets more complicated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The deployment process of RxJS 5
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The entire RxJS 5 project is written in TypeScript. This means that it needs
+    to be compiled to ES5, so we can use it in a browser or in Node.js.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The process goes as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The entire source code is first compiled to ES6 using the TypeScript compiler
+    with the ES6 module resolution.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The ES6 code is then compiled again using `closure-compiler-js` made by Google,
+    which generates ES5 code.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This ES5 code is bundled using rollup.js (before rollup.js, they were using
+    Browserify) to create a single UMD bundle.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This bundled file together with ES5 versions of each file along with their source
+    maps and `.d.ts` files (TypeScript declaration file) are then uploaded to an npm
+    repository. When we use RxJS 5 in, for example, Node.js, we will usually require
+    only this single UMD bundle. When using RxJS 5 in a browser, we can just include
+    it via the `<script>` tag thanks to the UMD module format.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**Universal Module Definition** (**UMD**) is a universal module format that
+    acts as AMD, CommonJS, SystemJS, or global depending on the environment loading
+    it.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we can see, developing applications in today's JavaScript is no joke. We'll
+    see that it also has some benefits. In particular, prototypical-based inheritance
+    can ease extending the existing Observables, which isn't possible in PHP for instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But before that, let's see how we can use RxJS 5 in Node.js.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A quick introduction to RxJS 5 in Node.js
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We're already pretty experienced reactive developers, so none of these examples
+    should surprise us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll start by installing RxJS 5 via `npm` (basically, a dependency management
+    tool similar to Composer in PHP):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As we said earlier, we''re going to use ES6 syntax, but we want to avoid recompiling
+    our code because of ES6 imports. That''s why we''ll always use the `require()`
+    function to load dependencies. This example should be very simple:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs: []
+  type: TYPE_PRE
+- en: We loaded RxJS 5 with `rxjs/Rx` under the Rx constant. Node.js knows where to
+    find the `rxjs` package (it automatically looks for packages into the `node_modules`
+    directory). The full name `rxjs/Rx` means that it'll load file from `./node_modules/rxjs/Rx.js`.
+    It is like the entry point of this library. It contains a lot of `require()` calls
+    and then it exports all the classes we as developers are allowed to use. All these
+    classes are then accessible with the `Rx` prefix (for example, `Rx.Subject` or
+    `Rx.TestScheduler`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The arrow syntax `val => val % 2 == 0` we''re using is just a shortcut to declare
+    an anonymous function with a return statement:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs: []
+  type: TYPE_PRE
+- en: The arrow `=>` also makes the inner closure take the `this` context from its
+    parent, but we're not going make use of this a lot here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To run this demo, we''ll just need Node.js runtime:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs: []
+  type: TYPE_PRE
+- en: Even with this very primitive example, we can already see how different it is
+    from PHP. When using Composer, we don't need to worry about where our dependencies
+    come from because they're always loaded by the SPL autoloader usually generated
+    by Composer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Asynchronous calls in RxJS
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Every time we wanted to make code in PHP asynchronous, we had to stick to event
+    loops: in particular, `StreamSelectLoop` and `EventLoopScheduler`, and there was
+    no way around it. Every `IntervalObservable` had to take as an argument a Scheduler
+    (however, in RxPHP 2 this is done automatically for us so we usually don''t need
+    to worry about it).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is in RxJS, and in general, any JavaScript environment completely different
+    from PHP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consider the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that we're using no loops and no Schedulers. In fact in RxJS 5, it's not
+    that common for operators to take a Scheduler as an argument. The majority of
+    operators don't because they don't need to schedule anything (such as the `map()`
+    or `filter()` operators) and usually only those that need to work with timers
+    do (basically, all operators containing work "time").
+  prefs: []
+  type: TYPE_NORMAL
+- en: This also implies that we don't need to worry about the different parts of our
+    application is using different even loops. We discussed this topic in [Chapter
+    06](part0050_split_000.html#1FLS41-bd355a22cf10407cb10df27e65585b8d "Chapter 6. PHP
+    Streams API and Higher-Order Observables") , *PHP Streams API and Higher-Order
+    Observables*, and [Chapter 07](part0054_split_000.html#1JFUC2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 7. Implementing Socket IPC and WebSocket Server/Client") , *Implementing
+    Socket IPC and WebSocket Server/Client*, where we saw that this, left unattended,
+    may cause deadlocks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can run this demo and see ever-increasing counters triggering:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE60]'
+  prefs: []
+  type: TYPE_PRE
+- en: A good question is why is it so simple in JavaScript and yet needs to be so
+    complicated in PHP?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Node.js and asynchronous events
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Node.js is in fact one large event loop based on the libuv library ( [http://docs.libuv.org/](http://docs.libuv.org/)
+    ).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s consider the following example that demonstrates adding a new callback
+    to the event loop:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE61]'
+  prefs: []
+  type: TYPE_PRE
+- en: When we run an application in Node.js, it takes our code as a single callback
+    and starts executing it. Somewhere in our code, we're calling the `setTimeout()`
+    function that takes as argument another callback that will be executed after some
+    period of time. However, we called `setTimeout()` without providing any timeout.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This in fact doesn't matter because `setTimeout()` adds the callback to the
+    event loop to be run as the last one after all other callbacks are executed. Using
+    callbacks, we can easily make Node.js run our code asynchronously. It's also typical
+    for Node.js that all system calls are asynchronous and take callbacks as parameters
+    in order to be non-blocking.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output in the console is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE62]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can see that the callback was really called after the outer callback got
+    finished. When there're no more callbacks in the event loop and no callbacks are
+    pending, then Node.js terminates.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deep inside libuv, there's actually a thread pool that runs in parallel and
+    handles system calls that can be run concurrently. Nonetheless, this has no effect
+    on our code because Node.js will always execute callbacks one after another. This
+    is a huge difference to PHP where none of this exists and the only way to schedule
+    asynchronous calls is using custom event loops just like we did with `StreamSelectLoop`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Keep in mind that from our point of view, Node.js is always single threaded
+    and strictly sequential. This means that just like in PHP if we write code that
+    is blocking, it's going to block the execution thread as well. Node.js never executes
+    callbacks in parallel. This of course applies to browser JavaScript environments
+    as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we wanted to run code in parallel, we could spawn subprocesses just like
+    we did for example in [Chapter 06](part0050_split_000.html#1FLS41-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 6. PHP Streams API and Higher-Order Observables") , *PHP Streams API
+    and Higher-Order Observables*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lossy backpressure with the debounceTime() operator
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We know what backpressure is already from [Chapter 07](part0054_split_000.html#1JFUC2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 7. Implementing Socket IPC and WebSocket Server/Client") , *Implementing
+    Socket IPC and WebSocket Server/Client*. A typical use case in RxJS is `debounceTime()`
+    that takes a value and then waits until the specified timeout expires before re-emitting
+    it further. This is very useful, for example, when creating an autocomplete feature
+    where we want to postpone sending AJAX requests when the user is still typing
+    into an input field (as we saw in [Chapter 1](part0015_split_000.html#E9OE1-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 1. Introduction to Reactive Programming") , *Introduction to Reactive
+    Programming*).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s have a look at its marble diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Lossy backpressure with the debounceTime() operator](img/00034.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In order to illustrate a practical example of `debounceTime()`, consider the
+    following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE63]'
+  prefs: []
+  type: TYPE_PRE
+- en: This example emits a value every 100 ms and every fifth value is delayed by
+    250 ms. That's why most of the values are ignored by `debounceTime()` because
+    this operator requires an at least 200 ms long period without any emission from
+    the source.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE64]'
+  prefs: []
+  type: TYPE_PRE
+- en: There's one very nice practical example for `debounceTime()` that makes use
+    of JavaScript's asynchronous callbacks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the first chapter, when talking about reactive programming, we mentioned
+    that a common application that we consider "reactive" is Excel. We have multiple
+    cells with equations that define their relations and every change to any cell
+    is propagated to the entire spreadsheet.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s consider the following spreadsheet with three input values `A`, `B`,
+    and `C` and the following equations we made on them:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Lossy backpressure with the debounceTime() operator](img/00035.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Now, how can we create something similar in RxJS? We can represent each cell
+    as `BehaviorSubject` with a default value (we need to use Subjects in order to
+    be able to change cell values later). Then, each equation (for example, `A + B`)
+    will be held by `combineLatest()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The preceding spreadsheet could look like this in RxJS:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE65]'
+  prefs: []
+  type: TYPE_PRE
+- en: We're using `combineLatest()` to get notified when any of the source Observables
+    for each equation change. We also have multiple `do()` operators to log what's
+    going on in our Observable chains.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When we run this demo, we''ll see the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE66]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is obviously correct. Each equation was called exactly once.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let''s imagine that we change the `B` cell value to `4` after the default
+    values were propagated. This means that it''ll need to recalculate `AB`, `BC`,
+    and `ABBC`. The desired state after updating the `B` cell should look like the
+    following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Lossy backpressure with the debounceTime() operator](img/00036.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Append these two lines to the source file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE67]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, rerun the example and pay attention to what equations were evaluated:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE68]'
+  prefs: []
+  type: TYPE_PRE
+- en: The first three are alright. Then, we set `B = 4`, which triggers the recalculation
+    of `A + B,` and right after that, `AB + BC` equals `10`. Well, this is not correct
+    because we haven't updated also `B + C`, which comes next. Then, after updating
+    `BC`, the `AB + BC` is recalculated again and the correct value is set to `ABBC`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We could just ignore this because the result is correct at the end. However,
+    if the number of cells and the number of equations grew, then each redundant update
+    would still cause an update to the page's DOM. As a result, this could make the
+    page laggy and the user might notice the cells blinking.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So how can we avoid this?
+  prefs: []
+  type: TYPE_NORMAL
+- en: We said that when `debounceTime()` receives a value, it stores it internally
+    and starts a timeout. Then it doesn't re-emit any value until the timeout's callback
+    is evaluated, which re-emits only the last value `debounceTime()` received. We
+    can use this to our advantage by knowing that we can set `0` timeout, which won't
+    delay the callback but just puts in at the end of Node.js's event loop.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In other words, when we use `debounceTime(0)`, we''ll ignore all values that
+    `debounceTime()` receives until the end of this callback. So, we can use this
+    to calculate `AB + BC`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE69]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now if we run the code again, we''ll see the output we wanted:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE70]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is definitely an advanced use case that we won't encounter on a daily basis,
+    but it's nice to see that we can use JavaScript internals to our advantage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that this is something very difficult to do in RxPHP without using an event
+    loop and custom operators, yet relatively simple in JavaScript.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Higher-order Observables in RxJS 5 and RxPHP
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When developing browser applications, we very often need to make AJAX calls
+    to fetch data asynchronously. For example, in Angular2, this is very common, and
+    in fact, any AJAX request made using Angular2's HTTP service returns an Observable
+    where we typically chain the `map()` operator to decode JSON and then use `subscribe()`
+    to be notified when the response is ready.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can simulate such a situation with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE71]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Variable data contains a JSON-serialized array of objects that we decode and
+    pass to the observer. The output looks like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE72]'
+  prefs: []
+  type: TYPE_PRE
+- en: Well, it works, but what if we wanted to receive only objects with the `name`
+    property starting with the letter `B`? Right now, we received the entire array
+    of objects as a single emission.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, the question is how can we unpack the array and emit every single object
+    separately?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'One option that can be used in RxJS and RxPHP in exactly the same way is using
+    `concatMap()` (`mergeMap()` would work as well) and return a new Observable created
+    from an iterable object. In RxJS, this could be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE73]'
+  prefs: []
+  type: TYPE_PRE
+- en: In RxJS 5, `Observable.from()` takes as a parameter any array-like object and
+    emits all its items. In RxPHP, we'd use `Observable::fromArray()` instead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now the output is a single item because the rest was skipped thanks to the
+    `filter()` operator:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE74]'
+  prefs: []
+  type: TYPE_PRE
+- en: In RxJS 5, there's also another and quite clever way to achieve the same result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We've talked about operators that work with higher-order Observables, such as
+    `mergeAll()` or `concatAll()`. These subscribe to an Observable that emits Observables.
+    Due to RxJS 5 inner implementation, we can use a little trick and use operators
+    that normally work with only higher-order Observables to work with arrays as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s see how `concatAll()` can be used to achieve the same result as `concatMap()`
+    in the preceding example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE75]'
+  prefs: []
+  type: TYPE_PRE
+- en: So, this obviously shouldn't work. How can `concatAll()` subscribe to an array?
+  prefs: []
+  type: TYPE_NORMAL
+- en: The answer lies in the way `concatAll()`, and basically, all operators working
+    with higher-order Observables internally subscribe to items emitted by the source
+    Observable. In PHP, we'd expect that all of them have to be other Observables,
+    but this is not the case for RxJS 5.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some operators in RxJS 5 subscribe to inner Observables via a function named
+    `subscribeToResult()` (it's defined in `src/util/subscribeToResult.ts`). This
+    function has multiple handlers for different types of items. There's of course
+    a handler for Observables, but apart from that, it also knows how to work with
+    Promises as well as JavaScript arrays.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we used `concatAll()` earlier, the `subscribeToResult()` function just
+    iterated the array and re-emitted all its values. Note that it just iterated the
+    array internally. It didn't create another Observable from it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, these were just two, but useful, differences we can encounter when switching
+    from RxPHP to RxJS 5.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Operators specific for RxJS 5
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As we said, there are extra operators in RxJS 5 that aren't available in RxPHP
+    right now. There are in fact, quite of few of them, but many are very similar
+    in principle. We mentioned some of them in [Chapter 07](part0054_split_000.html#1JFUC2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 7. Implementing Socket IPC and WebSocket Server/Client") , *Implementing
+    Socket IPC and WebSocket Server/Client*, such as `audit()` or `throttle(),` including
+    all their variations that use timeouts or other Observables to create time windows.
+    Also, all operators derived from `buffer()` aren't so interesting for us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll have a look at the three of them that serve some other interesting purposes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The expand() operator
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The interesting thing about the `expand()` operator is that it works recursively.
+    It takes as a parameter a callback that needs to return another Observable. The
+    callback is then applied to all values emitted by the returned Observable. This
+    goes on as long as the returned Observables emit values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consider the following example where we use `expand()` to recursively multiply
+    a value by two as long as the result is less than 32:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE76]'
+  prefs: []
+  type: TYPE_PRE
+- en: We stop the recursion by not emitting any value and returning just `Observable.empty()`
+    (which emits just a complete signal).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'All intermediate values produced by all the recursive calls are re-emitted
+    by `expand()`, so the output from this example will look as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE77]'
+  prefs: []
+  type: TYPE_PRE
+- en: The finally() operator
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As the name suggests, this operator executes its callback on both the `error`
+    and `complete` signals. It's important to see the difference between `finally()`
+    and just subscribing and using the same callbacks for error and complete signals.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `finally()` operator doesn''t turn cold Observables to hot. So, it''s more
+    similar to the `do()` operator than to the `subscribe()` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE78]'
+  prefs: []
+  type: TYPE_PRE
+- en: The first subscription will receive only the first value and then the `error`
+    signal. Note the order in which we used the `finally()` operator and the `subscribe()`
+    call. Operator `finally()` comes first so it also receives the error signal first.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The second subscription is analogous. Also, this one uses `onErrorResumeNext()`
+    to ignore the error signal (even though it won't receive the last value because
+    it has already unsubscribed). It'll receive just the complete signal. Again, note
+    where the `finally()` operator is used.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When we run this example, we''ll get the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE79]'
+  prefs: []
+  type: TYPE_PRE
+- en: Even though both `finally()` operators are used before `subscribe()` (which
+    is obvious because these are operators that need to be somewhere in the chain),
+    their callbacks were executed after the error or complete callbacks from `subscribe()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is the fundamental difference of the `do()` operator and also the reason
+    why `finally()` might come in handy in certain situations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The withLatestFrom() operator
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In [Chapter 07](part0054_split_000.html#1JFUC2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 7. Implementing Socket IPC and WebSocket Server/Client") , *Implementing
+    Socket IPC and WebSocket Server/Client*, and [Chapter 8](part0061_split_000.html#1Q5IA1-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 8. Multicasting in RxPHP and PHP7 pthreads Extension") , *Multicasting
+    in RxPHP and PHP7 pthreads Extension*, we used the `combineLatest()` operator,
+    and we mentioned that in RxJS 5, there's also a slightly modified variant.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `combineLatest()` operator takes multiple source Observables and emits their
+    most recent values as an array when any of them emit a value. Then, there's the
+    `withLatestFrom()` operator that takes multiple sources as well, but this operator
+    emits a value only when its direct predecessor in the chain emits a value (its
+    source Observable).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consider the following example with multiple timers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE80]'
+  prefs: []
+  type: TYPE_PRE
+- en: Both `source1` and `source2` emit multiple values every second. However, `withLatestFrom()`
+    re-emits their values only when `Observable.interval(1000)` emits a value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output from this demo is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE81]'
+  prefs: []
+  type: TYPE_PRE
+- en: Use cases for this operator are very similar to those for `combineLatest()`.
+    We just have a better control of the re-emission, which could be useful, for example,
+    to implement caching mechanisms where the 1-second interval could control when
+    we want to refresh the cache.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While speaking of caching, we will have a look at the last and very nice example
+    in this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Caching HTTP requests with publishReplay() and take()
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This example is my favorite. I show this demo to people who want to start with
+    RxJS and they're overwhelmed by the complexity and don't see the practical advantage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A very common use case in frontend development is that we need to cache results
+    from AJAX calls. For example, we might have a server that we want to query once
+    a minute at most. All subsequent calls under one minute won't spawn another AJAX
+    call but receive only the cached data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This can all be done by leveraging the `publishReplay()` and `take()` operators:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE82]'
+  prefs: []
+  type: TYPE_PRE
+- en: We're creating mock requests with the `mockDataFetch()` function that increments
+    the counter every time it's called (this is to make sure that we're not making
+    more calls to the server than we think). Then, we delay this Observable to pretend
+    it takes some time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Every time we want to get current data from a cache or from a fresh AJAX request,
+    we use the `mockHttpCache()` function that returns an Observable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s have a look at how we schedule a couple of calls and then make sure
+    that this really works as we expect from the console output. After this, we can
+    explain why this works:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE83]'
+  prefs: []
+  type: TYPE_PRE
+- en: We're making five requests in total. The first two should receive the same response.
+    The next two will receive another response, and the last one will have the third
+    response. For illustrational purposes, we're caching responses only for 1 second.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let''s see the console output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE84]'
+  prefs: []
+  type: TYPE_PRE
+- en: So, it really works as we want; but how?
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `publishReplay(1, 1000)` operator multicasts responses for 1 second via
+    `ReplaySubject` (see [Chapter 8](part0061_split_000.html#1Q5IA1-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 8. Multicasting in RxPHP and PHP7 pthreads Extension") , *Multicasting
+    in RxPHP and PHP7 pthreads Extension*, for more info on multicasting). After 1
+    second, it discards the stored result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When we call `mockHttpCache()`, one of these situations occur:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We subscribe to `ReplaySubject` that already has a cached response. In that
+    case, on subscription, it immediately calls `next()` and sends this value to its
+    new subscriber. Since there's `take(1)` operator, it passes the value and the
+    chain completes. The `ReplaySubject` then checks whether the subscriber has stopped
+    after passing it the cached value. Thanks to `take(1)` it does stop, so `ReplaySubject`
+    won't subscribe to the deferred Observable.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We subscribe to `ReplaySubject`, but it doesn't have any valid response cached
+    and/or it also needs to subscribe to the deferred Observable that triggers a new
+    AJAX request. When the request is ready, it's passed down the chain where `take(1)`
+    re-emits it and completes.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: So this was a pretty short and clever way to make already sophisticated functionality
+    that would normally require using at least one `setTimeout()` and at a minimum
+    two state variables to keep the cached response and the time it was created.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This final chapter was dedicated to RxJS 5 to show that while most principles
+    are the same, there are a couple of differences that we can take advantage of.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After reading this chapter, you should know the differences between RxJS 4 and
+    RxJS 5, what technologies are used to develop and deploy RxJS 5, how Node.js handles
+    asynchronous code, and what operators are present in RxJS 5 already but aren't
+    implemented in RxPHP yet.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hopefully, you'll take the best out of RxJS and RxPHP and use it to write faster
+    and more readable code yourself.
+  prefs: []
+  type: TYPE_NORMAL

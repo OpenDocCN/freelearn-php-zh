@@ -1,0 +1,1303 @@
+- en: The Entity API
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will explore the Entity API to create custom entities and
+    see how they are handled and cover the following recipes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a configuration entity type
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating a content entity type
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating a bundle for a content entity type
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implementing custom access control for an entity
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Providing a custom storage handler
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating a route provider
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Introduction
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In Drupal, entities are a representation of data that has a specific structure.
+    There are specific entity types, which have different bundles and fields attached
+    to those bundles. Bundles are implementations of entities that can have fields
+    attached to themselves. In terms of programming, you can consider an entity that
+    supports bundles as an abstract class and each bundle as a class that extends
+    that abstract class. The fields are added to bundles. This is part of the reasoning
+    for the terminology: an entity type can contain a *bundle* of fields.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'An entity is an instance of an entity type defined in Drupal. Drupal 8 provides
+    two entity types: `configuration` and `content`. Configuration entities are not
+    fieldable and represent a configuration within a site. Content entities are fieldable
+    and can have bundles. Bundles are, most commonly, controlled through configuration
+    entities.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In Drupal 8, there is an **Entity API** module. It was created in Drupal 7 to
+    expand the entity subsystem; most of its functionalities from Drupal 7 are now
+    in its core. The goal of the module is to develop improvements for the developer
+    experience around entities by merging more functionalities into the Drupal core
+    during each minor release cycle (8.1.x, 8.2.x, and so on). There will be a *There's
+    more...* section in each recipe that relates to how the Entity API module can
+    simplify the recipe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a configuration entity type
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Drupal 8 harnesses the entity API for configuration to provide configuration
+    validation and extended functionality. Using the underlying entity structure,
+    the configuration has a proper **Create**, **Read**, **Update**, and **Delete**
+    (**CRUD**) process that can be managed. Configuration entities are not fieldable.
+    All the attributes of a configuration entity are defined in its configuration
+    schema definition.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Most common configuration entities interact with Drupal core's `config_object`
+    type, as discussed in [*Chapter 4*](a634af62-2148-4382-9121-b8500df169ed.xhtml),
+    *Extending Drupal*, and [*Chapter 9*](b2659986-a8dc-4503-a043-6071ab7b6722.xhtml),
+    *Configuration Management - Deploying in Drupal 8*, to store and manage a site's
+    configuration. There are other uses of configuration entities, such as menus,
+    view displays, form displays, and contact forms, which are all configuration entities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, we will create a new configuration entity type called `SiteAnnouncement`.
+    This will provide a simple configuration entity that allows you to create, edit,
+    and delete simple messages that can be displayed on the site for important announcements.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will need a custom module to place code into to implement a configuration
+    entity type. Let's create an `src` directory for your classes. Refer to the *Creating
+    a module* recipe of [*Chapter 4*](a634af62-2148-4382-9121-b8500df169ed.xhtml),
+    *Extending Drupal*, for information on creating a custom module.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Do not use a module that is currently installed, otherwise Drupal will not install
+    your new entity type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In our module''s base directory, let''s create a `config` directory with a
+    `schema` subdirectory. In the subdirectory, create a file named `mymodule.schema.yml`
+    that will hold your configuration entity''s schema:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/7f681496-40ae-46eb-adbe-0b7fbcfa1c68.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In our `mymodule.schema.yml`, add a definition to `mymodule.announcement.*:`
+    to provide our label and message storage:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: We will define the configuration entity's namespace as an announcement, which
+    we will provide to Drupal in the entity's annotation block. We will then tell
+    Drupal that this is a `config_entity` and provide a label for the schema.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the mapping array, we will provide the attributes that make up our entity
+    and the data that will be stored.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create an `Entity` directory in our module''s `src` folder. First, we will
+    create an interface for our entity by creating a `SiteAnnouncementInterface.php`
+    file. The `SiteAnnouncementInterface` interface will extend the `\Drupal\Core\Config\Entity\ConfigEntityInterface`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will be implemented by our entity, and will provide the method requirements.
+    It is best practice to provide an interface for entities. This allows you to provide
+    the required methods if another developer extends your entity or if you are doing
+    advanced testing and need to mock an object. We also provide a method to return
+    our custom attribute.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s create `SiteAnnouncement.php` in our `src/Entity` directory. This file
+    will contain the `SiteAnnouncement` class, which extends `\Drupal\Core\Config\Entity\ConfigEntityBase`
+    and implements our entity''s interface:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the preceding code, we added the `message` property defined in our schema
+    as a class property. Our method defined in the entity's interface is used to return
+    that value and interact with our configuration entity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Entities use annotation documentation blocks. We will start our annotation
+    block by providing the entity''s ID, label, configuration prefix, and configuration
+    export key names:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: The annotation document block tells Drupal that this is an instance of the `ConfigEntityType`
+    plugin. The `id` is the internal machine name identifier for the entity type,
+    and the `label` is its human-readable version. The `config_prefix` matches how
+    we defined our schema with `mymodule.announcement`. The entity keys definition
+    tells Drupal the attributes that represent our identifiers and labels.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When specifying `config_export`, we are telling the configuration management
+    system what properties are exportable when exporting our entity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we will add `handlers` to our entity''s annotation. We will define the
+    class that will display the available entity entries and forms to work with our
+    entity:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `handlers` array specifies classes that provide the interaction functionality
+    with our entity. The `list_builder` class will be created to show you a table
+    of our entities. The `form` array provides classes for forms to be used when creating,
+    editing, or deleting our configuration entity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Lastly, for our entity''s annotation, we will need to define routes for our
+    `delete`, `edit`, and `collection` (list) pages. Drupal will automatically build
+    the routes based on our annotation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: There is a routing service for entities that will automatically provide Drupal
+    a route with the proper controllers based on this annotation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Create the `SiteAnnouncementListBuilder` class defined in our `list_builder`
+    handler by creating a `SiteAnnouncementListBuilder.php` file in the module's `src`
+    directory and extending the
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '`\Drupal\Core\Config\Entity\ConfigEntityListBuilder`:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: In our list builder handler, we override the `buildHeader` and `builderRow`
+    methods so that we can add our configuration entity's properties to the table.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we will need to create an entity form, as defined in our form handler
+    array, to handle our add and edit functionalities. Create `SiteAnnouncementForm.php`
+    in the `src` directory to provide the `SiteAnnouncementForm` class that extends
+    the `\Drupal\Core\Entity\EntityForm` class:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: We override the `form` method to add Form API elements to our `label` and `message`
+    properties. We also override the `save` method to provide user messages about
+    the changes that are made. We utilize the entity's `toUrl` method to redirect
+    it to the `collection` (list) page. We use the transliteration service to generate
+    a machine name based on the label for our entity's identifier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we will create a `mymodule.links.action.yml` file in our module''s directory.
+    This will allow us to define action links on a route. We will be adding an `Add
+    announcement` link to our entity''s add form on its collection route:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will instruct Drupal to render the `entity.announcement.add_form` link
+    on the specified routes in the `appears_on` value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To have our site announcement''s accessible from the main administrative pages,
+    we will need to create a `mymodule.links.menu.yml` file in our module''s directory:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Our module structure should look like the following screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/14dc493f-5880-49e2-9275-efc5dfe455c3.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Install the module and check out the Configuration page. You can now manage
+    the `Site Announcement` entries from the Site Announcement link.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When creating a configuration schema definition, one of the first properties
+    used for the configuration namespace is `type`. This value can be `config_object`
+    or `config_entity`. When the type is `config_entity`, the definition will be used
+    to create a database table rather than to structure the serialized data for the
+    `config` table.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Entities are powered by the plugin system in Drupal, which means that there
+    is a plugin manager. The default `\Drupal\Core\Entity\EntityTypeManager` provides
+    discovery and handling of entities. The `ConfigEntityType` class for the entity
+    type's plugin class will force the setting of the `uuid` and `langcode` in the
+    `entity_keys` definition. The storage handler for configuration entities defaults
+    to `\Drupal\Core\Config\Entity\ConfigEntityStorage`. The `ConfigEntityStorage`
+    class interacts with the configuration management system to load, save, and delete
+    custom configuration entities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Drupal 8 introduces a typed data system that configuration entities and fields
+    use.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Available data types for schema definitions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Drupal core provides its own configuration information. There is a `core.data_types.schema.yml`
+    file located at `core/config/schema`. These are the base types of data that the
+    core provides and can be used when making configuration schema. The file contains
+    YAML definitions of data types and the class that represents them:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: When a configuration schema definition specifies an attribute that has an email
+    for its type, that value is then handled by the `\Drupal\Core\TypedData\Plugin\DataType\Email`
+    class. Data types are a form of plugins, and each plugin's annotation specifies
+    constraints for validation. This is built around the Symfony **Validator** component.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Refer to [*Chapter 6*](18026cd1-b8f0-48c0-9626-568ffd225eb5.xhtml)*, Creating
+    Forms with the Form API*
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Refer to *[Chapter 4](a634af62-2148-4382-9121-b8500df169ed.xhtml), Extending
+    Drupal*
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Refer to *[Chapter 9](b2659986-a8dc-4503-a043-6071ab7b6722.xhtml), Confiuration
+    Management - Deploying in Drupal 8*
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Refer to configuration schema/metadata at [https://www.drupal.org/node/1905070](https://www.drupal.org/node/1905070)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating a content entity type
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Content entities provide base field definitions and configurable fields through
+    the Field module. There is also support for revisions and translations with content
+    entities. Display modes, both form and view, are available for content entities
+    to control how the fields are edited and displayed. When an entity does not specify
+    bundles, there is automatically one bundle instance with the same name as the
+    entity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, we will create a custom content entity that does not specify
+    a bundle. We will create a `Message` entity that can serve as a content entity
+    for generic messages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will need a custom module to place code into to implement a configuration
+    entity type. Create an `src` directory for your classes. Refer to the *Creating
+    a module* recipe of [*Chapter 4*](a634af62-2148-4382-9121-b8500df169ed.xhtml),
+    *Extending Drupal*, for information on creating a custom module.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Do not use a module which is currently installed, otherwise Drupal will not
+    install your new entity type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Let''s create an `Entity` directory in our module''s `src` folder. First, we
+    will create an interface for our entity by creating a `MessageInterface.php` file:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/9dc5892d-f44c-44b7-a872-1c2ec9110aae.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The `MessageInterface` will extend `\Drupal\Core\Entity\ContentEntityInterface`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will be implemented by our entity and will provide the method requirements.
+    It is best practice to provide an interface for entities. This allows you to provide
+    required methods if another developer extends your entity or if you are doing
+    advanced testing and need to mock an object. We also provide a method to return
+    our main base field definition (to be defined).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, let''s create `Message.php` in our `Entity` directory in `src`. This
+    file will contain the `Message` class, which extends `\Drupal\Core\Entity\ContentEntityBase`
+    and implements our entity''s interface:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We will need to create an annotation document block on our class to provide
+    information about our entity, such as its `id`, `label`, and `entity` keys:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `id` is the internal machine name identifier for the entity type, and the
+    `label` is its human-readable version. The entity keys definition tells Drupal
+    the attributes that represent our identifier and label.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `base_table` defines the database table in which the entity will be stored,
+    and `fieldable` allows custom fields to be configured through the Field UI module.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we will add `handlers` to our entity. We will use the default handlers
+    provided by Drupal:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `handlers` array specifies classes that provide the interaction functionality
+    with our entity. The list builder class will be created to show you a table of
+    our entities. The form array provides classes for forms to be used when creating,
+    editing, or deleting our content entity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'An additional `handler`, the `route_provider`, can be added to dynamically
+    generate our canonical (view), `edit`, `add`, `delete`, and `collection` (list)
+    routes:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: There is a routing service for entities that will automatically provide Drupal
+    a route with the proper controllers based on this annotation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will then define an administration permission property in our entity''s
+    annotation, which the system checks, by default, for all create, update, and delete
+    operations:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We will need to implement the `baseFieldDefinitions` method to satisfy the
+    `FieldableEntityInterface` interface, which will provide our field definitions
+    to the entity''s base table. Add the following method to your class:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `FieldableEntityInterface` is implemented by the `ContentEntityBase` class
+    using the `ContentEntityInterface`. The method needs to return an array of `BaseFieldDefinitions`
+    for typed data definitions. The parent class provides field definitions for most
+    of the `entity_keys` value in our entity's annotation. We must provide the label
+    field and any specific fields for our implementation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `content` base field definition will hold the actual text of the message.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we will implement the `getMessage` method in our class to satisfy our
+    interface and provide a means to retrieve our message''s text value:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: This method provides a wrapper around the defined base field's value and returns
+    it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create the `MessageListBuilder` class defined in our `list_builder` handler
+    by creating a `MessageListBuilder.php` file and extending `\Drupal\Core\Entity\EntityListBuilder`.
+    We will need to override the default implementation to display our base field
+    definitions:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: In our list builder handler, we override the `buildHeader` and `builderRow`
+    methods so that we can add our configuration entity's properties to the table.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before we move on, we must create a `mymodule.permissions.yml` file in the
+    module''s root directory. We will need to provide the permission definition for
+    `administer message`, as provided in our annotation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Our module''s structure should resemble the following screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/6d41126a-ca11-4dc5-b575-1e586a49e447.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Install the module. Go to `/messages/add` to create our first custom content
+    entity entry and then view it on `/admin/content/messages`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/6e08b985-9f9f-41c1-9351-a2edf7cf6930.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Content entities are a version of the `EntityType` plugin. When you define a
+    content entity type, the annotation block begins with `@ContentEntityType`. This
+    declaration and the properties in it represent the definition to initiate an instance
+    of the `\Drupal\Core\Entity\ContentEntityType`, class just like all other plugin
+    annotations. The `ContentEntityType` plugin class implements a constructor to
+    provide default `storage` and `view_builder` handlers, forcing us to implement
+    the `list_builder` and `form` handler arrays.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The plugin manager for entity types lives under the `entity_type.manager` service
+    name and is provided through `\Drupal\Core\Entity\EntityTypeManager` by default.
+    However, while the annotation defines the plugin information, our `Message` class
+    that extends `ContentEntityBase` provides a means to manipulate the data it represents.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We will discuss how to add an additional functionality to your entity and use
+    the Entity module to simplify the developer expedience.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the AdminHtmlRouteProvider provider
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Our `Message` entity type implements the `DefaultHtmlRouteProvider` class. There
+    is also the `\Drupal\Core\Entity\Routing\AdminHtmlRouteProvider` class. This overrides
+    the `getEditFormRoute` and `getDeleteFormRoute` and marks them with `_admin_route`.
+    This will cause these forms to be rendered in the administration theme.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Making the collection route a local task tab
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we specified the message collection route as `/admin/content/messages`.
+    Without implementing this route as a local task under the `/admin/content` route,
+    it will not show up as a tab. This can be done by creating a `links.task.yml`
+    file for the module.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In `mymodule.links.task.yml`, add the following YAML content:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This instructs Drupal to use the `entity.message.collection` route, defined
+    in our `routing.yml` file, to be based under the `system.admin_content` route:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c97ca917-6934-431a-90f8-3578a3f7fc01.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: See also
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Refer to [*Chapter 4*](a634af62-2148-4382-9121-b8500df169ed.xhtml), *Extending
+    Drupal*
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating a bundle for a content entity type
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Bundles allow you to have different variations of a content entity. All bundles
+    share the same base field definitions but not configured fields. This allows each
+    bundle to have its own custom fields. Display modes are also dependent on a specific
+    bundle. This allows each bundle to have its own configuration for the form mode
+    and view mode.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the custom entity from the preceding recipe, we will add a configuration
+    entity to act as the bundle. This will allow you to have different message types
+    for multiple custom field configurations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We will need a custom module to place the code into to implement a configuration
+    entity type. Create an `src` directory for your classes. We need a custom content
+    entity type to be implemented, such as the one in the *Creating a content entity
+    type* recipe of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Since content entity bundles are configuration entities, we will need to define
+    our configuration entity schema. Create a `config/schema` directory and `mymodule.schema.yml`
+    file that will contain the configuration entity''s schema:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: We will define the configuration entity's config prefix as `message_type`, which
+    we will provide to Drupal in the entity's annotation block. We will tell Drupal
+    that this is a `config_entity` and provide a label for the schema.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With the mapping array, we provide the attributes that make up our entity and
+    the data that will be stored.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In our module''s `src/Entity` directory, let''s create an interface for our
+    bundle by creating a `MessageTypeInterface.php` file. The `MessageTypeInterface`
+    will extend the `\Drupal\Core\Config\Entity\ConfigEntityInterface`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will be implemented by our entity and will provide the method requirements.
+    It is best practice to provide an interface for entities. This allows you to provide
+    required methods if another developer extends your entity or if you are doing
+    advanced testing and need to mock an object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will be implementing a very basic bundle. It is still wise to provide an
+    interface in the event of future enhancements and mocking ability in tests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create a `MessageType.php` file in `src/Entity`. This will hold the `MessageType`
+    class, which will extend `\Drupal\Core\Config\Entity\ConfigEntityBundleBase` and
+    implement our bundle''s interface:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: In most use cases, the bundle entity class can be an empty class that does not
+    provide any properties or methods. If a bundle provides additional attributes
+    in its schema definition, they would also be provided here, like any other configuration
+    entity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Entities need to be annotated. Create a base annotation for the `id`, `label`,
+    `entity` keys, and `config_export` keys:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: The annotation document block tells Drupal that this is an instance of the `ConfigEntityType`
+    plugin. The `id` is the internal machine name identifier for the entity type and
+    the `label` is its human-readable version. The `config_prefix` matches how we
+    defined our schema using `mymodule.message_type`. The entity keys definition tells
+    Drupal which attributes represent our identifiers and labels.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When specifying `config_export`, we are telling the configuration management
+    system what properties are to be exported when exporting our entity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will then add handlers, which will interact with our entity:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `handlers` array specifies classes that provide the interaction functionality
+    with our entity. The list builder class will be created to show you a table of
+    our entities. The form array provides classes for forms to be used when creating,
+    editing, or deleting our configuration entity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'An additional handler, the `route_provider`, can be added to dynamically generate
+    our canonical (view), `edit`, `delete`, and `collection` (list) routes:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: There is a routing service for entities that will automatically provide Drupal
+    a route with the proper controllers based on this annotation. The add form route
+    is not yet supported and needs to be manually added.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will need to modify our content entity to use the bundle configuration entity
+    that we defined. Edit the `src/Entity/Message.php` file and adjust the entity
+    annotation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `bundle_entity_type` key specifies the entity type used as the bundle. The
+    plugin validates this as an actual entity type and marks it for configuration
+    dependencies. With the `field_ui_base_route` key pointed to the bundle's main
+    edit form, it will generate the `Manage Fields`, `Manage Form Display`, and `Manage
+    Display` tabs on the bundles. Finally, the `bundle` entity key instructs Drupal
+    on the field definition to be used to identify the entity's bundle, which is created
+    in the next step.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With the `bundle` entity key added, the `ContentEntityBase` class will automatically
+    add an entity reference base field called `type` to our entity, referencing the
+    bundle configuration entity type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create the `MessageTypeListBuilder` class defined in our `list_builder` handler
+    in a `MessageTypeListBuilder.php` file and extend `\Drupal\Core\Config\Entity\ConfigEntityListBuilder`.
+    We will need to override the default implementation to display our configuration
+    entity properties:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In our list builder handler, we will override the `buildHeader` and `builderRow`
+    methods so that we can add our configuration entity''s properties to the table:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/e30411a0-e45d-4be6-b57e-cea480150d15.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Our module''s structure should resemble the following screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/caa1aee5-905e-4814-9524-4bfb9b2c81ef.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Bundles are most utilized in the configured field levels via the `Field` and
+    `Field UI` modules. When you create a new field, it has a base storage item for
+    its global settings. Once a field is added to a bundle, there is a new field configuration
+    that is created and assigned to the bundle. Fields can then have their own settings
+    for a specific bundle along with form and view display configurations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Content entity bundles work just like any other configuration entity implementation,
+    but they extend the usability of the Field API for your content entity types.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We will discuss how to add additional functionality to our entity bundle and
+    use the Entity module to simplify the developer expedience.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Provide action links for adding new bundles
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: There are special links called **action links** in Drupal. These appear at the
+    top of the page and are generally used for links that allow the creation of an
+    item by creating a `links.action.yml` file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In your `mymodule.links.action.yml`, each action link defines the route it
+    will link to, titles, and the routes it appears on:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `appears_on` key accepts multiple values that will allow this route link
+    to appear on multiple pages:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/be9b8b23-4d9a-4cbe-bbaa-231140a75855.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: See also
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Refer to [*Chapter 4*](a634af62-2148-4382-9121-b8500df169ed.xhtml), *Extending
+    Drupal*
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Refer to [*Chapter 9*](b2659986-a8dc-4503-a043-6071ab7b6722.xhtml), *Configuration
+    Management - Deploying in Drupal 8*
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Refer to the *Creating a Configuration Entity type* recipe in *[Chapter 10](2f5fe169-0ba6-4746-9586-896f00f0bb28.xhtml)*,
+    *The Entity API*
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implementing custom access control for an entity
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: All entities have a set of handlers that control specific pieces of functionalities.
+    One handler handles access control. When the access handler is not specified,
+    the base `\Drupal\Core\Entity\EntityType` module will implement `\Drupal\Core\Entity\EntityAccessControlHandler`
+    as the access handler. By default, this will check whether any modules have implemented
+    `hook_entity_create_access` or `hook_entity_type_create_access` and use their
+    opinions. Otherwise, it defaults to the admin permission for the entity type,
+    if implemented.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, we will provide an admin permission for our entity and implement
+    the access handler and permission provider available through the Entity API module.
+    We will base this on an entity called **Message**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This recipe specifically uses the functionality from the Entity API module because
+    it has been tested and thoroughly reviewed and reduces boilerplate code. Ideally,
+    this will be part of an upcoming minor release of Drupal core.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We will need a custom module to place the code into to implement a configuration
+    entity type. Let's create an `src` directory for our PSR-4 style classes. We will
+    need to implement a custom content entity type, such as the one in the *Creating
+    a content entity type* recipe of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'First, we will need to define an administration permission for the entity.
+    This is done by ensuring that the `admin_permission` key is present in the entity''s
+    annotation document block:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: The entity access handler provided by the core will check whether entities implement
+    this option. If it is provided, it will be used as the basis for access checks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we will want to specify permissions that are granular per bundle:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `permission_granularity` key will tell the system what permissions should
+    be generated and how the access should be checked. This way, one user could create
+    *Announcement* messages but not *Bulletin* messages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, we define the `permission_provider` handler, which will generate our
+    permissions:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The final adjustment to our entity annotation is to change the default access
+    handler:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: Rebuild Drupal's caches, or install the module if it is not yet installed.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Verify that the permissions are available on the permission''s overview page:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/42a5048e-fff5-4531-b45e-275aa72498c5.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Entities are powered by the plugin system in Drupal, which means that there
+    is a plugin manager. The default `\Drupal\Core\Entity\EntityTypeManager` provides
+    the discovery and handling of entities. Both the `ContentEntityType` and `ConfigEntityType`
+    entity types and classes extend the base `\Drupal\Core\Entity\EntityType` class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `EntityType` class constructor provides a default `access` handler if it
+    is not provided through the `\Drupal\Core\Entity\EntityAccessControlHandler` class.
+    Every core module that provides an entity type implements this to override at
+    least `checkAccess` and `checkCreateAccess`. Meanwhile, the Entity API access
+    handler extends this to support bundle granular permissions and owner-based permissions
+    if an entity implements `EntityOwnerInterface` in a reusable fashion.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `\Drupal\Core\Access\AccessibleInterface` defines an `access` method, and
+    all the entities inherit this interface. The default implementation in `\Drupal\Core\Entity\Entity`
+    will invoke `checkCreateAccess` if the operation is `create`; otherwise, it invokes
+    the generic `access` method of the access controller, which will invoke entity
+    access hooks and the class' `checkAccess` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When Drupal generates available permissions, the Entity API module finds entity
+    definitions that define the `permission_provider` handler and then invokes that
+    class to generate permissions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We will discuss how to implement custom access control for an entity and use
+    the Entity to simplify the controlling access.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Controlling access to entity fields
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The `checkFieldAccess` method in the core''s entity access control handler
+    can be overridden to control access to specific entity fields when modifying an
+    entity. Without being overridden by a child class, the `\Drupal\Core\Entity\EntityAccessControlHandler::checkFieldAccess`
+    will always return an allowed access result. The method receives the following
+    parameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The view and edit operations
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The current field's definition
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The user session to check access against
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A possible list of field item values
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Entity types can implement their own access control handlers and override this
+    method to provide granular control over the modification of their base fields.
+    A good example would be the `User` module and its `\Drupal\user\UserAccessControlHandler`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: User entities have a `pass` field that is used for the user's current password.
+    There is also a `created` field that records when the user was added to the site.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For the `pass` field, it returns `denied` if the operation is `view`, but allows
+    access if the operation is `edit`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `created` field uses the opposite logic. When a user logs in, the site
+    can be viewed but cannot be edited:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: See also
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Refer to [*Chapter 4*](a634af62-2148-4382-9121-b8500df169ed.xhtml), *Extending
+    Drupal*
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Providing a custom storage handler
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Storage handlers control the loading, saving, and deleting of an entity. The
+    `\Drupal\Core\Entity\ContentEntityType` provides the base entity type definition
+    for all content entity types. If it is not specified, then the default storage
+    handler is `\Drupal\Core\Entity\Sql\SqlContentEntityStorage`. This class can be
+    extended to implement alternative `load` methods or adjustments on saving.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, we will implement a method that supports loading an entity by
+    a specific property instead of having to write a specific `loadByProperties` method
+    call.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will need a custom module to place the code into to implement a configuration
+    entity type. Create an `src` directory for your PSR-4 style classes. A custom
+    content entity type needs to be implemented, such as the one in the *Creating
+    a content entity type* recipe of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Create a `MessageStorage` class in the module''s `src` directory. This class
+    will extend the default `\Drupal\Core\Entity\Sql\SqlContentEntityStorage` class:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: By extending the default storage class for our entity type, we can simply add
+    new methods that are relevant to our requirements rather than implementing the
+    extra business logic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create a `loadMultipleByType` method; using this method, we will provide a
+    simple way to load all messages of a specific bundle:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: We pass the `type` property so that we can query it based on the message bundle
+    and return all matching message entities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Update the entity''s annotation block to have the new storage handler defined:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can now programmatically interact with your message entities using the
+    following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When defining a content entity type, the annotation block begins with `@ContentEntityType`.
+    This declaration, and the properties in it represents the definition to initiate
+    an instance of the
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`\Drupal\Core\Entity\ContentEntityType` class just like all other plugin annotations.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the class constructor, there is a merge to provide default handlers for the
+    `storage` handler if it is not provided. This will always default to `\Drupal\Core\Entity\Sql\SqlContentEntityStorage`,
+    as it provides methods and logic to help its parent class, `ContentEntityStorageBase`,
+    interact with the SQL-based storage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configuration entities can have their default `\Drupal\Core\Config\Entity\ConfigEntityStorage`
+    as well. However, for configuration entities, the configuration management utilizes
+    the `\Drupal\Core\Config\StorageInterface` implementations for storage rather
+    than classes, which extend `ConfigEntityStorage`. This logic resides in the configuration
+    factory service.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Extending `SqlContentEntityStorage` reuses methods required for default Drupal
+    implementations and provides an easy method to create custom methods to interact
+    with loading, saving, and so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We will discuss the custom storage handler and utilization of different storage
+    backends.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Utilizing a different storage backend for an entity
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Drupal provides mechanisms to support different database storage backends that
+    are not provided by the Drupal core, such as MongoDB. Although it is not stable
+    for Drupal 8 at the time of writing this book, there is a MongoDB module that
+    provides storage interaction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The module provides `\Drupal\mongodb\Entity\ContentEntityStorage`, which extends
+    `\Drupal\Core\Entity\ContentEntityStorageBase`. This class overrides the methods
+    used to create, save, and delete, to write them to a MongoDB collection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The project can be found at [https://www.drupal.org/project/mongodb](https://www.drupal.org/project/mongodb).
+  prefs: []
+  type: TYPE_NORMAL
+- en: While there are much more steps to provide a custom storage backend for content
+    entities and their fields, this serves as an example for how you can choose to
+    place a custom entity in different storage backends.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Refer to [*Chapter 4*](a634af62-2148-4382-9121-b8500df169ed.xhtml), *Extending
+    Drupal*
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Refer to [*Chapter 7*](3994173f-3d31-4f01-b808-99e01368564b.xhtml), *Plug and
+    Play with Plugins*
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating a route provider
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Entities can implement a route provider that will create the route definitions
+    for the entity's canonical (view), edit, delete, and collection (list) routes.
+    As of Drupal 8.3.0, all the normally required routes are generated (this was not
+    the case in 8.0.0). The provider takes the path for a specific link definition
+    and turns that into a route and accessible path.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, we will extend the default `\Drupal\Core\Entity\Routing\DefaultHtmlRouteProvider`
+    and override the canonical route to be the same as the edit route, because we
+    assume that messages will always be embedded.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is related to a bug that is fixed in 8.4, where the Content Translation
+    module caused errors by assuming that all entities have a canonical link, when
+    they may only support edit--refer to [https://www.drupal.org/node/2479377](https://www.drupal.org/node/2479377).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will need a custom module to place the code into to implement a configuration
+    entity type. Create an `src` directory for your classes. A custom content entity
+    type needs to be implemented, such as the one in the *Creating a content entity
+    type* recipe of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Create a `MessageHtmlRouteProvider` class in the `src` directory that extends
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '`\Drupal\Core\Entity\Routing\DefaultHtmlRouteProvider`:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Override the provided `getCanonicalRoute` method and return the value from
+    `getEditFormRoute`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: Rebuild Drupal's caches for the change to take effect and routes to be rebuilt.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Navigating to `/message/{message}` will now load the edit form, just as `/message/{message}/edit`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Entities are powered by the plugin system in Drupal, which means that there
+    is a plugin manager. The default `\Drupal\Core\Entity\EntityTypeManager` provides
+    discovery and handling of entities. The `\Drupal\Core\Entity\EntityTypeManagerInterface`
+    specifies a `getRouteProviders` method that is expected to return an array of
+    strings that provide the fully qualified class name of an implementation of the
+    `\Drupal\Core\Entity\Routing\EntityRouteProviderInterface` interface.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There is an event subscriber defined in `core.services.yml` called the `entity_route_subscriber`.
+    This service subscribes to the dynamic route event. When this happens, it uses
+    the entity type manager to retrieve all entity type implementations, which provide
+    route subscribers. It then aggregates all the `\Symfony\Component\Routing\RouteCollection`
+    instances received and merges them into the main route collection for the system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Drupal 8 introduces router types and provide the add routes for our entity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Entity API module provides additional providers
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The Entity module provides two new route providers aimed specifically for entities
+    that support revisions and a bulk delete form option.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you have an entity that implements the `RevisionLogInterface` interface,
+    the revision route provider generates a user interface for managing revisions.
+    You then add a `revision` entry for the `router_providers` array pointing to the
+    new route provider:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, you just need to define additional items in your entity''s `links` definition:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: This reduces the amount of boilerplate code required to implement an `Entity`.
+    For an implementation example, refer to the `EnhancedEntity` class in the Entity
+    API's test module `entity_module_test`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Refer to *[Chapter 4](a634af62-2148-4382-9121-b8500df169ed.xhtml)*, *Extending
+    Drupal*
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Refer to the routing system in Drupal 8 at [https://www.drupal.org/developing/api/8/routing](https://www.drupal.org/developing/api/8/routing)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

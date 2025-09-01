@@ -1,0 +1,909 @@
+- en: Custom Fields
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In [Chapter 6](77cab458-5612-468c-8010-12385708eb81.xhtml), *Data Modeling and
+    Storage*, and [Chapter 7](392cdb70-e52a-42d1-b782-28d6eb726810.xhtml), *Your Own
+    Custom Entities and Plugin Types,* we talked quite extensively about content entities
+    and how they use fields to store the actual data that they are supposed to represent.
+    Then, we saw how these fields, apart from interacting with the storage layer for
+    persisting it, extend Typed Data API classes in order to organize this data better
+    at the code level. For example, we saw that the `BaseFieldDefinition` instances
+    used on entities are actually data definitions (and so are the `FieldConfig` ones).
+    Moreover, we also saw the DataType plugins at play there, namely the `FieldItemList`
+    with their individual items, which down the line extend a basic DataType plugin
+    (`Map` in most cases). Also, if you remember, when we were talking about these
+    items, I mentioned how they are actually instances of yet another plugin—`FieldType`.
+    So essentially, they are a plugin type whose plugins extend plugins of another
+    type. I recommend that you revisit that section if you are fuzzy on the matter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Most of these concepts are buried inside the Entity API and are only seen and
+    understood by developers. However, the `FieldType` plugins (together with their
+    corresponding `FieldWidget` and `FieldFormatter` plugins) break out and are one
+    of the principal things site builders and content editors actually work with in
+    the UI. They allow users to input structured data and save it to the database.
+    If you recall, I mentioned them a few times in Chapters 6 and 7, and I promised
+    you a chapter in which we will see how we can create field types that a site builder
+    can then add to an entity type and use to input data. Well, this is that chapter,
+    but first, let's do a quick recap on what we know about them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A recap of Field type plugins
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Field type plugins extend the lower-level TypedData API to create a unique way
+    of not only representing data (within the context of entities), but also storing
+    it to the database (and other stuff as well). They are primarily known as the
+    type of fields site builders can add to an entity type bundle. For example a plain
+    text field or a select list with multiple options. Nothing can be more common
+    than that in a CMS.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, they are also used as entity base field types. If you remember our
+    product entity type''s `name` field definition, we actually did use these plugin
+    types:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `create()` method of the definition class accepts a `FieldType` plugin ID.
+    Also, the `type` of the `view` display option provided a bit below in the code
+    is a `FieldFormatter` plugin ID, whereas the `type` of the `form` display option
+    provided even lower in the code is a `FieldWidget` plugin ID.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A crucial lesson from this recap that I insist you retain: when defining your
+    custom entities, think about the types of fields you need. If there are bundles
+    that need to have different sets of fields, configurable fields are your choice.
+    Otherwise, base fields are perhaps more appropriate. They sit tightly with your
+    Entity type class, appear on all bundles (if that''s something you need), and
+    encourage you to explore the Drupal code base and understand the existing field
+    types, widgets, and formatters better (as well as relevant settings they come
+    with).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Also, when you define base fields, think the same way as you would if adding
+    them through the UI—which field type do I want (find a `FieldType` plugin), how
+    do I want users to interact with it (find a `FieldWidget` plugin), and how do
+    I want its values to be shown (find a `FieldFormatter` plugin). Then, inspect
+    the relevant classes to determine the right settings that will go with them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will take a look at how we can create our own custom field
+    type with its own default widget and formatter. To provide a bit of continuity,
+    I am going to ask you to think back to the more complex example we used when talking
+    about the TypedData API—the license plate. We will create a field type designed
+    specifically to store license plates in the following format: *CODE NUMBER* (just
+    as we saw with the example New York plate). Why?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: At the moment, there is no field type that can represent this accurately. Of
+    course, we have the simple text field, but that implies having to add both pieces
+    of data that make up a license plate into the same field, stripping them of its
+    meaning. When we were discussing the TypedData API, we saw that one of its core
+    principles is the ability to apply meaning to a piece of data so as to understand
+    that `$license_plate` (for example) is actually a license plate from which we
+    can ask its code and its number (as well as a general description if we want to).
+    Similar to this (or actually building on top of this), fields are also about storing
+    this data. So, apart from understanding it in code, we also need to persist it
+    in the same way. That is, placing the individual pieces of data in separate meaningful
+    table columns in order to also persist that meaning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An example from Drupal core that does the same thing is the `Text (formatted)`
+    field. Apart from its string value, this field also stores a format for each value,
+    which is used upon rendering. Without that format, the string value loses its
+    meaning, and Drupal is no longer able to reliably render it in the way it was
+    intended upon creation. So you can now see that fields take the idea of *meaning*
+    from TypedData and also apply it to storage as needed. So, in this chapter, you
+    will learn how these three types of plugin work by creating your own license plate
+    type field. Let's get started.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Field type
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The primary plugin type for creating a field is, as we discussed, the `FieldType`.
+    It is responsible for defining the field structure, how it is stored in the database,
+    and various other settings. Moreover, it also defines a default widget and formatter
+    plugin that will be autoselected when we create the field in the UI. You see,
+    a single field type can work with more than one widget and formatter. If more
+    exist, the site builder can choose one when creating the field and adding it to
+    an entity type bundle.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Otherwise, it will be the default; each field needs one because without a widget,
+    users can't add data, and without a formatter, they can't see it. Also, as you'd
+    expect, widgets and formatters can also work with more than one field type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The field we will create in this section is for the license plate data, which
+    as we saw, needs two individual pieces of information: a code (such as the state
+    code) and the number. License plates around the world are more complex than this,
+    but I chose this example to keep things simple.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our new `FieldType` plugin needs to go inside the `Plugin/Field/FieldType`
+    namespace of a new module we will create called `license_plate`. Although not
+    mandatory, the class name should end with the word `Item`. It''s a pretty standard
+    thing in Drupal core, and we will follow suit. So, let''s take a look at our `LicensePlateItem`
+    plugin implementation and then talk about the code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: I omitted the class contents, as we will be adding the methods one by one and
+    discussing them individually. However, first, we have the plugin annotation, which
+    is very important. We have the typical plugin metadata such as the ID, label,
+    and description, as well as the plugin IDs for the widget and formatter that will
+    be used by default with this field type. Make a note of those, because we will
+    create them soon.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Speaking from experience, often, when creating a field type, you'll extend the
+    class of an already existing field type plugin, such as a text field or an entity
+    reference. This is because Drupal core already comes with a great set of available
+    types and usually all you need is to either make some tweaks to an existing one,
+    maybe combine them or add an extra functionality. This makes things easier, and
+    you don't have to copy and paste code or come up with it again yourself. Naturally,
+    though, at some point, you'll be extending from `FieldItemBase` because that is
+    the base class all field types need to extend from.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In our example, however, we will extend straight from the `FieldItemBase` abstract
+    class because we want our field to stand on its own. Also, it's not super practical
+    to extend from any existing ones in this case. That is not to say, though, that
+    it doesn't have commonalities with other field types, such as `TextItem`, for
+    example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s now take a look at the first method in our class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: The first thing we do in our class is override the `defaultStorageSettings()`
+    method. The parent class method returns an empty array; however, it's still a
+    good idea to include whatever it returns to our own array. If the parent method
+    changes and returns something later on, we are a bit more robust.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The purpose of this method is two-fold: specifying what storage settings this
+    field has and setting some defaults for them. Also, note that it is a static method,
+    which means that we are not inside the plugin instance. However, what are storage
+    settings, you may ask?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Storage settings are the configuration that applies to the field everywhere
+    it's used. As you know, a field can be added to multiple bundles of an entity
+    type. In Drupal 7, you could reuse a field even across entity types, but this
+    is no longer possible as fields are now reusable only on the bundles of a single
+    entity type. You'll need to create another field of that type if you need it on
+    some other content entity type. So the storage settings are those that apply to
+    this field across each bundle it is attached to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: They usually deal with things related to the schema—how the database table columns
+    are constructed for this field—but they also deal with a lot of other things.
+    Also, even more important to know is that once there is data in the field tables,
+    they cannot be changed. It makes sense as you cannot easily change database tables
+    when there is data in them. This restriction is something we enforce, as we will
+    see in a bit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In our example, we only have two storage settings: `number_max_length` and
+    `code_max_length`. These will be used when defining the schema for the two table
+    columns where the license plate data will be stored (as the maximum length that
+    can be stored in those table fields). By default, we will go with the ever-so-used
+    255 character maximum length on the number column and 5 for the code column, but
+    these are just defaults. The user will be able to change them when creating the
+    field or when editing, as long as there is no data yet.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we can write our storage settings form which allows users to provide
+    the actual settings when creating a field:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: This method is called by the main field configuration form and we need to return
+    an array of form elements that can be used to set values to the storage settings
+    we defined earlier. We have access to the main `$form` and `$form_state` of the
+    form where this is embedded, as well as a handy Boolean `$has_data` which tells
+    us whether there is already any data in this field. We use this to disable the
+    elements we don't want to be changed if there is data in the field (in our case,
+    both).
+  prefs: []
+  type: TYPE_NORMAL
+- en: So basically, our form consists of two number form elements (both required),
+    whose values default to the lengths we specified earlier. The `number` form element
+    also comes with `#min` and `#max` properties, which we can use to restrict the
+    number to a range. Also, we obviously want our minimum lengths to be a positive
+    number, that is, above 1\. This method is relatively straightforward to understand
+    if you get the basics of the Form API, which you should by now.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, for our storage handling, we will need to implement the schema method
+    and define our table columns:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is another static method, but one that receives the current field's `FieldStorageDefinitionInterface`
+    instance. From there, we can access the settings the user has saved when creating
+    the field, and based on those, we define our schema. If you were paying attention
+    in the previous chapter when we discussed `hook_schema()`, this should already
+    be clear to you. What we need to return is an array of column definitions keyed
+    by their name. So we define two columns of the `varchar` type with the maximum
+    lengths the user has configured. Of course, we could have had more storage settings
+    and made this schema definition even more configurable if we wanted to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With these three methods our storage handling is complete; however, our field
+    type is not quite so. We still have a couple more things to take care of.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Apart from storage, as we discussed, fields also deal with data representation
+    at the code level with TypedData structures. So our field type needs to define
+    its individual properties for which we create storage. For this we have two main
+    methods: first, to actually define the properties, and then to set some potential
+    constraints on them:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: The previous code will look very familiar to the one in [Chapter 6](77cab458-5612-468c-8010-12385708eb81.xhtml),
+    *Data Modeling and Storage,* when we talked about TypedData. Again, this is a
+    static method that needs to return the `DataDefinitionInterface` instance for
+    the individual properties. We choose to call them `number` and `code`, respectively,
+    and set some sensible labels—nothing too complicated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The previous code is actually enough to define the properties, but if you remember,
+    our storage has some maximum lengths in place, meaning that the table columns
+    are only so long. So, if the data that gets into our field is longer, the database
+    engine will throw a fit in a not-so-graceful way. In other words, it will throw
+    a big exception, and we can''t have that. So, there are two things we can do to
+    prevent that: put the same maximum length on the form widget to prevent users
+    from inputting more than they should and add a constraint on our data definitions.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The second one is more important because it ensures that the data is valid in
+    any case, whereas the first one only deals with forms. However, since Drupal 8
+    is so much more API-oriented than its previous version, if we create an entity
+    programmatically and set its field values, we bypass forms completely. However,
+    not to worry; we will also take care of the form, so our users can have a nicer
+    experience and are aware of the maximum size of the values they need to input.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, let''s add the following constraints:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Since our field class actually implements the `TypedDataInterface`, it also
+    has to implement the `getConstraints()` method (which the `TypedData` parent already
+    starts up). However, we can override it and provide our own constraints based
+    on our field values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We are taking a slightly different approach here from adding constraints to
+    what we saw in [Chapter 6](77cab458-5612-468c-8010-12385708eb81.xhtml), *Data
+    Modeling and Storage*. Instead of adding them straight to the data definitions,
+    we will create them manually using the validation constraint manager (which is
+    the plugin manager of the `Constraint` plugin type we saw in [Chapter 6](77cab458-5612-468c-8010-12385708eb81.xhtml),
+    *Data Modeling and Storage*). This is because fields use a specific `ComplexDataConstraint`
+    plugin that can combine the constraints of multiple properties (data definitions).
+    Do note that even if we had only one property in this field, we'd still be using
+    this constraint plugin.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There aren't many types of class in Drupal 8 in which you cannot inject dependencies,
+    but `FieldType` plugins are one of them. This is because these plugins are actually
+    built on top of the `Map` TypedData plugin, and their manager doesn't use a container-aware
+    factory for instantiation but instead delegates it to the `TypedDataManger` service,
+    which, as we saw, is not container-aware either. For this reason, we have to request
+    the services we need statically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The data needed to create this constraint plugin is a multidimensional array
+    keyed by the property name which contains constraint definitions for each of them.
+    So, we have a `Length` constraint for both properties, whose options denote a
+    maximum length and a corresponding message if that length is exceeded. If we wanted,
+    we could have had a minimum length in the same way as well: `min` and `minMessage`.
+    As for the actual length, we will use the values chosen by the user when creating
+    the field (the storage maximum). Now, regardless of the form widget, our field
+    will not validate unless the maximum lengths are respected.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It''s time to finish this class with the following two methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: With `generateSampleValue()`, we create some random words that fit within our
+    field. That's it. This can be used when profiling or site building to populate
+    the field with demo values. Arguably, this is not going to be your top priority,
+    but it is good to know.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, we have the `isEmpty()` method which is used to determine whether the
+    field has values or not. It may seem pretty obvious, but it's an important method,
+    especially for us, and you can probably deduce from the implementation why. When
+    creating the field in the UI, the user can specify whether it's required or not.
+    However, typically, that applies (or should apply) to the entire set of values
+    within the field. Also, if the field is not required, and the user only inputs
+    a license plate code without a number, what kind of useful value is that to save?
+    So, we want to make sure that both of them have something before even considering
+    this field as having a value (not being empty), and that is what we are checking
+    in this method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since we started writing the class, we made references to a bunch of classes
+    that we should *use* at the top before moving on:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that we are finished with the actual plugin class, there is one last thing
+    that we need to take care of, something that we tend to forget, myself included:
+    the configuration schema. Our new field is a configurable field whose settings
+    are stored. Guess where? In configuration. Also, as you may remember, all configuration
+    needs to be defined by a schema. Drupal already takes care of those storage settings
+    that come from the parent. However, we need to include ours. So, let''s create
+    the typical `license_plate.schema.yml` (inside `config/schema`), where we will
+    put all the schema definitions we need in this module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: The actual definition will already be familiar, so the only thing that is interesting
+    to explain is its actual naming. The pattern is `field.storage_settings.[field_type_plugin_id]`.
+    Drupal will dynamically read the schema and apply it to the settings of the actual
+    `FieldStorageConfig` entity being exported.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'That''s it for our `FieldType` plugin. When creating a new field of this type,
+    we have the two storage settings we can configure (which will be disabled when
+    editing if there is actual field data already in the database):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/96367f4d-d73b-4516-be18-f188d8f002e6.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Unless we work only programmatically or via an API to manage the entities that
+    use this field, it won't really be useful, as there are no widgets or formatters
+    it can work with. So, we will need to create those as well. As a matter of fact,
+    before we can create a field of this type, we need to ensure we have the widget
+    and formatter plugins as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Field widget
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Our new license plate field type could be added to an entity type, but there
+    would be no way users could use it. For this, we will need at least a widget.
+    A given field type can work, however, with multiple widgets. So, let''s create
+    that default license plate widget plugin we referenced in the annotation of the
+    field type, which belongs in the `Plugin/Field/FieldWidget` namespace of our module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: Again, we started by examining the annotation and class parents for just a bit.
+    You will notice nothing particularly complicated, except maybe the `field_types`
+    key, which specifies the `FieldType` plugin IDs this widget can work with. Just
+    as a field type can have more than one widget, a widget can work with more than
+    one field type. Also, it's important that we specify it here, otherwise site builders
+    won't be able to use this widget with our license plate field type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We extended `WidgetBase` which implements the obligatory `WidgetInterface` and
+    provides some common defaults for all its subclasses.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first thing we can do inside the class is handle our settings. First, we
+    will define what settings this widget has and set the default values for these
+    settings:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: We have some settings specific to how the form widget would be configured for
+    our field. We will use the first two settings mentioned in the previous code to
+    limit the size of the form element. It will not actually prevent users from filling
+    in longer values, but will be a good indication for them as to how long the values
+    should be. Then, we have the `fieldset_state` setting which we will use to indicate
+    whether the form fieldset used to group the two license place textfields is by
+    default open or closed. We will see that in a minute. Lastly, each of these textfields
+    can have a placeholder value (potentially). So, we have that setting as well.
+    Do note that these are all settings we make up and that make sense for our field.
+    You can add your own if you want.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we have the form used to configure these settings (as part of the widget
+    configuration):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: We have to return the elements for our widget settings, which will then be added
+    to a bigger form (passed as an argument). There is nothing special about the first
+    three form elements. We have two `number` fields and a `select` list to control
+    the first three settings we saw in our defaults. For the first two settings, we
+    want the numbers to be positive and max out at the same maximum length we have
+    set in the storage. We don't want the widget exceeding that length. However, if
+    we want, we can shorten the size of the element.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The textfields for the two placeholder values are wrapped inside a `details`
+    form element. The latter is a fieldset that can be open or closed and can contain
+    other form elements. We will use it to wrap the actual textfields with which users
+    will input license plate data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The previous form will look like this when users configure the widget:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/46ced2d4-8a43-4433-9d06-533131f1f3ab.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Lastly, we have the summary of the settings the widget, which will be displayed
+    on the Manage form display page for our field:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This method needs to return an array of strings that will make up the settings
+    summary. That is what we do now: read all of our settings values and list them
+    in a human-friendly way. The end result will look something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/9bc7c788-7c6f-4b39-b88c-983dbd4eea7c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Next, we will have to implement the core of the field widget plugins—the actual
+    form used for inputting the field data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is a bit more complicated at first glance, but we'll break it down and
+    you'll see that it actually makes sense with what you've been learning in the
+    previous chapters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first argument passed to this method is the entire list of values for this
+    field. Remember that each field can have multiple values, hence the usage of the
+    `FieldItemListInterface` instance to hold them. So, from there, we can get the
+    values of any of the items in the list. The second argument is the actual delta
+    of the item in the list, which we can use to pinpoint the one for which the form
+    is being built (in order to retrieve the default value). Then, we have an `$element`
+    array that we should actually return, but which contains some pieces of data already
+    prepared for us based on the field configuration. For example, when creating a
+    field, if we set it to be required, then this `$element` already contains the
+    form property `#required => TRUE`. Likewise, it contains the weight of the field
+    (compared to the others on the entity type), the `#title` property, and many others.
+    I recommend that you debug that array and see what's in it. Also, you can look
+    inside `WidgetBase::formMultipleElments()` and `WidgetBase::formSingleElement()`
+    and see how this array is prepared. Lastly, we get the form definition and form
+    state information of the larger form our field element gets embedded in.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, what we are doing inside the method is getting a bit creative with the data
+    that we have. The one-value (columns) fields would typically just add to the `$element`
+    array and then simply return that. However, we have two values we want to wrap
+    inside a nice collapsible fieldset, so we create a `details` element for that.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is on this element that we copy over the field title and description the
+    user has specified when creating the field, which is prepared for us in the `$element`
+    array. This is because those relate to the entire field, not just one of the values.
+    Moreover, we also set the default `#open` state to whatever was stored in the
+    widget settings. Lastly, to all this we add the rest of the values found in the
+    `$elements` array because we want to inherit them as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that I could have left the `#title` and `#description` to be inherited
+    as well, but overtly added it to make it more visible for you.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, within our details element, we can add the two textfields for the license
+    plate code and number. For both of these, we use the widget settings to set the
+    element size and placeholder value, as well as a maximum length value equal to
+    the field item storage. This is what will prevent users from providing values
+    that are longer than what the database columns can handle. The default value for
+    the two form elements will be set to the actual field values of these properties,
+    retrieved from the list of items using the current delta key. Finally, we set
+    the `#required` property to whatever the user has configured for this field. This
+    property would be useless on the parent `details` element, so we have to move
+    it down to the actual text fields. And that's pretty much it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The last method we can implement, and in our case, have to, is one that prepares
+    the field values a bit when submitting:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here''s what happens. From our property definitions, our field expects two
+    properties: number and code. However, submitting this form will present only one
+    property called "details" because that is what we arbitrarily named our fieldset
+    form element (which contains the properties). Since we made this choice, we will
+    need to now massage the submitted values a bit to match the expected properties.
+    In other words, we have to bring the number and code properties to the top level
+    of the `$values` array and unset the details element, as it''s no longer needed
+    upon submission. So, now, the field receives the array in the following format:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you remember, this is incidentally also what we would pass to the `set()`
+    method of the field if we wanted to set this value on the field. Take a look at
+    the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With that, our widget is done; well, not quite. We should ensure we use all
+    the newly referenced classes at the top:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Also, we again forgot about the configuration schema. Let''s not do that again.
+    In the same file as we wrote the field storage schema, we can add the definition
+    for the widget settings:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It works just like before: a dynamic schema name that starts with `field.widget.settings.`
+    and has the actual plugin ID at the end; and inside, we have a property mapping
+    as we''ve seen before. With this, we really are done.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Field formatter
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Alright, so our field now also has a widget that users can input data with.
+    Let's create the default field formatter to make the field whole.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before actually coding it, let''s establish what we want our formatter to look
+    and behave like. By default, we want the license plate data to be rendered like
+    this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'So, each component is wrapped inside its own span tag, and some handy classes
+    are applied to them. Alternatively, we may want to concatenate the two values
+    together into one single span tag:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: This could be a setting on the formatter, allowing the user to choose the preferred
+    output. So, let's do it then.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Field formatters go inside the `Plugin/Field/FieldFormatter` namespace of our
+    module, so let''s go ahead and create our own:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: Again, we start by inspecting the annotation, which looks very unsurprising.
+    It looks almost like the one for our widget earlier, as formatters can also be
+    used on multiple field types.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The class extends `FormatterBase`, which itself implements the obligatory `FormatterInterface`.
+    By now, you recognize the pattern used with plugins—they all have to implement
+    an interface and typically extend a base class, which provides some helpful functionalities
+    common to all plugins of those types. Fields are no different.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first thing we do inside this formatter class is, again, deal with its
+    own settings (if we need any). As it happens, we have a configurable setting for
+    our formatter, so let''s define it and provide a default value:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is just like with the previous plugins. The `concatenated` setting will
+    be used to determine the output of this field according to the two options we
+    talked about earlier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, predictably, we will need the form to manage this setting:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Again, nothing special; we have a checkbox, which we use to manage a Boolean
+    value (represented by 1 or 0). Lastly, just like with the widget, we have a summary
+    display for formatters as well that we can define:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, we just print in a human-readable name of whatever has been configured,
+    and this will be displayed when managing the field display in the UI and will
+    look just like it did with the widget. Consistency is nice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we''ve reached the most critical aspect of any field formatter—the actual
+    display:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: The method used for this is `viewElements()`, but for each element in the list,
+    we simply delegate the processing to a helper method, because as you remember,
+    the field is itself a list of value items (depending on the field cardinality),
+    even if there is only one value in the field. These are keyed by a delta, which
+    we also use to key the array of `$elements` that we return from the method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For each individual item in the list, we then retrieve the value of the license
+    plate code and number using the TypedData accessors we'' saw earlier. Remember
+    that at this point we are working with a `FieldItemInterface` whose `get()` method
+    returns the DataType plugin that represents the actual value, which, in our case,
+    is `StringData`. Because that is what our field property definitions were:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Also, the actual values inside these plugins are the string representations
+    the user actually provided. We use these values together with the setting to determine
+    whether to concatenate and pass them to a custom theme function (we have yet to
+    define this). The important thing to keep in mind is that we need to return, for
+    each item, a render array. This can be anything; consider the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'However, that doesn''t look nice, nor is it configurable or overridable. So,
+    we opt for a clean new theme function that takes those three arguments:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We default the value for `concatenated` to `TRUE` because that is what we used
+    inside `defaultSettings()` as well. We have to be consistent. The template file
+    that goes with this, `license-plate.html.twig`, is also very simple:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Depending on our setting, we output the markup differently. Other modules and
+    themes now have a host of options to alter this output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: They can create a new formatter plugin altogether.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: They can override the template inside a theme.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: They can alter the template to be used by this theme hook.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'That''s it for the formatter plugin itself, but this time we''re not forgetting
+    about the configuration schema. Although we have a measly little Boolean value
+    to define, it still needs to be done:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This works the same way as the other ones but with a different prefix: `field.formatter.settings`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With that, we have our field formatter in the bag. We should not forget, however,
+    the missing *use* statements at the top of the formatter plugin class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now after clearing the cache, the new field type can be used to create fields.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, I still think we can do one better. Since we are working with license
+    plates that deal with certain known formats, what if we make our field configurable
+    to provide a list of license plate codes that can be used when inputting the data?
+    This will have the added benefit of us learning something new about fields—field
+    settings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Field settings
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When we created our field type, we specified some storage settings and we saw
+    that these are typically linked to underlying storage and cannot be changed once
+    the field has data in it. This is because databases have a hard time making table
+    column changes when there is data present in them. However, apart from storage
+    settings, we also have something called field settings, which are specific to
+    the field instance on a certain entity bundle. Even more, they can (or should)
+    be changeable even after the field has been created and has data in it. An example
+    of such a field setting, which is available from Drupal core on all field types,
+    is the "required" option which marks a field as required or not. So let's see
+    how we can add our own field settings to configure what we said we want to do.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Back in our `LicensePlateItem` plugin class, we start by adding the default
+    field settings:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is the same pattern we''ve been seeing by which we specify what are the
+    settings and what are their relevant defaults. Then, as expected, we need the
+    form, where users can specify the setting values for each field instance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'So what we provide here is a `textarea` form element by which the administrator
+    can add multiple license plate codes, one per each line. In our widget, we will
+    use these and turn them into a select list. However, before we do that, we need
+    to provide the configuration schema for this new setting:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: With this in place, we can turn to our field widget and make the necessary changes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Inside the `formElement()` method, let''s replace the block where we defined
+    the code form element with this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since the logic for determining that element depends on configuration, it''s
+    a bit more complicated, so it''s best to refactor to its own method. Now let''s
+    write it up:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: We start by defining the code form element defaults, such as title, default,
+    and value. Then, we get the field settings for the `codes` setting we just created.
+    Note that `getFieldSetting()` and `getFieldSettings()` delegate to the actual
+    field type and return both storage and field settings combined. So, we don't need
+    to use separate methods. However, an implication is that you should probably stick
+    to different setting names for the two categories.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then, if we don't have any codes configured in this particular field instance,
+    we build up our textfield form element as we did before. Otherwise, we break them
+    up into an array and use them in a select list form element. Also, note that in
+    this latter case we no longer need to apply any length limits because of the validation
+    inherent to select lists. Values not present in the original options list will
+    be considered invalid.
+  prefs: []
+  type: TYPE_NORMAL
+- en: That's pretty much it. The field can now be configured to either default to
+    the open textfield for adding a license plate code or to a select list of predefined
+    ones. Also, the same field can be used in these two ways on two different bundles,
+    which is neat.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using our custom field type as a base field
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: At the beginning of this chapter, I stressed the importance of understanding
+    the makeup of a field (type, widget, and formatter) so as to easily define base
+    fields on custom entity types. This understanding allows you to navigate through
+    Drupal core code, discover their settings and use them on base fields. So, let's
+    cement this understanding by seeing how our new field could be defined as a base
+    field on a custom entity type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is an example where we actually use all the available settings we defined
+    for each of the three plugins. Note that any settings that are left out default
+    to the values we specified in the relevant *defaults* method, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is very similar to what we've been seeing. For the `create()` method, we
+    use the `FieldType` plugin ID. Inside the `setSettings()` method we pass both
+    storage and field settings. They will then be used appropriately. Note that since
+    the `codes` setting is stored as a string with codes separated by line breaks,
+    we will need to add it accordingly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Similarly, for the `view` and `form` display options, we use the formatter and
+    widget plugin IDs, respectively, and inside a `settings` array, we pass any of
+    the settings we have defined. Lastly, the `setDisplayConfigurable()` indicates
+    that all these settings for the formatter and widget are also configurable through
+    the UI. Doing so will turn the `BaseFieldDefinition` into a `BaseFieldOverride`,
+    as it needs to store the configured overrides.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This should be a recap for you, as we covered all these concepts in earlier
+    chapters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, we looked at how we can create custom fields that site builders
+    (and developers) can add to entity types. This implied defining three plugin types:
+    `FieldType`, `FieldWidget`, and `FieldFormatter`, each with its own responsibility.
+    The first defined the actual field, its storage and individual data properties,
+    using the TypedData API. The second defined the form through which users can input
+    field data when creating or editing entities that use the field. The third defined
+    how the values inside this field can be displayed when viewing the entity.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also saw that each of these plugins can have arbitrary sets of configurable
+    settings that can be used to make the field dynamic—both in how the widget works
+    and in how the values are displayed. Moreover, these settings are part of the
+    exported field configuration, so we saw how we can define their respective configuration
+    schemas.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lastly, we also saw how—aside from creating our new field through the UI—developers
+    can add it to an entity type as a base field, making it available on all bundles
+    of that entity type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will talk about access control, a very important topic,
+    as we need to ensure that our data and functionality are only exposed to the users
+    we want, when we want.
+  prefs: []
+  type: TYPE_NORMAL

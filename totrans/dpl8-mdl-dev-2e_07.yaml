@@ -1,0 +1,1300 @@
+- en: Your Own Custom Entity and Plugin Types
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: I am sure that you are looking forward to applying some of the knowledge gained
+    from the previous chapters and doing something practical and fun. As promised,
+    in this chapter, we will do just that. Also, apart from implementing our own entity
+    types, we will cover some new things as well. So, here's the game plan.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The premise is that we want to have products on our site that hold some basic
+    product information, such as an ID, a name, and a product number. However, these
+    products need to somehow get onto our site. One way will be manual entry. Another,
+    more important way will be through an import from multiple external sources (such
+    as a JSON endpoint). Now, things will be kept simple. For all intents and purposes,
+    these products aren't going to do much, so don't expect an e-commerce solution
+    being laid out for you. Instead, we will practice modeling data and functionality
+    in Drupal 8.
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, we will create a simple content entity type to represent our products.
+    In doing so, we will make sure that we can use the UI to create, edit, and delete
+    these products with ease by taking advantage of many Entity API benefits available
+    out of the box.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Second, we will model our importing functionality. One side of the coin will
+    be a simple configuration entity type to represent the configuration needed for
+    our various importers. Again, we will make use of the Entity API for quick scaffolding
+    and entity management. The other side will be a custom plugin type that will actually
+    perform the import based on the configuration found in the entities. As such,
+    these will be linked from the direction of the config entities, which will choose
+    to use one plugin or another.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So these are the highlights. In building all this, we will see much of what
+    is needed to define a content and configuration entity type with fields to hold
+    data and configuration, as well as a plugin type to encapsulate logic. When defining
+    these things, we will take the manual, more tedious, route to make sure that we
+    understand what each component does and we are comfortable with what we are doing.
+    Once you know all that, you'll be able to greatly speed up these processes using
+    the Drupal Console to automatically generate much of the boilerplate code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The code we write in this chapter will go inside a new module called `products`.
+    Since we have learned how to create a module from scratch, I will not cover the
+    initial steps needed for getting started with it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Custom content entity type
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'As we saw in the previous chapter, when looking at the Node and NodeType entity
+    types, entity type definitions belong inside the `Entity` folder of our module''s
+    namespace. In there, we will create a class called `Product`, which will have
+    an annotation at the top to tell Drupal this is a content entity type. This is
+    the most important part in defining a new entity type:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the above code block, I omitted the actual contents of the class to first
+    focus on the annotation and some other aspects. We will see the rest of it shortly.
+    However, the entire working code can be found in the accompanying repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you remember from the previous chapter, we have the `ContentEntityType` annotation
+    with the entity type plugin definition. Our example is relatively barebones compared
+    to Node, for example, because I wanted to keep things simple. It has no bundles
+    and is not revisionable, nor translatable. Also, for some of its handlers, we
+    fall back to Entity API defaults.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The entity type ID and label are immediately visible, so no need to explain
+    that; we can instead skip to the "handlers" section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For the view builder handler, we choose to default to the basic `EntityViewBuilder`
+    because there is nothing specific our products need to be rendered. Many times,
+    this will be enough, but you can also extend this class and create your own.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For the list builder, although still keeping things simple, we needed our own
+    implementation in order to take care of things such as the list headers. We will
+    see this class soon. The form handler for creating and editing products is our
+    own implementation found inside the `Form` namespace of our module, and we will
+    see it soon to get a better understanding. We rely on Drupal 8 to help us out
+    with the delete form, though.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, for the route provider, we used the default `AdminHtmlRouteProvider`,
+    which takes care of all the routes necessary for an entity type to be managed
+    in the admin UI. This means that we no longer need to do anything for routing
+    the links referenced in the `links` section of the annotation. Speaking of links,
+    it makes sense to place them under the `admin/structure` section of our administration
+    for our example, but you can choose another place if you want.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The database table our products will be stored in is `products`, and the permission
+    needed for users to manage them is `administer site configuration`. I have deliberately
+    omitted creating permissions specific to this entity type because we will cover
+    this topic in a chapter dedicated to access. So we will use this permission that
+    comes with Drupal core.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, we also have some basic entity keys to map to the respective fields.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our `Product` class extends the `ContentEntityBase` class to inherit all the
+    necessary stuff from the API and implements our very own `ProductInterface`, which
+    will contain all the methods used to access relevant field values. Let''s create
+    this interface real quick in the same `Entity` folder:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As you can see, we are extending the obligatory `ContentEntityInterface` but
+    also the `EntityChangedInterface`, which provides some handy methods to manage
+    the last changed date of the entities. Those method implementations will be added
+    to our `Product` class via the `EntityChangedTrait`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: The methods on the `ProductInterface` are relatively self-explanatory. We will
+    have a product name, number, remote ID, and source field, so it's nice to have
+    getters and setters for those. If you remember, the Entity API provides the `get()`
+    and `set()` methods with which we can consistently access and store field values
+    across all entity types. However, I find that using an interface with well-defined
+    methods makes code much clearer, not to mention that IDE autocompletion is a great
+    time-saver. We also have a getter and setter for the `created` date field, which
+    is a typical field that content entities have.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we can take a look at the `baseFieldDefinitions()` method of our `Product`
+    entity type and see how we actually defined our fields:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: First and foremost, we will need to inherit the base fields of the parent class.
+    This includes things such as the ID and UUID fields.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Second, we define our own fields, starting with the product name field, which
+    is of the `string` type. This `string` type is nothing more than a `FieldType`
+    plugin I mentioned in the previous chapter. If you remember, this plugin extends
+    a `TypedData` class itself. Apart from the obvious label and description, it has
+    some settings, most notably a maximum length for the value, which is 255 characters.
+    The `view` and `form` display options reference `FieldFormatter` and `FieldWidget`
+    plugins, respectively, which together with the `FieldType` make up a field. Lastly,
+    with the `setDisplayConfigurable()`, we specify that some of the options on this
+    field should be configurable through the UI. For example, we can change the label
+    in the UI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then, we have the `number` field which is of the `integer` type and, for this
+    example, is restricted to a number between 1 and 10,000\. This restriction setting
+    turns into a constraint under the hood. The rest of the options are similar to
+    the name field.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we have the `remote_id` string field, but it doesn't have any widget or
+    display settings because we don't necessarily want to display or edit this value.
+    It is mostly for internal use to keep track of the product ID of the remote source
+    it came from. Similarly, the `source` string field is not displayed or configurable
+    either because we want to use it to store the source of the product, where it
+    has been imported from, and also to keep track of it programmatically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, the `created` and `changed` fields are special fields that store the
+    timestamps for when the entity is created and modified. Not much more than that
+    needs to be done because these fields automatically set the current timestamps
+    as the field values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By now, we can also see the rest of the class content, which is mostly made
+    up of the methods required by the `ProductInterface`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As promised, we are making use of the `EntityChangedTrait` to handle the `changed`
+    field and implement simple getters and setters for the values found in the fields
+    we defined as base fields. If you remember the `TypedData` section, the way we
+    access a value (since the cardinality is always 1 for these fields) is by running
+    the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Before we finish off with our Product entity class, let''s ensure we *use*
+    all the remaining classes at the top:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let''s now move through the entity type plugin annotation and create the handlers
+    we''ve been referencing there. We can start with the list builder, which we can
+    place at the root of our namespace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: The purpose of this handler is to build the administration page that lists the
+    available entities. On this page, we will then have some info about them, as well
+    as operation links to edit and delete and whatever else we might need. For our
+    products, we simply extend from the default `EntityListBuilder` class, but override
+    the `buildHeader()` and `builderRow()` methods to add some information specific
+    to our products. The names of these methods are self-explanatory, but one thing
+    to keep in mind is that keys from the `$header` array we return need to match
+    the keys from the `$row` array we return. Also, of course, the arrays need to
+    have the same number of records so that the table header matches the individual
+    rows. If you look inside `EntityListBuilder`, you can note some other handy methods
+    you might want to override, such as the one that builds the query and the one
+    that loads the entities. For us, this is enough.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our products list builder will have, for now, only two columns: the ID and
+    the name. For the latter, each row will actually be a link to the product canonical
+    URL (the main URL for this entity in Drupal). Finally, you remember, from [Chapter
+    2](601b4dd0-c521-459e-9342-2645a109642c.xhtml), *Creating Your First Module*,
+    how to build links with the `Link` class, right?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The construct for the entity canonical route is in the format: `entity.[entity_type].canonical`.
+    Other useful entity links can be built by replacing the word `canonical` with
+    the keys from the `links` definition of the Entity type plugin annotation.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'That is pretty much it for the list builder, and we can move on to the form
+    handler. Since creating and editing an entity share so much in terms of what we
+    need in the form, we use the same `ProductForm` for both those operations. Let''s
+    create that form class now inside the *Form* directory of the module namespace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: We extend `ContentEntityForm`, which is a specialized form class for content
+    entities. It itself extends `EntityForm`, which then subclasses the `FormBase`
+    we've already encountered in [Chapter 2](601b4dd0-c521-459e-9342-2645a109642c.xhtml),
+    *Creating Your First Module*. However, the former two give us a lot of functionalities
+    needed to manage our entities without writing much code ourselves.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The only thing we actually want to do is override the `save()` method in order
+    to write a message to the user informing them that the product has either been
+    created or updated. We know what happened because the `EntityInterface::save()`
+    method returns a specific constant to denote the type of operation that occurred.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also want to redirect to the canonical URL of the product entity when the
+    save happens. This we do with a very handy method on the `FormStateInterface`
+    object with which we can specify a route (and any necessary parameters), and it
+    will make sure that when the form is submitted, the user will be redirected to
+    that route. Neat, isn't it?
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can see we use the deprecated `drupal_set_message()` global function to
+    print the message to the user. I did this on purpose to keep things short. However,
+    as we saw in [Chapter 2](601b4dd0-c521-459e-9342-2645a109642c.xhtml), *Creating
+    Your First Module*, you should instead inject the `Messenger` service and use
+    that. Do refer back to that chapter also for a recap on how to inject services
+    if you are unsure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As I mentioned, for the delete operation, we just use the `ContentEntityDeleteForm`,
+    which does all we need: it presents a confirmation form where we submit and trigger
+    the delete operation. This is a typical flow for deleting resources in Drupal.
+    As we will see a bit later, for configuration entities, there will be some methods
+    we will need to write ourselves for this same process to happen.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: All our handlers are done now, and our product entity type is operational. However,
+    in order to be able to work with it, let's create some links in the admin menu
+    to be able to easily manage them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, create the `products.links.menu.yml` file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: This defines a menu link under the Structure link for the product list (the
+    page built with our list builder handler).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, let''s create some local tasks (tabs) so that we get handy links on the
+    product page to edit and delete the product entity. So, inside the `products.links.task.yml`
+    file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: You remember this from [Chapter 5](9e989509-bdf4-4a74-ace2-deeaa0c73a3b.xhtml),
+    *Menus and Menu Links*, don't you? The base route is always the canonical route
+    for the entity, which essentially groups the tabs together. Then, the routes we
+    use for the other two tasks are the `edit_form` and `delete_form` links of the
+    entity type. You can refer to the *links* section of the Entity type plugin annotation
+    to understand where these come from. The reason we don't need to specify any parameters
+    here (since those routes do require a product ID) is because the base route has
+    that parameter in the URL already. So, the tasks will use that one. And this is
+    very handy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, we also want an action link to create a new product entity, which
+    will be on the product list page. So, inside the `products.links.action.yml` file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: Again, none of this should be new, as we covered it in detail in [Chapter 5](9e989509-bdf4-4a74-ace2-deeaa0c73a3b.xhtml),
+    *Menus and Menu Links.* We are finally done.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the `products` module was enabled on your site before writing all the entity
+    code, you will need to run the `drush entity-updates` command in order for all
+    the necessary tables to be created in the database. Otherwise, installing the
+    module will do that automatically. However, keep the first point in mind for when
+    you add new content entity types and fields or even change existing fields on
+    an entity type. The underlying storage might need to be changed to accommodate
+    your modifications. Moreover, another thing to keep in mind is that, in some cases,
+    changing fields that already have data in them will not be okay with Drupal and
+    will prevent you from making those changes. So, you might need to delete existing
+    entities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: At the time of writing, the `entity-update` Drush command was being eliminated
+    in favor of updating entities using update hooks. See the related change record
+    on [Drupal.org](https://www.drupal.org/node/3034742). This means that the command
+    might not work anymore when you try to use it. If that's the case, check out the
+    change record for information as to which contrib module this command can be found
+    in for use during development.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that we''ve done that, we can go to `admin/structure/product` and take
+    a look at our (empty) product entity list:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/924991b6-82d9-42aa-b845-89f6a655e596.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We can now create new products, edit them, and finally, delete them. Remember,
+    due to our field configuration, the manual product creation/edit does not permit
+    the `remote_id` and `source` fields to be managed. For our purpose, we want those
+    to be only programmatically available since any manual products will be considered
+    as not needing that data. For example, if we want to make the source field show
+    up as a form widget, all we have to do is change its base field definition to
+    this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Also, we'd need to clear the cache. This would make the form element for the
+    source field show up, but the value would still not be displayed on the canonical
+    page of the entity because we have not set any `view` display options. In other
+    words, we have not chosen a formatter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, in our case, the product entity is ready to store data, and all the
+    TypedData APIs we practised in the previous chapter with the Node entity type
+    will work just as well with this one. So, we can now turn to writing our importer
+    logic to get some remote products onto our website.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Custom plugin type
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Since pretty much the second page of this book you've been reading about how
+    important plugins are and how widely they are used in Drupal 8\. I have backed
+    that claim with references to "this or that" being a plugin in basically every
+    chapter. However, I have not really explained how you can create your own custom
+    plugin type. However, since our importer logic is a perfect candidate for plugins,
+    I will do so here, and to exemplify the theory, we will implement an `Importer`
+    plugin type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The very first thing a plugin type needs is a manager service. This is responsible
+    for bringing together two critical aspects of plugins (but not only): discovery
+    and factory (instantiation). For these two tasks, it delegates to specialized
+    objects. The most common method of discovery is through annotations (`AnnotatedClassDiscovery`),
+    and the most common factory is the container-aware one—`ContainerFactory`. So,
+    essentially, the manager is the central player that finds and processes all the
+    plugin definitions and instantiates plugins. Also, it does so with the help of
+    those other guys.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Many plugin types in Drupal 8, since they follow the defaults I mentioned before,
+    use the `DefaultPluginManager`, or should I say, they extend this class. It provides
+    them with the annotated discovery and container-aware factory. So that is what
+    we will do as well and see how simple it is to create a plugin type manager.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Typically, it lives in the `Plugin` namespace of the module, so ours can look
+    like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Aside from extending the `DefaultPluginManager`, we will need to override the
+    constructor and re-call the parent constructor with some parameters specific to
+    our plugins. This is the most important part, and in order, these are the following
+    (omitting the ones that are simply passed through):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The relative namespace where plugins of this type will be found—in this case,
+    in the `Plugin/Importer` folder
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The interface each plugin of this type needs to implement—in our case, the `Drupal\products\Plugin\ImporterInterface`
+    (which we have to create)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `annotation` class used by our plugin type (the one whose class properties
+    map to the possible annotation properties found in the DocBlock above the plugin
+    class)—in our case, `Drupal\products\Annotation\Importer` (which we have to create)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In addition to calling the parent constructor with these options, we will need
+    to provide the "alter" hook for the available definitions. This will make it possible
+    for other modules to implement this hook and alter the found plugin definitions.
+    The resulting hook in our case is `hook_products_importer_info_alter`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Lastly, we also provide a specific cache key for the backend responsible for
+    caching the plugin definitions. This is for increased performance: as you should already
+    know by now, creating a new plugin requires clearing the cache.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'That''s it with our manager. However, since this is a service, we will need
+    to register it as such inside the `products.services.yml` file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, we inherit the dependencies (arguments) from the `default_plugin_manager`
+    service instead of duplicating them here again. If you remember from [Chapter
+    3](360802d2-dd46-4d08-b478-9351d56ed2a0.xhtml), *Logging and Mailing*, this is
+    a neat little trick in Drupal 8.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, since we referenced some classes in the manager, we will need to create
+    them. Let''s start with the annotation class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: This class needs to extend `Drupal\Component\Annotation\Plugin`, which is the
+    base class for annotations and already implements `AnnotationInterface`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For our purpose, we keep it simple. All we need is a plugin ID and a label.
+    If we wanted to, we could add more properties to this class and describe them.
+    It's a standard practice to do so because otherwise there is no clear way to know
+    which properties a plugin annotation can contain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, let''s also write the interface the plugins are required to implement:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Again, we keep it simple. For now, our importer will have only one method specific
+    to it: `import()`. However, it will have other methods specific to plugins, which
+    can be found in the `PluginInspectionInterface` we are extending. These are `getPluginId()`
+    and `getPluginDefinition()` and are also quite important as the system expects
+    to be able to get this info from the plugins.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, plugins of any type need to extend `PluginBase` because it contains a
+    host of mandatory implemented methods (such as the ones I mentioned before). However,
+    it is also a best practice for the module that introduces a plugin type to also
+    provide a base plugin class that plugins can extend. Its goal is to extend `PluginBase`
+    and also provide all the necessary logic needed by all the plugins of this type.
+    For example, when we create a new block, we extend `BlockBase`, which, somewhere
+    down the line, extends `PluginBase`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In our case, this base (abstract) class can look something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: We implement `ImporterInterface` (renamed to prevent collision) to require subclasses
+    to have the `import()` method. However, we also make the plugins container aware
+    and already inject some helpful services. One is the `EntityTypeManager` because
+    we expect all importers to need it. The other is the Guzzle HTTP Client that we
+    use in Drupal 8 to make PSR-7 requests to external resources.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding this here is a judgment call. We can imagine more than one plugin needing
+    external requests, but if it turns out they don't, we should surely remove it
+    and add it only in that specific plugin. The opposite also holds true. If in the
+    third plugin implementation we identify another common service, we can remove
+    it from the plugins and inject it here. All while watching out for backwards compatibility.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before talking about those exceptions we're throwing in the constructor, it's
+    important to know how the plugin manager creates a new instance of a plugin. It
+    uses its `createInstance()` method, which takes a plugin ID as a first parameter
+    and an optional array of plugin configuration as a second parameter. The relevant
+    factory then passes that array of configuration to the plugin constructor itself
+    as the second parameter. Oftentimes, this is empty. However, for our plugin type,
+    we will need configuration to be passed to the plugin in the form of a configuration
+    entity (which we have to create next). Without such an entity, we want the plugins
+    to fail because they cannot work without the instructions found in this entity.
+    So, in the constructor, we check whether `$configuration['config']` is an instance
+    of `Drupal\products\Entity\ImporterInterface`, which will be the interface our
+    configuration entity will implement. Otherwise, we throw the exception because
+    this plugin cannot work without it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our plugin type is complete for now. Obviously, we don't have any plugins yet,
+    and before we create one, let's create the configuration entity type first.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Custom configuration entity type
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'If you remember `NodeType` from the previous chapter, you know the essentials
+    of creating custom configuration entity types. So, let''s create our `Importer`
+    type now. Like before, we start with the annotation part, which this time is a
+    `ConfigEntityType`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: As with the `Product` entity, we will need to create a list builder handler,
+    as well as form handlers. In this case, though, we also need to create a form
+    handler for the `delete` operation as we will soon see why. Finally, since we
+    have a configuration entity, we also specify the `config_export` and `config_prefix`
+    keys to be used for the exporting. If you remember from the previous chapter,
+    the first one denotes the names of the fields that should be persisted (we'll
+    see them in a minute), while the second denotes the prefix the configuration names
+    should get when stored. One thing you'll note is that we don't have a canonical
+    link because we don't really need one—our entities don't need a details page,
+    hence no canonical link to it needs to be defined.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, it''s time to create the `ImporterInterface` that the entities implement.
+    It is named the same as the plugin interface we created earlier, but it resides
+    in a different namespace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: In these configuration entities, we want to store, for now, a URL to the resource
+    where the products can be retrieved from, the ID of the importer plugin to use,
+    whether we want existing products to be updated if they had already been imported,
+    and the source of the products. For all these fields, we create some getter methods.
+    You'll note that `getUrl()` needs to return a `Url` instance. Again, we create
+    a well-defined interface for the public API of the entity type as we did with
+    the product entity type.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'And this is what the `Importer` class body that implements this interface looks
+    like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you remember from the previous chapter, defining fields on a configuration
+    entity type is as simple as defining properties on the class itself. Moreover,
+    you may recall the `config_export` key on the annotation, which lists which of
+    these properties need to be exported and persisted. We omitted that because we
+    will simply rely on the configuration schema (which we will create soon). Lastly,
+    the interface methods are implemented next, and there is no rocket science involved
+    in that. The `getUrl()`, as expected, will try to create an instance of `Url`
+    from the value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s not forget the *use* statement for it at the top:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since we talked about the configuration schema, let''s define that as well.
+    If you remember, it goes inside the `config/schema` folder of our module in a
+    `*.schema.yml` file. This can be named after the module and contains the schema
+    definitions of all configurations of the module. Alternatively, it can be named after
+    the individual configuration entity type, so, in our case, `importer.schema.yml`
+    (to keep things neatly organized):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you recall, the wildcard is used to apply the schema to all configuration
+    items that match the prefix. So, in our case, it will match all `importer` configuration
+    entities. Next, we have the `config_entity` schema with a mapping of the fields
+    we defined. Apart from the default fields each entity type comes with, we are
+    using a `uri`, `string`, and `boolean` schema type (which under the hood maps
+    to the corresponding `TypedData` data type plugins). This schema now helps the
+    system understand our entities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let''s go ahead and create the list builder handler that will take care
+    of the admin entity listing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: This time we are extending the `ConfigEntityListBuilder`, which provides some
+    functionalities specific to configuration entities. However, we are essentially
+    doing the same as with the products listing—setting up the table header and the
+    individual row data, nothing major. I recommend that you inspect `ConfigEntityListBuilder`
+    and see what else you can do in the subclass.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we can finally take care of the form handler and start with the default
+    create/edit form:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: We are directly extending `EntityForm` in this case because configuration entities
+    don't have a specific form class like content entities do. For this reason, we
+    also have to implement the form elements for all our fields inside the `form()`
+    method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But first things first. We know we want the configuration entity to select a
+    plugin to use, so, for this reason, we inject the `ImporterManager` we created
+    earlier. We will use it to get all the existing definitions. And we also inject
+    the `Messenger` service to use it later to print a message to the user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Inside the `form()` method, we define all the form elements for the fields.
+    We use a `textfield` for the label and a `machine_name` field for the ID of the
+    entity. The latter is a special JavaScript-powered field that derives its value
+    from a "source" field (which defaults to the field `label` if one is not specified).
+    It is also disabled if we are editing the form and is using a dynamic callback
+    to try to load an entity by the provided ID and will fail validation if it exists.
+    This is useful to ensure that IDs do not repeat. Next, we have a `url` form element,
+    which does some URL-specific validation and handling to ensure that a proper URL
+    is added. Then, we create an array of `select` element options of all the available
+    importer plugin definitions. For this, we use the plugin manager's `getDefinitions()`,
+    from which we can get the IDs and labels. A plugin definition is an array that primarily
+    contains the data found in the annotation and some other data processed and added
+    by the manager (in our case, only defaults). At this stage, our plugins are not
+    yet instantiated. And we use those options on the select list. Finally, we have
+    the simple `checkbox` and `textfield` elements for the last two fields, as we
+    want to store the `update_existing` field as a Boolean and the `source` as a string.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `save()` method is pretty much like it was in the Product entity form; we
+    are simply displaying a message and redirecting the user to the entity listing
+    page (using the handy `toUrl()` method on the entity to build the URL). Since
+    we named the form elements exactly the same as the fields, we don't need to do
+    any mapping of the form values to the field names. That is taken care of.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s now write the delete form handler:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As I mentioned earlier, for configuration entities, we will need to implement
+    this form handler ourselves. However, it''s not a big deal because we can extend
+    `EntityConfirmFormBase` and just implement some simple methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In `getQuestion()` we return the string to be used as the question for the confirmation
+    form.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In `getConfirmText()` we return the label of the delete button.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In `getCancelUrl()` we provide the redirect URL for the user after either a
+    cancellation or a successful delete.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In `submitForm()` we delete the entity, print a success message, and redirect
+    to the URL we set in the `getCancelUrl()`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'And with this, we are done with our configuration entity type. The last thing
+    we might want to do is create some menu links to be able to navigate to the relevant
+    pages (the same as we did for the product entity type). For the entity list page,
+    we can have this in our `products.links.menu.yml` file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'There''s nothing new here. We can also create the action link to add a new
+    entity inside the `products.links.action.yml` file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: We do the same thing here as we did with the products. However, we won't create
+    local tasks because we don't have a canonical route for the configuration entities,
+    so we don't really need it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, if we clear our cache and go to `admin/structure/importer`, we should
+    see the empty importer entity listing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/e3cd04d8-1769-4e92-b783-d7fe15157f9b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The Importer plugin
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Alright, since all of our setup is in place, we can now go ahead and create
+    our first importer plugin. As we defined it in the manager, these need to go in
+    the `Plugin/Importer` namespace of modules. So, let''s start with a simple `JsonImporter`
+    which will use a remote URL resource to import products. This is an example JSON
+    file that will be processed by this plugin, just for testing purposes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'I know, VCR right? We have an ID, a name, and a product number. This is all
+    totally made-up information about products just to illustrate the process. So,
+    let''s create our `JsonImporter`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can immediately spot the plugin annotation where we specify an ID and a
+    label. Next, by extending `ImporterBase`, we inherit the dependent services and
+    ensure that the required interface is implemented. Speaking of which, we basically
+    just have to implement the `import()` method. So, let''s break down what we are
+    doing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Inside the `getData()` method, we retrieve the product information from the
+    remote resource. We do so by getting the URL from the `Importer` configuration
+    entity and using Guzzle to make a request to that URL. We expect that to be JSON,
+    so we just decode it as such. Of course, error handling is virtually nonexistent
+    in this example, and that is not good.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We loop through the resulting product data and call the `persistProduct()` method
+    on each item. In there, we first check whether we already have the product entity.
+    We do so using the simple `loadByProperties()` method on the product entity storage
+    and try to find products that have the specific source and remote ID. If one doesn't
+    exist, we create it. This should all be familiar from the previous chapter when
+    we looked at manipulating entities. If the product already exists, we first check
+    whether according to configuration, we can update it and only do so if that allows
+    us to. The `loadByProperties()` method always returns an array of entities, but
+    since we only expect to have a single product with the same remote ID and source
+    combination, we simply `reset()` this array to get to that one entity. Then, we
+    just set the name and product number on the entity.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: As you can see, instead of using the Entity API/Typed Data `set()` method to
+    update the entity field values, we use our own interface methods. I find that
+    this is much cleaner, more modern, and an IDE-friendly way because everything
+    is very explicit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One thing you might notice is the error handling in this import process or more
+    precisely, a lack thereof. This is because I kept things simple for the purpose
+    of focusing on the current topic. Normally, you would want to maybe throw and
+    catch some exceptions and definitely log some messages (both error and success).
+    You know how to do the latter from [Chapter 3](360802d2-dd46-4d08-b478-9351d56ed2a0.xhtml),
+    *Logging and Mailing*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'And that is pretty much it. We can now create our first importer entity and
+    make it use this importer plugin (after clearing the cache of course):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/3b4e1b8f-82ef-4454-8dc5-f9efd3cb2511.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The URL in the previous screenshot is just a local URL where the example JSON
+    file is found, and we can see the only plugin available to choose, as well as
+    the other entity fields we created form elements for. By saving this new entity,
+    we can make use of it programmatically (assuming that the `products.json` file
+    referenced in the URL exists):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: We first load the importer entity by ID. Then, we use the `ImporterManager`
+    service to create a new instance of a plugin using the `createInstance()` method.
+    Only one parameter is required for it—the ID of the plugin—but as I said earlier,
+    we want to pass the configuration entity to it because it depends on it. So we
+    do just that. Then, we call the `import()` method on the plugin. After running
+    this code, the product entity listing will show some shiny new products.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s, however, improve things a bit. Since the configuration entities and
+    plugins are so tightly connected, let''s use the plugin manager to do this entire
+    thing rather than having to first load an entity and request the plugin from it.
+    In other words, let''s add a method to the plugin manager where we can pass the
+    configuration entity ID, and it returns an instance of the relevant plugin; something
+    like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here, we essentially do the same thing as before, but we return `NULL` if there
+    is no configuration entity found. You can choose to throw an exception if you
+    want instead. However, as you may have correctly noticed, we also need to inject
+    the `EntityTypeManager` into this class, so our constructor changes as well to
+    take it as a last parameter and set it as a class property. You should be able
+    to do that on your own. But we also need to alter the service definition for the
+    plugin manager to add the `EntityTypeManager` as a dependency:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, we keep the `parent` inheritance key so that all the parent
+    arguments are taken in. On top, however, we add our own regular `arguments` key
+    which will append arguments to the ones that come from the parent.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'And with this we have simplified things for the client code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: All we have to interact with is the plugin manager, and we can directly run
+    the import. This is in some ways better because our configuration entities are
+    not something we designed for being used by anyone else. They are simple configuration
+    storage used by our importer plugins.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Content entity bundles
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We have written a neat little piece of functionality. There are still improvements
+    that we can, and will make, but those are for later chapters when we cover other
+    topics that we will need to learn about. Now, however, let's take a step back
+    to our content entity type and extend our products a bit by enabling bundles.
+    We want to have more than one type of product that can be imported. And this will
+    be a bundle which will be an option to choose when creating an Importer configuration.
+    However, first, let's make the product entity type "bundleable".
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We start by adjusting our Product entity plugin annotation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: We add a `bundle_label` for our bundle, an entity key for it that will map to
+    the `type` field, the `bundle_entity_type` reference to the configuration entity
+    type that will act as a bundle for the products, and a `field_ui_base_route`.
+    This latter option is something we could have added before but was not necessary.
+    Now, we can (and should) add it because we need a route where we can configure
+    our product entities from the point of view of managing UI fields and the bundles.
+    We'll see these a bit later on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Moreover, we also need to change something about the links. First, we will
+    need to alter the `add-form` link:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will now take a product type in the URL to know which bundle we are creating.
+    If you remember from the previous chapter when we were creating entities programmatically,
+    the bundle is a required value from the beginning if the entity type has bundles.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, we add a new link, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will go to the initial `add-form` path but will list options of available
+    bundles to select for creating a new product. Clicking on one of those will take
+    us to the `add-form` link.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since we made these changes, we also need to make a quick alteration to the
+    product entity action link to use `add-page` instead of the `add-form` route:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is required because, on the product entity list page (collection URL),
+    we don't have a product type in context, so we cannot build a path to `add-form`;
+    nor would it be logical to do so as we don't know what type of product the user
+    wants to create. As a quick bonus, if there is only one bundle, Drupal will redirect
+    the user to the `add-form` link of that particular bundle.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The good thing is that since we specified an entity key for the bundle, we
+    don''t have to define the field that will reference the bundle configuration entity.
+    It will be done for us by the parent `ContentEntityType::baseFieldDefinitions()`.
+    So, what is left to do is to create the `ProductType` configuration entity type
+    that will serve as product bundles. We already know more or less how this works.
+    Inside our `Entity` namespace we start our class like so:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Much of this is exactly the same as when we created the importer configuration
+    entity type. The only difference is that we have the `bundle_of` key in the annotation, which
+    denotes the content entity type this serves as a bundle for. Also, we don''t really
+    need any other fields. Because of that, the `ProductTypeInterface` can look as
+    simple as this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let''s quickly take a look at the individual handlers, which will seem very
+    familiar by now as well. The list builder looks almost the same as for the Importer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The create/edit form handler also looks very similar, albeit much simpler due
+    to not having many fields on the configuration entity type:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: Again, in this form, I used the global `drupal_set_message()` function to save
+    some space. You should instead inject the `Messenger` service to print messages
+    to the user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since we created the form for saving field values, we mustn''t forget about
+    the configuration schema for this entity type:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we should also quickly write the form handler for deleting product types:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: You should already be familiar with what we're doing here as it's the same as
+    with the Importer entities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, we should create the menu link to the `ProductType` entity list URL,
+    just like we did for the other two entity types inside `products.links.menu.yml`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And the same for the action link used to create a new product bundle, inside
+    `products.links.action.yml`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, we are done. We can clear the caches and run the `drush entity-updates`
+    command because Drupal needs to create the `type` field on the product entities.
+    Once that is done, we can go the UI at `admin/structure/product_type` and see
+    our changes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We now have a Product type entity listing where we can create Product bundles.
+    Moreover, we also have some extra operations since this entity type is used as
+    a bundle: we can manage fields and displays (both for viewing and for the forms)
+    for each individual bundle:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/a8a44fc0-8d3c-4f9b-875d-8d4c5a8e5ea7.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Managing fields and displays would have been possible before creating the bundle
+    had we provided the `field_ui_base_route` to the Product entity type and created
+    a menu link for it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now we can add fields to our individual bundles and can distinguish between
+    our product types—for example, we can have a bundle for goods and one for services.
+    We can well imagine that the two types might require a different set of fields
+    and/or they are being pulled from different external resources. So, let's just
+    update our importing logic to allow the selection of a bundle because now it is
+    actually mandatory to specify one when attempting to create a Product.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We start by adding a new field to the Importer entity type. First, for the
+    interface change:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we will take a look at the implementation in the class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we must include the new field in the configuration schema:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The last thing we will need to do on the Importer entity type is add the form
+    element for choosing a bundle:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, we use an `entity_autocomplete` form element which gives us the option
+    to use an autocomplete text field to look up an existing entity and select one
+    of the found ones. The ID of the selected entity will then be submitted in the
+    form as the value. This field definition requires choosing a `#target_type`, which
+    is the entity type we want to autocomplete. One thing to note is that, even if
+    the submitted value is only the ID (in our case, a string), the `#default_value`
+    requires the full entity object itself (or an array of entity objects). This is
+    because the field shows more information about the referenced entity than just
+    the ID.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In order to load the referenced entity for the default value, we need to inject
+    the `EntityTypeManger`. You should already know how to do this injection, so I'm
+    not going show it again here. We simply tack on the dependency to the `Messenger`
+    service which is already being injected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'That should be it for the Importer entity type alterations. The one last thing
+    we need to do is handle the bundle inside the `JsonImporter` plugin we wrote.
+    However, this is as simple as adding the `type` value when creating the product
+    entity:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: And there we have it. Running the import code will now create products of the
+    bundle specified in the Importer configuration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Drush command
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: So, our logic is in place, but we will need to create a handy way we can trigger
+    the imports. One option is to create an administration form where we go and press
+    a button. However, a more typical example is a command that can be added to the
+    crontab and that can be run at specific intervals automatically. So that's what
+    we are going to do now, and we will do so using Drush.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Drush command we are going to write will take an optional parameter for
+    the ID of the Importer configuration entity we want to process. This will allow
+    the use of the command for more than just one importer. Alternatively, passing
+    no options will process each importer (in case this is something we want to do
+    later on). One thing to note is that we won't focus on performance in this example.
+    This means the command will work just fine for smaller sets of data (as big as
+    one request can process) but it would be better to use a queue and/or batch processing
+    for larger sets. Also, we will have a chapter dedicated to these subsystems later
+    on, but, for now, let's get on with our example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we actually write our new Drush command, let's make some alterations
+    to our logic as they will make sense in the context of what we want to do.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, let''s add a getter method to the Importer plugins to retrieve the corresponding
+    configuration entities. We start with the interface like so:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, to the `ImporterBase` class, we can add the implementation (it will be
+    the same for all individual plugin instances):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, it's not rocket science.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Second, let''s add a `createInstanceFromAllConfigs()` method to the `ImporterManager`
+    which will return an array of plugin instances for each existing Importer configuration
+    entity:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, we use the `loadMultiple()` method on the entity storage handler, which,
+    if we use without any arguments, will load all existing entities. If we get any
+    results, we use our existing `createInstanceFromConfig()` method to instantiate
+    the plugins based on each configuration entity. That's it; we can now go ahead
+    and create our Drush command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With newer versions of Drush (9 and up), commands are no longer declared in
+    procedural code. So let's see how we can create our command using OOP. There are
+    a few steps we need to take.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We need to create a *composer.json* file for our module. It can look very barebones:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: Apart from the normal boilerplate package and autoloader information, we have
+    an `extras` section where we specify a YAML file where Drush can find the service
+    definition that contains the commands. And since the latest version of Drush at
+    the time of writing is 9, we specify that as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With Drush 9, this is not technically needed. Simply having the `drush.services.yml`
+    file in the module root will be enough for Drush to load it. However, with Drush
+    10 this becomes mandatory, so you might as well use the correct approach already.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that we have referenced the Drush-specific services file, let''s go ahead
+    and create it. It looks exactly like our other services files we''re used to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, we have another tagged service ( `drush.command`) whose class
+    should contain some Drush commands. And I already know we will need the plugin
+    manager so we are already adding it as an argument.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, let''s see how we can start the command class which should go in the *Commands*
+    namespace of our module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We are extending the `DrushCommands` base class to inherit all the things necessary
+    or useful for Drush commands. And we have a single method that maps to a single
+    command. What makes this an actual command is the annotation at the top which
+    describes all the things related to it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `@command` is the most important and specifies the actual Drush command
+    name.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `@alias` specifies other aliases for the command.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `@param` is simple documentation of what input arguments the command takes.
+    In our case, we don't have any mandatory arguments. We do have optional arguments
+    though. If we wanted mandatory arguments, we could have simply added more method
+    parameters without defaults.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `@option` specifies the name of the option that can be passed; this is found
+    inside the `$options` array parameter as one of its keys. And since it's mandatory,
+    we use a constant to denote that.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'With this definition, we can already use the command. After we clear the cache
+    we can run the command like in the following examples:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Obviously, nothing will happen if we run these because the callback method
+    is empty. So let''s flesh it out:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs: []
+  type: TYPE_PRE
+- en: What is happening here? First, we check for the importer ID, if one was passed
+    with the command. If yes, we simply use our importer manager to create an instance
+    of the corresponding plugin and delegate to a helper method to run the import
+    on that plugin. Otherwise we use the built-in Drush logger to log an error. On
+    the contrary, if no importer ID has been passed, we use our new `createInstanceFromAllConfigs()`
+    method on the plugin manager to create plugin instances from all existing configuration
+    entities. We then loop through each and, again, delegate to our helper method
+    to run them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before we conclude, let''s see that helper method as well:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This method is mostly used for logging the result of the plugin import: a different
+    message depending on the success of the process. And in doing so, we use the actual
+    Importer label rather than the ID that was passed. Makes it nicer to read.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now if we clear the caches, we can run the command again (with or without an
+    importer ID) and see that it correctly imports the products and prints the message
+    to the terminal. Better yet, we can now add it to our crontab and have it run
+    at specific intervals, once a day, for example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we got to implement some fun stuff. We created our very own
+    content and configuration entity types as well as a custom plugin type to handle
+    our logic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What we built was a Product entity type that holds some product-like data in
+    various types of fields. We even created a bundle configuration entity type so
+    that we can have multiple types of products with the possibility of different
+    fields per bundle—a great data model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We wanted to be able to import products from all sorts of external resources.
+    For this reason, we created the Importer plugin type which is responsible for
+    doing the actual imports—a great functional model. However, these only work based
+    on a set of configurations, which we represented via a configuration entity type.
+    These can then be created in the UI and exported into YAML files like any other
+    configuration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, to use the importers, we created a Drush command, which can process
+    either a single Importer or all the existing ones. This can be used inside a crontab
+    for automatic imports.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are still some shortcomings in the way we constructed the importing functionality.
+    For example, we added the URL field on the Importer configuration entity as if
+    all imports need to happen from an external resource. What if we want an import
+    to be from a CSV file? The URL field would be superfluous, and we'd need a file
+    upload field on the configuration entity. This very much points to the differences
+    between generic Importer configuration values and the plugin-specific ones. In
+    future chapters, we'll come back to our module and make some adjustments in this
+    respect.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will look at the Database API and how we can directly
+    interact with the underlying storage engine.
+  prefs: []
+  type: TYPE_NORMAL

@@ -1,0 +1,1400 @@
+- en: Chapter 3. Scheduled Reminders
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous two chapters, we developed simple reactionary applications that
+    went over the basic components of the Yii framework. For our next project, we
+    will expand upon the concepts previously covered by creating a scheduled reminders
+    application that will allow our users to search for, create, and schedule both
+    events and reminders for themselves. This application will also send the user
+    notifications automatically when the reminder is scheduled to occur.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Prerequisites
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Before we start, there are a couple of things that we''ll need to install and
+    acquire:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Install the latest version of MySQL (at the time of writing this, MySQL 5.6).
+    MySQL is the most popular open source database and is a key part of LAMP (Linux,
+    Apache, MySQL, and PHP). Because of its popularity with web hosting providers,
+    MySQL is often the de facto choice for modern web applications.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_IND
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: MySQL can be installed from either your distributions package management system
+    or downloaded from [mysql.com](http://mysql.com). More details can be found at
+    [http://dev.mysql.com/doc/refman/5.6/en/installing.html](http://dev.mysql.com/doc/refman/5.6/en/installing.html).
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Acquire an SMTP server or credentials to an SMTP server for our application
+    to send e-mails with. The key details that we will need are a SMTP host, port,
+    username, and password. Depending on the server, you may also need to know the
+    type of security your server uses (such as SSL or TLS). If you do not have a SMTP
+    server available, there is an abundant number of options available, ranging from
+    setting up a Postfix SMTP server, using Gmail as an SMTP relay, or even obtaining
+    a free SMTP account from SendGrid ([http://www.sendgrid.com](http://www.sendgrid.com)).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Verify that our PHP instance has mcrypt libraries installed so that we can properly
+    hash the passwords we'll be using. If your PHP instance already supports mcrypt,
+    you should see an mcrypt section listed in `phpinfo()`. If mcrypt is not enabled
+    in your PHP instance, install it either from your upstream provider, by enabling
+    the mcrypt module, or by recompiling PHP.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Finally, we'll need to download and install Composer from [https://getcomposer.org/](https://getcomposer.org/).
+    Composer is a PHP dependency manager that will allow us to declare and automatically
+    install libraries that our application will use.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Once we've obtained all of the prerequisites for our application, we can get
+    started with development.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Describing the project
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Our scheduled reminders project can be broken down into four main components:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Users who will create events and reminders
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Events that the user wants to be reminded of
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Reminders for the actual event (of which there could be many)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A command-line task to process and send out the reminders to the user via e-mail
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Users
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The first component of our application is the users who will be using it. Users
+    will be responsible to create both events and reminders for themselves. The users
+    will also be the recipients of the reminder e-mails that they created. Using this
+    information, we can simplify our database schema to the following structure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: In [Chapter 1](ch01.html "Chapter 1. A Task-management Application"), *A Task-management
+    Application*, we created a very primitive user authentication system that we'll
+    be reusing and expanding upon and reusing in later chapters. In this chapter,
+    we'll develop a system to create, delete, and manage the passwords of users with
+    our application. We'll also cover several basic guidelines for properly securing,
+    storing, and working with our users' credentials.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Events
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The second component of our application is events. Events are things that a
+    particular user wants to be reminded of and will occur at a given time on a given
+    date. Events should be easy to search through and intuitive to find. Additionally,
+    events can have one, many, or no reminders associated with them. We can express
+    this in our database schema, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: A new concept that we'll be introducing in this chapter is the concept of database
+    relations. Many times, data in our database will be associated with an attribute
+    or data in another table of our database. In this case, an event is something
+    that belongs to a given user. The relations that we create in this application
+    will allow us to easily represent data in our tables without having to store that
+    data in multiple places.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reminders
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'A reminder is a time-sensitive event that belongs to a user-created event and
+    acts as an indicator to our task runner to notify the user of the details of the
+    event itself. This can be expressed in our simplified database schema, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: When we set up our Reminders model, we'll define a relationship between a reminder
+    and the event. As events are already bound to a user, we can transitively determine
+    the user a reminder should be sent to without having to add the `user_id` field
+    to the reminder itself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The final piece of our reminders has to do with how we handle timestamps. In
+    previous chapters, timestamps served only as metadata to specific records. Our
+    reminders, however, will have to take into account the time that an event will
+    be triggered, which means that we'll be involving time zones. While using UTC
+    solves a lot of the issues when dealing with time, our reminders have to be aware
+    of what the time offset is for a particular reminder.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For our application, that means we'll need to store the time that the end user
+    will see in addition to either the time zone offset of the user or a conversion
+    of that time into the real UTC time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The task runner
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The final component of our application is the task runner that will find reminders
+    that need to be sent out and actually send them out to the user. While there are
+    many ways to go about creating this task runner, we will be creating a command-line
+    task that will run repeatedly after *n* minutes and will process all events between
+    the trigger time and the provided interval in minutes. This approach will allow
+    us to define how frequently or infrequently we want our reminders to be processed
+    without having to rewrite code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Initializing the project
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: At this point, you should be fairly familiar with how to initialize a basic
+    Yii framework project. Go ahead and create the base folder structures, and create
+    the `index.php`, `yiic`, `yiic.bat`, and `yiic.php` files. Then in the `webroot`
+    directory of our application, create a folder called `vendors`. This folder will
+    be used for all of our Composer dependencies for us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Create a MySQL user and database
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'If you haven''t already created a MySQL user, password, and database for the
+    project, do so now. From the MySQL command line, you can run the following commands
+    to do this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Creating a Yii configuration file
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Our Yii configuration file will be slightly different than our previous configuration
+    files due to the use of our MySQL database. We''ll start off with the base configuration
+    `protected/config/main.php` and add the new components afterwards:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In order for our application to interact with MySQL, we''ll need to update
+    the database component so that Yii knows how to use the MySQL PDO adapter. We
+    can do this by adding the following to our components array:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In this configuration, we've added `schemeaCachingDuration`, which outlines
+    how long Yii will cache our MySQL schema. This will prevent unnecessary SQL commands,
+    such as `DESCRIBE TABLE`, which will slow down our application. It's important
+    to note that if you are using this option, you'll need to clear Yii's internal
+    cache. You can find out more about MySQL-specific database configuration at [http://www.yiiframework.com/doc/api/1.1/CDbConnection](http://www.yiiframework.com/doc/api/1.1/CDbConnection).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a parameters configuration file
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Many times, we have sensitive information we'd like to store in our configuration
+    file that we wouldn't necessarily want to store with our version control software
+    for security reasons. One way we can get around this is by storing this information
+    in a separate file and then excluding it from being committed to source control.
+    When we deploy our application to our production servers, we can manually add
+    this file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In Yii, we can accomplish this by adding the following to our base array of
+    our configuration file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, create a new file in the `config` folder called `params.php`. This file
+    will store our SMTP credentials for our application. Have a look at the following
+    code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: At this time, go ahead and add your SMTP credentials to the `params.php` file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding Composer dependencies
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The last configuration change we'll need to make is the inclusion of a file
+    called `composer.json` in our `webroot` directory. For this project, we'll be
+    using a dependency called `PHPMailer` that will help us send e-mails from our
+    application. We'll also include a package called `password-compat`, which will
+    provide us with the necessary userland functions for working with Bcrypt, a password
+    hashing library that we'll cover in more detail when we start working with users
+    and authentication.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This file should look as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With our Composer dependencies defined, we can now install them by running
+    the following from our command line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If everything goes well, you should see something similar outputted to your
+    screen. If not, Composer will return and notify you of the error for you to correct:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we need to load the dependencies into Yii. The easiest way to do this
+    is to add the following to our `index.php` file before `require_once($yii)`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: Creating the database
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: With our dependencies and configuration files in place, we can now create our
+    database. Using the `yiic` command, create a migration called users and a migration
+    called reminders.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The users migration
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The users migration will create the `users` database and ensure that no duplicate
+    e-mail address can be entered at the database level. Within the `protected/migrations`
+    folder, open up the users migration:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the `up()` method, add the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You may notice that the column types we selected do not match up with MySQL
+    column types. This is because we are allowing Yii to determine the appropriate
+    column type for the database adapter we are using. This allows interoperability
+    between multiple database drivers, meaning that we could seamlessly swap the underlying
+    database technology from a MySQL database to a SQLite or Postgres database without
+    having to change our migrations. The Yii manual has more information about valid
+    column types at [http://www.yiiframework.com/doc/api/1.1/CDbSchema#getColumnType-detail](http://www.yiiframework.com/doc/api/1.1/CDbSchema#getColumnType-detail).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we want to create a unique index on the `email` column, which we can
+    do as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, in the `down()` method, add a call to drop the `users` table:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: The reminders and events migration
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Now, we'll create reminders and events migrations that will create the `reminders`
+    and `events` table in our database. These two tables will store the bulk of the
+    data for our application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In our reminders migration, add the following to the `up()` method to create
+    the `events` table:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then create a foreign key relationship between `events` and `users`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then create the `reminders` table, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Finally, create a foreign key relationship between `reminders` and `events`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Notice that for both foreign keys, we want everything to be removed if a parent
+    record is removed. For instance, if we delete an event, all reminders associated
+    with that event should be removed as well. And if a user is deleted, all events
+    and all reminders associated with those events should also be removed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, to the `down()` method, add the following to drop the foreign keys and
+    the tables. Once data has been added to our database, we won''t be able to drop
+    the tables until the foreign key relationships have been removed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: Once everything has been added, apply the migrations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating models
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: By now, you should be familiar with using the Gii tool to create models for
+    our newly created tables. Go ahead and create the models for `Users`, `Reminders`,
+    and `Events`. After creating each model, there are several changes we need to
+    make to each of them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Model behaviors
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The first change that will need to be made to our newly created models is the
+    automatic setting of the created and updated timestamp. In previous chapters,
+    we modified the `beforeSave()` method to do this; however, Yii provides an easier
+    way to implement this feature that is database-agnostic and reduces the amount
+    of code we have to add to our models. To do this, we are going to attach a behavior
+    to each of our models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Behaviors in Yii are objects that have methods that can be attached to a component
+    (in our case, a model). These behaviors then listen for certain events on the
+    attached component (such as the `beforeSave()` method) and execute when that event
+    is triggered.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The behavior that we''ll be adding to each of our models is called `CTimestampBehavior`
+    and provides the necessary tools to automatically set the created and updated
+    time. To attach this behavior, simply add the following method to our `Users.php`,
+    `Events.php`, and `Reminders.php` files within the `protected/models` directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: More information about `CTimestampBehavior` can be found in the Yii documentation
+    available at [http://www.yiiframework.com/doc/api/1.1/CTimestampBehavior/](http://www.yiiframework.com/doc/api/1.1/CTimestampBehavior/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Users model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The first change we''ll need to make to our Users model is the definition of
+    the relations between users and events. If you used Gii to generate the models,
+    it must have prepopulated the `relations()` method for you. Otherwise, add the
+    following method to the `Users.php` model at `protected/models/`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we''ll need to add a private attribute to our model that will store the
+    old attributes of our model so that we can compare previous values to changed
+    values without having to requery the database. Have a look at the following line
+    of code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can automatically populate this attribute by adding an `afterFind()` method
+    to our model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we''ll want to add a `beforeSave()` method to our model that will
+    not modify the user''s password if we change the user''s e-mail address, and that
+    will properly encrypt the password if we do change it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: Bcrypt password hashing
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: When storing passwords in a database, it is extremely important that you store
+    those passwords in such a way that makes it easy for us to verify that the user
+    provided the right password but makes it difficult for attackers to guess the
+    password. Since most users use the same e-mail address and password for all their
+    online identities, it's extremely important that we keep that information as secure
+    as possible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One way of doing this is by using a symmetric block cipher cryptographic algorithm,
+    such as Bcrypt. Bcrypt converts plain text passwords into a hash with a salted
+    value, iterated multiple times as defined by a cost factor. When using Bcrypt,
+    the cost factor increased the work effector required to both generate and verify
+    a password. By increasing the time it takes to generate and verify passwords,
+    we can make a brute force attack very costly to a potential attacker. This cost
+    factor also allows us as developers to adjust the difficulty of the password over
+    time as computing power increases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You can read more about the password functions that were introduced in PHP 5.5
+    at [http://us2.php.net/manual/en/ref.password.php](http://us2.php.net/manual/en/ref.password.php).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Reminders model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Next, we need to make a few changes to our Reminders model. First, let''s verify
+    that the relations have been properly set up. In `protected/models/Reminders.php`,
+    add the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, add a `beforeValidate()` method to convert the user submitted time to
+    an integer timestamp and to store the offset time as UTC in our database:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: The Events model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Next, we''re going to add and update several methods in our `protected/models/Events.php`
+    model. The steps are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First verify that the relations have been properly set up:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then add a `beforeValidate()` method to automatically adjust the submission
+    and time and to automatically set the user to the currently logged-in user:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_IND
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '`Yii::app()->user` is a reference to a `CWebUser` object that will handle the
+    identity of our user once we are authenticated. To read more about `CWebUser`,
+    check out [http://www.yiiframework.com/doc/api/1.1/CWebUser](http://www.yiiframework.com/doc/api/1.1/CWebUser).'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Next, add the following getter method to our model. This method will allow
+    us to retrieve the requested data from the URL to search against our events database:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, we''re going to update our model''s `search()` method to enable us to
+    search for all events that occur between a certain time, specifically over the
+    period of a single day. Modify the method signature to look as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, add the following before the method returns:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Searching for events and displaying them
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Before we get too involved with our controllers, let''s take a look at what
+    our frontend will look like to search for and display events as it will help to
+    explain the model changes to the Events model and will help us identify what we
+    still need to implement. Have a look at the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Searching for events and displaying them](img/7734OS_03_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Our frontend view is broken down into several different components. First, we
+    have a button in the top-right corner that should link to a simple CRUD form to
+    create and update events. We also have a month and year picker that shows the
+    current selected year and allows us to advance forwards or backwards in time by
+    one month or one year increments. Directly below that, we have a date picker that
+    shows the currently selected date (or the current date if none is selected) with
+    fifteen days on each side of it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the left-hand side, we have the currently selected date displayed in text,
+    followed by a sorter for both time and title of the events displayed below it,
+    which occur on the selected day.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, on the right-hand side, we have an Ajax view, which will appear when
+    an event is clicked on showing the event details as well as all reminders associated
+    with that event with some extra functionality to immediately remove that reminder.
+    Additionally, we'll be providing the user with a link to edit the selected event.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To achieve this level of functionality, we're going to have to create a custom
+    list view, which will extend `CListView`, add a custom URL route, and create several
+    new controller methods. Let's get started.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Custom routing for dates
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The first change that we''ll need to make is a change to the `urlManager` in
+    our main configuration file. Within the `urlManager[''rules'']` array, add the
+    following route:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: This custom route will allow us to arbitrarily set a date string in the URL
+    and pass it as a `$_GET` parameter automatically to the `indexAction()` method
+    of our `EventController` class, which we will create shortly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating the controller for events
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let''s move on to our `EventController`. This controller will handle all of
+    the actions necessary for working with events in our application. Create a new
+    file in `protected/controllers` called `EventController.php` that has the following
+    class definition:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Perform the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first method we should create is our `indexAction()`. The `$_GET` parameters
+    passed to this method will determine what events will ultimately be displayed
+    on the page. To do this, we''ll take advantage of our event model''s `search()`
+    method. When searching, we''ll also want to ensure that we only display data for
+    the currently logged-in user:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we need to create a utility method to load our model by a given primary
+    key. We''ll be using this method throughout our model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Finally, we need to create an AJAX method to display the details of a particular
+    event within our list view:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'While we are in our `EventController`, it''s worthwhile implementing the remaining
+    functionality necessary to both save and delete events. Our `save()` method will
+    simply accept the `$_POST` input from the view file and should look as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Finally, there''s our `delete()` method, which will facilitate the deletion
+    of events:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Creating the reminders controller
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The next controller we'll want to implement is our `ReminderController`. Unlike
+    our `EventController`, this controller should only serve AJAX responses and won't
+    require any views.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll start by creating a new file at `protected/controllers` called `ReminderController.php`
+    and have the class extend `CController`. Perform the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we''ll want to make sure that only POST requests are sent to this controller.
+    An easy way to force all requests to the controller to be POST requests is by
+    checking the request type before each action runs. We can implement that check
+    by using the `beforeAction()` method:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we should implement a method to load a particular reminder and another
+    method to verify that we have access to the associated event for a particular
+    reminder, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We''ll then add in the functionality necessary to delete a reminder:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Finally, we''ll add in the functionality necessary to save and modify a reminder:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Our `save()` method is built to allow reminders to both be created and modified
+    through a single action rather than multiple actions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating the layout
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The first view that we should implement is our `main.php` file at `views/layouts/`.
+    Since this file will look identical to the layout we created in the previous two
+    chapters, copy the `views/layouts/main.php` file from the project resources folder
+    into your application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating the main view
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Next, we''ll implement our list view that will display all of our events. To
+    do this, we''ll be extending the `CListView` class. Perform the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, create the view file `index.php` in `protected/views/events` that will
+    call this custom class, and then add a button to allow the user to create a new
+    event:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, add the following to implement the list view. First, we''ll need to instantiate
+    a new widget that will contain our custom list view:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'After that, we''ll need to specify `dataProvider` that will populate our model.
+    This is where our previous changes to the event model''s `search() method` come
+    into play:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we''ll want to specify the template that our list view will use and also
+    the element tag our list view should be contained in:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, we''ll enable sorting with the list view and specify which model attributes
+    can be sorted against:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Finally, we''ll need to specify `itemView`, which will define what each item
+    in our list will look like:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'At the end of this file, we should also register the CSS that will be used
+    to make our view look pretty in addition to creating the CSS file `/css/calendar.css`
+    so that Yii doesn''t throw an error during the next steps. Please refer to the
+    source code of this chapter to retrieve the `calendar.css` file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: Creating the item view
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The next file that we need to create is our `itemView` file, `protected/views/events/_event.php`,
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: To save some time later, let's go ahead and implement a view to show the details
+    of a particular event in `protected/views/events/details.php`. We'll add the JavaScript
+    bindings to show this when we create `EventListView`. Grab this file from the
+    project resources folder, and add it into your application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating the event list view
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'With our views in place, we now need to implement our `EventListView` that
+    will display our calendar picker and our events. The steps are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To do this, create a new file in `protected/components` called `EventListView.php`.
+    This class should extend `CListView`, which we will have to explicitly load to
+    make Yii aware of it. By extending `CListView`, we immediately get access to several
+    useful functions, such as sorting and displaying our events:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we''ll need to create another custom getter to retrieve the current date
+    from the URL:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now, we''re going to overload the `CListView` `renderItems()` method, which
+    will allow us to display our events as we like. To do this, create the `renderItems()`
+    method, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Within the `events_container` `div` that we just created, we need to add our
+    month/year picker. These links will determine what the next and previous month
+    and year are by the current date, which it will retrieve from the `getDate()`
+    method we defined earlier:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Immediately following this closing `div`, we then need to add our date picker
+    that will show 15 days on each side of the currently selected date. We can implement
+    that as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'To make our lives easier, we can create a utility method that will display
+    a range of dates for us automatically, called `renderDays()`. This will allow
+    our code to be more readable and easier to debug should we need to. This method
+    should accept two arguments: a start date and an end date:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, we''ll need to create another utility method to display a particular
+    date and provide a link to it:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The final part of our custom view is a container to display the sorter, the
+    items, and the details for a particular item. We should add the `day_picker` `div`
+    immediately that we opened earlier. Because we took advantage of `CListView`,
+    we can simply reference the parent class'' `renderItems()` method to display all
+    of our items, and the parent class'' `renderSorter()` method to display the sorter
+    according to the configuration we passed in our index view:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, let''s add some AJAX to display the details of an event when we click
+    on an event and to remove a reminder if the event has any attached to it. We can
+    add this right before we close our `renderItems()` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once you''ve added the CSS from the `calendar.css` file in the associated project
+    source code, our view should be complete. Have a look at the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Creating the event list view](img/7734OS_03_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Creating and saving events
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Now that we have a way to display events, we need to actually create them.
+    This view will allow us to both save events as well as dynamically add multiple
+    reminders to an existing event. Begin by creating `protected/views/events/save.php`,
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First we''re going to create the functionality necessary to modify the core
+    attributes of the event: the title, date, and time:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE60]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we''ll want to display all of the reminders attached to our event if
+    the event has been created. Since we''ve already established a relationship between
+    reminders and events, we can do this simply by iterating through the `$events->reminders`
+    relations, which will be populated with all of the reminders associated with our
+    event:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE61]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Within this `if` clause, we''ll also want to create a template reminder that
+    we can attach and clone with JavaScript. This will allow us to create as many
+    reminders as we want for our events:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE62]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Finally, we need to add some buttons and close our widget:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE63]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'In its present state, our time fields aren''t very user friendly as the user
+    has to manually enter a specific date timestamp, such as `2014-02-21 19:50:00`.
+    To make this experience easier on our users, we can download a plugin from GitHub
+    called bootstrap-datetimepicker. Simply clone the repository to the `/js` directory
+    of the application using `git` or download the package directly:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE64]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, register the relevant CSS and JavaScript:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE65]'
+  prefs: []
+  type: TYPE_PRE
+- en: Finally, we can add the JavaScript bindings necessary to display the date time
+    picker and to dynamically add new reminders. Within the project resources folder,
+    copy the remaining JavaScript code from the `save.php` file at `protected/views/events/`
+    into this file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since we've already created all the necessary controller actions to save and
+    display events, we can now create and modify new events, add reminders, and view
+    them in the interface that we built earlier. Check it out!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating the controller to manage users
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Next, we'll need to implement the necessary methods to create and modify users
+    within our application. Since our `users` table doesn't have any concept of roles
+    yet, we'll manage our users from the command line through `CConsoleCommand`. This
+    method will ensure that only authenticated users (users who have access to our
+    server) can modify the user's information. In a real-world application, this functionality
+    can be moved to a secured `UsersController` in our application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating users
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To start with our user management, create a new console command in `protected/commands/UserCommand.php`,
+    and add the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE66]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `CConsoleCommand` class is very similar to our controllers. In that, we
+    can define actions that we want to run as well as any parameters that we want
+    added. The first action we should create is an action to create our users. Since
+    we''ve already set up our Users model to handle the appropriate password hashing,
+    we can simply use the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE67]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can then create new users from the command line, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE68]'
+  prefs: []
+  type: TYPE_PRE
+- en: If successful, the command will output `User Created`; otherwise, it will return
+    an error.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deleting users
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Deletion of users can also be a callable action that takes a user''s e-mail
+    address as an argument:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE69]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can then call the action we just created by running the following command
+    from our command line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE70]'
+  prefs: []
+  type: TYPE_PRE
+- en: Changing the user's password
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Next, we''ll want to provide the functionality to change a user''s password.
+    Before we change the user''s password, we need to verify the user''s identity.
+    Usually, we accomplish this by verifying that they have the password to their
+    account. We can implement this, as follows, within `protected/commands/UserCommand.php`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE71]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once again, we''re taking advantage of PHP''s `password_*` functions, which
+    include the ability to verify a password:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE72]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Assuming the user''s password is valid, we can then hash the password they
+    provided on the command line and store it with the model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE73]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'From the command line, this command can be run as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE74]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: While managing users from the command line is simple, it isn't very secure because
+    user's passwords may be stored in plain text in your terminal's command history.
+    In a real-world application, consider managing users from a web interface over
+    a secure connection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Authenticating with Bcrypt
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The last thing that we need to implement for our users is authentication. To
+    do this, we'll expand upon the authentication process we developed in [Chapter
+    1](ch01.html "Chapter 1. A Task-management Application"), *A Task-management Application*,
+    and modify it to work with our Bcrypt hashed passwords.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, copy the following files from the source code of [Chapter 1](ch01.html
+    "Chapter 1. A Task-management Application"), *A Task-management Application* (or
+    from the source code in this chapter) into our project:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`css/signin.css`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`protected/views/layouts/signin.php`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`protected/views/site/login.php`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`protected/models/LoginForm.php`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`protected/controllers/SiteController.php`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`protected/components/UserIdentity.php`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Since the majority of the work involved in authenticating a user is done, the
+    only changes we need to make to our authentication process is in our `UserIdentity`
+    class. Begin by opening up `protected/components/UserIdentity.php`. We''ll start
+    by defining the class as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Yii may have already generated this file for you. If so, delete the contents
+    of it entirely, and follow the instructions as outlined in this section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE75]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Perform the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we want to ensure that each user''s ID from the database is stored with
+    our `WebUser` property. To do this, create a new private attribute called `$_id`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE76]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, create a getter to retrieve it:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE77]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we need to define our `authenticate()` method that will be called from
+    `LoginForm`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE78]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Within this method, we''ll need to find the appropriate user model using the
+    e-mail address that was provided to us by the user through `LoginForm`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE79]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'With this information, we can then verify that a user with that e-mail address
+    exists:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE80]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, we need to verify that the user''s password matches the one we have on
+    record. If it does, we should make sure that no errors are returned to the `LoginForm`
+    and set the `WebUser` ID:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE81]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, we should reject anything else that comes through the method:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE82]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Finally, return the error code back to the `LoginForm`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE83]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In a real-world application, we will want to expose as little information as
+    possible about a potential login attempt to the user or a potential attacker,
+    which is why we return `ERROR_UNKNOWN_IDENTITY`. During debugging of your application,
+    you may find it useful to return either `ERROR_USERNAME_INVALID` or `ERROR_PASSWORD_INVALID`
+    to help you better understand why a login request failed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Requiring authentication
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Finally, we can force our users to authenticate against our database by adding
+    the following to both `EventController` and `ReminderController`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE84]'
+  prefs: []
+  type: TYPE_PRE
+- en: Sending e-mail reminders
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: At this point, users can create new events and reminders for themselves through
+    our web interface; however, they aren't able to receive these reminders yet. To
+    send out these reminders, we'll create a new console command called `RemindersCommand`
+    in `protected/commands/RemindersCommand.php`. When we're done, we'll be able to
+    add this command to either our crontab or to our scheduled tasks and have it automatically
+    process reminders in the background.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once the `RemindersCommand` file has been created, create the class definition
+    in addition to an action to send the reminders that takes a time interval as an
+    argument. This interval will define the length of time in minutes that we should
+    run our command for. It will find all of the reminders within that interval''s
+    timeframe to process:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE85]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Within our action, define the UNIX timestamp that we should begin at as well
+    as the time we should end at for the particular interval we are working with.
+    The end time should be all microseconds before the next interval begins so that
+    we do not send duplicate reminders out:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE86]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With our time interval defined, we can now create a database search criteria
+    with `CDBCriteria` that we can pass to our `reminders` `find()` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE87]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `find()` method will return all reminders within the time interval that
+    we specified. We can now simply iterate through the `$reminders` array and send
+    an e-mail to the user the reminder belongs to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE88]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: If you are using a remote SMTP server and have already populated your `protected/config/params.php`
+    file with your SMTP information, the previous code should work for you. If you're
+    using a local mail server, such as Postfix or another setup, be sure to read the
+    PHPMailer documentation at [https://github.com/PHPMailer/PHPMailer](https://github.com/PHPMailer/PHPMailer)
+    on how to propery configure PHPMailer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'From the command line, we can now send reminders by running the following command
+    (in the example we are using a `5`-minute interval):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE89]'
+  prefs: []
+  type: TYPE_PRE
+- en: Once you have created events in your database, you can run the command or put
+    this command on your crontab or scheduled tasks and have your application automatically
+    send reminders to your users.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We covered quite a bit of information in this chapter! We learned how to integrate
+    our application with a MySQL database, started storing user information securely
+    in our database, and expanded upon our knowledge of console commands. We also
+    covered how to add behaviors and how to add relations to our models. Additionally,
+    we went over including Composer and Composer dependencies into our project to
+    reduce the amount of code that have to import manually.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we'll be expanding on the knowledge we learned and the
+    tools we developed to build even more complex and integrated web applications.
+    Before continuing on, be sure to take a look at all the classes we referenced
+    in the chapter in the official Yii documentation located at [http://www.yiiframework.com/doc/](http://www.yiiframework.com/doc/).
+  prefs: []
+  type: TYPE_NORMAL

@@ -1,0 +1,871 @@
+- en: Caching
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Application performance has always been one of the pain points when developing
+    with Drupal, and there are many reasons for this. For example, PHP is not the
+    fastest language out there. Many beginner Drupal developers fall prey to the multitude
+    of modules available and go a bit overboard with enabling more than needed. And
+    indeed, the Drupal architecture is simply not the most performant. In its defense
+    though, a very complex architecture that does a lot out of the box will have some
+    speed trade-offs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One critical component in this game, however, is caching. For those of you not
+    familiar with this term, caching is the application strategy of storing copies
+    of processed code (or anything that results from it) in view of delivering it
+    to the user more quickly when requested subsequent times. For example, when you
+    go to a website, your browser will most likely cache (store) certain assets locally
+    on your computer so that when you visit the site the next time, it can show them
+    to you faster.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although caching has been steadily improving with recent versions of Drupal,
+    it has been still lacking significantly. Particularly when it comes to serving
+    registered users. Drupal 8, however, is a completely different ball game. The
+    system has been totally revamped and brought into all aspects of the Drupal architecture.
+    Unfortunately, though, this has put yet another big new thing on the plate of
+    things Drupal 7 developers need to learn. Because it's a complex system, we simply
+    cannot (and should not) get around it. But you're in luck, because in this chapter
+    we will break it all down and see what we're dealing with. So when you are doing
+    module development in Drupal 8, your code will be more performant, your site will
+    run faster, and ultimately your users will be happier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, what exactly are we going to talk about in this chapter?
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, we are going to cover some introductory notions about the caching system
+    in Drupal 8 and look at the main types of caching available. Here, we will also
+    see how, during development, we can disable caching to increase our productivity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we are going to talk about cacheability metadata. This is one of the most
+    important things you'll need to know as a Drupal 8 module developer when it comes
+    to caching. It has to do with declaring render arrays (and other objects) in a
+    way in which Drupal can cache them properly (and invalidate caches accordingly).
+    We will talk about things such as cache tags, contexts, and max-age, but also
+    see how to apply them to render arrays, block plugins, and access results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After that, we will look at how we can tackle highly dynamic components (render
+    arrays) that cannot or should not be cached. Drupal 8 has a powerful *auto-placeholdering*
+    system that uses lazy builders to postpone rendering until a later stage, which
+    can greatly improve both cacheability and perceived performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lastly, we are going to look at how we can interact with the Cache API ourselves
+    in order to create, read, and invalidate our own cache entries. Sometimes we need
+    to perform expensive calculations or show external data on our site, which can
+    benefit from being cached.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So let's get to it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introduction to Caching
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The first thing I would like to mention before getting into the meat of the
+    Cache API is that this subsystem is one of the best documented ones (at the time
+    of writing). You can check out the main entry page ([https://www.drupal.org/docs/8/api/cache-api/cache-api](https://www.drupal.org/docs/8/api/cache-api/cache-api))
+    and I recommend keeping it close by when developing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Cache system in Drupal 8 provides the API needed to handle the creation,
+    storage, and invalidation of cached data. From a storage perspective, it is extensible,
+    allowing us to write our own custom cache *backends* (`CacheBackendInterface`).
+    By default, however, cache data gets stored in the database and hence the default
+    backend is `DatabaseBackend`. Going forward, we will focus only on this implementation
+    since it is the most commonly used one, especially when starting a new project.
+    Quite often though, once the site becomes more complex, alternative caching backends
+    can be employed for better performance—such as Memecache or Redis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The simplest type of cache in Drupal 8 is the so-called *Internal Page Cache*,
+    whose functionality resides inside the Page Cache core module. The goal of this
+    cache layer is to serve anonymous users with responses that are cached in their
+    entirety. The primary assumption is that certain pages can be cached once and
+    served to all anonymous users just the same—an approach similar to what we had
+    in Drupal 7\. Unlike the previous version though, this one is much smarter when
+    it comes to (not) serving stale content as it makes use of the so-called *cache
+    tags* to invalidate cached pages when something on those page changes. We will
+    talk about cache tags in more detail soon.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This module is enabled by default when installing Drupal 8 and can be configured
+    more or less the same as in Drupal 7 by going to `admin/config/development/performance`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/f5263a7f-086a-42f7-a2ac-35fe9f36c520.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Although serving anonymous users in not-so-complex websites was not that bad
+    in Drupal 7, when it came to authenticated users it was quite the opposite. The
+    contributed Authcache module was the best solution for dynamic and granular caching,
+    but it was extremely difficult to use and implement. Some of its core tenets,
+    however, have been used in the development of the `Dynamic Page Cache` module
+    in Drupal 8, which makes things much simpler (and robust).
+  prefs: []
+  type: TYPE_NORMAL
+- en: This core module also comes enabled by default and provides all the necessaries
+    for caching pages for all kinds of users. That is, pages that can depend on certain
+    *cache contexts*. In a nutshell, the approach of this module is to cache together
+    the bits of the page that can be served for all users and handle the dynamic content
+    that depends on a context separately. It can do so because of the standardization
+    of those bits into render arrays and other components that can provide *cacheability
+    metadata*. The latter is collected and used to cache and invalidate the final
+    result. We will talk about cache contexts and all this metadata in this chapter
+    and get a better understanding of it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before continuing, I recommend you look back to the *Developer settings* section
+    of [Chapter 1](5c4ab442-1596-40ca-b305-d72b6c47ed59.xhtml), *Developing for Drupal
+    8*, where I recommended that you use the developer settings when doing development.
+    One of the reasons is caching, primarily the dynamic page cache, which you can
+    disable inside the `settings.php` file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: It is difficult to do actual development with caching enabled, but at the same
+    time, it's important to often enable it and make sure your code still runs correctly.
+    It is very easy to forget about certain bits of code that depend on a context
+    or should be invalidated upon an action, and sometimes you will only spot these
+    if you test with caching enabled.
+  prefs: []
+  type: TYPE_NORMAL
+- en: That being said, let's talk about cacheability metadata and how this works with
+    render arrays.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cacheability metadata
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Cacheability metadata is used to describe the *thing* that is rendered with
+    respect to its *dynamism*. Most of the time, as Drupal 8 module developers, we
+    will be using this metadata when working with render arrays. We will see a bit
+    later where else these come into play, but for now, let's see what the actual
+    properties are and what they are used for in the context of render arrays.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When creating render arrays, there are a few things we need to think about when
+    it comes to caching. And we always need to think about these things.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cache tags
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The first thing we need to think about is what our render array depends on.
+    Are we rendering some entity data? Are we using some configuration values? Or
+    anything that might be changed elsewhere impacting what we have to render? If
+    the answer is yes, we need to use *cache tags*. If we don't use them, our render
+    array gets cached as it is, and if the underlying data changes, we end up showing
+    our users stale content or data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To look at this another way, imagine a simple Article node. This content can
+    be shown on its main detail page, in a listing of article teasers or even a listing
+    of article titles (and many other places potentially). And since there is no way
+    of knowing where it will be used, it is the responsibility of the render array
+    that displays this content to mark this node entity as a dependency using cache
+    tags. This way, when the node gets updated, all the render arrays that depend
+    on it get invalidated as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Cache tags are simple strings and we can declare many cache tags for a single
+    render array. They do have a special form in the following pattern: `thing:identifier`,
+    or in some cases, just simply `thing` (if there is only one single element of
+    that "thing"). For example, the cache tag for a given node would be in the format
+    `node:1`, where the identifier is the actual node ID. Or for a configuration object
+    it would be `config:hello_world.custom_salutation`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: I hinted before how, for example, some node content can be present in a list
+    and therefore using the cache tags we can ensure that the render array for that
+    node gets updated when the node does. Since render arrays are highly granular,
+    this can present a small extra problem as the list itself can be a render array
+    that may not even know which nodes it renders. Or even more so, it does not know
+    when new nodes are created and should be included in it. To solve this issue,
+    we have a special *list* cache tag we can use when rendering entities. For example,
+    the `node_list` cache tag can be used for node entities, while the `product_list`
+    cache tag can be used for product entities. These are automatically understood
+    by the Drupal caching system, so all we have to do is use them appropriately.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To make life easier, however, all entities and configuration objects can be
+    "interrogated" to provide their respective cache tags. For example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Where `$tags` will be an array containing one tag—`node:[nid]`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The same applies to configuration objects and this is handy because it prevents
+    typos and errors. This is due to the generic `CacheableDependencyInterface` they
+    implement which defines the methods for retrieving the cache metadata properties.
+    In fact, any value that needs to be a cache dependency can and should implement
+    this interface. As you'll find, there are a quite a few classes in Drupal core
+    that do so.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will also encounter `RefinableCacheableDependencyInterface` which is used
+    in cases in which the cacheability of the underlying object can change at runtime.
+    For example, an entity translation is added, which means that a new cache context
+    needs to be added for that language.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can also figure out the "list" cache tag specific to a given entity type.
+    For example, instead of hardcoding the `product_list` tag, we can use the `getListCacheTags()`
+    method on the `EntityTypeInterface`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If your render array depends on something custom, you can use custom cache tags,
+    but it will be your responsibility to also invalidate them when the underlying
+    data is changed. We will see how this is done when we interact with the Cache
+    API directly. It's always good to consistently use the `CacheableDependencyInterface`
+    for any custom value objects.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cache contexts
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Once we've thought about the dependencies of the render array, the second most
+    important thing to consider is what it differs by. In other words, is there any
+    reason why this render array should be shown one way sometimes but another way
+    some other time?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's take a simple example of a render array that prints out the name of the
+    current user. Nothing could be less complicated. Ignoring the cache tags for now,
+    we immediately realize that we cannot show the same username to all users, right?
+    So, the user *Danny* should see "Hi Danny" while user *John* should see "Hi John".
+    We are talking about the same render array but one that differs by context. In
+    other words, a variation of this render array needs to get cached separately for
+    each encountered context. This is where we use the aforementioned *cache contexts*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Similar to cache tags, cache contexts are simple strings, and a render array
+    can be defined with more than just one. For example, the `user` context will cache
+    a variation of a given render array for each user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Moreover, they are hierarchical in nature in the sense that some contexts can
+    include others. For example, let's continue with our previous example. Let's assume
+    that users with the `editor` role should see the greeting message but the ones
+    with the `contributor` role should see a different, more complicated one. In this
+    case, the cache context would be on the roles the user has. But since it already
+    depends on the actual user due to the need to show its username, it doesn't make
+    sense to even bother with the roles context because the former encompasses the
+    latter. Moreover, Drupal is smart enough to remove the superfluous one when combining
+    the cache contexts from all the render arrays that make up a page. But if our
+    render array differs, for example, only on the user roles and not necessarily
+    the user itself, we should use the specific context—`user.roles`. As you may notice,
+    the hierarchical nature is reflected in the dot (`.`) separation of the contexts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are a number of cache contexts already defined by Drupal core. Although
+    you probably won't have to, at least in the beginning, you can define other contexts
+    too. I recommend you check out the documentation page ([https://www.drupal.org/docs/8/api/cache-api/cache-contexts](https://www.drupal.org/docs/8/api/cache-api/cache-contexts))
+    for the available cache contexts that come out of the box.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Max-age
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The last main thing we need to think about when creating render arrays is how
+    long they should be stored in the cache, barring any changes in the underlying
+    data that might invalidate them. This is something that you will probably rarely
+    set and by default it will be permanent. More often, however, you will set this
+    cache property to 0 in order to denote that this render array should never be
+    cached. This is when you are rendering something highly dynamic that doesn't make
+    sense to be cached at all.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the cache metadata
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that we have looked at the three main cache properties, we need to consider
+    creating render arrays, so let's revisit some of our previous work and apply this
+    in practice as needed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Quite often, you'll see the `CacheableMetadata` object being used and passed
+    around in Drupal 8 core code. This is simply used to represent cache metadata
+    and also provides some handy methods to apply that metadata to a render array,
+    statically instantiate itself from one, or from a `CacheableDependencyInterface`
+    object, as well as merge itself with another `CacheableMetadata` object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The render array we will look at is inside the `HelloWorldSalutation::getSalutationComponent()`
+    service and is used to render the salutation message. We are building it quite
+    dynamically, but a simplified version looks like this (omitting some things):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, `$salutation` is either the message from the configuration object or the
+    one generated based on the time of day.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Right off the bat, I will mention that this is one of those cases in which we
+    cannot really cache the render array due to its highly dynamic nature. This is
+    caused by the dependency on the time of day. Sure, we could set a maximum age
+    of a few seconds or an hour, but is it even worth it? And we also run the risk
+    of showing the wrong salutation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So in this case, what we can do is add a maximum age of 0:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: The cache metadata goes under a `#cache` render array property as shown above.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Specifying the max-age basically tells Drupal not to ever cache this render
+    array. Something important to know about this is that this declaration will bubble
+    up to the top-level render array that makes the Controller response, preventing
+    the entire thing from being cached. So, do not make the decision to prevent caching
+    lightly. In our example, this is basically the entire Controller response and
+    it is actually a very simple calculation, so we are good. Later in the chapter,
+    we will talk about the ways this can be mitigated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There is still a problem with us setting the `max-age` to 0 in this example.
+    Although it will work with dynamic page caching (`max-age` will bubble up), the
+    internal page cache serving anonymous users will not get this information. So,
+    anonymous users will see the same thing every time. Possibly in future Drupal
+    8 releases, this will be fixed. We won't account for this issue yet because it's
+    a great example of a bug that becomes apparent using automated tests, and we will
+    see that in the final chapter of the book—as well as the solution, of course.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s, for a minute, assume that our salutation component is simply rendering
+    the message stored in the configuration object and does not show time-specific
+    content. If you remember:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In this case, we could cache the render array, but as we discussed earlier,
+    we''d need to think about the dependencies as well as the potential variations
+    it can have. It is already pretty obvious what the dependencies are—the configuration
+    object. So, we would do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Basically, we are requesting this particular configuration object''s cache
+    tags and setting those onto the render array. If we had more sets of cache tags
+    to set from multiple objects, we would have to merge them. There is a tool we
+    can use to ensure we do it right. For example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will merge two arrays of cache tags, pure and simple. The `Drupal\Core\Cache\Cache`
+    class also has static helper methods for merging cache contexts and max-ages (among
+    other things, I encourage you to check this out as you progress).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Thankfully, our render array is simple and does not vary, and hence we don''t
+    need cache contexts. If, however, we had appended the current username to the
+    salutation, we would have had to add the `user` context to the render array as
+    follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: This would have cached the render array differently for each user who visits
+    the page and would serve them accordingly at subsequent visits.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Caching in block plugins
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The render array we saw earlier was used as part of a Controller response. The
+    latter is also known as the *main content* as it is the primary output of the
+    page. On a normal Drupal installation, which uses the Block module, this is included
+    inside the `Main page content` block. We also said that setting a max-age of 0
+    will bubble up to the top-level render array, causing the entire page to not be
+    cached. This is true so far as the Controller response is concerned. Other blocks
+    are still cached independently according to their own metadata.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this book, you have already learned how we can create custom blocks, and
+    we saw that they are also built using render arrays. Since this is the case, cache
+    metadata can also be applied to those arrays for caching them properly. However,
+    since we are extending from the `BlockBase` class when creating block plugins,
+    we are essentially implementing the `CacheableDependencyInterface` because `BlockPluginInterface`
+    extends it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So instead of setting the metadata on the render array, we should, whenever
+    possible, use the methods on that interface by overriding the default parent implementations.
+    For example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: We should always merge our own values with the ones from the parent.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In some cases, though, especially when declaring cache tags, it makes more sense
+    to set them inside the render array of the `build()` method. That is because you
+    may have already done some work to get your hands on the dependent objects, and
+    it doesn't make sense to repeat that inside another method. That is totally fine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Caching access results
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Another important place where cache metadata needs to be considered is on `AccessResultInterface`
+    objects. If you remember from the previous chapter, objects implementing this
+    interface are used consistently to represent access to a certain resource. On
+    top of that, they can also contain cacheability metadata. This is because access
+    may depend on certain data that can change with an impact on the access result
+    itself. Since Drupal tries to cache access as well, we need to inform it of these
+    dependencies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A good example to see this in action is our `HelloWorldAccess` service where
+    we dynamically check access to our `hello_world.hello` route. So instead of simply
+    returning the `AccessResultInterface`, we add cacheable dependencies to it before
+    doing so. The rewritten `access()` method can now look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `addCacheableDependency()` method usually takes `CacheableDependencyInterface`
+    objects to read their cache metadata. If something else is passed, the access
+    result is deemed not cacheable. So in our case, since the access depends on both
+    the salutation configuration object and the user account, we add them both as
+    cache dependencies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Placeholders and lazy building
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that we've seen a bit about how the cacheability metadata can be used in more
+    common scenarios, let's shift gears and talk about those page components that
+    have highly dynamic data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we set the maximum age of our Hello World salutation to 0 seconds (don't
+    cache), I mentioned that there are ways this can be improved in order to help
+    performance. This involves postponing the rendering of the respective bit to the
+    very last moment with the help of placeholders. But first, a bit of background.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each of the cache properties we talked about can have values that make caching
+    the render array pointless. We've already talked about the maximum age being set
+    to 0, but you can also argue very low expiration times to have the same effect.
+    Additionally, certain cache tags can be invalidated too frequently, again making
+    the render arrays that depend on what they represent pointless to cache. Finally,
+    certain cache contexts can provide many variations that significantly limit the
+    effectiveness of the cache to the point that it may even be counterproductive
+    (high storage costs).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Cache tags are something very specific to the application we are building,
+    so there are no general assumptions that can be made as to which have a high invalidation
+    rate. However, there are two cache contexts that by default are considered to
+    have much too high cardinality to be effective: `session` and `user`. Yes, we
+    talked about the `user` context earlier as a good example but in reality—by default—adding
+    this context to a render array has pretty much the same effect as setting the
+    max-age to 0—it will not be cached. The same goes for the `session` context because
+    there can be so many sessions and users on the site, you probably won''t want
+    to have cache records for each individual one.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since these are not rules that have to necessarily apply to all applications,
+    Drupal configures these values as service parameters, making them changeable if
+    needed. Inside the `core.services.yml` file (which lists most of the core services),
+    we can find some parameter definitions as well, including this one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As you can see, the max-age value of 0 and the previously mentioned cache contexts
+    are included, but no tags. We can also change these values. So, for example, if
+    in our application we know that we won''t have too many users and it does, in
+    fact, make sense to cache by user context, or we know of certain cache tags with
+    high invalidation frequency, it makes sense to change this. There are two ways
+    we can do it: either we use our site-wide `services.yml` file and copy these declarations
+    (while making the appropriate changes) or we can use the services file of a given
+    module in the same way. Both methods have the effect of overriding the default
+    parameters set by Drupal core.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we are clear on why certain things are not cacheable, let's see how
+    this can be addressed using *auto-placeholdering*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Auto-placeholdering is the process by which Drupal identifies the render arrays
+    that cannot or should not be cached for the reasons we mentioned before, and replaces
+    them with a placeholder. The latter is then replaced at the very last possible
+    moment while allowing the rest of the page components to be cached. This is also
+    called *lazy building*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Drupal identifies the bits that need to be lazy built by the cache metadata
+    that fits the conditions we saw before and the presence of the `#lazy_builder`
+    property on the render array. The latter maps to a callback that returns its own
+    render array, which can also contain said cache metadata. And it doesn't matter
+    which of the render arrays contains the latter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lazy builders
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Lazy builders are nothing more than callbacks on a render array that Drupal
+    can use to build the render array at a later stage. The callbacks can be static
+    (a reference to a class and method) or dynamic (a reference to a service and method).
+    Using the latter approach is more flexible as we can inject dependencies from
+    the container as we do regularly with services. Moreover, the callback can take
+    parameters, which means it can build the render array already having at least
+    part of the required data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The best way to understand this is to see an example. Since we decided that
+    our salutation component should have a cache lifetime of 0 seconds, it's a good
+    opportunity to build it using a lazy builder.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first thing we need to do is replace our `helloWorld` Controller method
+    in which we directly call the salutation service with this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: Back in [Chapter 4](feada4d1-f255-4dd6-83b5-8d66bab5f852.xhtml), *Theming,*
+    when I said a render array needs to have at least one of the four properties (`#type`,
+    `#theme`, `#markup`, or `#plain_text`), I lied. We can also use a lazy builder
+    like this to defer the building of the render array to a later stage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `#lazy_builder` needs to be an array whose first item is the callback and second
+    is an array of arguments to pass to it. In our case, we don't need any of the
+    latter. We could pass the salutation service, but instead, we will inject it into
+    the new `hello_world.lazy_builder` service we will create in a minute. The callback
+    reference is in the format of `service_name:method` (one colon used for separation)
+    or for static calls `class_name::method` (two colons). We also explicitly declare
+    `#create_placeholder` to make it clear that this render array should be replaced
+    with a placeholder. Lastly, as I mentioned earlier, the cache metadata can be
+    applied to this render array or it can also be on the resulting one from the lazy
+    builder. So, we'll opt for the latter approach in this case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s now define our service:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Nothing out of the ordinary here, but we are injecting the `HelloWorldSalutation`
+    service as a dependency so that we can ask it for our salutation component. The
+    actual service class looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: All very simple. The `renderSalutation()` method is required as we referenced
+    it from our lazy builder. That is all we have to do. But, what exactly happens
+    with this?
+  prefs: []
+  type: TYPE_NORMAL
+- en: When Drupal renders our Controller, it finds the lazy builder and registers
+    it with a placeholder, which is then used instead of the actual final render array.
+    Then, at a much later stage in the page-building process, the lazy builder is
+    invoked and the actual output is rendered to replace the placeholder. There are
+    a couple of advantages and implications with this. First, it allows Drupal to
+    bypass this highly dynamic bit of output and cache the rest of the components
+    in the dynamic page cache. This is to prevent the lack of cacheability from infecting
+    the entire page. Second, there are two different strategies (so far) with which
+    placeholders can be processed. By default, in using the so-called *Single Flush*
+    method, the placeholder replacement is postponed until the last minute, but the
+    response is not sent back to the browser before this is done. So, the dynamic
+    page cache does improve things (caches what it can), but the response still depends
+    on the placeholder processing finishing. Depending on how long that takes, the
+    page load, in general, can suffer. However, when using the **BigPipe** ([https://www.facebook.com/notes/facebook-engineering/bigpipe-pipelining-web-pages-for-high-performance/389414033919](https://www.facebook.com/notes/facebook-engineering/bigpipe-pipelining-web-pages-for-high-performance/389414033919))
+    approach, the response is sent back to the browser before the placeholders are
+    replaced. And as the latter finishes as well, the replacements are streamed to
+    the browser. This greatly improves the perceived performance of the site as users
+    can already see most parts of the page before the slower bits appear.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The *BigPipe* technique was invented by Facebook as a way to deal with highly
+    dynamic pages and was gradually brought into Drupal 8 as an experimental core
+    module. With version 8.3 it has been marked stable and ready for use in production
+    sites. I highly recommend you keep this module enabled as it comes with the Standard
+    installation profile.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you've probably guessed by now, the lazy builder approach is only useful
+    when it comes to Dynamic Page Caching. That is when we cache for authenticated
+    users. It will not work with the Internal Page Cache which is used for anonymous
+    users.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the Cache API
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: So far in this chapter, we've mostly preoccupied ourselves with render arrays
+    and how we can expose them to the Cache API for better performance. It's now time
+    to talk a bit about how cache entries are stored by default in Drupal and how
+    we can interact with them ourselves in our code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As mentioned earlier, a central interface for the cache system is the `CacheBackendInterface`,
+    which is the interface any caching system needs to implement. It basically provides
+    the methods for creating, reading, and invalidating cache entries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As we might expect, when we want to interact with the Cache API, we use a service
+    to retrieve an instance of the `CacheBackendInterface`. However, the service name
+    we use depends on the cache *bin* we want to work with. Cache bins are repositories
+    that group together cache entries based on their type. So, the aforementioned
+    implementation wraps a single cache bin, and each bin has a machine name. The
+    service name will then be in the following format: `cache.[bin]`. This means that
+    for each cache bin, we have a separate service.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The static shorthand for getting this service looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will return the `default` bin represented by a `CacheBackendInterface`
+    implementation. If we want to request a specific bin, we pass the name as an argument:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will return the `render` cache bin.
+  prefs: []
+  type: TYPE_NORMAL
+- en: And of course, if we need to inject a cache bin wrapper somewhere, we simply
+    use the service machine name in the format I mentioned before.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Even though we have a separate service for each cache bin, they all basically
+    do the same thing, and that is use the `CacheFactory` to instantiate the right
+    type of cache backend for that bin. Individual cache backends can be registered
+    and set as the default either globally or for specific bins.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As I mentioned at the beginning of the chapter, the default cache backend in
+    Drupal—the one this factory will instantiate for all the bins—is the `DatabaseBackend`.
+    Each bin is represented by a database table. This is similar in concept to what
+    we had in Drupal 7.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we know how to load the cache backend service, let's see how we can
+    use it to read and cache things. When it comes to this, your number one reference
+    point is the `CacheBackendInterface` which documents all the methods. However,
+    since it does not reinforce return values, the examples we will see next are done
+    with the database cache backend. They might differ from other cache backend implementations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first method we''ll talk about is `get()`, which takes the ID of the cache
+    entry we want to retrieve (`$cid`) and an optional `$allow_invalid` parameter.
+    The first parameter is clear enough, but the second one is used in case we want
+    to retrieve the entry even if it has expired or has been invalidated. This can
+    be useful in those cases in which *stale* data is preferred over the recalculation
+    costs of multiple concurrent requests:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The resulting `$data` variable is a PHP standard class that contains the `data`
+    key (the data that has been cached) and all sorts of metadata about the cache
+    entry: expiration, creation timestamp, tags, valid status, and so on.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Of course, there is also a `getMultiple()` method which you can use to retrieve
+    multiple entries at once.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'More fun, though, is the `set()` method which allows us to store something
+    in the cache. There are four parameters to this method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`$cid` : The cache ID that can be used to retrieve the entry.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`$data` : A serializable data structure such as an array or object (or simple
+    scalar value).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`$expire` : The UNIX timestamp after which this entry is considered invalid,
+    or `CacheBackendInterface::CACHE_PERMANENT` to indicate that this entry is never
+    invalid unless specifically invalidated. The latter is the default.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`$tags` : An array of cache tags that will be used to invalidate this entry
+    if it depends on something else (cache metadata, basically).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'So to use it, we would do something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: With this statement we are creating a simple non-serialized cache entry into
+    our chosen bin that does not expire unless specifically invalidated (or deleted).
+    Subsequent calls with the same cache ID will simply override the entry. If the
+    cache value is an array or object, it will get serialized automatically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When it comes to deleting, there are two easy methods: `delete()` and `deleteMultiple()`,
+    which take the `$cid` (or an array of cache IDs, respectively) as an argument and
+    removes the entries from the bin completely. If we want to delete all the items
+    in the bin, we can use the `deleteAll()` method.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Instead of deleting entries, quite often it''s a good idea to invalidate them.
+    We''ll still be able to retrieve the data using the `$allow_invalid` parameter
+    and can use the entry while the new one is being recalculated. This can be done
+    almost exactly as deleting but using the following methods instead: `invalidate()`,
+    `invalidateMultiple()`, and `invalidateAll()`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: OK, but what about those cache tags we can store with the entry? We already
+    kind of know their purpose and that is to *tag* cache entries across multiple
+    bins with certain data markers that can make them easy to invalidate when the
+    data changes. Just like with render arrays. So, how can we do this?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s assume that we store the following cache entry:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: We essentially make it dependent on changes to the Node with the ID of 10\.
+    This means that when that node changes, our entry (together with all other entries
+    in all other bins that have the same tag) becomes invalid. Simple as that.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'But we can also have our own tags that make it depend on something custom of
+    ours like a data value (which, as we discussed earlier in the chapter, should
+    implement the `CacheableDependencyInterface`) or a process of some kind. In that
+    case, we would also have to take care of invalidating all the cache entries that
+    have our tag. The simplest way we can do this is statically, using the `Cache`
+    class we encountered earlier when merging metadata together:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will invalidate all cache entries that are *tagged* with any of the tags
+    passed in the array. Under the hood, this method uses a static call to the cache
+    invalidator service, so whenever possible, it's best to actually inject that service—`cache_tags.invalidator`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating our own cache bin
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Usually, the existing cache bins, particularly the default one, will be enough
+    to store our own cache entries. However, there are times in which we need to create
+    multiple entries for the same functionality, in which case, it would help to have
+    a special bin for that. So, let's see how that can be created.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It''s quite easy because all we have to do is define a service:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: The class used in this service definition is actually an interface. This is
+    because we are using a factory to instantiate the service rather than the container
+    directly. This means we don't know what class will be instantiated. In this case,
+    the factory in question is the service with the name `cache_factory` and its `get()`
+    method. In [Chapter 3](360802d2-dd46-4d08-b478-9351d56ed2a0.xhtml), *Logging and
+    Mailing*, we saw an example in which something like this happened when we talked
+    about logger channels.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `cache.bin` tag is used so that Drupal can understand the function of this
+    service, namely, that it is a cache bin. The responsibility of making sure this
+    bin gets its storage belongs to the actual backend. So in our example, the `DatabaseBackend`
+    creates and removes the cache table as needed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lastly, the static argument is the name of the bin that gets passed to the factory
+    and that is used to create the cache backend for this particular bin. That is
+    pretty much it. If we clear the cache, we can already see a new cache table for
+    our bin in the database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we covered the main aspects of caching in Drupal 8 any module
+    developer needs to be familiar with. We introduced some key concepts and talked
+    about the two main types of caching—Internal Page Cache (used for anonymous users)
+    and Dynamic Page Cache (used for authenticated users).
+  prefs: []
+  type: TYPE_NORMAL
+- en: We dug deeper into cacheability metadata, which is probably the most important
+    and common thing we need to understand. It's imperative to use this properly so
+    that all the render arrays we build are cached and invalidated correctly. We also
+    saw how block plugins have specific methods we can use to define their cacheability
+    metadata and how access results should also receive cacheability dependencies, as
+    needed. Stemming from this, we also explored lazy builders and the *auto-placeholdering*
+    strategies that allow us to handle highly dynamic components while maintaining
+    good cacheability overall.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lastly, we looked into using the Cache API ourselves in order to store, read,
+    and invalidate our own cache entries. We even saw how to create our own custom
+    cache bin.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Caching is a very important aspect of Drupal 8 module development. In previous
+    versions, it didn't even come close and we were able to get away with it quite
+    often without even paying attention to it. Now, we have a powerful system in place
+    to make rendering more performant, and we should make use of it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we are going to talk about JavaScript and how we can use
+    it in a Drupal context, as well as the powerful Ajax API.
+  prefs: []
+  type: TYPE_NORMAL

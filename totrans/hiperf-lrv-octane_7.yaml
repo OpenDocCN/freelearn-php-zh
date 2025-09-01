@@ -1,0 +1,912 @@
+- en: '7'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Configuring the Laravel Octane Application for the Production Environment
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In previous chapters and this book in general, we have seen how to use Laravel
+    Octane and implement several optimizations to improve the performance and responsiveness
+    of our application. We operated mainly in the local development environment. In
+    addition, we have worked at the application level.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter will address system configurations, setup, and fine-tuning in a
+    production environment. Understanding the specific configurations for the production
+    environment is very useful, especially because the configuration of a local environment
+    is typically different from the configuration of the production environment due
+    to the different settings and services available.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In practice, we will cover the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A typical production architecture
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How the reference architecture can be optimized
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Which specific Laravel operations can bring benefits from a performance perspective
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The deployment strategy via **Makefile**
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We start with the assumption that the reader has a production environment available.
+    Typically, this kind of environment can be on a virtual machine, such as one (or
+    more) Amazon EC2 instances, or an environment provided by cloud PaaS solutions,
+    such as *Platfrom.sh*, or by cloud servers/service providers, such as *Digital
+    Ocean* or *Vultr*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will not address the specific installation of these environments; however,
+    we will give indications of a typical architecture that combines the use of a
+    web server such as nginx on one (or more) GNU/Linux-type virtual machines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The source code and the configuration files of the examples described in the
+    current chapter are available here: [https://github.com/PacktPublishing/High-Performance-with-Laravel-Octane/tree/main/octane-ch07](https://github.com/PacktPublishing/High-Performance-with-Laravel-Octane/tree/main/octane-ch07).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introducing the production architecture
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the local environment development scenario (as in the previous chapters),
+    it is fine to use the `php artisan octane:start` command to start Laravel Octane.
+    However, it may be helpful to configure a different architecture in a production
+    environment where the requirements are different from a local environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Typically, in a local development environment, you need automation and configurations
+    that are useful for developing new features, such as automatic service reload.
+    In contrast, in a production environment, the configuration must allow for optimum
+    levels of performance and reliability. Therefore, choosing a different, production-specific
+    architecture in this production scenario is common.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The design of the production environment architecture we are going to address
+    involves the use of a web server to initially sort HTTP requests. The web server’s
+    task will be to differentiate requests for static assets (where no PHP engine
+    involvement is required) from requests that require server-side processing. Usually,
+    a request for a page, which requires server-side processing, might be followed
+    by other requests for static assets such as CSS files, JavaScript files, and image
+    files. PHP involvement is not needed for these types of files, so the web server’s
+    task will be to serve these types of assets immediately, in the fastest way possible.
+    On the other hand, for requests requiring PHP execution, the web server will forward
+    the request to the service provided by Laravel Octane.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.1: A typical production architecture](img/Figure_7.01_B17728.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.1: A typical production architecture'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To configure the production environment, several steps must be performed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Place the static assets in a specific directory (we can organize the asset types
+    into multiple subfolders).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Configure the nginx (`nginx.conf` file) for acting as a proxy.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Configure nginx to forward the page requests to Laravel Octane.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set nginx to listen to the HTTPS protocol.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Set the communication between nginx and Laravel Octane as standard HTTP.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: All the URL generated by Laravel has to be set up as served as HTTPS (for absolute
+    URL generation).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Let’s start with managing public assets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Managing public static assets
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: If you look at the directory structure of a Laravel application, you will notice
+    that there is a public directory, the purpose of which is to contain static files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The public directory also contains the built CSS and JS files (by the `npm run
+    build` command). If your application needs a CSS style, you will probably set
+    it in the `resources/css/app.css` file (or in the `resources/js` directory for
+    the JavaScript files). Once you run `npm run build`, the CSS and JS files are
+    built, and the output files are stored in the `public/build` directory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To provide static files in HTTP responses, it is not necessary to involve the
+    PHP engine. Avoiding involving the PHP engine to provide static files minimizes
+    the use of resources such as CPU and memory and, consequently, also reduces response
+    times.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Static files typically are files with a specific extension such as `jpg`, `jpeg`,
+    `gif`, `css`, `png`, `js`, `ico`, or `html`. For static files, we could need a
+    particular configuration – for example, for turning off the log, defining an expiration
+    date, or adding a header. If you need to set a specific setting for the assets,
+    the suggestion is to set a particular configuration for nginx in the server section
+    in the `nginx.conf` file (or the file for your domain):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: For files with assets extensions, I added a header (header in the HTTP response)
+    named `X-Debug-Config`, for debugging purposes. The configuration was set to check
+    whether `STATICASSET` value was present in the HTTP response headers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting nginx as a proxy
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In the production environment, we are going to use nginx to reply to HTTP requests.
+    We are going to configure nginx as a proxy because, for the PHP files, nginx will
+    forward the requests to the Laravel Octane service.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The nginx configuration for PHP files looks as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: This typical configuration with nginx for using the PHP uses the FPM module
+    via FastCGI. As mentioned in [*Chapter 1*](B17728_01.xhtml#_idTextAnchor015)*,
+    Understanding the Laravel Web Application Architecture*, nginx is not able to
+    run PHP scripts. To do that, nginx can be configured to forward the requests to
+    the FPM module. The FPM module will run the PHP scripts and will send back the
+    response to nginx. All the requests to PHP files are forwarded to the FPM socket
+    communication channel (`fastcgi_pass`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: In case you use Laravel Octane, you don’t need to use the FastCGI option to
+    execute PHP scripts because the PHP scripts will be executed by the Laravel Octane
+    service via the application servers (Swoole or RoadRunner).
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you have Laravel Octane, you can start the Octane service via the `php artisan
+    octane:start` command and then instruct nginx to act as a proxy, forwarding all
+    the PHP requests to the Laravel Octane service.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To set nginx as a proxy, you can set this configuration in your nginx configuration
+    file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `try_files` line is very important for splitting the behavior of nginx regarding
+    how to manage static resources (existing files) and dynamic resources (not existing
+    files).
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the request is for `/test.png` and the file exists in a public directory
+    (because of the root directive), the file is loaded and served by nginx.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the request is for `/test`, it falls in the latest scenario of `try_files`
+    labeled as `@octane`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then, there is a specific section to manage all requests labeled as `@octane`.
+    All these requests are sent to Laravel Octane via the `proxy_pass` directive.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, all the FastCGI directives are commented out, or they are removed.
+    Now, we are using the `proxy_pass` directive. The `proxy_pass` directive refers
+    to the IP address and the port where the Laravel Octane service is running.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To make the proxy configuration work, you have to set some additional parameters
+    such as `proxy_http_version 1.1;` for setting the protocol version and other options
+    for controlling the headers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once you edit your nginx configuration file, you must restart the nginx process
+    to apply your changes. Before restarting nginx, I suggest checking the syntax
+    of the changed configuration files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Using the `nginx -t` command shows you whether there are any issues with your
+    new configuration:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once you have a successful message, you can safely restart nginx. How to restart
+    the service depends on your distribution. In the case of Ubuntu, you can use the
+    `service` command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In general, if your Linux distribution doesn’t provide a `service` command,
+    you can use the `systemctl` command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `sudo` command is used because you need to have root permission.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once you reload nginx, you have to launch the `artisan` command for launching
+    Laravel Octane.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Launching Octane
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You can manually execute the `octane:start` command for a quick configuration
+    test. Then, we will see how to launch Octane automatically when the system starts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For starting Octane, you should use the `octane:start` command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: This command starts Octane and accepts connections on localhost.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Suppose you need to execute Octane on a different machine (one machine used
+    for running nginx, and another machine used for running Laravel Octane): you should
+    allow Octane to accept all incoming requests via the `--``host` parameter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `0.0.0.0` address means Octane will accept all incoming requests from all
+    IP addresses (not just the local ones).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Launching Octane via Supervisor
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: If you need to launch and monitor a process during the boot of the system, I
+    suggest doing it with Supervisor software.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There is excellent open source software named Supervisor that you can install
+    via your GNU/Linux package manager through a command such as the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: Once Supervisor is installed, you can set the startup script file for Laravel
+    Octane.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Supervisor
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you are interested in Supervisor for other projects/commands (not just for
+    Laravel Octane), you can retrieve more information on the official website: [http://supervisord.org/](http://supervisord.org/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The startup scripts managed by the supervisor are stored in the `conf.d` directory,
+    which is inside the `/``etc/supervisor/` directory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create a new file, `/etc/supervisor/conf.d/laravel-octane.conf`, with this
+    configuration:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here, you have to set some directives:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`process_name`: This is the name used for tagging the process'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`command`: This is the command line for launching the Octane service with `octane:start`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`autostart` and `autorestart`: This is to set how and when to start the process
+    (automatically)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The user used for launching the process (I’m using a specific one such as `deploy`)
+    is usually `www-data`, which, by convention, is the user used for running the
+    web server process (nginx or Apache).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`redirect_stderr`: If the error messages have to be redirected to the log this
+    is used.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`stdout_logfile`: This is the file name used for the log. Make sure that one
+    row for each request managed by Octane is created by default.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Supervisor supports many parameters if you are interested in a more complex
+    configuration. All the parameters are documented here: [http://supervisord.org/configuration.html](http://supervisord.org/configuration.html).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once you have set the configuration file, you can update the Supervisor configuration,
+    adding the Laravel Octane configuration:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, you restart Supervisor:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Or you can specifically restart just the Octane service:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: This way, the Laravel Octane is launched according to the parameter defined
+    on the command line (the command directive in the Supervisor configuration), and
+    Laravel Octane is relaunched in case of reboot or crash.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, Laravel Octane has launched automatically. If you change your application’s
+    source code or deploy a new version of your Laravel application, you have to reload
+    the worker so that all the changes are applied to all the workers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reloading the workers
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Every time you make some changes to your application logic, you have to restart
+    the application with the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `octane:reload` command restarts the workers instanced by Octane, and in
+    this way, the code is reloaded.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.2: Reloading the workers with php artisan octane:reload](img/Figure_7.02_B17728.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.2: Reloading the workers with php artisan octane:reload'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you want to know about the status (running or not) of the Laravel Octane
+    service, you can use the `octane:status` command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`octane:status` shows the **Octane server is running.** message if everything
+    is fine. Otherwise, it shows **Octane server is** **not running.**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.3: Checking the status of Laravel Octane](img/Figure_7.03_B17728.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.3: Checking the status of Laravel Octane'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Listening events
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Laravel Octane internally defines some events for notifying and managing when
+    something happens, such as the worker starting, a request being received, and
+    so on. In a framework, if you can produce some events, as a developer, you need
+    a mechanism to listen for when an event occurs. The Laravel framework provides
+    the developer with a mechanism to define and create events and a mechanism to
+    listen (a listener). The listener in Laravel can execute a function defined by
+    the developer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, in this case, using the event listener mechanism provided by Laravel, you
+    can listen to some specific Laravel Octane events.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Looking into the Laravel Octane config file (`config/octane.php`) in the `listener`
+    section, you will see that the defined events are as follows: `WorkerStarting`,
+    `RequestReceived`, `RequestHandled`, `RequestTerminated`, `TaskReceived`, `TaskTerminated`,
+    `TickReceived`, `TickTerminated`, `OperationTerminated`, `WorkerErrorOccurred`,
+    and `WorkerStopping`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, if you want to implement a listener for the `RequestReceived`
+    event, you can use the `make:listener` command to create the listener class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `make:listener` command creates the `RequestReceivedNotification` class
+    file based on the `RequestReceived` event.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The file is created in `app/Listeners/RequestReceivedNotification.php` with
+    the constructor and the `handle()` method, so you can add your logic to track
+    some of the activity in the `handle()` method; for example, I’m going to log the
+    IP address where the request comes from:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To enable the listener, you have to add the class to the `config/octane.php`
+    file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the same way, you can also add other events you want to track.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have configured the web server for the production environment, we
+    can walk through the Laravel configuration for the production environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Prepping a Laravel application for production
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now, we will focus on Laravel-specific configurations for the production environment.
+    We will see how to install production PHP/Laravel packages, avoiding installing
+    packages for development and debugging. We will see how to optimize cache configurations,
+    routing settings, and view optimization. Finally, we will see how to inhibit debugging
+    options. Debugging options are very useful in development, but can slow down the
+    execution of the Laravel application in production.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Installing the packages for production
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In the `composer.json` file, two types of packages are listed: `require` defines
+    the packages for running the application in a production environment, and `require-dev`
+    defines the packages for running the application in a development environment.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: By default, `composer` installs all the packages from both lists.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you only want to install the packages from the `require` list (production),
+    you can use the `–-no-dev` option while you are installing the packages for the
+    production environment:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: Other than the `--no-dev` option, we are using `optimize-autoloader`. The option
+    generates a data structure (an index) to map the class name, with the name of
+    the file to be loaded.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `optimize-autoloader` option reduces the bootstrap time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Caching config, routing, and views
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To load some critical components such as the configuration files, the routing
+    configuration, and the view blade templates quickly, you can use the cache commands:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: You have to execute these commands every time you change certain files in your
+    Laravel application in the production environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.4: Caching configs, routes, and views](img/Figure_7.04_B17728.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.4: Caching configs, routes, and views'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Disabling Debug mode
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'When developing the Laravel application, the configuration is typically set
+    to Debug mode. The parameter that controls the Debug mode is stored in the `.env`
+    file, and the parameter is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To check the status of your application, you can use the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `about` command shows the information about **Debug Mode**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.5: The about command for showing the Debug mode status](img/Figure_7.05_B17728.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 7.5: The about command for showing the Debug mode status'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To change the setting, you can change the value of the `APP_DEBUG` parameter
+    to `false`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: The configuration of `APP_DEBUG` set to `false` allows you to skip all the configurations
+    in the code for debugging purposes (collecting and showing detailed information).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Because you changed the configuration and the configuration is cached, the
+    suggestion is to clear the configuration to see the changes in the application:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: You should also reduce the number of log messages. Log messages are very useful
+    for debugging purposes, but tracking the logs could be an expensive operation
+    and could slow down the application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, in the `.env` configuration file, typically, you can find the
+    following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The levels of debugging, from most detailed (with more logs) to just tracking
+    the errors, are as follows: `debug`, `info`, `notice`, `warning`, `error`, `critical`,
+    `alert`, and `emergency`. My suggestion is to change the level of logs (`LOG_LEVEL`)
+    in a production environment to `error` in order to only track critical information
+    because reducing the number of log messages makes your application faster and
+    can reduce the amount of storage needed.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The general suggestion is to have a specific configuration for the production
+    environment, so the advice is to create a file, `.env.prod`, where you can store
+    your production configuration. Then, copy the `.env.prod` file on each deployment
+    to your `.env` file in the production environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deployment approaches
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You can choose a deployment strategy from the numerous ones that exist.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The rule that I would recommend when choosing a deployment strategy is to avoid
+    installing valuable tools for the build phase in the production environment. Because
+    the approach is to limit the responsibility of the production environment to the
+    delivery of ready-to-deploy assets, responsibility for executing the build process
+    should not be the responsibility of the production environment. That’s why it’s
+    possible to avoid installing build tools in the production environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, I suggest avoiding performing the build of JavaScript and CSS,
+    running tests or “linting” processes, or performing static code analysis in production
+    environments.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In other words, it is necessary to transfer optimized code and ready-made configurations
+    directly to the production server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This means that if there should be build operations that aim to prepare files
+    and configurations for production, these should be performed in a dedicated environment
+    or a CI/CD runner.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The build mechanism and file transfer commands in the production environment
+    can be complex. Therefore, the advice is to formalize this list of commands in
+    a scripting tool.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I use `Makefile` because this allows me to define the individual steps to be
+    executed but, more importantly, determine the dependencies between steps.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Typically, I define a step for compiling assets, a step for testing, a step
+    for running `phpcs` (lint), a step for performing static code analysis, and a
+    step for transferring files to the production environment. There are also specific
+    steps for executing commands directly on the production server should the need
+    arise. This number of granular steps allows me to keep each step simple.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are several methodologies for copying and transferring files to production;
+    the advice is to find the one that is most suited to you; typically, I use **Secure
+    Shell (SSH)** protocol and tools.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Nevertheless, again, the most crucial part is to understand that, irrespective
+    of the way you transfer the files or the tool you are using, you should transfer
+    files and configuration ready to be served by the production environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Makefile
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Makefile` is a file used by the `make` tools to execute commands. The format
+    is quite simple; each group of commands is grouped into steps. You can specify
+    the step to be executed from the command line when you start running the file
+    via the `make` command.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the `Makefile`, all the commands are listed, and the command to be executed
+    needs a parameter such as `SSH_USER` or `WEB_DIR`. My suggestion is to define
+    the parameters in an external `Makefile`. Then, you can ignore (in the Git repository)
+    the `Makefile` used for the parameters and commit the `Makefile` with the steps.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the root directory of your Laravel project, create a file named `Makefile.param`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: The meaning of the parameters is quite self-explanatory; you can define the
+    SSH alias and the SSH user to access the remote machine via SSH, and then you
+    can specify the remote directory (on the server) where your Laravel application
+    is stored (`WEB_DIR`). Then, you can set the user (`WEB_USER` and `WEB_GROUP`)
+    on the server, used for running the processes on the server. Then, with `DRY_RUN`,
+    you can see (and copy) the files to be copied on the server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For copying the file on the server, we will use `rsync`. `rsync` is a great
+    tool for only copying the changed file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To create a `Makefile`, create a file named `Makefile.deploy` and fill it with
+    the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: The last line is for the `deploy` step. The `deploy` step doesn’t include commands
+    to execute but consists of a list of steps to invoke sequentially.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first step executed will be `buildfrontend`. This step includes the `npm
+    run build` command. The command will build the frontend assets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The next step included in the `deploy` step is `composerinstallnodev`. The
+    command executed by `composerinstallnodev` will install the packages for the production
+    (skipping the dev packages):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, there is the step for copying the files on the server: `rsynca`. The
+    step includes a command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the command, some variables (replaced with the values loaded from `Makefile.param.prod`
+    file) are used.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `Makefile.param.prod` file is loaded at the beginning of the `Makefile`
+    thanks to the directive including the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `rsync` command uses a list of options:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`-r` : Recursive into directories.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`-l`: Copies symlinks as symlinks.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`-c`: Copies only the changed files. The changes are detected with the `-c`
+    option by comparing the checksum of the source and the target file.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`-g`: Preserves the group during the copy (owner).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`-o`: Preserves the user during the copy (owner).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`-v`: Verbose output.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`-z`: Compresses files during network transfer.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`-i`: Displays a summary.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `--exclude-from 'exclude-list.txt'` option excludes from the copy all the
+    files listed in the `exclude-list.txt` file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `exclude` file contains the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `exclude-list.txt` file lists all the files and directories that are not
+    useful in the production environment. Typically, the excluded files/directories
+    are package directories, storage directories, cache files, and so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Feel free to add the files in your application that you want to exclude and
+    don’t want to add to the production environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `copyenvprod` step will copy the local `.env.prod` (where you can store
+    your specific configuration for production) to the remote `.env`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `scp` command allows you to copy files via SSH protocol.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Remember to include the `.env.prod` file in the `.gitignore` file (to exclude
+    it from the `git` commit).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `migrate` step executes the migrations on the remote server (thanks to
+    the SSH command):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, the `optimize` step is executed. The `optimize` step will launch the
+    caching Laravel command for routing, views, and configuration on the target machine:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, if you remember, every time you change the files in the production environment,
+    you should restart the workers to apply the changes to the up-and-running Laravel
+    Octane application, so the `restartworkers` step will launch:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: Executing the `Makefile` from the local development environment is not suggested.
+    Typically, you can launch the `Makefile` from the CI/CD pipeline. We execute the
+    `Makefile` from a dedicated environment (CI/CD) for separation of concerns; the
+    local environment is for development, the CI/CD environment is for building and
+    executing code quality tools programmatically, and the production environment
+    is for delivering assets and the application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Anyway, if you are not using a CI/CD pipeline and you are launching the `Makefile`
+    from the local copy of the sources, you must restore the dev package (for production,
+    deploy the `composerinstallnodev` step, which will only install production packages).
+    For restoring the dev packages, the `installdevdeps` step exists, and it will
+    execute a standard `composer install` command and then clear the config:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, the configuration of `Makefile` is straightforward. Because
+    `Makefile` has strict rules about the indentation (the indentation is used to
+    understand where a step starts and where it ends), the only recommendation is
+    that the line indentation is done via the tab character. Once `Makefile` is ready,
+    you can execute it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To run the `Makefile` named `Makefile.deploy`, you can run the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `make` command accepts the name of the step to be executed as input. Optionally,
+    you can also specify the `Makefile` to be parsed via the `-``f` parameter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With the `make deploy` command, the application is fully deployed on the server.
+    The `Makefile` also includes some commands for the fine-tuning of the environment,
+    such as fixing permissions of some directories, clearing the cache, and so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: With this book, we explored some ways to create a reliable and fast Laravel
+    application. We used features provided by Laravel Octane with the integration
+    with Swoole and RoadRunner.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We involved some special features of Swoole, especially for caching, concurrent
+    task execution, and scheduled task execution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We explored some practical examples, and we approached the design of the application
+    differently, delegating tasks to the external executor (via the queue).
+  prefs: []
+  type: TYPE_NORMAL
+- en: We progressively improved the performance of the application by applying multiple
+    techniques.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we explained the architecture, the configuration of the tools
+    used in production (nginx), and the implementation of the scripts to deploy a
+    Laravel Octane application into a production environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hope you enjoyed reading this book.
+  prefs: []
+  type: TYPE_NORMAL

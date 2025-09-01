@@ -1,0 +1,699 @@
+- en: '5'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Reducing Latency and Managing Data with an Asynchronous Approach
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we created a new Laravel Octane application, and we
+    applied some features provided by Laravel Octane to improve performance and reduce
+    the response time of our application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we will try to optimize more things, such as access to a database
+    and changing and improving the caching strategy. To improve and make queries to
+    data faster, we will explain the benefit that comes from indexing columns. For
+    caching, we will also take a look at a cache-only approach.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, in the previous chapter, we executed queries in parallel. Now,
+    we will optimize a query because parallelizing something fast is better than parallelizing
+    something slower. Query optimization allows code to retrieve data from databases
+    faster, reducing the latency that normally occurs when reading data from any source
+    (a file, database, or network).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then, we will show how to make the query process faster using a caching mechanism.
+    We will use a *cache-only* approach, which means that the code will always retrieve
+    data from a cache. There is a task that performs queries and stores the result
+    in the cache. Therefore, the pre-caching mechanism is totally independent of the
+    code that needs data. For this reason, we will refer to this approach as asynchronous
+    because the running code that needs data has not had to wait for the process that
+    retrieves data and then fill the cache.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The goal of this chapter is to reduce HTTP request response times. To achieve
+    a reduction in response issues, we will see how to implement information retrieval
+    through query optimization and a caching mechanism that separates cache retrieval
+    times from cache fill times.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Optimizing the queries with indexes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Making the cache mechanism asynchronous
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We will assume that you have the application set up from the previous chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You need to set up your Laravel Octane application with the event migration
+    and event seeder required for this chapter. The requirement for the current chapter
+    is to have PHP 8 installed or, if you want to use a container approach, you have
+    to install Docker Desktop ([https://www.docker.com/products/docker-desktop/](https://www.docker.com/products/docker-desktop/))
+    or a similar tool to run the Docker images.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Source code
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can find the source code of the examples used in this chapter in the official
+    GitHub repository of this book: [https://github.com/PacktPublishing/High-Performance-with-Laravel-Octane/tree/main/octane-ch05](https://github.com/PacktPublishing/High-Performance-with-Laravel-Octane/tree/main/octane-ch05).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Optimizing queries with indexes
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we made queries in parallel.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What if the parallelized queries were slow? Most of the time, implementing an
+    optimization means acting on multiple aspects. In the previous chapter, we saw
+    how to parallelize queries. This approach, as we saw, brings great benefits, but
+    there is something more we can do. What we want to achieve is to further reduce
+    the latency of each individual parallelized task when retrieving data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To do just that, what we are going to do now is optimize each query that we
+    parallelized in the previous chapter and explore the reasoning behind each one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We are going to analyze what the characteristics of the query are and what fields
+    are involved in the rows selection phase and the sorting phase.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s start with the following example query:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can see that in the query, we are performing some operations on some columns
+    (filtering by type, filtering by description, etc.).
+  prefs: []
+  type: TYPE_NORMAL
+- en: To make the query faster, on the columns involved in the query, we are going
+    to create indexes. Indexes in a database are a data structure used by the database
+    engine when a query is executed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To use an analogy to explain indexes, it’s as if you want to look up a word
+    in a dictionary. Starting on the first page and scrolling down each successive
+    page, you get to the term you are looking for. The time it takes to find the term
+    depends on the number of words and the placement of the word. Just think what
+    it is like to find a word that begins with the letter *z* in a vocabulary of thousands
+    and thousands of words.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An index in a database is like having an index in a dictionary, where each letter
+    has a page number. Using an index, the access to a term is much more immediate.
+    Nowadays, various databases have a very complex and performant index system, so
+    the aforementioned analogy is straightforward compared to reality. Still, it allows
+    us to understand how much the existence of an index on a field used for searching
+    or sorting is crucial for performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In Laravel, if you want to create an index, you can do it in a migration file.
+    A migration file is a file where you can define the structure of your database
+    table. In the migration file, you can list the columns of your table and define
+    the type of the columns (string, integer, date, time, etc.).
+  prefs: []
+  type: TYPE_NORMAL
+- en: In [*Chapter 4*](B17728_04.xhtml#_idTextAnchor065), *Building a Laravel Octane
+    Application*, we already created the structure of the `events` table (the table
+    used for our examples). The goal now is to analyze which columns could benefit
+    from index creation, and we will see how to create indexes in the migration file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the migration file created in the previous chapter (in the `database/migrations/`
+    directory), we created a table with some fields:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Some of these fields were used for filtering the rows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, in the model file in `app/Models`, we implemented the following
+    query:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: This means the fields used in the query for filtering are `'type'` and `'description'`.
+    The field used for sorting is the `'``date'` field.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Therefore, we are going to create three indexes (one for the `'type'` column,
+    one for the `'description'` column, and one for the `'date'` column) in one migration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before creating the indexes, let’s look at the response time of the dashboard
+    controller, just to have a baseline value so that we can later check the improvement
+    in terms of time saved. The dashboard controller is the place where the query
+    is called via the `ofType()` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To show the response time of the dashboard controller with all of these queries,
+    you can start Laravel Octane via the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: Then, you can access it with your web browser at `http://127.0.0.1:8000/dashboard`
+    and see the response time in the console.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Figure_5.01_B17728.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.1: The response time of the dashboard controller without the index
+    usage'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, the response time is more than 200 milliseconds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, we are going to create indexes, and we will see the new response time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating indexes
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can create a new migration with the `make:migration` command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, in the `yyyy_mm_dd_hhMMss _create_event_indexes.php` file, created in
+    the `database/migrations/` directory, with the `up()` method, we are going to
+    use the `index()` method to create an index for each column:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The first parameter of the `index()` method is the column name; the second
+    one is the index name. The index name is useful when, for example, you want to
+    drop the column in the `down()` method. The `down()` method is used in case of
+    rollback:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To apply the newly created indexes, you have to run the migration via the `migrate`
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you want to check whether everything is fine, you can use the `db:table`
+    command and see whether the new indexes are listed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If the indexes are created, you will see them listed in the **Index** section:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Figure_5.02_B17728.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.2: Executing db:table can show the new indexes'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that the indexes are created, we are going to analyze the query already
+    implemented that uses the following fields: `type`, `description`, and `date`
+    for filtering and sorting. The query that we are going to use is the query implemented
+    in the `scopeOfType()` method in the `Event` model (in the `app/Models/Event.php`
+    file):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To see the different response times with the index usage, after you have created
+    the indexes, with your web browser again, you can access the dashboard controller
+    via `http://127.0.0.1:8000/dashboard` and see the results in the console:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Figure_5.03_B17728.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.3: The response time of the dashboard controller with database indexes'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you want to obtain more analytical metrics from the benefit of index usage,
+    you can use some tools provided directly by the database. For example, in the
+    case of MySQL, you can access MySQL Command Prompt (with `php artisan db`, as
+    explained in the next few lines), execute the query, and retrieve the `Last_query_cost`
+    value. You will obtain a value representing the query execution cost, based on
+    the number of operations performed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In order to compare the last query costs, we are going to execute a query with
+    indexes first and then without. In the example, we are going to extract the `Last_query_cost`
+    metric.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is how we do it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Make sure that you are using the latest version of your migration:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, open the MySQL command line with the `db` command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The `db` command executes the MySQL client according to Laravel configuration
+    (database name, username, password, and table name).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In MySQL Command Prompt, you can execute the query on the `events` table:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Once you complete the query, the result will be shown.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Then, execute the following:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You will now see the metrics that represent the query costs (dependent on the
+    number of operations performed by the query on the data):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE19]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE20]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE21]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'If you now try to drop the indexes, a rollback on the migration will occur
+    (because the latest step of our migration is index creation via the rollback command):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, in the MySQL command prompt, execute the following again:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'And then, execute this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You will see the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, without indexes, you have higher query costs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Without indexes, things get worse if you perform more complex queries like the
+    query we have in your `Event` model, which is filtering using the type and description
+    fields and sorting by date.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s try to execute the following query:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And then, after you have executed the query, you ask MySQL to show the `Last_query_cost`
+    metric without indexes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, you ask MySQL to show the `Last_query_cost` metric with indexes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, the differences are enormous.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have now compared the queries with and without indexes. With the acquired
+    knowledge, we can improve the response time of the query by fine-tuning the types
+    of indexes we are using.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the query, we are filtering the rows with the `description` column that
+    starts with a specific word. In the query, we are filtering all the descriptions
+    that start with the word `something`. But what if we want to filter all the rows
+    with the `description` column that includes the word `something`? In our model
+    in our previous chapter, in order to select all the descriptions that include
+    a specific word, we used the `LIKE` operator with a wildcard:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: However, if we want to optimize the query in order to reduce its response time,
+    specifically for text, we have another powerful database feature for filtering
+    and searching text – **full-text indexes**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating full-text indexes
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'What we are going to do is to change the standard index for the `description`
+    column to a full-text index, and we will see how it performs. This is how we do
+    it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create a new migration:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: In the `yyyy_mm_dd_hhMMss_create_event_fulltext_index.php` file, in the `database/migrations/`
+    directory, in the `up()` method, we are going to drop the previous index and create
+    a new full text.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the `up()` method, we have to drop the previous index on the `description`
+    column and then create a full-text index via the `fullText()` method:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Regarding which method is faster, the `LIKE` operator used to filter the description
+    column that starts with a specific term (`''something%''`) is faster than a full-text
+    search, but it only covers filtering a column that starts with a specific word.
+    Full-text execution is quicker than a `LIKE` approach that searches with wildcards
+    and is more powerful, especially if you want to search for one more term. Let’s
+    try to use the `whereFullText()` method in the query:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `whereFullText()` method is used with two parameters; the first one is the
+    `description` parameter, which is the column name to filter, and the second parameter
+    is the string to search for.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have a full-text search in place, we can add another improvement
+    – caching the result of the queries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Optimized queries and caching
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: At this point, we have seen how to optimize queries through parallel execution,
+    the use of a cache, and by applying indexes on search fields.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, if we optimize queries by caching the result, the first query, or queries
+    for which the cached result is obsolete or deleted, will have to deal with the
+    cost of loading data from the database to update and refresh the cache.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With the caching strategy we are about to discuss, we will try to prevent cache
+    refresh times from affecting the response time of our application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This scenario can be optimized by changing the caching strategy to having queries
+    in a request using only the values coming from a cache (a cache-only approach),
+    and creating a process that takes care of the retrieval of the results and their
+    caching. This process operates asynchronously and is decoupled from the queries
+    generated by the requests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This approach allows for improved performance because it tends to eliminate
+    slow queries, and that should take care of data retrieval because the periodic
+    refresh of the cache is done through an external command. We can add the external
+    command that is executed every *n* second and retrieves new data, and then fill
+    the cache. All requests get data from the cache. To execute the interval command,
+    we can use another Octane functionality, the `tick()` method. Let’s see how.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Making the cache mechanism asynchronous
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In [*Chapter 3*](B17728_03.xhtml#_idTextAnchor048), *Configuring the Swoole
+    Application Server*, we explored the `Octane::tick()` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `tick()` method allows you to execute a function every *n* seconds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The caching strategy could be reviewed by delegating data loading to a specific
+    function. This specific function is responsible for retrieving data with the query
+    from the database (and not from the cache), and once the data is retrieved, the
+    function stores the results in the cache. The function is called via the `Octane::tick()`
+    method and executed – for example, maybe every 60 seconds, fresh data from the
+    database is retrieved, and it fills the cache. All the requests retrieve the data
+    from the cache.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With the asynchronous caching strategy, all the requests retrieve data from
+    the cache.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The cache is refreshed by the task called via `tick()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To implement the asynchronous caching strategy, we are doing the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing the `tick()` function in the application service provider
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Storing the result in the Octane Cache
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Implementing the controller that reads the cache
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Implementing the routing
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Implementing the tick() function in the application service provider
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In order to launch the caching task when the framework is bootstrapped, we
+    can set the `tick()` method in the App Service Provider. The App Service Provider
+    is a file called while the framework is instanced. So, in the `app/Providers/AppServiceProvider.php`
+    file, in the `boot()` method, you have to implement the `Octane::tick()` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the `tick()` function, we are going to execute all queries and then store
+    the result in the Octane Cache (specifying the `octane` store): `Cache::store(''octane'')->put()`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The two essential methods are `seconds()`, where we can define the cadence,
+    the interval in seconds, and `immediate()`, which sets an immediate execution
+    of the `tick()` function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Every 60 seconds, the queries are executed automatically, and the result is
+    stored in the cache.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing the controller that reads the cache
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Now that we have implemented the `tick()` event that fills the cache, we can
+    focus on the controller, where we can load data from the cache.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The method for retrieving data from the cache is `Cache::store(''octane'')->get()`.
+    With the `Cache::store(''octane'')` method, you retrieve the `Cache` instance
+    provided by Octane. With the `get()` method, you will retrieve the value stored
+    in the cache. Here’s the code that retrieves the value from the cache in the `app/Http/Controllers/DashboardController.php`
+    file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the controller, as you can see, there is an asynchronous approach because
+    there are no more pending operations that depend on the databases, and we are
+    delegating loading from the database to an external function. The only dependency
+    in the controller is with the cache.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing routing
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In the `routes/web.php` file, you can add a new route:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: As already shown in previous chapters, we can optimize the routing loading with
+    `Octane::route()`, which helps to reduce the response time. As you can see, we
+    are using `Octane::route()` for performance reasons, and then we set the path
+    as `/dashboard-tick-cached` and call the `indexTickCached()` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Showing the results
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'If we open the browser to the initial dashboard route, where the queries were
+    not optimized and not cached, and then open the browser to the new route, where
+    the queries are cached, we can see a massive difference in terms of response time:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, the dashboard path has a response time of 30–40 milliseconds.
+    The `dashboard-tick-cached` route is around 5 milliseconds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is a significant improvement, and again, when you think about performance,
+    you have to think in terms of the impact of this improvement on thousands of requests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This brings us to the end of the chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we have seen how combining the caching mechanism, routing optimization,
+    an asynchronous approach, and query optimization can benefit information retrieval.
+    The caching mechanism combined with the asynchronous approach helps us reduce
+    the data retrieval response time for every request (even if the cache is outdated).
+    The query optimization reduces the time spent retrieving fresh data to fill a
+    cache. The routing optimization helps us to save more milliseconds when the frameworks
+    resolve the routes, reducing response time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will try to address situations where we need to perform
+    a time-consuming task – that is, operations that take some time to complete but
+    where we cannot use caching mechanisms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Caching mechanisms can be beneficial when retrieving information. On the other
+    hand, if we need to perform a task such as writing, sending, or transforming data,
+    we most likely will need to use some other tool. In the next chapter, we will
+    see how.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Part 4: Speeding Up'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'This part shows how to configure tools to support Laravel Octane in a performant
+    architecture. Tools such as queues and how to set up the system for the production
+    environment are explained through practical examples. This part comprises the
+    following chapters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[*Chapter 6*](B17728_06.xhtml#_idTextAnchor107), *Using Queues to Apply the
+    Asynchronous Approach in Your Application*'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[*Chapter 7*](B17728_07.xhtml#_idTextAnchor121), *Configuring the Laravel Octane
+    Application for the Production Environment*'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL

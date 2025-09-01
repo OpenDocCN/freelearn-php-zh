@@ -1,0 +1,560 @@
+- en: Hexagonal Architecture with PHP
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The following article was posted in php|architect magazine in June 2014 by Carlos
+    Buenosvinos.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introduction
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: With the rise of **Domain-Driven Design** (**DDD**), architectures promoting
+    domain centric designs are becoming more popular. This is the case with **Hexagonal
+    Architecture**, also known as **Ports and Adapters**, that seems to have being
+    rediscovered just now by PHP developers. Invented in 2005 by Alistair Cockburn,
+    one of the Agile Manifesto authors, the Hexagonal Architecture allows an application
+    to be equally driven by users, programs, automated tests or batch scripts, and
+    to be developed and tested in isolation from its eventual run-time devices and
+    databases. This results into agnostic infrastructure web applications that are
+    easier to test, write and maintain. Let's see how to apply it using real PHP examples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Your company is building a brainstorming system called *Idy*. Users add and
+    rate ideas so the most interesting ones can be implemented in a company. It is
+    Monday morning, another sprint is starting and you are reviewing some user stories
+    with your team and your Product Owner. **As a not logged in user, I want to rate
+    an idea and the author should be notified by email**, that's a really important
+    one, isn't it?
+  prefs: []
+  type: TYPE_NORMAL
+- en: First Approach
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As a good developer, you decide to divide and conquer the user story, so you'll
+    start with the first part, *I want to rate an idea*. After that, you will face
+    *the author should be notified by email*. That sounds like a plan.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In terms of business rules, rating an idea is as easy as finding the idea by
+    its identifier in the ideas repository, where all the ideas live, add the rating,
+    recalculate the average and save the idea back. If the idea does not exist or
+    the repository is not available we should throw an exception so we can show an
+    error message, redirect the user or do whatever the business asks us for.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In order to *execute* this *UseCase*, we just need the idea identifier and the
+    rating from the user. Two integers that would come from the user request.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Your company web application is dealing with a Zend Framework 1 legacy application.
+    As most of companies, probably some parts of your app may be newer, more SOLID,
+    and others may just be a big ball of mud. However, you know that it does not matter
+    at all which framework you are using, it is all about writing clean code that
+    makes maintenance a low cost task for your company.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You're trying to apply some Agile principles you remember from your last conference,
+    how it was, yeah, I remember "make it work, make it right, make it fast". After
+    some time working you get something like Listing 1.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'I know what readers are thinking: *Who is going to access data directly from
+    the controller? This is a 90''s example!*, ok, ok, you''re right. If you are already
+    using a framework, it is likely that you are also using an ORM. Maybe done by
+    yourself or any of the existing ones such as Doctrine, Eloquent, Zend, and so
+    on. If this is the case, you are one step further from those who have some Database
+    connection object but don''t count your chickens before they''re hatched.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For newbies, Listing 1 code just works. However, if you take a closer look at
+    the Controller, you'll see more than business rules, you'll also see how your
+    web framework routes a request into your business rules, references to the database
+    or how to connect to it. So close, you see references to your **infrastructure**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Infrastructure is the **detail that makes your business rules work**. Obviously,
+    we need some way to get to them (API, web, console apps, and so on.) and effectively
+    we need some physical place to store our ideas (memory, database, NoSQL, and so
+    on.). However, we should be able to exchange any of these pieces with another
+    that behaves in the same way but with different implementations. What about starting
+    with the Database access?
+  prefs: []
+  type: TYPE_NORMAL
+- en: All those `Zend_DB_Adapter` connections (or straight MySQL commands if that's
+    your case) are asking to be promoted to some sort of object that encapsulates
+    fetching and persisting Idea objects. They are begging for being a Repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Repositories and the Persistence Edge
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Whether there is a change in the business rules or in the infrastructure, we
+    must edit the same piece of code. Believe me, in CS, you don''t want many people
+    touching the same piece of code for different reasons. Try to make your functions
+    do one and just one thing so it is less probable having people messing around
+    with the same piece of code. You can learn more about this by having a look at
+    the **Single Responsibility Principle** (**SRP**). For more information about
+    this principle: [http://www.objectmentor.com/resources/articles/srp.pdf](http://www.objectmentor.com/resources/articles/srp.pdf)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Listing 1 is clearly this case. If we want to move to Redis or add the author
+    notification feature, you'll have to update the `rateAction` method. Chances to
+    affect aspects of the `rateAction` not related with the one updating are high.
+    Listing 1 code is fragile. If it is common in your team to hear *If it works,
+    don't touch it*, SRP is missing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, we must decouple our code and encapsulate the responsibility for dealing
+    with fetching and persisting ideas into another object. The best way, as explained
+    before, is using a Repository. Challenged accepted! Let''s see the results in
+    Listing 2:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The result is nicer. The `rateAction` of the `IdeaController` is more understandable.
+    When read, it talks about business rules. `IdeaRepository` is a **business concept**.
+    When talking with business guys, they understand what an `IdeaRepository` is:
+    A place where I put Ideas and get them.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A Repository *mediates between the domain and data mapping layers using a collection-like
+    interface for accessing domain objects*. as found in Martin Fowler's pattern catalog.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you are already using an ORM such as Doctrine, your current repositories
+    extend from an `EntityRepository`. If you need to get one of those repositories,
+    you ask Doctrine `EntityManager` to do the job. The resulting code would be almost
+    the same, with an extra access to the `EntityManager` in the controller action
+    to get the `IdeaRepository`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: At this point, we can see in the landscape one of the edges of our hexagon,
+    the *persistence* edge. However, this side is not well drawn, there is still some
+    relationship between what an `IdeaRepository` is and how it is implemented.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In order to make an effective separation between our *application boundary*
+    and the *infrastructure boundary* we need an additional step. We need to explicitly
+    decouple behavior from implementation using some sort of interface.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Decoupling Business and Persistence
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Have you ever experienced the situation when you start talking to your Product
+    Owner, Business Analyst or Project Manager about your issues with the Database?
+    Can you remember their faces when explaining how to persist and fetch an object?
+    They had no idea what you were talking about.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The truth is that they don't care, but that's ok. If you decide to store the
+    ideas in a MySQL server, Redis or SQLite it is your problem, not theirs. Remember,
+    from a business standpoint, **your infrastructure is a detail**. Business rules
+    are not going to change whether you use Symfony or Zend Framework, MySQL or PostgreSQL,
+    REST or SOAP, and so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: That's why it is important to decouple our `IdeaRepository` from its implementation.
+    The easiest way is to use a proper interface. How can we achieve that? Let's take
+    a look at Listing 3.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Easy, isn't it? We have extracted the `IdeaRepository` behavior into an interface,
+    renamed the `IdeaRepository` into `MySQLIdeaRepository` and updated the `rateAction`
+    to use our `MySQLIdeaRepository`. But what's the benefit?
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can now exchange the repository used in the controller with any implementing
+    the same interface. So, let's try a different implementation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Migrating our Persistence to Redis
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'During the sprint and after talking to some mates, you realize that using a
+    NoSQL strategy could improve the performance of your feature. Redis is one of
+    your best friends. Go for it and show me your Listing 4:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Easy again. You've created a `RedisIdeaRepository` that implements `IdeaRepository`
+    interface and we have decided to use Predis as a connection manager. Code looks
+    smaller, easier and faster. But what about the controller? It remains the same,
+    we have just changed which repository to use, but it was just one line of code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As an exercise for the reader, try to create the `IdeaRepository` for SQLite,
+    a file or an in-memory implementation using arrays. Extra points if you think
+    about how ORM Repositories fit with Domain Repositories and how ORM *@annotations* affect
+    this architecture.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Decouple Business and Web Framework
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We have already seen how easy it can be to changing from one persistence strategy
+    to another. However, the persistence is not the only edge from our Hexagon. What
+    about how the user interacts with the application?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Your CTO has set up in the roadmap that your team is moving to Symfony2, so
+    when developing new features in you current ZF1 application, we would like to
+    make the incoming migration easier. That''s tricky, show me your Listing 5:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: Let's review the changes. Our controller is not having any business rules at
+    all. We have pushed all the logic inside a new object called `RateIdeaUseCase`
+    that encapsulates it. This object is also known as Controller, Interactor or Application
+    Service.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The magic is done by the `execute` method. All the dependencies such as the
+    `RedisIdeaRepository` are passed as an argument to the constructor. All the references
+    to an `IdeaRepository` inside our UseCase are pointing to the interface instead
+    of any concrete implementation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: That's really cool. If you take a look inside `RateIdeaUseCase`, there is nothing
+    talking about MySQL or Zend Framework. No references, no instances, no annotations,
+    nothing. It is like your infrastructure does not mind. It just talks about business
+    logic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additionally, we have also tuned the Exceptions we throw. Business processes
+    also have exceptions. `NotAvailableRepository` and `IdeaDoesNotExist` are two
+    of them. Based on the one being thrown we can react in different ways in the framework
+    boundary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Sometimes, the number of parameters that a UseCase receives can be too many.
+    In order to organize them, it is quite common to build a *UseCase request* using
+    a **Data Transfer Object** (**DTO**) to pass them together. Let''s see how you
+    could solve this in Listing 6:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: The main changes here are introducing two new objects, a Request and a Response.
+    They are not mandatory, maybe a UseCase has no request or response. Another important
+    detail is how you build this request. In this case, we are building it getting
+    the parameters from ZF request object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ok, but wait, what's the real benefit? it is easier to change from one framework
+    to other, or execute our UseCase from another *delivery mechanism*. Let's see
+    this point.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Rating an Idea Using the API
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'During the day, your Product Owner comes to you and says: *by the way, a user
+    should be able to rate an idea using our mobile app. I think we will need to update
+    the API, could you do it for this sprint?*. Here''s the PO again. *No problem!*.
+    Business is impressed with your commitment.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As Robert C. Martin says: <q>The Web is a delivery mechanism [...] Your system
+    architecture should be as ignorant as possible about how it is to be delivered.
+    You should be able to deliver it as a console app, a web app, or even a web service
+    app, without undue complication or any change to the fundamental architecture</q>.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Your current API is built using Silex, the PHP micro-framework based on the
+    Symfony2 Components. Let''s go for it in Listing 7:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Is there anything familiar to you? Can you identify some code that you have
+    seen before? I''ll give you a clue:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: '*Man! I remember those 3 lines of code. They look exactly the same as the web
+    application*. That''s right, because the UseCase encapsulates the business rules
+    you need to prepare the request, get the response and act accordingly.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We are providing our users with another way for rating an idea; another *delivery
+    mechanism*. The main difference is where we created the `RateIdeaRequest` from.
+    In the first example, it was from a ZF request and now it is from a Silex request
+    using the parameters matched in the route.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Console App Rating
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Sometimes, a UseCase is going to be executed from a Cron job or the command
+    line. As examples, batch processing or some testing command lines to accelerate
+    the development. While testing this feature using the web or the API, you realize
+    that it would be nice to have a command line to do it, so you don't have to go
+    through the browser.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you are using shell scripts files, I suggest you to check the Symfony Console
+    component. What would the code look like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: Again those 3 lines of code. As before, the UseCase and its business logic remain
+    untouched, we are just providing a new *delivery mechanism.* Congratulations,
+    you've discovered the *user side* hexagon edge.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There is still a lot to do. As you may have heard, a real craftsman does TDD.
+    We have already started our story so we must be ok with just testing after.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Testing Rating an Idea UseCase
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Michael Feathers introduced a definition of legacy code as *code without tests*.
+    You don't want your code to be legacy just born, do you?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In order to unit test this UseCase object, you decide to start with the easiest
+    part, what happens if the repository is not available? How can we generate such
+    behavior? Do we stop our Redis server while running the unit tests? No. We need
+    to have an object that has such behavior. Let''s use a *mock* object in Listing
+    9:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: Nice. `NotAvailableRepository` has the behavior that we need and we can use
+    it with `RateIdeaUseCase` because it implements `IdeaRepository` interface.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next case to test is what happens if the idea is not in the repository. Listing
+    10 shows the code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, we use the same strategy but with an `EmptyIdeaRepository`. It also implements
+    the same interface but the implementation always returns null regardless which
+    identifier the find method receives.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Why are we testing these cases?, remember Kent Beck''s words: *Test everything
+    that could possibly break*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s carry on with the rest of the feature. We need to check a special case
+    that is related with having a read available repository where we cannot write
+    to. Solution can be found in Listing 11:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Ok, now the key part of the feature is still remaining. We have different ways
+    of testing this, we can write our own mock or use a mocking framework such as
+    Mockery or Prophecy. Let''s choose the first one. Another interesting exercise
+    would be to write this example and the previous ones using one of these frameworks:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Bam! 100% Coverage for the UseCase. Maybe, next time we can do it using TDD
+    so the test will come first. However, testing this feature was really easy because
+    of the way decoupling is promoted in this architecture.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Maybe you are wondering about this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: We need a way to guarantee that the update method has been called during the
+    UseCase execution. This does the trick. This *test double* object is called a
+    *spy*, *mocks* cousin.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When to use mocks? As a general rule, use mocks when crossing boundaries. In
+    this case, we need mocks because we are crossing from the domain to the persistence
+    boundary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What about testing the infrastructure?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Testing Infrastructure
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: If you want to achieve 100% coverage for your whole application you will also
+    have to test your infrastructure. Before doing that, you need to know that those
+    unit tests will be more coupled to your implementation than the business ones.
+    That means that the probability to be broken with implementation details changes
+    is higher. So it is a trade-off you will have to consider.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, if you want to continue, we need to do some modifications. We need to decouple
+    even more. Let''s see the code in Listing 13:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: If we want to 100% unit test `RedisIdeaRepository` we need to be able to pass
+    the `Predis\Client` as a parameter to the repository without specifying TypeHinting
+    so we can pass a mock to force the code flow necessary to cover all the cases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This forces us to update the Controller to build the Redis connection, pass
+    it to the repository and pass the result to the UseCase.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, it is all about creating mocks, test cases and having fun doing asserts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Arggg, So Many Dependencies!
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Is it normal that I have to create so many dependencies by hand? No. It is common
+    to use a Dependency Injection component or a Service Container with such capabilities.
+    Again, Symfony comes to the rescue, however, you can also check [PHP-DI 4](http://php-di.org/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s see the resulting code in Listing 14 after applying Symfony Service
+    Container component to our application:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The controller has been modified to have access to the container, that''s why
+    it is inheriting from a new base controller `ContainerAwareController` that has
+    a `get` method to retrieve each of the services contained:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: In Listing 15, you can also find the XML file used to configure the Service
+    Container. It is really easy to understand but if you need more information, take
+    a look to the Symfony Service Container Component [site](http://symfony.com/doc/current/book/service_container.html)
+    in.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Domain Services and Notification Hexagon Edge
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Are we forgetting something? *the author should be notified by email*, yeah!
+    That''s true. Let''s see in Listing 16 how we have updated the UseCase for doing
+    the job:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you realize, we have added a new parameter for passing `AuthorNotifier` Service
+    that will send the email to the author. This is the *port* in the *Ports and Adapters* naming.
+    We have also updated the business rules in the execute method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Repositories are not the only objects that may access your infrastructure and
+    should be decoupled using interfaces or abstract classes. Domain Services can
+    too. When there is a behavior not clearly owned by just one Entity in your domain,
+    you should create a Domain Service. A typical pattern is to write an abstract
+    Domain Service that has some concrete implementation and some other abstract methods
+    that the *adapter* will implement.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As an exercise, define the implementation details for the `AuthorNotifier` abstract
+    service. Options are SwiftMailer or just plain `mail` calls. It is up to you.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's Recap
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In order to have a *clean architecture* that helps you create easy to write
+    and test applications, we can use Hexagonal Architecture. To achieve that, we
+    encapsulate user story business rules inside a UseCase or Interactor object. We
+    build the UseCase request from our framework request, instantiate the UseCase
+    and all its dependencies and then execute it. We get the response and act accordingly
+    based on it. If our framework has a Dependency Injection component you can use
+    it to simplify the code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The same UseCase objects can be used from different *delivery mechanisms* in
+    order to allow users access the features from different clients (web, API, console,
+    and so on.)
+  prefs: []
+  type: TYPE_NORMAL
+- en: For testing, play with mocks that behave like all the interfaces defined so
+    special cases or error flows can also be covered. Enjoy the good job done.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hexagonal Architecture
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In almost all the blogs and books you will find drawings about concentric circles
+    representing different areas of software. As Robert C. Martin explains in his
+    *Clean Architecture* post, the outer circle is where your infrastructure resides.
+    The inner circle is where your Entities live. The overriding rule that makes this
+    architecture work is **The Dependency Rule**. This rule says that source code
+    dependencies can only point inwards. Nothing in an inner circle can know anything
+    at all about something in an outer circle.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Key Points
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Use this approach if 100% unit test code coverage is important to your application.
+    Also, if you want to be able to switch your storage strategy, web framework or
+    any other type of third-party code. The architecture is especially useful for
+    long-lasting applications that need to keep up with changing requirements.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What's Next?
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: If you are interested in learning more about Hexagonal Architecture and other
+    near concepts you should review the related URLs provided at the beginning of
+    the article, take a look at CQRS and Event Sourcing. Also, don't forget to subscribe
+    to google groups and RSS about DDD such as [http://dddinphp.org](http://dddinphp.org)
+    and follow on Twitter people like `@VaughnVernon`, and `@ericevans0`.
+  prefs: []
+  type: TYPE_NORMAL

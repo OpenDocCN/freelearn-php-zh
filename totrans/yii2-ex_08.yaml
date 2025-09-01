@@ -1,0 +1,717 @@
+- en: Chapter 8. Log in to the App
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter will explain how to set up login authentication and authorization.
+    Logging in is a fundamental step to protect our application and you will learn
+    how to reach these goals from scratch, using the web management free extension
+    that is broadly available on the Internet.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will cover the following topics in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Creating a user login:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'For example: creating login form to access'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Configure a user authorization
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'For example: creating an access control filter to authorize'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Role Based Access Control** (**RBAC**)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'For example: configuring RBAC to set permissions for users'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Mixing **Access Control Filter** (**ACF**) and RBAC
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'For example: managing users'' roles to access rooms, reservations, and customers'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The first step will be creating an authenticated access to our app using a
+    database table to manage users and associate it to the Yii user component, through
+    a user model that extends `IdentityInterface`. We will provide an example of how
+    to use it: building a login form to authenticate the user.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next step will be to control what actions a user can perform, using ACF
+    and RBAC. We will follow some examples using ACF and RBAC, and in the latter case
+    we will build a complete authorization manager from scratch.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a user login
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The application''s security starts with two well distinguished phases of the
+    same user login: authentication and authorization.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first one, authentication, is the process of verifying a user's identity,
+    usually using a username and password, or email and password, process. Authentication
+    is completed when the user has been recognized and their state has been preserved
+    for further requests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The second one, authorization, is the process of verifying that the user has
+    the permission to execute a specific action.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Since http requests are stateless, we need to preserve the login status, which
+    means that there is no data context sharing among them. This limit is solved by
+    sessions, mainly files where the web server stores the data. A filename is used
+    as a session identifier and passed to the browser through a cookie or URL parameter
+    of links contained in the HTML response. In this way, the browser keeps the session
+    active by sending the session identifier to the web server through a cookie or
+    a parameter in the request URL, and the web server knows which file contains the
+    session data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A database table can be used instead of files with the same functionalities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Yii2 implements authentication through the `yii\web\User` component, which manages
+    the user authentication status and also contains a reference to the `identityClass`
+    that represents the concrete object that we are referring to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'An `identityClass` class should implement five methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`findIdentity()`: This method looks for an instance of an identity class using
+    the ID provided as parameter. It is commonly used when we need to keep the login
+    status via a session.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`findIdentityByAccessToken()`: This one looks for an instance of the identity
+    class using the access token provided by the parameter. It is commonly used when
+    we need to authenticate using a single secret token.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`getId()`: This one returns the ID of the identity instance.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`getAuthKey()`: This method returns the key used to verify the cookie-based
+    login when the login has been completed using a cookie sent by the browser (when
+    **Remember me** is checked during the login).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`validateAuthKey()`: This method verifies that the provided `authKey` passed
+    as a parameter is correct (in the cookie-based login).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Often the `identityClass` class corresponds to a record of the `User` database
+    table. For this reason, usually the `identityClass` class implements `IdentityInterface`
+    and extends `ActiveRecord`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It is now time to implement authentication. The first thing to do is to configure
+    `yii\web\User` components and its `identityClass`. Open the `basic/config/web.php`
+    file and add the `user` property to `components` if it does not already exist:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we have to create a database table where we store the users'' records:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Notice that we do not have a password field, but we have a `password_hash` field.
+    This because passwords are stored using the hashing method. In models, we will
+    have a setter `setPassword()` method that gets plain text passwords to fill in
+    the `password_hash` field.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, let''s update the `basic/models/User` class that handles the login
+    status by implementing `IdentityInterface` and connect it to the `user` table
+    of database. This is a common implementation for `basic/models/User`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'If our application also uses a cookie-based authentication, we need to fill
+    in the `auth_key` field too, as this will be passed to the client in the http
+    response. It is convenient to populate the `auth_key` field automatically when
+    a new user is inserted by overriding the `beforeSave()` method in the `\app\models\User`
+    model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: User components provide methods to log in, log out, and access the `identityClass`,
+    and they verify the effectiveness of the user authentication.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To verify whether the user is well authenticated, use the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When a user is authenticated and we have an instance of the `\app\models\User`
+    model, we could complete the authentication by calling:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, when we need to access the identity class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, to log the user out:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Example – a login form to access
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this example, we will create a login form and complete the user authentication.
+    To proceed it is necessary to create a `user` database table from a SQL query,
+    as described in the previous paragraph.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To add a user, just insert a new record in the `user` table, with `foo` as
+    the username and `foopassword` as the password:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: A password is hashed using the bcrypt method and cost with value 12, available
+    on the Internet through a quick Google search.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, create a new controller named `MyAuthentication` in `basic/controllers/MyAuthenticationController.php`
+    and ensure it contains two actions: `actionLogin` and `actionLogout`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `actionLogin` method gets the username and password data from `$_POST` and
+    uses an `$error` variable to pass an error description to the view. If the username
+    and password data is filled in, the user will be found in the database table and
+    the inserted password will be validated, and after that the user will be logged
+    in.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, `actionLogout` simply logs the user out from the session and redirects
+    the browser to the login page:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, create the view with this content in `basic/views/my-authentication/login.php`.
+    Before a user can log in, a form with the username and password to be filled in
+    will be displayed. When the username and password match an entry in the user database
+    table, a confirmation message and a logout button will be displayed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Test it by pointing the browser to `http://hostname/basic/web/my-authentication/login`
+    and after filling out the form with `foo` as the username and `foopassword` as
+    the password, this should be displayed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Example – a login form to access](img/B04656_08_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Login form to access
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After clicking on the **Login** button, you should see:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Example – a login form to access](img/B04656_08_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Successful authentication
+  prefs: []
+  type: TYPE_NORMAL
+- en: This method does not provide error handling for the fields, because we are not
+    using a model to create form fields. If we had created a form model with username
+    and password fields, we could have added rules validation to this model and seen
+    input error handling (such as missing field value, wrong field length, and so
+    on). Fortunately, Yii2 has a login form model ready to use in `basic/models/LoginForm.php`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we had wanted to use this model, we would have created a new action named
+    `actionLoginWithForm` in `MyAuthenticationController` that handles login fields
+    through the model instead of parameters from `$_POST`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is the content of `basic/views/my-authentication/login-with-model.php`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can look at the output by pointing our browser to `http://hostname/basic/web/my-authentication/login-with-model`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we try to submit the form without filling out all the fields, we will immediately
+    get errors because they are activated by the form client-side validation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Example – a login form to access](img/B04656_08_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Login error using the model
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can customize the `LoginForm` model class as we want if standard behavior
+    is not enough for our purposes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configuring user authorization
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Yii has two methods to authorize users: ACF and RBAC.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first one, ACF, is used in applications that require a minimal and simple
+    access control. Basically, its behavior is based on five parameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`allow`: This parameter specifies whether this is an allow or deny rule; possible
+    values are `allow` or `deny`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`actions`: This parameter specifies which actions this rule matches, and they
+    are declared using an array of string'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`roles`: This parameter specifies which user roles this rule matches; possible
+    values are `?`'' and `@`, which mean respectively guest user and authenticated
+    user'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`ips`: This parameter specifies which client IP address this rule matches;
+    the IP address that can contain `*` as a wildcard'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`verbs`: This parameter specifies which verb (request method) this rules matches'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: By default, if no rule matches, access will be denied.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ACF is enabled by overwriting the `behaviors()` method of `Controller` and populating
+    its `access` property with the content of some (or every one) of the preceding
+    parameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this example, the `login`, `logout`, `signup`, and `index` actions are enabled
+    for guest users (all users) and the logout action is enabled only for authenticated
+    ones.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ACF has many other parameters that can be defined, such as `controllers` , to
+    define which controllers this rule matches (if it is empty, this means all controllers);
+    `matchCallback` whose value is a PHP callable function called to verify whether
+    this rule can be applied or not; and finally `denyCallback`, whose value is a
+    PHP callable function used when this rule will deny access.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When a rule is denied, there are two different behaviors according to the role
+    of the user. If a guest is denied, a denied rule will call the `yii\web\User::loginRequired()`
+    method to redirect the user's browser to the login page; if the user is authenticated,
+    it will throw a `yii\web\ForbiddenHttpException` exception.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This behavior can be customized using the `denyCallback` property mentioned
+    earlier, and by defining the correct callable PHP function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Obviously, any detail about the logged in user is not considered by this type
+    of authorization. During configuration in the `behaviors()` method, in fact, no
+    detail about the user ever appears (for example, `role`). So we cannot define
+    more precisely which conditions a user can execute or not a controller action.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ACF suggests only if we have to limit access to an authenticated user, without
+    needing some other details to allow the controller action to be executed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But in all those cases in which it is enough to limit access based on the condition
+    that the user is logged in or not, it is the best approach. In the REST API with
+    limited access (where only the authenticated users are able to make calls), ACF
+    is probably the best solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example – creating an ACF to authorize the users
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Now let's look at how to create an ACF to authorize the user to display or not
+    display the page content.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We have two actions: `actionPrivatePage` and `actionPublicPage`. The first
+    one is accessible only from an authenticated user and the second one is publically
+    accessible.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In `MyAuthenticationController.php`, let''s add the `behaviors()` method with
+    the following content:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: This method applies an ACF to only two actions, `actionPublicPage` and `actionPrivatePage`
+    (based only on the property value) and restricts access for private pages that
+    specify the roles as `@`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then, we added the `denyCallback` property to indicate how the behavior should
+    appear when access is denied to the user. In this case, we set it so that the
+    user should be redirected to the `login` action of `MyAuthenticationController`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: RBAC
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: RBAC is the right choice when we need more granularity of authorization controls.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'RBAC involves two parts:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first one is to build up the RBAC authorization data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The second one is to use the authorization data to perform further access controls
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'We''ll start now by building up the RBAC authorization data. RBAC can be initialized
+    in two ways: through PhpManager, instancing the `yii\rbac\PhpManager` component
+    that will store RBAC data in the `@app/rbac` folder, and through DbManager, instancing
+    the `yii\rbac\DbManager` component, which will use four database tables to store
+    its data.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We need to configure the `authManager` application component in the main configuration
+    file using one of the authorization managers, `yii\rbac\PhpManager` or `yii\rbac\DbManager`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following code shows how to configure `authManager` in `basic/config/web.php`
+    using the `yii\rbac\PhpManager` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following code shows how to configure `authManager` in `basic/config/web.php`
+    using the `yii\rbac\DbManager` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Both these methods are based on three objects: `permissions`, `roles`, and
+    `rules`. The `permissions` method represents actions that can be controlled; `roles`
+    are a set of permissions to which the target can be enabled or less; and `rules`
+    are extra validations that will be executed when a permission is checked. Finally,
+    `permissions` or `roles` can be assigned to users and identified by the `IdentityInterface::getId()`
+    value of the `Yii::$app->user` component.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When access permissions do not change, we could create a console command to
+    launch in case, or once, permissions are changed. However, we will not discuss
+    that now as you will see the console command in-depth in the next chapters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Instead, we will write permissions using a fake action to only execute permissions,
+    roles, and assignments settings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In `basic/controllers/MyAuthenticationController.php`, add this action named
+    `actionInitializeAuthorizations`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Before calling this action from your browser, make sure that the folder in `basic/rbac`
+    already exists and that it is writable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In order to start this action from the beginning, two permissions and two roles
+    are created, then the `createReservation` permission is added as a child to the
+    operator role and the `updateReservation` permission is added as a child to the
+    admin role, together to the operator role.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we check the `createReservation` permission for the user with the `roleOperator`
+    role, it will be successfully confirmed. The same happens if we check the user
+    with `adminOperator`. But when we check the `updateReservation` permission on
+    the user with the `roleOperator` role, it will be denied since that permission
+    is not assigned to that specific role.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Permissions and role names can be chosen without restrictions, because they
+    are used as parameters when checking permissions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now let's point our browser to `http://hostname/basic/my-authentication/initialize-authorizations`
+    in order to launch the permissions creation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The content of files created through this action in the `basic/rbac` folder
+    are simply arrays. This is the content of the `items.php` file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is the content of `assignments.php`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, to check the user authorization, it is enough to call the `yii\web\User::can()`
+    method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Example – configuring RBAC to set permissions for users
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In this example, we will create a user permissions management system from scratch,
+    based on RBAC. We will create a new controller named `AuthorizationManagerController`
+    in `basic/controllers/AuthorizationManagerController.php` that will display all
+    the users and all the available permissions and roles from the database. This
+    example is based on the user database table already used in the previous paragraphs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s take a look at its structure again:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We will truncate the database table and insert these records, five items, to
+    be used in the next examples:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now that we have data to work with, we can pass to write code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first method to create in this controller is `initializeAuthorizations()`,
+    which has to initialize all the available authorizations in the system:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: At the top of this method, we created a permissions and roles list, then we
+    assigned them to the Yii authorization component. Take care to ensure that, after
+    calling this method for the first time, you check whether any children already
+    exist by calling the `hasChild` method on every `addChild()` insert attempt.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: We have created a role for each permission, because `assign()` and `revoke()`
+    take a role and not a permission as a first parameter, so we are required to replicate
+    a role for every permission.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we can create `actionIndex()`, which launches the previous initialize
+    authorizations, getting all the users and populating an array with all the permissions
+    assigned to every user. This is the content of the `actionIndex()` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Follow the content of the index action view in `basic/views/authorization-manager/index.php`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This loops for each user''s content of the `$rolesAvailable` array. To see
+    this output, point your browser to `http://hostname/basic/web/authorization-manager/index`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Example – configuring RBAC to set permissions for users](img/B04656_08_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Users/Permissions table
+  prefs: []
+  type: TYPE_NORMAL
+- en: Every permission status is a link to the actions of adding a role or removing
+    a role (depending on the current status).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now we must create the last two actions: add a role and revoke a role to the
+    user:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: Mixing ACF and RBAC
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: ACF contains a property named `role` that is usually filled with `?` to indicate
+    that access is available for all users, and `@` to indicate that access is restricted
+    to authenticated ones. But there is a third option that refers its content to
+    the role name of the RBAC system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For each controller, therefore, it is enough to overwrite `behaviors()` by specifying
+    the roles that can access the actions inside the controller and then to associate
+    users to the role, in order to allow or deny access.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example – managing users' roles to access rooms, reservations, and customers
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this example, we will show you how to manage the access to the controller
+    actions using ACF and RBAC.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will use the `foo` user to simulate an authenticated user for `RoomsController`.
+    The first thing to do is to extend the `behaviors()` method of `RoomsController`
+    in `basic/controller/RoomsController.php` with this content:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: With this code, we will guarantee access to the `create` action only to users
+    with the `operator` role, while the `index` action access is given to all users
+    and all other actions are denied to everyone.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, if we try to browse to `http://hostname/basic/web/rooms/create`, we should
+    see an error page with a forbidden error. This is because we are trying to access
+    a page with insufficient permissions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, we can execute the authentication simply by going to `http://hostname/basic/web/my-authentication/login`
+    and typing `foo` as the username and `foopassword` as the password, since we already
+    created a user with these credentials in the database in the previous chapter.
+    We should see a successfully logged in page.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The last thing to do is to assign the `operator` role to the `foo` user. We
+    can use the authorization manager just created in `http://hostname/basic/web/authorization-manager/index`.
+    Now, click on the cell referring to the `foo` user and the `operator` role. In
+    this way, we have assigned the `operator` role to the `foo` user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, we can refresh the rooms creation page at `http://hostname/basic/web/rooms/create`.
+    We can see now the create action page of the rooms controller.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you learned how to apply user authentication and authorization
+    to an app. The first step was to create an authenticated access to the application.
+    For this purpose, we created a database table to manage users and associated it
+    to the Yii user component through a user model that extends `IdentityInterface`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first example in this chapter was building a login form to authenticate
+    the user. The next step was to control which actions a user can perform or not,
+    and this was the case for the authorization phase too. As you saw, Yii provides
+    two solutions for this matter: ACF and RBAC. We configured a controller to use
+    ACF and then you saw how RBAC is a more powerful tool to manage user authorization
+    with more granularity. Finally, we built an authorization manager all by ourselves.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will cover topics such as installing and using an advanced
+    template and having multiple apps in the same context.
+  prefs: []
+  type: TYPE_NORMAL

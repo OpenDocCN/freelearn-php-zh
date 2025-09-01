@@ -1,0 +1,2583 @@
+- en: Chapter 3. Building a Blog Application
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that we have seen FuelPHP's elementary features in the previous chapters,
+    it is time to use more advanced ones. In this chapter, we will build a typical
+    blog application managed via a secured administration interface. We will implement
+    it as a module since this is a convenient way in FuelPHP to improve code reusability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By the end of the chapter, you should know:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to generate an administration interface
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to create your own module
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: What are CSRF attacks and how to protect your website from them
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to create and use tasks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How and when to use presenters
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to easily create pagination
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to use the slug observer
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: What are the **Auth** and **Email** packages and how to use them
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to parse markdown
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to use **WYSIWYGS** editors and display their content
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The aim of this chapter is also to consolidate your acquired knowledge, and
+    thus the implementation will be a little longer and more repetitive than usual.
+    Please take your time to analyze and understand how each part works, and play
+    around by tweaking or adding features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Specifications
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'First, let''s define what should be expected in our final application:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A blog displays posts. A post is described by a title, a small description (that
+    acts as a summary), the post's content, a category, a publication date, and an
+    author.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The blog's home page displays a paginated list of posts. If the user clicks
+    on the title, he should be able to see the full version of the post.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: By clicking on the post category, a similar list should appear, but only displaying
+    the posts belonging to this category.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Posts and categories should only be created and edited by authenticated users
+    in the administration interface.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The length of the post's small description should be limited to 200 characters
+    and edited in the Markdown syntax.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The content should be edited with a WYSIWYG plugin.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The administrators should be able to moderate comments.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Each time someone writes a comment, an email should be sent to the post's author.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We want to be able to easily install a new blog on other websites.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Conception
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Let's try to determine our models from the preceding specifications. Post is
+    obviously a model, as it is the main feature of our blog (we display posts). Each
+    post is created and updated by an authenticated user, meaning that users have
+    to be saved into the database; therefore, we also have a **User** model. There
+    can be posts without comments, and categories without any posts, meaning they
+    belong to distinct models; therefore, there is also a **Category** and a **Comment**
+    model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'That sums up to four models:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Conception](img/5401OS_03_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Entity Relationship diagram (Min-Max notation)
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Post**: This model has the following properties: title, small description,
+    content, and publication date. A post is linked to a unique category and each
+    category has many posts, so we will add an additional column here, named `category_id`.
+    Similarly, each post belongs to a user (the author), so we will add the `user_id`
+    column.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Category**: This model only has a name property.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Comment**: This model has the following properties: name, email, status and
+    content. Since a comment belongs to a unique post and each post can have many
+    comments, we will also add a `post_id` column. When a comment is posted by a visitor,
+    its status value will be `pending`, since it has not been reviewed. The administrator
+    can publish or hide each comment by changing their status in the administration
+    panel to `published` or `not_published`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We will not generate a **User** model. We will use the one from the Auth package,
+    that will manage users and their authentication for us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preliminary steps
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'You first need to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Install a new FuelPHP instance
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Configure Apache and your host file to handle it: in this chapter, we will
+    access our application by requesting the `http://myblog.app` URL.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Update Composer if necessary
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Create a new database for your application
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: And configure FuelPHP in order to allow your application to access this database
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: These steps have been covered in [Chapter 1](ch01.html "Chapter 1. Building
+    Your First FuelPHP Application"), *Building Your First FuelPHP Application*, so
+    you might want to take a look at it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This project will also need the ORM and Auth packages. We have already used
+    the ORM package, and as written earlier, the Auth package will allow us to manage
+    our users and their authentication. Since both packages are already installed,
+    we just need to enable them. For doing this, simply open the `APPPATH/config/config.php`
+    file and insert at the end of the returned array the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Or you can uncomment the appropriate lines. This will load the `ORM` and `Auth`
+    package every time a FuelPHP instance is loaded.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You can also load a package in an ad hoc manner, using the `Package::load` method.
+    This will be addressed later in this chapter when we will use the `Email` package.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We also need to change few configuration items for the `Auth` package. First,
+    copy the `PKGPATH/auth/config/auth.php` configuration file to `APPPATH/config/auth.php`
+    (this configuration file will overwrite the one of the `Auth` package) and replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: One reason we chose to use the `Ormauth` driver is that it has a much more fine-grained
+    ACL system than the `Simpleauth` driver. `Ormauth` is more flexible and manages
+    users, groups, roles, and permissions, whereas `Simpleauth` only manages users,
+    groups, and roles. Another reason is that `Ormauth` already contains migrations
+    and models managing all these components. In a nutshell, we mainly chose this
+    driver because it is easy to set up and shows the whole scope of what is possible.
+    However, it is important to point out that we will only use a very small fraction
+    of its features and we could have limited ourselves to the `Simpleauth` driver.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, copy the `PKGPATH/auth/config/ormauth.php` configuration file to `APPPATH/config/ormauth.php`,
+    and set the value of `login_hash_salt` to a random string (for security precautions).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scaffolding the posts
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We will now, as we did in [Chapter 1](ch01.html "Chapter 1. Building Your First
+    FuelPHP Application"), *Building Your First FuelPHP Application* and [Chapter
+    2](ch02.html "Chapter 2. Building a To-do List Application"), *Building a To-do
+    List Application*, generate the necessary code to handle our posts. Since posts
+    should only be created and edited by authenticated administrators in an administration
+    panel, we will generate the scaffold using `admin` (alias `admin/orm`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The command should output the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You will notice that additional files have been created compared to `scaffold/orm`.
+    These files fall into two broad categories:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first five generated files have been generated to handle the administration
+    panel in a general manner (authentication and layout).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The other ones, except the last one, have been generated to specifically handle
+    the post administration.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You can notice that we haven't yet generated the categories and comments, we
+    will come back to that later. Our priority right now is to make the administration
+    panel work to see what we are dealing with.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Migrating part 1
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Now, execute the migration file that has been generated:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you request the URL `http://myblog.app/admin` and try to log in, an error
+    will be thrown because no table handling our users exist. To create this table
+    (and all the other ones necessary for the `Ormauth` driver), you have to execute
+    the `Auth` package migrations. This is done using the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `oil refine migrate` command allows you to specify which modules and packages
+    you want to migrate. You can even choose to execute all migrations (from your
+    applications, modules, and packages) with the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Though in our case it doesn't make any difference, be aware that it will execute
+    even migrations for packages that are not defined in the `always_load.packages`
+    key of the `APPPATH/config/config.php` configuration file. Some of you might have
+    expected this behavior, but we felt that it was an important point to stress.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The administration panel
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Once the migrations have been executed, request the following URL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`http://myblog.app/admin`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'During the migration, the `Auth` package created a default user with the following
+    credentials:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Username: admin'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Password: admin'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'If you log in using these credentials, the administration panel welcome page
+    will be displayed, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The administration panel](img/5401OS_03_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'It is very similar to the default welcome page; the major difference is the
+    upper navigation bar. As you can see in the `APPPATH/views/admin/template.php`
+    generated file, the navigation bar automatically detects controllers in the `APPPATH/classes/controller/admin`
+    folder and create links toward their index action. Since the `Controller_Admin_Post`
+    controller has been generated, there is a link toward the posts list. If you click
+    on it, you should see a CRUD scaffold pretty similar to the one generated by `scaffold/orm`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The administration panel](img/5401OS_03_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The Auth package
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'If you take a look at your database now, you should see that many tables with
+    names that are prefixed by the **users** keyword, have been created:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: users
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: users_clients
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: users_groups
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: users_group_permissions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: users_group_roles
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: users_metadata
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: users_permissions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: users_providers
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: users_roles
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: users_role_permissions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: users_scopes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: users_sessions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: users_sessionscopes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: users_user_permissions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: users_user_roles
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `Ormauth` driver of the `Auth` package manages these tables, and some of
+    them are linked to models located at `PKGPATH/auth/classes/model/auth`. As explained
+    earlier, the driver provides a much more complete solution than a simple authentication
+    system, as it manages users, groups, roles, and permissions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It is important to point out that two other drivers exist:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Simpleauth`, which is a much simpler driver than `Ormauth` and only manages
+    users, groups and roles.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Opauth`, which allows users to connect using `OAuth` or `OpenID` providers
+    including Facebook, Twitter, or Google.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: As we will use only a very small part of the package, explaining it to its full
+    extent would be out of scope. For more details, you are recommended to read the
+    official documentation at [http://fuelphp.com/docs/packages/auth/intro.html](http://fuelphp.com/docs/packages/auth/intro.html)
+    (It can be accessed through the FuelPHP website by navigating to **DOCS** | **TABLE
+    OF CONTENTS** | **Auth** | **Introduction**)
+  prefs: []
+  type: TYPE_NORMAL
+- en: It would be good practice to change your admin password, as the current setting
+    (username and password both set to `admin`) will be a major security flaw when
+    publishing your project to the production server. You can change it using the
+    `Auth::change_password` method, and for doing that you are recommended to read
+    the method's official documentation at [http://fuelphp.com/docs/packages/auth/ormauth/usage.html#/method_change_password](http://fuelphp.com/docs/packages/auth/ormauth/usage.html#/method_change_password)
+    (It can be accessed through the FuelPHP website by navigating to **DOCS** | **TABLE
+    OF CONTENTS** | **Auth** | **Ormauth** | **Usage**).
+  prefs: []
+  type: TYPE_NORMAL
+- en: We suggest that you execute this method in the console of **Oil** or inside
+    a migration file (it is better if you want to propagate the change to other instances).
+  prefs: []
+  type: TYPE_NORMAL
+- en: You could also add new users by using the `Auth::create_user` method. Note however
+    that, for the long run, creating or using a user management system could be a
+    good idea.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating the Blog module
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: By creating the post administration interface, we have now completed the first
+    step of our project. Before generating and implementing our other features, it
+    is important to remember that one additional objective is to easily install blogs
+    on other websites by reusing the same code. For doing that, we will create a blog
+    module, and this is where we should implement our code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Moving files to the Blog module
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The first step is to specify to FuelPHP where to look for modules. At the end
+    of the `APPPATH/config/config.php` configuration file returned array, add (or
+    uncomment appropriate lines):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We then need to create our blog module folders. Create a folder located at
+    `APPPATH/modules/blog` with the following subfolders:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`classes`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`classes/controller`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`classes/controller/admin`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`classes/model`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`config`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`migrations`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`views`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`views/admin`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'You can also generate all these folders using the following `oil` command line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The next step is to move the files we generated earlier to the blog module.
+    As it can be a bit long to complete (some code also need to be changed), we implemented
+    an open source task for that. The repository can be found here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/sdrdis/move_scaffold_to_module](https://github.com/sdrdis/move_scaffold_to_module)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To install this task, simply save:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://raw.githubusercontent.com/sdrdis/move_scaffold_to_module/master/movescaffoldtomodule.php](https://raw.githubusercontent.com/sdrdis/move_scaffold_to_module/master/movescaffoldtomodule.php)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Into the `APPPATH/tasks/` repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before executing the task and moving all the files, it is important to underline
+    that we will also move the `001_create_posts.php` migration file to the blog module.
+    As a consequence, the `oil` utility will consider this migration file as a new
+    one and try to execute it. We could leave it as it is; since the migration checks
+    if the `posts` table exists before trying to create it, it will successfully be
+    executed, though it won''t do anything. But the `oil` utility will have saved
+    that a `001_create_posts.php` migration has been executed in the application folder,
+    so this isn''t the cleanest solution. Since we haven''t entered any relevant post
+    right now, let''s first undo this migration by executing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then execute the following command line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The command should output (`BLOGPATH` being the path of the blog module):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: This task was created for making your life easier when implementing this project.
+    Please note, it supposes that the code was directly generated from the `oil` utility
+    and that you didn't make any changes inside it. It can certainly be improved.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hopefully, it won't be needed anymore in FuelPHP 1.8 as a `--module` option
+    might be implemented in the `oil generate scaffold` and `oil generate admin` commands,
+    allowing developers to directly generate scaffolds inside a module.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let''s execute the migration file inside the blog module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Improving the navigation bar
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'You might have noticed that, though our post administration panel can be accessed
+    by requesting the following URL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`http://myblog.app/blog/admin/post`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It doesn''t appear in the upper navigation bar anymore. If we take a look at
+    the administration template located at `APPPATH/views/admin/template.php`, we
+    can see that those links are generated by the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As you can see, the links are currently created according to files located
+    at `APPPATH/classes/controller/admin/`. However, we would like to support modules
+    by looking for files in the `classes/controller/admin` subdirectory of each module.
+    For doing this, replace this code by the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Create the helper at the location `APPPATH/classes/helper.php` and add the
+    following content (read the comments for more information):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Note that the above code supposes that all modules containing at least an admin
+    controller can be requested.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you refresh your administration panel, the **Post** link should appear in
+    the upper navigation toolbar.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'One caveat of this solution is that you have to perform the same changes on
+    each new project if you want to display the **Post** link in the navigation toolbar.
+    However, the solution is universal in the sense that, if you add other modules
+    and admin controllers, their links will automatically appear. Moreover, if you
+    don''t use this solution, you will still be able to manage posts via the following
+    URL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`http://myblog.app/blog/admin/post`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scaffolding the rest of our project
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that the post administration panel is working and inside the blog module,
+    it is time to generate our other models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scaffolding categories
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Let's first take care of the Category model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generating files
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'This step is quite straightforward; as we did previously, we will use the `oil`
+    command to generate our scaffold:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Note that we added the `-s` (`s` for skip) parameter, as some files have already
+    been generated previously and we don''t want to replace them. This command line
+    should output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: Don't launch the generated migration though; we will first move the code to
+    our blog module.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Moving categories to the blog module
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let''s use the `moveScaffoldToModule` task to move the category scaffold into
+    the blog module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The command should output (`BLOGPATH` being the path of the blog module):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Migrating
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Now we just have to execute our migration file. To do that, enter the following
+    command line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you access your administration panel, you should now be able to manage categories.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scaffolding comments
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This section is quite similar to the previous one. First, generate the scaffold:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This command should output the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, move the scaffold to the blog module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This command should output the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Before launching the migration file, we will improve it by changing the `status`
+    column type to `ENUM`, since there are only three possible values: `not_published`,
+    `pending`, and `published`. To do that, edit the `BLOGPATH/migrations/003_create_comments.php`
+    file and replace the following line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And finally, launch the migration file using oil:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: Comments should now be manageable in the administration interface.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scaffolding posts (front)
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In order to have a starting point, we are going to generate the scaffold of
+    posts for the front. We will, of course, change the controller a lot, because
+    we don't want visitors to edit and create posts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Before doing anything, check that no file has been generated at `APPPATH/views/template.php`
+    (as I write, `oil generate admin/orm` seems to generate an incorrect file at that
+    location). If that is the case, delete that file: it will be regenerated later
+    by oil.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Enter the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It should output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now move the scaffold to the blog module by entering the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should print the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that, as a migration file with as similar file name was already in the
+    blog module, the task simply removed the one in the application directory (without
+    copying it into the blog module). This is the expected behavior since a migration
+    that creates the posts table already exists in the module.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You should be able to access the scaffold by requesting the following URL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`http://myblog.app/blog/post`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Refining the administration panel
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Now that all the scaffolds have been created, it is time to refine our administration
+    panel:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As categories are very simple models (they only have a `name` attribute), the
+    **View** link doesn't give the user more information than in the listing, so we
+    will remove it. We will also display the number of posts associated with each
+    category in the categories list; it will give us an idea of the most used categories.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We don't need to create new comments inside the administration panel, so we
+    need to remove the associated links and actions. We also need to do some improvements
+    in the edition form and in the listing.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Same for the posts; we will remove most columns when listing posts, we will
+    add a WYSIWYG editor, a markdown editor and a category select box inside the post
+    creation and edition forms.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Note that there could be a lot of other improvements. You are recommended to
+    add the changes you deem necessary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Refining the posts administration panel
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Let's start with the posts administration panel. You might want to add some
+    categories for the purpose of testing. Note that you should be able to test your
+    application again at the end of each section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Improving the post creation and edition forms
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We will begin with the creation/edition form. We generated it and, as we saw
+    in the previous chapters, the view managing this form can be found at: `BLOGPATH/views/admin/post/_form.php`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Removing and automatically filling the slug
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The **slug** property should only depend on the title, and it will be used in
+    URLs for improving the SEO. Its value will be automatically filled from the title,
+    so we don't need its related field in the form. Therefore, remove the second `div`
+    with the class `form-group` along with its content (which contains the `slug`
+    input).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To automatically fill its value, we will use an observer (as for the `created_at`
+    and `updated_at` columns); `Orm\Observer_Slug`. In a model''s instance, this observer
+    takes a property value and saves its slug version into a second property. In the
+    default case, without any additional configuration, it will take the value of
+    `title` and save its slug version into `slug`. This is exactly our case, so it
+    will be pretty simple, but you are recommended to read the official documentation
+    for more information:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[http://fuelphp.com/docs/packages/orm/observers/included.html#os_slug](http://fuelphp.com/docs/packages/orm/observers/included.html#os_slug)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: (It can be accessed through FuelPHP website by navigating to **DOCS** | **TABLE
+    OF CONTENTS** | **ORM** | **Observers+** | **Included observers**)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Open the **Post** model located at `BLOGPATH/classes/model/post.php` and add
+    the following at the end of the `$_observers` property:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: Finally, we have to remove all elements related to the **Slug** field processing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, in the `validate` method of the **Post** model, remove:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, open the **Post** controller located at `BLOGPATH/classes/controller/admin/post.php`
+    and remove:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: Changing the small description input to a textarea
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'We want to change the small description input into a `textarea`, because though
+    its length is limited to 200 characters, the standard input isn''t user friendly.
+    Replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: We want to write content using the markdown syntax (take a look at [https://en.wikipedia.org/wiki/Markdown](https://en.wikipedia.org/wiki/Markdown)
+    if you are not familiar with it) and display the formatted small description in
+    our front end, but we won't need to change anything else for now since this formatting
+    process will happen in our front views. Though, you could add a JavaScript markdown
+    plugin here to make this `textarea` even more user-friendly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Editing the post content using a WYSIWYG editor
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The next form item is the content and we want to edit it with a WYSIWYG editor.
+    We just have to add a JavaScript plugin. We will use **TinyMCE**, a well-known
+    open source WYSIWYG editor.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, you will need to include the TinyMCE JavaScript file. Open the template
+    file located at `APPPATH/views/admin/template.php` and add:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: At the end of the `Asset::js` first array parameter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Note that we used the JavaScript file hosted on TinyMCE's recommended CDN at
+    the time this book was written. Depending on when you read this book and your
+    requirements, you might want to use a different URL or host TinyMCE on your servers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we need to specify to TinyMCE which `textarea` has to be transformed
+    to WYSIWGs. Inside the same template, add the following at the end of the first
+    `script` tag:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we need to add the `wysiwyg` class to our content `textarea`. Return
+    to the file located at `APPPATH/views/admin/post/_form.php`, search for `Form::textarea(''content''`
+    and inside this method call, replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: Replacing the category input by a select box
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The next item in the form is **Category id**. Setting the category id manually
+    is not user friendly for the administrator; the best would be to display a select
+    box, so that categories can be chosen by their title.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, create a view file at `BLOGPATH/views/admin/category/selector.php`,
+    and add the following content:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, back on the `BLOGPATH/views/admin/post/_form.php` view file, fix the
+    category field title by replacing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And include our select box by replacing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you test the form, the select box should be working. But there is a small
+    issue; when we created the selector view, we loaded a list of categories inside
+    the view. This isn't respecting the MVC pattern, as we are loading models inside
+    a view. But it would not make sense to load these objects inside the **Post**
+    controller, because the view doesn't actually depend on any post; we always load
+    all categories, no matter the context. As written earlier in [Chapter 1](ch01.html
+    "Chapter 1. Building Your First FuelPHP Application"), *Building Your First FuelPHP
+    Application*, we should use a presenter in that case. Luckily, we don't need to
+    make many changes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, create the presenter file at `BLOGPATH/classes/presenter/admin/category/selector.php`
+    and add the following content:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, edit the `BLOGPATH/views/admin/post/_form.php` view file to replace the
+    following line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And finally, edit the `BLOGPATH/views/admin/category/selector.php` view and
+    remove the following line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: Though we won't need them immediately, we will add the relations between the
+    post and category models. Since each post can only have one category, and each
+    category can be related to many posts, there is a `belongs_to` relationship between
+    posts and categories, and a `has_many` relationship between categories and posts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, open the **Post** model located at `BLOGPATH/classes/model/post.php`,
+    and add the following code inside the class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, open the **Category** model located at `BLOGPATH/classes/model/category.php`,
+    and add the following code inside the class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: Replacing the user_id field by author
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The last field in our form is the **user_id field**. We will replace this field
+    by an author field. This field won't be editable; the author of a post will simply
+    be the authenticated user that creates it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We first need to add the relation between posts and users; since each post can
+    only be related to a single user, and users can have as many posts as they want,
+    the relation's type is `belongs_to`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Open the **Post** model located at `BLOGPATH/classes/model/post.php` and add
+    the following at the end of the `$_belongs_to` array:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we will change how the field is displayed in the creation/edition form.
+    Open `BLOGPATH/views/admin/post/_form.php`, and first replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And then replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And finally, we need the **Post** controller to reflect that behavior. For
+    doing that, we first change how the `user_id` attribute is saved in the create
+    and edit actions. Open the **Post** controller located at `BLOGPATH/classes/controller/admin/post.php`,
+    and, inside the create action, replace the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE60]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE61]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And inside the edit action, simply delete the following line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE62]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE63]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Though, you still won''t be able to create a new post now, as the following
+    message will appear: **The field User Id is required and must contain a value**.
+    This is happening because of the **Post** model `validate` method. The remaining
+    thing to do is to remove the `user_id` validation. Open the **Post** model located
+    at `BLOGPATH/classes/model/post.php`, and remove the following line inside the
+    `validate` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE64]'
+  prefs: []
+  type: TYPE_PRE
+- en: Removing the View link
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Since we are not interested in keeping the detailed view of posts, we can remove
+    the `View` link. Open `BLOGPATH/views/admin/post/edit.php` and remove the following
+    code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE65]'
+  prefs: []
+  type: TYPE_PRE
+- en: The posts' list
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: If you have tested the form we improved to create new posts, you have probably
+    noticed that the listing is not well adapted.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Removing the Slug, Small description and Content columns
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'The first issue is that the **Slug**, **Small description**, and **Content**
+    columns are displayed, though their value''s length can be important. Since this
+    can have a terrible effect on the table layout, we will have to remove them. Open
+    the listing view located at `BLOGPATH/views/admin/post/index.php` and remove the
+    following lines:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE66]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE67]'
+  prefs: []
+  type: TYPE_PRE
+- en: Displaying the category and author names
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The second issue is that we are displaying the categories' and users' ids, though
+    displaying their associated names would be more convenient.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, change the table titles accordingly by replacing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE68]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE69]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And the following line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE70]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE71]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And change each line value by replacing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE72]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE73]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And the following line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE74]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE75]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You could leave the code as it is, since the correct information will appear
+    in the listing. But if you activate the profiler, you will notice that if you
+    have several posts, a lot of SQL requests will be executed. As we saw before,
+    this is because we are calling `$item->category` and `$item->author`, and, if
+    not cached, each call executes a SQL request. In order to optimize the number
+    of requests being made, we will use the `related` key. Open the **Post** controller
+    located at `BLOGPATH/classes/controller/post.php` and, inside the index action,
+    replace the following line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE76]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE77]'
+  prefs: []
+  type: TYPE_PRE
+- en: Removing the view link
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Since we are implementing the administration panel, we can reduce the code
+    to what is strictly necessary. The post edition and visualization is redundant,
+    since we have access to the post information when we are editing it. Thus, we
+    will remove the **View** link. Simply remove the following line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE78]'
+  prefs: []
+  type: TYPE_PRE
+- en: It is a good idea to remove the **View** action inside the **Post** controller
+    as well as the view located at `BLOGPATH/admin/post/view.php`, since they are
+    now useless code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Refining the categories administration panel
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Let's now focus on the categories administration panel. The **Category** model
+    is quite simple, so there is not much to do. As a matter of fact, we will almost
+    only change the listing page.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Removing the View link
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Since the model only has one attribute that is already displayed on the list,
+    the view link and page are not of much use. First, delete the **View** link inside
+    the view located at `BLOGPATH/views/admin/category/index.php` by removing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE79]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can then remove the **View** action inside the **Category** controller and
+    the view located at `BLOGPATH/views/admin/category/view.php`, since they are now
+    useless code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We also have to remove the **View** link inside the edition form. Open `BLOGPATH/views/admin/category/edit.php`
+    and remove the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE80]'
+  prefs: []
+  type: TYPE_PRE
+- en: Adding the number of post's column
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: One challenge of this section is to display how many posts there are for each
+    category. This is not simple and there is no ideal solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s first add our column into our table. Under:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE81]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Add:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE82]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And under:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE83]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Add:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE84]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now let's test different options.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Solution 1: using count'
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'The first solution is quite straightforward; we use the `count` method. Replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE85]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE86]'
+  prefs: []
+  type: TYPE_PRE
+- en: Though the solution is quite simple, there are major drawbacks. Firstly, it
+    doesn't respect the MVC pattern. Secondly, it will generate a request for each
+    category displayed. Don't use this if you have a lot of categories.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Solution 2: using related'
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Another solution is to use the `related` key. First, open the **Category**
+    controller located at `BLOGPATH/classes/controller/admin/category.php` and, inside
+    the index action, replace the following line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE87]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE88]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And back to the `BLOGPATH/views/admin/category/index.php` view, replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE89]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE90]'
+  prefs: []
+  type: TYPE_PRE
+- en: On the one hand, this solution limits the number of requests but, on the other
+    hand, it might load a lot of useless post instances into the memory, so this is
+    not ideal either. Don't use this if you have a lot of posts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Solution 3: using DB::query'
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Another solution is to load categories using `DB::query`. First, open the **Category**
+    controller located at `BLOGPATH/classes/controller/admin/category.php` and, inside
+    the index action, replace the following line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE91]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE92]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then add the following method inside the **Category** model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE93]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: It is possible to execute a custom query and then transform the result into
+    model's instances thanks to the `as_object` method. In this request, we add a
+    custom column, `nb_posts`, that counts the number of posts for each category.
+    This column is accessible in our categories instances under the `nb_posts` attribute.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'And back to the `BLOGPATH/views/admin/category/index.php` view, replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE94]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE95]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This solution is interesting for its performance: no additional queries or
+    memory usage. Its drawback is that it doesn''t use the ORM, and this solution
+    might be tricky to implement for more complex problems.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For this instance though, we are recommending this solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Refining the comments administration panel
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We also need to make some adjustments here. You are recommended to manually
+    add some comments now, because you won't be able to after we change the interface
+    (there would be no point in adding comments through the administration interface,
+    since any user will be able to do it on the website).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Improving the comments listing
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: First, we will improve the comments listing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Removing the view and adding a new comment link
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: As we won't need those features, we will remove their links, actions and views.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, open the `BLOGPATH/views/admin/comment/index.php` view file and remove:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE96]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE97]'
+  prefs: []
+  type: TYPE_PRE
+- en: And you are also recommended to remove the create and view action of the **Comment**
+    controller, as well as the `BLOGPATH/views/admin/comment/create.php` and `BLOGPATH/views/admin/comment/view.php`
+    files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Removing the Email and Content columns
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'We will remove these two columns because they can take too much space. For
+    doing that, open `BLOGPATH/views/admin/comment/index.php` and remove the following
+    lines:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE98]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE99]'
+  prefs: []
+  type: TYPE_PRE
+- en: Replacing the Post id column by Post
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: It would be more convenient to know the title of the post the comment is related
+    to, instead of the post's id.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE100]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE101]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And then replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE102]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE103]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'But if we want this to work, we have to define the relations between posts
+    and comments. Open the **Post** model located at `BLOGPATH/classes/model/post.php`,
+    and add the following property:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE104]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And then open the **Comment** model located at `BLOGPATH/classes/model/comment.php`,
+    and add the following property:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE105]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, you are able to display the listing again. But, you might notice that
+    if you have several comments, a lot of requests are executed. Again, we need to
+    use the `related` key to prevent that. Open the `Comment` controller located at
+    `BLOGPATH/classes/controller/admin/comment.php` and, inside the index action,
+    replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE106]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE107]'
+  prefs: []
+  type: TYPE_PRE
+- en: Improving the comment edition form
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: We will improve two fields in the comment edition form; `Status`, and `Post
+    id`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Changing the Status input to a select box
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Since there are only three possible statuses, we will replace the input by
+    a select box. Open the form located at `BLOGPATH/views/admin/comment/_form.php`,
+    and replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE108]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE109]'
+  prefs: []
+  type: TYPE_PRE
+- en: Replacing Post id by Post
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Again, displaying a post's id is not relevant for the administrator; the best
+    would be to display the post's title.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE110]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE111]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And then replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE112]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE113]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We then need to prevent any change in the `post_id` property when processing
+    the form. Open the **Comment** controller and, inside the `action_edit` method,
+    remove the following line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE114]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE115]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we need to remove the `post_id` validation. Open the **Comment** model
+    and remove the following line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE116]'
+  prefs: []
+  type: TYPE_PRE
+- en: Removing the View link
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Since there is no view action anymore, we have to remove the **View** link.
+    Open `BLOGPATH/views/admin/comment/edit.php` and remove the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE117]'
+  prefs: []
+  type: TYPE_PRE
+- en: Protecting your website against CSRF attacks
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You would certainly like to prevent hackers from changing your website content,
+    as the consequences could be disastrous. Although the risks are limited as long
+    as you are the only one to access an administration panel you implemented yourself,
+    you might want to protect your website against **Cross-Site Request Forgery**
+    (**CSRF**) attacks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'CSRF attacks are based on the trust a website has in a user''s browser. Let''s
+    illustrate these attacks with an example. Suppose you logged yourself into your
+    administration interface. If you access, a bit later, a webpage on another website
+    that contains the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE118]'
+  prefs: []
+  type: TYPE_PRE
+- en: In your website, the delete action of the **Post** controller will get called
+    and the post with `id = 1` will be deleted (if it exists), without your approval
+    or any notification. The hacker that created the webpage has then succeeded in
+    his CSRF attack by exploiting the fact that you were logged in to your administration
+    panel. It worked because your action didn't verify that the request was legitimate.
+    More advanced attacks can even submit forms, and you could then find yourself
+    with unwanted content on your website.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Luckily, FuelPHP allows you to easily protect your website by including a security
+    token in links or forms. This security token is later checked when the action
+    is called. That process ensures that the client requested the action from the
+    website, and not from somewhere else.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Protecting links
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: First, let's protect the delete links in the post listing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Open the `BLOGPATH/views/admin/post/index.php` view file and replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE119]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE120]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you refresh the webpage, the delete links should now point to a URL looking
+    like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`http://myblog.app/blog/admin/post/delete/ID?fuel_csrf_token=215be7bad7eb4999148a22341466f66395ce483d12b17cae463b7bf4b6d6d86233ce38ce6b145c08bf994e56610c1502158b32eca6f6d599a5bb3527d019c324`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that we call the delete action of the **Post** controller with the CSRF
+    token as a `get` parameter, we just have to check if its value is correct before
+    deleting the post. In order to do that, open the **Post** controller and, inside
+    the delete action, replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE121]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE122]'
+  prefs: []
+  type: TYPE_PRE
+- en: Your delete action is now protected. You should do the same with the delete
+    links of the **Category** and **Comment** administration interfaces. In general,
+    it is even recommended to add this protection to any link that executes an important
+    or critical action.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Protecting forms
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We will now use a very similar technique to protect our post creation and edition
+    forms. First, open the `BLOGPATH/views/admin/post/_form.php` view file and add:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE123]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Just after:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE124]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `Form::csrf` method will automatically add a hidden input to your form
+    containing the token. If you display the HTML code of the post creation or edition
+    webpage, you should see that this method returned a string similar to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE125]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, let's check that this token is correct before making any change to the
+    database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Open the **Post** controller and, inside the create action, replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE126]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE127]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And inside the edit action, replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE128]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE129]'
+  prefs: []
+  type: TYPE_PRE
+- en: For the sake of this section's conciseness, we do not display a special error
+    message when the token doesn't have the expected value, but you are recommended
+    to add this feature.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Anyway, your post creation and edition forms are now protected too. You should
+    do the same with the creation and edition forms of the **Category** and **Comment**
+    administration interfaces. In general, it is even recommended to add this protection
+    to all your forms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Refining the front-end
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We now have to refine the front-end of our website, that is to say what visitors
+    will see.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Refining the posts' listing
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'If you request the following URL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`http://myblog.app/blog/post`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will see the scaffold we generated earlier with `scaffold/orm`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deleting useless features
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The first important thing to do is to prevent any edition on our posts. As we
+    did several times for the administration panel, remove the create, edit and delete
+    actions of the **Post** controller and their associated views. Note that, here,
+    we are talking about the **Post** controller located at `BLOGPATH/classes/controller/post.php`,
+    since we are working on the website's front-end. You can also delete the `BLOGPATH/views/admin/post/_form.php`
+    view file, as it is only called from the create and edit views.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Changing how the posts' listing is displayed
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Currently, the posts' listing is displayed in a table and, for our blog, we
+    want to display the list more linearly, as most blogs are displayed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The simplest way is to replace the view located at `BLOGPATH/post/index.php`
+    by:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE130]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As we are displaying additional content in separated views (see comments),
+    we need to create these views. Create the `BLOGPATH/views/post/small_description.php`
+    view file and set its content with the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE131]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And create the `BLOGPATH/views/post/additional_informations.php` view file
+    and set its content by the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE132]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, in order to optimize the number of requests being made, open the **Post**
+    controller (the one for the front-end), and replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE133]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE134]'
+  prefs: []
+  type: TYPE_PRE
+- en: Adding pagination
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: If you add a lot of posts, you will notice that the list becomes very long.
+    To prevent this behavior, we will now add the `Pagination` feature.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'At the beginning of the index action of the **Post** controller, add the following
+    code in order to create a `Pagination` instance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE135]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Here, we set the main options of the `Pagination` configuration, but you are
+    recommended to take a look at the official documentation, as there are many more
+    options:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[http://fuelphp.com/docs/classes/pagination.html](http://fuelphp.com/docs/classes/pagination.html)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: (It can be accessed through FuelPHP website by navigating to **DOCS** | **Core**
+    | **Pagination**)
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you don't have a lot of posts, you can lower the `per_page` value in order
+    to test the pagination.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now when we retrieve the posts, we have to take into account the pagination.
+    Replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE136]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE137]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We need to pass the pagination instance we created to our view in order to
+    display it. At the end of the action, add the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE138]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will have the same effect as setting a `pagination` key inside the `$data`
+    parameter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Open the `BLOGPATH/views/post/index.php` view file, and under:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE139]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Add:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE140]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, if you refresh your listing page and have enough posts, you will see that
+    your pagination appears but is escaped, in the sense that it displays the HTML
+    code. This is because view parameters are escaped by default and we didn''t notify
+    FuelPHP not to escape the `pagination` parameter. Open the **Post** controller
+    again and, inside the index action, replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE141]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE142]'
+  prefs: []
+  type: TYPE_PRE
+- en: Using posts' slug
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'If you display the listing, everything should look just fine. But if you click
+    on the title of one post, the view page will be shown but the URL will look like
+    this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`http://myblog.app/blog/post/view/1`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is not great for the SEO, because we don''t use the slug we created earlier.
+    To fix that, first open the `BLOGPATH/views/post/index.php` view file, and replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE143]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE144]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that the link is pointing to the right URL, the view action has to handle
+    this new behavior. Open the **Post** controller and first replace the following
+    line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE145]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE146]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And then replace the view action''s content by:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE147]'
+  prefs: []
+  type: TYPE_PRE
+- en: Listing posts by categories
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'One interesting additional feature would be to list posts belonging to each
+    category. For instance, if we request the following URL:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`http://myblog.app/blog/post/category/1`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We would like to display posts belonging to the category with `id = 1`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The best would have been to use a slug, as we did for posts. We didn't implement
+    it for the sake of this chapter's conciseness, but you are recommended to do so.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, open the `BLOGPATH/views/post/additional_informations.php` and replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE148]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE149]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you think about it, the list of posts displayed for a category is similar
+    to the one where no category is filtered. The view and even the requests are similar.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We could have written a category action inside the **Post** controller and,
+    in that case, the index and category actions could have called a same common method;
+    this solution would have been acceptable and even recommended in most cases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'But we will take a different approach here. Since the actions have a lot in
+    common, we will reroute:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`http://myblog.app/blog/post/category/category_id`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`http://myblog.app/blog/post/index`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: And add the category processing inside the index action.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, create and open the `BLOGPATH/config/routes.php` file, and set its content
+    to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE150]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now we have to add the category processing inside our index action in the **Post**
+    controller. First, in the index action of the **Post** controler, replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE151]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE152]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE153]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE154]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can notice we used the `query` method here as it was more convenient than
+    the `find` method in this case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding indexes
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In order to optimize our website, we will add some indexes to our tables. For
+    doing that, create a migration file located at `BLOGPATH/migrations/004_create_indexes.php`
+    and set its content to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE155]'
+  prefs: []
+  type: TYPE_PRE
+- en: Don't forget to execute the migration file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Refining the posts' visualization webpage
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When clicking on a post's title in the listing page, you will see that the visualization
+    webpage is not perfect. We need to improve how it is displayed, to display the
+    post's validated comments, and to display and process the comment form.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Changing the post layout
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In order to improve how a post is displayed, open the `BLOGPATH/views/post/view.php`
+    view file and set the following content:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE156]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, if you visualize a post with a content containing HTML elements, you will
+    see that it will be escaped (you will see the HTML code). This is because any
+    parameter sent to a view is by default filtered.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The way each parameter is by default filtered can be changed in the `APPPATH/config/config.php`
+    configuration file, using the `security.output_filter` key. Its default value
+    is `array('Security::htmlentities')`, explaining why the HTML code is escaped.
+    You could change this value to `array('Security::xss_clean')` to solve this issue,
+    but you should know that it can potentially cause a performance hit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For solving that, inside the view action of the **Post** controller, add:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE157]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE158]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And, in the `BLOGPATH/views/post/view.php` view file, replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE159]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE160]'
+  prefs: []
+  type: TYPE_PRE
+- en: You should be cautious when disabling the `filter` parameter, as it can add
+    security issues. Since the posts are edited only by administrators, it is less
+    risky, but this doesn't prevent us from taking extra measures. That is why we
+    used the `Security::xss_clean` method to limit potential issues.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You are probably wondering why we set the post content in an additional unfiltered
+    view parameter, instead of just setting the `filter` parameter of `View::forge`
+    to false. The reason is that, in that case, we would have sent a totally unfiltered
+    `post` object (since all objects properties are filtered when `filter` is set
+    to true). This would have forced us to manually escape most other properties we
+    display on views, resulting in many more changes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you decide, in another case, to disable the `filter` parameter directly in
+    `View::forge`, beware of an important detail; when the `filter` parameter is enabled,
+    it escapes all passed objects' properties and therefore, changes them in the process.
+    Consequently, the objects will be irreversibly changed after any `View::forge`
+    with the `filter` parameter set to `true`. Thus, even if you set the `filter`
+    parameter to false when calling `View::forge` in the controller, your objects'
+    attributes might still get escaped if you are displaying sub views with `filter`
+    set to `true`, so be sure to disable `filter` in that case too.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding the comment form
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We also want the user to be able to post comments. To do that, we will first
+    implement the comment creation form (derived from the one of the administration
+    panel). Create the `BLOGPATH/views/comment/_form.php` view file and set its content
+    to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE161]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As mentioned earlier, it is a derived version of the comment form in the administration
+    panel, except we removed the **Status** and **Post** fields. Now, add the following
+    line at the end of `BLOGPATH/views/post/view.php` to display the form when showing
+    a post:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE162]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We now have to process it. Open the **Post** controller and, inside the view
+    action, before the following line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE163]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Add:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE164]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is derived from the generated scaffold code, so there is nothing that
+    you have not already seen. If you try to validate the comment form, you will notice
+    that the `status` validation prevents the comment object from being saved. Open
+    the `BLOGPATH/model/comment.php` model file, and replace:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE165]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE166]'
+  prefs: []
+  type: TYPE_PRE
+- en: Displaying comments
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Now that the user is able to create comments, it would be nice to display them.
+    A small correction; it would be nice to display those that have been validated
+    by the administrator. We don''t want to display all comments, but only those with
+    their `status = published`. In order to make our work easier, we will first add
+    a relation to the **Post** model that only retrieves published comments. Open
+    the **Post** model, and add the following at the end of the `$_has_many` property:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE167]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, it is also possible to add default conditions (and orders) to
+    relations. From now on, `$post->published_comments` will retrieve the post's comments
+    with `status = published`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s use this relation to display our published comments. Open `BLOGPATH/views/post/view.php`
+    and before:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE168]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Add:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE169]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, create the `BLOGPATH/views/comment/item.php` view file and set its
+    content to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE170]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notifying the author when a new comment is posted
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: As comments require a validation from the administrator, we will send an email
+    to the post's author when a new comment is posted.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will do that with the `Email` package. This package is located at the `PKGPATH/email`
+    directory. You can adapt the package configuration file by copying `PKGPATH/email/config/email.php`
+    to `APPPATH/config/email.php` and changing the returned array, depending on your
+    local configuration. You must at least set the `defaults.from.email` and `defaults.from.name`
+    values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can choose between several email drivers. The default driver is `mail` and,
+    as we could expect, simply use the `mail` PHP method. The `sendmail` driver is
+    also commonly chosen and use the open source `sendmail` utility. The `smtp` driver
+    connects to the email server using sockets. Other drivers, such as `mailgun` or
+    `mandrill`, allow you to use external services to send your emails.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You should read the official documentation at
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[http://fuelphp.com/docs/packages/email/introduction.html](http://fuelphp.com/docs/packages/email/introduction.html)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: (It can be accessed through FuelPHP website by navigating to **DOCS** | **TABLE
+    OF CONTENTS** | **Email** | **Introduction**)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: If you want to send emails from your local system, you will probably have to
+    change additional configuration files, such as `php.ini`. Feel free to search
+    the web for more information, as there are countless resources on the topic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In order to send those emails, open the **Post** controller and, inside the
+    view action, just before:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE171]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Add:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE172]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, create the `BLOGPATH/views/comment/email.php` view file and set its
+    content to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE173]'
+  prefs: []
+  type: TYPE_PRE
+- en: Clearing rejected comments
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: If your blog gets spammed and you find yourself with a lot of comments with
+    status set as `not_published`, you might want to remove all these comments to
+    clean your comments database. We could simply implement a link and an action but,
+    for the sake of the example, let's implement a task for doing that.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tasks are classes that can be executed through the command line using the `oil`
+    utility. They are generally used for background processes or cron jobs. Sometimes,
+    they can also be used for generating or modifying existing code, like the task
+    we previously used for moving scaffolds to modules.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s generate our task file using the `oil` utility:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE174]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It should output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE175]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you now open the task file located at `APPPATH/tasks/clearcomments.php`,
+    you should see the following class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE176]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `oil` utility generated a class named `Clearcomments`, with two methods:
+    `run` and `index`. Each method can be called using the `oil` utility.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following command executes the `run` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE177]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following command executes the `index` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE178]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you add a public method named `my_method`, it will also be called when executing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE179]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `run` method is the default method and can therefore be called this way:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE180]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It is possible to pass additional parameters to the task. For instance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE181]'
+  prefs: []
+  type: TYPE_PRE
+- en: In that case, the `oil` utility will call `Clearcomments::run('param_1', 'param_2')`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You should read the official documentation at:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[http://fuelphp.com/docs/packages/oil/generate.html#/tasks](http://fuelphp.com/docs/packages/oil/generate.html#/tasks)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: (It can be accessed through FuelPHP website by navigating to **DOCS** | **TABLE
+    OF CONTENTS** | **Oil** | **Generate**)
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[http://fuelphp.com/docs/general/tasks.html](http://fuelphp.com/docs/general/tasks.html)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: (It can be accessed through FuelPHP website by navigating to **DOCS** | **TABLE
+    OF CONTENTS** | **FuelPHP** | **General** | **Tasks**)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Replace the class content by the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE182]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, if you run:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE183]'
+  prefs: []
+  type: TYPE_PRE
+- en: It should delete all rejected comments.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can execute this task manually or you can set up a cron job to execute it
+    regularly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additional improvements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Many additional improvements are possible. Some edge cases need to be handled:
+    for instance, try to successfully display the administration panel when post or
+    categories are deleted. You can set the route configuration so that your welcome
+    page shows your posts'' listing. When visualizing a post, you can optimize the
+    SQL requests being sent, by using the related parameter. You could even send an
+    e-mail to all commenters when a new comment is being posted, and allow them to
+    unsubscribe if they want to. You should add the improvements you deem necessary,
+    this can only have a beneficial effect on your FuelPHP skills.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have one additional suggestion about modules. In this chapter, for the sake
+    of simplicity and conciseness, we created a single module, blog, to manage posts,
+    comments and categories. Yet, depending on the website, developers might want
+    to disable (for instance, disable comments), change these features or even add
+    new ones.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We could handle this issue by creating a configuration file defining whether
+    or not a specific feature should be enabled, or the way some features should operate.
+    It can do the trick but, if your module accumulates many features, your code could
+    become unmaintainable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A better way to solve this issue is to create several smaller modules that handle
+    each feature. After all, comments can also be used on product pages, for instance.
+    There can also be multiple ways to display a list of posts, so separating models
+    and controllers/views into distinct modules can also be a good idea. You should
+    always aim for simple and small modules that interact with each other, instead
+    of a big module that does everything.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we have built a complex project with many features. By trying
+    to make the code as maintainable as possible (by using modules for instance),
+    we have provided a snapshot of how projects should be implemented so that adding
+    new features remains easy. We have also addressed some common ORM issues, learnt
+    how to easily paginate a listing, and used the Auth and Email packages. You certainly
+    don't know everything about the FuelPHP framework, but implementing most projects
+    should not be a problem for you now.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, you will learn how to add reusable features by installing
+    an external package as well as creating your own.
+  prefs: []
+  type: TYPE_NORMAL

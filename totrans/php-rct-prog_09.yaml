@@ -1,0 +1,1041 @@
+- en: Chapter 9. Multithreaded and Distributed Computing with pthreads and Gearman
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We've spent quite some time with pthreads in the previous chapter. However,
+    we haven't seen them used in any practical applications. That's what we're going
+    to do in this chapter where we'll wrap pthreads with RxPHP to hide their internal
+    implementation details and to make thread pools easily reusable in any RxPHP application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Apart from pthreads, we'll take a look at distributing jobs across multiple
+    workers locally or on multiple machines. We'll use the Gearman framework and its
+    PHP bindings to make the same application as we'll do with pthreads, just instead
+    of running it in multiple threads we'll use multiple workers (independent processes).
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we're going to write an extendable code quality tool to test
+    various style checks in PHP scripts. For example, this can be not using assignments
+    in conditions, or just variable names following certain coding standard. PHP projects
+    tend to grow very large these days. If we wanted to analyze every file in a single
+    thread, it would take a very long time, so we want to run the analyzer part in
+    parallel if possible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In particular, this chapter will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Quick introduction to the PHP Parser library and how can we wrap its parser
+    with an RxPHP operator
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Wrap pthreads `Pool` class with our custom operator that'll receive `Thread`
+    classes and run them in parallel automatically
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Write a `Thread` class that'll run PHP Parser in a separate thread
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Introduce the Gearman framework and write a very basic client and worker in
+    PHP. We'll also see how to run clients and workers using just Gearman's CLI options
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Distribute PHP Parser tasks across multiple Gearman workers
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Compare single process multithreaded applications with a distributed Gearman
+    application
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We'll go through the PHP Parser library very quickly because our main interest
+    is mostly in pthreads and the Gearman framework.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, we'll spend some time writing the `PHPParserOperator` class, which
+    will combine many of the things we've learned in the previous chapters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introduction to the PHP Parser library
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: PHP Parser is a library that takes a source code written in PHP, passes it through
+    a lexical analyzer, and creates its respective syntax tree. This is very useful
+    for static code analysis, where we want to check our own code not only for syntactic
+    errors but also for satisfying certain quality criteria.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we'll write an application that takes a directory, iterates
+    all its files and subdirectories recursively, and runs each PHP file through the
+    PHP Parser. We will check only for one specific pattern; that is enough for this
+    demo.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We want to be able to find any statement where we use the assignment inside
+    a condition. This could be any of the following examples (this time we''re also
+    including line numbers for clarity):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: All this is of course a valid PHP syntax, but let's say we want to make our
+    code easy to understand. When your application is not behaving as you'd expect
+    and you don't know how you might spot any of the preceding examples, then you
+    would not be able to say at first sight whether this is intentional or you're
+    just missing one equals sign. Maybe you wanted to write a condition such as `if
+    ($a == 1)` and you just forgot one `=`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This can be easily spotted and reported by the static code analyzer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, let's start by first trying the PHP Parser library itself and then wrap
+    it with the RxPHP operator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the PHP Parser library
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Before we start, we need to install the PHP Parser library. As usual, we''ll
+    use the `composer` for this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The easiest use case is just taking the source code we want to analyze and
+    process it with the parser:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output from this script is going to be a very long nested tree structure
+    representing the code we passed to the parser:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can see that the `if` statement has a property called `cond` that contains
+    the parsed condition, which is an instance of `Expr\Assign`. In fact, all the
+    statements we're going to test have the `cond` property, so testing whether they
+    contain an assignment in condition is going to be relatively simple. The only
+    exception is the `for` loop, where the condition might have multiple expressions
+    separated by the comma `,` character.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since the syntax tree is a nested structure, we'll need some way to iterate
+    it recursively. Fortunately, this is supported by the library out of the box via
+    the `NodeTraverser` class and by registering custom visitors. Visitors are classes
+    with multiple callbacks that are called when the tree traverser starts/ends processing
+    the entire tree or enters/leaves a single node.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will make a very simple node visitor that checks for the node type and eventually
+    the `cond` property. This is a way we can spot all the assignments inside conditions
+    and print their respective line number from the source PHP script.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consider the following code. This will also be part of the custom operator
+    that we''ll write later:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, we're checking each node type with multiple `instanceof` statements
+    and their respective `cond` properties. With the `for` statement, we need to check
+    the array of the `cond` statements but the rest is analogous.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Every time we spot our tested style check, we just print the line number so
+    that the preceding example will print the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can see that the line numbers really match the source file we presented earlier.
+    This is all nice but not very helpful when we want to use it with RxPHP or, even
+    more interestingly, with pthreads.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing PHPParserOperator
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: If we wanted to process multiple files, we could just run the parser multiple
+    times. But what if we wanted to have better control over what files are going
+    in, or we wanted to make the preconfigured parser with our custom node visitor
+    easily embeddable into any RxPHP application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, let''s assume we want to use the PHP Parser library in the following
+    way:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: We have a typical RxPHP chain of operators where we lifted `PHPParserOperator`.
+    This class takes in its constructor an array of classes that will be added as
+    node visitors to its internal `NodeTraverser`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As an input, we're using a primitive array of filenames that'll be emitted by
+    the source Observable. The observer will then receive just an array of code style
+    violations reported by each of the visitor classes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before writing the operator itself, we should first take a look at how to modify
+    the visitor class from the previous example. Since we want to be able to add any
+    number of custom node visitors that can check anything they want, we need to be
+    able to collect all their results and re-emit them as a single value by `PHPParserOperator`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing AssignmentInConditionNodeVisitor
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can start by defining an interface that all our node visitors have to implement:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The one requirement for a node visitor is to return an Observable where it''ll
+    emit all code style violations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: This node visitor uses a Subject internally and in the `emitNext()` method it
+    emits every code style violation as a single item. This item is an associative
+    array itself that contains the line number and the well formatted expression that
+    caused the violation (to make it obvious to the user why it's reported). The `PrettyPrinter`
+    class is a part of the PHP Parser library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This `Subject` class also needs to emit a `complete` signal when we're done
+    with this syntax tree. That's in the `afterTraverse()` method. Calling the `complete`
+    signal is very important to let other operators work with this `Subject` properly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since we need to expose this `Subject`, we need to be sure nobody else can manipulate
+    with it so we wrap it using the `asObservable()` operator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing PHPParserOperator
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: This operator will hold a single reference to the PHP Parser that we'll invoke
+    for every file that comes to this operator. This also means that we'll need to
+    create a new instance of the `NodeTraverser` class for each file and add new instances
+    of each custom node visitor to it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: From the operator's point of view, all node visitors are just Observables that
+    emit style violations. The operator needs to collect all values from all of them
+    and then reemit this collection as a single item.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll split this example into two smaller chunks. First, we''ll have a look
+    at the creation of the `NodeTraverser` instances filled with node visitors:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: We keep an array of class names for node visitors in the `$traverserClasses`
+    property. When we want to create a new `NodeTraverser`, we iterate this array
+    with the `array_map()` function and instantiate each class. Then we not only add
+    it to the traverser but we also take its Observable (returned from the `asObservable()`
+    method) and chain it with the `toArray()` and `map()` operators.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `toArray()` operator collects all items emitted by the source Observable
+    and re-emits them as a single array when the source completes. This is why we
+    had to be sure we properly called complete in the `AssignmentInConditionNodeVisitor`
+    class. We also used `map()` to emit the final collection of violations with the
+    class name that generated them. This isn't necessary, but for practical reasons
+    we want to be able to tell what node visitor generated these results (or, in other
+    words, what style violations are in this collection).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `createTraverser()` method returns two values: the `NodeTraverser` instance
+    and an array of Observables returned from each node visitor.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The rest of `PHPParserOperator` is where the actual subscription happens:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'First of all, we''re using `CallbackObserver`, which just passes through all
+    `error` and `complete` signals. The interesting things happen only in the anonymous
+    function `$onNext`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We're expecting each item to be a string representing a file path. We read the
+    content of the file with the `file_get_contents()` function to get the source
+    code we want to analyze.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Then, we call `createTraverser()`, which returns a new instance of `NodeTraverser`
+    and also an array of Observables, where we'll get all the style violations. These
+    are already wrapped with `toArray()` and `map()` as we saw earlier.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We're creating a new `ForkJoinObservable` and passing it the array of Observables
+    from the previous call. We implemented this Observable in [Chapter 5](part0043_split_000.html#190861-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 5. Testing RxPHP Code") , *Testing RxPHP Code*. The `ForkJoinObservable`
+    class subscribes to all its source Observables and remembers only the latest value
+    emitted by each one of them. When all the source Observables are complete, it
+    reemits all the values as a single array. We know all the sources will emit just
+    one value and then complete, thanks to the `toArray()` operator.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We're not interested in node visitors that didn't emit any violations, so we
+    remove them from the result in the `map()` operator.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the end, we just subscribe the observer itself to this chain. Note that we're
+    purposely not using just `subscribe($observer)` because this would reemit everything
+    including errors and complete signals. The Observable chain we created will complete
+    immediately after emitting its single value thanks to `ForkJoinObservable`, which
+    is what we don't want. Have a look at the previous chapter where we talked about
+    sharing a single instance of Subject and what unexpected results it might produce.
+    The same reasons apply here as well.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: After all this, we just run the `traverse()` method that analyzes the source
+    code and, thanks to our custom node visitors with Observables, will emit all violations
+    that'll be gathered in `ForkJoinObservable`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This was a pretty complex operator with a sophisticated behavior. If we go back
+    to the example where we showed how we want to use this operator, we can see that
+    all this logic is effectively hidden from us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When we run the original example that we used earlier, we''ll get the following
+    result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: Each item coming from this operator is a series of nested arrays. We can see
+    the filename we analyzed and the array of results, where each items is generated
+    by one node visitor. Since we have just one result, we also have just one array
+    here. Each result is marked by the node visitor class name and a list of violations.
+    Each violation contains the line number and the exact expression where it occurred.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is all nice but how long would it take to analyze a larger project such
+    as the Symfony3 framework? Right now, Symfony3 (without third-party dependencies)
+    has over 3200 files. If processing a single file would take just 1ms, then analyzing
+    the entire project would take over 3s (in fact, processing would take much longer
+    just because of so many filesystem operations).
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, this looks like a prime example where we could utilize our knowledge of
+    multithreaded programming in PHP with pthreads.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing ThreadPoolOperator
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We're going to write a universal operator that receives jobs represented by
+    `Thread` class instances from its source Observable. Then, it'll submit them to
+    an internal instance of the `Pool` class that we saw in the previous chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In fact, this example with pthreads is going to be entirely built on all the
+    things we've learned in the previous chapter, so we won't recap them here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: This example is also going to use PHP7 syntax in some situations since pthreads
+    v3 works only with PHP7 anyway.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For this operator, well internally use an event loop. In RxPHP, this means
+    we''ll use the `StreamSelectLoop` class wrapped with a `Scheduler` class. Let''s
+    see the source code for `ThreadPoolOperator` and then talk about why it''s implemented
+    like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: The constructor for `ThreadPoolOperator` takes the same arguments as the constructor
+    for the `Pool` class that is created right away. The interesting things take place
+    in the `__invoke()` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Every item that arrives to this operator is sent to the thread pool with the
+    `submit()` method. This means that `ThreadPoolOperator` can only work with items
+    represented by the `Thread` class from the pthreads extension (and of course all
+    classes extending this class).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Internally, we use the `Scheduler` class to periodically call a callable that
+    will check the thread pool for threads that have finished and are ready to be
+    collected. This is the same `collect()` method we saw in the previous chapter.
+    However, in this implementation we're making only a single check in every iteration
+    of the callable. There's one very important reason why we want to use it this
+    way. We know that we can use the `collect()` method in a loop that runs as long
+    as there are tasks scheduled to be run.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The loop typically looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is of course correct. The only problem is that this call is blocking. The
+    interpreter is stuck in this loop and doesn't let us do anything else. If we wanted
+    to use such a loop and at the same time read data from a stream via `StreamSelectLoop`
+    (see [Chapter 6](part0050_split_000.html#1FLS41-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 6. PHP Streams API and Higher-Order Observables") , *PHP Streams API
+    and Higher-Order Observables*), we wouldn't be able to receive anything as long
+    as this loop is running. Another example that wouldn't work if we used just this
+    `while` loop could be `IntervalObservable` , which needs to schedule timers itself.
+    These wouldn't be triggered until this loop is ended.
+  prefs: []
+  type: TYPE_NORMAL
+- en: That's why we're periodically scheduling a 10ms timer to run `collect()` just
+    once and then let other timers or streams be handled. The finished threads are
+    kept in the `Pool` class until we read and reemit their results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This implementation has one very important behavior. Since it is running all
+    tasks in parallel and completely independently of the rest of the Observable chain,
+    we need to be aware when we send the `complete` signal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consider the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this example, the `ThreadPoolOperator` class receives three instances of
+    `MyThread` that'll be submitted to the `Pool` instance, but it also receives a
+    complete signal. This complete signal is immediately passed to its observer that
+    unsubscribes before any of the threads are finished and emit any value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: At the same time, `ThreadPoolOperator` can't decide for itself when you want
+    to send the `complete` signal. Sometimes when the thread pool is empty and there
+    are no tasks running. Other times we might want to start threads based on PHP
+    stream activity that can happen at any time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: That's why we don't send `complete` signals automatically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing PHPParserThread
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Now we can take a look at how the actual parser task is going to be implemented.
+    We already know that it needs to be represented by a class extending the default
+    `Thread` class from the pthreads extension and we also know that we're going to
+    process files using the PHP Parser, so we can reuse the `PHPParserOperator` class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before we do that, we should define some common behavior for all `Thread` objects:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: All tasks we want to run with `ThreadPoolOperator` need to extend this abstract
+    class that defines some common methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Notice that we don''t have a setter method for the `$result` property. This
+    is intentional and we''ll see why when we look at the implementation of `PHPParserThread`
+    that we will use in this application:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, we're using typecasting for the exact same reasons as described
+    in the previous chapter. Also notice that we're wrapping the input file with an
+    array. Since we want to make this class reusable, we'll support both passing a
+    single file and an array of files. We're initializing the `$result` property with
+    an empty array that's automatically converted to a `Volatile` object by pthreads
+    (again, for more information refer to the previous chapter). For this reason,
+    we need to keep track of the number of items already persistent by ourselves with
+    the `$last` variable. Also, notice that our result is always going to be an array,
+    even when processing just a single file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: At this point, we need to be aware why not to use any setter method for `$result`.
+    In the previous chapter, when talking about `Volatile` objects, we said that pthreads
+    automatically convert arrays to `Volatile` when assigning to a property in any
+    class extending the `Threaded` class. For this reason, we can't use a setter because
+    we wouldn't be able to force typecasting to array with `(array)`. This automatic
+    conversion happens on assignment, so we'd have to force all results in `AbstractRxThread`
+    to be arrays or leave it to the automatic conversion, which is something we definitely
+    don't want.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To be extra clear about this issue, let''s consider the following setter method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: The assignment happens inside this function where we don't want to force using
+    arrays with `(array)` typecast. We might want to use a simple string or an integer,
+    for example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So this was our `PHPParserThread` class that we'll use in this example. There's
+    actually one more issue.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a new thread with pthreads means we're internally creating a new PHP
+    interpreter context. The only classes and functions this new context knows are
+    those built into the PHP interpreter itself. This new context has no idea what
+    `Observable` or `PHPParserOperator` classes are.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Just like we include the `autoload.php` Composer autoloader script when running
+    any PHP application, we need to do this for every new thread we create. Since
+    we don't want to do this every time we use `PHPParserThread`, we can make use
+    of a custom worker that'll do it for us in its `run()` method. This `run()` method
+    is called when spawning a new interpreter context and lets us initialize it by,
+    for example, including the `autoload.php` script.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing PHPParserWorker
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'For the sake of simplicity, we''re not defining our classes in namespaces and
+    usually just including them with the `require_once` keyword, such as in the following
+    example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: For this reason, we need to tell the autoloader created inside each worker where
+    to find such classes ideally without relying on the `require_once` statements.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our worker will be a simple class (based on the official example on how to
+    use Composer''s autoloader with pthreads at [https://github.com/krakjoe/pthreads-autoloading-composer](https://github.com/krakjoe/pthreads-autoloading-composer)
+    ):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: This worker uses `require_once` to register the autoloader, where we add a few
+    class paths. The initialized interpreter context will be used by all `Thread`
+    instances ran by this worker.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, we can put all this into a single Observable chain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Running PHP Parser in a multithreaded application
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'First, we will test all the classes we made right now on processing the same
+    sample file as earlier and then move to recursively processing directories from
+    the Symfony3 project:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This example is using all three classes for multithreading that we created
+    in this chapter. Let''s see what happens in this operator chain step by step:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have a single source Observable that emits the filename as its value. Notice
+    that we're purposely not sending the complete signal.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Then we use map to turn all filenames to instances of the `PHPParserThread`
+    class.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The `ThreadPoolOperator` class is fed with tasks it has to run.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We've mentioned already that all results from `ThreadPoolOperator` are returned
+    as arrays even when we processed just a single file. For this reason, we use `flatMap()`
+    to reemit its values and flatten the result. Also we need to typecast the result
+    from `Volatile` to an array.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We didn't send the `complete` signal from the source on purpose. However, we
+    know that we processed only one file and therefore we're expecting only one item
+    to be emitted. So we can use `take(1)` to send the `complete` signal for us and
+    the observer will unsubscribe successfully, which will stop the event loop as
+    well.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We can run this example and see that it returned exactly the same result as
+    the original version with just `PHPParserOperator`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Although most of our CLI applications in this book are based on the Symfony
+    Console component, this time we don't even need it since the entire application
+    can be written as a single operator chain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this example, we spawned two workers even though we wanted to process just
+    a single file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The question is what will be the difference if we try to process multiple files
+    in parallel. For this reason, we''ll create a Symfony3 test project that contains
+    literally thousands of PHP files we can test:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following example will work just like the previous one. This time, however,
+    we''ll make a recursive iterator that walks through all subdirectories and emits
+    all PHP files it finds. We can write this all as one large operator chain:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is the longest operator chain we've written in this book. The main thing
+    that has changed is the source emitting filenames that we want to analyze. We
+    have two different iterators, where both of them return `SplFileInfo` objects.
+    We know how many files we want to test in total, so we can avoid emitting redundant
+    values with the `take()` operator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we spoke about backpressure in the previous chapters, we mentioned the
+    `bufferWithCount()` operator that stacks values and then reemits them in a single
+    array. This comes very handy now where we don't want to create a task on the thread
+    pool for every single file and rather emit them in batches.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the end, we also used `filter()` to ignore all the results that don't have
+    any violations. Of course, we're interested only in files that have at least one
+    violation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An important part of this example is that it measures how long it took to run
+    this entire application (from the initial subscription until disposing `CallbackDisposable`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we run this code, we''ll see a large list that looks similar to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The line reported contains the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is really a code style that we wanted to be able to report.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now comes the important question, what is the effect of running the analyzer
+    in multiple-threads? We can make a couple of reruns with settings such as `1`,
+    `2`, `4`, and `6` threads. To get more relevant results, we can increase the number
+    of files processed to 1,000 and also disable the `xdebug` extension that otherwise
+    slows down the execution significantly. On average, the times were as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: As we can see, increasing the number of threads starts to be counterproductive.
+    These times were measured on 2, 5 GHz Intel Core i5, which is a dual-core processor
+    with an SSD hard drive. The result for a higher number of threads would probably
+    be better with a non-SSD hard drive because each thread would have to spend more
+    time loading file contents, which would allow other threads to execute in the
+    meantime.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We almost reached half the time of running just a single thread, which is a
+    realistic expectation. On a dual-core processor and with the overhead generated
+    by RxPHP and PHP itself, this is an expected result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can have a look at the output of the `htop` command that shows the current
+    CPU usage to prove that both cores are fully utilized:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Running PHP Parser in a multithreaded application](img/00032.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Current CPU usage when running threads_php_parser_02.php example
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `htop` tool is showing four cores because there are two hardware threads
+    per core (it's in fact just a dual-core processor).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Running the parser in parallel in a single process by just utilizing pthreads
+    is pretty efficient.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our use case can be generalized as simply splitting a job among multiple workers.
+    We don't really care what protocols we'll use or how the distribution is going
+    to happen. We don't even care about what worker will process a particular batch.
+    We just need to get the job done.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is an ideal use case for Gearman.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introduction to Gearman
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Gearman is a framework for distributing work among multiple processes and machines.
+    Due to its functionality, it can serve as a manager, load balancer, or interface
+    between different languages with no single point of failure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since this book is about Rx/reactive/asynchronous programming, we're going to
+    cover Gearman fairly quickly. Needless to say, Gearman is very easy to set up
+    and use.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Gearman PHP extension is written in the C language, so we need to install
+    it via PECL or a package manager relevant to your platform (refer to [http://gearman.org/download/](http://gearman.org/download/)
+    for more information).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Gearman's name is an anagram of the word "Manager" and it pretty well captures
+    its purpose. Gearman doesn't do the work itself. It just receives a task (also
+    referred to simply as a job) from a client and delegates it to an available worker.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The structure of any Gearman application is easily understood from the following
+    diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Introduction to Gearman](img/00033.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Diagram from the official Gearman documentation (http://gearman.org/)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Every Gearman application has the following three main components:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Gearman Job Server**: This is usually run as a daemon that accepts tasks
+    from clients and delegates them to workers. It''s written in C (originally in
+    Perl) and doesn''t do any work by itself. It''s also able to keep the current
+    tasks queue persisted in a database so it can be restored on failure.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Client**: This is any application in any language that needs some job to
+    be done. This can be a web application that needs to send an e-mail or a CLI application
+    that needs to run static analysis on a couple of files. The client doesn''t do
+    the job by itself. It sends a message to the job server and either waits until
+    it''s done or just waits for confirmation from the job server that it was added
+    to the queue.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Worker**: This is the part that actually does the job delegated by the job
+    server. It can be written in any language as well. It contains a list of functions
+    that it''s able to perform and based on that the job server assigns the work it
+    needs to do.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: So in order to start using Gearman, we need to have the job server part installed
+    and running on our system; it's usually called **gearman** or **gearmand**. You
+    can find the instructions how to install and run Gearman for your platform at
+    [http://gearman.org/download/](http://gearman.org/download/) .
+  prefs: []
+  type: TYPE_NORMAL
+- en: String strlen client and worker
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We can create a very simple application, where we'll have a worker that takes
+    a string and returns its length. The client in this case will just send a string
+    to the job server requesting to get the length back.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our client is going to be pretty simple. It''ll just request a job, `strlen`,
+    to be done and then wait until it receives a response from the job server:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: Our client connects to a single job server and sets a three-second timeout.
+    If it doesn't receive a response within this time, then it continues executing
+    the rest of the script. We're using a single server, but we can have multiple
+    job servers running on different machines, and if any of them crash, clients will
+    continue with the other ones. This makes the system fault tolerant. Also, notice
+    that our client is blocking.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We're requesting a job to be done using the `doNormal()` method, where we need
+    to specify the name of the job we want to do and all the data the worker needs
+    in order to complete it. Apart from `doNormal()`, there are also methods such
+    as `doLow()` and `doHigh()` that request the job with a different priority.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Typically, when we want to run a job, we want to know its result. For example,
+    in this case, we wanted to wait to get the string length back. In some situations,
+    we just want to schedule a job, but we're not interested in when it happens and
+    what its result is. A typical use case is a web application where a user registers
+    and we want to send them a confirmation e-mail. We don't want to slow down the
+    page load by waiting until the e-mail is sent.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For this reason, the `Client` class also has the `doBackground()` method (with
+    their higher and lower priority variants). This method sends the request to a
+    job server and only waits for confirmation that it was received. The client is
+    not interested in when it'll be executed and with what result. If we refer to
+    the previous use case with a web application and sending confirmation e-mails,
+    it doesn't matter whether the e-mail is sent right now or after 10 seconds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The worker script will wait for jobs from the job server, execute them, and
+    return the result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: Usually, the worker runs in a loop and therefore is blocking as well. We connect
+    to the same job server as the client and define a single function called `strlen`.
+    This is the same name that the client specified when requesting a job. The value
+    returned from the callable will be sent back to the client automatically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we can test this example. Before running either the client or the worker,
+    we need to start the Gearman job server:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can use the `verbose` option to make the process more talkative. Without
+    specifying any other options, the job server will listen on port `4730`, which
+    is used by the PHP extension as well, so we don't need to configure anything.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then, we'll run both the worker and the client. It doesn't matter which one
+    we run first. Our client waits for three seconds before the timeout expires, so
+    we can run it first and the pending job will be queued by the job server until
+    there's at least one worker available to execute this job.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The console output after we run both the client and the worker will look like
+    the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The worker is, in fact, running in a loop, so after processing this job, it''ll
+    wait for another one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: The client just receives the response and ends.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'What''s sometimes useful is that the Gearman CLI also contains a `gearman`
+    application that can run as a client or worker. In our example, we didn''t have
+    to write a worker at all and could simply run the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: This command creates a worker that connects to its default settings (localhost
+    on port `4730`). With `-w`, we told Gearman that we want to start a worker, and
+    with `-f strlen`, we defined what function it handles. Then, when it receives
+    a new job, it spawns a new subprocess and runs `wc -c`, where it feeds the workload
+    as a standard input. So, this command is a drop-in replacement for our PHP worker.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Of course we can run multiple workers at the same time on the same machine.
+    Each worker can handle multiple different functions. The job server is responsible
+    for deciding what worker is going to process each job.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Running PHP Parser as a Gearman worker
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We've already seen how to run our `PHPParserOperator` in multiple threads. We
+    can, however, run it in multiple processes more easily than in threads by writing
+    a Gearman worker that runs `PHPParserOperator` internally.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The worker will be very simple. It''ll just receive the filename it needs to
+    load and analyze, and then return the result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: The main difference is that we're not using any return statement in the callable
+    for the `phpparser` function. Since everything is asynchronous in RxPHP, we need
+    to use the `sendComplete(...)` method to send the result to the client and mark
+    the job as done.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When we run this worker, it won''t print any output to the console:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then we can test it right away, without writing any client application, and
+    just use the CLI command as a client:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can see that the console output is the same as we saw previously when testing
+    the `PHPParserOperator` operator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `-f phpparser` tells `gearman` what function we want to run, and with `-s`
+    we can skip reading from the standard input and just pass the string as a workload.
+    At the end, we used `json_pp` to pretty print the output to make it more readable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Of course, we're running this example on the same machine and in the same directory,
+    so we don't need to worry about correct file paths. In a real-world application,
+    we'd probably send the file content instead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This was a fairly quick introduction to Gearman. As we can see, using Gearman
+    is very easy. Actually, in PHP it's much easier to use Gearman than using the pthreads
+    extension to run jobs in parallel.
+  prefs: []
+  type: TYPE_NORMAL
+- en: From our perspective, it's important to know that Gearman applications are usually
+    blocking, so everything we mentioned about running multiple even loops in [Chapter
+    6](part0050_split_000.html#1FLS41-bd355a22cf10407cb10df27e65585b8d "Chapter 6. PHP
+    Streams API and Higher-Order Observables") , *PHP Streams API and Higher-Order
+    Observables*, is very relevant here as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you want to read more about Gearman, head over to their official documentation
+    with examples at [http://gearman.org/manual/](http://gearman.org/manual/) .
+  prefs: []
+  type: TYPE_NORMAL
+- en: Comparing pthreads and Gearman
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The main difference between using pthreads and Gearman is obviously whether
+    we're running a single process with multiple threads or just one process multiple
+    times.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The advantages and disadvantages of pthreads were partly covered in the previous
+    chapter and also here. Having completely separated PHP interpreter contexts makes
+    things a little non-intuitive (for example, using autoloaders and yet again sharing
+    data between contexts) and definitely requires more debugging than the same single-threaded
+    equivalent. However, if we're willing to spend the necessary time with it, the
+    performance benefits are significant and at the end running a single process is
+    always easier than taking care of multiple processes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Gearman is designed to delegate work from clients to workers and send the results
+    back to clients, if necessary. It's not supposed to be a general message exchanging
+    framework. Thanks to this very specific focus, using Gearman is very easy. With
+    workers, we don't care who, where, and sometimes not even when the work will be
+    done. This is all up to the job server to decide.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In terms of scaling, threads are not a real option here. On the other hand,
+    scaling with Gearman is simple. Just add more workers and Gearman will distribute
+    the load evenly between them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we wanted to use some more adaptable frameworks, then RabbitMQ or ZMQ would
+    be some good options. These are designed to be easily optimizable, for example
+    by disabling acknowledge messages or using the publish/subscribe pattern, and
+    overall provide more flexibility than Gearman. However, more effort is definitely
+    required to implement these properly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The purpose of this chapter was to use multithreaded and distributed computing
+    on a practical example that also involves RxPHP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We used PHP Parser library to make static code analysis of PHP scripts. We wrapped
+    the parser with the RxPHP operator and ran it in parallel in multiple threads
+    using the pthreads extension and in multiple workers with Gearman.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also saw how we can make thread pools reusable in RxPHP by wrapping them
+    with `ThreadPoolOperator`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next chapter will cover topics that didn't fit into any of the previous
+    ones, and show some interesting and advanced use cases for RxPHP.
+  prefs: []
+  type: TYPE_NORMAL

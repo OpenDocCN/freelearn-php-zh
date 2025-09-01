@@ -1,0 +1,1033 @@
+- en: Chapter 4. Isolated Component Testing with PHPUnit
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we will take a closer look at **PHPUnit** and how it is handled
+    by Codeception.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will start with a brief introduction of the changes that we need to perform
+    before getting into the actual tests, and from there, go through the red, green,
+    and refactor phases to implement the tests and our code and refactor where needed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will introduce basic topics such as testing in isolation, integration tests
+    of the components, and more advanced topics such as **data providers**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following topics are covered in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding the work to be done
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using the `User` model
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implementing the first unit test
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Component testing of the model
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implementing the `ActiveRecord` class and its methods
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Seeing test passing
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Understanding the work to be done
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the scope of our work, we're going to introduce PHPUnit by first discussing
+    the `User` model, how the authentication method works in Yii, and how it's going
+    to be used in our specific case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After that, we will sketch our tests to cover all possible uses of the `User`
+    class, refactor the model, and then aim to get the test passed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The current state of the framework that we have installed is not good enough
+    for the features we want to implement.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As underlined in the previous chapters, we're going to follow a TDD approach
+    for this first part.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the User model
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Let's start by having a look at how the `User` model is used in Yii.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can open the file located at `/models/User.php`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first thing to notice is that the `User` class extends from a generic Yii
+    `Object` class and implements `IdentityInterface`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `yii\base\Object` class is the parent class of all classes, which implements
+    the concept of virtual attributes, with the use of dynamically invoked getters
+    and setters, while `yii\web\IdentityInterface` provides the signature for methods
+    we need to implement in our class to provide the authentication mechanism.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will also notice by the private property `$users` that the model does not
+    connect to a database; instead, it holds all the authentication data within the
+    class itself. This has been done on purpose by the Yii developers, in order to
+    have everything working without additional effort. This not only alleviates the
+    problem of massive refactors in case you're not using any authentication in your
+    app, but it's also a good starting point if you need to learn how the authentication
+    works.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Authentication in Yii is not particularly straightforward, and a lot of the
+    mechanism for authenticating a user is kept hidden from us; so, unless you need
+    to implement some level of robustness in your application, you don't normally
+    have to worry too much.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Instead, what is important to notice is that the authentication information
+    is kept in an object, separate from the `User` model. This mechanism provides
+    a separate and clean layer of security. From here, the authentication status is
+    kept into a dynamically loaded class of the `\yii\web\User` type, which is accessible
+    throughout the whole life of the application via `Yii::$app->user`. For instance,
+    to check whether the user is logged in, we can do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is actually used in several views, and it's clearly similar to what was
+    happening before in Yii 1.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Having both static and private properties, as is the case with the `$users`
+    variable in the `User` class, could make the job of testing our class quite hard,
+    if not impossible, at times.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is another reason why we need to modify the way it's defined entirely,
+    and instead, the `User` class is extended from the `ActiveRecord` class and deals
+    directly with the database. With this, we can make use of the fixtures that we
+    can control without having to hardcode configuration settings or parameters in
+    our tests, which could lead to unmaintainable tests, if not pointless ones.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing the first unit test
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Yii provides an empty `UserTest` class for us, so we're going to start working
+    from there. Head over to `tests/codeception/unit/models/` and open the `UserTest.php`
+    file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So now our question is: what are we going to implement at this point? Well,
+    the answer will be quite simple, once we''ve understood what the aim of the unit
+    tests is.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Unit tests, as well as functional and acceptance tests, are a black box testing
+    system: The tests will simply use the interface provided by the object and will
+    make sure that the outputs are as expected. Since the implementation doesn''t
+    count if this changes slightly, or even radically, the tests should still pass
+    assuming the interface remained the same.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: White box testing, which is provided by code coverage, will instead ensure that
+    we have covered all the possible branches of our code. We will discuss this further
+    in [Chapter 8](ch08.html "Chapter 8. Analyzing Testing Information"), *Analyzing
+    Testing Information*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Unit tests also provide support for use cases that will document effectively
+    the use of your interfaces to anyone in or outside your team.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, whether we''re starting from scratch, adding new tests, or refactoring
+    some existing ones, we have a few rules to help us achieve as much coverage as
+    possible:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fix the existing broken tests (and raise relevant tickets if not related to
+    our code or if the work ends up being *out of scope*).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implement tests for the new smallest possible unit of code.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Make tests independent from each other.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Name tests properly. I've started using long names to understand with accuracy
+    what could be wrong depending on which tests were failing, for example, `testMyMethodThrowsAnExceptionWhenInvokedWithNoParameters()`;
+    you can clearly use any other naming standards, for instance, using `_` as a word
+    separator instead of the camel case; the idea is to keep things readable and maintainable.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'We also want to have a few basic rules that could guarantee a 360 degree usage
+    overview so that we can see how to use our component and spot immediately if any
+    of its uses are forbidden, useless, or anything else. These rules are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cover normal usage of the class/method/whatever (positive test).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Cover the extraordinary functionality of whatever you're testing, for example,
+    when it returns the exception (in other words, when it should fail) (negative
+    test).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This might be a bit off-putting, and this first step is possibly the most difficult
+    that I've witnessed, on myself and on my colleagues. Countless times I've seen
+    negative tests missing, creating a huge gap of potential vulnerabilities and fragility
+    in the test.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Don't let yourself down; the reward, as we've seen in [Chapter 1](ch01.html
+    "Chapter 1. The Testing Mindset"), *The Testing Mindset*, is priceless.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As soon as you start, consider yourself a tester, which is the first and most
+    important step for ensuring the quality of the code that you ship, you can see
+    what you've achieved with an improved sense of confidence in your code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How much to care for other people's code
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Not all the code you're going to test will be the product of your effort.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When working with Yii, we will start testing code or integrations with code
+    that comes from Yii itself, or most likely as in a real-world project, from someone
+    else internally or externally from your team.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sometimes, it's safe to say that you don't need to test anything that is outside
+    your scope, for many reasons. But, it's also important to understand what the
+    implied risk of not testing these features is.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Think, for instance, about the password verification of the `User` model, which
+    we will be addressing a few pages further on: the possibility of being unable
+    to verify a saved password is something we need to avoid, as its risk could compromise
+    the overall functionality of our application and have as a consequence the inability
+    of the user to log into our application.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: As explained in [Chapter 1](ch01.html "Chapter 1. The Testing Mindset"), *The
+    Testing Mindset*, and in [Chapter 2](ch02.html "Chapter 2. Tooling up for Testing"),
+    *Tooling up for Testing*, **Attributes-Components-Capabilities** (**ACC**) might
+    be something you should be starting to look into if you need this understanding
+    of the risks related to the piece of functionality that you're building.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In our specific case, our tests will be concentrating on bits of functionality
+    provided by the parent class and the interface, such as the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Validating the `User` model (this is clearly needed as it's a functionality
+    that is also triggered immediately by the `save()` method).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Saving the `User` model in the database.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Covering the basic usage for the functions we will have to implement from the
+    interface.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It should suffice to say that in some cases, this might fall out of scope. If
+    we were taking into consideration the higher level of abstraction from a BDD point
+    of view, the kind of tests we would be interested in would be the interaction
+    with the `User` class, as in reading it from the database and how it will be used
+    by other components.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Component testing of the model
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Testing the validation of a model and any further data manipulation, until it
+    reaches the database and comes back, is the basic step in Yii to ensure that the
+    model has clear and well-defined validation rules implemented. This is effectively
+    useful when it comes down to preventing clients from being able to pass additional
+    or wrong data, when interacting with the system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you care about security, this is something you might need to investigate
+    a bit further, if you haven't done it already.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'I''d like to stress the position we''ve taken in the previous statement: We''re
+    taking the consumer/client perspective. At this particular moment, we don''t know
+    how things are going to be implemented, so it''s better to focus on the usage
+    of the model.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, let''s get back to `/tests/codeception/unit/ models/UserTest.php`: The
+    file should already be there, and it''s more or less what you would get by running
+    the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Right now, if you were to run this command, you would end up with a test that
+    you would need to slightly change, so that we could use the Yii infrastructure.
+    In particular, you would need to change the class your test was extending from
+    with the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: In other words, we need to use the provided `\yii\codeception\TestCase` class,
+    instead of the PHPUnit default `\PHPUnit_Framework_TestCase` class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, let''s first sketch down a few tests within our `tests\codeception\unit\models\UserTest`
+    class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, knowing what to test requires insight on how Yii works. So,
+    it might be completely fine to actually get the first test sketches completely
+    wrong, if you don't know how things are intended to work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the preceding code snippet, we've defined two tests; the first is what we've
+    called the *negative* and the second is the *positive* one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Please note that passing the second parameter to the various assert commands
+    will help you debug the tests in case they're failing. Writing a descriptive and
+    meaningful message could save time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In the code snippets of this book, the second parameter of the various assert
+    methods will not be passed, in order to keep the code snippets more compact.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What's testing for PHPUnit
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Before we continue with the rest of our tests, let''s review what we''ve got
+    up until here: The test file is a class with a name in the `<Component>Test` format,
+    which collects all tests relating to the component we want to test; each method
+    of the class is a test of a specific feature, either positive or negative.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each method/test in the class should have at least one assertion, and PHPUnit
+    provides a long list of assertion statements that you can trigger to assert that
+    an actual value matches an expected value, together with methods to expect for
+    a specific exception.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These methods are provided by the parent class `TestCase`. You can get the full
+    list at [https://phpunit.de/manual/current/en/appendixes.assertions.html](https://phpunit.de/manual/current/en/appendixes.assertions.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Some basic assertions are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`assertTrue(actualValue)` and its opposite `assertFalse(...)`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`assertEquals(expectedValue, actualValue)` and its opposite `assertNotEquals(...)`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`assertNull(actualValue)`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The result of your test is based on the output of these methods. You should
+    also try to avoid wrapping some assertions within one or more conditions. Think
+    carefully about what you're trying to achieve and what you're actually testing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As for exceptions, you need to use some documentation annotation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: PHPUnit uses documentation annotations extensively to cover what's not normally
+    doable with in-test assertions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On top of what we will see, there's plenty of other functionalities, such as
+    testing dependencies with `@depends`, `@before`, and `@after` or grouping with
+    `@group`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For a full list of annotations you can use, head over to [https://phpunit.de/manual/current/en/appendixes.annotations.html](https://phpunit.de/manual/current/en/appendixes.annotations.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consider the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: On top of `@expectedException`, you can also use `@expectedExceptionCode` and
+    `@expectedExceptionMessage`, in case you need to ensure that the content of the
+    exception is what you are expecting it to be.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another way to do this is to use the `setExpectedException()` method, which
+    might provide a higher level of flexibility when you have more complex exception
+    cases to deal with.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Although very generic, we can also expect language-specific errors when passing
+    a different type to a method with a typed formal parameter, or when trying to
+    include a non-existing file by using `@expectedException PHPUnit_Framework_Error`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Assertion testing in PHPUnit is quite straightforward once you've got a grip
+    on how your class, model, and method are going to be used.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On top of this, PHPUnit provides some clever functionality to help us speed
+    up testing and solve some intricacies. Data providers, fixtures, stubs, and mocks
+    will be covered later on and in [Chapter 5](ch05.html "Chapter 5. Summoning the
+    Test Doubles"), *Summoning the Test Doubles*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Testing the methods inherited by IdentityInterface
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Now that we know everything we need to in order to start, we would normally
+    decide to implement the rules to make the `testValidateReturnsTrueIfParametersAreSet()`
+    and `testValidateReturnsTrueIfParametersAreNotSet()`tests pass, although at this
+    occasion, it seems much easier to just continue sketching the remaining methods
+    that we would need to implement later on, such as `getId()`, `getAuthKey()`, `validateAuthKey()`,
+    `findIdentity()`, and `findIdentityByAccessToken()`, plus two more methods that
+    have been implemented and used already, namely `validatePassword()` and `findByUsername()`,
+    both used by the `LoginForm` model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can immediately decide to get rid of the simplest methods to cover. We''re
+    not going to make any use of the access token, and normally, if we weren''t forced
+    to implement the method by the interface, we could have just avoided this bit.
+    In this case, instead, we need to get it sorted and the best way to document this
+    missing functionality is to raise `NotSupportedException` from the method and
+    expect such an exception:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Following this method, we test `getId()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can use the exact same logic to test `$user->getAuthkey()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'While for `findIdentity()`, we can do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With `findIdentity()`, we want to make sure the object returned is the one
+    we were expecting, so our assertions ensure that:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: there's a record retrieved
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: it's of the right class (`IdentityInterface` is what most of the methods interacting
+    with the user at authentication time will expect it to be)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: it contains what we've passed when creating it
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Using data providers for more flexibility
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The negative test for `findIdentity()` is quite straightforward:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: Implementing a test like this might raise some eyebrows, as we've hardcoded
+    a value, `-1`, which might not be representative of any actual real-world case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The best way would be to use a **data provider**, which can feed our test with
+    a list of values that should make the test pass. This is quite convenient as we
+    can tailor edge cases when it comes down to doing some regression testing on the
+    existing features:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: In a data provider, each second-level array is a call to the function requesting
+    it and the content of these arrays is the ordered list of the actual parameters
+    of the method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, in our preceding case, the test will receive `-1`, `null`, and `30` in consecutive
+    invocations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we were to use a data provider for our initial test `testFindIdentityReturnsTheExpectedObject()`,
+    we could test whether the username contains UTF-8 or invalid characters, for instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, using data providers is a good thing! It gives us the ability to use a single
+    test to check more complex situations that require a certain level of flexibility.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'But here comes the problem: The database that is used during all tests (with
+    `$user->save()`) will continue to grow, as there is no instruction to tell it
+    to do otherwise.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As a result, we can add the following to the `setUp()` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Remember to clean up after yourself: You might be impacting someone else''s
+    test. For now, with this call to `deleteAll()` in place, we are fine.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `setUp()` function is called at the beginning before every single test
+    contained in the class. PHPUnit provides several layers of methods for setting
+    things up before one or more tests, and unsetting them after. The sequence of
+    calls can be summed up with the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, `setUpBeforeClass()` is the most external call possible that is run before
+    the class is instantiated. Please also note that `_before` and `_after` are Codeception
+    `TestCase` methods, while the rest are standard PHPUnit methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since we are here, we could also add a test-wide `User` class that will be
+    instantiated before each test; it can be used by any of our tests. For this to
+    happen, we need to add a private variable and add the related statement, where
+    needed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, we just need to amend the relevant tests to use `$this->_user` when needed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Try to keep private variables and methods clearly visible; this could also help
+    you avoid naming conflicts, as we will see when introducing fixtures.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using fixtures to prepare the database
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As we've seen, the data provider solution helps you run the same test with a
+    different dataset each time, which ends up being extremely useful. Another and
+    possibly complimentary solution is to use fixtures that let you preload some well-defined
+    data and keep tests even more simple. This would mean being able to test methods
+    such as `User::findIdentity()` without having to rely on `$user->save()`, which
+    is not a part of the test itself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fixtures are used to set the database at a fixed/known state so that your tests
+    can run in a controlled environment. In doing this, we will also eliminate the
+    need to delete all users in the `setUp` function or rely on static values that
+    might be influenced by other previously run tests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The fixture is just a class that is dynamically loaded in the `setUp()` method,
+    and you're left with only the task of creating the fixture class and the actual
+    content for the database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s start by creating the fixture class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this case, we're extending from `ActiveFixture` as it will provide some additional
+    functionality that might be useful, so the only thing we need to do is to define
+    the model it will mimic. The alternative, as for login forms or other custom-made
+    models, is to extend from `yii\test\Fixture`, where you have to define the table
+    name by using the public property `$tableName`. With `ActiveFixture`, by just
+    defining `$className`, the fixture will figure out the table name by itself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The next step is to define the actual fixture that will define the content
+    we want to fill into our database. By default, Yii will try to look for a file
+    named `<table_name>.php` within the `fixtures/data/` folder. The fixture is just
+    a return statement of an array, such as the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: Each entry of the fixture can be key-indexed to quickly reference it in our
+    tests. You don't also normally need to specify the primary key as they will be
+    automatically created, as in the case of `ActiveRecord`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As a last step, we need to implement the `fixtures()` method to define which
+    fixtures we want to use in our tests. To do so, we can use the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By doing this, our `setUp()` method will initialize the database with the content
+    of the fixture we''ve just defined. If we were in need to use more than one fixture
+    for the same fixture class, then we could have specified which fixture to load
+    in the current test by also returning a `dataFile` key that specified the path
+    of the fixture, as in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now that we have the fixture defined and ready to be used, we can access its
+    content via the `$this->user` variable (and now you can see why it's better to
+    keep private and public variables well defined and separate). You can normally
+    use it as an array and access the index or key you need, or let it return an `ActiveRecord`
+    object as with `$this->user('admin')`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we can see it in action by refactoring our previously implemented test:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: This way, we can carry on with our tests without worrying about calling `save()`
+    every time we need to ensure that a record is in the database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This also means that we won''t need to clean up the database, as the fixture
+    will do so for us:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: Following what we just said, it should be quite straightforward to implement
+    tests for `findByUsername()` in the same way as we did for `findIdentity()`. So,
+    I'll leave this for you as an exercise.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding the remaining tests
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: By now, we should have almost all the tests created, apart from the ones covering
+    `validateAuthKey()`, which you should be able to implement without any particular
+    problem, and `validatePassword()`, which we will take a closer look at in [Chapter
+    5](ch05.html "Chapter 5. Summoning the Test Doubles"), *Summoning the Test Doubles*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing the ActiveRecord class and its methods
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Now, we can try the tests and see them not passing before we go through the
+    implementation of the class. So, just run the following command, as we learned
+    in the previous chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It''s very probable that the preceding command will fail with the following
+    error:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is because our class has not yet been regenerated as `ActiveRecord`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we will start the work of making our tests pass by starting
+    with the migrations to move some information into the database and progress from
+    there.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dealing with migrations
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: So, the best step forward is to define a user table in the database, fill it
+    with the data we would need, and then implement the user model on top of it with
+    the required methods from the interface.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: There is more to be said about migrations and the documentation about it is
+    being improved and expanded every day. Be sure to head over and have a read for
+    yourself at [http://www.yiiframework.com/doc-2.0/guide-db-migrations.html](http://www.yiiframework.com/doc-2.0/guide-db-migrations.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s start by creating the migration:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that we have the migration, let''s implement the `up()` and `down()` methods
+    as needed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: We use the Security component provided by Yii to create the password. There
+    are many other functions that are quite handy and avoid the need to reinvent the
+    wheel.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Please note that it's important to implement the `down()` method correctly and
+    test it before pushing your changes, as it will be fundamental if you need to
+    revert to a previous state of the application, also called a **roll back**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In addition to `up()` and `down()`, you can use `safeUp()` and `safeDown()`,
+    which will allow you to run the migration up or down using transactions, which
+    in turn means that in the case of an error, all prior operations will be rolled
+    back automatically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The migrations are implemented and used in the same way as in the case of Yii
+    1, and if you''ve never used them before, they''re a great tool as they give you
+    the ability to define specific steps that can be easily missed when deploying
+    your application. The syntax used should also be quite straightforward to understand
+    and the methods self-explanatory: `createTable()`, `renameColumn()`, `addForeignKey()`,
+    and so on.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that we have our migration in place, it''s time to apply it by running
+    the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now that we have the structure and the data in the database, we can start refactoring
+    the model accordingly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Gii code generation tool
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Yii continues to provide and improve its system of code generation tools, particularly
+    **Gii**. Gii is a code generator that helps you create the basic code structure
+    for models, controllers, CRUD, modules, and so forth, so that you don't have to
+    think too much about what needs to be done and instead, get to the implementation
+    part as quickly as possible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The basic application that we''re using comes with Gii (and it''s defined as
+    a `require-dev` package). And, since in our case we''re running the tests in a
+    (virtual) hosted environment, we need to adjust the configuration a little bit;
+    we need to allow our client IP to access the tool:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`192.168.56.*` should be the default case if you''re using VirtualBox.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that we have made this change, we can head our browsers to `http://basic.yii2.sandbox/gii`.
+    From there, we can click on the **Model Generator** section, where we can create
+    the new model, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The Gii code generation tool](img/B03646_04_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The model generator interface
+  prefs: []
+  type: TYPE_NORMAL
+- en: When clicking on the **Preview** button, Gii will first check whether the file(s)
+    to be generated already exist and give us the opportunity to see the difference
+    and decide whether we want to override the file(s) before we actually hit the
+    **Generate** button.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since our `User` model is so thin at the moment, we won't have any problems
+    in overwriting it and re-implementing the needed methods ourselves. Just remember
+    to tick the **Overwrite** check box and click on **Generate**. Otherwise, you
+    can just adjust it accordingly with the hints given in the following paragraphs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After clicking on **Generate**, you should be able to see the **The code has
+    been generated successfully** notice at the end of the page.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now let's head back to our `User.php` class and see what's been changed, and
+    refine the implementation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First of all, we will notice that the class now extends from the `ActiveRecord`
+    class; this is the default class for database-facing models. There is a series
+    of default methods already implemented, which we won''t need to change. What we
+    would need instead is to make the class implement `IdentityInterface`, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, implement the five required methods from `IdentityInterface` at the end
+    of the class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: As we can see, the way to find a record in the database is quite straightforward,
+    as `ActiveRecord` exposes some very nifty and easy-to-understand methods to interact
+    with the database. We will be seeing plenty of these use cases across the upcoming
+    pages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's probably worth noticing that `findIdentity()` returns an `IdentityInterface`
+    object. The previous implementation that we overwrote invoked `new static()`,
+    which, in turn, triggered the magic method `__construct()` from the `yii\base\Object`
+    class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The `new static()` method has been available since PHP 5.3 and provides a way
+    to instantiate a child class statically from a parent, which wasn't possible earlier.
+    This methodology is called **Late Static Binding**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: More information can be found in the PHP manual at [http://php.net/manual/en/language.oop5.late-static-bindings.php](http://php.net/manual/en/language.oop5.late-static-bindings.php).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As mentioned earlier, `findIdentityByAccessToken` is not needed as `accessToken`
+    will not be used anywhere in our code, so let''s implement it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The remaining three methods from the interface should be straightforward to
+    implement and understand, and to do so, we can use the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Left out from the obvious methods from the interface are a couple of methods
+    that are used in `LoginForm.php`; one of them is `findByUsername`, which is as
+    follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Another is `validatePassword`, which is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, we again use the `validatePassword()` method from the Security component,
+    which makes the use of cryptography and any additional level of security that
+    we want to add transparent to the user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Seeing tests pass
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'As you might have guessed, it''s again time to run Codeception against our
+    `UserTest` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: You should have all tests passing without problems, and you should also be able
+    to fix them in case an error is raised.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we decide to run all the tests, including those that were already there,
+    we might see that some tests are not passing anymore. Don''t worry, this is quite
+    normal as we''ve changed the way the `User` model works and behaves internally.
+    In particular, the error I''m getting is the following regarding `LoginFormTest`,
+    but Codeception/PHPUnit is quite prompt in informing us what''s wrong:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: As I've underlined previously, it's quite important to fix any tests that do
+    not work well. This will make us understand if we've touched anything that wasn't
+    meant to break or that can potentially break when committing our changes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using global fixtures
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In this case, it''s quite clear that our tests have impacted the state of the
+    database: The solution will be able to create a new fixture with the expected
+    data for the admin user, which replicates what the migration is doing, and to
+    update `LoginFormTest` and `UserTest`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will now use the default fixture `user.php` as the global fixture with the
+    admin user, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The previous fixture will be renamed as `userModels.php`; it contains additional
+    users that we might end up adding to our application in the future. The code for
+    doing so is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: We could have fallen into the trap of just amending the initial fixture to contain
+    the admin user, which would have solved the problem but would have made multiple
+    tests rely on fixtures that were designed for specific tests. So, let's try to
+    keep things as separate and independent as possible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we can load the previously mentioned fixture in `LoginFormTest` as a global
+    fixture, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Furthermore, we can amend the previously implemented methods to load the fixtures
+    in the `UserTest`, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: Our new `fixtures()` implementation will need to expand on the parameters passed
+    and define both `class` and `dataFile`; otherwise, it won't load it properly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `globalFixtures()` method is run before the `fixtures()` method, which means
+    that the `$this->user` variable will only contain the latest fixtures and not
+    the admin.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We've discussed a wide variety of things concerning PHPUnit such as assertions,
+    data providers, and fixtures. We've seen how to make tests pass and how to preventively
+    catch errors that might cause bigger problems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are many more things you can discover on both Codeception unit tests and
+    PHPUnit, but what we've seen up until now should be enough to give you the confidence
+    required to start creating tests with clarity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we'll see how to test components that rely on external
+    code and classes, in order to get the best controlled environment needed by using
+    stubs and mocks.
+  prefs: []
+  type: TYPE_NORMAL

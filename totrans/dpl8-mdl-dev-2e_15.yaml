@@ -1,0 +1,920 @@
+- en: Views
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Views has always been a staple module for any Drupal site. It was so popular
+    and needed that it ended up being incorporated into Drupal 8 core. So now, each
+    new Drupal site ships with Views out of the box, fully integrated with the rest
+    of the system and powering a great number of core features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Essentially, Views is a tool for creating and displaying lists of data. This
+    data can be almost anything, but we mostly use Drupal entities as they are now
+    so robust. It provides the architecture to build and manipulate complex queries
+    through the UI as well as many different ways of outputting the resulting data.
+    From a module developer's point of View (yes, pun intended), much of this power
+    has been broken down into multiple layers of building blocks, abstracted as plugins.
+    Moreover, in keeping with tradition, there are also a multitude of hooks that
+    are fired at different stages with which we can programmatically contribute to,
+    or influence, Views.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we will look at the Views ecosystem from a module developer's
+    perspective. As such, we won't be spending that much time with its site-building
+    capabilities as you can easily argue an entire book could be dedicated just to
+    that. Instead, we will focus on what we, as module developers, can do to empower
+    site builders to have even more capabilities at their finger-tips, as well as
+    manipulating Views to behave the way our functionality needs them to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, what will we actually do in this chapter? We will first start with integrating
+    our Product entity type with Views. The entity system and Views can work very
+    closely together, and all we need to do is point them to one another. Then, we
+    will switch gears and expose our own custom player and team data (from [Chapter
+    8](c20b297a-3a37-46ff-a80c-bf83a21bbd5d.xhtml), *The Database API*) to Views so
+    our site builders can build Views that list this information, complete with filters,
+    sorts, arguments, and the *whole shebang*. From there, we will look at how we
+    can also alter data that has been exposed to Views by other modules, like entity
+    data such as Nodes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we will learn how to create your own `ViewsField`, `ViewsFilter`, and
+    `ViewsArgument` plugins to account for those occasional requirements for which
+    the existing ones are a bit lacking. Finally, we will talk a little bit about
+    theming Views and the main components that play a role in this, just to get you
+    going in the right direction, and applying the lessons from [Chapter 4](feada4d1-f255-4dd6-83b5-8d66bab5f852.xhtml),
+    *Theming*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By the end of this chapter, you will get a pretty good understanding of how
+    to leverage Views on top of your own data, as well as modifying or contributing
+    to how other modules leverage it. You should also get a pretty good understanding
+    of the Views plugin ecosystem, even if quite a bit of work will have to be done
+    on your own, studying the available plugins of all types.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, let's get to it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Entities in Views
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Even in Drupal 7, Views had a pretty good integration with the entity system.
+    But seeing as there was no robust entity API to speak of, this integration was
+    not so organic. It required more contributed modules and some custom code to make
+    an entity type work with Views.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In Drupal 8, however, the two are very closely linked and it''s a breeze to
+    expose new content entities to Views. If you''ve followed along with [Chapter
+    7](392cdb70-e52a-42d1-b782-28d6eb726810.xhtml), *Your Own Custom Entity and Plugin
+    Types*, and have the Product entity type set up, you''ll notice that if you try
+    to create a View, you will have no option to make it based on products. That is
+    because, in the entity type definition, we did not specify that it should be exposed
+    to Views. That''s all there is to it, actually. We just have to reference a new
+    handler:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: That's it. Clearing the cache, we are now able to create Views with products
+    that can show any of the fields, can filter and sort by them, and can even render
+    them using view modes. All of these work consistently with the other entity types
+    (at least fundamentally, as we will see in a moment).
+  prefs: []
+  type: TYPE_NORMAL
+- en: You'll notice that we referenced the `EntityViewsData` data handler which ensures
+    basic logic for entities of all types. If we want to, we can extend this class
+    and add some of our own specificities to the data that is being exposed to Views
+    (or alter the existing ones). This is done inside the `getViewsData()` method,
+    and we will see an example later on. But if you already want to see an example,
+    check out the `NodeViewsData` handler for the Node entity type, as it has quite
+    a lot of extra stuff in there. Much of it probably won't make a lot of sense quite
+    yet, so let's slowly get into how Views works by exposing our own custom data
+    to it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exposing custom data to Views
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To get a better understanding of how Views works, we are going to look at an
+    example of totally custom data and how we can expose it to Views. Based on that,
+    we will begin to understand the role of various plugins and can begin to create
+    our own. Additionally, we'll be able to expand on our product entity type data
+    to enrich its Views interaction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To exemplify all of this, we are going to revisit our sports module in which
+    we declared the `players` and `teams` tables of data and which we will now be
+    exposing to Views. The goal is to allow site builders to create dynamic listings
+    of this data as they see fit. The lessons learned from this example can be applied
+    to other data sources as well, even things such as remote APIs (with some extra
+    work).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Views data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Whenever we want to expose data to Views, we need to define this data in a way
+    Views can understand it. That is actually what `EntityViewsData::getViewsData()`
+    does for content entities. However, since we are dealing with something custom,
+    we can do so by implementing `hook_views_data()`. A lot can go into it, but we'll
+    start things simple.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's implement this hook and simply describe our first table (that of the players)
+    and only one field, namely, the player ID, to start with.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In Views lingo, the term `field` does not have to relate necessarily to entity
+    fields or anything like that, but rather to an individual piece of data from a
+    data source (real or not). A typical example to consider is a column in a table,
+    but it can also be something like a property from a remote API resource. Moreover,
+    the same term is used to describe the *responsibility* of that piece of data of
+    being somehow output. Other such responsibilities it can have are `filter`, `sort`,
+    `relationship`, and more. Each of these responsibilities are handled by a specific
+    type of Views plugin (also known as a handler in older versions of Views).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, the basic implementation can look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: This hook needs to return a multi-dimensional associative array that describes
+    various things, the most important being the table and its fields. The table doesn't
+    have to be an actual database table, but can also mean something similar to an
+    external resource. Of course, Views already knows how to query the database table,
+    which makes things easy for us. Otherwise, we'd also have to create the logic
+    for querying that external resource (by implementing a `ViewsQuery` plugin).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, we start by defining the `players` table, which goes into the `Sports`
+    group. This label can be found in the Views admin as the prefix to the fields
+    we want to add. Next, we define our first *base* table called `players` (mapping
+    to the actual database table with the same name). The *base* table is the one
+    used for *basing* a View on when creating it. In other words, whatever you select
+    in the following screen text:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/71b2315c-ca88-4d4f-b8f9-c22fd1515a5c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The base table definition contains some information, such as the `field` that
+    refers to the column that contains the unique identifier for the records. `title`
+    and `help`, both mandatory, are used in the UI. Moreover, it can also contain
+    `query_id`, which references the plugin ID of a `ViewsQuery` plugin responsible
+    for returning the data from the source in an intelligible way. Since, in our case,
+    we are using the database (hence SQL), omitting this property will make it default
+    to the `views_query` plugin (the `Sql` class if you want to check it out).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Views fields
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'But in order to actually use this table, we need to define one or more fields
+    that can output some of its data. So, we start with a simple one: the player IDs.
+    Anything that comes under the `$data[''table_name'']` array (that is not keyed
+    by `table`, as we''ve seen) is responsible for defining Views fields. The keys
+    are their machine names. `title` and `help` are there again and are used in the
+    UI when we try to add the respective fields:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/5e0b696c-6a4e-41f7-9d72-c938fd9c46c8.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The most important part of this definition, however, is the `field` key, which
+    basically says that, for this piece of data, we want a Views field that uses the
+    `ViewsField` plugin with the ID `numeric` (`NumericField`). So, we don't actually
+    have to write our own plugin because Views already has a good one for us and it
+    will treat our IDs according to the type of data they are. Of course, when defining
+    Views fields (or any other types of data responsibilities, that is, plugins or
+    handlers), we can have more options than just the ID of the plugin to use.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can check out all of the existing Views plugins defined by the module itself
+    (which are quite a lot and fit many many use cases) by looking at the `Drupal\views\Plugin\views`
+    namespace. There are many plugin types that handle different responsibilities,
+    but it's good to know where you can look because, more often than not, one will
+    already exist for your needs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With this, we are done. Clearing the cache, we can now go into the Views UI
+    and create our first View that shows player data. To it, we can add the ID field,
+    which will then naturally just show a list of IDs. Not more, as we haven''t defined
+    anything else. So, let''s go ahead and expose the player name in the same way:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: This time, we are using the `standard` plugin, which is the simplest one we
+    can use. It essentially just outputs the data as it is found in the data source
+    (with the proper sanitization in place). In the case of our player names, that
+    is enough. Now we can add this new field to the View as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you remember, the other column on our `players` table is one that can store
+    arbitrary data in a serialized way. Obviously, this cannot be used for filtering
+    or sorting, but we can still output some of that data as a field. There are two
+    ways we can go about doing this, depending on our data and what we want accomplished.
+    First, we can use the existing `Serialized` plugin which allows us to display
+    the serialized data or even a given key from the resulting array (depending on
+    the field configuration). But for more complex situations (especially when the
+    data is arbitrary), we can write our own field plugin.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s start by creating a simple `data` field that can output a printed version
+    of our serialized data since we cannot rely on the actual data being stored:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the field configuration, we then have these options to choose from:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/d30290d1-da25-41b8-bc8c-9dafcbe365bc.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: With this, you should already get a picture of how to define fields for output
+    in Views. Let's now see how we can bring our teams into the loop and show some
+    data about the teams the players belong to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Views relationships
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The data about the teams our players belong to is stored in a different table.
+    This means that, at a database level, a join will have to be created to pull them
+    together. In Views lingo this is a *relationship* in the sense that one table
+    relates to another and the way these are declared is directional from a field
+    to another from the joined table. So, let''s see how we can define the `team_id`
+    field from the `players` table to join with the `teams` table on its `id` field:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'First of all, we define it to Views as a field. Then, because we also might
+    want to display the team ID, we can define it as a `field` as well using the `numeric`
+    plugin, the same way we defined the ID of the player records themselves. But here
+    comes another *responsibility* of this field in the form of a `relationship`,
+    which requires four pieces of information:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`base`: The name of the table we are joining'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`base field`: The name of the field on the table we are joining that will be
+    used to join'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`id`: The `ViewsRelationship` plugin ID to use for the relationship'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`label`: How this relationship will be labeled in the UI'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Usually, the `standard` relationship plugin will suffice, but we can always
+    create one ourselves if we need to. It's doubtful you will ever need to though.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This definition now allows us to add a relationship to the `teams` table in
+    Views. However, even if the database engine joins the two tables, we haven''t
+    achieved anything as we also want to output some fields from the new table. So
+    for that, we first have to define the table itself, as we did for the players:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Note that it is not mandatory to define it as a `base` table if we don''t want
+    to create Views that are basing themselves on this table. In our case, it can
+    be secondary to player information. Then, just as we did before, we can define
+    a couple of team fields:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: There is nothing new here, just the basic data output for our two columns. But
+    now, we can go to the View in the UI, add a relationship to the teams table and
+    then include the name and description of the teams our players belong to. Neat.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Views sorts and filters
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Let''s go ahead and enrich the *responsibilities* of the team name field by
+    making our list of players filterable and sortable by it; for example, to only
+    show the players of a given team or sort the players alphabetically by the team
+    name. It could not be easier. We just have to add these to the team name field
+    definition (like we added the `relationship` to the players'' `team_id` field):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: So basically, we are using the `Standard` sort plugin for sorting (which basically
+    defaults to whatever MySQL can do). As for the filter, we are using the `StringFilter`
+    plugin, which is quite configurable from the Views UI. It even allows us various
+    filtering possibilities like partial matching. With this, we can now sort and
+    filter by the team name.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Views arguments
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The last type of *responsibility* a View field can have is to be used as an
+    argument (or a contextual filter for Drupal veterans). In other words, configuring
+    the View to be filterable by a parameter that is dynamically passed to it. Let''s
+    face it; most of the time, if we want to filter by a team, we won''t rely on the
+    actual string name as that can change. Instead, we tie everything to the record
+    (by its ID). So that means we''ll add the `argument` key to the `team_id` field
+    of the `players` table (which also means that the query won''t require a join
+    so it will be more performant):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this case, we use the `NumericArgument` plugin which does pretty much all
+    we need for our data type—it filters by what is expected to be a numerical data
+    type. And we are finished with that as well. We can now dynamically filter our
+    players view by the ID of the teams they belong to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Altering Views data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We saw how we can expose to Views our own data that is totally custom. However,
+    we can also alter existing data definitions provided by Drupal core or other modules
+    by implementing `hook_views_data_alter()`. The `$data` parameter passed by reference
+    will contain everything that has been defined and can be changed as needed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Moreover, we can also use this implementation to create some new Views fields
+    or filters on other tables that do not "belong" to us. This is actually more common
+    than exposing totally custom tables or other kinds of resources. For example,
+    we may want to create a new Views field that shows something related to the Node
+    in the results. So, let's look at an example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Do you remember in [Chapter 6](77cab458-5612-468c-8010-12385708eb81.xhtml),
+    *Data Modeling and Storage*, we saw how to create a *pseudo field,* which outputs
+    a disclaimer message at the bottom of each Node? If our View is configured to
+    render Node entities, that will work. However, if it's using fields, it cannot
+    do that. So, let's see how we could expose this message also as a Views field.
+    We won't include this in the final code, but let's just see how we could get it
+    done if we wanted to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we''d need to implement `hook_views_data_alter()` and define a new field
+    on the Node entity type data table:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In this example, we are adding our new Views field onto the Node data table
+    (`node_field_data`). But then, we have a choice as to what plugin to use to render
+    our message. We can, of course, create one ourselves (as we will do in the next
+    section). This is actually very simple, especially since it doesn''t even need
+    to use any of the information from the resulting Nodes. However, if that''s the
+    case, we might as well use the existing `Custom` plugin, which has two main advantages.
+    For one, we don''t have to write any more code. Second, it allows the site builder
+    to specify (and modify as needed) the disclaimer message through the UI. Because
+    basically, this plugin exposes a configuration form that we can use to add the
+    text we want displayed for each row:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/534627ad-2050-42b1-a076-6e32678a6d64.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Of course, there are some drawbacks to this approach as well. If we wanted to
+    ensure consistency between the message here and the one we used in the pseudo
+    field, we would probably want to write our own plugin and get the message from
+    this unique place. The same applies if we wanted the message to be strictly in
+    code, especially if we needed some sort of data from the Node in the View results.
+    So, the choice depends on the actual use case, but it's good to look into the
+    existing Views plugins and see what already exists before creating your own.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Custom Views field
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that we have seen how data is exposed to Views, we can start understanding
+    the `NodeViewsData` handler I mentioned earlier (even if not quite everything)
+    a bit better. But this also provides a good segue back to our `Product` entity
+    type's `views_data` handler, where we can now see what the responsibility of `getViewsData()`
+    is. It needs to return the definition for all of the tables and fields, as well
+    as what they can do. Luckily for us, the base class already provides everything
+    we need to turn our product data into Views fields, filters, sorts, arguments,
+    and potentially relationships, all out of the box.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But let's say we want to add some more Views fields that make sense to us in
+    the context of our product-related functionality. For example, each product has
+    a `source` field that is populated by the Importer entity from its own `source`
+    field. This is just to keep track of where they come from. So we may want to create
+    a Views field that simply renders the name of the Importer that has imported the
+    product.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You''ll be quick to ask: *But hey, that is not a column on the products table!
+    What gives?* As we will see, we can define Views fields that render whatever data
+    we want (that can relate to the record or not). Of course, this also means that
+    the resulting data cannot be used inside a sort or filter because MySQL doesn''t
+    have access to it when building the query. So we are a bit less flexible there,
+    but it makes sense.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this section, you will learn two things. First, we''ll see how to create
+    our own `views_data` handler for our Product entity type. By now, you should be
+    quite familiar with this process. More importantly though, we''ll use this handler
+    to create a new Views field for our products that renders something no existing
+    `ViewsField` plugin can offer: the name of the related Importer entity. That means
+    our own custom plugin. How exciting, so let''s get going!'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are two quick steps to create our own `views_data` handler. First, we
+    need the class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, we are extending the base `EntityViewsData` class we had been
+    referencing in the Product entity type annotation before. Inside, we are overriding
+    the `getViewsData()` method to add our own definitions (which will go where you
+    can see the comment).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Second, we need to change the handler reference to this new class in the entity
+    type annotation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'That''s it. We can now define our own custom fields and we can start with the
+    views data definition:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Simple stuff, like we did with the players. Except in this case, we are adding
+    it to the `product` table and we are using a `ViewsField` plugin that doesn't
+    exist. Yet. So, let's create it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As you may have noticed if you checked some of the existing ones, Views plugins
+    go in the `Plugin\views\[plugin_type]` namespace of the modules, where `[plugin_type]`
+    in this case is `field`, as we are creating a `ViewsField` plugin. So, we can
+    start with the plugin class scaffolding:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Just like any other field plugin, we are extending the `FieldPluginBase` class
+    which provides all the common defaults and base functionalities the fields need.
+    Of course, you notice the admittedly small annotation, which simply contains the
+    plugin ID. Our main job is to work in the `render()` method and output something,
+    preferably using the `$values` object that contains all the data in the respective
+    row.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Inside the `ResultRow` object, we can find the values from the Views row which
+    can contain multiple fields. In case it's a View that lists entities, we also
+    have an `_entity` key that references the entity object itself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Clearing the cache, we will now be able to add the new *Product Importer* field
+    to a View for products. But if we do, we will notice an error. Views is trying
+    to add to the query the `product_importer` field we defined but which doesn''t
+    actually exist on the table. That isn''t right! This happens because, even though
+    Views can be made to work with any data source, it still has a preference for
+    the SQL database, so we can encounter these issues every once in a while. Not
+    to worry though, as we can simply tell our plugin not to include the field in
+    any query—it will show totally custom data. We do so by overriding the `query()`
+    method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'That''s it. Now, our field is going to render an empty string:`''''`. Let''s
+    change it to look for the related Importer entity and show its label. But in order
+    to do that, we''ll need the `EntityTypeManager` service to use for querying. Let''s
+    inject it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: Since we are operating inside a plugin, we need to make sure we are implementing
+    the `ContainerFactoryPluginInterface` in order to make use of the `create()` method.
+    But luckily, a parent class does so already, namely `Drupal\views\Plugin\views\PluginBase`,
+    so we're good.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We do, however, have to also add the new *use* statements at the top:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can now proceed with the `render()` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: We simply get the Product entity of the current row and then query for the Importer
+    configuration entities that have the source referenced on the product. We assume
+    there is only one (even if we did not do a proper job ensuring this is the case
+    to save some space) and simply return its label. We also pass it through the helper
+    `sanitizeValue()` method which takes care of ensuring that the output is safe
+    against XSS attacks and such. So now our products View can show, for each product,
+    the name of the Importer that brought them into application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we take a step back and try to understand what is going on, a word of caution
+    becomes evident. Views performs one big query that returns a list of product entities
+    and some data. But then, when that data is output, we perform a query for the
+    Importer entity corresponding to each product in the result set (and we load those
+    entities). So if we have 100 products returned, that means 100 more queries. Try
+    to keep this in mind when creating custom fields to ensure you are not getting
+    a huge performance hit, which might often not even be worth it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Field configuration
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We got our field working, but let's say we want to make it a bit more dynamic.
+    At the moment it's called *Product Importer* and we are showing the title of the
+    Importer entity. But let's make it configurable so that we can choose which title
+    to show—that of the entity or that of the actual Importer plugin—in the UI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are a few simple steps for making the field plugin configurable. These
+    work similarly to other Views plugin types. They are also quite similar in concept
+    to what we did in [Chapter 9](f58fb5b9-3f39-4575-872d-c2ab9985828d.xhtml), *Custom
+    Fields*, when we made the entity fields configurable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we need to define some default options by overriding a method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, we are adding to the options defined by the parent class (which
+    are quite a few) our own `importer` one. And we set its default to the string
+    `entity`. Our choice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Second, we need to define the form element for our new option and we can do
+    this with another method override:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And the *use* statement:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Nothing special here; we are simply defining a select list form element on the
+    main options form. We can see that the `$options` class property contains all
+    the plugin options and there we can check for the default value of our `importer`
+    one. Finally, we of course add to the form all the other elements from the parent
+    definition.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, inside the `render()` method, once we get our hands on the importer entity,
+    we can make a change to this effect:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: Pretty simple. We either show the entity label or that of the plugin. But of
+    course—and we skipped this—the Importer plugin manager also needs to be injected
+    into the class. I'll let you handle that on your own as you already know how to
+    do this.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, one last thing we need to do is define the configuration schema. Since
+    our View (which is a configuration entity) is now being saved with an extra option,
+    we need to define the schema for the latter. We can do this inside a new `products.schema.yml`
+    file (in the `config/schema` folder of our module):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This should already be familiar to you, including the dynamic nature of defining
+    configuration schemas. We pretty much did the same in [Chapter 9](f58fb5b9-3f39-4575-872d-c2ab9985828d.xhtml),
+    *Custom Fields*, for the options on our field type, widget, and formatter plugins.
+    This time, though, the type is `views_field`, from which we basically inherit
+    a bunch of definitions and to which we add our own (the `importer` string). That''s
+    it. If we configure our new Views field, we should see this new option:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/8fd7a929-eeb1-45bf-8714-cc9fdebcab72.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Custom Views filter
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In a previous section we exposed our `players` and `teams` tables to Views,
+    as well as made the team name a possible string filter to limit the resulting
+    players by team. But this was not the best way we could have accomplished this
+    because site builders may not necessarily know all the teams that are in the database,
+    nor their exact names. So we can create our own `ViewsFilter` to turn it into
+    a selection of teams the user can choose from. Kind of like a taxonomy term filter.
+    So let's see how it's done.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we need to alter our data definition for the team name field to change
+    the plugin ID that will be used for the filtering (inside `hook_views_data()`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now we just have to create that plugin. And naturally, it goes in the `Plugin/views/filter`
+    namespace of our module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: First and foremost, we see the annotation is in place to make this a plugin.
+    Similar to the Views fields. Then, we use dependency injection to get our hands
+    on the database connection service. Nothing new so far. However, you will notice
+    that we extend from the `InOperator` class which provides the base functionality
+    for a Views filter that allows an `IN` type of filter. For example, `... WHERE
+    name IN(name1, name2)`. So we extend from there to inherit much of this logic
+    that applies to Views.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then, we override the `init()` method (which initializes the plugin) in order
+    to set the available values that site builders can choose from (the team names)
+    and a title for the resulting form element. But we do so by specifying an `options
+    callback` that will be used to retrieve the options at the right moment. This
+    callback is a method on our class called `getTeams()` which returns an array of
+    all the team names. This array needs to be keyed by the value to use in the query
+    filter. And that is pretty much it. We don't need to worry about the options form
+    or anything like that. The base class does it all for us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, site builders can add this filter and choose a team (or more) to filter
+    by, in an inclusive way. For example, to show the players that belong to a respective
+    team:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/f2a78867-c57d-4de7-ae88-a618a1760539.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Instead of using the `options callback`, we could have also directly overridden
+    the `getValueOptions()` method of the parent (which in fact calls the options
+    callback itself). The only caution here is that to prevent performance leaks,
+    the values should be stored in the local `valueOptions` class property. Like this,
+    they can be read multiple times.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Even if it''s not that obvious, one last thing we need to do is define the
+    configuration schema for our filter. You may be wondering why we are not creating
+    any custom options. The answer is that when the user adds the filter and chooses
+    a team to filter by, Drupal doesn''t know what data type that value is. So, we
+    need to tell it that it''s a string. Inside our `sports.schema.yml` file, we can
+    have this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: Similar to the Views field, we have a dynamic schema definition for the filter,
+    of the type `views_filter`. In the mapping we override the `value` field (which
+    has already been defined by the `views_filter` data type). In our case, this is
+    a sequence (an array with unimportant keys) whose individual values are strings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Another way we can achieve the same (or similar) is like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is because, in the definition of the `value` key found in the `views_filter`
+    schema, the type is set to `views.filter_value.[%parent.plugin_id]`. This means
+    that we can simply define the `views.filter_value.team_filter` data type ourselves
+    for it to use. If you remember, this is very similar to what we did ourselves
+    in [Chapter 12](ca6e92fc-24fa-41b4-bd57-c3884f9d16b1.xhtml), *JavaScript and Ajax
+    API*. So, we can just define that missing bit as our sequence, rather than overriding
+    the entire thing to change one small bit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The existing Views filter classes provide a great deal of capability for either
+    using them directly for custom data or extending to complement our own specificities.
+    So I recommend you check out all the existent filter plugins. However, the main
+    concept of a filter is the alteration of the query being run by Views, which can
+    be done inside the `query()` method of the plugin class. There, we can add extra
+    conditions to the query based on what we need. You can check out this method on
+    the `FilterPluginBase` class which simply adds a condition (using the `addWhere()`
+    method on the query object) based on the configured value and operator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Custom Views argument
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When we first exposed the player and team data to Views, we used an argument
+    plugin so that we could have a contextual filter on the team ID a player belongs
+    to. To do this, we used the existing `numeric` plugin on the actual `team_id`
+    field of the `players` table. But what if we wanted an argument that works on
+    more levels? For example, we don't exactly know what kind of data we'll receive,
+    but we want to be able to handle nicely both a numeric one (team ID) and a textual
+    one (team name). All in one argument. To achieve this, we can create a simple
+    `ViewsArgument` plugin to handle this for us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First thing, like always, is to define this field. We don''t want to mess with
+    the `team_id` field onto which we added the earlier argument as that can still
+    be used. Instead, we''ll create a new field, this time on the `teams` table, which
+    we will simply call `team`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: This time, though, we don't create a *field* for it as we don't need this to
+    display anything. Rather, we stick just to the `argument` responsibility, which
+    will be handled by our new `team` plugin. You may also note that the `team` column
+    doesn't actually exist in the database table.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, let''s see the plugin:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: As usual, we are extending from the base plugin class of its type and adding
+    the proper annotation. Inside, we only deal with the `query()` method, which we
+    override. Arguments are very similar to filters in the sense that they aim to
+    restrict the result set via the query. The main difference is the actual value
+    used to filter, which, in this case, is dynamic and can be found on the `$argument`
+    property of the (parent) class. And what we do is simply add a query condition
+    to the right field on the `teams` table (since that is the base table), depending
+    on the type of data we are dealing with. But before we do that, we call the `ensureMyTable()`
+    method which simply ensures that the table our plugin needs is included in the
+    query by Views.
+  prefs: []
+  type: TYPE_NORMAL
+- en: That's it. We can now add our newly created argument to the View and, regardless
+    of what we passed as a contextual filter (ID or name), it will filter accordingly.
+    Of course, we can also have options like most other Views plugin types, but I'll
+    let you explore those on your own. There are also a lot more we can override from
+    the parent class in order to integrate with Views. But that's a bit more advanced
+    and it's unlikely you'll need to deal with that for a good while. I definitely
+    recommend exploring the code behind it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Views theming
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Frontend developers felt a lot of pain in Drupal 7 and much of it was also related
+    to theming Views output. Luckily, Drupal 8 has made things much easier to handle.
+    We will look at a bit of that here in order to nudge you in the right direction
+    when applying what you learned in [Chapter 4](feada4d1-f255-4dd6-83b5-8d66bab5f852.xhtml),
+    *Theming*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Views is very complex and is made up of many pluggable layers. A View has a
+    *display* (such as a Page or Block), which can render its content using a given
+    *style* (such as an Unformatted list or Table). Styles can decide whether to control
+    the rendering of a given result item (row) themselves or delegate this to a *row*
+    plugin (such as Fields or Entity). Most, in fact, do the latter. The two most
+    common scenarios for using *row* plugins is either using the `EntityRow` one,
+    which renders the resulting entities using a specified view mode, or the `Fields`
+    plugin, which uses individual `ViewField` plugins to render each field that is
+    added to the View.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we wanted to theme a View, there are all these points we can look at. Want
+    the View to output a slideshow? Perhaps create a new *style* plugin. Want to do
+    something crazy with each entity in the result set? Maybe create a new *row* plugin,
+    or even just create a new *field* plugin (as we did) to render one piece of data
+    in any way you want. These techniques are more oriented toward module developers
+    taking control over Views. But we also have the theming aspects we can play with.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Again, from the top, *style* plugins are nothing more than glorified wrappers
+    over a theme hook. For example, the *Unformatted list* plugin uses the `views_view_unformatted`
+    theme hook, which means a few things: it can be overridden by a theme (or even
+    module) and it can be preprocessed by a theme or module. Take a look at the default
+    `template_preprocess_views_view_unformatted()` preprocessor and `views-view-unformatted.html.twig`
+    template file for more information. Don''t forget about the theme hook suggestions,
+    as Views defines quite a lot of them. All you need to do is enable theme (Twig)
+    debugging and you''ll see for each View *layer* which template is being used.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The *style* theme, however, only gets us to the wrapper around all the results.
+    To go a bit deeper, we need to know what kind of *row* plugin it uses. If entities
+    are being rendered, it's the same thing as controlling how entities are built.
+    See [Chapter 6](77cab458-5612-468c-8010-12385708eb81.xhtml), *Data Modeling and
+    Storage*, for a refresher on that. If the *row* plugin uses *field* plugins, we
+    have some options. First of all, this is also a wrapper over a theme hook, namely
+    `views_view_fields`, which renders together all the *field* plugins added to the
+    View.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So we can override that using the already known theming methods. But we can
+    also override the default theme hook for each `field` plugin itself, namely `views_view_field`,
+    responsible for wrapping the output of the plugin. This takes us to the *field*
+    plugins themselves and whatever they end up rendering, which can differ from one
+    plugin to another. So, make sure you check that.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Views hooks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Views also comes with a lot of hooks. We've already seen an important one that
+    allowed us to expose our own data to Views. But there are many more, and you should
+    check out the `views.api.php` file for more information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Quite a few exist for altering plugin information for all sorts of plugin types.
+    But there are also some important ones that deal with Views execution at runtime.
+    The most notable of these is `hook_views_query_alter()` which allows us to make
+    alterations to the final query that is going to be run. There is also `hook_views_post_render()`
+    and `hook_views_pre_render()`, which allow us to make alterations to the View
+    results. For example, to change the order of the items or something like that.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I recommend you check out their respective documentation and make yourself aware
+    of what you can do with these hooks. At times they can be helpful, even if, with
+    Drupal 8, most of the action happens in plugins and you can easily now write your
+    own to handle your specific requirements. This is why we won't be going into great
+    detail about these.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we looked at Views from all sorts of module developer-oriented
+    angles. We saw how we can expose our product entity type to Views. That was a
+    breeze. But then, we also saw how our custom player and team data from [Chapter
+    8](c20b297a-3a37-46ff-a80c-bf83a21bbd5d.xhtml), *The Database API*, can be exposed
+    to Views. Even if we did have to write some code for that, much of it was quite
+    boilerplate, as we were able to leverage the existing Views plugin ecosystem for
+    almost everything we wanted. However, since these are all plugins, we also saw
+    how we can create our own field, filter, and argument plugins to handle those
+    exceptional cases in which what exists may not be enough.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Closely tied to this, we also talked a bit about altering the way other modules
+    expose their data to Views. The most notable example here was the ability to easily
+    add more fields (and plugins) to entity-based Views in order to enrich them with
+    custom functionalities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, we talked a bit about how we can approach the theming aspect of Views.
+    We saw the different layers that make one up, starting from the display all the
+    way down to the *field*. We closed the chapter with a shout-out to the existing
+    hooks the Views module invokes at various times, and via which we can also make
+    changes to its normal operation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we are going to see how we can work with files and images
+    in Drupal 8.
+  prefs: []
+  type: TYPE_NORMAL

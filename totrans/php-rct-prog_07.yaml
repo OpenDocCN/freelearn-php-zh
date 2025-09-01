@@ -1,0 +1,857 @@
+- en: Chapter 7. Implementing Socket IPC and WebSocket Server/Client
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we had a sneak peek at the application we're about
+    to build in this chapter. We already know that we'll use the PHP Streams API for
+    interprocess communication. We'll also write WebSocket servers and, later, a simple
+    WebSocket client. We also emphasized the importance of understanding how event
+    loops work in an asynchronous and non-blocking application, and this will apply
+    for both server and client applications in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chapter will also be very source code-intensive, so we''ll split it into
+    three smaller sections covering three different applications:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Server Manager application**: This is the application we''ll run when testing
+    this whole project. It''ll spawn subprocesses and communicate with them via Unix
+    socket streams (wrapped with the PHP Streams API). Each subprocess represents
+    a single WebSocket server that listens to a specific port.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**WebSocket Server application**: This is a single instance of the WebSocket
+    server that allows multiple clients to be connected at the same time, enabling
+    them to chat. This means we''ll have to distribute each message to all clients
+    in real time. We''ll also keep a history of a few most recent messages that''ll
+    be populated to each new client. This application will communicate with the Server
+    Manager via the Unix socket and provide its current status (the number of clients
+    currently connected and the number of messages in the chat history).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**WebSocket Client application**: This is our test client that''ll connect
+    to  WebSocket servers and listen to the user input that''ll be sent to the server.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Before we start working on the Server Manager application, we should talk about
+    one more concept that arises mostly in an RxJS environment, but which is also
+    very relevant to this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Backpressure in Reactive Extensions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We usually think of Observables as streams of data that are produced by the
+    source Observable on one end and consumed by an observer at the other end. While
+    this is still correct, we're not aware of situations where the Observable is emitting
+    values so fast that the consumer (the observer) is not able to handle them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This could lead to significant memory or CPU usage, which we definitely want
+    to avoid.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There''re two groups of operators suitable for backpressure, although most
+    of them aren''t available in RxPHP and are related mostly to RxJS:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Lossy**: In this group, some values are discarded and never arrive at the
+    observers. For example, this could be the mouse position sampled over a certain
+    timespan. We''re usually interested in the current mouse position right now; we
+    don''t care about position in the past, and so this can be completely ignored.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Loss-less**: In this group, values are stacked in operators and are typically
+    emitted in batches. We don''t want to lose any data, so a typical inner implementation
+    of a loss-less operator is a buffer.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: As we said, backpressure is more typical for RxJS than RxPHP, but let's have
+    a look at examples of both of these types in RxPHP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lossy backpressure
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In the previous chapter, we used the `switchLatest()` operator to work with
+    higher-order Observables. This automatically subscribed only to the latest Observable
+    emitted from the source Observable and unsubscribed from the previous source.
+    This is, in fact, a lossy operator because we know we're not guaranteed to receive
+    all values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In practice, we usually deal with use cases similar to the RxJS operator `throttleTime()`.
+    This operator takes the timespan as a parameter, which defines how long after
+    emitting a value it'll ignore all subsequent emissions from the source Observable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can have a look at its marble diagram to be clear as to what it does:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Lossy backpressure](img/00027.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: This operator is already implemented in RxPHP, but we can implement it ourselves
+    using just `filter()`, or even better, by creating a custom operator to see how
+    this and similar functionality can be implemented internally.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing throttleTime() with the filter() operator
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: We can simulate a hot source Observable with the `IntervalObservable` class,
+    which periodically emits values, and we'll filter out everything that arrives
+    less than a second after the previous emission.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following example simulates a similar functionality as the `throttleTime()`
+    operator:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: From now on in this book we won't include the `use` statements for classes we've
+    been using so far to keep the examples as short as possible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we run this example, we''ll see that it does what we need:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: As we can see, the `IntervalObservable` class emits ever-increasing counter
+    values, where most of them are ignored. However, this is not a very systematic
+    approach. We have to keep the last timestamp in a variable, which is what we usually
+    want to avoid with Rx.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that our callable for `filter()` doesn't take any arguments (the current
+    value) because it doesn't matter to us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So let''s reimplement this into a standalone `ThrottleTimeOperator` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: As we saw multiple times in previous chapters, when implementing custom operators
+    we need to be aware of correctly propagating not only `onNext` signals, but also
+    `onError` and `onComplete`. We can delegate all this responsibility by reusing
+    already existing operators, which is in fact a recommended way of implementing
+    new operators to Rx. This means that our operator just sets up a `filter()` operator
+    that takes care of everything for us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Using this operator is simple with the `lift()` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: The result printed to the console is exactly the same as we saw in the preceding
+    code, so we don't need to list it here again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So this is a lossy operator. All values that don't pass the predicate function
+    to `filter()` are lost forever.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In RxJS 5, typical lossy operators are `audit()`, `auditTime()`, `throttle()`,
+    `throttleTime()`, `debounce()`, `debounceTime()`, `sample()`, and `sampleTime()`.
+    In RxJS 4, we also have the `pause()` operator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Loss-less backpressure
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Loss-less operators are those that don't discard any values. Values are just
+    stacked and sent to observers in batches.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In RxPHP, we can use the `bufferWithCount()` operator that takes as an argument
+    the number of items stored in the buffer before emitting them to the observers.
+    Optionally, we can also specify the number of items from the beginning of the
+    previous buffer we want to skip.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The marble diagram explains this very well (this operator is available in RxJS
+    5 as `bufferCount()`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Loss-less backpressure](img/00028.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'As you can see, using the `bufferWithCount()` operator is very simple. We''ll
+    use the same example as shown previously and just switch operators:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We''re always buffering four values, so when the source `IntervalObservable`
+    class emits a value every 500 ms, the observer will receive a value every two
+    seconds:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: RxJS 5 has five different buffer operator variants.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Both lossy and loss-less operators are useful, and we'll use the `throttleTime()`
+    operator in a moment when implementing the Server Manager application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing ProcessObservable
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The application in this chapter is going to spawn subprocesses a lot so it
+    makes sense to wrap this functionality into a self-sufficient Observable. This
+    Observable will spawn a new subprocess, emit its output with `onNext` and also
+    properly handle `onError` and `onComplete` notifications:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: This Observable internally uses the `Symfony\Component\Process\Process` class
+    from Symfony3 components, which makes working with subprocesses easier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It periodically checks for any available output from the subprocess and emits
+    it. When the process terminates, we send proper `onError` or `onComplete` notifications.
+    We can also optionally create a file with the process PID if we need to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice that we used the `AutoDetachObserver` class to wrap the original observer
+    and assigned it the `$disposable` object. For now it's just important to know
+    that this class automatically calls `dispose()` on the disposable we passed it
+    when it receives `onError` or `onComplete` notification.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll explain the `AutoDetachObserver` class in more detail in [Chapter 10](part0070_split_000.html#22O7C1-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 10. Using Advanced Operators and Techniques in RxPHP"), *Using Advanced
+    Operators and Techniques in RxPHP*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can test this Observable with a small script simulating a long-running process:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then we use the `ProcessObservable` to spawn this process and re-emit all its
+    output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will just print one line every second and then end:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now let's start with the main application for this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Server Manager application
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Finally, we can start writing the largest application so far. The Server Manager
+    is going to be a CLI application that will be responsible for spawning WebSocket
+    servers, where each server is a standalone application itself, with its own clients
+    and chat history.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A typical use-case could be a Unix server that manages multiple instances of
+    some game server. Each server needs to be isolated. If any of them crashed, we
+    don't want all games servers on this machine to crash as well. At the same time,
+    we want to be able to collect some status information from servers and monitor
+    them in real time with the Server Manager.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can describe the structure of this entire application and what role the
+    Server Manager has with the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Server Manager application](img/00029.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: In this diagram, we can see the **Server Manager** application on the right.
+    It communicates via Unix sockets with a single instance of **Game Server**. This
+    instance of **Game Server** has two clients connected to it via WebSockets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Communication between the **Server Manager** and the **Game Server** is only
+    one way; the **Game Server** will actively send its status to the **Server Manager**
+    itself. Communication between the **Game Server** and all its clients has to be
+    two-way. When a user sends a message, we need to resend it to all other clients
+    connected to the same **Game Server**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll start with just creating a basic class stub that listens to user input
+    via `stdin`, and, based on that, calls some action:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: We created a stream from `php://stdin` and added it to the event loop. This
+    is exactly what we've seen in the previous chapter when talking about the PHP
+    Streams API. To make adding new commands easy, we created a `Subject` instance
+    where we call `onNext()` on any user input.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We don't subscribe to the `Subject` instance directly, but rather to an Observable
+    returned from its `asObservable()` method. Of course, we could subscribe directly
+    to the `Subject` instance since it acts as an Observable and an observer at the
+    same time. However, if anyone had access to the `Subject` instance, then we can't
+    be sure that somebody won't call its `onNext()` or `onComplete()` by mistake,
+    which might cause unpredictable behavior. For this reason, it's good practice
+    to hide the fact that we're using `Subject` internally and expose only Observables
+    using `asObservable()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We have two commands at this moment:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`n`: This command spawns a new subprocess using `ProcessObservable` and adds
+    its disposable to the list of running processes. We''ll use these disposables
+    to unsubscribe later. Each subprocess will be assigned a unique port number. This
+    port will be used by the Game Server to start the WebSocket server.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`q`: This command is used to quit this application. This means we need to call
+    `dispose()` on all disposables from the array of active processes, close all Unix
+    socket connections, and then stop the event loop.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We'll now implement creating new subprocesses and quitting the application.
+    To quit the application, we'll need the array of all socket connections (`$processes`
+    private property) that we don't have yet.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating new subprocesses with ProcessObservable
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We don''t need anything special to create a new subprocess, because we''ll
+    use the `ProcessObservable` class that we created previously. Each subprocess
+    will have its own port number assigned, where it''ll run its WebSocket server:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: We spawn a new subprocess and then subscribe to it to read its output. We're
+    not, in fact, expecting to receive any output; we're doing this just in case the
+    subprocess crashed and we want to see what happened.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that we're also passing the single instance of Scheduler to `subscribeCallback()`
+    using `$this->scheduler`. We need to do this because `ProcessObservable` adds
+    its own periodic timer to check for output from the subprocess. This is one of
+    the cases where we need to be sure to use just a single event loop, as we were
+    talking about in the previous chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: All disposables will be stored in the `$processes` array organized by their
+    port numbers. It's important to keep references to all disposables so that we
+    can end all subprocesses gently by just disposing them (`ProcessObservable` will
+    send a `SIGTERM` signal).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Game Server application
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We'll switch for a moment to the Game Server application. We'll only make the
+    most essential part of it, the one that connects to the Unix socket server and
+    periodically sends a value from `IntervalObservable`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We want to do this to be able to test that the Server Manager receives and displays
+    statuses correctly. This is the part where we'll use `switchMap()` and `combineLatest()`
+    operators to work with higher-order Observables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We won''t bother with WebSocket implementation right now - that''ll come later:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Using the `stream_socket_client()` function, we connect to the Unix socket server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that right after the connection is established we send two messages to
+    the Server Manager. The first one is indicating that the subprocess is running
+    with `init`, and it also indicates which port it's using (the port for the WebSocket
+    server). The second message is `status` with just a string, `ready`". This is
+    what we'll display in the Server Manager. Then we create `IntervalObservable`,
+    which sends a status via the Unix socket stream every 500 ms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We're using some mystery `StreamObservable` class that we haven't implemented
+    yet. The Unix socket stream is, in fact, a two-way channel, so it makes sense
+    to wrap its connection with an Observable for convenience. When it receives data,
+    it calls `onNext()`, and when we close the connection, it calls `onComplete()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This Observable also sends data, so it might look like a `Subject` instance
+    could better fit this purpose. Although it sends data via the `send()` method,
+    it, in fact, writes directly to the stream with `fwrite()`. Subjects are designed
+    to send data to observers, which is not our case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `StreamObservable` class is then a relatively simple Observable that adds
+    its stream to the event loop and emits all the data it receives:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now it should be obvious how the `GameServer` class works. After we implement
+    the WebSocket server, we'll use the `send()` method on `StreamObservable` to report
+    its status to the Server Manager. However, instead of using `IntervalObservable`
+    and its incrementing counter, we'll send the number of clients connected and the
+    number of messages in the chat history.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's go back to the Server Manager and implement the Unix socket server that
+    is required to establish the connection between the Game Server and Server Manager.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Server Manager and the Unix socket server
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In order to be able to use `stream_socket_client()` to connect to a socket
+    server, we need to first create the server with `stream_socket_server()`. The
+    principle is identical to what we saw in the previous chapter when explaining
+    the example with a simple HTTP server, made just using `stream_socket_server()`,
+    `stream_socket_accept()`, and `StreamSelectLoop`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: Accepting new connections via Unix sockets is analogous to TCP connections.
+    In the `GameServer` class, we saw that the first status call it always makes after
+    establishing the connection is "init", along with its port number to tell the
+    Server Manager which Game Server is initialized and ready to start receiving WebSocket
+    clients. We also said that we need to keep track of all active connections in
+    order to be able to close them when we want to quit the application. Collecting
+    statuses from each subprocess requires us to be able to distinguish which socket
+    connection belongs to which subprocess (and which port we assigned to it).
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is why, when we accept a new connection, we wrap it with the `GameServerStreamEndpoint`
+    class that has an `onInit()` method returning an instance of the `Promise` class.
+    This `Promise` class is then resolved with the subprocess port number (see `GameServer`
+    class) when the new connection sends its `init` status. After this, we finally
+    add the connection into the array of connections (with port numbers as keys) using
+    the `addServer()` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that we're keeping one array for processes (the `$processes` property)
+    and another array for stream connections wrapped with `GameServerStreamEndpoint`
+    (the `$servers` property).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Also note that at the end of the `addServer()` method, we call `$statusSubject->onNext(null)`.
+    This will trigger an update to the collection of subscriptions to subprocess statuses.
+    We'll come to this in a moment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing the GameServerStreamEndpoint class
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This class is going to combine the `StreamObservable` that we created a moment
+    ago, Promises, the `Deferred` class, and Observables. This way, we can completely
+    hide its internals where we decode the JSON strings received from the stream,
+    and filter messages by their type:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: We subscribe to the `StreamObservable` instance to decode any incoming messages
+    (the `$decodedMessage` variable). Then, with `filter()` operators, we pass through
+    only messages of particular types.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the message type is `init,` we resolve the `Promise` object returned from
+    `onInit()`. We know there should never be multiple `init` calls, so we can unsubscribe
+    right after that.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A slightly more complicated situation is when we receive the `status` message.
+    We chain `$decodedMessage` with the `multicast()` operator. This is an operator
+    we haven't met yet, and we'll look into it in more detail in the next chapter.
+    For now, we just need to know that this operator subscribes to its source Observable
+    using an instance of `Subject` that we provided, which in this case is `ReplaySubject`.
+    Then, it returns a `ConnectableObservable` (see [Chapter 3](part0033_split_000.html#VF2I2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 3. Writing a Reddit Reader with RxPHP") , *Writing a Reddit Reader with
+    RxPHP*).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The important thing with `multicast()` is that it creates a single subscription
+    to its source Observable. We're using `ReplaySubject` purposely because it remembers
+    the last value it emitted, so if we subscribe to the Observable returned from
+    `getStatus()` multiple times, we'll always receive the most recent value immediately.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There're multiple variants of the `multicast()` operator, each with a slightly
+    different purpose, but more on that in [Chapter 8](part0061_split_000.html#1Q5IA1-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 8. Multicasting in RxPHP and PHP7 pthreads Extension"), *Multicasting
+    in RxPHP and PHP7 pthreads Extension*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Displaying real-time statuses from subprocesses
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In order to display the status of a single `GameServerStreamEndpoint`, we can
+    subscribe to the Observable returned from `getStatus()`, which is, in fact, a
+    `ConnectableObservable`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, our use-case isn't that simple. What if we spawn a new subprocess and
+    want to subscribe to it as well? For *N* subprocesses, we need *N* subscriptions.
+    Also, our requirement is to monitor all statuses in real time, so this looks like
+    we could use the `combineLatest()` operator with an array of Observables (an array
+    of Observables emitting statuses). The problem is that we don't know how many
+    Observables we'll have because we're going to add them on the go by spawning new
+    subprocesses.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One solution could be using `combineLatest()` to subscribe to all current status
+    Observables and, when a new subprocess is created, unsubscribing and creating
+    a new array of status Observables for the `combineLatest()` operator. This is,
+    of course, doable, but there's a better and more elegant solution using the `switchLatest()`
+    operator and higher-order Observables from [Chapter 6](part0050_split_000.html#1FLS41-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 6. PHP Streams API and Higher-Order Observables"), *PHP Streams API and
+    Higher-Order Observables*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll first demonstrate the principle on a separate example and then apply it
+    to the `ServerManager` class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Combining the switchLatest() and combineLatest() operators
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Let's say we add a new server every 1000 ms, but one of the existing servers
+    updates its status every 600 ms. This means we need to recreate a new Observable
+    with `combineLatest()` every second from the current array of servers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consider the following example where we simulate this situation using two `IntervalObservables`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: Instead of the array of servers, we use a `$range` variable that we're constantly
+    expanding, and instead of real statuses, we just wrap values with `Observable::just()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Observable `$statusUpdate` emits independently on the `$statusUpdate` Observable,
+    which makes the `combineLatest()` operator sometimes re-emit the same values without
+    any change, while being subscribed to the same array of Observables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The core parts of this Observable chain are obviously `combineLatest()` and
+    `switchLatest()`. Since `$newServerTrigger` represents adding a new server, we
+    need to provide `combineLatest()` with a fresh array of Observables that we want
+    to subscribe to. Then `switchLatest()` unsubscribes from the previous Observable
+    returned by `combineLatest()` and subscribes to the new one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You might wonder why we're using `func_get_args()` and `array_shift()` to get
+    the values passed to the callable. The Operator `combineLatest()` passes values
+    for each source Observable unpacked (*N* source Observables result in *N* function
+    parameters), but we don't know how many source Observables we're going to have.
+    That's why we take all arguments as a single array and then remove the first item.
+    The first item is a value from `$statusUpdate` that is also included by `combineLatest()`
+    as a source Observable, but for us it has no purpose, so we won't re-emit it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Note that the selector function for the `combineLatest()` is optional. If we
+    don't provide it, the operator will just pass all values from all source Observables
+    in a single array.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output in the console will look as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following is the timestamped order of events in this example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`1000` ms: The `$newServerTrigger` Observable fires for the first time and
+    appends the second item to the `$range` array. The operator `combineLatest()`
+    is now subscribed to two Observables created with `Observable::just()`. Since
+    these are both cold, the `combineLatest()` re-emits their values immediately because
+    it already has a value for each of them.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`1200` ms: The `$statusUpdate` Observable fires (it''s a hot Observable thanks
+    to `publish()` and `connect()`, so it was emitting the event even though we weren''t
+    subscribed to it). This makes `combineLatest()` fire again.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`1800` ms: The `$statusUpdate` Observable fires yet again, which makes `combineLatest()`
+    emit for the third time. We get the same result as before because there''re still
+    only two Observables at this moment.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`2000` ms: The `$newServerTrigger` Observable fires and appends a new item
+    to `$range`. Now the `combineLatest()` operator subscribes to three Observables.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This goes on until we collect eight emissions in total (thanks to the `take(8)`
+    operator). This was a really practical example of higher-order Observables in
+    action.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can reimplement it with the Server Manager application now:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is exactly the same chain of operators, just a little enhanced by adding
+    port numbers for each status.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we add a new server in the `addServer()` method, we trigger `$statusSubject`,
+    which recreates the array of Observables with statuses. Then, when the status
+    of any of the servers is updated, it triggers `combineLatest()` directly because
+    that's the only subscriber for them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now it should also make sense why we used `ReplaySubject` when writing `GameServerStreamEndpoint`.
+    When we resubscribe to already existing status Observables, we want to have at
+    latest one value always available, so that `combineLatest()` doesn't have to wait
+    until all of its source Observables emit a value. They already did thanks to `ReplaySubject`,
+    which emits the latest value right on subscription.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can test how this works by running the `ServerManager.php` script. The `GameServer`
+    instances will periodically emit values with `IntervalObservable` now, so we should
+    already be getting status updates.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So let''s start the `ServerManager.php` application:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: This command takes a path to the Unix socket file as an argument. It automatically
+    passes this file path to all subprocesses so they know where they should try to
+    connect. Now, we can press *n* characters followed by the ***Enter*** key to spawn
+    a couple of subprocesses. Each subprocess first sends the `ready` status and then
+    starts emitting values from the `IntervalObservable` class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output could look like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Then you can press ***Q*** followed by the ***Enter*** key to gracefully quit
+    the application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Notice that we used the operator chain `map(callback)->switchLatest()`. This
+    combination of operators has a shortcut `flatMapLatest(callback)`. However, to
+    make our code more explicit we'll typically use the longer and more obvious variant.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, we can implement the WebSocket server and client.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing a WebSocket server
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To implement a WebSocket server, we''ll use a library called `cboden/ratchet`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: A WebSocket server is represented by a class implementing the `MessageComponentInterface`
+    interface with four methods `onOpen()`, `onClose()`, `onError()`, and `onMessage()`.
+    How this class behaves on each of the events is up to the developer. Usually in
+    chat applications, we want to keep all active connections in an array of clients
+    and read messages, with `onMessage()` to resend them to all clients.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll first implement only the required methods and then add some custom ones
+    as well:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: It should be obvious what this code does without any further explanation. Just
+    note that we're using `$subject` to signal that its status has changed and needs
+    to be sent to the Server Manager via Unix sockets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now we can add more methods. In particular, we''ll need `getObservable()`,
+    where we''ll subscribe to be notified with the current statuses:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: This class itself isn't enough to start a WebSocket server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The WebSocket connection is first established as a normal HTTP connection, and
+    then it's upgraded to a WebSocket connection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Back in the `GameServer` class, we subscribe to the Observable returned from
+    the `getObservable()` method to be notified when the status for this chat server
+    changes and needs to be sent to the Server Manager. The status of the chat server
+    is represented by the current number of clients and the total number of messages
+    in the chat history:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When we''re already in the `GameServer` class, we can see how to use backpressure
+    in practice. With multiple Game Servers, where each is emitting values multiple
+    times a second, we might want to use `ThrottleTimeOperator` to limit emissions
+    via the Unix socket stream:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, each `GameServer` class will send its status at most once every two seconds.
+    In a real-world application, we'll obviously not use `IntervalObservable`, and
+    leave emitting statuses to `$webSocketServer->getObservable()`. Either way, the
+    use of backpressure and `ThrottleTimeOperator` remains the same.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing a WebSocket client
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To implement a WebSocket client, we''re going to use another PHP library called
+    `ratchet/pawl`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The client will read input from `php://stdin` and send it via WebSocket to
+    the server. It''ll also watch for any incoming messages and print them to the
+    console:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: The WebSocket client is created using the `connect()` function, where, as a
+    protocol, we use `ws`. This method returns a Promise that's resolved with the
+    WebSocket connection object when the connection is established or otherwise rejected.
+    This function also requires an event loop where we have to provide our single
+    instance of `StreamSelectLoop`. The same event loop is used to read from the `fopen()`
+    stream.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we didn't provide the event loop directly, the `connect()` function would
+    create its own instance internally. This loop would cause exactly what we described
+    in the previous chapter, and the inner loop reading from the `php://stdin` stream
+    would never run.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also use this connection object to set up event listeners with the `on()`
+    method and to send data to the server with the `send()` method. All sent messages
+    are prefixed with `>`, while all received messages are prefixed with `<`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now we can use this client to test the real usage of the Server Manager. If
+    we run three instances of `GameClient` and send some example messages, the output
+    might look like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, monitoring real-time statuses might look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: Any new WebSocket client or any new message causes an immediate update to this
+    overview.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter was really code intensive, with a lot of examples based on using
+    Unix sockets and WebSockets. We also utilized a lot of what we've learned in this
+    and the previous chapter, including higher-order Observables, with `swtichLatest()`
+    and `combineLatest()`, backpressure and which operators we can use, using event
+    loops with multiple streams, and using the `multicast()` operator to share a single
+    subscription among multiple observers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we'll have a look at multicasting in Rx and start using
+    the `pthreads` PHP extension to leverage true parallelism with threads that would
+    normally be hardly achievable.
+  prefs: []
+  type: TYPE_NORMAL

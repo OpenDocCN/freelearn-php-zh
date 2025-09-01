@@ -1,0 +1,779 @@
+- en: Chapter 4. Handling Data in Phalcon
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Unless you are building an application that retrieves all of its data via APIs,
+    you are most likely going to need a database in the application. Phalcon gives
+    you a few ways to access data from PHP. In the previous chapter, we didn't interact
+    directly with our MySQL database. We could create blog posts and store them in
+    our database, but Phalcon models did all of the dirty work for us. All we did
+    was add the database connection details to our configuration file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are a few more features our models can handle before we have to start
+    using more of the available Phalcon features. But even the simplest application
+    will grow to the point where unique database queries come into play. However,
+    databases are not the only way to handle data in your application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, you will learn the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to use the more advanced features of Phalcon models
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to store session data in a Phalcon application
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to filter and sanitize our data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to replace our MySQL database with another database system
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to access databases with Phalcon Query Language (PHQL)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to use Phalcon's Object-Document Mapper (ODM)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to handle database migrations
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Adding models
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Currently, our blog application doesn't do much. We can create and view posts,
+    but that's about it. We need to think about what other tables we need in our blog.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating the database tables
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We will have users, and each user will be able to write multiple posts. So,
+    we need a `users` table, and we need to add a `users_id` field to our `posts`
+    table so that each post is related to a user. The following is the SQL code for
+    our `users` table:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Run this SQL snippet on your MySQL database. If you need help using `phpMyAdmin`,
+    refer to [Chapter 3](ch03.html "Chapter 3. Using Phalcon Models, Views, and Controllers"),
+    *Using Phalcon Models, Views, and Controllers*, for how to execute this code.
+    Now, you have a table where you can store a minimal amount of data about your
+    users, including their chosen username and password, their name, and their e-mail
+    address. We create a unique key on the `username` column because we don't want
+    two users to have the same username.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Also, a blog is not really a blog without comments. We want visitors to be
+    able to comment on our blog applications. The following is the SQL code that we
+    need to run on our database to create a home for our comments:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: We need to relate each comment to a specific post, so we have a `post_id` field.
+    To store the commenter's details, we have `name`, `email`, and `url`. We have
+    a `submitted` date so that we can sort our comments. And, we have a `publish`
+    field that we will set to `0` when a comment is submitted, and `1` when we approve
+    the comment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We might possibly need to organize our posts. We have a few options for doing
+    this. We could use categories, where each post must fit into a specific category.
+    Our categories can have child categories, or we can use tags, where each tag can
+    be freely applied to any post, and each post can have more than one tag. Or we
+    can do both, like most blogging applications. For our application, we are going
+    to use tags only for simplicity. Run the following SQL code to create the `tags`
+    table:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'There is not much to this table, just an `id` and `tag` column. That''s because
+    we have to use an intermediate table to relate our `posts` table to our `tags`
+    table due to the many-to-many relationship between posts and tags. However, we
+    do want each tag to be unique, so we make the `tag` column a unique key. We are
+    going to call this table `post_tags`, and the following is the SQL code you need
+    to run to create it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is just a table of IDs. A record in this table will have its own unique
+    ID, a post ID, and a tag ID.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we need to modify our `posts` table. It needs a user ID. The following
+    is the SQL code we need to run to delete and recreate our `posts` table:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The last step in our process is to create the foreign key relationships between
+    our tables. Run the following SQL code to add the foreign key constraints to our
+    database:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following screenshot represents a diagram showing the relationships in
+    our database:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Creating the database tables](img/7673OS_04_01.png.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The preceding screenshot was made from the EER diagram tool in MySQL Workbench,
+    which you can download for free at [http://www.mysql.com/products/workbench/](http://www.mysql.com/products/workbench/).
+    This tool is really handy for designing databases. I created all the tables and
+    relationships for this blog with drag-and-drop and fill in the blanks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generating the models
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Now, let''s use Phalcon web tools to create all of our new models at once.
+    Browse to `http://localhost/phalconBlog/webtools.php?_url=/models/index` and you
+    will see the following screen:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Generating the models](img/7673OS_04_02.png.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This time, we are going to select the **Table name** as **All** and make sure
+    we check **Set Foreign Keys**, **Define Relations**, and **Force**. This way,
+    web tools will set up the necessary relationships in our models. This will create
+    the following files in our `models` folder located at `app`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Comments.php`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`PostTags.php`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Tags.php`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Users.php`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We will take a look at these files as we continue to refactor our blog project
+    throughout the rest of this chapter. But, to understand a little bit about what
+    we just did, let's take a look at how relationships are handled by Phalcon. The
+    Phalcon model's manager handles the relationships between models, and these relationships
+    must be set up in the `initialize` function of these models. By having Phalcon
+    web tools define relationships, we can simply have it generate the `initialize`
+    function for us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the `initialize` function of the `Users.php` file, you will find the following
+    line of code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This line of code sets up the relationships between the posts and the users
+    in our application. A user will have many posts. This is one of four methods.
+    The other three methods are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`hasOne()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`belongsTo()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`hasManyToMany()`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The first parameter is the field of the local model that is a key in the relationship.
+    The second parameter is the model being referenced. The third parameter is the
+    remote model''s key. And since posts belong to users, we will find the following
+    line of code in the `initialize` function of the Posts model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: For the most part, you can forget about the relationships and foreign keys in
+    your database and just treat your records as objects.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Storing session data in Phalcon
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: First, we are going to give ourselves the ability to log in to our blog and
+    store our user information in our session. We are going to wait to encrypt our
+    passwords and set up permissions for our user until the next chapter. For now,
+    we only want to be able to save a user ID when a user saves a blog post.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We made our changes to the model, but that doesn''t mean everything is going
+    to work. Browse to `http://localhost/phalconBlog/posts/create` and try to create
+    a new post. You will not be able to. Instead, you will see the following error
+    message in your browser because we just created a rule that our database requires
+    every post to have a user ID:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Storing session data in Phalcon](img/7673OS_04_03.png.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Another problem is that in order to have a user ID, we need a user in the `users`
+    table to reference. Therefore, we need to be able to add users to our database
+    with our application. So, go back to `http://localhost/phalconBlog/webtools.php?_url=/scaffold`
+    and generate the scaffolding for your `users` table. We are going to cut a lot
+    out of it and change some things, but again, it is a good place to start.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once you have generated the scaffolding for your `users` table, browse to `http://localhost/phalconBlog/users/new`
+    and create your user as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Storing session data in Phalcon](img/7673OS_04_04.png.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now that we have a user, let''s make sure that when we create a new blog post,
+    the user ID gets related to it. We are going to set a `user_id` variable in the
+    user''s session. First, we need a form to log in, and we might as well put this
+    in the `indexAction` function''s template so we can log in there. Open up the
+    `index.volt` file located `at app/views/users` that you generated with Phalcon
+    web tools and modify it to look like the following code snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: What we have left is a `username` and `password` field and a **submit** button.
+    Also, we have modified the original search form that web tools built for us to
+    post to an action that doesn't exist yet in our controller, that is, the `loginAction`
+    function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let''s create a `loginAction` function in the `UsersController.php` file
+    located at `app/controllers`. The method we will be adding is the following code
+    snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: This method is pretty simple. It checks that there is a `POST` variable, and
+    if so, sets `$parameters` to the `POST` variable. Then, we set the `$users` variable
+    to the result of the Phalcon model's `Find` method. Since we made the `username`
+    column a unique key in our database, we should either get one or no records. If
+    we get no records, we set a flash message to tell the user that what they entered
+    was incorrect. If we get one record, we call `$users->getFirst()` to get the first
+    and only result from our query. And then, we set the session variable `user_id`
+    to the `id` instance in our `$user` object. We started the session when our bootstrap
+    file loaded the `services.php` file located at `app/config`, so it is available
+    here in this controller.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'While we have this file open, we should also create an action to log out. This
+    method is even easier to write. We just call `$this->session->remove($var)`, where
+    `$var` is the variable we want to remove from the session. Here is what the code
+    looks like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We are going to make one last change to this file. We have already set the
+    `indexAction` function''s view to display the login form when the `indexAction`
+    function is called. But, if a user is already logged in, let''s show them a list
+    of users. To do this, we will change the `indexAction` function so that it looks
+    like the following code snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, we simply check if there is a user ID in the session, and if so, we forward
+    the user to the search controller, which displays a list of all users when no
+    search parameters are posted.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We still can''t create a post yet until we set this user ID in it. So, open
+    up the `PostsController.php` file located at `app/controllers`. We only have to
+    worry about setting this ID when the blog post is created, so we are only going
+    to modify the `createAction` function. Right before we instantiate the new post
+    with `$post = new Posts()`, we are going to add the following code snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To check whether the session has a user ID in it or not, forward the user to
+    the login page. If there is an ID, the code creates the new post, and we need
+    to add the following line of code to add our user ID to the `post` object:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And finally, we need a way to log out. We have created the `action` method
+    already, but there is no way to get to it. So, open up the `search.volt` file
+    located at `app/views/users` and add the following code snippet right after the
+    `{{ content() }}` tag:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will add a button to the top of the list of users that will log us out.
+    Now, we can log in and create a post without any issues.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Filtering and sanitizing data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To prevent unauthorized access, SQL injection, and other malicious attacks on
+    our application, we need to filter and sanitize user input. We can use the `Phalcon\Filter`
+    component to do this for us. This component supplies wrappers for the PHP filter
+    extension.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Securing your application is beyond the scope of this book, but we can take
+    a look at a filter that Phalcon development tools already added for us when we
+    named one of our user field''s e-mail. In the `UsersControllers.php` file located
+    at `app/controller`, you will find that the `createAction` function has the following
+    line of code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The filter object is accessed through the Phalcon request object. The first
+    parameter is the name of the variable we are accessing, and the second optional
+    parameter is our filter. Phalcon has the following built-in filters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Name | Description |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `string` | Strips tags |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `email` | Removes all characters except letters, digits, and special characters
+    such as !, #, $, %, &, *, +, -, /, =, ?, ^, _, '', {, &#124;, }, ~, @, and []
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `int` | Removes all characters except digits, dots, plus, and minus |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `float` | Removes all characters except digits, dots, plus, and minus |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `alphanum` | Removes all characters except a-z, A-Z, and 0-9 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `striptags` | Applies the `strip_tags` function |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `trim` | Applies the `trim` function |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `lower` | Applies the `strtolower` function |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `upper` | Applies the `strtoupper` function |'
+  prefs: []
+  type: TYPE_TB
+- en: You can also write your own filters. You can read more about doing that at [http://docs.phalconphp.com/en/latest/reference/filter.html#creating-your-own-filters](http://docs.phalconphp.com/en/latest/reference/filter.html#creating-your-own-filters).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Phalcon models revisited
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Another thing we need to fix in our application is the fact that our dates
+    don''t mean anything. We have published and updated dates in our `posts` table,
+    which we are not using. Let''s make sure we''re setting those dates. Let''s open
+    up the `Posts.php` file located at `app/model`. We are going to add more code
+    to the `initialize` function of our Posts model, and we are going to use a behavior
+    on our date fields. First, add this line of code after the first PHP tag:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, add the following lines of code to the `initialize` function in this
+    model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can use the `Timestamable` behavior to handle the setting of our published
+    and updated dates for us. The first parameter is the event we are attaching this
+    behavior to, the next parameter is the field, and the third is the date format.
+    So, the published date will now be set when a new record is created, as will the
+    updated date when it is updated, without having to set the date manually whenever
+    we modify data in our controller.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now let's add tags to our posts. The first thing we need to do is go back to
+    Phalcon web tools in the browser or Phalcon Developer Tools in the command line
+    and generate the models for both the `tags` table and the `post_tags` table. Then,
+    we regenerate the model for our `posts` table. Make sure to choose **Set Foreign
+    Keys** and **Define Relations**. For the `posts` table, you will have to set the
+    **Forced** option.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Open your newly generated files. You will find them in the `models` folder
+    located at `app`. At the bottom of the `Posts.php` file, you will find the following
+    new code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'At the bottom of `Tags.php`, you will also find an `initialize` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'At the bottom of the `PostTags.php` file, you will find the following lines
+    of code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: The code in the `initialize` functions of these models relate these models based
+    on the foreign keys we created in our database and allow us to create, read, update,
+    and delete our records as objects. However, we still have to write a little bit
+    of code to actually save our tags when we save a post.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, let's create a new method in our `Posts.php` file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: Our function accepts an array of tags as the first parameter and the ID of a
+    post as the second. Here, we loop through the tags. Using `findFirst`, we check
+    if the tag already exists. In this example, we use an array that simply holds
+    what would be the `WHERE` clause of our SQL. If there is a tag, it is loaded in
+    the `$tag` variable. If not, `$tag` will be false, and then we create a new tag
+    and save it. Next, we check if there is a record in the `post_tag` table that
+    relates the current tag to the post ID. If there is, we load it, and if not, we
+    create it and save it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We have the model handled, so let''s move to the controllers. Open up the `PostsController.php`
+    file located at `app/controllers`. Find the following line of code in both the
+    `createAction` and `saveAction` functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is the point where the post gets saved to the database after being created
+    or edited. The `$post` object will now have an ID attached to it. After each post,
+    add the following lines of code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, we are assuming that when we get to creating our form, we will be accepting
+    comma delimited tags. So, we turn this string of tags into an array with `explode`
+    after setting the string to lowercase letters in order to ensure a bit more uniqueness.
+    Then, we use the `addTags` method that we just added to our `Post` model in order
+    to save the tags to our database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we need to modify the `editAction` function so that we can send tags to
+    our edit form. Locate the following line of code in that function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Add the following code after it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, all we have to do is modify our post views. The `edit.volt` and `new.volt`
+    files located at `app/view/post` just need a field added to our form for tags
+    at the bottom of the table, before the button markup.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the `show.volt` file located at `app/view/post`, find the following line
+    of code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Insert the following code snippet below the previous code snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now we can browse to `http://localhost/phalconBlog/posts/new` and create a post
+    that has tags.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using PHQL
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**Phalcon Query Language** (**PHQL**) is a high-level SQL dialect that standardizes
+    SQL queries for the database systems that Phalcon supports. However, this is not
+    the only feature of PHQL. It also has the following features:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It uses bound parameters to secure your application
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It treats tables as models and fields as class attributes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It allows data manipulation statements to prevent data loss
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It allows only one query per call to prevent SQL injection
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'We are going to use PHQL for the search form in our sidebar. Currently, it
+    is actually pretty useless. We will cut it down to search only the body field
+    just to make things easy. Now, we are going to make it work a little bit better.
+    We can make the value from this one search field do a little more work by searching
+    not only the body, but the title and the excerpt as well. So, we need to edit
+    the `searchAction` function in the `PostsController.php` file located at `app/controllers`.
+    The following code snippet tells us how we need to edit the file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: The lines of code that have been commented out in the previous code snippet
+    are old code. The important part of the code is at the end where we create the
+    PHQL query. Notice that instead of selecting from a table, we select from the
+    actual model. Then, we set the `$posts` variable to the results returned by `$this->modelsManager->executeQuery()`.
+    `modelsManager` is a service that was loaded into our Dependency Injection container.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Another thing that PHQL can help us out with is joins. Since we already defined
+    the relationships between our models, we can use a PHQL query like the following
+    line of code to get a list of posts with the users'' names:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that we don't have to specify the predicates for the join operation. Here,
+    an `INNER JOIN` operation is assumed, but any type of join can be used.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you don''t feel like writing the PHQL statements, there is a query builder
+    available which is similar to the query builder in other PHP frameworks such as
+    Zend and Yii. We could build the previous query with the following lines of code,
+    as well as execute it and return the records:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: PHQL is a powerful language, and the scope of this book and application don't
+    really do it justice. To learn more than what this book can teach you about PHQL,
+    visit [http://docs.phalconphp.com/en/latest/reference/phql.html](http://docs.phalconphp.com/en/latest/reference/phql.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Switching databases in Phalcon
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We have used a MySQL database in our application. If we wanted to change the
+    database software midstream, it would not be too hard, as long as we have the
+    same data structure in our new database. Currently, Phalcon supports the following
+    relational database backends:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**MySQL**: This is the world''s most used relational database management system
+    available at [https://phalcon-php-framework-documentation.readthedocs.org/en/latest/api/Phalcon_Db_Dialect_Mysql.html](https://phalcon-php-framework-documentation.readthedocs.org/en/latest/api/Phalcon_Db_Dialect_Mysql.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**PostgreSQL**: This is a powerful, reliable, and open source database management
+    system available at [https://phalcon-php-framework-documentation.readthedocs.org/en/latest/api/Phalcon_Db_Dialect_Postgresql.html](https://phalcon-php-framework-documentation.readthedocs.org/en/latest/api/Phalcon_Db_Dialect_Postgresql.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**SQLite**: This is a self-contained, server-less database engine available
+    at [https://phalcon-php-framework-documentation.readthedocs.org/en/latest/api/Phalcon_Db_Dialect_Sqlite.html](https://phalcon-php-framework-documentation.readthedocs.org/en/latest/api/Phalcon_Db_Dialect_Sqlite.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Oracle**: This is an object-relational database management system produced
+    by the Oracle corporation available at [https://phalcon-php-framework-documentation.readthedocs.org/en/latest/api/Phalcon_Db_Dialect_Oracle.html](https://phalcon-php-framework-documentation.readthedocs.org/en/latest/api/Phalcon_Db_Dialect_Oracle.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Our application sets the database adapter by importing it in the `services.php`
+    file located at `app/config` with the following line of code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: If we wanted to use a different database system, we would just include a different
+    adapter here. Each adapter handles most of the proprietary quirks of its respective
+    database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Phalcon's Object-Document Mapper and MongoDB
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Relational databases aren't the only type of database you can use in Phalcon.
+    You can also use Phalcon's **Object-Document Mapper** (**ODM**) to connect to
+    MongoDB. Phalcon's ODM offers CRUD functionality, validation, events, and other
+    useful services.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You start by adding a connection from your MongoDB database to your Dependency
+    Injection container, as in the following code snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will be a connection to the default localhost MongoDB instance running
+    on the default port.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can now add models just as we add models when our application uses a standard
+    relational database, but instead, we extend `\Phalcon\Mvc\Collection`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: And really, that is all you need in your model file. This assumes we will be
+    using a collection called `pages` in our `blog` database to hold the data. This
+    may seem a little confusing, but it is a standard convention to use lowercase
+    names for MongoDB collections. This class has the same functionality as that of
+    the MongoDB PHP extension. So, if we want to find a page by its ID, we would use
+    the same function name.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: Each collection is an object with the flexibility of a MongoDB record. Once
+    you have the `page` object, it can be modified and saved again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can read more about the ODM at [http://docs.phalconphp.com/en/latest/reference/odm.html](http://docs.phalconphp.com/en/latest/reference/odm.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Migrating databases
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Another tool that both Phalcon Developer Tools and Phalcon web tools provide
+    is one that manages database changes between your various software environments.
+    To generate a database migration, you would run the following command in your
+    project directory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This command will simply dump every object from your database in migration
+    classes. In our application, these classes will be stored inside a folder named
+    after the current migration version in the `migrations` folder located at `app`.
+    Let''s say you just changed the data model in the local version of your application
+    and you have created a migration for it. Then, you would just upload the migration
+    to your development server and run the following command to execute the changes
+    to your database on this server:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To list the configuration options available, run the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To use web tools, we would just browse to `http://localhost/phalconBlog/webtools.php?_url=/migrations/index`
+    in our current application, and we will see the following screen:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Migrating databases](img/7673OS_04_05.png.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: You can learn more about Phalcon database migrations at [http://docs.phalconphp.com/en/latest/reference/migrations.html](http://docs.phalconphp.com/en/latest/reference/migrations.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we fleshed out our blog application a little by adding relationships
+    between our models. We can now log in, create our own posts that have updated
+    and created dates, and add tags to our posts. During the process of refactoring
+    our application to do these things, we learned various ways to handle data in
+    Phalcon. However, our application is far from complete.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will fill in some of the missing gaps in our application,
+    including the ability to comment on posts, hiding content and functionality from
+    visitors who aren't logged in, encrypting users' passwords, generating RSS feeds,
+    and pinging sites when we create posts.
+  prefs: []
+  type: TYPE_NORMAL

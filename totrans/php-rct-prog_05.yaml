@@ -1,0 +1,849 @@
+- en: Chapter 5. Testing RxPHP Code
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we're going to start testing code based on RxPHP. So far, we've
+    been testing code by just running it and watching for the expected output in console.
+    Of course, this isn't a very systematic approach, so it's time to start testing
+    our code in an automatic way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'More precisely, in this chapter we will do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introduce the `doOn*()` operators
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Start using the PHPUnit library for unit testing code
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Talk about testing asynchronous code in general and try some common pitfalls
+    ourselves
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Explore classes that come with RxPHP intended for testing and see how to use
+    them separately, and how they fit into the great scheme of things
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For demonstration purposes, create a `SumObservable` class that calculates the
+    sum of all integers going through, and test it using RxPHP testing tools
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Write a simplified `ForkJoinObservable` class and test it
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Stress how important it is to be aware of timing when testing Observables and
+    operators
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This chapter is going to be very code-intensive, although most of these examples
+    are simple and aim to put things from previous chapters to the perspective of
+    unit testing. Previous experience with unit testing with PHPUnit is helpful, but
+    not required.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Apart from writing unit tests, there's a very common way of debugging Observable
+    chains with `doOn*()` operators.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The doOn*() operators
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we've used the `map()` operator a couple of times to
+    just print to the console what's happening inside our Observable chains. However,
+    this isn't very convenient. The `map()` operator always needs to return a value
+    that is passed further down the chain, and it can catch only `onNext` signals.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'That''s why RxPHP has a couple of operators with the common prefix `doOn*`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`doOnNext()`, `doOnError()`, `doOnCompleted()`: Each of these operators takes
+    a callable as a parameter that is executed when they receive their respective
+    signal'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`doOnEach()`: This operator takes an instance of `ObserverInterface` as a parameter
+    and executes its handlers for each signal'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: So these operators are very similar to the methods `subscribeCallback()` and `subscribe()`.
+    The biggest advantage is in the way `doOn*` operators work internally. They never
+    modify the value going through and just execute our callables, which is ideal
+    for quickly debugging Observable chains or to perform side-effects without creating
+    subscriptions (this includes everything related to subscribing to Observables
+    as we talked about in [Chapter 3](part0033_split_000.html#VF2I2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 3. Writing a Reddit Reader with RxPHP"), *Writing a Reddit Reader with
+    RxPHP*).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can see this with a very simple example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We have a single subscriber that handles `onNext` and `onError` signals. Note
+    that the `onError` handler is empty and it''s the `doOnError()` operator that
+    prints the exception messages. Console output for this example is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Using the remaining `doOn*()` operators is exactly the same. We're obviously
+    not going to use these operators to test RxPHP code, but these are often the easiest
+    way to see what's emitted by our Observables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: These operators have been simplified in RxPHP v2 and have the same signature
+    as the `subscribe()` method in RxPHP v2, which is just `do()` instead of all its
+    variants. Its functionality remains unchanged.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Installing the PHPUnit package
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Since we''re installing all dependencies throughout this book from the composer,
+    we will do the same for PHPUnit:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: This also creates a symlink into `vendor/bin/phpunit`, which we'll use to run
+    our unit tests from the console.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'PHPUnit supports multiple ways to install, including **PHAR** (**PHP archive**)
+    format and installing it globally using the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: If you run into trouble installing PHPUnit, head over to the installation instructions
+    at [https://phpunit.de/manual/5.6/en/installation.html](https://phpunit.de/manual/5.6/en/installation.html)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, unless you have a good reason to use one global instance of PHPUnit,
+    it's better to install it per project. This way we can avoid dealing with issues
+    involving unit testing code written for different PHPUnit versions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Basics of writing tests using PHPUnit
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We're not going to go into very much detail about how to use PHPUnit, and instead
+    leave it to its in-depth documentation ( [https://phpunit.de/manual/5.6/en/index.html](https://phpunit.de/manual/5.6/en/index.html)
+    ). For the purpose of this chapter, we should, however, have a quick look at some
+    of the basics we're going to use for the purposes of testing RxPHP code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are some basic rules we should follow:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: All tests for a single class, `MyClass`, go into a class called `MyClassTest`,
+    which should inherit from `PHPUnit\Framework\TestCase`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Each test scenario is represented by a function prefixed with `test` or annotated
+    with `@test` annotation. This way it can be auto-discovered by PHPUnit.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Each test function consists of one or more assertions using `assert*` methods
+    (more on them later). If any one of them fails, the whole test scenario (one test
+    function) is marked as failed. All assertions are inherited from `PHPUnit\Framework\TestCase`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can specify dependencies between test scenarios using `@depends testname`
+    annotation to change the order in which tests are executed.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'So, let''s write a minimalistic test class that demonstrates the preceding
+    points. We can call this test class `DemoTest`, and it can make just a few assertions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We used three different types of assertion. In general, all assertions compare
+    an expected value and an actual value returned from a tested function. The following
+    three assertions work in this way too:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`assertTrue($condition)`: The tested condition needs to be true.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`assertEquals($expected, $actual)`: Checks that `$expected` and `$actual` values
+    are equal. This single assertion handles multiple types of data separately, even
+    those that aren''t comparable with the `==` operator. Apart from comparing basic
+    types, such as strings, arrays, Booleans, and numbers, it can also compare `DOMDocument`
+    instances, or any objects to match their attributes.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`assertContains($needle, $haystack)`: Typically, checks that an array (haystack)
+    contains a value, but can also check that a string contains another string.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: PHPUnit contains dozens of different assertion methods, and all of them work
+    on the same principle. A full list is available in the documentation ( [https://phpunit.de/manual/current/en/appendixes.assertions.html](https://phpunit.de/manual/current/en/appendixes.assertions.html)
+    ), and we can, of course, write our own. We're going to use a very limited number
+    of assertions that are relevant for us, so we're good to go with these basic ones.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, we can execute all test scenarios in the class from the console, using
+    the PHPUnit command-line executable. It''s located in `vendor/bin`, and since
+    we''re going to use it a lot we''ll make a symlink to the project root. We''ll
+    do the same for the `autoload.php` script located in the vendor directory that
+    we need as well:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now we can run our test class with the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Some empty lines from the CLI output are purposely removed to keep them reasonably
+    short.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We used two CLI parameters here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`--bootstrap`: Since we expect tests to work with various classes and functions
+    from our project, we need to tell PHPUnit where it can find them. This parameter
+    lets you specify a custom class loader (basically a PHP SPL autoloader). Fortunately,
+    Composer already does everything for us, and generates `autoload.php` from our `composer.json`
+    file. If we don''t use the `--bootstrap` parameter, PHPUnit will throw an error
+    because it will be unable to find `PHPUnit\Framework\TestCase`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`phpunit_01.php`: This is the file containing the test we want to run. Note
+    that we could also use a directory path to test all the files in that directory,
+    or just a dot (`.`), to test all the files in the current directory.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: PHPUnit allows the creation of a custom XML file with its configuration, so
+    we don't have to include the `--bootstrap` parameter every time. To keep things
+    simple, we're not using it. For more information, see the documentation at  [https://phpunit.de/manual/current/en/appendixes.configuration.html](https://phpunit.de/manual/current/en/appendixes.configuration.html)
+    .
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The console output summarizes everything we need to know about the tests processed.
+    We can see it ran one test case with four assertions. The line with a single dot
+    (`.`) followed by `1 / 1 (100%)` means we executed a single test case and it succeeded.
+    This isn''t very descriptive, so we can use another argument, `--testdox`, to
+    make it more human-readable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, instead of the dot (`.`), PHPUnit converted the class and function names
+    into strings, and marked those that passed. This is definitely more understandable;
+    however, it doesn't show error messages on the failed test, so we don't know why
+    it failed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll use both formats in this chapter depending on the situation. Usually,
+    when we expect a test to pass, we'll use the second, more readable, format. When
+    we expect the test to fail, we'll use the first format to see where it failed
+    and why (if it failed).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For demonstration purposes, we''ll also add a test that fails and another test
+    that depends on the first test:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The first test case fails because it asserts that `5 == 6`. The second test
+    case is skipped because the test it depends on failed. The failed test is then
+    properly marked as failed, while the skipped test is omitted:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is all we need to know for now. Before jumping into testing RxPHP code,
+    we should quickly talk about testing asynchronous code in general and one common
+    pitfall we need to be aware of.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Testing asynchronous code
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'There''s one important caveat we need to know about when testing asynchronous
+    code, and since everything we do with RxPHP is asynchronous it''s very relevant
+    to us. Let''s consider the following function `asyncPowIterator()`, which we''re
+    about to test:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: We have a function, `asyncPowIterator()`, that calls a callable on each number
+    in the range 1 to 5\. Notice that we made an intentional bug and instead of iterating
+    the range 1 to 5, we'll just iterate 1 to 4.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In order to test that this method produces correct values, we placed the assertion
+    right into the callable. So, let''s run the test and see what happens:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: Well, the test passed, even though there's a bug that we know about.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The function in fact generates correct results, it''s just not called as many
+    times as we expect. This means that to test this function properly, we need to
+    count the calls of the callable as well, and then compare it to the expected value:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we''re incrementing the `$count` variable every time we go through the
+    callable and, if we run the test again, we''ll see it fails as it''s supposed
+    to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now it fails as we want and we know that something's wrong.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is an important paradigm. When testing asynchronous code, we can't just
+    test that it returns correct results; we also need to be sure it gets called at
+    all.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What we already know about unit testing could be enough to start testing our
+    Observables and operators. RxPHP comes with a couple of classes intended for testing
+    RxPHP code that can make our lives easier. All of these are used internally by
+    RxPHP to test itself, so it's worth spending a little time learning about them,
+    and start using them as well when testing our own code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Testing RxPHP code
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Since [Chapter 2](part0024_split_000.html#MSDG2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 2. Reactive Programming with RxPHP"), *Reactive Programming with RxPHP*,
+    where we introduced Schedulers, we've been using them via `ImmediateScheduler`
+    and `EventLoopScheduler`. Internally, `EventLoopScheduler` extends another Scheduler,
+    called `VirtualTimeScheduler`, which is also used internally by `TestScheduler`,
+    which we'll use for testing in a moment. But before we do that, let's see what's
+    so interesting about `VirtualTimeScheduler`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introducing VirtualTimeScheduler
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: With `ImmediateScheduler`, everything is executed immediately. The `VirtualTimeScheduler`
+    keeps a priority queue of actions to be executed and gives us control over the
+    order they're called.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this example, we''ll make an instance of `VirtualTimeScheduler` and stack
+    a couple of actions that will be executed with different delays using the `schedule($actionCallable,
+    $delay)` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: When we instantiate the `VirtualTimeScheduler` class, we also need to pass a
+    starting time and a typical comparer function that decides which action is called
+    first. Then, to actually start executing all the actions in the correct order,
+    we need to call the `start()` method manually.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `schedule()` method also takes as its last argument a delay from the starting
+    time when it'll be executed. This means we can define actions in a different order
+    than they're supposed to be executed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This example will print numbers in the following order:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is actually what `EventLoopScheduler` does when we use it with an Observable
+    that allows delayed execution, such as `IntervalObservable`. Let''s look again
+    at the very basic example with the `interval()` operator in RxPHP 1.x:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `EventLoopScheduler` class is based on the same principle as `VirtualTimeScheduler`
+    (it also inherits `VirtualTimeScheduler`). The primary difference is that `EventLoopScheduler`
+    uses a loop to reschedule action calls over and over again in the specified interval.
+    In this example, by "action" we mean an `onNext()` call from `IntervalObservable`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The default delay for `schedule()` is `0`, so we can also use `VirtualTimeScheduler`
+    instead of `ImmediateScheduler`. Consider the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As expected, this prints all items in the array in the order they''re specified:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now it should be obvious why we always check in all our methods whether there's
+    a Scheduler passed, and if there isn't, we use the simplest `ImmediateScheduler`.
+    This allows us to easily switch to any other Scheduler if we have a reason to.
+    Well, one good reason is unit testing, of course.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `VirtualTimeScheduler` itself isn't used when testing RxPHP code, but it's
+    wrapped with another Scheduler called `TestScheduler` that uses its principles
+    under the hood and lets us schedule even more than just actions. Since `TestScheduler`
+    uses a few other classes related to testing internally, we'll first have a look
+    at them and then go back to `TestScheduler`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: As its name suggests the `VirtualTimeScheduler` doesn't work with real time.
+    The delays we set when calling the `schedule()` method are only used to execute
+    actions in the correct order.
+  prefs: []
+  type: TYPE_NORMAL
+- en: HotObservable and ColdObservable
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We know what hot and cold Observables are from [Chapter 02](part0024_split_000.html#MSDG2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 2. Reactive Programming with RxPHP") , *Reactive Programming with RxPHP*.
+    These have their universal variants as `HotObservable` and `ColdObservable` classes.
+    Note that these are intended only for testing and not for production usage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll first have a look at how `HotObservable` can be used, and then talk
+    about each class used in this example separately:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We used two new classes, `Recorded` and `OnNextNotification`, which we haven''t
+    met yet, so let''s talk about them:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`HotObservable`/`ColdObservable`: This class creates a hot or cold Observable,
+    respectively. It takes as its argument a Scheduler and an array of actions that
+    need to be scheduled for execution on the Scheduler we provide.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Recorded`: This class represents a single message (instead of a callable we
+    used in the previous examples) scheduled for delayed execution. This class has
+    a very important method, `equal()`, to compare two instances for equal value,
+    time of invocation, and message type.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`OnNextNotification`: The action itself is represented by an instance of this
+    class. It takes only one parameter representing its value, and its only purpose
+    is to call `onNext()` on an observer when invoked. There are also `OnErrorNotification`
+    and `OnCompletedNotification` classes, calling `onError` and `OnComplete` methods,
+    respectively.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'When we run this example, we get the following result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: The difference between `HotObservable` and `ColdObservable` is when they schedule
+    their actions. The `HotObservable` class schedules everything right in its constructor,
+    while `ColdObservable` does everything on subscription.
+  prefs: []
+  type: TYPE_NORMAL
+- en: MockObserver
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Just like when we talked about testing asynchronous code and that we need to
+    be able to tell when callables weren't called at all, we need the same thing in
+    RxPHP when testing Observables. RxPHP comes with class `MockObserver`, which records
+    all the messages it receives (including the exact time for each record from the
+    Scheduler), so we can later compare them with expected messages in the correct
+    order.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consider the following code printing all messages from `MockObserver`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Notice that we''ve also included `OnCompletedNotification`, which is called
+    before the last value:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can see that the value in each message is wrapped with the type of notification
+    we used. Also, the last `onNext` call is recorded as well, even though it was
+    emitted after `onComplete`. This is the correct behavior of `MockObserver`, because
+    its only goal is to record messages and not to perform any logic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: TestScheduler
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Now let's come back to the `TestScheduler` class we mentioned when talking about `VirtualTimeScheduler`.
+    This class inherits `VirtualTimeScheduler` and provides a couple of methods related
+    to scheduling events.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll start with an example again and see what `TestScheduler` does for us:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: We created five messages and we're expecting to receive only three. Also, this
+    time, we're using the method `equals()` on instances of `Recorded` to compare
+    them to each other. This will make sure we're receiving the correct number of
+    messages in the correct order.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s run this example and check that we receive messages as we expect in
+    the `$expected` array, and then talk about what happens inside and why:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'So, where did the other two messages disappear to? The `TestScheduler` class
+    has two very important methods for scheduling actions, which we''re going to use
+    when testing RxPHP code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`startWithTiming($create, $createTime, $subscribeTime, $disposeTime)`: This
+    method schedules three actions. These actions are: creating an instance of the
+    source Observable, subscribing to the Observable and finally disposing a disposable
+    returned from the `subscribe()` call. Each action is scheduled for a specific
+    time by one of the arguments. Since creating an instance of Observable is one
+    of the scheduled actions, it needs to be passed as a callable that returns the
+    Observable, and not directly as an argument.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`startWithCreate($create)`: This method calls the `startWithTiming()` method
+    with default values. It''s equal to calling `startWithTiming($create, 100, 200,
+    1000)`. The only argument is a callable that returns the source Observable.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Both these methods return an instance of `MockObserver`, which is also used
+    to subscribe to the source Observable, so we don't need to create it ourselves.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now it should be obvious why we received just three messages when we actually
+    scheduled five. The message delayed by 180 happens before we subscribe to the
+    source Observable, and the last message, with a delay of 1200, happens after we've
+    already called `dispose()`, which unsubscribed `TestObserver` from the source
+    Observable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Comparing actual and expected messages with a `foreach` loop is, of course,
+    possible, but it would be very tedious to do this in every single test we write.
+    That's why RxPHP comes with `Rx\Functional\FunctionalTestCase` class, which we
+    can use instead of `PHPUnit\Framework\TestCase` and which adds assertion methods
+    specific to RxPHP code, most notably the `assertMessages()` method, which compares
+    arrays of messages, just as we did in this example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Testing SumOperator
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: All these classes are used by RxPHP to test its own code. Now we'll use them
+    to test our own Observables and operators as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For testing purposes, we''re going to write a simple operator that calculates
+    the sum of all the integers it receives. When an `onComplete` arrives, it emits
+    a single `onNext` with the sum of all numbers. It also emits `onError` when a
+    non-integer value arrives:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: This operator is very straightforward, and since we already know all the utilities
+    we need to properly test it, we can jump right into unit testing with PHPUnit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In fact, RxPHP already has a `sum()` operator, which is internally implemented
+    as a `reduce()` operator that just adds values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Instead of `PHPUnit\Framework\TestCase`, we'll use `Rx\Functional\FunctionalTestCase`,
+    which creates `TestScheduler` internally and automatically passes it to new hot/cold
+    Observables, so we don't need to worry about Schedulers at all.
+  prefs: []
+  type: TYPE_NORMAL
+- en: RxPHP also contains a few helper functions to simplify creating `Recorded` objects.
+    Instead of calling `new Recorded(200, new OnNextNotification(3))`, we can use `onNext(200,
+    3)` function defined in the `rxphp/test/helper-functions.php` file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In order to use these functions, and also the `FunctionalTestCase` class, we
+    need to tell the autoloader where to find them by updating our `composer.json`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After updating `composer.json`, we need to regenerate the `autoload.php` script
+    as well:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now we can use `onNext()`, `onComplete()`, `onError()`, and also the `FunctionalTestCase`
+    class (don''t interchange the `onNext()` function from `helper-functions.php`
+    with the `onNext()` method in observers; these are two separate things). Thanks
+    to all this, the test class will then be pretty short:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: This test schedules a couple of messages and completes the Observable at time
+    `460`, which causes the `SumOperator` to emit its accumulated value, and also
+    to complete right after that.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The callable for the `startWithCreate()` method creates a `HotObservable` class
+    and connects it with our `SumOperator` using the `lift()` method we talked about
+    extensively and used in  [Chapter 03](part0033_split_000.html#VF2I2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 3. Writing a Reddit Reader with RxPHP") , *Writing a Reddit Reader with
+    RxPHP*. At the end, we used `assertMessages()` to compare messages received by `MockObserver`
+    with expected messages, just as we did in the previous example. Using `assertMessages()`
+    from `FunctionalTestCase` is just more comfortable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can run the test to see that it really passes successfully:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that even when `assertMessages()` has to compare two messages and make
+    sure both arrays are the same size, it counts as a single assertion.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now let''s also test a situation where we pass an invalid value (a string in
+    this case) that causes an `onError` message:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: We expect to receive an `onError` message at `250` and that's all. Even though
+    there are two more messages scheduled, they won't arrive at `TestObservable`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Of course, these two tests pass as expected:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: Testing ForkJoinObservable
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now we can have a look at a slightly more complicated example. In RxPHP, there's
+    an interesting operator called `forkJoin()`. This operator takes as its parameter
+    an array of Observables, collects the last value emitted for each of them, and
+    when they all complete, emits a single array with the last values for each Observable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This will make better sense when we look at the following marble diagram for
+    `forkJoin()` operator in RxJS:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Testing ForkJoinObservable](img/00023.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Marble diagram representing the forkJoin() operator in RxJS (http://reactivex.io/documentation/operators/zip.html)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''re going to implement a simplified version of the `forkJoin()` operator
+    as an Observable. To make it extra clear what it does, we''ll start with an example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will print the last value from each source Observable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Our implementation will subscribe to each source Observable and keep the latest
+    value emitted for each of them. Then, when all of them complete, it emits one
+    `onNext()` and one `onComplete`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: There are just a couple of nested anonymous functions. Note that we also need
+    to store all disposables in `CompositeDisposable` to be able to properly dispose
+    all of them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Testing this class is very similar to what we did before. Pay special attention
+    to the delays we use for each of the message calls:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: We expect to receive `onNext()` with the last values for each source Observable
+    at `800`, because this is the time when the second Observable completes. Also,
+    even though the first Observable emitted one more value after its `onComplete`
+    call, this will be ignored because it has already completed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, if we run the test case, it will pass as expected:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: The most important thing we should keep in mind when testing RxPHP code is that
+    time of invocation matters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We could, of course, just test that our Observables and operators produce the
+    correct values, but this could leave some bugs unnoticed and hard to find. To
+    take a specific example, a bug could cause an Observable to pass along values
+    even after it was supposed to complete, or to fail on an error.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Another interesting scenario we can test is when one of the Observables never
+    completes. In this case `ForkJoinObservable` won''t emit any value and not even
+    the  `onComplete` signal:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: If we reran the `ForkJoinObservableTest` class, we'd see that this test passes
+    as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The real implementation of `ForkJoinObservable` is in RxPHP available since
+    version 1.5 and is slightly more complicated. We'll come back to it in [Chapter
+    10](part0070_split_000.html#22O7C1-bd355a22cf10407cb10df27e65585b8d "Chapter 10. Using
+    Advanced Operators and Techniques in RxPHP"), *Using Advanced Operators and Techniques
+    in RxPHP*. In [Appendix](part0081_split_000.html#2D7TI2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter Appendix.  Reusing RxPHP Techniques in RxJS"), *Reusing RxPHP Techniques
+    in RxJS*, we'll learn about the new way of testing Rx code called "marble tests"
+    implemented in RxPHP 2 and RxJS 5.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter covered unit testing code written using PHPUnit with utilities
+    provided by the RxPHP package.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Most importantly, we went through the `doOn*()` operators and the basics of
+    unit testing with PHPUnit, and the problems we need to be aware of when unit testing
+    asynchronous code. Next, we went in-depth into which classes aimed at unit testing
+    are provided by RxPHP, how to use each of them, and which problems they solve.
+    In particular, these were the `VirtualTimeScheduler`, `HotObservable`,  `ColdObservable`, `TestScheduler`,
+    and `FunctionalTestCase` classes. In addition to this, we wrote example `SumOperator`
+    and `ForkJoinObservable` classes to demonstrate how important it is to test that
+    messages are emitted and received at the correct times.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the following chapter, we'll have a deeper look at event loops in PHP and
+    we'll introduce a more advanced concept of higher-order Observables in RxPHP.
+  prefs: []
+  type: TYPE_NORMAL

@@ -1,0 +1,1191 @@
+- en: Chapter 4. Reactive versus a Typical Event-Driven Approach
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: So far, we've been focused mainly on CLI applications. In this chapter, we'll
+    apply what we've already learned to a typical component of all web frameworks,
+    and add a little on top of that. We're going to use the Symfony `EventDispatcher`
+    component, which is an independent library that can be used in any framework.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Its main purpose is dispatching events during an application's lifetime, and
+    easy extendability. Most notably, it's a core building block of the Symfony3 framework
+    and the Silex micro-framework.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we''re going to do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Have a look at error handling in RxPHP and explain the `retry()`, `retryWhen()`,
+    and `catchError()` operators. We'll see how these three relate to what we've talked
+    about in the previous chapter.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We'll see how to combine two Observables using `concat()` and `merge()` operators.
+    Then we'll also have a look at `concatMap()` and its very common use-case with
+    ordered HTTP requests.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Have a quick introduction to `EventDispatcher` component using examples.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Write a drop-in replacement for the default `EventDispatcher` class called `ReactiveEventDispatcher`
+    that's built on the top of the default `EventDispatcher`, with a reactive approach
+    using RxPHP.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: See how we can use Subjects to construct Observable chains on the fly.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Enhance our event dispatcher implementation using Observables instead of closures
+    as event listeners.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Test our event-dispatcher implementation on the same examples we used when introducing
+    the default `EventDispatcher`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Before we jump into the `EventDispatcher` component, we should also talk about
+    how to handle error states in operator chains.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We've worked with `onError` handlers already in  [Chapter 2](part0024_split_000.html#MSDG2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 2. Reactive Programming with RxPHP") , *Reactive Programming with RxPHP*,
+    with `CURLObservable`, for example. However, we haven't seen how to gracefully
+    recover from errors and what unexpected implications these might have.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Handling error states in operator chains
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: If we go back to [Chapter 2](part0024_split_000.html#MSDG2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 2. Reactive Programming with RxPHP") , *Reactive Programming with RxPHP*,
+    and `CURLObservable`, we know that it emits `onError` when it wasn't able to download
+    any data. The question is, what if we want to try downloading the URL again? And
+    even more interestingly, repeat the failed attempt every few seconds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Subscribing only to `onError` signals is simple with the second parameter to
+    the `subscribeCallback()` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: It's obvious that nesting another `CURLObservable` into `onError` handler is
+    probably not an option. This is exactly what the `retry()` operator is designed
+    for.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The retry() operator
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When the `retry()` operator receives an `onError` signal, it captures it and
+    tries to resubscribe to its source Observable. It takes as an argument the number
+    of times it tries to resubscribe until it passes the error signal down the operator
+    chain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s rewrite the preceding example with the `retry()` operator:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: This tries to resubscribe to the `CURLObservable` three times, until `DebugSubject`
+    receives the `onError` signal. By default, the `retry()` operator takes no parameters
+    and tries to resubscribe infinitely.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Well, testing error states on third-party web services isn't very convenient,
+    because we can't force it to return error states. For this reason, we're better
+    off using the `map()` operator to trigger `onError` signals from now on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To our advantage, the `map()` operator calls its callable wrapped inside a
+    `try...catch` block, so any exception thrown will be turned into an `onError`
+    signal:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Consider the following code, which is supposed to print numbers from `1` to `6`,
+    but fails every time on number `3`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, try to guess what happens before looking at the actual output, and keep
+    in mind what we talked about in [Chapter 03](part0033_split_000.html#VF2I2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 3. Writing a Reddit Reader with RxPHP") , *Writing a Reddit Reader with
+    RxPHP*, in the section called *A closer look at Operator chains* and *A closer
+    look on subscribing to Observables*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: It prints only the numbers `1` and `2` three times and then ends with `onError`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What might be confusing at first is that common sense tells us to expect this
+    code to print the numbers `1`, `2`, `4`, `5`, and `6`. Number `3` throws an exception,
+    but thanks to the `retry()` operator it continues with the next value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, this is not what happens, due to the fact that `retry()` resubscribes
+    to its source Observable, and emitting an `onError` signal always makes the chain
+    stop propagating further values. In  [Chapter 03](part0033_split_000.html#VF2I2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 3. Writing a Reddit Reader with RxPHP") , *Writing a Reddit Reader with
+    RxPHP*, we saw that subscribing to an Observable triggers generation of the entire
+    chain of Observables that subscribe to each other in the order they were defined.
+    At the end, it subscribes to the source Observable that starts emitting values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We've encountered the exact same situation here. When the `map()` operator signals `onError`,
+    it's immediately resubscribed thanks to the `retry()` operator, which in turn
+    resubscribes to `RangeObservable` and starts emitting values from the beginning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is nicely demonstrated by the following marble diagram for this operator
+    (note the red and yellow marbles):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The retry() operator](img/00017.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Marble diagram representing the retry() operator, from http://reactivex.io/documentation/operators/retry.html
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we wanted to simulate a situation where we get numbers from 1 to 6 except
+    number 3, we could make an external variable, `$count`, and increment it, instead
+    of relying on values coming from `RangeObservable`. To stop emitting values, we
+    can use `takeWhile()`, which calls `onCompleted` when its callable returns `false`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is then as we expected:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: CURLObservable and the retry() operator
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can make a simple test scenario that is closer to a real world application.
+    We''ll take our CURLObservable and try to repeat an HTTP request three times.
+    We''ll choose any non-existing URL to be sure it fails every time to see how the
+    error is propagated through the operator chain when using `retry()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: We've already seen the `Observable::defer()` static method in [Chapter 3](part0033_split_000.html#VF2I2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 3. Writing a Reddit Reader with RxPHP"), *Writing a Reddit Reader with
+    RxPHP*. We're using it here to show that the `retry()` operator causes resubscription
+    to the source Observable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This example prints to the console the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can see that it took three iterations before the error (in fact an exception)
+    reached `DebugSubject`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The retryWhen() operator
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Similar to `retry()`, there's also an operator called `retryWhen()`, which in
+    contrast to `retry()`, doesn't re-subscribe immediately. Operator `retryWhen()`
+    takes as an argument a callable that returns another Observable. This Observable
+    is then used when the `onError` signal occurs, to schedule resubscription.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The retryWhen() operator](img/00018.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Marble diagram representing the retryWhen() operator, from http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html#instance-method-retryWhen
+  prefs: []
+  type: TYPE_NORMAL
+- en: CURLObservable and the retryWhen() operator
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'For example, we can consider our `CURLObservable` once more and imagine we
+    want to repeat the failed request after a one-second delay. Since the functionality
+    of `retryWhen()` is a little more complicated, we''ll start with an example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: We need to use an event loop to schedule the `delay()` operator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The callable to `retryWhen()` takes an Observable as an argument and has to
+    return an Observable. Then, when an error signal occurs, it''s pushed to `$errObs`
+    as `onNext` so we can decide based on the type of error what we want to do. Depending
+    on the emissions from the returned `$notificationObs` we can control what happens
+    next:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`onNext`: When `$notificationObs` emits the `onNext` signal, the `retryWhen()`
+    operator resubscribes to its source Observable. Note that the value emitted is
+    not important.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`onError`: The error is propagated further down the operator chain.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`onComplete`: The `onComplete` signal is propagated further down the operator
+    chain.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'What the preceding example does should be obvious. When `CURLObservable` fails
+    (emits `onError`), the `retryWhen()` operator waits one second, thanks to the `delay()`
+    operator, and then resubscribes, which will make CURLObservable try to download
+    the URL again indefinitely. The output from this example looks like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since the `retryWhen()` operator is slightly more complicated, we can have
+    a look into its internals to understand why it works the way it works:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It creates an instance of `Subject` and stores its reference in a variable called `$errors`.
+    Subjects work as both Observables and observers. It needs to use Subject, because
+    it's important to be able to manually trigger signals such as `onNext`, which
+    is not possible with just an Observable.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When the operator calls its callable, it passes along the `$errors->asObservable()`
+    and expects to receive an Observable, which is stored in another variable, called `$when`.
+    The method `asObservable()` wraps Subject with an `AnonymousObservable`, and thus
+    hides that it is, in fact, an instance of `Subject`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Then, `CallbackObserver` is subscribed to `$when`, which can later resubscribe
+    to the source Observable of this operator.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This means that we have the "head" and "tail" of the chain of Observables in
+    variables `$errors` and `$when`, respectively.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Later on, when an `onError` signal is received, the operator calls `$errors->onNext()`,
+    which sends the value through the chain of Observables. In our case, it goes through
+    the `delay()` operator.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'If we rewrote the preceding points into an actual heavily simplified code it
+    would look like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: This operator doesn't care about `onNext` or `onComplete`, and passes them right
+    into `$observer`. The only signal it needs to handle is `onError`, which calls `$errors->onNext()`,
+    and therefore triggers the chain of Observables, eventually resulting in resubscribing
+    to the source Observable inside the `$when->subscribe()` callable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This technique of using an instance of `Subject` to be able to manually trigger
+    signals and at the same time subscribe observers to it is very useful. We're going
+    to use it in a moment, when we implement our event dispatcher.
+  prefs: []
+  type: TYPE_NORMAL
+- en: CURLObservable and controlled number of retries
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: When talking about the `retry()` operator, we made a demo where we tried to
+    download a URL three times and then failed. The number of retries was fixed to
+    3.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can create the same example with the `retryWhen()` operator while having
+    more control if and when we want to retry the HTTP request. Consider the following
+    example where we make three attempts to download a URL and then propagate the
+    error further:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this example, we make three attempts where each is delayed by one second
+    and then re-throw the exception, which is caught by the `map()` operator and passed
+    as an `onError` signal. Since `$notificationObs` sends the `onError` signal, the
+    `retryWhen()` operator passes this error further as explained previously. We also
+    print the string `retryWhen` to prove that the callable is called just once even
+    when there're multiple retries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output from this example is the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: What's interesting about this demo is that it doesn't need to end with the error
+    at all. We could use `$notificationObs` to signal `onComplete` instead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The inner callable could look, for example, like the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In contrast to the previous example we''re not re-throwing the exception, and
+    just emitting `onComplete` instead:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: This might be useful in situations where even multiple failed retries don't
+    necessarily mean an error state.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The catchError() operator
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The operator `catchError()` also handles only error signals. When it receives
+    an `onError`, it calls a callable that returns an Observable, which is then used
+    to continue the Observable sequence instead of the source Observable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consider the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In this example, the `onError` signal is captured by `catchError()` and, instead
+    of ending the entire Observable sequence, it continues with a single value, thanks
+    to `Observable::just()`, and then ends with `onComplete`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: The concat() and merge() operators
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: With `retry()` and `retryWhen()` we've stumbled upon operators that take as
+    parameters other Observables and work with their emissions. Combining multiple
+    Observables into a single chain is a common practice mostly in RxJS due to the
+    asynchronous nature of JavaScript by design. In RxPHP we don't use them as often,
+    but it's worth having a quick look at them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The merge() operator
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In order to merge two Observables into a single one that emits all values from
+    both of them (including `onError` signals) we can use the `merge()` operator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The merge() operator](img/00019.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Marble diagram representing the merge() operator, from http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html#static-method-merge
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we can see from the marble diagram, this operator reemits values from source
+    and the merged Observables. This means it subscribes to both of them and emits
+    values as they arrive.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To better understand how it works, we can make a simple example with two interval
+    Observables where each emits three values with different delays:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `$merge` Observable emits its values faster than `$source`. We also prefix
+    each value to mark where it came from so the output from this example is the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can see that the values are mixed together. However, there's only one `onComplete`
+    signal when both Observables complete, so overall it behaves like a single Observable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The concat() operator
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In contrast to `merge()` sometimes we might want to combine two Observables
+    but first emit all values from the first Observable and, when it completes, subscribe
+    to the second one and emit all values from that as well. For this reason, there''s
+    also the `concat()` operator:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The concat() operator](img/00020.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Marble diagram representing the concat() operator, from http://reactivex.io/rxjs/class/es6/Observable.js~Observable.html#instance-method-concat
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can take the same example as we made for `merge()` and just switch the `merge()`
+    operator to `concat()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Since `concat()` should subscribe to the source and concatenated Observables
+    one after another we should expect to receive first all values from the source
+    Observable and, when it completes, all values from `$concat` Observable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: Even though the concatenated Observable emits values faster than the source
+    Observable, its values follow after all the values from source.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The concatMap() and flatMap() operators
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Both the `merge()` and `concat()` operators have their `*map()` variants. In
+    particular these are `flatMap()` and `concatMap()`. These operators combine the
+    functionality of `merge()`/`concat()` with the `map()` operator. If we look at
+    both examples we made a moment ago, we'll see that we need to know the inner Observable
+    beforehand. This means the inner Observable is passed to `concat()`/`merge()`
+    once when creating the Observable chain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll pick one of the two operators and explain its benefits in an example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s imagine we want to make three HTTP requests one after another. This
+    looks like an ideal use case for the `concat()` operator. However, each request
+    is going to be dependent on the result from the previous one, so we need to use
+    `concatMap()` instead because its callable takes the current value from the source
+    Observable as a parameter and returns an Observable that''ll be concatenated to
+    the chain:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: We're using the [http://httpbin.org/get](http://httpbin.org/get) web service
+    that serves as a test server and returns the request we sent as a JSON string.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We used `Observable::emptyObservable()` to create an empty Observable that completes
+    immediately, and chain it with one `concat()` and two `concatMap()` operators.
+    Each `concatMap()` then decodes the JSON from the previous requests, takes its
+    `num` parameter multiplied by 2 and resends the HTTP request.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, from the console output, we can see the requests are called in order
+    and the random `num` parameter created in the `concat()` operator call is multiplied
+    by 2 with every request:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: With `flatMap()` the example would be the same. However, since PHP isn't asynchronous
+    like JavaScript, `flatMap()` operator isn't as useful in this particular use case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll have a look at more operators that combine multiple Observables in [Chapter
+    6](part0050_split_000.html#1FLS41-bd355a22cf10407cb10df27e65585b8d "Chapter 6. PHP
+    Streams API and Higher-Order Observables"), *PHP Streams API and Higher-Order
+    Observables*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing a reactive event dispatcher
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The Symfony `EventDispatcher` component is a PHP library for exchanging messages
+    between objects. It's based on the Mediator design pattern ( [https://en.wikipedia.org/wiki/Mediator_pattern](https://en.wikipedia.org/wiki/Mediator_pattern)
+    ), and its implementation is relatively simple.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A very common scenario is when we have an application that we want to make extendable
+    via plugins. In this case, we'd create a single instance of `EventDispatcher`
+    and let plugins listen to various events. Each event is an object that can hold
+    references to other objects as well. This is what the Symfony3 framework does
+    extensively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A quick introduction to EventDispatcher
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'If you haven''t done so already, install the Event Dispatcher component via
+    `composer`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: First, we're going to have a look at how the default implementation is used
+    in practice, so we can later compare it to our reactive implementation, and check
+    that both work the same from a developer's perspective while the internal implementation
+    is different.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Working with event listeners
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In the most basic situation, we just want to set up a couple of listeners and
+    dispatch events:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: We created three event listeners to two different events, `my_action` and `other_action`.
+    Then, with `$dispatcher->dispatch()`, we tell the event dispatcher to notify all
+    event listeners that the event called `my_action` occurred.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output in the console should be obvious:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `dispatch()` method takes an optional second argument with an instance of
+    `Event` class that can contain further information about the event. Event listeners
+    can also modify event data if necessary. Also, all callables receive exactly one
+    argument with the event object, which comes from the initial call to the `dispatch()`
+    method. Since we didn't provide any event object, our callables don't need to
+    accept any parameter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Note that the event dispatcher doesn''t need to know what events it supports,
+    as they are created on the fly. This also means you can accidentally try to dispatch
+    a non-existent event:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: This won't throw an error, but no event will be dispatched.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `EventDispatcher` class supports two important features:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Priority**: By default, listeners are executed in the order they subscribe
+    to the event dispatcher. We can alter this behavior by supplying a third argument
+    to the `addListener()` method with priority for this particular listener (it''s
+    0 by default). Listeners with higher priority are executed first. If more listeners
+    have the same priority, then the order they were added matters.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Stopping event propagation**: In some scenarios, it''s important to be able
+    to stop propagating a particular event to subsequent listeners. For this reason,
+    the `Event` class has a method called `stopPropagation()`. The event dispatcher
+    is then responsible for not propagating this event further.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'These two features can be used in a situation such as the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: The first event listener should be called after the second one because it has
+    higher priority, but it stops further propagation of this event using `$event->stopPropagation()`,
+    so it's never invoked.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The console output is then very short:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: Working with event subscribers
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: While `addListener()` subscribes to a single event listener, there's also the `addSubscriber()`
+    method, which accepts an instance of a class implementing  `EventSubscriberInterface`
+    and subscribes to multiple events at once. In fact, `addSubscriber()` uses `addListener()`
+    internally to add listeners. Sometimes it's just easier to wrap all listeners
+    into a single class than add them one by one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Throughout this and upcoming examples in this chapter, we're also going to use
+    a custom `Event` class in order to properly test that both the default and our
+    reactive implementations work the same.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, let''s declare our event class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: It's a pretty simple class. We'll use the `inc()` method to see that all the
+    listeners work with the same instance of `MyEvent`. We also use the `__toString()`
+    magic method so we can convert this class to string just by typecasting it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, for demonstration purposes, we''ll declare a `MyEventSubscriber` class
+    with three event listeners:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: The interface `EventSubscriberInterface` requires only the static method `getSubscribedEvents()`,
+    which returns an associative array of event names and their appropriate callables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This example class declares two listeners for the `my_action` event (where the
+    second one has higher priority than the first) and one listener for the `other_action`
+    event.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Subscribing to this class works the same way as subscribing to listeners:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This time, the example also prints a string representation of the event:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is yet another thing we need to handle, because we want to allow defining
+    event Observables in an event subscriber class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now we know how the default `EventDispatcher` class can be used and what use
+    cases it's supposed to fulfill. Our goal will be to write our own implementation
+    based on RxPHP and reactive programming.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing ReactiveEventDispatcher with RxPHP
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Event dispatchers need to implement an `EventDispatcherInterface` interface
+    that defines all the methods we've seen previously, and we'll also add a few more.
+    Luckily for us, we can reuse a large part of the default `EventDispatcher` class.
+    For example, the `removeListener()` or `removeSubscriber()` methods will work
+    without any modification.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Internal representation of event listeners as observers
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The original `EventDispatcher` had a very easy task. On the `dispatch()` call,
+    it just sorted the array of listeners for that particular event by their priority
+    and evaluated them one by one, in a loop:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: In our case, we're going to represent all event listeners as observers. In fact,
+    when we add a new event listener, we'll transform its callable into an observer.
+    Then, when calling `dispatch()`, we'll create a chain of Observables where all
+    observers are already subscribed at specific points. Of course, we also need to
+    handle the  `isPropagationStopped()` condition by ourselves.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, let''s consider the simplest usage of the event dispatcher, as
+    shown previously:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We have to turn these two event listeners into a chain of Observables while
+    making sure that, before each event listener is executed, we check that the event
+    object hasn''t got the stop propagation flag set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We''re using Subject here for the same reason as we explained earlier in the
+    chapter when we talked about the `retryWhen()` operator. Still, let''s explain
+    this code in more detail:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `$subject` variable holds a reference to the "head" of the chain of Observables
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `$tail` variable always holds a reference to the last Observable in the
+    chain. This is where we further chain more Observables, and where we append the `filter()`
+    operator that checks for stopped events.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When we want to dispatch an event, we just need to call `$subject->onNext()`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To be extra clear what the current chain of Observables looks like, we can
+    represent it as a tree structure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Internal representation of event listeners as observers](img/00021.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Now we just need to turn all this into a real PHP class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing a ReactiveEventDispatcher class
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The good thing is that we can actually reuse a lot of the logic already written
+    in `EventDispatcher` and just overload certain methods that need to work differently.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we''ll just write a class stub to see what''s waiting ahead of us, and
+    talk a little about each method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: Only the methods `dispatch()`, `addListener()`, and `addSubscriber()` from `EventDispatcher`
+    need to be overwritten; the rest can remain as they are. We also added three more
+    methods to help us deal with Observables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s see what the purpose of each component is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`$subjects`: An associative array that holds references to all heads of Observable
+    chains (their Subjects).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`addListener()`: We already know this method from previous examples. However,
+    now the method also accepts observers as event listeners.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`addObservable()`: This is a method that lets us append an Observable to a
+    specific point in the chain of Observables generated by `getSubject()`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`addSubscriber()`: This subscribes to multiple events with the subscription
+    class. It uses the `addObserver()` method.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`dispatch()`: This method takes the instance of `Subject` for this particular
+    event and calls `onNext()`, with the event object as a parameter.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`observerFromListener()`: A helper method that transforms any listener into
+    an observer. Basically, this just wraps every callable with a `CallbackObserver`
+    object.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`getSubject()`: Our event dispatcher is going to work with Subjects. This method
+    internally sorts an array of listeners by their priority and constructs a chain
+    of Observables from them. It''ll also keep Subjects in the `$subjects` associative
+    array, to be easily reused without necessarily creating the Observable chain all
+    over again on every `dispatch()` call.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: So, we have a pretty good picture of how this event dispatcher is going to work,
+    and we can start implementing each method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding event listeners
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The first two methods are going to be `addListener()` and `observerFromListener()`.
+    The first one is dependent on the second one, so we''ll write both of them at
+    the same time:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In the rest of the examples in this chapter, we're also going to include doc
+    blocks and type hints for each method to clarify what arguments it accepts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `observerFromListener()` method checks the runtime type of `$listener` and
+    always turns it into an instance of observer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The method `addListener()` uses `observerFromListener()` internally, and then
+    calls its parent's `addListener()` with the observer as an argument, even though
+    it originally accepted only callables. The parent method stores the listener in
+    a nested associative array by event name and priority. Since the parent's code
+    is pretty universal, we don't need to make any changes to it and will leave it
+    as is.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that, after we call the parent `addListener()`, we remove a Subject from
+    the `$subjects` array for this particular event. This is because we modified the
+    Observable chain for this event and it needs to be created from scratch. This
+    happens later, when calling the `dispatch()` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding Observables
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Speaking of listeners, we can now also implement `addObservable()`, which is
+    a slightly modified version of `addListener()`. This method is going to be used
+    differently than `addListener()`, so it deserves special attention:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: We create an instance of `Subject` and call `asObservable()` to let the user-defined
+    callable append its operators to it. Then we call `addListener()` with the `$subject` variable
+    that we explained a moment ago. Again, this is the same technique we described
+    with the `retryWhen()` operator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This method is interesting, because it lets us add a "sub-chain" of Observables
+    as a listener. Consider the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If we represent this code as a tree structure as we did before, inside the
+    `$dispatcher`, it will look like the following (this structure is generated later
+    inside the `getSubject()` method):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Adding Observables](img/00022.jpeg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Event "my_action" with two event listeners
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, this event listener appends a series of operators in its callable and then
+    subscribes to it. In the `addObservable()` method, we pass only the `$subject`
+    itself to the `addListener()`, which is later appended to the `filter()` operator,
+    when calling `dispatch()`. This works thanks to the fact that Subjects work as
+    observers as well and can subscribe to Observables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is the major benefit of writing our custom `ReactiveEventDispatcher`. We're
+    using reactive programming to easily manipulate events that interest us in a very
+    straightforward way. If we used the default event dispatcher, we'd have to put
+    all the listener-specific conditions inside the callable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding event subscribers
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Similar to the original `EventDispatcher`, we want to be able to subscribe multiple
+    listeners to multiple events at once, using a subscriber class. However, we're
+    also going to support adding listeners as Observables, just like we did with `addObservable()`.
+    This is not going to work without overloading the parent's `addSubscriber()` method
+    and handling Observables in a special way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Basically, we need to call `addObservable()` instead of the `addListener()`
+    method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, let''s define an interface that we can use to recognize an event subscriber
+    class that also defines Observables as listeners:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, `addSubscriber()` can check whether the class is an instance of this interface
+    and, if it is, process all its listeners as if they were Observables:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: The array of event listeners can be defined as an array, with a key as the event
+    name and its value as a callable. However, our implementation also supports using
+    array values as another array defining the callable and priority (that's the second
+    nested `foreach` loop).
+  prefs: []
+  type: TYPE_NORMAL
+- en: At the beginning of this method, we also call its parent because we want to
+    allow the default functionality as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For demonstration purposes, we''re going to extend the `MyEventSubscriber`
+    class we defined earlier and implement the `getSubscribedEventsObservables()`
+    method, which is going to return two event listeners:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: We defined three event listeners for two different events, where the first one
+    for `my_action` event has priority `10` and the second the default, `0`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating the Observable chain for an event
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The method `getSubject()` is the place where Observable chains are being generated.
+    This method is then called only when dispatching an event:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: If the Subject for this event doesn't exist, we create a new one and then call
+    `getListeners()`. This method is defined in the parent `EventDispatcher` class
+    and returns a sorted array of listeners (or observers, in our case). Then we iterate
+    the array and add a `filter()` operator followed by subscribing the observer or
+    Subject, depending on whether we used `addListener()` or `addObservable()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Note that operators (such as `filter()`, in this example) always return a new
+    Observable, while calling `subscribe()` returns a disposable object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We don't need to create the `$subject` every time we call this method, because
+    it doesn't change until we add new listeners, so we can keep a reference to it
+    in the `$subjects` array.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Comparing filter() to takeWhile()
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In the previous [Chapter 3](part0033_split_000.html#VF2I2-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 3. Writing a Reddit Reader with RxPHP"), *Writing a Reddit Reader with
+    RxPHP*, we mentioned an operator that might work well instead of `filter()`. We
+    used `takeWhile()`, which also takes a predicate callable as a parameter and can
+    stop propagating values down the Observable chain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The important distinction is that the `filter()` operator decides whether or
+    not it internally calls `onNext()` on its associated observer. On the other hand, 
+    `takeWhile()` decides whether or not it calls `onComplete()`. Calling `onComplete()`
+    would lead to invoking disposables, which would unsubscribe the observers, and
+    this is definitely not what we want. If we did unsubscribe, we'd have to create
+    the Subject for each event on every `dispatch()` call.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In [Chapter 8](part0061_split_000.html#1Q5IA1-bd355a22cf10407cb10df27e65585b8d
+    "Chapter 8. Multicasting in RxPHP and PHP7 pthreads Extension"), *Multicasting
+    in RxPHP and PHP7 pthreads Extension*, we'll talk more about what unexpected consequences
+    calling `onComplete` on a `Subject` might have.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dispatching events
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Finally, dispatching events is very simple:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: Dispatching an event in our reactive dispatcher means taking the Subject for
+    this particular event and calling its `onNext()` method, with the event as an
+    argument. The event then gets propagated unless its `stopPropagation()` method
+    is called, because we check its state before calling every observer with the `filter()`
+    operator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also return the event from the method, to stay compatible with the default
+    `EventDispatcher` implementation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: And that's it. Our `ReactiveEventDispatcher` is complete and we can run a few
+    test scenarios.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Practical example of ReactiveEventDispatcher
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We dedicated the first part of this chapter to explaining how the default `EventDispatcher`
+    that comes out of the box with the Symfony `EventDispatcher` component works,
+    and what use cases we expect it to deal with.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now we need to make sure the same applies to `ReactiveEventDispatcher` as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Working with event listeners
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We know that our overridden `addListener()` method now accepts both callables
+    and observers, so we can test both use cases in one example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This example calls the second listener and then the first listener, because
+    the second one has a higher priority:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, let''s test event subscribers with the same `MyEventSubscriber` class
+    we used in the preceding example. The usage and the output are exactly the same,
+    so we don''t need to print the output here again:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'A slightly modified example, which dispatches multiple events, uses Observables
+    and fiddles with conditional stopping event propagation, could look like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Its output is obvious. When the event''s `getCounter()` method returns a number
+    divisible by 2, the event is stopped and never reaches the first event listener
+    added using `addListener()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: Working with event subscribers
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let''s also test that the event subscriber `MyObservableEventSubscriber` we
+    defined earlier works as expected:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Remember that we extended the original `MyEventSubscriber` and added two more
+    listeners, so the event dispatcher first adds listeners returned from  `getSubscribedEvents()`,
+    and then adds those from  `getSubscribedEventsObservables()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: The listener with the highest priority is called first. In our case, it's the
+    first Observable listener with priority 10, then `onMyActionAgain()` is called,
+    with priority 1, and then the two remaining listeners are called in the order
+    they were added.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter has focused mainly on the practical usage of RxPHP in combination
+    with typical non-reactive code, and presented a different approach to existing
+    event-based solutions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Specifically, we stumbled across Error handling in Observable chains with `retry()`,
+    `RetryWhen()`, and `catch()` operators. We combined Observables with the `concat()`,
+    `merge()`, and `concatMap()` operator. We used Subjects to dynamically create
+    Observable chains and manually emit values. You were also given an introduction
+    to the Symfony `EventDispatcher` component, with a series of examples presenting
+    how the default `EventDispatcher` class that comes out of the box can be used.
+    We extended and partially rewrote the `EventDispatcher` class and created `ReactiveEventDispatcher`,
+    which adds support for Observables. And lastly, we reused examples for `EventDispatcher`
+    with `ReactiveEventDispatcher` to demonstrate that our implementation can work
+    as a drop-in replacement.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Symfony `EventDispatcher` component serves as an easily implementable solution
+    to a common problem in larger applications, which is communication between object
+    and extendability. We wrote `ReactiveEventDispatcher` to add capabilities to also
+    use observers as event listeners.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we'll learn how to write unit tests to test Observables,
+    operators, and observers. We'll also have a better look at Schedulers and see
+    how important are they in testing RxPHP code.
+  prefs: []
+  type: TYPE_NORMAL

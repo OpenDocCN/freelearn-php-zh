@@ -1,0 +1,1338 @@
+- en: Chapter 3. ActiveRecord, Model, and Database
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting data from a database
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Defining and using multiple DB connections
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Customizing the ActiveQuery class
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Processing model fields with AR event-like methods
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Automating timestamps
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Setting up an author automatically
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Setting up a slug automatically
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Transactions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Replication and read-write splitting
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implementing single table inheritance
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Introduction
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you will learn how to work with a database efficiently, when
+    to use models and when not to, how to work with multiple databases, how to automatically
+    preprocess Active Record fields, how to use transactions, and so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting data from a database
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Most applications use databases today. Be it a small website or a social network,
+    at least some parts are powered by databases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Yii introduces three ways to allow you to work with databases. They are as
+    follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Active Record
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Query Builder
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: SQL via DAO
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We will use all these methods to get data from the `film`, `film_actor`, and
+    `actor` tables and show it in a list. Also, we will compare the execution time
+    and memory usage to determine in which cases we should use these methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Create a new application using the Composer package manager, as described in
+    the official guide at [http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Download the Sakila database from [http://dev.mysql.com/doc/index-other.html](http://dev.mysql.com/doc/index-other.html).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Execute the downloaded SQLs; first schema, then data.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Configure the DB connection in `config/main.php` to use the Sakila database.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Use Gii to create models for the actor and film tables.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Create `app/controllers/DbController.php` as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Here, we have three actions corresponding to the three different methods of
+    getting data from a database.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: After running the preceding `db/ar`, `db/query` and `db/sql` actions, you should
+    get a tree showing 200 actors and 1,000 films they have acted in, as shown in
+    the following screenshot:![How to do it…](img/image00373.jpeg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'At the bottom, there are statistics that give information about the memory
+    usage and execution time. Absolute numbers can be different if you run this code,
+    but the difference between the methods used should be about the same:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '| Method | Memory usage (megabytes) | Execution time (seconds) |'
+  prefs:
+  - PREF_IND
+  type: TYPE_TB
+- en: '| --- | --- | --- |'
+  prefs:
+  - PREF_IND
+  type: TYPE_TB
+- en: '| Active Record | 21.4 | 2.398 |'
+  prefs:
+  - PREF_IND
+  type: TYPE_TB
+- en: '| Query Builder | 28.3 | 0.477 |'
+  prefs:
+  - PREF_IND
+  type: TYPE_TB
+- en: '| SQL (DAO) | 27.6 | 0.481 |'
+  prefs:
+  - PREF_IND
+  type: TYPE_TB
+- en: How it works…
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The `actionAr` action method gets model instances using the Active Record approach.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We start with the `Actor` model generated with Gii to get all the actors, and
+    specify `joinWith => 'films'` to get the corresponding films using a single query
+    or eager loading through relation, which Gii builds for us from `InnoDB` table
+    foreign keys. We then simply iterate over all the actors and for each actor, over
+    each film. Then, for each item, we print its name.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `actionQuery` function uses Query Builder. First, we create a query for
+    the current DB connection with `\yii\db\Query`. We then add query parts one by
+    one with `from`, `joinInner`, and `leftJoin`. These methods escape values, tables,
+    and field names automatically. The `all()` function of `\yii\db\Query` returns
+    an array of raw database rows. Each row is also an array, indexed with result
+    field names. We pass the result to `renderRows`, which renders it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With `actionSql`, we do the same, except that we pass SQL directly instead
+    of adding its parts one by one. It''s worth mentioning that we should escape parameter
+    values manually using `Yii::app()->db->quoteValue` before using them in the query
+    string:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `renderRows` method renders the Query Builder.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `renderRecords` method renders the active records.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Method | Active Record | Query Builder | SQL (DAO) |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Syntax | This will do SQL for you.Gii will generate models and relations
+    for you.Works with models, completely OO-style, and a very clean API.Produces
+    an array of properly nested models as the result. | Clean API, suitable for building
+    query on the fly.Produces raw data arrays as the result. | Good for complex SQL.Manual
+    values and keyword quoting.Not very suitable for building a query on the fly.Produces
+    raw data arrays as the result. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Performance | Higher memory usage and execution time compared to SQL and
+    Query Builder. | Okay. | Okay. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Extra features | Quotes values and names automatically.Behaviors. Before/after
+    hooks.Validation. Prototyping selects. | Quotes values and names automatically.
+    | None. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Best for | Update, delete, and create actions for single models (the model
+    gives a huge benefit when using with forms). | Working with large amount of data
+    and building queries on the fly. | Complex queries you want to complete with pure
+    SQL and have maximum possible performance. |'
+  prefs: []
+  type: TYPE_TB
+- en: There's more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In order to learn more about working with databases in Yii, refer to the following
+    resources:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[http://www.yiiframework.com/doc-2.0/guide-db-dao.html](http://www.yiiframework.com/doc-2.0/guide-db-dao.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[http://www.yiiframework.com/doc-2.0/guide-db-query-builder.html](http://www.yiiframework.com/doc-2.0/guide-db-query-builder.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[http://www.yiiframework.com/doc-2.0/guide-db-active-record.html](http://www.yiiframework.com/doc-2.0/guide-db-active-record.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Defining and using multiple DB connections
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Multiple database connections are not used very often for new standalone web
+    applications. However, when you are building an add-on application for an existing
+    system, you will most probably need another database connection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: From this recipe, you will learn how to define multiple DB connections and use
+    them with DAO, Query Builder, and Active Record models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Create a new application using the Composer package manager, as described in
+    the official guide at [http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Create two MySQL databases named `db1` and `db2`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Create a table named post in `db1`, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Create a table named `comment` in `db2`, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We will start with configuring the DB connections. Open `config/main.php` and
+    define a primary connection as described in the official guide:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Copy it, rename the `db` component to `db2`, and change the connection string
+    accordingly. Also, you need to add the class name as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'That is it. Now you have two database connections and you can use them with
+    DAO and Query Builder, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Now, if we need to use Active Record models, we first need to create the Post
+    and Comment models with Gii. You can select an appropriate connection for each
+    model. Set the `db2` for database connection ID when you create the Comment model,
+    as shown in the following screenshot:![How to do it...](img/image00375.jpeg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Now you can use the `Comment` model as usual and create c`ontrollers/ DbController.php`,
+    as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Run `db/index` multiple times and you should see records added to both databases,
+    as shown in the following screenshot:![How to do it...](img/image00377.jpeg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In Yii, you can add and configure your own components through the configuration
+    file. For nonstandard components such as `db2`, you have to specify the component
+    class. Similarly, you can add `db3`, `db4`, or any other component, for example,
+    `facebookApi`. The remaining array key/value pairs are assigned to the component's
+    public properties, respectively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Depending on the RDBMS used, there are additional things we can do to make it
+    easier to use multiple databases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cross-database relations
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'If you are using MySQL, it is possible to create cross-database relations for
+    your models. In order to do this, you should prefix the `Comment` model''s table
+    name with the database name, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, if you have a comments relation defined in the `Post` model relations
+    method, you can use the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: For further information, refer to [http://www.yiiframework.com/doc-2.0/guide-db-dao.html#creating-db-connections](http://www.yiiframework.com/doc-2.0/guide-db-dao.html#creating-db-connections).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Customizing the ActiveQuery class
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: By default, all Active Record queries are supported by `yii\db\ActiveQuery`.
+    To use a customized query class in an Active Record class, you should override
+    the `yii\db\ActiveRecord::find()` method and return an instance of your customized
+    query class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Create a new application using the Composer package manager, as described in
+    the official guide at [http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Set up the database connection and create a table named `post`, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Generate a `Post` model using Gii with an enabled **Generate ActiveQuery** option
+    that generates the `PostQuery` class.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Add the following method to `models/PostQuery.php`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'That is it. Now, we can use our model. Create `controllers/DbController.php`
+    as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Now, run `db/index` and you should get an output similar to the one shown in
+    the following screenshot:![How to do it...](img/image00380.jpeg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We have rewritten the `find` method in the `Post` model and extended the ActiveQuery
+    class. The `lang` method returns ActiveQuery with the specified language value.
+    In order to support chained calls, `lang` returns the model instance by itself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: According to the Yii2 Guide, in Yii 1.1, there was a concept called scope. Scope
+    is no longer directly supported in Yii 2.0, and you should use customized query
+    classes and query methods to achieve the same goal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'For further information, refer to the following URLs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[http://www.yiiframework.com/doc-2.0/guide-db-active-record.html#customizing-query-classes](http://www.yiiframework.com/doc-2.0/guide-db-active-record.html#customizing-query-classes)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[http://www.yiiframework.com/doc-2.0/guide-intro-upgrade-from-v1.html#active-record](http://www.yiiframework.com/doc-2.0/guide-intro-upgrade-from-v1.html#active-record)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Processing model fields with AR event-like methods
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Active Record implementation in Yii is very powerful and has many features.
+    One of these features is the event-like methods, which you can use to preprocess
+    model fields before putting them into the database or getting them from a database,
+    as well as to delete data related to the model, and so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this recipe, we will link all URLs in the post text and list all existing
+    Active Record event-like methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Create a new application using the Composer package manager, as described in
+    the official guide at [http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Set up the database connection and create a table named `post`, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Generate the `post` model using Gii.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Add the following method to `models/Post.php`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'That is it. Now, try saving a post containing a link. Create `controllers/TestController.php`
+    as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: That is it. Now, run `test/index`. You should get the following result:![How
+    to do it...](img/image00383.jpeg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The `beforeSave` method is implemented in the `ActiveRecord` class and executed
+    just before saving a model. Using a regular expression, we replace everything
+    that looks like a URL with a link that uses this URL and call the parent implementation,
+    so that real events are raised properly. In order to prevent saving, you can return
+    false.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: For further information, refer to [http://www.yiiframework.com/doc-2.0/guide-db-active-record.html#active-record-life-cycles](http://www.yiiframework.com/doc-2.0/guide-db-active-record.html#active-record-life-cycles).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The *Working with events* recipe in [Chapter 1](part0015.xhtml#E9OE1-ae331331bc644dc9b658d3634f0748da
+    "Chapter 1. Fundamentals"), *Fundamentals*
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The *Automating timestamps* recipe
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The *Setting up an author automatically* recipe
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The *Setting up a slug automatically* recipe
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Automating timestamps
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For instance, we have a simple blog application. As in any blog, it has posts,
+    comments, and so on. We would like to populate the timestamps during the create/update
+    events for posts. Let us assume that our post model is named `BlogPost` model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Create a new application using the Composer package manager, as described in
+    the official guide at [http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Set up the database connection and create a table named `blog_post`, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Use Gii to create a model for the `blog_post` table.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Add the following method to `models/BlogPost.php`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Create `controllers/TestController.php` as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: That is it. Now, run `test/index`. You should get the following result:![How
+    to do it...](img/image00387.jpeg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: By default, the Timestamp behavior populates `created_at` (the timestamp which
+    points to the time when the model was created) and `updated_at` (the time when
+    the model was updated). It's a standard practice to name these fields, but if
+    we would like to make a change, we can specify fields, which will be updated,
+    and model events.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: For instance, our fields are named `creation_date` and `modified_date`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s configure our model with behavior according to these fields. In addition,
+    we should add our behavior''s code to our `Post` model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In this example, we''ve pointed to the `creation_date` and `modified_date`
+    attributes before creating and updating our model accordingly by dint of using
+    special ActiveRecord events: `EVENT_BEFORE_INSERT` and `EVENT_BEFORE_UPDATE`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition...
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'You may want to save the timestamp for custom scenarios. Let''s say you want
+    to update the `last_login` field, for example, for a specific controller action.
+    In this situation, you can trigger the timestamp update for your specific attribute
+    using the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Be aware that `touch()` can''t be used for new models. You will get `InvalidCallException`
+    in this case:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `touch()` method calls model saving inside itself so you don't need to save
+    the model after calling it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: For further information, refer to [http://www.yiiframework.com/doc-2.0/guide-concept-behaviors.html#using-timestampbehavior](http://www.yiiframework.com/doc-2.0/guide-concept-behaviors.html#using-timestampbehavior).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up an author automatically
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The `Blameable` behavior allows you to update one or more authors' fields automatically.
+    This is primarily used to populate data into the `created_by` and `updated_by`
+    fields. Similar to the Timestamp behavior, you can easily specify some special
+    parameters and essential events for this behavior.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let us return to the example from the previous section. We also have posts in
+    our blog application. For example, let's assume that our blog model is called
+    `BlogPost`. The model has `author_id`,the field which points to who created this
+    post, and `updater_id,` the field which points to who updated it. We would like
+    to populate these attributes automatically during the create/update model events.
+    Now you can learn how to do it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Create a new application using the Composer package manager, as described in
+    the official guide at [http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Set up the database connection and create a table named `blog_post`, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Use Gii to create the `BlogPost` model for the `blost_post` table.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Add the following `behaviors` method to `models/BlogPost.php`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Create `controllers/TestController.php` as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: That is it. Now, run `test/index`. You will get the following result:![How to
+    do it…](img/image00388.jpeg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: By default, the `Blameable` behavior populates the `created_by` and `updated_by`
+    attributes, but we will make a change and set up our behavior according to our
+    own fields.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also specified model events and fields in the model, so, during the model
+    creation, `author_id` will be populated. Similarly, during the model update, we
+    will populate `updater_id`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What `Blameable` does is insert the current user id value into the `created_by`
+    and `updated_by` fields during the create/update model events. This is a super-convenient
+    way of doing things. Every time a model gets created or updated, we automatically
+    fill out the essential fields.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This works out really well for little projects such as for large systems, where
+    multiple users are admin and you need to keep track of who is doing what. You
+    can also use this for frontend implementations, for example, if you had a `blog_comment`
+    table and you wanted to use this method to keep track of the author of a comment.
+    Also, you could set the author's fields in the controller, but the behavior helps
+    you to avoid writing unnecessary and additional code. This is a very effective
+    and easy way to implement this thing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Sometimes we need to fill out `author_id` and `updater_id` by an id other than
+    that of the current user. In such a case, we may detach our behavior as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can detach any behavior we like in this way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: For further information, refer to [http://www.yiiframework.com/doc-2.0/yii-behaviors-blameablebehavior.html](http://www.yiiframework.com/doc-2.0/yii-behaviors-blameablebehavior.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up a slug automatically
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: On the web, slug is a short text used in a URL to identify and describe a resource.
+    A slug is the part of a URL which identifies a page using human-readable keywords.
+    Sluggable behavior is the Yii2 model behavior that allows us to generate unique
+    slugs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we will be guiding you through modifying Yii's default view
+    URL routes for model objects to be more user-friendly and search engine-friendly.
+    Yii provides built-in support for this via its sluggable behaviors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Create a new application using the Composer package manager, as described in
+    the official guide at [http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Set up the database connection and create a table named `blog_post`, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Use Gii to create a model for the post table.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Add the following `behaviors` method to `models/BlogPost.php`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Create `controllers/TestController.php` as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The result will be as follows:![How to do it…](img/image00390.jpeg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Yii offers some nice enhancements to `SluggableBehavior` for useful scenarios.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For example, once a search engine records a slug, you probably don't want the
+    page URL to change.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The immutable attribute tells Yii to keep the slug the same after it's first
+    created—even if the title will be updated.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If users enter messages that overlap in content, the `ensureUnique` property
+    will automatically append a unique suffix to duplicates. This makes certain that
+    each message has a unique URL, even if the message is identical.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If you go ahead and create another post with the exact same title, you'll see
+    that its slug is incremented to hot-update-for-ios-devices-2.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**Note**: If you get an error related to the immutable property, it may be
+    that you need to run a Composer update to get the latest version of Yii.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Use Gii to generate CRUD for the model class `app\models\Post` and the controller
+    class `app\controllers\BlogPostController`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Add the following action to `controllers/BlogPostController.php`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: That it is. If you run `blogpost/slug` with the slug value as `sluggablebehavior-test`,
+    you will get the following result:![There's more…](img/image00392.jpeg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: It's suggested that the previous slug recipe be successfully completed with
+    a created instance of `Post` model.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'To beautify the URL, add the following `urlManager` component in `config\web.php`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: It's important that the `'blog-post/<slug>' => 'blog-post/slug'` rule is the
+    last in the post URL rule list.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Now, if you go to the page using your slug URL, such as `index.php/blog-post/super-quote-title-1/`,
+    you will get a result like similar to that in step 3:![There's more…](img/image00395.jpeg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'For further information, refer to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[http://www.yiiframework.com/doc-2.0/yii-behaviors-sluggablebehavior.html](http://www.yiiframework.com/doc-2.0/yii-behaviors-sluggablebehavior.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[http://www.yiiframework.com/doc-2.0/guide-runtime-routing.html#url-rules](http://www.yiiframework.com/doc-2.0/guide-runtime-routing.html#url-rules)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Transactions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In modern databases, transactions also do some other things, such as ensuring
+    that you can't access data that another person has written halfway. However, the
+    basic idea is the same—transactions are there to ensure that no matter what happens,
+    the data you work with will be in a sensible state. They guarantee that there
+    will *not* be a situation where money is withdrawn from one account, but not deposited
+    to another.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Yii2 supports a powerful transaction mechanism with savepoints.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A classic example is of transferring money from one bank account to another.
+    To do that, you have to first withdraw the amount from the source account, and
+    then deposit it to the destination account. The operation has to succeed in full.
+    If you stop halfway, the money will be lost, and that is very bad. For instance,
+    we have a recipient account and a sender account. We would like to transfer money
+    from sender to recipient. Let's assume that we have an account model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready...
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Our account model will be very simple and it will contain only the `id` and
+    `balance` fields.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Create a new application using the Composer package manager, as described in
+    the official guide at [http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Create a migration, which adds an account table, using the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Also, update the just- created migration using the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, install migration with the following command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Use Gii to create a model for the account table.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Create a migration, which adds some test `Account` models with balance for
+    our table:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Also, update the just-created migration using the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: How to do it…
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Add the following rule to the `rules` method, to `models/Account.php`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Let us assume that our balance may be only positive and that it can't be negative.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Create `TestController` with success and error actions:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Run `test/success` and you should get the output shown in the following screenshot:![How
+    to do it…](img/image00397.jpeg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In this case, the transaction mechanism will not update the recipient and sender
+    balance if some error occurred.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Run `test/erro`r and you should get the output shown in the following screenshot:![How
+    to do it…](img/image00400.jpeg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: As you will remember, we added a rule to the `Account` model, so our account
+    balance can be only positive. The transaction will roll back in this case and
+    it prevents a situation where money is withdrawn from a sender's account but not
+    deposited to the recipient's account.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'For further information, refer to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[http://www.yiiframework.com/doc-2.0/guide-db-dao.html#performing-transactions](http://www.yiiframework.com/doc-2.0/guide-db-dao.html#performing-transactions)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[http://www.yiiframework.com/doc-2.0/guide-db-dao.html#nesting-transactions](http://www.yiiframework.com/doc-2.0/guide-db-dao.html#nesting-transactions)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Replication and read-write splitting
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe we will have a look at how to do replication and read-write splitting.
+    We will see how slave and master servers help us in getting these done.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Create a new application using the Composer package manager, as described in
+    the official guide at [http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Set up the database connection and create a table named `post`, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Generate the `BlogPost` model for the table `blog_post`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Configure master-slave replication between your database servers, for example,
+    as in the article at [https://www.digitalocean.com/community/tutorials/how-to-set-up-master-slave-replication-in-mysql/](https://www.digitalocean.com/community/tutorials/how-to-set-up-master-slave-replication-in-mysql/).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Configure the `db` component in `config/main.php`; here''s an example of configuration:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: How to do it…
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Create `TestController.php` as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Run `test/index` and you should get the output shown in the following screenshot:![How
+    to do it…](img/image00401.jpeg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Slave servers are used for data reading, whereas the master server is used for
+    writing. After the ActiveRecord model is saved at the master server, new records,
+    replicate to the slave server and then `$replModel` finds records on it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more…
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The `\yii\db\Connection` component supports load balancing and failover between
+    slaves. When performing a read query for the first time, the `\yii\db\Connection`
+    component will randomly pick a slave and try connecting to it. If the slave is
+    found dead, it will try another one. If none of the slaves are available, it will
+    connect to the master. By configuring a server status cache, a dead server can
+    be remembered so that it will not be tried again during a certain period of time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'For further information, refer to the following URLs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[http://www.yiiframework.com/doc-2.0/guide-db-dao.html#replication-and-read-write-splitting](http://www.yiiframework.com/doc-2.0/guide-db-dao.html#replication-and-read-write-splitting)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[http://dev.mysql.com/doc/refman/5.6/en/replication.html](http://dev.mysql.com/doc/refman/5.6/en/replication.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[http://docs.mongodb.org/manual/tutorial/deploy-replica-set/](http://docs.mongodb.org/manual/tutorial/deploy-replica-set/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[http://docs.mongodb.org/manual/tutorial/deploy-replica-set-for-testing/](http://docs.mongodb.org/manual/tutorial/deploy-replica-set-for-testing/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implementing single table inheritance
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Relational databases do not support inheritance. If we need to store inheritance
+    in the database, we should somehow support it through code. This code should be
+    efficient, so that it should generate as few JOINs as possible. A common solution
+    to this problem was described by *Martin Fowler* and is named **single table inheritance**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we use this pattern, we store all the class tree data in a single table
+    and use the type field to determine a model for each row.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As an example, we will implement the single table inheritance for the following
+    class tree:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Car
+  prefs: []
+  type: TYPE_NORMAL
+- en: '|- SportCar'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '|- FamilyCar'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Create a new application using the Composer package manager, as described in
+    the official guide at [http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Create and set up a database. Add the following table:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Use Gii to create a `Car` model for the `car` table and generate ActiveQuery
+    for the `Car` model.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How to do it…
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Add the following method and property to `models/CarQuery.php`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Create `models/SportCar.php` as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Create `models/FamilyCar.php` as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Add the following method to `models/Car.php`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Add `TestController` with the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Run `test/index` and you should get the output shown in the following screenshot:![How
+    to do it…](img/image00403.jpeg)
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How it works…
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The base model `Car` is a typically-used Yii AR model except that it has two
+    added methods. The `tableName` method explicitly declares the table name to be
+    used for the model. For the `Car` model alone, this does not make sense, but for
+    child models, it will return the same car table, which is just what we want—a
+    single table for the entire class tree. The instantiate method is used by AR internally
+    to create a model instance from the raw data when we call methods such as `Car:::find()->all()`.
+    We use a `switch` statement to create different classes based on the type attribute
+    and use the same class if the attribute value is either not specified or points
+    to the non-existing class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `SportCar` and `FamilyCar` models simply set the default AR scope, so when
+    we search for models with the `SportCar::` `model()->` methods, we will get the
+    `SportCar` model only.
+  prefs: []
+  type: TYPE_NORMAL
+- en: See also
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Use the following references to learn more about the single table inheritance
+    pattern and Yii Active Record implementation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[http://martinfowler.com/eaaCatalog/singleTableInheritance.html](http://martinfowler.com/eaaCatalog/singleTableInheritance.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://blog.liip.ch/archive/2012/03/27/table-inheritance-with-doctrine.html](https://blog.liip.ch/archive/2012/03/27/table-inheritance-with-doctrine.html)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[http://www.yiiframework.com/doc/api/CActiveRecord/](http://www.yiiframework.com/doc/api/CActiveRecord/)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
