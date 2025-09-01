@@ -1,0 +1,1481 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Plug and Play with Plugins</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we will dive into the new Plugin API provided in Drupal 8:</p>
+<ul>
+<li>Creating blocks using plugins</li>
+<li>Creating a custom field type</li>
+<li>Creating a custom field widget</li>
+<li>Creating a custom field formatter</li>
+<li>Creating a custom plugin type</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Introduction</h1>
+                </header>
+            
+            <article>
+                
+<p>Drupal 8 introduces plugins. Plugins power many items in Drupal, such as blocks, field types, and field formatters. Plugins and plugin types are provided by modules. They provide a swappable and specific functionality. Breakpoints, as discussed in <span class="ChapterrefPACKT"><em><a href="991ad206-3a73-4c3a-b6b7-c680a0a74a53.xhtml">Chapter 5</a></em>, <em>Front End for the Win</em></span>, are plugins. In this chapter, we will discuss how plugins work in Drupal 8 and show you how to create blocks, fields, and custom plugin types.</p>
+<p>Each version of Drupal has subsystems, which provided pluggable components and contributed modules. However, the implementation and management of these subsystems presented a problem. Blocks, fields, and image styles each had an entirely different system to be learned and understood. The Plugin API exists in Drupal 8 to mitigate this problem and provide a base API to implement pluggable components. This has greatly improved the developer experience when working with Drupal core's subsystems. In this chapter, we will implement a block plugin. We will use the Plugin API to provide a custom field type along with a widget and formatter for the field. The last recipe will show you how to create and use a custom plugin type.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating blocks using plugins</h1>
+                </header>
+            
+            <article>
+                
+<p>In Drupal, a block is a piece of content that can be placed in a region provided by a theme. Blocks are used to present specific kinds of content, such as a user login form, a snippet of text, and many more.</p>
+<p>Blocks are annotated plugins. Annotated plugins use documentation blocks to provide details of the plugin. They are discovered in the module's <kbd>Plugin</kbd> class namespace. Each class in the <kbd>Plugin/Block</kbd> namespace will be discovered by the Block module's plugin manager.</p>
+<p>In this recipe, we will define a block that will display a copyright snippet and the current year and place it in the footer region.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Create a new module like the one shown in this recipe, with a defined <kbd>info.yml</kbd> so that it can be discovered by Drupal. We will refer to the module as <kbd>mymodule</kbd> throughout the recipe. Use your module's appropriate name.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Create a <kbd>src/Plugin/Block</kbd> directory in your module. This will translate the<br/>
+<kbd>\Drupal\mymodule\Plugin\Block</kbd> namespace and allow a block plugin discovery.</li>
+<li>Create a <kbd>Copyright.php</kbd> file in the newly created folder so that we can define the <kbd>Copyright</kbd> class for our block:</li>
+</ol>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img height="153" width="333" class=" image-border" src="assets/3132c724-4b2f-492d-8390-5ececa50251f.png"/></div>
+<ol start="3">
+<li>The <kbd>Copyright</kbd> class will extend the <kbd>\Drupal\Core\Block\BlockBase</kbd> class:</li>
+</ol>
+<pre style="padding-left: 90px">&lt;?php 
+ 
+namespace Drupal\mymodule\Plugin\Block; 
+ 
+use Drupal\Core\Block\BlockBase; 
+ 
+class Copyright extends BlockBase { 
+ 
+} </pre>
+<p style="padding-left: 60px">We will extend the <kbd>BlockBase</kbd> class, which implements <kbd>\Drupal\Core\Block\BlockPluginInterface</kbd> and provides us with an implementation of nearly all of the interface's methods.</p>
+<ol start="4">
+<li>We will provide the block's identifier, administrative label, and category:</li>
+</ol>
+<pre style="padding-left: 60px">&lt;?php 
+ 
+namespace Drupal\mymodule\Plugin\Block; 
+ 
+use Drupal\Core\Block\BlockBase; 
+ 
+/** 
+ * @Block( 
+ *   id = "copyright_block", 
+ *   admin_label = @Translation("Copyright"), 
+ *   category = @Translation("Custom") 
+ * ) 
+ */ 
+class Copyright extends BlockBase { 
+ 
+} </pre>
+<p style="padding-left: 60px">The annotation document block of the class identifies the type of plugin through <kbd>@Block</kbd>. Drupal will parse this and initiate the plugin with the properties defined inside it. The <kbd>id</kbd> is the internal machine name, the <kbd>admin_label</kbd> is displayed on the block listing page, and <kbd>category</kbd> shows up in the block select list.</p>
+<ol start="5">
+<li>We will need to provide a <kbd>build</kbd> method to satisfy the <kbd>\Drupal\Core\Block\BlockPluginInterface</kbd> interface. This returns the output to be displayed:</li>
+</ol>
+<pre style="padding-left: 60px">&lt;?php 
+ 
+namespace Drupal\mymodule\Plugin\Block; 
+ 
+use Drupal\Core\Block\BlockBase; 
+ 
+/** 
+ * @Block( 
+ *   id = "copyright_block", 
+ *   admin_label = @Translation("Copyright"), 
+ *   category = @Translation("Custom") 
+ * ) 
+ */ 
+class Copyright extends BlockBase { 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function build() { 
+    $date = new \DateTime(); 
+    return [ 
+      '#markup' =&gt; t('Copyright @year&amp;copy; My Company', [ 
+          '@year' =&gt; $date-&gt;format('Y'), 
+      ]), 
+    ]; 
+  } 
+} </pre>
+<p style="padding-left: 60px">The <kbd>build</kbd> method returns a render array that uses Drupal's <kbd>t</kbd> function to substitute <kbd>@year</kbd> for the <kbd>\DateTime</kbd> object's output that is formatted as a full year.</p>
+<div class="packt_tip">Since PHP 5.4, a warning will be displayed if you have not set a timezone <span>explicitly</span> in your PHP's configuration.</div>
+<ol start="6">
+<li>Install your module if it has not yet been installed by going to the <span class="packt_screen">Extend</span> page. If you have already installed your module, go to the <span class="packt_screen">Performance</span> page and rebuild Drupal's caches.</li>
+<li>Go to the <span class="packt_screen">Black layout</span> page from <span class="packt_screen">Structure</span> in the administrative menu. In the <span class="packt_screen">Footer fourth</span> region, click on <span class="packt_screen">Place block</span>.</li>
+<li>Review the block list and add the custom block to your regions, for instance, the footer region. Find the <span class="packt_screen">Copyright</span> block, and click on <span class="packt_screen">Place block</span>:</li>
+</ol>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img class=" image-border" src="assets/6b474e7f-89bf-4305-b45f-c8cd2074cd38.png"/></div>
+<div class="packt_figure"/>
+<ol start="9">
+<li>Uncheck the <span class="packt_screen">Display title</span> checkbox so that only our block's content can be rendered. Click on <span class="packt_screen">Save block</span> and accept all of the other defaults.</li>
+<li>View your Drupal site, and verify that the copyright statement will always keep the year dynamic:</li>
+</ol>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img height="305" width="490" class=" image-border" src="assets/f48f78d9-fe2d-4b93-a6d8-3f26380c114b.png"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The plugin system works through plugin definitions and plugin managers for those definitions. The <kbd>\Drupal\Core\Block\BlockManager</kbd> class defines the block plugins that need be located in the <kbd>Plugin/Block</kbd> namespace. It also defines the base interface that needs to be implemented along with the <kbd>Annotation</kbd> class, which is to be used when parsing the class's document block.</p>
+<p>When Drupal's cache is rebuilt, all available namespaces are scanned to check whether classes exist in the given plugin namespace. The definitions, via annotation, will be processed, and the information will be cached.</p>
+<p>Blocks are then retrieved from the manager, manipulated, and their methods are invoked. When viewing the <kbd>Block layout</kbd> page to manage blocks, the <kbd>\Drupal\Core\Block\BlockBase</kbd> class's <kbd>label</kbd> method is invoked to display the human-readable name. When a block is displayed on a rendered page, the <kbd>build</kbd> method is invoked and passed to the theming layer to be output.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>There are more in-depth items that can be used when creating a block plugin. We will cover those in the following sections.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Altering blocks</h1>
+                </header>
+            
+            <article>
+                
+<p>Blocks can be altered in three different ways: the plugin definition can be altered, the build array, or the view array out.</p>
+<p>A module can implement <kbd>hook_block_alter</kbd> in its <kbd>.module</kbd> file and modify the annotation definitions of all the discovered blocks. This will allow a module to change the default <kbd>user_login_block</kbd> from user login to <kbd>Login</kbd>:</p>
+<pre>/** 
+ * Implements hook_block_alter(). 
+ */ 
+function mymodule_block_alter(&amp;$definitions) { 
+  $definitions['user_login_block']['admin_label'] = t('Login'); 
+} </pre>
+<p>A module can implement <kbd>hook_block_build_alter</kbd> and modify the build information of a block. The hook is passed through the build array and the <kbd>\Drupal\Core\Block\BlockPluginInterface</kbd> instance for the current block. Module developers can use this to add cache contexts or alter the cache ability of the metadata:</p>
+<pre>/** 
+ * Implements hook_block_build_alter(). 
+ */ 
+function hook_block_build_alter(array &amp;$build, \Drupal\Core\Block\BlockPluginInterface $block) { 
+  // Add the 'url' cache the block per URL. 
+  if ($block-&gt;getBaseId() == 'myblock') { 
+    $build['#contexts'][] = 'url'; 
+  } 
+} </pre>
+<div class="packt_infobox">You can test the modification of the cache metadata by altering the recipe's block to output a timestamp. With caching enabled, you will see that the value persists on the same URL, but it will be different across each page.</div>
+<p>Finally, a module can implement <kbd>hook_block_view_alter</kbd> in order to modify the output to be rendered. A module can add content to be rendered or removed. This can be used to remove the <kbd>contextual_links</kbd> item, which allows inline editing on the front page of a site:</p>
+<pre>/** 
+ * Implements hook_block_view_alter(). 
+ */ 
+function hook_block_view_alter(array &amp;$build, \Drupal\Core\Block\BlockPluginInterface $block) { 
+  // Remove the contextual links on all blocks that provide them. 
+  if (isset($build['#contextual_links'])) { 
+    unset($build['#contextual_links']); 
+  } 
+} </pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Block settings forms</h1>
+                </header>
+            
+            <article>
+                
+<p>Blocks can provide a <kbd>setting</kbd> form. This recipe provides the text <em>My Company</em> for the copyright text. Instead, this can be defined through a text field in the block's setting form.</p>
+<p>Let's readdress the <kbd>Copyright.php</kbd> file that holds our block's class. We will override methods provided by our base class. The following methods will be added to the class written in this recipe.</p>
+<p>A block can override the default <kbd>defaultConfiguration</kbd> method, which returns an array of setting keys and their default values. The <kbd>blockForm</kbd> method can then override the <kbd>\Drupal\Core\Block\BlockBase</kbd> empty array implementation to return a Form API array to represent the settings form:</p>
+<pre>  /** 
+   * {@inheritdoc} 
+   */ 
+  public function defaultConfiguration() { 
+    return [ 
+      'company_name' =&gt; '', 
+    ]; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function blockForm($form, \Drupal\Core\Form\FormStateInterface $form_state) { 
+    $form['company_name'] = [ 
+      '#type' =&gt; 'textfield', 
+      '#title' =&gt; t('Company name'), 
+      '#default_value' =&gt; $this-&gt;configuration['company_name'], 
+    ]; 
+    return $form; 
+  } </pre>
+<p>The <kbd>blockSubmit</kbd> method must then be implemented, which updates the block's configuration:</p>
+<pre>  /** 
+   * {@inheritdoc} 
+   */ 
+  public function blockSubmit($form, \Drupal\Core\Form\FormStateInterface $form_state) { 
+    $this-&gt;configuration['company_name'] = $form_state-&gt;getValue('company_name'); 
+  } </pre>
+<p>Finally, the <kbd>build</kbd> method can be updated to use the new configuration item:</p>
+<pre>  /** 
+   * {@inheritdoc} 
+   */ 
+  public function build() { 
+    $date = new \DateTime(); 
+    return [ 
+      '#markup' =&gt; t('Copyright @year&amp;copy; @company', [ 
+        '@year' =&gt; $date-&gt;format('Y'), 
+        '@company' =&gt; $this-&gt;configuration['company_name'], 
+      ]), 
+    ]; 
+  } </pre>
+<p>You can now return to the <kbd>Block layout</kbd> form, and click on <span class="packt_screen">Configure</span> in the <span class="packt_screen">Copyright</span> block. The new setting will be available in the block instance's configuration form.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Defining access to a block</h1>
+                </header>
+            
+            <article>
+                
+<p>Blocks, by default, are rendered for all users. The default access method can be overridden. This allows a block to only be displayed to authenticated users or based on a specific permission:</p>
+<pre>  /** 
+   * {@inheritdoc} 
+   */ 
+  protected function blockAccess(AccountInterface $account) { 
+    $route_name = $this-&gt;routeMatch-&gt;getRouteName(); 
+    if ($account-&gt;isAnonymous() &amp;&amp; !in_array($route_name, <br/>       array('user.login', 'user.logout'))) { 
+      return AccessResult::allowed() 
+        -&gt;addCacheContexts(['route.name', <br/>           'user.roles:anonymous']); 
+    } 
+    return AccessResult::forbidden(); 
+  } </pre>
+<p>The preceding code is taken from the <kbd>user_login_block</kbd>. It allows access to the block if the user is logged out and is not in the login or logout page. The access is cached based on the current route name and the user's current role being anonymous. If these are not passed, the access returned is forbidden and the block is not built.</p>
+<p>Other modules can implement <kbd>hook_block_access</kbd> to override the access of a block:</p>
+<pre>/** 
+ * Implements hook_block_access(). 
+ */ 
+function mymodule_block_access(\Drupal\block\Entity\Block $block, $operation, \Drupal\Core\Session\AccountInterface $account) { 
+  // Example code that would prevent displaying the Copyright' block in 
+  // a region different than the footer. 
+  if ($operation == 'view' &amp;&amp; $block-&gt;getPluginId() == 'copyright') { 
+    return \Drupal\Core\Access\AccessResult::forbiddenIf($block-&gt;getRegion() != 'footer'); 
+  } 
+ 
+  // No opinion. 
+  return \Drupal\Core\Access\AccessResult::neutral(); 
+} </pre>
+<p>A module implementing the preceding hook will deny access to our <span class="packt_screen">Copyright</span> block if it is not placed in the footer region.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<ul>
+<li>Refer to the <em><span class="ChapterrefPACKT">Creating a custom plugin type</span></em> recipe of this chapter</li>
+<li><span>Refer to a</span>nnotations-based plugins at <a href="https://www.drupal.org/docs/8/api/plugin-api/annotations-based-plugins"><span class="URLPACKT">https://www.drupal.org/docs/8/api/plugin-api/annotations-based-plugins</span></a></li>
+<li>Information on <kbd>block.api.php</kbd> is available at <a href="https://api.drupal.org/api/drupal/core%21modules%21block%21block.api.php/8"><span class="URLPACKT">https://api.drupal.org/api/drupal/core%21modules%21block%21block.api.php/8</span></a></li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating a custom field type</h1>
+                </header>
+            
+            <article>
+                
+<p>Field types are defined using the plugin system. Each field type has its own class and definition. A new field type can be defined through a custom class that will provide schema and property information.</p>
+<p>In this example, we will create a simple field type called <em>real name</em> to store the first and last names.</p>
+<div class="packt_infobox">Field types define ways in which data can be stored and handled through the Field API. Field widgets provides means for editing a field type in the user interface. Field formatters provide means for displaying the field data to users. Both are plugins and will be covered in later recipes.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Create a new module like the one shown in this recipe, with a defined <kbd>info.yml</kbd> so that it can be discovered by Drupal. We will refer to the module as <kbd>mymodule</kbd> throughout the recipe. Use your module's appropriate name.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>We will need to create the <kbd>src/Plugin/Field/FieldType</kbd> directory in the module's base location. The <kbd>Field</kbd> module discovers field types in the <kbd>Plugin\Field\FieldType</kbd> namespace.</li>
+<li>We will create a <kbd>RealName.php</kbd> file in the newly created directory so that we can define the <kbd>RealName</kbd> class. This will provide our <kbd>realname</kbd> field for the first and last names:</li>
+</ol>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img height="160" width="399" class=" image-border" src="assets/78b1e92a-3bef-4f77-a5c9-468f1afbf8f1.png"/></div>
+<ol start="3">
+<li>The <kbd>RealName</kbd> class will extend the <kbd>\Drupal\Core\Field\FieldItemBase</kbd> class:</li>
+</ol>
+<pre style="padding-left: 60px">&lt;?php 
+ 
+namespace Drupal\mymodule\Plugin\Field\FieldType; 
+ 
+use Drupal\Core\Field\FieldItemBase; 
+use Drupal\Core\Field\FieldStorageDefinitionInterface; 
+use Drupal\Core\TypedData\DataDefinition; 
+ 
+class RealName extends FieldItemBase { 
+ 
+} </pre>
+<p style="padding-left: 60px">The <kbd>\Drupal\Core\Field\FieldItemBase</kbd> satisfies methods defined by inherited interfaces, except for <kbd>schema</kbd> and <kbd>propertyDefinitions</kbd>.</p>
+<ol start="4">
+<li>Field types are annotated plugins. Annotated plugins use documentation blocks to provide details of the plugin. We will provide the field type's identifier, label, description, category, and default widget and formatter:</li>
+</ol>
+<pre style="padding-left: 60px">&lt;?php 
+ 
+namespace Drupal\mymodule\Plugin\Field\FieldType; 
+ 
+use Drupal\Core\Field\FieldItemBase; 
+use Drupal\Core\Field\FieldStorageDefinitionInterface; 
+use Drupal\Core\TypedData\DataDefinition; 
+ 
+/** 
+ * Plugin implementation of the 'realname' field type. 
+ * 
+ * @FieldType( 
+ *   id = "realname", 
+ *   label = @Translation("Real name"), 
+ *   description = @Translation("This field stores a first and last name."), 
+ *   category = @Translation("General"), 
+ *   default_widget = "string_textfield", 
+ *   default_formatter = "string" 
+ * ) 
+ */ 
+ 
+class RealName extends FieldItemBase { 
+ 
+} </pre>
+<p style="padding-left: 60px">The <kbd>@FieldType</kbd> tells Drupal that this is a <kbd>FieldType</kbd> plugin. The following properties are defined:</p>
+<ul>
+<li><kbd>Id</kbd>: This is the plugin's machine name</li>
+<li><kbd>Label</kbd>: This is the human-readable name for the field</li>
+<li><kbd>description</kbd>: This is the human-readable description of the field</li>
+<li><kbd>category</kbd>: This is the category where the field shows up in the user interface</li>
+<li><kbd>default_widget</kbd>: This is the default form widget to be used for editing</li>
+<li><kbd>default_formatter</kbd>: This is the default formatter with which you can display the field</li>
+</ul>
+<ol start="5">
+<li>The <kbd>RealName</kbd> class needs to implement the <kbd>schema</kbd> method defined in the<br/>
+<kbd>\Drupal\Core\Field\FieldItemInterface</kbd>. This returns an array of the database API schema information. Add the following method to your class:</li>
+</ol>
+<pre style="padding-left: 60px">/** 
+ * {@inheritdoc} 
+ */ 
+public static function schema(\Drupal\Core\Field\FieldStorageDefinitionInterface $field_definition) { 
+  return [ 
+    'columns' =&gt; [ 
+      'first_name' =&gt; [ 
+        'description' =&gt; 'First name.', 
+        'type' =&gt; 'varchar', 
+        'length' =&gt; '255', 
+        'not null' =&gt; TRUE, 
+        'default' =&gt; '', 
+      ], 
+      'last_name' =&gt; [ 
+        'description' =&gt; 'Last name.', 
+        'type' =&gt; 'varchar', 
+        'length' =&gt; '255', 
+        'not null' =&gt; TRUE, 
+        'default' =&gt; '', 
+      ], 
+    ], 
+    'indexes' =&gt; [ 
+       'first_name' =&gt; ['first_name'], 
+       'last_name' =&gt; ['last_name'], 
+    ], 
+  ]; 
+} </pre>
+<p style="padding-left: 60px">The <kbd>schema</kbd> method defines the columns in the field's data table. We will define a column to hold the <kbd>first_name</kbd> and <kbd>last_name</kbd> values.</p>
+<ol start="6">
+<li>We will also need to implement the <kbd>propertySchema</kbd> method to satisfy <kbd>\Drupal\Core\TypedData\ComplexDataDefinitionInterface</kbd>. This returns a typed definition of the values defined in the <kbd>schema</kbd> method. Add the following method to your class:</li>
+</ol>
+<pre style="padding-left: 60px">/** 
+ * {@inheritdoc} 
+ */ 
+public static function propertyDefinitions(\Drupal\Core\Field\FieldStorageDefinitionInterface $field_definition) { 
+  $properties['first_name'] = \Drupal\Core\TypedData\DataDefinition::create('string') 
+-&gt;setLabel(t('First name')); 
+  $properties['last_name'] = \Drupal\Core\TypedData\DataDefinition::create('string') 
+-&gt;setLabel(t('Last name')); 
+  return $properties; 
+} </pre>
+<p style="padding-left: 60px">This method returns an array that is keyed with the same column names provided in <kbd>schema</kbd>. It returns a typed data definition to handle the field type's values.</p>
+<ol start="7">
+<li>Install your module, if it has not yet been installed, by going to the <span class="packt_screen">Extend</span> page. If you have already installed your module, go to the <span class="packt_screen">Performance</span> page and rebuild Drupal's caches.</li>
+<li>The field will now appear on the field type management screen. To use it, go to <span class="packt_screen">Structure</span> and then to <span class="packt_screen">Comment Types</span>. You can now go to <span class="packt_screen">Manage Fields</span> and click on <span class="packt_screen">Add field</span> to add a real name entry for your comments:</li>
+</ol>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img height="248" width="462" class=" image-border" src="assets/c00a768d-b6f6-4957-83be-500e1ceb4343.png"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>Drupal core defines a <kbd>plugin.manager.field.field_type</kbd> service. By default, this is handled through the <kbd>\Drupal\Core\Field\FieldTypePluginManager</kbd> class. This plugin manager defines the field type plugins that should be in the <kbd>Plugin/Field/FieldType</kbd> namespace, and all the classes in this namespace will be loaded and assumed to be field type plugins.</p>
+<p>The manager's definition also sets <kbd>\Drupal\Core\Field\FieldItemInterface</kbd> as the expected interface that all the field type plugins will implement. This is why most field types extend <kbd>\Drupal\Core\Field\FieldItemBase</kbd> to meet these method requirements.</p>
+<p>As field types are annotated plugins, the manager provides <kbd>\Drupal\Core\Field\Annotation\FieldType</kbd> as the class that fulfills the annotation definition.</p>
+<p>When the user interface defines the available fields, the <kbd>plugin.manager.field.field_type</kbd> service is invoked to retrieve a list of available field types.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>Existing field types can be altered to modify their definitions, and custom field types can implement a method to define whether the value is empty or not. We will cover these in the next sections.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Altering field types</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>\Drupal\Core\Field\FieldTypePluginManager</kbd> class defines the <kbd>alter</kbd> method as <kbd>field_info.</kbd> Modules that implement <kbd>hook_field_info_alter</kbd> in their <kbd>.module</kbd> files have the ability to modify field type definitions discovered by the manager:</p>
+<pre>/** 
+ * Implements hook_field_info_alter(). 
+ */ 
+function mymodule_field_info_alter(&amp;$info) { 
+  $info['email']['label'] = t('E-mail address'); 
+} </pre>
+<p>The preceding <kbd>alter</kbd> method will change the human-readable label for the email field to <strong>E-mail address</strong> when selecting the field in the user interface.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Defining whether a field is empty</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>\Drupal\Core\TypedDate\ComplexDataInterface</kbd> interface provides an <kbd>isEmpty</kbd> method. This method is used to check whether the field's value is empty, for example, when verifying that the required field has data. The <kbd>\Drupal\Core\TypedData\Plugin\DataType\Map</kbd> class implements the method. By default, the method ensures that the values are not empty.</p>
+<p>Field types can provide their own implementations to provide a more robust verification. For instance, the field can validate that the first name can be entered but not the last name, or the field can require both the first and the last name.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<ul>
+<li>Refer to the <em><span class="ChapterrefPACKT">Creating blocks using plugins</span></em> recipe of this chapter</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating a custom field widget</h1>
+                </header>
+            
+            <article>
+                
+<p>Field widgets provide the form interface to edit a field. These integrate with the Form API to define how a field can be edited and the way in which the data can be formatted before it is saved. Field widgets are chosen and customized through the form display interface.</p>
+<p>In this recipe, we will create a widget for the field created in the <em><span class="ChapterrefPACKT">Creating a custom field type</span></em> recipe in this chapter. The field widget will provide two text fields for entering the first and last name items.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Create a new module, such as the one from the <em><span class="ChapterrefPACKT">Creating a custom field type</span></em> recipe. We will refer to the module as <kbd>mymodule</kbd> throughout the recipe. Use your module's appropriate name.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>We will need to create the <kbd>src/Plugin/Field/FieldWidget</kbd> directory in the module's base location. The <kbd>Field</kbd> module discovers field widgets in the <kbd>Plugin\Field\FieldWidget</kbd> namespace.</li>
+<li>Create a <kbd>RealNameDefaultWidget.php</kbd> file in the newly created directory so that we can define the <kbd>RealNameDefaultWidget</kbd> class. This will provide a custom form element to edit the first and last name values of our field:</li>
+</ol>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img height="171" width="390" class=" image-border" src="assets/a85a2ae6-6ff9-4201-83f1-dc8324210c62.png"/></div>
+<ol start="3">
+<li>The <kbd>RealNameDefaultWidget</kbd> class will extend the <kbd>\Drupal\Core\Field\WidgetBase</kbd> class:</li>
+</ol>
+<pre style="padding-left: 60px">&lt;?php 
+ 
+namespace Drupal\mymodule\Plugin\Field\FieldWidget; 
+ 
+use Drupal\Core\Field\WidgetBase; 
+ 
+class RealNameDefaultWidget extends WidgetBase { 
+ 
+} </pre>
+<ol start="4">
+<li>We will provide the field widget's identifier, label, and supported field types in the plugin's annotation:</li>
+</ol>
+<pre style="padding-left: 60px">&lt;?php 
+ 
+namespace Drupal\mymodule\Plugin\Field\FieldWidget; 
+ 
+use Drupal\Core\Field\WidgetBase; 
+use Drupal\Core\Field\FieldItemListInterface; 
+use Drupal\Core\Form\FormStateInterface; 
+ 
+/** 
+ * Plugin implementation of the 'realname_default' widget. 
+ * 
+ * @FieldWidget( 
+ *   id = "realname_default", 
+ *   label = @Translation("Real name"), 
+ *   field_types = { 
+ *     "realname" 
+ *   } 
+ * ) 
+ */ 
+class RealNameDefaultWidget extends WidgetBase { 
+ 
+} </pre>
+<p style="padding-left: 60px">The <kbd>@FieldWidget</kbd> tells Drupal that this is a field widget plugin. It defines <kbd>id</kbd> to represent the machine name, the human-readable name as <kbd>label</kbd>, and the field types that the widget interacts with.</p>
+<ol start="5">
+<li>We will need to implement the <kbd>formElement</kbd> method to satisfy the remaining <kbd>interface</kbd> methods after extending <kbd>\Drupal\Core\Field\WidgetBase</kbd>. Add the following method to your class:</li>
+</ol>
+<pre style="padding-left: 60px">/** 
+ * {@inheritdoc} 
+ */ 
+public function formElement(FieldItemListInterface $items, $delta, array $element, array &amp;$form, FormStateInterface $form_state) { 
+  $element['first_name'] = [ 
+    '#type' =&gt; 'textfield', 
+    '#title' =&gt; t('First name'), 
+    '#default_value' =&gt; '', 
+    '#size' =&gt; 25, 
+    '#required' =&gt; $element['#required'], 
+  ]; 
+  $element['last_name'] = [ 
+    '#type' =&gt; 'textfield', 
+    '#title' =&gt; t('Last name'), 
+    '#default_value' =&gt; '', 
+    '#size' =&gt; 25, 
+    '#required' =&gt; $element['#required'], 
+  ]; 
+return $element; 
+} </pre>
+<p style="padding-left: 60px">The <kbd>formElement</kbd> method returns a Form API array that represents the widget to be set and edits the field data.</p>
+<ol start="6">
+<li>Next, we will need to modify our original <kbd>RealName</kbd> field type plugin class to use the default widget that we created. Modify the <kbd>src/Plugin/FieldType/RealName.php</kbd> file, and update the <kbd>default_widget</kbd> annotation property as <kbd>realname_default</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px">/** 
+ * Plugin implementation of the 'realname' field type. 
+ * 
+ * @FieldType( 
+ *   id = "realname", 
+ *   label = @Translation("Real name"), 
+ *   description = @Translation("This field stores a first and last name."), 
+ *   category = @Translation("General"), 
+ *   default_widget = "realname_default", 
+ *   default_formatter = "string" 
+ * ) 
+ */ 
+class RealName extends FieldItemBase { </pre>
+<ol start="7">
+<li>Rebuild Drupal's cache so that the plugin system can discover the new field widget.</li>
+<li>Add a <kbd>Real name</kbd> field and use the new <kbd>Real name</kbd> widget. For example, add it to a comment type:</li>
+</ol>
+<p> </p>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img class=" image-border" src="assets/94d856c2-3142-4ca5-bd1f-fd39fbf6d075.png"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>Drupal core defines a <kbd>plugin.manager.field.widget</kbd> service. By default, this is handled through the <kbd>\Drupal\Core\Field\FieldWidgetPluginManager</kbd> class. This plugin manager defines the field widget plugins that should be in the <kbd>Plugin/Field/FieldWidget</kbd> namespace, and all the classes in this namespace will be loaded and assumed to be field widget plugins.</p>
+<p>The manager's definition also sets <kbd>\Drupal\Core\Field\FieldWidgetInterface</kbd> as the expected interface that all the field widget plugins will implement. This is why most field types extend <kbd>\Drupal\Core\Field\WidgetBase</kbd> to meet these method requirements.</p>
+<p>As field widgets are annotated plugins, the manager provides <kbd>\Drupal\Core\Field\Annotation\FieldWidget</kbd> as the class that fulfills the annotation definition.</p>
+<p>The entity form display system uses the <kbd>plugin.manager.field.widget</kbd> service to load field definitions and add the field's element returned from the <kbd>formElement</kbd> method to the entity form.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>Field widgets have additional methods to provide more information; they are covered in the next section.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Field widget settings and summary</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>\Drupal\Core\Field\WidgetInterface</kbd> interface defines three methods that can be overridden to provide a settings form and a summary of the current settings:</p>
+<ul>
+<li><kbd>defaultSettings</kbd>: This returns an array of the setting keys and default values</li>
+<li><kbd>settingsForm</kbd>: This returns a Form API array that is used for the settings form</li>
+<li><kbd>settingsSummary</kbd>: This allows an array of strings to be returned and displayed on the manage display form for the field</li>
+</ul>
+<p>Widget settings can be used to alter the form presented to the user. A setting can be created that allows the field element to be limited to only enter the first or last name with one text field.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<ul>
+<li>The <em>Creating a custom plugin type</em> recipe of this chapter</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating a custom field formatter</h1>
+                </header>
+            
+            <article>
+                
+<p>Field formatters define the way in which a field type will be presented. These formatters return the render array information to be processed by the theming layer. Field formatters are configured on the display mode interfaces.</p>
+<p>In this recipe, we will create a formatter for the field created in the <em><span class="ChapterrefPACKT">Creating a custom field type</span></em> recipe in this chapter. The field formatter will display the first and last names with some settings.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Create a new module like the one existing in the first recipe. We will refer to the module as <kbd>mymodule</kbd> throughout the recipe. Use your module's appropriate name.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>We will need to create the <kbd>src/Plugin/Field/FieldFormatter</kbd> directory in the module's base location. The <kbd>Field</kbd> module discovers field formatters in the <kbd>Plugin\Field\FieldFormatter</kbd> namespace.</li>
+<li>Create a <kbd>RealNameFormatter.php</kbd> file in the newly created directory so that we can define the <kbd>RealNameFormatter</kbd> class. This will provide a custom form element to display the field's values:</li>
+</ol>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img class=" image-border" src="assets/4a0f7c40-5b64-43e7-a563-d521dfe719ce.png"/></div>
+<ol start="3">
+<li>The <kbd>RealNameFormatter</kbd> class will extend the <kbd>\Drupal\Core\Field\FormatterBase</kbd> class:</li>
+</ol>
+<pre style="padding-left: 60px">&lt;?php 
+ 
+namespace Drupal\mymodule\Plugin\Field\FieldFormatter; 
+ 
+use Drupal\Core\Field\FormatterBase; 
+use Drupal\Core\Field\FieldItemListInterface; 
+ 
+class RealNameFormatter extends FormatterBase { 
+ 
+} </pre>
+<ol start="4">
+<li>We will provide the field widget's identifier, label, and supported field types:</li>
+</ol>
+<pre style="padding-left: 60px">&lt;?php 
+ 
+namespace Drupal\mymodule\Plugin\Field\FieldFormatter; 
+ 
+use Drupal\Core\Field\FormatterBase; 
+use Drupal\Core\Field\FieldItemListInterface; 
+ 
+/** 
+ * Plugin implementation of the 'realname_one_line' formatter. 
+ * 
+ * @FieldFormatter( 
+ *   id = "realname_one_line", 
+ *   label = @Translation("Real name (one line)"), 
+ *   field_types = { 
+ *     "realname" 
+ *   } 
+ * ) 
+ */ 
+class RealNameFormatter extends FormatterBase { 
+ 
+} </pre>
+<ol start="5">
+<li>We will need to implement the <kbd>viewElements</kbd> method to satisfy the <kbd>\Drupal\Core\Field\FormatterInferface</kbd> interface. This is used to render the field data. Add the following method to your class:</li>
+</ol>
+<pre style="padding-left: 60px">/** 
+{@inheritdoc} 
+*/ 
+public function viewElements(FieldItemListInterface $items, $langcode) { 
+  $element = []; 
+ 
+  foreach ($items as $delta =&gt; $item) { 
+    $element[$delta] = [ 
+      '#markup' =&gt; $this-&gt;t('@first @last', [ 
+        '@first' =&gt; $item-&gt;first_name, 
+        '@last' =&gt; $item-&gt;last_name, 
+      ]), 
+    ]; 
+  } 
+  return $element; 
+} </pre>
+<ol start="6">
+<li>Next, we will need to modify our original <kbd>RealName</kbd> field type's <kbd>plugin</kbd> class to use the default formatter that we created. Open the <kbd>src/Plugin/FieldType/RealName.php</kbd> file, and update the <kbd>default_formatter</kbd> annotation property as <kbd>realname_one_line</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px">/** 
+ * Plugin implementation of the 'realname' field type. 
+ * 
+ * @FieldType( 
+ *   id = "realname", 
+ *   label = @Translation("Real name"), 
+ *   description = @Translation("This field stores a first and last name."), 
+ *   category = @Translation("General"), 
+ *   default_widget = " string_textfield ", 
+ *   default_formatter = "realname_one_line" 
+ * ) 
+ */ </pre>
+<ol start="7">
+<li>Rebuild Drupal's cache so that the plugin system can discover the new field widget.</li>
+<li>Update an entity view mode with a <kbd>Real name</kbd> field to use the <span class="packt_screen">Real name (one line)</span> formatter:</li>
+</ol>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img class=" image-border" src="assets/33d64166-03d6-4a18-b099-a13b7d85cf40.png"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>Drupal core defines a <kbd>plugin.manager.field.formatter</kbd> service. By default, this is handled through the <kbd>\Drupal\Core\Field\FormatterPluginManager</kbd> class. This plugin manager defines the field formatter plugins that should be in the <kbd>Plugin/Field/FieldFormatter</kbd> namespace, and all the classes in this namespace will be loaded and assumed to be field formatter plugins.</p>
+<p>The manager's definition also sets <kbd>\Drupal\Core\Field\FormatterInterface</kbd> as the expected interface that all field formatter plugins will implement. This is why most field formatters extend <kbd>\Drupal\Core\Field\FormatterBase</kbd> to meet these method requirements.</p>
+<p>As field formatters are annotated plugins, the manager provides <kbd>\Drupal\Core\Field\Annotation\FieldFormatter</kbd> as the class that fulfills the annotation definition.</p>
+<p>The entity view display system uses the <kbd>plugin.manager.field.formatter</kbd> service to load field definitions and add the field's render array, returned from the <kbd>viewElements</kbd> method, to the entity view render array.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>Field formatters have additional methods to provide more information; they are covered in the next section.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Formatter settings and summary</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>\Drupal\Core\Field\FormatterInterface</kbd> interface defines three methods that can be overridden to provide a settings form and a summary of the current settings:</p>
+<ul>
+<li><kbd>defaultSettings</kbd>: This returns an array of the setting keys and default values</li>
+<li><kbd>settingsForm</kbd>: This returns a Form API array that is used for the settings form</li>
+<li><kbd>settingsSummary</kbd>: This allows an array of strings to be returned and displayed on the manage display form for the field</li>
+</ul>
+<p>Settings can be used to alter how the formatter displays information. For example, these methods can be implemented to provide settings to hide or display the first or last name.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<ul>
+<li>Refer to the <em>Creating a custom plugin type</em> recipe of this chapter.</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating a custom plugin type</h1>
+                </header>
+            
+            <article>
+                
+<p>The plugin system provides a means to create specialized objects in Drupal that do not require the data storage features of the entity system.</p>
+<p>This recipe is based on the <strong>GeoIP API</strong> module port to Drupal 8 that was started by the author. The <strong>GeoIP API</strong> module provides a way to get the country from a website visitor's IP address.</p>
+<p>In this recipe, we will create a new plugin type called <kbd>GeoLocator</kbd> that will return the country code for a given IP address. We will create a plugin manager, a default plugin interface, a plugin annotation definition, and provide a default plugin to find the country via the website's CDN.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>We will use the <kbd>geoip</kbd> namespace and module name in this recipe.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>All plugins need to have a service that acts as a plugin manager. Create a new file in your module's <kbd>src</kbd> directory called <kbd>GeoLocatorManager.php</kbd>. This will hold the <kbd>GeoLocatorManager</kbd> class.</li>
+<li>Create the <kbd>GeoLocatorManager</kbd> class by extending the <kbd>\Drupal\Core\Plugin\DefaultPluginManager</kbd> class:</li>
+</ol>
+<pre style="padding-left: 60px">&lt;?php 
+ 
+namespace Drupal\geoip; 
+ 
+use Drupal\Core\Plugin\DefaultPluginManager; 
+use Drupal\Core\Cache\CacheBackendInterface; 
+use Drupal\Core\Extension\ModuleHandlerInterface; 
+ 
+class GeoLocatorManager extends DefaultPluginManager { 
+ 
+}</pre>
+<ol start="3">
+<li>When creating a new plugin type, it is recommended that the plugin manager provides a set of defaults for new plugins, in case an item is missing from the definition:</li>
+</ol>
+<pre style="padding-left: 60px">&lt;?php 
+ 
+namespace Drupal\geoip; 
+ 
+use Drupal\Core\Plugin\DefaultPluginManager; 
+use Drupal\Core\Cache\CacheBackendInterface; 
+use Drupal\Core\Extension\ModuleHandlerInterface; 
+ 
+class GeoLocatorManager extends DefaultPluginManager { 
+ 
+  /** 
+   * Default values for each plugin. 
+   * 
+   * @var array 
+   */ 
+  protected $defaults = [ 
+    'label' =&gt; '', 
+    'description' =&gt; '', 
+    'weight' =&gt; 0, 
+  ]; 
+ 
+} </pre>
+<ol start="4">
+<li>Next, we will need to override the <kbd>\Drupal\Core\Plugin|DefaultPluginManager</kbd> class constructor to define the module handler and cache backend:</li>
+</ol>
+<pre style="padding-left: 60px">&lt;?php 
+ 
+namespace Drupal\geoip; 
+ 
+use Drupal\Core\Plugin\DefaultPluginManager; 
+use Drupal\Core\Cache\CacheBackendInterface; 
+use Drupal\Core\Extension\ModuleHandlerInterface; 
+ 
+class GeoLocatorManager extends DefaultPluginManager { 
+ 
+  /** 
+   * Default values for each plugin. 
+   * 
+   * @var array 
+   * / 
+  protected $defaults = [ 
+    'label' =&gt; '', 
+    'description' =&gt; '', 
+    'weight' =&gt; 0, 
+  ]; 
+ 
+  /** 
+   * Constructs a new GeoLocatorManager object. 
+   * 
+   * @param \Traversable $namespaces 
+   *   An object that implements \Traversable which contains the root paths 
+   *   keyed by the corresponding namespace to look for plugin implementations. 
+   * @param \Drupal\Core\Cache\CacheBackendInterface $cache_backend 
+   *   Cache backend instance to use. 
+   * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler 
+   *   The module handler. 
+   */ 
+  public function __construct(\Traversable $namespaces, CacheBackendInterface $cache_backend, ModuleHandlerInterface $module_handler) { 
+    parent::__construct( 
+      'Plugin/GeoLocator',  
+      $namespaces,  
+      $module_handler,  
+      'Drupal\geoip\Plugin\GeoLocator\GeoLocatorInterface',  
+      'Drupal\geoip\Annotation\GeoLocator' 
+    ); 
+    $this-&gt;setCacheBackend($cache_backend, 'geolocator_plugins'); 
+  } 
+ 
+} </pre>
+<p style="padding-left: 60px">We override the constructor so that we can specify a specific cache key. This allows plugin definitions to be cached and cleared properly; otherwise, our plugin manager will continuously read the disk to find plugins.</p>
+<ol start="5">
+<li>The next step will be to create a <kbd>geoip.services.yml</kbd> file in our module's root directory. This will describe our plugin manager to Drupal, allowing a plugin discovery:</li>
+</ol>
+<pre style="padding-left: 60px">services: 
+  plugin.manager.geolocator: 
+    class: Drupal\geoip\GeoLocatorManager 
+    parent: default_plugin_manager </pre>
+<p style="padding-left: 60px">Drupal utilizes services and dependency injection. By defining our class as a service, we are telling the application container how to initiate our class. We can use the <kbd>parent</kbd> definition to tell the container to use the same arguments as the <kbd>default_plugin_manager</kbd> definition.</p>
+<ol start="6">
+<li>All annotation-based plugins must provide a class, which serves as the annotation definition. Create <kbd>GeoLocator.php</kbd> in <kbd>src/Annotation</kbd> to provide the <kbd>GeoLocator</kbd> annotation class:</li>
+</ol>
+<pre style="padding-left: 60px">&lt;?php 
+ 
+namespace Drupal\geoip\Annotation; 
+ 
+use Drupal\Component\Annotation\Plugin; 
+ 
+/** 
+ * Defines a GeoLocator annotation object. 
+ * 
+ * @Annotation 
+ */ 
+class GeoLocator extends Plugin { 
+ 
+  /** 
+   * The human-readable name. 
+   * 
+   * @var \Drupal\Core\Annotation\Translation 
+   * 
+   * @ingroup plugin_translatable 
+   */ 
+  public $label; 
+ 
+  /** 
+   * A description of the plugin. 
+   * 
+   * @var \Drupal\Core\Annotation\Translation 
+   * 
+   * @ingroup plugin_translatable 
+   */ 
+  public $description; 
+ 
+} </pre>
+<p style="padding-left: 60px">Each property is an item that can be defined in the plugin's annotation. The annotated definition will start with <kbd>@GeoLocator</kbd> for our plugins.</p>
+<ol start="7">
+<li>Next, we will define the plugin interface that we defined in the plugin manager. The plugin manager will validate the <kbd>GeoLocator</kbd> plugins that implement this interface. Create a <kbd>GeoLocatorInterface.php</kbd> file in our module's <kbd>src/Plugin/GeoLocator</kbd> directory to hold the interface:</li>
+</ol>
+<pre style="padding-left: 60px">&lt;?php 
+ 
+namespace Drupal\geoip\Plugin\GeoLocator; 
+ 
+/** 
+ * Interface GeoLocatorInterface. 
+ */ 
+interface GeoLocatorInterface { 
+ 
+  /** 
+   * Get the plugin's label. 
+   * 
+   * @return string 
+   *   The geolocator label 
+   */ 
+  public function label(); 
+ 
+  /** 
+   * Get the plugin's description. 
+   * 
+   * @return string 
+   *   The geolocator description 
+   */ 
+  public function description(); 
+ 
+  /** 
+   * Performs geolocation on an address. 
+   * 
+   * @param string $ip_address 
+   *   The IP address to geolocate. 
+   * 
+   * @return string|NULL 
+   *   The geolocated country code, or NULL if not found. 
+   */ 
+  public function geolocate($ip_address); 
+ 
+} </pre>
+<p style="padding-left: 60px">We provide an interface so that we can guarantee that we have these expected methods when working with a <kbd>GeoLocator</kbd> plugin, and that we have an output, regardless of the logic behind each method.</p>
+<ol start="8">
+<li>Next, we will create a default plugin, which returns the country code from CDN headers, if available. In <kbd>src/Plugin/GeoLocator</kbd>, create a <kbd>Cdn.php</kbd> file for our <kbd>Cdn</kbd> plugin class:</li>
+</ol>
+<pre style="padding-left: 60px">&lt;?php 
+ 
+namespace Drupal\geoip\Plugin\GeoLocator; 
+ 
+use Drupal\Core\Plugin\PluginBase; 
+ 
+/** 
+ * CDN geolocation provider. 
+ * 
+ * @GeoLocator( 
+ *   id = "cdn", 
+ *   label = "CDN", 
+ *   description = "Checks for geolocation headers sent by CDN services", 
+ *   weight = -10 
+ * ) 
+ */ 
+class Cdn extends PluginBase implements GeoLocatorInterface { 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function label() { 
+    return $this-&gt;pluginDefinition['label']; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function description() { 
+    return $this-&gt;pluginDefinition['description']; 
+  } 
+ 
+  /** 
+   * {@inheritdoc} 
+   */ 
+  public function geolocate($ip_address) { 
+    // Check if CloudFlare headers present. 
+    if (!empty($_SERVER['HTTP_CF_IPCOUNTRY'])) { 
+      $country_code = $_SERVER['HTTP_CF_IPCOUNTRY']; 
+    } 
+    // Check if CloudFront headers present. 
+    elseif (!empty($_SERVER['HTTP_CLOUDFRONT_VIEWER_COUNTRY'])) { 
+      $country_code = $_SERVER['HTTP_CLOUDFRONT_VIEWER_COUNTRY']; 
+    } 
+    else { 
+      $country_code = NULL; 
+    } 
+ 
+    return $country_code; 
+  } 
+   
+} 
+ </pre>
+<ol start="9">
+<li>The <kbd>GeoLocator</kbd> plugin type is now set, with a default CDN-based plugin.</li>
+</ol>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>Drupal 8 implements a service container, a concept adopted from the Symfony framework. In order to implement a plugin, there needs to be a manager who can discover and process plugin definitions. This manager is defined as a service in a module's <kbd>services.yml</kbd> with its required constructor parameters. This allows the service container to initiate the class when it is required.</p>
+<p>In our example, the <kbd>GeoLocatorManager</kbd> plugin manager discovers the <kbd>GeoLocator</kbd> plugin definitions through annotated plugin discovery. After the first discovery, all the known plugin definitions are then cached under the <kbd>geolocator_plugins</kbd> cache key.</p>
+<p>Plugin managers also provide a method to return these definitions or create an object instance based on an available definition. For the CDN plugin, this would be a full instantiated <kbd>Cdn</kbd> class object.</p>
+<p>Let's consider the following example:</p>
+<pre>// Load the manager service. 
+$geolocator_manager = \Drupal::service('plugin.manager.geolocator'); 
+ 
+// Create a class instance through the manager. 
+$cdn_instance = $unit_manager-&gt;createInstance('cdn'); 
+ 
+// Get country code. 
+$country_code = $cdn_instance-&gt;geolocate('127.0.0.1'); </pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>There are many additional items for creating a custom plugin type; we will discuss some of them in the following sections.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Specifying an alter hook</h1>
+                </header>
+            
+            <article>
+                
+<p>Plugin managers have the ability to define an alter hook. The following line of code will be added to the <kbd>GeoLocatorManager</kbd> class's constructor to provide <kbd>hook_geolocator_plugins_alter</kbd>. This is passed to the module handler service for invocations:</p>
+<pre>/**<br/> * Constructs a new GeoLocatorManager object.<br/> *<br/> * @param \Traversable $namespaces<br/> * An object that implements \Traversable which contains the root paths<br/> * keyed by the corresponding namespace to look for plugin implementations.<br/> * @param \Drupal\Core\Cache\CacheBackendInterface $cache_backend<br/> * Cache backend instance to use.<br/> * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler<br/> * The module handler.<br/> */<br/>public function __construct(\Traversable $namespaces, CacheBackendInterface $cache_backend, ModuleHandlerInterface $module_handler) {<br/>  parent::__construct(<br/>    'Plugin/GeoLocator',<br/>    $namespaces,<br/>    $module_handler,<br/>    'Drupal\geoip\Plugin\GeoLocator\GeoLocatorInterface',<br/>    'Drupal\geoip\Annotation\GeoLocator'<br/>  );<br/>  $this-&gt;alterInfo('geolocator_info');<br/>  $this-&gt;setCacheBackend($cache_backend, 'geolocator_plugins');<br/>}</pre>
+<p>Modules implementing <kbd>hook_geolocator_plugins_alter</kbd> in the <kbd>.module</kbd> file have the ability to modify all the discovered plugin definitions. They also have the ability to remove defined plugin entries or alter any information provided for the annotation definition.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using a cache backend</h1>
+                </header>
+            
+            <article>
+                
+<p>Plugins can use a cache backend to improve performance. This can be done by specifying a cache backend with the <kbd>setCacheBackend</kbd> method in the manager's constructor. The following line of code will allow the <kbd>Unit</kbd> plugins to be cached and only discovered on a cache rebuild.</p>
+<p>The <kbd>$cache_backend</kbd> variable is passed to the constructor. The second parameter provides the cache key. The cache key will have the current language code added as a suffix.</p>
+<p>There is an optional third parameter that takes an array of strings to represent cache tags that will cause the plugin definitions to be cleared. This is an advanced feature, and plugin definitions should normally be cleared through the manager's <kbd>clearCachedDefinitions</kbd> method. The cache tags allow the plugin definitions to be cleared when a relevant cache is cleared as well.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Accessing plugins through the manager</h1>
+                </header>
+            
+            <article>
+                
+<p>Plugins are loaded through the manager service, which should always be accessed through the service container. The following line of code will be used in your module's hooks or classes to access the plugin manager:</p>
+<pre><strong>$geolocator_manager = \Drupal::service('plugin.manager.geolocator');</strong></pre>
+<p>Plugin managers have various methods for retrieving plugin definitions, which are as follows:</p>
+<ul>
+<li><kbd>getDefinitions</kbd>: This method will return an array of plugin definitions. It first makes an attempt to retrieve cached definitions, if any, and sets the cache of discovered definitions before returning them.</li>
+<li><kbd>getDefinition</kbd>: This takes an expected plugin ID and returns its definition.</li>
+<li><kbd>createInstance</kbd>: This takes an expected plugin ID and returns an initiated class for the plugin.</li>
+<li><kbd>getInstance</kbd>: This takes an array that acts as a plugin definition and returns an initiated class from the definition.</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">See also</h1>
+                </header>
+            
+            <article>
+                
+<ul>
+<li>Refer to services and dependency injection at <a href="https://www.drupal.org/node/2133171"><span class="URLPACKT">https://www.drupal.org/node/2133171</span></a></li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>
