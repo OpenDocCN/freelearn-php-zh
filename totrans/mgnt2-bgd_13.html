@@ -1,0 +1,1010 @@
+<html><head></head><body>
+<div id="page" style="height:0pt"/><div class="book" title="Chapter&#xA0;12.&#xA0;Building a Module from Scratch" id="2NNJO1-818f5224668745eb9070ddf1d85e6bfa"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch12" class="calibre1"/>Chapter 12. Building a Module from Scratch</h1></div></div></div><p class="calibre7">Based on the knowledge acquired from previous chapters, we will now build a miniature <code class="email">Helpdesk</code> module. Though miniature, the module will showcase the usage of several important Magento platform features as we go through the following sections:</p><div class="book"><ul class="itemizedlist"><li class="listitem">Registering a module (<code class="email">registration.php</code> and <code class="email">module.xml</code>)</li><li class="listitem">Creating a configuration file (<code class="email">config.xml</code>)</li><li class="listitem">Creating e-mail templates (<code class="email">email_templates.xml</code>)</li><li class="listitem">Creating a system configuration file (<code class="email">system.xml</code>)</li><li class="listitem">Creating access control lists (<code class="email">acl.xml</code>)</li><li class="listitem">Creating an installation script (<code class="email">InstallSchema.php</code>)</li><li class="listitem">Managing entity persistence (model, resource, collection)</li><li class="listitem">Building a frontend interface</li><li class="listitem">Building a backend interface</li><li class="listitem">Creating unit tests</li></ul></div></div>
+
+<div class="book" title="Chapter&#xA0;12.&#xA0;Building a Module from Scratch" id="2NNJO1-818f5224668745eb9070ddf1d85e6bfa">
+<div class="book" title="Module requirements"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_1"><a id="ch12lvl1sec85" class="calibre1"/>Module requirements</h1></div></div></div><p class="calibre7">Module <a id="id548" class="calibre1"/>requirements are defined as follows:</p><div class="book"><ul class="itemizedlist"><li class="listitem">Name used, <code class="email">Foggyline/Helpdesk</code></li><li class="listitem">Data to be stored in table is called <code class="email">foggyline_helpdesk_ticket</code></li><li class="listitem">Tickets entity will contain <code class="email">ticket_id</code>, <code class="email">customer_id</code>, <code class="email">title</code>, <code class="email">severity</code>, <code class="email">created_at</code>, and <code class="email">status</code> properties</li><li class="listitem">The <code class="email">customer_id</code> property is to be foreign key on the <code class="email">customer_entity</code> table</li><li class="listitem">There will be three available ticket severity values: <code class="email">low</code>, <code class="email">medium</code>, and <code class="email">high</code></li><li class="listitem">If not specified, the default severity value for new tickets is <code class="email">low</code></li><li class="listitem">There will be two available ticket statuses: <code class="email">opened</code> and <code class="email">closed</code></li><li class="listitem">If not specified, the default status value for new tickets is <code class="email">opened</code></li><li class="listitem">Two e-mails templates: <code class="email">store_owner_to_customer_email_template</code> and <code class="email">customer_to_store_owner_email_template</code> are to be defined for pushing e-mail updates upon ticket creation and status change</li><li class="listitem">Customers <a id="id549" class="calibre1"/>will be able to submit a ticket through their <span class="strong"><strong class="calibre8">My Account</strong></span> section</li><li class="listitem">Customers will be able to see all of their previously submitted tickets under their <span class="strong"><strong class="calibre8">My Account</strong></span> section</li><li class="listitem">Customers will not be able to edit any existing tickets</li><li class="listitem">Once a customer submits a new ticket, transactional e-mail (let's call it <span class="strong"><strong class="calibre8">Foggyline</strong></span> – <span class="strong"><strong class="calibre8">Helpdesk</strong></span> – <span class="strong"><strong class="calibre8">Customer</strong></span> | <span class="strong"><strong class="calibre8">Store Owner</strong></span>) is sent to the store owner</li><li class="listitem">Configurable option is required for possibly overriding <span class="strong"><strong class="calibre8">Foggyline</strong></span> – <span class="strong"><strong class="calibre8">Helpdesk</strong></span> – <span class="strong"><strong class="calibre8">Customer</strong></span> | <span class="strong"><strong class="calibre8">Store Owner</strong></span> e-mail</li><li class="listitem">Admin users will be able to access a list of all tickets under <span class="strong"><strong class="calibre8">Customers</strong></span> | <span class="strong"><strong class="calibre8">Helpdesk Tickets</strong></span></li><li class="listitem">Admin users will be able to change ticket status from <span class="strong"><strong class="calibre8">Opened</strong></span> to <span class="strong"><strong class="calibre8">Closed</strong></span> and other way round</li><li class="listitem">Once an admin user changes the ticket status, transactional e-mail (let's call it <span class="strong"><strong class="calibre8">Foggyline</strong></span> – <span class="strong"><strong class="calibre8">Helpdesk</strong></span> – <span class="strong"><strong class="calibre8">Store Owner</strong></span> | <span class="strong"><strong class="calibre8">Customer</strong></span>) is sent to the customer</li><li class="listitem">Configurable option is required for possibly overriding <span class="strong"><strong class="calibre8">Foggyline</strong></span> – <span class="strong"><strong class="calibre8">Helpdesk</strong></span> – <span class="strong"><strong class="calibre8">Store Owner</strong></span> | <span class="strong"><strong class="calibre8">Customer</strong></span> e-mail</li></ul></div><p class="calibre7">With the requirements outlined, we are ready to begin our module development.</p></div></div>
+<div class="book" title="Registering a module" id="2OM4A1-818f5224668745eb9070ddf1d85e6bfa"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch12lvl1sec86" class="calibre1"/>Registering a module</h1></div></div></div><p class="calibre7">We first <a id="id550" class="calibre1"/>start by defining the <code class="email">app/code/Foggyline/Helpdesk/registration.php</code> file with the following content:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+\Magento\Framework\Component\ComponentRegistrar::register(
+    \Magento\Framework\Component\ComponentRegistrar::MODULE,
+    'Foggyline_Helpdesk',
+    __DIR__
+);</pre></div><p class="calibre7">We then define the <code class="email">app/code/Foggyline/Helpdesk/etc/module.xml</code> file with the following content:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0"?&gt;
+&lt;config  xsi:noNamespaceSchemaLocation="urn:magento:framework:Module /etc/module.xsd"&gt;
+    &lt;module name="Foggyline_Helpdesk" setup_version="1.0.0"&gt;
+        &lt;sequence&gt;
+            &lt;module name="Magento_Store"/&gt;
+            &lt;module name="Magento_Customer"/&gt;
+        &lt;/sequence&gt;
+    &lt;/module&gt;
+&lt;/config&gt;</pre></div><p class="calibre7">Looking at<a id="id551" class="calibre1"/> the preceding file, if we strip away the boilerplate that repeats itself across all modules, we are left with three important things here:</p><div class="book"><ul class="itemizedlist"><li class="listitem">The module name attribute, defined as <code class="email">Foggyline_Helpdesk</code>. We need to be sure to follow a certain pattern when naming our modules, like <code class="email">Vendor</code> + <code class="email">_</code> + <code class="email">Module</code> name. The module name attribute can contain only letters and numbers [A-Z, a-z, 0-9, _].</li><li class="listitem">The schema <code class="email">setup_version</code> attribute that defines our module version. Its value can contain only numbers [0-9]. Our example sets the value of <code class="email">1.0.0</code> for the <code class="email">setup_version</code> attribute.</li><li class="listitem">The sequence module name attribute, which defines module dependencies. Our module basically says it requires <code class="email">Magento_Store</code> and <code class="email">Magento_Customer</code> modules to be enabled.</li></ul></div><p class="calibre7">Once this file is in place, we need to go to the command line, change the directory to that of Magento installation, and simply execute the following command:</p><div class="informalexample"><pre class="programlisting">php bin/magento module:enable Foggyline_Helpdesk</pre></div><p class="calibre7">However, if we now open either the admin of the frontend area in our browser, we might get an error page, which generates the following error under the <code class="email">var/reports/</code> folder:</p><div class="informalexample"><pre class="programlisting">Please upgrade your database: Run "bin/magento setup:upgrade" from the Magento root directory.</pre></div><p class="calibre7">Luckily, the error is pretty self-descriptive so we simply move back to the console, change the directory to the Magento root folder, and execute the following command:</p><div class="informalexample"><pre class="programlisting">php bin/magento setup:upgrade</pre></div><p class="calibre7">Executed commands will activate our module.</p><p class="calibre7">We can confirm that by looking under the <code class="email">app/etc/config.php</code> file, as shown in the following screenshot (on line 33):</p><div class="mediaobject"><img src="../images/00095.jpeg" alt="Registering a module" class="calibre10"/></div><p class="calibre11"> </p><p class="calibre7">Further if we <a id="id552" class="calibre1"/>log in to the admin area, and go to <span class="strong"><strong class="calibre8">Stores</strong></span> | <span class="strong"><strong class="calibre8">Configuration</strong></span> | <span class="strong"><strong class="calibre8">Advanced</strong></span> | <span class="strong"><strong class="calibre8">Advanced</strong></span>, we should see our module listed there, as shown in the following screenshot:</p><div class="mediaobject"><img src="../images/00096.jpeg" alt="Registering a module" class="calibre10"/></div><p class="calibre11"> </p></div>
+<div class="book" title="Creating a configuration file (config.xml)" id="2PKKS1-818f5224668745eb9070ddf1d85e6bfa"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch12lvl1sec87" class="calibre1"/>Creating a configuration file (config.xml)</h1></div></div></div><p class="calibre7">Now we <a id="id553" class="calibre1"/>will create an <code class="email">app/code/Foggyline/Helpdesk/etc/config.xml</code> file with the content, as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0"?&gt;
+&lt;config  xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store: etc/config.xsd"&gt;
+    &lt;default&gt;
+        &lt;foggyline_helpdesk&gt;
+            &lt;email_template&gt;
+                &lt;customer&gt;
+                    foggyline_helpdesk_email_template_customer
+                &lt;/customer&gt;
+                &lt;store_owner&gt;
+                    foggyline_helpdesk_email_template_store_owner
+                &lt;/store_owner&gt;
+            &lt;/email_template&gt;
+        &lt;/foggyline_helpdesk&gt;
+    &lt;/default&gt;
+&lt;/config&gt;</pre></div><p class="calibre7">This might look confusing at first as to where the <code class="email">default</code> | <code class="email">foggyline_helpdesk</code> | <code class="email">email_template</code> structure comes from. The structure itself denotes the position of our configuration values that we will map to the administrative interface visible in our browser under the <span class="strong"><strong class="calibre8">Stores</strong></span> | <span class="strong"><strong class="calibre8">Configuration</strong></span> section. Given that all things visual regarding the <span class="strong"><strong class="calibre8">Stores</strong></span> | <span class="strong"><strong class="calibre8">Configuration</strong></span> section originate from <code class="email">system.xml</code> files, this structure we have now in <code class="email">config.xml</code> will then map to another <code class="email">system.xml</code> file we will define soon.</p><p class="calibre7">Right now, just remember the structure and the values contained within the <code class="email">customer</code> and <code class="email">store_owner</code> attributes. These values will further map to another <code class="email">email_templates.xml</code> file, which we will soon create.</p><p class="calibre7">There is one more important thing regarding the <code class="email">config.xml</code> file. We need to be very careful of the <code class="email">xsi:noNamespaceSchemaLocation</code> attribute value. This value needs to be set to <code class="email">urn:magento:module:Magento_Store:etc/config.xsd</code>. It's an alias that actually points to the <code class="email">vendor/magento/module-store/etc/config.xsd</code> file.</p></div>
+<div class="book" title="Creating e-mail templates (email_templates.xml)" id="2QJ5E1-818f5224668745eb9070ddf1d85e6bfa"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch12lvl1sec88" class="calibre1"/>Creating e-mail templates (email_templates.xml)</h1></div></div></div><p class="calibre7">Our module requirements specify that two e-mail templates need to be defined. Hints to this have already been given in the <code class="email">app/code/Foggyline/Helpdesk/etc/config.xml</code> file previously defined. The actual definition of e-mail templates available to our modules is done through the <code class="email">app/code/Foggyline/Helpdesk/etc/email_templates.xml file</code>, with the content as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0"?&gt;
+&lt;config  xsi:noNamespaceSchemaLocation="urn:magento:module: Magento_Email:etc/email_templates.xsd"&gt;
+    &lt;template id="foggyline_helpdesk_email_template_customer" label="Foggyline Helpdesk - Customer Email"
+              file="store_owner_to_customer.html" type="html" module="Foggyline_Helpdesk" area="frontend"/&gt;
+    &lt;template id="foggyline_helpdesk_email_template_store_owner" label="Foggyline Helpdesk - Store Owner Email"
+              file="customer_to_store_owner.html" type="html" module="Foggyline_Helpdesk" area="frontend"/&gt;
+&lt;/config&gt;</pre></div><p class="calibre7">Looking<a id="id554" class="calibre1"/> into <code class="email">email_templates.xsd</code>, we can conclude that the values for <code class="email">id</code>, <code class="email">label</code>, <code class="email">file</code>, <code class="email">type</code>, and <code class="email">module</code> are all required. <code class="email">id</code> should be defined unique to our module, giving some sensible and reasonable code name to our e-mail templates, as this code name is going to be used further in other XML files or in code.</p><p class="calibre7">What we defined as ID values here, can be found under <code class="email">app/code/Foggyline/Helpdesk/etc/config.xml</code>, as the value of <code class="email">default</code> | <code class="email">foggyline_helpdesk</code> | <code class="email">email_template</code> | <code class="email">customer</code> and <code class="email">default</code> | <code class="email">foggyline_helpdesk</code> | <code class="email">email_template</code> | <code class="email">store_owner</code> elements.</p><p class="calibre7">If it is not yet fully clear what the connection between the two is; we will get to it when we start building our <code class="email">system.xml</code> file soon.</p><p class="calibre7">The value of the <code class="email">label</code> attribute is something that is visible later on, within the Magento admin area under <span class="strong"><strong class="calibre8">Marketing</strong></span> | <span class="strong"><strong class="calibre8">Communications</strong></span> | <span class="strong"><strong class="calibre8">Email Templates</strong></span>, so be sure to put something user friendly and easily recognizable here.</p><p class="calibre7">Further, the values of the <code class="email">file</code> attribute point to the location of the following files:</p><div class="book"><ul class="itemizedlist"><li class="listitem"><code class="email">app/code/Foggyline/Helpdesk/view/frontend/email/customer_to_store_owner.html</code></li><li class="listitem"><code class="email">app/code/Foggyline/Helpdesk/view/frontend/email/store_owner_to_customer.html</code></li></ul></div><p class="calibre7">The content of the files will be set such that later on, in the code, we will need to pass it on certain variables in order to fill in the variable placeholders.</p><p class="calibre7">The <code class="email">customer_to_store_owner.html</code> e-mail template, with content as follows, will be triggered later on in the code when a customer creates a new ticket:</p><div class="informalexample"><pre class="programlisting">&lt;!--@subject New Ticket Created @--&gt;
+&lt;h1&gt;Ticket #{{var ticket.ticket_id}} created&lt;/h1&gt;
+
+&lt;ul&gt;
+    &lt;li&gt;Id: {{var ticket.ticket_id}}&lt;/li&gt;
+    &lt;li&gt;Title: {{var ticket.title}}&lt;/li&gt;
+    &lt;li&gt;Created_at: {{var ticket.created_at}}&lt;/li&gt;
+    &lt;li&gt;Severity: {{var ticket.severity}}&lt;/li&gt;
+&lt;/ul&gt;</pre></div><p class="calibre7">Later <a id="id555" class="calibre1"/>on, we will see how to pass the <code class="email">ticket</code> object as a variable into the template, in order to enable calls like <code class="email">{{var ticket.title}}</code> within the HTML template.</p><p class="calibre7">The <code class="email">store_owner_to_customer.html</code> e-mail template, with content as follows, will be triggered later on in the code when the store owner changes the status of a ticket:</p><div class="informalexample"><pre class="programlisting">&lt;!--@subject Ticket Updated @--&gt;
+&lt;h1&gt;Ticket #{{var ticket.ticket_id}} updated&lt;/h1&gt;
+
+&lt;p&gt;Hi {{var customer_name}}.&lt;/p&gt;
+
+&lt;p&gt;Status of your ticket #{{var ticket.ticket_id}} has been updated&lt;/p&gt;
+
+&lt;ul&gt;
+    &lt;li&gt;Title: {{var ticket.title}}&lt;/li&gt;
+    &lt;li&gt;Created_at: {{var ticket.created_at}}&lt;/li&gt;
+    &lt;li&gt;Severity: {{var ticket.severity}}&lt;/li&gt;
+&lt;/ul&gt;</pre></div><p class="calibre7">If we now log in to the Magento admin area, go under <span class="strong"><strong class="calibre8">Marketing</strong></span> | <span class="strong"><strong class="calibre8">Communications</strong></span> | <span class="strong"><strong class="calibre8">Email Templates</strong></span>, click on the <span class="strong"><strong class="calibre8">Add New Template</strong></span> button, and we should be able to see our two e-mail templates under the <span class="strong"><strong class="calibre8">Template</strong></span> drop-down, as shown in the following screenshot:</p><div class="mediaobject"><img src="../images/00097.jpeg" alt="Creating e-mail templates (email_templates.xml)" class="calibre10"/></div><p class="calibre11"> </p><p class="calibre7">If <a id="id556" class="calibre1"/>we look back at our <code class="email">config.xml</code> and <code class="email">email_templates.xml</code>, there is still no clear connection as to what <code class="email">default</code> | <code class="email">foggyline_helpdesk</code> | <code class="email">email_template</code> | <code class="email">customer</code> and <code class="email">default</code> | <code class="email">foggyline_helpdesk</code> | <code class="email">email_template</code> | <code class="email">store_owner</code> under <code class="email">config.xml</code> actually do. That is because we still lack two more ingredients that will link them together: the <code class="email">app/code/Foggyline/Helpdesk/etc/adminhtml/system.xml</code> and <code class="email">app/code/Foggyline/Helpdesk/etc/acl.xml files</code>.</p></div>
+<div class="book" title="Creating a system configuration file (system.xml)"><div class="book" id="2RHM02-818f5224668745eb9070ddf1d85e6bfa"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch12lvl1sec89" class="calibre1"/>Creating a system configuration file (system.xml)</h1></div></div></div><p class="calibre7">The <code class="email">system.xml</code> file is essentially the <span class="strong"><strong class="calibre8">Stores</strong></span> | <span class="strong"><strong class="calibre8">Configuration</strong></span> interface builder. Entries we<a id="id557" class="calibre1"/> define in our module's <code class="email">system.xml</code> file will render certain parts of the <span class="strong"><strong class="calibre8">Stores</strong></span> | <span class="strong"><strong class="calibre8">Configuration</strong></span> interface under the Magento admin area.</p><p class="calibre7">Unlike the previous two XML files, this configuration file is located under an additional subfolder, so its full path goes like <code class="email">app/code/Foggyline/Helpdesk/etc/adminhtml/system.xml</code>, with content as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0"?&gt;
+&lt;config  xsi:noNamespaceSchemaLocation="urn:magento:module: Magento_Config:etc/system_file.xsd"&gt;
+    &lt;system&gt;
+        &lt;tab id="foggyline" translate="label" sortOrder="200"&gt;
+            &lt;label&gt;Foggyline&lt;/label&gt;
+        &lt;/tab&gt;
+        &lt;section id="foggyline_helpdesk" translate="label" type="text" sortOrder="110" showInDefault="1"
+                 showInWebsite="1" showInStore="1"&gt;
+            &lt;label&gt;Helpdesk&lt;/label&gt;
+            &lt;tab&gt;foggyline&lt;/tab&gt;
+            &lt;resource&gt;Foggyline_Helpdesk::helpdesk&lt;/resource&gt;
+            &lt;group id="email_template" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1"&gt;
+                &lt;label&gt;Email Template Options&lt;/label&gt;
+                &lt;field id="customer" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1"&gt;
+                    &lt;label&gt;
+                        Store Owner to Customer Email Template
+                    &lt;/label&gt;
+                    &lt;source_model&gt;
+                        Magento\Config\Model\Config\Source\ Email\Template
+                    &lt;/source_model&gt;
+                &lt;/field&gt;
+                &lt;field id="store_owner" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1"&gt;
+                    &lt;label&gt;
+                        Customer to Store Owner Email Template
+                    &lt;/label&gt;
+                    &lt;source_model&gt;
+                        Magento\Config\Model\Config\Source\ Email\Template
+                    &lt;/source_model&gt;
+                &lt;/field&gt;
+            &lt;/group&gt;
+        &lt;/section&gt;
+    &lt;/system&gt;
+&lt;/config&gt;</pre></div><p class="calibre7">Even<a id="id558" class="calibre1"/> though we have a lot going on in this file, it can all be summed up in a few important bits.</p><div class="informalexample" title="Note"><h3 class="title2"><a id="note21" class="calibre1"/>Note</h3><p class="calibre7">Determining where we want to show our module configuration options is a matter of choice. Either we define and use our own tab or we use an existing tab from one of the core modules. It really comes down to where we decide to put our configuration options.</p></div><p class="calibre7"><code class="email">system.xml</code> defines one tab, as noted by the tab element assigned <code class="email">id</code> attribute value of <code class="email">foggyline</code>. We can have multiple tabs defined under a single <code class="email">system.xml</code> file. The tab element attribute <code class="email">id</code> needs to be unique under all tabs, not just those defined within our module. Within the <code class="email">tab</code> element, we have a <code class="email">label</code> element with the value of <code class="email">Foggyline</code>. This<a id="id559" class="calibre1"/> value is what shows up under the Magento admin <span class="strong"><strong class="calibre8">Stores</strong></span> | <span class="strong"><strong class="calibre8">Configuration</strong></span> area.</p><p class="calibre7">The final results should be as shown in the following image:</p><div class="mediaobject"><img src="../images/00098.jpeg" alt="Creating a system configuration file (system.xml)" class="calibre10"/></div><p class="calibre11"> </p><div class="informalexample" title="Note"><h3 class="title2"><a id="tip22" class="calibre1"/>Tip</h3><p class="calibre7">Magento has six pre-existing tabs defined (<span class="strong"><strong class="calibre8">General</strong></span>, <span class="strong"><strong class="calibre8">Service</strong></span>, <span class="strong"><strong class="calibre8">Advanced</strong></span>, <span class="strong"><strong class="calibre8">Catalog</strong></span>, <span class="strong"><strong class="calibre8">Customer</strong></span>, <span class="strong"><strong class="calibre8">Sales</strong></span>) across its core modules. We can easily get a list of all defined tabs in Magento just by doing a search for the <code class="email">tab</code> string, filtering only on files named <code class="email">system.xml</code>.</p></div><p class="calibre7">Next to the <code class="email">tab</code> element, we have the <code class="email">config</code> | <code class="email">system</code> | <code class="email">section</code> element. This is the element within which we further define what are to become HTML input fields for accepting configuration options, as visible on the previous image.</p><p class="calibre7">We can have multiple sections defined within a single <code class="email">system.xml</code> file. The actual <code class="email">section</code> element attributes require us to specify the <code class="email">id</code> attribute value, which in our example is set to <code class="email">foggyline_helpdesk</code>. Other important <code class="email">section</code> element attributes are <code class="email">showInWebsite</code> and <code class="email">showInStore</code>. These can have either <code class="email">0</code> or <code class="email">1</code> as a value. Depending on our module business logic, we might find a good reason for choosing one value over the other.</p><p class="calibre7">Looking<a id="id560" class="calibre1"/> further, the elements contained within our <code class="email">section</code> element are:</p><div class="book"><ul class="itemizedlist"><li class="listitem"><code class="email">label</code>: This specifies the label we will see under the Magento admin <span class="strong"><strong class="calibre8">Store</strong></span> | <span class="strong"><strong class="calibre8">Configuration</strong></span> area.</li><li class="listitem"><code class="email">tab</code>: This specifies the ID value of a tab under which we want this section to appear, which in our case equals to <code class="email">foggyline</code>.</li><li class="listitem"><code class="email">resource</code>: This specifies the ACL resource ID value.</li><li class="listitem"><code class="email">group</code>: This specifies the group of fields. Similar to the <code class="email">section</code> element, it also has <code class="email">id</code>, <code class="email">sortOrder</code>, <code class="email">showInWebsite</code>, and <code class="email">showInStore</code> attributes. Further, the group element has child field elements, which translate to HTML input fields under the Magento admin <span class="strong"><strong class="calibre8">Store</strong></span> | <span class="strong"><strong class="calibre8">Configuration</strong></span> area.</li></ul></div><p class="calibre7">We defined two fields, <code class="email">customer</code> and <code class="email">store_owner</code>. Similar to <code class="email">section</code> and <code class="email">group</code>, <code class="email">field</code> elements also have <code class="email">id</code>, <code class="email">sortOrder</code>, <code class="email">showInWebsite</code>, and <code class="email">showInStore</code> attributes.</p><p class="calibre7">Notice how <code class="email">field</code> further contains child elements that define its options. Given that our <code class="email">field</code> element type attribute was set to <code class="email">select</code> with both fields, we needed to define the <code class="email">source_model</code> element within each <code class="email">field</code>. Both fields have the same <code class="email">source_model</code> value which points to the Magento core class, <code class="email">Magento\Config\Model\Config\Source\Email\Template</code>. Looking into that class, we can see it implements <code class="email">\Magento\Framework\Option\ArrayInterface</code> and defines the <code class="email">toOptionArray</code> method. During rendering the admin <span class="strong"><strong class="calibre8">Stores</strong></span> | <span class="strong"><strong class="calibre8">Configuration</strong></span> area, Magento will call this method to fill in the values for the select HTML element.</p><div class="informalexample" title="Note"><h3 class="title2"><a id="tip23" class="calibre1"/>Tip</h3><p class="calibre7">Understanding what we can do with <code class="email">system.xml</code> comes down to understanding what is defined under <code class="email">vendor/magento/module-config/etc/system_file.xsd</code> and studying existing Magento core module <code class="email">system.xml</code> files to get some examples.</p></div><p class="calibre7">As noted previously, our <code class="email">system.xml</code> has a resource element that points to the <code class="email">app/code/Foggyline/Helpdesk/etc/acl.xml </code>file, which we will now look into.</p></div>
+<div class="book" title="Creating access control lists (acl.xml)" id="2SG6I1-818f5224668745eb9070ddf1d85e6bfa"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch12lvl1sec90" class="calibre1"/>Creating access control lists (acl.xml)</h1></div></div></div><p class="calibre7">The <code class="email">app/code/Foggyline/Helpdesk/etc/acl.xml</code> file <a id="id561" class="calibre1"/>is where we define our module access control list resources. Access control list resources are visible under the Magento admin <span class="strong"><strong class="calibre8">System</strong></span> | <span class="strong"><strong class="calibre8">Permissions</strong></span> | <span class="strong"><strong class="calibre8">User Roles</strong></span> area, when we click on the <span class="strong"><strong class="calibre8">Add New Role</strong></span> button, as shown in the following screenshot:</p><div class="mediaobject"><img src="../images/00099.jpeg" alt="Creating access control lists (acl.xml)" class="calibre10"/></div><p class="calibre11"> </p><p class="calibre7">Looking<a id="id562" class="calibre1"/> at the preceding screenshot, we can see our <span class="strong"><strong class="calibre8">Helpdesk Section</strong></span> under <span class="strong"><strong class="calibre8">Stores</strong></span> | <span class="strong"><strong class="calibre8">Settings</strong></span> | <span class="strong"><strong class="calibre8">Configuration</strong></span>. How did we put it there? We have defined it in our <code class="email">app/code/Foggyline/Helpdesk/etc/acl.xml</code> file with content as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0"?&gt;
+&lt;config  xsi:noNamespaceSchemaLocation="urn:magento:framework:Acl/ etc/acl.xsd"&gt;
+    &lt;acl&gt;
+        &lt;resources&gt;
+            &lt;resource id="Magento_Backend::admin"&gt;
+                &lt;resource id="Magento_Customer::customer"&gt;
+                    &lt;resource id="Foggyline_Helpdesk:: ticket_manage" title="Manage Helpdesk Tickets" /&gt;
+                &lt;/resource&gt;
+                &lt;resource id="Magento_Backend::stores"&gt;
+                    &lt;resource id="Magento_Backend:: stores_settings"&gt;
+                        &lt;resource id="Magento_Config::config"&gt;
+                            &lt;resource id= "Foggyline_Helpdesk::helpdesk" title="Helpdesk Section" /&gt;
+                        &lt;/resource&gt;
+                    &lt;/resource&gt;
+                &lt;/resource&gt;
+            &lt;/resource&gt;
+        &lt;/resources&gt;
+    &lt;/acl&gt;
+&lt;/config&gt;</pre></div><p class="calibre7">Looking<a id="id563" class="calibre1"/> at the provided code, the immediate conclusion is that resources can be nested into each other. It is unclear how we should know where to nest our custom-defined resource with an ID value of <code class="email">Foggyline_Helpdesk::helpdesk</code>. The simple answer is we followed the Magento structure. By looking into a few of the Magento core modules <code class="email">system.xml</code> files and their <code class="email">acl.xml</code> files, a pattern emerged where modules nest their resource under <code class="email">Magento_Backend::admin</code> | <code class="email">Magento_Backend::stores</code> | <code class="email">Magento_Backend::stores_settings</code> | <code class="email">Magento_Config::config</code>. These are all existing resources defined in core Magento, so we are merely referencing them, not defining them. The only resource we are defining in our <code class="email">acl.xml</code> file is our own, which we are then referencing from our <code class="email">system.xml</code> file. We can define other resources within <code class="email">acl.xml</code> and not all would be nested into the same structure as <code class="email">Foggyline_Helpdesk::helpdesk</code>.</p><p class="calibre7">The value of the <code class="email">title</code> attribute we assign to a resource element is shown in the admin area, as in the previous screenshot.</p><div class="informalexample" title="Note"><h3 class="title2"><a id="tip24" class="calibre1"/>Tip</h3><p class="calibre7">Be sure to use a descriptive label so that our module resource is easily recognizable.</p></div></div>
+<div class="book" title="Creating an installation script (InstallSchema.php)" id="2TEN41-818f5224668745eb9070ddf1d85e6bfa"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch12lvl1sec91" class="calibre1"/>Creating an installation script (InstallSchema.php)</h1></div></div></div><p class="calibre7"><code class="email">InstallSchema</code>, or<a id="id564" class="calibre1"/> install script, is a way for us to set up tables in the database that will be used to persist our models later on.</p><p class="calibre7">If we look back at the module requirements, the following fields need to be created in the <code class="email">foggyline_helpdesk_ticket</code> table:</p><div class="book"><ul class="itemizedlist"><li class="listitem"><code class="email">ticket_id</code></li><li class="listitem"><code class="email">customer_id</code></li><li class="listitem"><code class="email">title</code></li><li class="listitem"><code class="email">severity</code></li><li class="listitem"><code class="email">created_at</code></li><li class="listitem"><code class="email">status</code></li></ul></div><p class="calibre7">Our <code class="email">InstallSchema</code> is defined under the <code class="email">app/code/Foggyline/Helpdesk/Setup/InstallSchema.php</code> file with (partial) content <a id="id565" class="calibre1"/>as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace Foggyline\Helpdesk\Setup;
+
+use Magento\Framework\Setup\InstallSchemaInterface;
+use Magento\Framework\Setup\ModuleContextInterface;
+use Magento\Framework\Setup\SchemaSetupInterface;
+
+/**
+ * @codeCoverageIgnore
+ */
+class InstallSchema implements InstallSchemaInterface
+{
+    public function install(SchemaSetupInterface $setup, ModuleContextInterface $context)
+    {
+        $installer = $setup;
+
+        $installer-&gt;startSetup();
+
+        $table = $installer-&gt;getConnection()
+            -&gt;newTable($installer-&gt; getTable('foggyline_helpdesk_ticket'))
+            /* -&gt;addColumn ...  */
+            /* -&gt;addIndex ...  */
+            /* -&gt;addForeignKey ...  */
+            -&gt;setComment('Foggyline Helpdesk Ticket');
+        $installer-&gt;getConnection()-&gt;createTable($table);
+
+        $installer-&gt;endSetup();
+    }
+}</pre></div><p class="calibre7">The <code class="email">InstallSchema</code> class conforms to <code class="email">InstallSchemaInterface</code> by implementing a single <code class="email">install</code> method. Within this method, we start the installer, create new tables, create new fields, add indexes and foreign keys to the table, and finally end the installer, as shown<a id="id566" class="calibre1"/> in the following (partial) code:</p><div class="informalexample"><pre class="programlisting">-&gt;addColumn(
+    'ticket_id',
+    \Magento\Framework\DB\Ddl\Table::TYPE_INTEGER,
+    null,
+    ['identity' =&gt; true, 'unsigned' =&gt; true, 'nullable' =&gt; false, 'primary' =&gt; true],
+    'Ticket Id'
+)
+-&gt;addColumn(
+    'customer_id',
+    \Magento\Framework\DB\Ddl\Table::TYPE_INTEGER,
+    null,
+    ['unsigned' =&gt; true],
+    'Customer Id'
+)
+-&gt;addColumn(
+    'title',
+    \Magento\Framework\DB\Ddl\Table::TYPE_TEXT,
+    null,
+    ['nullable' =&gt; false],
+    'Title'
+)
+-&gt;addColumn(
+    'severity',
+    \Magento\Framework\DB\Ddl\Table::TYPE_SMALLINT,
+    null,
+    ['nullable' =&gt; false],
+    'Severity'
+)
+-&gt;addColumn(
+    'created_at',
+    \Magento\Framework\DB\Ddl\Table::TYPE_TIMESTAMP,
+    null,
+    ['nullable' =&gt; false],
+    'Created At'
+)
+-&gt;addColumn(
+    'status',
+    \Magento\Framework\DB\Ddl\Table::TYPE_SMALLINT,
+    null,
+    ['nullable' =&gt; false],
+    'Status'
+)
+-&gt;addIndex(
+    $installer-&gt;getIdxName('foggyline_helpdesk_ticket', ['customer_id']),
+    ['customer_id']
+)
+-&gt;addForeignKey(
+    $installer-&gt;getFkName('foggyline_helpdesk_ticket', 'customer_id', 'customer_entity', 'entity_id'),
+    'customer_id',
+    $installer-&gt;getTable('customer_entity'),
+    'entity_id',
+    \Magento\Framework\DB\Ddl\Table::ACTION_SET_NULL
+)</pre></div><p class="calibre7">The <a id="id567" class="calibre1"/>provided code shows each of the fields from the module requirement being added to the database using the <code class="email">addColumn</code> method call and passing it certain parameters such as the <code class="email">field type</code> and <code class="email">nullable</code> state. It is worth getting familiar with the <code class="email">addColumn</code>, <code class="email">addIndex</code>, and <code class="email">addForeignKey</code> methods as these are most commonly used when specifying new tables for our modules.</p><div class="informalexample" title="Note"><h3 class="title2"><a id="tip25" class="calibre1"/>Tip</h3><p class="calibre7">We could further deepen our understanding of the installation script by studying how other core modules handle the <code class="email">InstallSchema.php</code> file. Following a good database design practice, we should always create indexes and foreign keys on our table when referencing data from other tables.</p></div></div>
+<div class="book" title="Managing entity persistence (model, resource, collection)"><div class="book" id="2UD7M2-818f5224668745eb9070ddf1d85e6bfa"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch12lvl1sec92" class="calibre1"/>Managing entity persistence (model, resource, collection)</h1></div></div></div><p class="calibre7">With <code class="email">InstallSchema</code> in place, we now have conditions for entity persistence. Our next step is to<a id="id568" class="calibre1"/> define model, resource, and collection classes for the <code class="email">Ticket</code> entity.</p><p class="calibre7">The <code class="email">Ticket</code> entity model class is defined under the <code class="email">app/code/Foggyline/Helpdesk/Model/Ticket.php</code> file with content as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace Foggyline\Helpdesk\Model;
+
+class Ticket extends \Magento\Framework\Model\AbstractModel
+{
+    const STATUS_OPENED = 1;
+    const STATUS_CLOSED = 2;
+
+    const SEVERITY_LOW = 1;
+    const SEVERITY_MEDIUM = 2;
+    const SEVERITY_HIGH = 3;
+
+    protected static $statusesOptions = [
+        self::STATUS_OPENED =&gt; 'Opened',
+        self::STATUS_CLOSED =&gt; 'Closed',
+    ];
+
+    protected static $severitiesOptions = [
+        self::SEVERITY_LOW =&gt; 'Low',
+        self::SEVERITY_MEDIUM =&gt; 'Medium',
+        self::SEVERITY_HIGH =&gt; 'High',
+    ];
+
+    /**
+     * Initialize resource model
+     * @return void
+     */
+    protected function _construct()
+    {
+        $this-&gt;_init('Foggyline\Helpdesk\Model\ ResourceModel\Ticket');
+    }
+
+    public static function getSeveritiesOptionArray()
+    {
+        return self::$severitiesOptions;
+    }
+
+    public function getStatusAsLabel()
+    {
+        return self::$statusesOptions[$this-&gt;getStatus()];
+    }
+
+    public function getSeverityAsLabel()
+    {
+        return self::$severitiesOptions[$this-&gt;getSeverity()];
+    }
+}</pre></div><p class="calibre7">Reading the preceding code, we see it extends the <code class="email">\Magento\Framework\Model\AbstractModel</code> class, which further extends the <code class="email">\Magento\Framework\Object</code> class. This brings a lot of extra methods into our <code class="email">Ticket</code> model class, such as <code class="email">load</code>, <code class="email">delete</code>, <code class="email">save</code>, <code class="email">toArray</code>, <code class="email">toJson</code>, <code class="email">toString</code>, <code class="email">toXml</code>, and so on.</p><p class="calibre7">The<a id="id569" class="calibre1"/> only actual requirement for us is to define the <code class="email">_construct</code> method that, through the <code class="email">_init</code> function call, specifies the resource class the model will be using when persisting data. We have set this value to <code class="email">Foggyline\Helpdesk\Model\ResourceModel\Ticket</code>, which will be the next class we will define, the so-called resource class.</p><p class="calibre7">We have further defined several constants, <code class="email">STATUS_*</code> and <code class="email">SEVERITY_*</code>, as a sign of good programming practice and not to hardcode values that we will use across the code, which we can centralize into a class constant. These constants, in a way, map to our module requirements.</p><p class="calibre7">Additionally, we have three additional methods (<code class="email">getSeveritiesOptionArray</code>, <code class="email">getStatusAsLabel</code>, and <code class="email">getSeverityAsLabel</code>) that we will use later on in our block class and template file.</p><p class="calibre7">The <code class="email">Ticket</code> entity resource class is defined under <code class="email">app/code/Foggyline/Helpdesk/Model/ResourceModel/Ticket.php</code> with content as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace Foggyline\Helpdesk\Model\ResourceModel;
+
+class Ticket extends \Magento\Framework\Model\ResourceModel\Db\AbstractDb
+{
+    /**
+     * Initialize resource model
+     * Get table name from config
+     *
+     * @return void
+     */
+    protected function _construct()
+    {
+        $this-&gt;_init('foggyline_helpdesk_ticket', 'ticket_id');
+    }
+}</pre></div><p class="calibre7">We can see the code extends the <code class="email">\Magento\Framework\Model\ResourceModel\Db\AbstractDb</code> class, which further extends the \<code class="email">Magento\Framework\Model\ResourceModel\AbstractResource</code> class. This brings a lot of extra methods into our <code class="email">Ticket</code> resource class, such as <code class="email">load</code>, <code class="email">delete</code>, <code class="email">save</code>, <code class="email">commit</code>, <code class="email">rollback</code>, and so on.</p><p class="calibre7">The only actual requirement for us is to define the _construct method, through which we call the <code class="email">_init</code> function that accepts two parameters. The first parameter of the <code class="email">_init</code> function<a id="id570" class="calibre1"/> specifies the table name <code class="email">foggyline_helpdesk_ticket</code> and the second parameter specifies identifying the <code class="email">ticket_id</code> column within that table where we will be persisting data.</p><p class="calibre7">Finally, we define the <code class="email">Ticket</code> entity collection class under <code class="email">app/code/Foggyline/Helpdesk/Model/ResourceModel/Ticket/Collection.php</code> with content as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace Foggyline\Helpdesk\Model\ResourceModel\Ticket;
+
+class Collection extends \Magento\Framework\Model\ ResourceModel\Db\Collection\AbstractCollection
+{
+    /**
+     * Constructor
+     * Configures collection
+     *
+     * @return void
+     */
+    protected function _construct()
+    {
+        $this-&gt;_init('Foggyline\Helpdesk\Model\Ticket', 'Foggyline\Helpdesk\Model\ResourceModel\Ticket');
+    }
+}</pre></div><p class="calibre7">The collection class code extends the <code class="email">\Magento\Framework\Model\ResourceModel\Db\Collection\AbstractCollection</code> class, which further extends the <code class="email">\Magento\Framework\Data\Collection\AbstractDb</code> class, which further extends <code class="email">\Magento\Framework\Data\Collection</code>. The final parent collection class then implements the following interfaces: <code class="email">\IteratorAggregate</code>, <code class="email">\Countable</code>, <code class="email">Magento\Framework\Option\ArrayInterface</code>, and <code class="email">Magento\Framework\Data\CollectionDataSourceInterface</code>. Through this deep inheritance, a large number of methods become available to our collection class, such as <code class="email">count</code>, <code class="email">getAllIds</code>, <code class="email">getColumnValues</code>, <code class="email">getFirstItem</code>, <code class="email">getLastItem</code>, and so on.</p><p class="calibre7">With regard to our newly defined collection class, the only actual requirement for us is to define the <code class="email">_construct</code> method. Within the <code class="email">_construct</code> method, we call the <code class="email">_init</code> function to which we pass two parameters. The first parameter specifies the <code class="email">Ticket</code> model class <code class="email">Foggyline\Helpdesk\Model\Ticket</code> and the second parameter specifies the <code class="email">Ticket</code> resource class <code class="email">Foggyline\Helpdesk\Model\ResourceModel\Ticket</code>.</p><p class="calibre7">The three classes we just defined (<code class="email">model</code>, <code class="email">resource</code>, <code class="email">collection</code>) act as an overall single<a id="id571" class="calibre1"/> entity persistence mechanism. With the currently defined code, we are able to save, delete, update, lookup with filtering, and list our <code class="email">Ticket</code> entities, which we demonstrate in the upcoming sections.</p></div>
+
+<div id="page" style="height:0pt"/><div class="book" title="Building a frontend interface"><div class="book" id="2VBO82-818f5224668745eb9070ddf1d85e6bfa"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch12lvl1sec93" class="calibre1"/>Building a frontend interface</h1></div></div></div><p class="calibre7">Now that<a id="id572" class="calibre1"/> we have defined the necessary minimum for data persistence functionality, we can move forward to building a frontend interface. The module requirement says that customers should be able to submit a ticket through their <span class="strong"><strong class="calibre8">My Account</strong></span> section. We will therefore add a link called <span class="strong"><strong class="calibre8">Helpdesk Tickets</strong></span> under the customer's <span class="strong"><strong class="calibre8">My Account</strong></span> section.</p><p class="calibre7">The following are needed for a fully functional frontend:</p><div class="book"><ul class="itemizedlist"><li class="listitem">A route that will map to our controller</li><li class="listitem">A controller that will catch requests from a mapped route</li><li class="listitem">A controller action that will load the layout</li><li class="listitem">Layout XMLs that will update the view making it look as if we are on the <span class="strong"><strong class="calibre8">My Account</strong></span> section while providing content of our own</li><li class="listitem">A block class to power our template file</li><li class="listitem">A template file that we will render into the content area of a page</li><li class="listitem">A controller action that will save the <span class="strong"><strong class="calibre8">New Ticket</strong></span> form once it is posted</li></ul></div></div>
+
+<div class="book" title="Building a frontend interface">
+<div class="book" title="Creating routes, controllers, and layout handles"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_1"><a id="ch12lvl2sec49" class="calibre1"/>Creating routes, controllers, and layout handles</h2></div></div></div><p class="calibre7">We <a id="id573" class="calibre1"/>start <a id="id574" class="calibre1"/>by<a id="id575" class="calibre1"/> defining a route within the <code class="email">app/code/Foggyline/Helpdesk/etc/frontend/routes.xml</code> file with content as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0"?&gt;
+&lt;config  xsi:noNamespaceSchemaLocation="urn:magento:framework:App/ etc/routes.xsd"&gt;
+    &lt;router id="standard"&gt;
+        &lt;route id="foggyline_helpdesk" frontName="foggyline_helpdesk"&gt;
+            &lt;module name="Foggyline_Helpdesk"/&gt;
+        &lt;/route&gt;
+    &lt;/router&gt;
+&lt;/config&gt;</pre></div><p class="calibre7">Note that the route element <code class="email">id</code> and <code class="email">frontName</code> attributes have the same value, but they do not serve the same purpose, as we will see soon.</p><p class="calibre7">Now <a id="id576" class="calibre1"/>we<a id="id577" class="calibre1"/> define <a id="id578" class="calibre1"/>our controller <code class="email">app/code/Foggyline/Helpdesk/Controller/Ticket.php</code> file with content as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace Foggyline\Helpdesk\Controller;
+
+abstract class Ticket extends \Magento\Framework\App\Action\Action
+{
+    protected $customerSession;
+
+    public function __construct(
+        \Magento\Framework\App\Action\Context $context,
+        \Magento\Customer\Model\Session $customerSession
+    )
+    {
+        $this-&gt;customerSession = $customerSession;
+        parent::__construct($context);
+    }
+
+    public function dispatch(\Magento\Framework\App \RequestInterface $request)
+    {
+        if (!$this-&gt;customerSession-&gt;authenticate()) {
+            $this-&gt;_actionFlag-&gt;set('', 'no-dispatch', true);
+            if (!$this-&gt;customerSession-&gt;getBeforeUrl()) {
+                $this-&gt;customerSession-&gt;setBeforeUrl($this-&gt; _redirect-&gt;getRefererUrl());
+            }
+        }
+        return parent::dispatch($request);
+    }
+}</pre></div><p class="calibre7">Our controller loads the customer session object through its constructor. The customer session object is then used within the dispatch method to check if the customer is authenticated or not. If the customer is not authenticated, all frontend actions in the Internet browser that lead to this controller will result in the customer being redirected to the login screen.</p><p class="calibre7">Once the controller is in place, we can then define the actions that extend from it. Each action is a class file on its own, extending from the parent class. We will now define our index action, the one that will render the view under <span class="strong"><strong class="calibre8">My Account</strong></span> | <span class="strong"><strong class="calibre8">Helpdesk Tickets</strong></span>, within<a id="id579" class="calibre1"/> the <code class="email">app/code/Foggyline/Helpdesk/Controller/Ticket/Index.php</code> file with content as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace Foggyline\Helpdesk\Controller\Ticket;
+
+class Index extends \Foggyline\Helpdesk\Controller\Ticket
+{
+    public function execute()
+    {
+        $resultPage = $this-&gt;resultFactory-&gt;create(\Magento \Framework\Controller\ResultFactory::TYPE_PAGE);
+        return $resultPage;
+    }
+}</pre></div><p class="calibre7">Controller<a id="id580" class="calibre1"/> action code lives within the <code class="email">execute</code> method <a id="id581" class="calibre1"/>of its class. We simply extend from the <code class="email">\Foggyline\Helpdesk\Controller\Ticket</code> controller class and define the necessary logic within the execute method. Simply calling <code class="email">loadLayout</code> and <code class="email">renderLayout</code> is enough to render the page on the frontend.</p><p class="calibre7">The frontend XML layout handles reside under the <code class="email">app/code/Foggyline/Helpdesk/view/frontend/layout</code> folder. Having the route ID, controller, and controller action is enough for us to determine the handle name, which goes by formula <span class="strong"><em class="calibre9">{route id}_{controller name}_{controller action name}.xml</em></span>. Thus, we define an index action layout within the <code class="email">app/code/Foggyline/Helpdesk/view/frontend/layout/foggyline_helpdesk_ticket_index.xml</code> file with content as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0"?&gt;
+
+&lt;page  xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout /etc/page_configuration.xsd"&gt;
+    &lt;update handle="customer_account"/&gt;
+    &lt;body&gt;
+        &lt;referenceContainer name="content"&gt;
+            &lt;block class="Foggyline\Helpdesk\Block\Ticket\Index" name="foggyline.helpdesk.ticket.index" template= "Foggyline_Helpdesk::ticket/index.phtml" cacheable="false"/&gt;
+        &lt;/referenceContainer&gt;
+    &lt;/body&gt;
+&lt;/page&gt;</pre></div><p class="calibre7">Notice how we immediately call the update directive, passing it the <code class="email">customer_account</code> handle attribute value. This is like saying, "Include everything from the <code class="email">customer_account</code> handle into our handle here." We are further referencing the content block, within <a id="id582" class="calibre1"/>which we define our own custom<a id="id583" class="calibre1"/> block type <code class="email">Foggyline\Helpdesk\Block\Ticket\Index</code>. Though a block class can specify its own template, we<a id="id584" class="calibre1"/> are using a template attribute with a module-specific path, <code class="email">Foggyline_Helpdesk::ticket/index.phtml</code>, to assign a template to a block.</p><p class="calibre7">Simply including the <code class="email">customer_acount</code> handle is not enough; we need something extra to define our link under the <span class="strong"><strong class="calibre8">My Account</strong></span> section. We define this extra something under the <code class="email">app/code/Foggyline/Helpdesk/view/frontend/layout/customer_account.xml</code> file with content as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0"?&gt;
+
+&lt;page  xsi:noNamespaceSchemaLocation="urn:magento:framework:View/ Layout/etc/page_configuration.xsd"&gt;
+    &lt;head&gt;
+        &lt;title&gt;Helpdesk Tickets&lt;/title&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        &lt;referenceBlock name="customer_account_navigation"&gt;
+            &lt;block class="Magento\Framework\View\Element\Html \Link\Current" name="foggyline-helpdesk-ticket"&gt;
+                &lt;arguments&gt;
+                    &lt;argument name="path" xsi:type="string"&gt; foggyline_helpdesk/ticket/index &lt;/argument&gt;
+                    &lt;argument name="label" xsi:type="string"&gt; Helpdesk Tickets &lt;/argument&gt;
+                &lt;/arguments&gt;
+            &lt;/block&gt;
+        &lt;/referenceBlock&gt;
+    &lt;/body&gt;
+&lt;/page&gt;</pre></div><p class="calibre7">What is happening here is that we are referencing an existing block called <code class="email">customer_account_navigation</code> and defining a new block within it of class <code class="email">Magento\Framework\View\Element\Html\Link\Current</code>. This block accepts two parameters: the path that is set to our controller action and the label that is set to <span class="strong"><strong class="calibre8">Helpdesk Tickets</strong></span>.</p></div></div>
+
+<div class="book" title="Building a frontend interface">
+<div class="book" title="Creating blocks and templates"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_2"><a id="ch12lvl2sec50" class="calibre1"/>Creating blocks and templates</h2></div></div></div><p class="calibre7">The <code class="email">Foggyline\Helpdesk\Block\Ticket\Index</code> block<a id="id585" class="calibre1"/> class we pointed<a id="id586" class="calibre1"/> to from <code class="email">foggyline_helpdesk_ticket_index.xml</code> is defined under the <code class="email">app/code/Foggyline/Helpdesk/Block/Ticket/Index.php</code> file with content as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace Foggyline\Helpdesk\Block\Ticket;
+
+class Index extends \Magento\Framework\View\Element\Template
+{
+    /**
+     * @var \Magento\Framework\Stdlib\DateTime
+     */
+    protected $dateTime;
+
+    /**
+     * @var \Magento\Customer\Model\Session
+     */
+    protected $customerSession;
+
+    /**
+     * @var \Foggyline\Helpdesk\Model\TicketFactory
+     */
+    protected $ticketFactory;
+
+    /**
+     * @param \Magento\Framework\View\Element\Template\Context $context
+     * @param array $data
+     */
+    public function __construct(
+        \Magento\Framework\View\Element\Template\Context $context,
+        \Magento\Framework\Stdlib\DateTime $dateTime,
+        \Magento\Customer\Model\Session $customerSession,
+        \Foggyline\Helpdesk\Model\TicketFactory $ticketFactory,
+        array $data = []
+    )
+    {
+        $this-&gt;dateTime = $dateTime;
+        $this-&gt;customerSession = $customerSession;
+        $this-&gt;ticketFactory = $ticketFactory;
+        parent::__construct($context, $data);
+    }
+
+    /**
+     * @return \Foggyline\Helpdesk\Model\ResourceModel \Ticket\Collection
+     */
+    public function getTickets()
+    {
+        return $this-&gt;ticketFactory
+            -&gt;create()
+            -&gt;getCollection()
+            -&gt;addFieldToFilter('customer_id', $this-&gt; customerSession-&gt;getCustomerId());
+    }
+
+    public function getSeverities()
+    {
+        return \Foggyline\Helpdesk\Model\ Ticket::getSeveritiesOptionArray();
+    }
+}</pre></div><p class="calibre7">The<a id="id587" class="calibre1"/> reason why we defined the <code class="email">Foggyline\Helpdesk\Block\Ticket</code> block class instead of using just <code class="email">\Magento\Framework\View\Element\Template</code> is because we wanted to define some helper methods <a id="id588" class="calibre1"/>we could then use in our <code class="email">index.phtml</code> template. These methods are <code class="email">getTickets</code> (which we will use for listing all customer tickets) and <code class="email">getSeverities</code> (which we will use for creating a dropdown of possible severities to choose from when creating a new ticket).</p><p class="calibre7">The template is further defined under the <code class="email">app/code/Foggyline/Helpdesk/view/frontend/templates/ticket/index.phtml</code> file with content as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?php $tickets = $block-&gt;getTickets() ?&gt;
+
+&lt;form
+    id="form-validate"
+    action="&lt;?php echo $block-&gt; getUrl('foggyline_helpdesk/ticket/save') ?&gt;"
+    method="post"&gt;
+    &lt;?php echo $block-&gt;getBlockHtml('formkey') ?&gt;
+
+    &lt;div class="field title required"&gt;
+        &lt;label class="label" for="title"&gt;&lt;span&gt; &lt;?php echo __('Title') ?&gt;&lt;/span&gt;&lt;/label&gt;
+
+        &lt;div class="control"&gt;
+            &lt;input
+                id="title"
+                type="text"
+                name="title"
+                data-validate="{required:true}"
+                value=""
+                placeholder="&lt;?php echo __('Something descriptive') ?&gt;"/&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class="field severity"&gt;
+        &lt;label class="label" for="severity"&gt;&lt;span&gt;&lt;?php echo __('Severity') ?&gt;&lt;/span&gt;&lt;/label&gt;
+
+        &lt;div class="control"&gt;
+            &lt;select name="severity"&gt;
+                &lt;?php foreach ($block-&gt;getSeverities() as $value =&gt; $name): ?&gt;
+                    &lt;option value="&lt;?php echo $value ?&gt;"&gt;&lt;?php echo $this-&gt;escapeHtml($name) ?&gt;&lt;/option&gt;
+                &lt;?php endforeach; ?&gt;
+            &lt;/select&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;button type="submit" class="action save primary"&gt;
+        &lt;span&gt;&lt;?php echo __('Submit Ticket') ?&gt;&lt;/span&gt;
+    &lt;/button&gt;
+&lt;/form&gt;
+
+&lt;script&gt;
+    require([
+        'jquery',
+        'mage/mage'
+    ], function ($) {
+        var dataForm = $('#form-validate');
+        dataForm.mage('validation', {});
+    });
+&lt;/script&gt;
+
+&lt;?php if ($tickets-&gt;count()): ?&gt;
+    &lt;table class="data-grid"&gt;
+        &lt;?php foreach ($tickets as $ticket): ?&gt;
+            &lt;tr&gt;
+                &lt;td&gt;&lt;?php echo $ticket-&gt;getId() ?&gt;&lt;/td&gt;
+                &lt;td&gt;&lt;?php echo $block-&gt;escapeHtml($ticket-&gt; getTitle()) ?&gt;&lt;/td&gt;
+                &lt;td&gt;&lt;?php echo $ticket-&gt;getCreatedAt() ?&gt;&lt;/td&gt;
+                &lt;td&gt;&lt;?php echo $ticket-&gt;getSeverityAsLabel() ?&gt; &lt;/td&gt;
+                &lt;td&gt;&lt;?php echo $ticket-&gt;getStatusAsLabel() ?&gt;&lt;/td&gt;
+            &lt;/tr&gt;
+        &lt;?php endforeach; ?&gt;
+    &lt;/table&gt;
+&lt;?php endif; ?&gt;</pre></div><p class="calibre7">Though <a id="id589" class="calibre1"/>this is a big chunk of code, it is easily readable <a id="id590" class="calibre1"/>as it is divided into a few very different role-playing chunks.</p><p class="calibre7">The <code class="email">$block</code> variable is actually the same as if we wrote <code class="email">$this</code>, which is a reference to the instance of the <code class="email">Foggyline\Helpdesk\Block\Ticket</code> class where we defined the actual <code class="email">getTickets</code> method. Thus, the <code class="email">$tickets</code> variable is first defined as a collection of tickets that belong to the currently logged-in customer.</p><p class="calibre7">We then specified a form with a <code class="email">POST</code> method type and an action URL that points to our <code class="email">Save</code> controller action. Within the form, we have a <code class="email">$block-&gt;getBlockHtml('formkey')</code> call, which basically returns a hidden input field named <code class="email">form_key</code> whose value is a random string. Form keys in Magento are a means of preventing<a id="id591" class="calibre1"/> against <span class="strong"><strong class="calibre8">Cross-Site Request Forgery</strong></span> (<span class="strong"><strong class="calibre8">CSRF</strong></span>), so we need to be sure to use them on any form we define. As part of the form, we have also defined a title input field, severity select field, and submit button. Notice the CSS classes tossed around, which guarantee that our form's look will match those of other Magento forms.</p><p class="calibre7">Right after the closing form tag, we have a RequireJS type of JavaScript inclusion for validation. Given that our form ID value is set to <span class="strong"><strong class="calibre8">form-validate</strong></span>, the JavaScript <code class="email">dataForm</code> variable binds to it and triggers a validation check when we press the <span class="strong"><strong class="calibre8">Submit</strong></span> button.</p><p class="calibre7">We then have a count check and a <code class="email">foreach</code> loop that renders all possibly existing customer tickets.</p><p class="calibre7">The final result of the template code can be seen in the following image:</p><div class="mediaobject"><img src="../images/00100.jpeg" alt="Creating blocks and templates" class="calibre10"/></div><p class="calibre11"> </p></div></div>
+
+<div class="book" title="Building a frontend interface">
+<div class="book" title="Handling form submissions"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_3"><a id="ch12lvl2sec51" class="calibre1"/>Handling form submissions</h2></div></div></div><p class="calibre7">There is<a id="id592" class="calibre1"/> one more piece we are missing in order to complete our frontend functionality – a controller action that will save the <span class="strong"><strong class="calibre8">New Ticket</strong></span> form once it is posted. We define this action within the <code class="email">app/code/Foggyline/Helpdesk/Controller/Ticket/Save.php</code> file with content as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace Foggyline\Helpdesk\Controller\Ticket;
+
+class Save extends \Foggyline\Helpdesk\Controller\Ticket
+{
+    protected $transportBuilder;
+    protected $inlineTranslation;
+    protected $scopeConfig;
+    protected $storeManager;
+    protected $formKeyValidator;
+    protected $dateTime;
+    protected $ticketFactory;
+
+    public function __construct(
+        \Magento\Framework\App\Action\Context $context,
+        \Magento\Customer\Model\Session $customerSession,
+        \Magento\Framework\Mail\Template\TransportBuilder $transportBuilder,
+        \Magento\Framework\Translate\Inline\StateInterface $inlineTranslation,
+        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
+        \Magento\Store\Model\StoreManagerInterface $storeManager,
+        \Magento\Framework\Data\Form\FormKey\Validator $formKeyValidator,
+        \Magento\Framework\Stdlib\DateTime $dateTime,
+        \Foggyline\Helpdesk\Model\TicketFactory $ticketFactory
+    )
+    {
+        $this-&gt;transportBuilder = $transportBuilder;
+        $this-&gt;inlineTranslation = $inlineTranslation;
+        $this-&gt;scopeConfig = $scopeConfig;
+        $this-&gt;storeManager = $storeManager;
+        $this-&gt;formKeyValidator = $formKeyValidator;
+        $this-&gt;dateTime = $dateTime;
+        $this-&gt;ticketFactory = $ticketFactory;
+        $this-&gt;messageManager = $context-&gt;getMessageManager();
+        parent::__construct($context, $customerSession);
+    }
+
+    public function execute()
+    {
+        $resultRedirect = $this-&gt;resultRedirectFactory-&gt;create();
+
+        if (!$this-&gt;formKeyValidator-&gt;validate($this-&gt; getRequest())) {
+            return $resultRedirect-&gt;setRefererUrl();
+        }
+
+        $title = $this-&gt;getRequest()-&gt;getParam('title');
+        $severity = $this-&gt;getRequest()-&gt;getParam('severity');
+
+        try {
+            /* Save ticket */
+            $ticket = $this-&gt;ticketFactory-&gt;create();
+            $ticket-&gt;setCustomerId($this-&gt;customerSession-&gt; getCustomerId());
+            $ticket-&gt;setTitle($title);
+            $ticket-&gt;setSeverity($severity);
+            $ticket-&gt;setCreatedAt($this-&gt;dateTime-&gt; formatDate(true));
+            $ticket-&gt;setStatus(\Foggyline\Helpdesk\Model\ Ticket::STATUS_OPENED);
+            $ticket-&gt;save();
+
+            $customer = $this-&gt;customerSession-&gt;getCustomerData();
+
+            /* Send email to store owner */
+            $storeScope = \Magento\Store\Model\ScopeInterface::SCOPE_STORE;
+            $transport = $this-&gt;transportBuilder
+                -&gt;setTemplateIdentifier($this-&gt;scopeConfig-&gt; getValue('foggyline_helpdesk/email_template/ store_owner', $storeScope))
+                -&gt;setTemplateOptions(
+                    [
+                        'area' =&gt; \Magento\Framework\App\ Area::AREA_FRONTEND,
+                        'store' =&gt; $this-&gt;storeManager-&gt; getStore()-&gt;getId(),
+                    ]
+                )
+                -&gt;setTemplateVars(['ticket' =&gt; $ticket])
+                -&gt;setFrom([
+                    'name' =&gt; $customer-&gt;getFirstname() . ' ' . $customer-&gt;getLastname(),
+                    'email' =&gt; $customer-&gt;getEmail()
+                ])
+                -&gt;addTo($this-&gt;scopeConfig-&gt;getValue( 'trans_email/ident_general/email', $storeScope))
+                -&gt;getTransport();
+
+            $transport-&gt;sendMessage();
+            $this-&gt;inlineTranslation-&gt;resume();
+
+            $this-&gt;messageManager-&gt;addSuccess(__('Ticket successfully created.'));
+        } catch (Exception $e) {
+            $this-&gt;messageManager-&gt;addError(__('Error occurred during ticket creation.'));
+        }
+
+        return $resultRedirect-&gt;setRefererUrl();
+    }
+}</pre></div><p class="calibre7">First, we look at <code class="email">__construct</code> to see what parameters are passed to it. Given that the code we run in the <code class="email">execute</code> method needs to check if the form key is valid, create a ticket in the database, pass on the ticket and some customer info to the e-mail that is being sent to the store owner; then, we get an idea of what kind of objects are being passed around.</p><p class="calibre7">The <code class="email">execute</code> method starts by checking the validity of the form key. If the form key is invalid, we <a id="id593" class="calibre1"/>return with a redirection to the referring URL.</p><p class="calibre7">Passing the form key check, we grab the title and severity variables as passed by the form. We then instantiate the ticket entity by the ticket factory create method and simply set the <code class="email">ticket</code> entity values one by one. Note that the <code class="email">Ticket</code> entity model <code class="email">Foggyline\Helpdesk\Model\Ticket</code> does not really have methods like <code class="email">setSeverity</code> on its own. This is the inherited property of its <code class="email">\Magento\Framework\Object</code> parent class.</p><p class="calibre7">Once the ticket entity is saved, we initiate the <code class="email">transport builder</code> object, passing along all of the required parameters for successful e-mail sending. Notice how <code class="email">setTemplateIdentifier</code> uses our <code class="email">system.xml</code> configuration option <code class="email">foggyline_helpdesk/email_template/store_owner</code>. This, if not specifically set under the admin <span class="strong"><strong class="calibre8">Store</strong></span> | <span class="strong"><strong class="calibre8">Configuration</strong></span> | <span class="strong"><strong class="calibre8">Foggyline</strong></span> | <span class="strong"><strong class="calibre8">Helpdesk</strong></span> area, has a default value defined under <code class="email">config.xml</code> that points to the e-mail template ID in the <code class="email">email_templates.xml</code> file.</p><p class="calibre7"><code class="email">setTemplateVars</code> expects the array or instance of <code class="email">\Magento\Framework\Object</code> to be passed to it. We pass the entire <code class="email">$ticket</code> object to it, just nesting it under the ticket key, thus making the properties of a <code class="email">Ticket</code> entity, like a title, become available in the e-mail HTML template as <code class="email">{{var ticket.title}}</code>.</p><p class="calibre7">When a customer now submits the <span class="strong"><strong class="calibre8">New Ticket</strong></span> form from <span class="strong"><strong class="calibre8">My Account</strong></span> | <span class="strong"><strong class="calibre8">Helpdesk Tickets</strong></span>, the <code class="email">HTTP POST</code> request will hit the save controller action class. If the preceding code is successfully executed, the ticket is saved to the database and redirection back to <span class="strong"><strong class="calibre8">My Account</strong></span> | <span class="strong"><strong class="calibre8">Helpdesk Tickets</strong></span> will occur showing a <span class="strong"><strong class="calibre8">Ticket successfully created</strong></span> message in the browser.</p></div></div>
+
+<div id="page" style="height:0pt"/><div class="book" title="Building a backend interface"><div class="book" id="30A8Q2-818f5224668745eb9070ddf1d85e6bfa"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch12lvl1sec94" class="calibre1"/>Building a backend interface</h1></div></div></div><p class="calibre7">Until <a id="id594" class="calibre1"/>now, we have been dealing with setting up general module configuration, e-mail templates, frontend route, frontend layout, block, and template. What remains to complete the module requirements is the admin interface, where the store owner can see submitted tickets and change statuses from open to closed.</p><p class="calibre7">The following are needed for a fully functional admin interface as per the requirements:</p><div class="book"><ul class="itemizedlist"><li class="listitem">ACL resource used to allow or disallow access to the ticket listing</li><li class="listitem">Menu item linking to tickets listing the controller action</li><li class="listitem">Route that maps to our admin controller</li><li class="listitem">Layout XMLs that map to the ticket listing the controller action</li><li class="listitem">Controller <a id="id595" class="calibre1"/>action for listing tickets</li><li class="listitem">Full XML layout grid definition within layout XMLs defining grid, custom column renderers, and custom dropdown filter values</li><li class="listitem">Controller action for closing tickets and sending e-mails to customers</li></ul></div></div>
+
+<div class="book" title="Building a backend interface">
+<div class="book" title="Linking the access control list and menu"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_1"><a id="ch12lvl2sec52" class="calibre1"/>Linking the access control list and menu</h2></div></div></div><p class="calibre7">We <a id="id596" class="calibre1"/>start by adding a new ACL resource entry to the previously defined <code class="email">app/code/Foggyline/Helpdesk/etc/acl.xml</code> file, as a child of the <code class="email">Magento_Backend::admin</code> resource as follows:</p><div class="informalexample"><pre class="programlisting">&lt;resource id="Magento_Customer::customer"&gt;
+    &lt;resource id="Foggyline_Helpdesk::ticket_manage" title="Manage Helpdesk Tickets"/&gt;
+&lt;/resource&gt;</pre></div><p class="calibre7">On its own, the defined resource entry does not do anything. This resource will later be used within the menu and controller.</p><p class="calibre7">The menu item linking to the tickets listing the controller action is defined under the <code class="email">app/code/Foggyline/Helpdesk/etc/adminhtml/menu.xml</code> file as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0"?&gt;
+
+&lt;config  xsi:noNamespaceSchemaLocation="urn:magento:module: Magento_Backend:etc/menu.xsd"&gt;
+    &lt;menu&gt;
+        &lt;add id="Foggyline_Helpdesk::ticket_manage" title="Helpdesk Tickets" module="Foggyline_Helpdesk"
+             parent="Magento_Customer::customer" action="foggyline_helpdesk/ticket/index"
+             resource="Foggyline_Helpdesk::ticket_manage"/&gt;
+    &lt;/menu&gt;
+&lt;/config&gt;</pre></div><p class="calibre7">We are using the <code class="email">menu</code> | <code class="email">add</code> element to add a new menu item under the Magento admin area. The position of an item within the admin area is defined by the attribute parent, which in our case means under the existing <span class="strong"><strong class="calibre8">Customer</strong></span> menu. If the parent is omitted, our item would appear as a new item on a menu. The <code class="email">title</code> attribute value is the label we will see in the menu. The <code class="email">id</code> attribute has to uniquely differentiate our menu item from others. The <code class="email">resource</code> attribute references the ACL resource defined in the <code class="email">app/code/Foggyline/Helpdesk/etc/acl.xml</code> file. If a role of a logged-in user does not <a id="id597" class="calibre1"/>allow him to use the <code class="email">Foggyline_Helpdesk::ticket_manage</code> resource, the user would not be able to see the menu item.</p></div></div>
+
+<div class="book" title="Building a backend interface">
+<div class="book" title="Creating routes, controllers, and layout handles"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_2"><a id="ch12lvl2sec53" class="calibre1"/>Creating routes, controllers, and layout handles</h2></div></div></div><p class="calibre7">Now <a id="id598" class="calibre1"/>we add a route that maps to our admin controller, by<a id="id599" class="calibre1"/> defining the <code class="email">app/code/Foggyline/Helpdesk/etc/adminhtml/routes.xml</code> file as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0"?&gt;
+
+&lt;config  xsi:noNamespaceSchemaLocation="urn:magento:framework:App/etc /routes.xsd"&gt;
+    &lt;router id="admin"&gt;
+        &lt;route id="foggyline_helpdesk" frontName="foggyline_helpdesk"&gt;
+            &lt;module name="Foggyline_Helpdesk"/&gt;
+        &lt;/route&gt;
+    &lt;/router&gt;
+&lt;/config&gt;</pre></div><p class="calibre7">The<a id="id600" class="calibre1"/> admin route definition is almost identical to the frontend router definition, where the difference primarily lies in the router ID value, which equals to the admin here.</p><p class="calibre7">With the router definition in place, we can now define our three layout XMLs, under the <code class="email">app/code/Foggyline/Helpdesk/view/adminhtml/layout</code> directory, which map to the ticket listing the controller action:</p><div class="book"><ul class="itemizedlist"><li class="listitem"><code class="email">foggyline_helpdesk_ticket_grid.xml</code></li><li class="listitem"><code class="email">foggyline_helpdesk_ticket_grid_block.xml</code></li><li class="listitem"><code class="email">foggyline_helpdesk_ticket_index.xml</code></li></ul></div><p class="calibre7">The reason we define three layout files for a single action controller and not one is because of the way we use the listing in control in the Magento admin area.</p><p class="calibre7">The content of the <code class="email">foggyline_helpdesk_ticket_index.xml</code> file is defined as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;page  xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout /etc/page_configuration.xsd"&gt;
+    &lt;update handle="formkey"/&gt;
+    &lt;update handle="foggyline_helpdesk_ticket_grid_block"/&gt;
+    &lt;body&gt;
+        &lt;referenceContainer name="content"&gt;
+            &lt;block class="Foggyline\Helpdesk\Block \Adminhtml\Ticket" name="admin.block.helpdesk.ticket.grid.container"&gt;
+        &lt;/block&gt;
+        &lt;/referenceContainer&gt;
+    &lt;/body&gt;
+&lt;/page&gt;</pre></div><p class="calibre7">Two<a id="id601" class="calibre1"/> update handles are specified, one pulling in <code class="email">formkey</code> and the<a id="id602" class="calibre1"/> other <a id="id603" class="calibre1"/>pulling in <code class="email">foggyline_helpdesk_ticket_grid_block</code>. We then reference the content container and define a new block of the <code class="email">Foggyline\Helpdesk\Block\Adminhtml\Ticket</code> class with it.</p></div></div>
+
+<div class="book" title="Building a backend interface">
+<div class="book" title="Utilizing the grid widget"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_3"><a id="ch12lvl2sec54" class="calibre1"/>Utilizing the grid widget</h2></div></div></div><p class="calibre7">We<a id="id604" class="calibre1"/> could have used <code class="email">Magento\Backend\Block\Widget\Grid\Container</code> as a block class name. However, given that we needed some extra logic, like removing the <span class="strong"><strong class="calibre8">Add New</strong></span> button, we opted for a custom class that then extends <code class="email">\Magento\Backend\Block\Widget\Grid\Container</code> and adds the required logic.</p><p class="calibre7">The <code class="email">Foggyline\Helpdesk\Block\Adminhtml\Ticket</code> class is defined under the <code class="email">app/code/Foggyline/Helpdesk/Block/Adminhtml/Ticket.php</code> file as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace Foggyline\Helpdesk\Block\Adminhtml;
+
+class Ticket extends \Magento\Backend\Block\Widget\Grid\Container
+{
+    protected function _construct()
+    {
+        $this-&gt;_controller = 'adminhtml';
+        $this-&gt;_blockGroup = 'Foggyline_Helpdesk';
+        $this-&gt;_headerText = __('Tickets');
+
+        parent::_construct();
+
+        $this-&gt;removeButton('add');
+    }
+}</pre></div><p class="calibre7">Not much is happening in the <code class="email">Ticket</code> block class here. Most importantly, we extend from <code class="email">\Magento\Backend\Block\Widget\Grid\Container</code> and define <code class="email">_controller</code> and <code class="email">_blockGroup,</code> as these serve as a sort of glue for telling our grid where to find other possible <a id="id605" class="calibre1"/>block classes. Since we won't have an <span class="strong"><strong class="calibre8">Add New</strong></span> ticket feature in admin, we are calling the <code class="email">removeButton</code> method to remove the default <span class="strong"><strong class="calibre8">Add New</strong></span> button from the grid container.</p><p class="calibre7">Back to our second XML layout file, the <code class="email">foggyline_helpdesk_ticket_grid.xml</code> file, which we define as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0"?&gt;
+
+&lt;layout  xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout /etc/layout_generic.xsd"&gt;
+    &lt;update handle="formkey"/&gt;
+    &lt;update handle="foggyline_helpdesk_ticket_grid_block"/&gt;
+    &lt;container name="root"&gt;
+        &lt;block class="Magento\Backend\Block\Widget\Grid\Container" name="admin.block.helpdesk.ticket.grid.container" template="Magento_Backend::widget/grid/container /empty.phtml"/&gt;
+    &lt;/container&gt;
+&lt;/layout&gt;</pre></div><p class="calibre7">Notice how the content of <code class="email">foggyline_helpdesk_ticket_grid.xml</code> is nearly identical to that of <code class="email">foggyline_helpdesk_ticket_index.xml</code>. The only difference between the two is the value of the <code class="email">block</code> class and the template attribute. The <code class="email">block</code> class is defined as <code class="email">Magento\Backend\Block\Widget\Grid\Container</code>, where we previously defined it as <code class="email">Foggyline\Helpdesk\Block\Adminhtml\Ticket</code>.</p><p class="calibre7">If we look at the content of the <code class="email">\Magento\Backend\Block\Widget\Grid\Container</code> class, we can see the following property defined:</p><div class="informalexample"><pre class="programlisting">protected $_template = 'Magento_Backend::widget/grid/container.phtml';</pre></div><p class="calibre7">If we look at the content of the <code class="email">vendor/magento/module-backend/view/adminhtml/templates/widget/grid/container.phtml</code> and <code class="email">vendor/magento/module-backend/view/adminhtml/templates/widget/grid/container/empty.phtml</code> files, the difference can be easily spotted. <code class="email">container/empty.phtml</code> only returns grid HTML, whereas <code class="email">container.phtml</code> returns buttons and grid HTML.</p><p class="calibre7">Given that <code class="email">foggyline_helpdesk_ticket_grid.xml</code> will be a handle for the AJAX loading grid listing during sorting and filtering, we need it to return only grid HTML upon reload.</p><p class="calibre7">We now<a id="id606" class="calibre1"/> move on to the third and largest of XML's layout files, the <code class="email">app/code/Foggyline/Helpdesk/view/adminhtml/layout/foggyline_helpdesk_ticket_grid_block.xml</code> file. Given the size of it, we will split it into two code chunks as we explain them one by one.</p><p class="calibre7">The first part, or initial content of the <code class="email">foggyline_helpdesk_ticket_grid_block.xml</code> file, is defined as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;page  xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout /etc/page_configuration.xsd"&gt;
+    &lt;body&gt;
+        &lt;referenceBlock name= "admin.block.helpdesk.ticket.grid.container"&gt;
+            &lt;block class="Magento\Backend\Block\Widget\Grid" name="admin.block.helpdesk.ticket.grid" as="grid"&gt;
+                &lt;arguments&gt;
+                    &lt;argument name="id" xsi:type="string"&gt; ticketGrid&lt;/argument&gt;
+                    &lt;argument name="dataSource" xsi:type="object"&gt; Foggyline\Helpdesk\Model\ResourceModel \Ticket\Collection
+                    &lt;/argument&gt;
+                    &lt;argument name="default_sort" xsi:type="string"&gt;ticket_id&lt;/argument&gt;
+                    &lt;argument name="default_dir" xsi:type="string"&gt;desc&lt;/argument&gt;
+                    &lt;argument name="save_parameters_in_session" xsi:type="boolean"&gt;true&lt;/argument&gt;
+                    &lt;argument name="use_ajax" xsi:type="boolean"&gt;true&lt;/argument&gt;
+                &lt;/arguments&gt;
+                &lt;block class="Magento\Backend\Block \Widget\Grid\ColumnSet" name= "admin.block.helpdesk.ticket.grid.columnSet" as="grid.columnSet"&gt;
+                    &lt;!-- Column definitions here --&gt;
+                &lt;/block&gt;
+            &lt;/block&gt;
+        &lt;/referenceBlock&gt;
+    &lt;/body&gt;
+&lt;/page&gt;</pre></div><p class="calibre7">Notice <code class="email">&lt;!-- Column definitions here --&gt;</code>; we will come back to that soon. For now, let's analyze what is happening here. Right after a body element, we have a reference to <code class="email">admin.block.helpdesk.ticket.grid.container</code>, which is a content block child defined under the <code class="email">foggyline_helpdesk_ticket_grid.xml</code> and <code class="email">foggyline_helpdesk_ticket_index.xml</code> files. Within this reference, we are defining another<a id="id607" class="calibre1"/> block of class <code class="email">Magento\Backend\Block\Widget\Grid</code>, passing it a name of our choosing and an alias. Further, this block has an arguments list and another block of class <code class="email">Magento\Backend\Block\Widget\Grid\ColumnSet</code> as child elements.</p><p class="calibre7">Through the arguments list we specify the:</p><div class="book"><ul class="itemizedlist"><li class="listitem"><code class="email">id</code>: Set to the value of <code class="email">ticketGrid</code>, we can set any value we want here, ideally sticking to formula <span class="strong"><em class="calibre9">{entity name}</em></span>.</li><li class="listitem"><code class="email">dataSource</code>: Set to the value of <code class="email">Foggyline\Helpdesk\Model\ResourceModel\Ticket\Collection</code>, which is the name of our <code class="email">Ticket</code> entity resource class.</li><li class="listitem"><code class="email">default_sort</code>: Set to the value of <code class="email">ticket_id</code>, which is the property of the <code class="email">Ticket</code> entity by which we want to sort.</li><li class="listitem"><code class="email">default_dir</code>: Set to the value of <code class="email">desc</code>, to denote a descending order of sorting. This value functions together with <code class="email">default_sort </code>as a single unit.</li><li class="listitem"><code class="email">save_parameters_in_session</code>: Set to <code class="email">true</code>, this is easiest to explain using the following example: if we do some sorting and filtering on the <code class="email">Ticket</code> grid and then move on to another part of the admin area, then come back to <code class="email">Ticket</code> grid, if this value is set to <span class="strong"><strong class="calibre8">yes</strong></span>, the grid we see will have those filters and sorting set.</li><li class="listitem"><code class="email">use_ajax</code>: Set to <code class="email">true</code>, when grid filtering and sorting is triggered, an AJAX loader kicks in and reloads only the grid area and not the whole page.</li></ul></div><p class="calibre7">Right after the grid blocks argument list, we have the grid column set. This brings us to the second part of <code class="email">foggyline_helpdesk_ticket_grid_block.xml</code> content. We simply replace the <code class="email">&lt;!-- Columns here --&gt;</code> comment with the following:</p><div class="informalexample"><pre class="programlisting">&lt;block class="Magento\Backend\Block\Widget\Grid\Column" as="ticket_id"&gt;
+    &lt;arguments&gt;
+        &lt;argument name="header" xsi:type="string" translate="true"&gt;ID&lt;/argument&gt;
+        &lt;argument name="type" xsi:type="string"&gt;number&lt;/argument&gt;
+        &lt;argument name="id" xsi:type="string"&gt;ticket_id&lt;/argument&gt;
+        &lt;argument name="index" xsi:type="string"&gt;ticket_id&lt;/argument&gt;
+    &lt;/arguments&gt;
+&lt;/block&gt;
+&lt;block class="Magento\Backend\Block\Widget\Grid\Column" as="title"&gt;
+    &lt;arguments&gt;
+        &lt;argument name="header" xsi:type="string" translate="true"&gt;Title&lt;/argument&gt;
+        &lt;argument name="type" xsi:type="string"&gt;string&lt;/argument&gt;
+        &lt;argument name="id" xsi:type="string"&gt;title&lt;/argument&gt;
+        &lt;argument name="index" xsi:type="string"&gt;title&lt;/argument&gt;
+    &lt;/arguments&gt;
+&lt;/block&gt;
+&lt;block class="Magento\Backend\Block\Widget\Grid\Column" |  as="severity"&gt;
+    &lt;arguments&gt;
+        &lt;argument name="header" xsi:type="string" translate="true"&gt;Severity&lt;/argument&gt;
+        &lt;argument name="index" xsi:type="string"&gt;severity&lt;/argument&gt;
+        &lt;argument name="type" xsi:type="string"&gt;options&lt;/argument&gt;
+        &lt;argument name="options" xsi:type="options" model="Foggyline\Helpdesk\Model\Ticket\Grid\Severity"/&gt;
+        &lt;argument name="renderer" xsi:type="string"&gt; Foggyline\Helpdesk\Block\Adminhtml\Ticket\Grid\Renderer \Severity
+        &lt;/argument&gt;
+        &lt;argument name="header_css_class" xsi:type="string"&gt; col-form_id&lt;/argument&gt;
+        &lt;argument name="column_css_class" xsi:type="string"&gt; col-form_id&lt;/argument&gt;
+    &lt;/arguments&gt;
+&lt;/block&gt;
+&lt;block class="Magento\Backend\Block\Widget\Grid\Column" as="status"&gt;
+    &lt;arguments&gt;
+        &lt;argument name="header" xsi:type="string" translate="true"&gt;Status&lt;/argument&gt;
+        &lt;argument name="index" xsi:type="string"&gt;status&lt;/argument&gt;
+        &lt;argument name="type" xsi:type="string"&gt;options&lt;/argument&gt;
+        &lt;argument name="options" xsi:type="options"
+                  model="Foggyline\Helpdesk\Model\Ticket \Grid\Status"/&gt;
+        &lt;argument name="renderer" xsi:type="string"&gt; Foggyline\Helpdesk\Block\Adminhtml\Ticket\Grid \Renderer\Status
+        &lt;/argument&gt;
+        &lt;argument name="header_css_class" xsi:type="string"&gt; col-form_id&lt;/argument&gt;
+        &lt;argument name="column_css_class" xsi:type="string"&gt; col-form_id&lt;/argument&gt;
+    &lt;/arguments&gt;
+&lt;/block&gt;
+&lt;block class="Magento\Backend\Block\Widget\Grid\Column" as="action"&gt;
+    &lt;arguments&gt;
+        &lt;argument name="id" xsi:type="string"&gt;action&lt;/argument&gt;
+        &lt;argument name="header" xsi:type="string" translate="true"&gt;Action&lt;/argument&gt;
+        &lt;argument name="type" xsi:type="string"&gt;action&lt;/argument&gt;
+        &lt;argument name="getter" xsi:type="string"&gt;getId&lt;/argument&gt;
+        &lt;argument name="filter" xsi:type="boolean"&gt;false&lt;/argument&gt;
+        &lt;argument name="sortable" xsi:type="boolean"&gt;false&lt;/argument&gt;
+        &lt;argument name="actions" xsi:type="array"&gt;
+            &lt;item name="view_action" xsi:type="array"&gt;
+                &lt;item name="caption" xsi:type="string" translate="true"&gt;Close&lt;/item&gt;
+                &lt;item name="url" xsi:type="array"&gt;
+                    &lt;item name="base" xsi:type="string"&gt;*/*/close&lt;/item&gt;
+                &lt;/item&gt;
+                &lt;item name="field" xsi:type="string"&gt;id&lt;/item&gt;
+            &lt;/item&gt;
+        &lt;/argument&gt;
+        &lt;argument name="header_css_class" xsi:type="string"&gt; col-actions&lt;/argument&gt;
+        &lt;argument name="column_css_class" xsi:type="string"&gt; col-actions&lt;/argument&gt;
+    &lt;/arguments&gt;
+&lt;/block&gt;</pre></div><p class="calibre7">Similar to<a id="id608" class="calibre1"/> grid, column definitions also have arguments that define its look and behavior:</p><div class="book"><ul class="itemizedlist"><li class="listitem"><code class="email">header</code>: Mandatory, the value we want to see as a label on top of the column.</li><li class="listitem"><code class="email">type</code>: Mandatory, can be anything from: <code class="email">date</code>, <code class="email">datetime</code>, <code class="email">text</code>, <code class="email">longtext</code>, <code class="email">options</code>, <code class="email">store</code>, <code class="email">number</code>, <code class="email">currency</code>, <code class="email">skip-list</code>, <code class="email">wrapline</code>, and <code class="email">country</code>.</li><li class="listitem"><code class="email">id</code>: Mandatory, a unique value that identifies our column, preferably matching the name of the entity property.</li><li class="listitem"><code class="email">index</code>: Mandatory, the database column name.</li><li class="listitem"><code class="email">options</code>: Optional, if we are using a type like options, then for the options argument we need to specify the class like <code class="email">Foggyline\Helpdesk\Model\Ticket\Grid\Severity</code> that implements <code class="email">\Magento\Framework\Option\ArrayInterface</code>, meaning it provides the <code class="email">toOptionArray</code> method that then fills the values of options during grid rendering.</li><li class="listitem"><code class="email">renderer</code>: Optional, as our <code class="email">Ticket</code> entities store severity and status as integer values in the database, columns would render those integer values into <a id="id609" class="calibre1"/>columns, which is not really useful. We want to turn those integer values into labels. In order to do so, we need to rewrite the rendering bit of a single table cell, which we do with the help of the renderer argument. The value we pass to it, <code class="email">Foggyline\Helpdesk\Block\Adminhtml\Ticket\Grid\Renderer\Severity</code>, needs to be a class that extends <code class="email">\Magento\Backend\Block\Widget\Grid\Column\Renderer\AbstractRenderer</code> and does its own implementation of the render method.</li><li class="listitem"><code class="email">header_css_class</code>: Optional, if we prefer to specify a custom header class.</li><li class="listitem"><code class="email">column_css_class</code>: Optional, if we prefer to specify a custom column class.</li></ul></div></div></div>
+
+<div class="book" title="Building a backend interface">
+<div class="book" title="Creating a grid column renderer"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_4"><a id="ch12lvl2sec55" class="calibre1"/>Creating a grid column renderer</h2></div></div></div><p class="calibre7">The <code class="email">Foggyline\Helpdesk\Block\Adminhtml\Ticket\Grid\Renderer\Severity</code> class, defined in the <code class="email">app/code/Foggyline/Helpdesk/Block/Adminhtml/Ticket/Grid/Renderer/Severity.php</code> file, is <a id="id610" class="calibre1"/>as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace Foggyline\Helpdesk\Block\Adminhtml\Ticket\Grid\Renderer;
+
+class Severity extends \Magento\Backend\Block\Widget\Grid \Column\Renderer\AbstractRenderer
+{
+    protected $ticketFactory;
+
+    public function __construct(
+        \Magento\Backend\Block\Context $context,
+        \Foggyline\Helpdesk\Model\TicketFactory $ticketFactory,
+        array $data = []
+    )
+    {
+        parent::__construct($context, $data);
+        $this-&gt;ticketFactory = $ticketFactory;
+    }
+
+    public function render(\Magento\Framework\DataObject $row)
+    {
+        $ticket = $this-&gt;ticketFactory-&gt;create()-&gt;load($row-&gt; getId());
+
+        if ($ticket &amp;&amp; $ticket-&gt;getId()) {
+            return $ticket-&gt;getSeverityAsLabel();
+        }
+
+        return '';
+    }
+}</pre></div><p class="calibre7">Here, we<a id="id611" class="calibre1"/> are passing the instance of the ticket factory to the constructor and then using that instance within the render method to load a ticket based on the ID value fetched from the current row. Given that <code class="email">$row-&gt;getId()</code> returns the ID of the ticket, this is a nice way to reload the entire ticket entity and then fetch the full label from the ticket model by using <code class="email">$ticket-&gt;getSeverityAsLabel()</code>. Whatever string we return from this method is what will be shown under the grid row.</p><p class="calibre7">Another renderer class that is referenced within the <code class="email">foggyline_helpdesk_ticket_grid_block.xml</code> file is <code class="email">Foggyline\Helpdesk\Block\Adminhtml\Ticket\Grid\Renderer\Status</code>, and we define its content under the <code class="email">app/code/Foggyline/Helpdesk/Block/Adminhtml/Ticket/Grid/Renderer/Status.php</code> file as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace Foggyline\Helpdesk\Block\Adminhtml\Ticket\Grid\Renderer;
+
+class Status extends \Magento\Backend\Block\Widget\Grid\Column \Renderer\AbstractRenderer
+{
+    protected $ticketFactory;
+
+    public function __construct(
+        \Magento\Backend\Block\Context $context,
+        \Foggyline\Helpdesk\Model\TicketFactory $ticketFactory,
+        array $data = []
+    )
+    {
+        parent::__construct($context, $data);
+        $this-&gt;ticketFactory = $ticketFactory;
+    }
+
+    public function render(\Magento\Framework\DataObject $row)
+    {
+        $ticket = $this-&gt;ticketFactory-&gt;create()-&gt;load($row-&gt; getId());
+
+        if ($ticket &amp;&amp; $ticket-&gt;getId()) {
+            return $ticket-&gt;getStatusAsLabel();
+        }
+
+        return '';
+    }
+}</pre></div><p class="calibre7">Given<a id="id612" class="calibre1"/> that it too is used for a renderer, the content of the <code class="email">Status</code> class is nearly identical to the content of the <code class="email">Severity</code> class. We pass on the ticket factory object via the constructor, so we have it internally for usage within the <code class="email">render</code> method. Then we load the <code class="email">Ticket</code> entity using the ticket factory and ID value fetched from a <code class="email">$row</code> object. As a result, the column will contain the label value of a status and not its integer value.</p></div></div>
+
+<div class="book" title="Building a backend interface">
+<div class="book" title="Creating grid column options"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_5"><a id="ch12lvl2sec56" class="calibre1"/>Creating grid column options</h2></div></div></div><p class="calibre7">Besides <a id="id613" class="calibre1"/>referencing renderer classes, our <code class="email">foggyline_helpdesk_ticket_grid_block.xml</code> file also references the <code class="email">options</code> class for the <code class="email">Severity</code> field.</p><p class="calibre7">We define the <code class="email">Foggyline\Helpdesk\Model\Ticket\Grid\Severity</code> options class under the <code class="email">app/code/Foggyline/Helpdesk/Model/Ticket/Grid/Severity.php</code> file as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace Foggyline\Helpdesk\Model\Ticket\Grid;
+
+class Severity implements \Magento\Framework\Option\ArrayInterface
+{
+    public function toOptionArray()
+    {
+        return \Foggyline\Helpdesk\Model \Ticket::getSeveritiesOptionArray();
+    }
+}</pre></div><p class="calibre7">The <code class="email">options</code> value from XML layouts refers to a class that has to implement the <code class="email">toOptionArray</code> method, which returns an array of arrays, such as the following example:</p><div class="informalexample"><pre class="programlisting">return [
+    ['value'=&gt;'theValue1', 'theLabel1'],
+    ['value'=&gt;'theValue2', 'theLabel2'],
+];</pre></div><p class="calibre7">Our <code class="email">Severity</code> class<a id="id614" class="calibre1"/> simply calls the static method we have defined on the <code class="email">Ticket</code> class, the <code class="email">getSeveritiesOptionArray</code>, and passes along those values.</p></div></div>
+
+<div class="book" title="Building a backend interface">
+<div class="book" title="Creating controller actions"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_6"><a id="ch12lvl2sec57" class="calibre1"/>Creating controller actions</h2></div></div></div><p class="calibre7">Up to <a id="id615" class="calibre1"/>this point, we have defined the menu item, ACL resource, XML layouts, block, <code class="email">options</code> class, and <code class="email">renderer</code> classes. What remains to connect it all are controllers. We will need three controller actions (<code class="email">Index</code>, <code class="email">Grid</code>, and <code class="email">Close</code>), all extending from the same admin <code class="email">Ticket</code> controller.</p><p class="calibre7">We define the admin <code class="email">Ticket</code> controller under the <code class="email">app/code/Foggyline/Helpdesk/Controller/Adminhtml/Ticket.php</code> file as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace Foggyline\Helpdesk\Controller\Adminhtml;
+
+class Ticket extends \Magento\Backend\App\Action
+{
+    protected $resultPageFactory;
+    protected $resultForwardFactory;
+    protected $resultRedirectFactory;
+
+    public function __construct(
+        \Magento\Backend\App\Action\Context $context,
+        \Magento\Framework\View\Result\PageFactory $resultPageFactory,
+        \Magento\Backend\Model\View\Result\ForwardFactory $resultForwardFactory
+    )
+    {
+        $this-&gt;resultPageFactory = $resultPageFactory;
+        $this-&gt;resultForwardFactory = $resultForwardFactory;
+        $this-&gt;resultRedirectFactory = $context-&gt; getResultRedirectFactory();
+        parent::__construct($context);
+    }
+
+    protected function _isAllowed()
+    {
+        return $this-&gt;_authorization-&gt; isAllowed('Foggyline_Helpdesk::ticket_manage');
+    }
+
+    protected function _initAction()
+    {
+        $this-&gt;_view-&gt;loadLayout();
+        $this-&gt;_setActiveMenu(
+            'Foggyline_Helpdesk::ticket_manage'
+        )-&gt;_addBreadcrumb(
+            __('Helpdesk'),
+            __('Tickets')
+        );
+        return $this;
+    }
+}</pre></div><p class="calibre7">There are<a id="id616" class="calibre1"/> a few things to note here. <code class="email">$this-&gt;resultPageFactory</code>, <code class="email">$this-&gt;resultForwardFactory</code> and <code class="email">$this-&gt;resultRedirectFactory</code> are objects to be used on the child (<code class="email">Index</code>, <code class="email">Grid</code>, and <code class="email">Close</code>), so we do not have to initiate them in each child class separately.</p><p class="calibre7">The <code class="email">_isAllowed()</code> method is extremely important every time we have a custom-defined controller or controller action that we want to check against our custom ACL resource. Here, we are the <code class="email">isAllowed</code> method call on the <code class="email">\Magento\Framework\AuthorizationInterface</code> type of object (<code class="email">$this-&gt;_authorization</code>). The parameter passed to the <code class="email">isAllowed</code> method call should be the ID value of our custom ACL resource.</p><p class="calibre7">We then have the <code class="email">_initAction</code> method, which is used for setting up logic shared across child classes, usually things like loading the entire layout, setting up the active menu flag, and adding breadcrumbs.</p><p class="calibre7">Moving forward, we define the <code class="email">Index</code> controller action within the <code class="email">app/code/Foggyline/Helpdesk/Controller/Adminhtml/Ticket/Index.php</code> file as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace Foggyline\Helpdesk\Controller\Adminhtml\Ticket;
+
+class Index extends \Foggyline\Helpdesk\Controller\Adminhtml\Ticket
+{
+    public function execute()
+    {
+        if ($this-&gt;getRequest()-&gt;getQuery('ajax')) {
+            $resultForward = $this-&gt;resultForwardFactory-&gt; create();
+            $resultForward-&gt;forward('grid');
+            return $resultForward;
+        }
+        $resultPage = $this-&gt;resultPageFactory-&gt;create();
+
+        $resultPage-&gt; setActiveMenu('Foggyline_Helpdesk::ticket_manage');
+        $resultPage-&gt;getConfig()-&gt;getTitle()-&gt; prepend(__('Tickets'));
+
+        $resultPage-&gt;addBreadcrumb(__('Tickets'), __('Tickets'));
+        $resultPage-&gt;addBreadcrumb(__('Manage Tickets'), __('Manage Tickets'));
+
+        return $resultPage;
+    }
+}</pre></div><p class="calibre7">Controller<a id="id617" class="calibre1"/> actions execute within their own class, within the <code class="email">execute</code> method. Our <code class="email">execute</code> method first checks if the coming request is the AJAX parameter within it. If there is an AJAX parameter, the request is forwarded to the <code class="email">Grid</code> action of the same controller.</p><p class="calibre7">If there is no AJAX controller, we simply create the instance of the <code class="email">\Magento\Framework\View\Result\PageFactory</code> object, and set title, active menu item, and breadcrumbs in it.</p><p class="calibre7">A logical question at this point would be how does all of this work and where can we see it. If we log in to the Magento admin area, under the <span class="strong"><strong class="calibre8">Customers</strong></span> menu we should be able to see the <span class="strong"><strong class="calibre8">Helpdesk Tickets</strong></span> menu item. This item, defined previously within <code class="email">app/code/Foggyline/Helpdesk/etc/adminhtml/menu.xml</code>, says the menu <code class="email">action</code> attribute equals to <code class="email">foggyline_helpdesk/ticket/index</code>, which basically translates to the <code class="email">Index</code> action of our <code class="email">Ticket</code> controller.</p><p class="calibre7">Once we click on the <span class="strong"><strong class="calibre8">Helpdesk Tickets</strong></span> link, Magento will hit the <code class="email">Index</code> action within its <code class="email">Ticket</code> controller and try to find the XML file that has the matching route <span class="strong"><em class="calibre9">{id}+{controller name }+{controller action name }+{xml file extension }</em></span>, which in our case translates to <span class="strong"><em class="calibre9">{foggyline_helpdesk}+{ticket}+{index}+{.xml}</em></span>.</p><p class="calibre7">At this point, we should be able to see the screen, as shown in the following screenshot:</p><div class="mediaobject"><img src="../images/00101.jpeg" alt="Creating controller actions" class="calibre10"/></div><p class="calibre11"> </p><p class="calibre7">However, if <a id="id618" class="calibre1"/>we now try to use sorting or filtering, we would get a broken layout. This is because based on arguments defined under the <code class="email">foggyline_helpdesk_ticket_grid_block.xml</code> file, we are missing the controller <code class="email">Grid</code> action. When we use sorting or filtering, the AJAX request hits the <code class="email">Index</code> controller and asks to be forwarded to the <code class="email">Grid</code> action, which we haven't defined yet.</p><p class="calibre7">We now define the <code class="email">Grid</code> action within the <code class="email">app/code/Foggyline/Helpdesk/Controller/Adminhtml/Ticket/Grid.php</code> file as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace Foggyline\Helpdesk\Controller\Adminhtml\Ticket;
+
+class Grid extends \Foggyline\Helpdesk\Controller\Adminhtml\Ticket
+{
+    public function execute()
+    {
+        $this-&gt;_view-&gt;loadLayout(false);
+        $this-&gt;_view-&gt;renderLayout();
+    }
+}</pre></div><p class="calibre7">There is only one <code class="email">execute</code> method with the <code class="email">Grid</code> controller action class, which is expected. The code within the <code class="email">execute</code> method simply calls the <code class="email">loadLayout(false)</code> method to prevent the entire layout loading, making it load only the bits defined under the <code class="email">foggyline_helpdesk_ticket_grid.xml</code> file. This effectively returns the grid HTML to the AJAX, which refreshes the grid on the page.</p><p class="calibre7">Finally, we need to handle the <code class="email">Close</code> action link we see on the grid. This link was defined as part of the column definition within the <code class="email">foggyline_helpdesk_ticket_grid_block.xml </code>file and points to <code class="email">*/*/close</code>, which translates to "router as relative from current URL / controller as relative from current URL / close action", which further equals to our <code class="email">Ticket</code> controller <code class="email">Close</code> action.</p><p class="calibre7">We define<a id="id619" class="calibre1"/> the <code class="email">Close</code> controller action under the <code class="email">app/code/Foggyline/Helpdesk/Controller/Adminhtml/Ticket/Close.php</code> file as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace Foggyline\Helpdesk\Controller\Adminhtml\Ticket;
+
+class Close extends \Foggyline\Helpdesk\Controller\Adminhtml\Ticket
+{
+    protected $ticketFactory;
+    protected $customerRepository;
+    protected $transportBuilder;
+    protected $inlineTranslation;
+    protected $scopeConfig;
+    protected $storeManager;
+
+    public function __construct(
+        \Magento\Backend\App\Action\Context $context,
+        \Magento\Framework\View\Result\PageFactory $resultPageFactory,
+        \Magento\Backend\Model\View\Result\ForwardFactory $resultForwardFactory,
+        \Foggyline\Helpdesk\Model\TicketFactory $ticketFactory,
+        \Magento\Customer\Api\CustomerRepositoryInterface $customerRepository,
+        \Magento\Framework\Mail\Template\TransportBuilder $transportBuilder,
+        \Magento\Framework\Translate\Inline\StateInterface $inlineTranslation,
+        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
+        \Magento\Store\Model\StoreManagerInterface $storeManager
+    )
+    {
+        $this-&gt;ticketFactory = $ticketFactory;
+        $this-&gt;customerRepository = $customerRepository;
+        $this-&gt;transportBuilder = $transportBuilder;
+        $this-&gt;inlineTranslation = $inlineTranslation;
+        $this-&gt;scopeConfig = $scopeConfig;
+        $this-&gt;storeManager = $storeManager;
+        parent::__construct($context, $resultPageFactory, $resultForwardFactory);
+    }
+
+    public function execute()
+    {
+        $ticketId = $this-&gt;getRequest()-&gt;getParam('id');
+        $ticket = $this-&gt;ticketFactory-&gt;create()-&gt;load($ticketId);
+
+        if ($ticket &amp;&amp; $ticket-&gt;getId()) {
+            try {
+                $ticket-&gt;setStatus(\Foggyline \Helpdesk\Model\Ticket::STATUS_CLOSED);
+                $ticket-&gt;save();
+                $this-&gt;messageManager-&gt;addSuccess(__('Ticket successfully closed.'));
+
+                /* Send email to customer */
+                $customer = $this-&gt;customerRepository-&gt; getById($ticket-&gt;getCustomerId());
+                $storeScope = \Magento\Store\Model\ ScopeInterface::SCOPE_STORE;
+                $transport = $this-&gt;transportBuilder
+                    -&gt;setTemplateIdentifier($this-&gt;scopeConfig-&gt; getValue('foggyline_helpdesk/email_template /customer', $storeScope))
+                    -&gt;setTemplateOptions(
+                        [
+                            'area' =&gt; \Magento\Framework\App\Area::AREA_ADMINHTML,
+                            'store' =&gt; $this-&gt;storeManager- &gt;getStore()-&gt;getId(),
+                        ]
+                    )
+                    -&gt;setTemplateVars([
+                        'ticket' =&gt; $ticket,
+                        'customer_name' =&gt; $customer-&gt; getFirstname()
+                    ])
+                    -&gt;setFrom([
+                        'name' =&gt; $this-&gt;scopeConfig-&gt; getValue('trans_email/ident_general /name', $storeScope),
+                        'email' =&gt; $this-&gt;scopeConfig-&gt; getValue('trans_email/ident_general /email', $storeScope)
+                    ])
+                    -&gt;addTo($customer-&gt;getEmail())
+                    -&gt;getTransport();
+                $transport-&gt;sendMessage();
+                $this-&gt;inlineTranslation-&gt;resume();
+                $this-&gt;messageManager-&gt;addSuccess(__('Customer notified via email.'));
+
+            } catch (Exception $e) {
+                $this-&gt;messageManager-&gt;addError(__('Error with closing ticket action.'));
+            }
+        }
+
+        $resultRedirect = $this-&gt;resultRedirectFactory-&gt;create();
+        $resultRedirect-&gt;setPath('*/*/index');
+
+        return $resultRedirect;
+    }
+}</pre></div><p class="calibre7">The <code class="email">Close</code> action controller has two separate roles to fulfill. One is to change the ticket status; the<a id="id620" class="calibre1"/> other is to send an e-mail to the customer using the proper e-mail template. The class constructor is being passed a lot of parameters that all instantiate the objects we will be juggling around.</p><p class="calibre7">Within the execute action, we first check for the existence of the <code class="email">id</code> parameter and then try to load a <code class="email">Ticket</code> entity through the ticket factory, based on the provided ID value. If the ticket exists, we set its status label to <code class="email">\Foggyline\Helpdesk\Model\Ticket::STATUS_CLOSED</code> and save it.</p><p class="calibre7">Following the ticket save is the e-mail-sending code, which is very similar to the one that we already saw in the customer <span class="strong"><strong class="calibre8">New Ticket</strong></span> save action. The difference is that the e-mail goes out from the admin user to the customer this time. We are setting the template ID to the configuration value at path <code class="email">foggyline_helpdesk/email_template/customer</code>. The <code class="email">setTemplateVars</code> method is passed to the member array this time, both <code class="email">ticket</code> and <code class="email">customer_name</code>, as they are both used in the e-mail template. The <code class="email">setFrom</code> method is passed the general store username and e-mail, and the <code class="email">sendMessage</code> method is called on the <code class="email">transport</code> object.</p><p class="calibre7">Finally, using the <code class="email">resultRedirectFactory</code> object, the user is redirected back to the tickets grid.</p><p class="calibre7">With this, we finalize our module functional requirement.</p><p class="calibre7">Though we are done with the functional requirement of a module, what remains for us as developers is to write tests. There are several types of tests, such as unit, functional, integration, and so on. To keep things simple, within this chapter we will cover only unit tests<a id="id621" class="calibre1"/> across a single model class.</p></div></div>
+<div class="book" title="Creating unit tests"><div class="book" id="318PC2-818f5224668745eb9070ddf1d85e6bfa"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch12lvl1sec95" class="calibre1"/>Creating unit tests</h1></div></div></div><p class="calibre7">This<a id="id622" class="calibre1"/> chapter assumes that we have PHPUnit configured and available<a id="id623" class="calibre1"/> on the command line. If this is not the case, PHPUnit can be installed using instructions from the <a class="calibre1" href="https://phpunit.de/">https://phpunit.de/</a> website.</p><p class="calibre7">To build and run tests using the PHPUnit testing framework, we need to define test locations and other configuration options via an XML file. Magento defines this XML configuration file under <code class="email">dev/tests/unit/phpunit.xml.dist</code>. Let's make a copy of that file under <code class="email">dev/tests/unit/phpunit-foggyline-helpdesk.xml</code>, with adjustments as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;phpunit  xsi:noNamespaceSchemaLocation="http://schema.phpunit.de/4.1 /phpunit.xsd"
+         colors="true"
+         bootstrap="./framework/bootstrap.php"
+        &gt;
+    &lt;testsuite name="Foggyline_Helpdesk - Unit Tests"&gt;
+        &lt;directory suffix="Test.php"&gt; ../../../app/code/Foggyline/Helpdesk/Test/Unit &lt;/directory&gt;
+    &lt;/testsuite&gt;
+    &lt;php&gt;
+        &lt;ini name="date.timezone" value="Europe/Zagreb"/&gt;
+        &lt;ini name="xdebug.max_nesting_level" value="200"/&gt;
+    &lt;/php&gt;
+    &lt;filter&gt;
+        &lt;whitelist addUncoveredFilesFromWhiteList="true"&gt;
+            &lt;directory suffix=".php"&gt; ../../../app/code/Foggyline/Helpdesk/*&lt;/directory&gt;
+            &lt;exclude&gt;
+                &lt;directory&gt; ../../../app/code/Foggyline/Form/Helpdesk &lt;/directory&gt;
+            &lt;/exclude&gt;
+        &lt;/whitelist&gt;
+    &lt;/filter&gt;
+    &lt;logging&gt;
+        &lt;log type="coverage-html" target="coverage_dir/Foggyline_Helpdesk/test- reports/coverage" charset="UTF-8" yui="true" highlight="true"/&gt;
+    &lt;/logging&gt;
+&lt;/phpunit&gt;</pre></div><div class="informalexample" title="Note"><h3 class="title2"><a id="tip26" class="calibre1"/>Tip</h3><p class="calibre7">We are making a special XML configuration file for our module alone because we want to quickly run a few of the tests contained within our module alone and not the entire Magento <code class="email">app/code</code> folder.</p></div><p class="calibre7">Given <a id="id624" class="calibre1"/>that the actual art of writing unit tests is beyond the scope of this book and writing the full unit test with 100 percent code coverage for this simple module would require at least a dozen more pages, we will only write a single test, one that covers the <code class="email">Ticket</code> entity model class.</p><p class="calibre7">We define our <code class="email">Ticket</code> entity model class test under the <code class="email">app/code/Foggyline/Helpdesk/Test/Unit/Model/TicketTest.php</code> file as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace Foggyline\Helpdesk\Test\Unit\Model;
+
+class TicketTest extends \PHPUnit_Framework_TestCase
+{
+    protected $objectManager;
+    protected $ticket;
+
+    public function setUp()
+    {
+        $this-&gt;objectManager = new \Magento\Framework\TestFramework\Unit\Helper \ObjectManager($this);
+        $this-&gt;ticket = $this-&gt;objectManager-&gt; getObject('Foggyline\Helpdesk\Model\Ticket');
+    }
+
+    public function testGetSeveritiesOptionArray()
+    {
+        $this-&gt; assertNotEmpty(\Foggyline \Helpdesk\Model\Ticket::getSeveritiesOptionArray());
+    }
+
+    public function testGetStatusesOptionArray()
+    {
+        $this-&gt;assertNotEmpty(\Foggyline \Helpdesk\Model\Ticket::getStatusesOptionArray());
+    }
+
+    public function testGetStatusAsLabel()
+    {
+        $this-&gt;ticket-&gt;setStatus(\Foggyline\Helpdesk \Model\Ticket::STATUS_CLOSED);
+
+        $this-&gt;assertEquals(
+            \Foggyline\Helpdesk\Model\Ticket::$statusesOptions [\Foggyline\Helpdesk\Model\Ticket::STATUS_CLOSED],
+            $this-&gt;ticket-&gt;getStatusAsLabel()
+        );
+    }
+
+    public function testGetSeverityAsLabel()
+    {
+        $this-&gt;ticket-&gt;setSeverity(\Foggyline \Helpdesk\Model\Ticket::SEVERITY_MEDIUM);
+
+        $this-&gt;assertEquals(
+            \Foggyline\Helpdesk\Model\Ticket::$severitiesOptions [\Foggyline\Helpdesk\Model\Ticket::SEVERITY_MEDIUM],
+            $this-&gt;ticket-&gt;getSeverityAsLabel()
+        );
+    }
+}</pre></div><p class="calibre7">The location<a id="id625" class="calibre1"/> of test files should map those of the files being tested. The naming of the test file should also follow the naming of the file being tested with the suffix <code class="email">Test</code> attached to it. This means that if our <code class="email">Ticket</code> model is located under the modules <code class="email">Model/Ticket.php</code> file, then our test should be located under <code class="email">Test/Unit/TicketTest.php</code>.</p><p class="calibre7">Our <code class="email">Foggyline\Helpdesk\Test\Unit\Model\TicketTest</code> extends the <code class="email">\PHPUnit_Framework_TestCase</code> class. There is a <code class="email">setUp</code> method we need to define, which acts like a constructor, where we set up the variables and everything that requires initializing.</p><p class="calibre7">Using Magento <code class="email">ObjectManager</code>, we instantiate the <code class="email">Ticket</code> model, which is then used within the test methods. The actual test methods follow a simple naming pattern, where the name of the method from the <code class="email">Ticket</code> model matches the {<span class="strong"><em class="calibre9">test}+{method name}</em></span> from the <code class="email">TicketTest</code> class.</p><p class="calibre7">We defined four test methods: <code class="email">testGetSeveritiesOptionArray</code>, <code class="email">testGetStatusesOptionArray</code>, <code class="email">testGetStatusAsLabel</code>, and <code class="email">testGetSeverityAsLabel</code>. Within the test methods, we are using only <code class="email">assertEquals</code> and <code class="email">assertNotEmpty</code> methods from the PHPUnit testing framework library to do basic checks.</p><p class="calibre7">We can now open a console, change the directory to our Magento installation directory, and execute the following command:</p><div class="informalexample"><pre class="programlisting">phpunit -c dev/tests/unit/phpunit-foggyline-helpdesk.xml</pre></div><p class="calibre7">After the<a id="id626" class="calibre1"/> command executes, the console should show an output as shown:</p><div class="informalexample"><pre class="programlisting">PHPUnit 4.7.6 by Sebastian Bergmann and contributors.
+....
+
+Time: 528 ms, Memory: 11.50Mb
+
+OK (4 tests, 4 assertions)
+
+Generating code coverage report in HTML format ... done</pre></div><p class="calibre7">Looking back at our <code class="email">dev/tests/unit/phpunit-foggyline-helpdesk.xml</code> file, under the <code class="email">target</code> attribute of the <code class="email">phpunit</code> &gt; <code class="email">logging</code> &gt; <code class="email">log</code> element, we can see that the test report is dumped into the <code class="email">coverage_dir/Foggyline_Helpdesk/test-reports/coverage</code> folder relative to the XML file.</p><p class="calibre7">If we open the <code class="email">dev/tests/unit/coverage_dir/Foggyline_Helpdesk/test-reports/coverage/</code> folder, we should see a whole lot of files generated there, as shown in the following screenshot:</p><div class="mediaobject"><img src="../images/00102.jpeg" alt="Creating unit tests" class="calibre10"/></div><p class="calibre11"> </p><p class="calibre7">Opening the <code class="email">index.html</code> file in the browser should give us a page as shown in the following screenshot:</p><div class="mediaobject"><img src="../images/00103.jpeg" alt="Creating unit tests" class="calibre10"/></div><p class="calibre11"> </p><p class="calibre7">We can <a id="id627" class="calibre1"/>see the code coverage report showing 60% on lines and methods for our <code class="email">Model</code> folder and 0% for the rest. This is because we only wrote the test for the <code class="email">Ticket</code> entity model class, whereas the rest remain untested.</p></div>
+<div class="book" title="Summary" id="3279U1-818f5224668745eb9070ddf1d85e6bfa"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch12lvl1sec96" class="calibre1"/>Summary</h1></div></div></div><p class="calibre7">This chapter gave a full step-by-step guide to writing a simple yet functional Magento module. Seemingly simple in terms of functionality, we can see that the module code is significantly scattered across multiple PHP, XML, and PHMTL files.</p><p class="calibre7">With this simple module, we covered quite a lot of various Magento platform parts, from routes, ACLs, controllers, blocks, XML layouts, grids, controller actions, models, resources, collections, install scripts, interactions with session, e-mail templates, e-mail transport, and layout objects.</p><p class="calibre7">At the end, we wrote a few simple unit tests for our models. Although the practice is to write unit tests for all of our PHP code, we opted for a shorter version or else we would need more pages to cover everything.</p><p class="calibre7">The full module code is available here: <a class="calibre1" href="https://github.com/ajzele/B05032-Foggyline_Helpdesk">https://github.com/ajzele/B05032-Foggyline_Helpdesk</a>.</p><p class="calibre7">With this being the last chapter, let us look at a short overview of the things we learned throughout the whole book. Our journey started by grasping the Magento platform architecture, where we gained significant insight into the technology stack behind it. We then progressed to environment management. Although it might seem like a wrong order of things, we opted for this next step in order to quickly get us set for development. We then looked into programming concepts and conventions, which served as a precursor to actual hands-on development bits. Details of entity persistence were shown through model, resource, collection classes, and indexers. We further covered the importance and practical details of dependency injection and interception. Backend and frontend-related development was covered in their own two chapters, outlining the most common bits and pieces for making customizations to our Magento platform. We then dug into details of the web API, showing how to make authenticated API calls and even define our own APIs. Along the way, we covered a few major functional areas as well, such as customers, reports, import export, cart, and so on. The testing and QA took up a significant chunk as we briefly covered all forms of available tests. Finally, we used what we learned to build a fully functional module.</p><p class="calibre7">Although we have covered a significant path on our journey, this is merely a first step. Given its massive code base, diverse technology stacks, and feature list, Magento is not an easy platform to master. Hopefully, this book will give enough incentive to take further steps into profiling ourselves as true Magento experts.</p></div></body></html>

@@ -1,0 +1,1234 @@
+<html><head></head><body>
+<div id="page" style="height:0pt"/><div class="book" title="Chapter&#xA0;9.&#xA0;The Web API"><div class="book" id="1T1402-818f5224668745eb9070ddf1d85e6bfa"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch09" class="calibre1"/>Chapter 9. The Web API</h1></div></div></div><p class="calibre7">Throughout previous chapters, we learned how to use some of the backend components so that storeowners can manage and manipulate the data such as customers, products, categories, orders, and so on. Sometimes this is not enough, like when we are pulling data in or out from third-party systems. In cases like these, the Magento Web API framework makes it easy to call Magento services through REST or SOAP.</p><p class="calibre7">In this chapter, we will cover the following topics:</p><div class="book"><ul class="itemizedlist"><li class="listitem">User types</li><li class="listitem">Authentication methods</li><li class="listitem">REST versus SOAP</li><li class="listitem">Hands-on with token-based authentication</li><li class="listitem">Hands-on with OAuth-based authentication</li><li class="listitem">OAuth-based Web API calls</li><li class="listitem">Hands-on with session-based authentication</li><li class="listitem">Creating custom Web APIs</li><li class="listitem">Search Criteria Interface for list filtering</li></ul></div><p class="calibre7">Before we can start making Web API calls, we must authenticate our identity and have the necessary permissions (authorization) to access the API resource. Authentication allows Magento to identify the caller's user type. Based on the user's (administrator, integration, customer, or guest) access rights, the API calls' resource accessibility is determined.</p></div>
+
+<div class="book" title="Chapter&#xA0;9.&#xA0;The Web API">
+<div class="book" title="User types"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_1"><a id="ch09lvl1sec57" class="calibre1"/>User types</h1></div></div></div><p class="calibre7">The <a id="id364" class="calibre1"/>list of resources that we can access depends on our user type and is defined within our module <code class="email">webapi.xml</code> configuration file.</p><p class="calibre7">There are three types of users known to API, listed as follows:</p><div class="book"><ul class="itemizedlist"><li class="listitem"><span class="strong"><strong class="calibre8">Administrator or integration</strong></span>: Resources <a id="id365" class="calibre1"/>for which administrators or integrators are authorized. For example, if administrators are authorized for the <code class="email">Magento_Cms::page resource</code>, they can make a <code class="email">POST /V1/cmsPage</code> call.</li><li class="listitem"><span class="strong"><strong class="calibre8">Customer</strong></span>: Resources for which customers are authorized. These are the resources <a id="id366" class="calibre1"/>with anonymous or self permission.</li><li class="listitem"><span class="strong"><strong class="calibre8">Guest user</strong></span>: Resources for which guests are authorized. These are the resources <a id="id367" class="calibre1"/>with anonymous permission.</li></ul></div><p class="calibre7">Two<a id="id368" class="calibre1"/> files play a crucial role toward defining an API: our module <code class="email">acl.xml</code> and <code class="email">webapi.xml</code> files.</p><p class="calibre7"><code class="email">acl.xml</code> is <a id="id369" class="calibre1"/>where we define our module <span class="strong"><strong class="calibre8">access control list</strong></span> (<span class="strong"><strong class="calibre8">ACL</strong></span>). It defines an available set of permissions to access the resources. The <code class="email">acl.xml</code> files across all Magento modules are consolidated to build an ACL tree that is used to select allowed admin role resources or third-party integration's access (<span class="strong"><strong class="calibre8">System</strong></span> | <span class="strong"><strong class="calibre8">Extensions</strong></span> | <span class="strong"><strong class="calibre8">Integrations</strong></span> | <span class="strong"><strong class="calibre8">Add New Integration</strong></span> | <span class="strong"><strong class="calibre8">Available APIs</strong></span>).</p><p class="calibre7"><code class="email">webapi.xml</code> is where we define Web API resources and their permissions. When we create <code class="email">webapi.xml</code>, the permissions defined in <code class="email">acl.xml</code> are referenced to create access rights for each API resource.</p><p class="calibre7">Let's take a look at the following (truncated) <code class="email">webapi.xml</code> from the core <code class="email">Magento_Cms</code> module:</p><div class="informalexample"><pre class="programlisting">&lt;routes  xsi:noNamespaceSchemaLocation= "urn:magento:module:Magento_Webapi:etc/webapi.xsd"&gt;
+    ...
+    &lt;route url="/V1/cmsPage" method="POST"&gt;
+        &lt;service class="Magento\Cms\Api\PageRepositoryInterface" method="save" /&gt;
+        &lt;resources&gt;
+            &lt;resource ref="Magento_Cms::page" /&gt;
+        &lt;/resources&gt;
+    &lt;/route&gt;
+    ...
+    &lt;route url="/V1/cmsBlock/search" method="GET"&gt;
+        &lt;service class="Magento\Cms\Api\BlockRepositoryInterface" method="getList" /&gt;
+        &lt;resources&gt;
+            &lt;resource ref="Magento_Cms::block" /&gt;
+        &lt;/resources&gt;
+    &lt;/route&gt;
+    ...
+&lt;/routes&gt;</pre></div><p class="calibre7">In the preceding <code class="email">webapi.xml</code> file for the CMS page API, only a user with <code class="email">Magento_Cms::page</code> authorization can access <code class="email">POST /V1/cmsPage</code> or <code class="email">GET /V1/cmsBlock/search</code>. We will get back to a more detailed explanation of route later on in our examples; for the moment, our focus is on <code class="email">resource</code>. We can assign multiple child <code class="email">resource</code> elements under resources. In cases like these, it would be sufficient for a user to have any one of those ACLs assigned to be able to make an API call.</p><p class="calibre7">The <a id="id370" class="calibre1"/>actual authorization is then granted to either an administrator or integration, defined in the Magento admin, with full group or a specific resource selected in the ACL tree as shown in the following screenshot:</p><div class="mediaobject"><img src="../images/00061.jpeg" alt="User types" class="calibre10"/></div><p class="calibre11"> </p><p class="calibre7">Given that <code class="email">webapi.xml</code> and <code class="email">acl.xml</code> go hand in hand, let's take a look at the (truncated) <code class="email">acl.xml</code> file from the core <code class="email">Magento_Cms</code> module:</p><div class="informalexample"><pre class="programlisting">&lt;resources&gt;
+    &lt;resource id="Magento_Backend::admin"&gt;
+        &lt;resource id="Magento_Backend::content"&gt;
+            &lt;resource id="Magento_Backend::content_elements"&gt;
+                &lt;resource id="Magento_Cms::page" ...&gt;
+                    ...
+                &lt;/resource&gt;
+            &lt;/resource&gt;
+        &lt;/resource&gt;
+    &lt;/resource&gt;
+&lt;/resources&gt;</pre></div><p class="calibre7">Notice how the position of the <code class="email">Magento_Cms::page</code> resource is nested under <code class="email">Magento_Backend::content_elements</code>, which in turn is nested under <code class="email">Magento_Backend::content</code>, which is further nested under <code class="email">Magento_Backend::admin</code>. This tells Magento where to render the ACL under Magento admin when showing the <span class="strong"><strong class="calibre8">Roles Resources</strong></span> tree as shown in the previous screenshot. This does not mean that the user authorized against the <code class="email">Magento_Cms::page</code> resource won't be able to access the API if all those parent <code class="email">Magento_Backend</code> resources are granted to him as well.</p><p class="calibre7">Authorizing against a resource is sort of a flat thing. There is no tree check when authorizing. Thus, each resource is required to have a unique <code class="email">id</code> attribute value on a <code class="email">resource</code> element when defined under <code class="email">acl.xml</code>.</p><p class="calibre7">The resources just defined are what we listed before as resources for which administrators or integrators are authorized.</p><p class="calibre7">The <a id="id371" class="calibre1"/>customer, on the other hand, is assigned a resource named <code class="email">anonymous</code> or <code class="email">self</code>. If we were to do a full <code class="email">&lt;resource ref="anonymous" /&gt;</code> string search across all Magento core modules, several occurrences would show up.</p><p class="calibre7">Let's take a look at the (truncated) core module <code class="email">vendor/magento/module-catalog/etc/webapi.xml</code> file:</p><div class="informalexample"><pre class="programlisting">&lt;route url="/V1/products" method="GET"&gt;
+    &lt;service class= "Magento\Catalog\Api\ProductRepositoryInterface" method="getList"/&gt;
+    &lt;resources&gt;
+        &lt;resource ref="anonymous" /&gt;
+    &lt;/resources&gt;
+&lt;/route&gt;</pre></div><p class="calibre7">The preceding XML defines an API endpoint path with a value of <code class="email">/V1/products</code>, available via the <span class="strong"><strong class="calibre8">HTTP GET</strong></span> method. It further defines a resource called <code class="email">anonymous</code>, which means either the currently logged-in customer or guest user can call this API endpoint.</p><p class="calibre7"><code class="email">anonymous</code> is a special permission that doesn't need to be defined in <code class="email">acl.xml</code>. As such, it will not show up in the permissions tree under Magento admin. This simply means that the current resource in <code class="email">webapi.xml</code> can be accessed without the need for authentication.</p><p class="calibre7">Finally, we take a look at the <code class="email">self</code> resource, whose example we can find under the (truncated) <code class="email">vendor/magento/module-customer/etc/webapi.xml</code> file as follows:</p><div class="informalexample"><pre class="programlisting">&lt;route url="/V1/customers/me" method="PUT"&gt;
+    &lt;service class= "Magento\Customer\Api\CustomerRepositoryInterface" method="save"/&gt;
+    &lt;resources&gt;
+        &lt;resource ref="self"/&gt;
+    &lt;/resources&gt;
+    &lt;data&gt;
+        &lt;parameter name="customer.id" force="true"&gt;%customer_id%&lt;/parameter&gt;
+    &lt;/data&gt;
+&lt;/route&gt;</pre></div><p class="calibre7"><code class="email">self</code> is a special kind of access that enables a user to access resources they own, assuming we already have an authenticated session with the system. For example, <code class="email">GET /V1/customers/me</code> fetches the logged-in customer's details. This is something that is typically <a id="id372" class="calibre1"/>useful for JavaScript-based components/widgets.</p></div></div>
+<div class="book" title="Authentication methods" id="1TVKI1-818f5224668745eb9070ddf1d85e6bfa"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch09lvl1sec58" class="calibre1"/>Authentication methods</h1></div></div></div><p class="calibre7">Mobile <a id="id373" class="calibre1"/>applications, third-party applications, and JavaScript components/widgets (storefront or admin) are the three main types of clients as seen by Magento. Though a client is basically everything communicating with our APIs, each type of client has a preferred authentication method.</p><p class="calibre7">Magento supports three types of authentication methods, listed as follows:</p><div class="book"><ul class="itemizedlist"><li class="listitem">Token-based authentication</li><li class="listitem">OAuth-based authentication</li><li class="listitem">Session-based authentication</li></ul></div><p class="calibre7"><span class="strong"><strong class="calibre8">Token-based authentication</strong></span> is most suitable for mobile applications, where a token acts like <a id="id374" class="calibre1"/>an electronic key providing access to the Web API's. The general concept behind a token-based authentication system is relatively simple. The user provides a username and password during initial authentication in order to obtain a time-limited token from the system. If a token is successfully obtained, all subsequent API calls are then made with that token.</p><p class="calibre7"><span class="strong"><strong class="calibre8">OAuth-based authentication</strong></span> is suitable for third-party applications that integrate with Magento. Once<a id="id375" class="calibre1"/> an application is authorized through the <span class="strong"><strong class="calibre8">OAuth 1.0a handshake process</strong></span>, it gains access to Magento <a id="id376" class="calibre1"/>Web APIs. There are three key terminologies we must understand here: <span class="strong"><em class="calibre9">user</em></span> (resource owner), <span class="strong"><em class="calibre9">client</em></span> (consumer), and <span class="strong"><em class="calibre9">server</em></span> (service provider). The user or resource owner is the one who is being asked to allow access to its protected resource. Imagine a customer as a user (resource owner) allowing access to its orders to some third-party applications. In such a case, this third-party application would be the client (consumer), whereas Magento and its Web API would be the server (service provider).</p><p class="calibre7"><span class="strong"><strong class="calibre8">Session-based authentication</strong></span> is probably the simplest one to grasp. As a customer, you log in<a id="id377" class="calibre1"/> to the Magento storefront with your customer credentials. As an admin, you log in to the Magento admin with your admin credentials. The Magento Web API framework uses your logged-in session information to verify your identity and authorize access to the requested resource.</p></div>
+<div class="book" title="REST versus SOAP" id="1UU541-818f5224668745eb9070ddf1d85e6bfa"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch09lvl1sec59" class="calibre1"/>REST versus SOAP</h1></div></div></div><p class="calibre7">Magento<a id="id378" class="calibre1"/> supports both <span class="strong"><strong class="calibre8">SOAP</strong></span> (short for <span class="strong"><strong class="calibre8">Simple Object Access Protocol</strong></span>) and <span class="strong"><strong class="calibre8">REST</strong></span> (short for <span class="strong"><strong class="calibre8">Representational State Transfer</strong></span>) types of communication <a id="id379" class="calibre1"/>with the Web API. Authentication methods themselves are not really bound to any of them. We can use the same authentication method and Web API method calls with both SOAP and REST.</p><p class="calibre7">Some of the REST specifics we might outline as follows:</p><div class="book"><ul class="itemizedlist"><li class="listitem">We run REST Web API calls through cURL commands or a REST client.</li><li class="listitem">Requests <a id="id380" class="calibre1"/>support <code class="email">HTTP</code> verbs: <code class="email">GET</code>, <code class="email">POST</code>, <code class="email">PUT</code>, or <code class="email">DELETE</code>.</li><li class="listitem">A <code class="email">HTTP</code> header requires an authorization parameter, specifying the authentication token with the <span class="strong"><strong class="calibre8">Bearer HTTP authorization scheme</strong></span>, <code class="email">Authorization: Bearer &lt;TOKEN&gt;</code>. <code class="email">&lt;TOKEN&gt;</code> is the authentication token returned by the Magento token service.</li><li class="listitem">We can use the <code class="email">HTTP</code> header <code class="email">Accept: application/&lt;FORMAT&gt;</code>, where <code class="email">&lt;FORMAT&gt;</code> is either JSON or XML.</li></ul></div><p class="calibre7">Some of the SOAP specifics we might outline as follows:</p><div class="book"><ul class="itemizedlist"><li class="listitem">We<a id="id381" class="calibre1"/> run SOAP Web API calls through cURL commands or a SOAP client.</li><li class="listitem">A <span class="strong"><strong class="calibre8">Web Service D</strong></span><span class="strong"><strong class="calibre8">efinition Language</strong></span> (<span class="strong"><strong class="calibre8">WSDL</strong></span>) file is generated only for services that we request. There is no one big merged WSDL file for all services.</li><li class="listitem">The Magento Web API uses WSDL 1.2, compliant with WS-I 2.0 Basic Profile.</li><li class="listitem">Each Magento service interface that is part of a service contract is represented as a separate service in the WSDL.</li><li class="listitem">Consuming several services implies specifying them in the WSDL endpoint URL in a comma-separated manner, for example <code class="email">http://&lt;magento.host&gt;/soap/&lt;optional_store_code&gt;?wsdl&amp;services=&lt;service_name_1&gt;,&lt;service_name_2&gt;</code>.</li><li class="listitem">We can get a list of all available services by hitting a URL like <code class="email">http://&lt;SHOP-URL&gt;/soap/default?wsdl_list</code> in the browser.</li></ul></div><p class="calibre7">The following REST and SOAP examples will make extensive use of cURL, which is essentially a program that allows you to make HTTP requests from the command line or different language implementations (like PHP). We can further describe cURL as the console browser, or our <span class="strong"><em class="calibre9">view source</em></span> tool for the web. Anything we can do with various fancy REST and SOAP libraries, we can do with cURL as well; it is just considered to be a more low-level approach.</p><p class="calibre7">Doing SOAP requests with cURL or anything else that does not have WSDL/XML parsing implemented internally is cumbersome. Thus, using PHP SoapClient or something more robust is a must. <span class="strong"><strong class="calibre8">SoapClient</strong></span> is an integrated, actively maintained part of PHP, and is thus generally available.</p><p class="calibre7">With<a id="id382" class="calibre1"/> negative points being pointed, we will still present all of our <a id="id383" class="calibre1"/>API calls with console cURL, PHP cURL, and PHP SoapClient examples. Given<a id="id384" class="calibre1"/> that libraries abstract so much functionality, it is absolutely essential that a developer has a solid understanding of cURL, even for making SOAP calls.</p></div>
+<div class="book" title="Hands-on with token-based authentication"><div class="book" id="1VSLM2-818f5224668745eb9070ddf1d85e6bfa"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch09lvl1sec60" class="calibre1"/>Hands-on with token-based authentication</h1></div></div></div><p class="calibre7">The<a id="id385" class="calibre1"/> crux of token-based authentication is as follows:</p><div class="book"><ul class="itemizedlist"><li class="listitem">Client requests access with a username and password</li><li class="listitem">Application validates credentials</li><li class="listitem">Application provides a signed token to the client</li></ul></div><p class="calibre7">The following code example demonstrates the console cURL REST-like request for the customer user:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre8">curl -X POST "http://magento2.ce/rest/V1/integration/customer/token"\</strong></span>
+<span class="strong"><strong class="calibre8">    -H "Content-Type:application/json"\</strong></span>
+<span class="strong"><strong class="calibre8">    -d '{"username":"john@change.me", "password":"abc123"}'</strong></span>
+</pre></div><p class="calibre7">The following code example demonstrates the PHP cURL REST-like request for the customer user:</p><div class="informalexample"><pre class="programlisting">$data = array('username' =&gt; 'john@change.me', 'password' =&gt; 'abc123');
+$data_string = json_encode($data);
+
+$ch = curl_init('http://magento2.ce/rest/V1/integration /customer/token');
+  curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+  curl_setopt($ch, CURLOPT_POSTFIELDS, $data_string);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+    'Content-Type: application/json',
+    'Content-Length: ' . strlen($data_string))
+);
+
+$result = curl_exec($ch);</pre></div><p class="calibre7">The following code example demonstrates the console cURL SOAP-like request for the customer user:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre8">curl -X POST -H 'Content-Type: application/soap+xml;</strong></span>
+<span class="strong"><strong class="calibre8">charset=utf-8; action= "integrationCustomerTokenServiceV1CreateCustomerAccessToken"'</strong></span>
+<span class="strong"><strong class="calibre8">-d @request.xml http://magento2.ce/index.php/soap/default?services= integrationCustomerTokenServiceV1</strong></span>
+</pre></div><p class="calibre7">Notice<a id="id386" class="calibre1"/> the <code class="email">-d @request.xml</code> part. Here, we are saying to the <code class="email">curl</code> command to take the content of the <code class="email">request.xml</code> file and pass it on as <code class="email">POST</code> body data where the content of the <code class="email">request.xml</code> file for the preceding <code class="email">curl</code> command is defined as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;env:Envelope  &gt;
+    &lt;env:Body&gt;
+        &lt;ns1:integrationCustomerTokenServiceV1CreateCustomer AccessTokenRequest&gt;
+            &lt;username&gt;john@change.me&lt;/username&gt;
+            &lt;password&gt;abc123&lt;/password&gt;
+        &lt;/ns1:integrationCustomerTokenServiceV1CreateCustomer AccessTokenRequest&gt;
+    &lt;/env:Body&gt;
+&lt;/env:Envelope&gt;</pre></div><p class="calibre7">The following code example demonstrates the PHP cURL SOAP-like request for the customer user:</p><div class="informalexample"><pre class="programlisting">$data_string = file_get_contents('request.xml');
+
+$ch = curl_init('http://magento2.ce/index.php/soap/default?services= integrationCustomerTokenServiceV1');
+  curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+  curl_setopt($ch, CURLOPT_POSTFIELDS, $data_string);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+    'Content-Type: application/soap+xml; charset=utf-8; action="integrationCustomerTokenServiceV1 CreateCustomerAccessToken"',
+    'Content-Length: ' . strlen($data_string))
+);
+
+$result = curl_exec($ch);</pre></div><p class="calibre7">The following code example demonstrates the usage of PHP SoapClient to make a Web API call:</p><div class="informalexample"><pre class="programlisting">$request = new SoapClient(
+    'http://magento2.ce/index.php/soap/default?wsdl&amp;services= integrationCustomerTokenServiceV1',
+    array('soap_version' =&gt; SOAP_1_2, 'trace' =&gt; 1)
+);
+
+$token = $request-&gt;integrationCustomerTokenServiceV1Create CustomerAccessToken(array('username' =&gt; 'john@change.me', 'password' =&gt; 'abc123'));</pre></div><p class="calibre7">The <a id="id387" class="calibre1"/>API call for admin user authentication is nearly identical, and depends on which one of three approaches we take. The difference is merely in using <code class="email">https://magento2.ce/rest/V1/integration/admin/token</code> as the endpoint URL in the case of REST, and using <code class="email">http://magento2.ce/index.php/soap/default?services=integrationCustomerTokenServiceV1</code>. Additionally, for a SOAP call, we are calling <code class="email">integrationAdminTokenServiceV1CreateAdminAccessToken</code> on the <code class="email">$request</code> object.</p><p class="calibre7">In the case of successful authentication, for both the customer and admin API call, the response would be a random-looking 32-characters-long string that we call token. This token is further saved to the <code class="email">oauth_token</code> table in the database, under the token column.</p><p class="calibre7">This might be a bit confusing with regard to what the <code class="email">oauth_token</code> table has to do with token authentication.</p><div class="informalexample" title="Note"><h3 class="title2"><a id="note17" class="calibre1"/>Note</h3><p class="calibre7">If we think about it, token-based authentication can be looked at as a simplified version of OAuth, where the user would authenticate using a username and password and then give the obtained time-expiring token to some third-party application to use it.</p></div><p class="calibre7">In the case of failed authentication, the server returns <span class="strong"><strong class="calibre8">HTTP 401 Unauthorized</strong></span>, with a body containing a JSON message:</p><div class="informalexample"><pre class="programlisting">{"message":"Invalid login or password."}</pre></div><p class="calibre7">Notice how we are able to call the API method, though we are not already authenticated? This means we must be calling an API defined by the anonymous type of resource. A quick look at the API endpoint gives us a hint as to the location of its definition. Looking under the <code class="email">vendor/magento/module-integration/etc/webapi.xml</code> file, we can see the following (truncated) XML:</p><div class="informalexample"><pre class="programlisting">&lt;route url="/V1/integration/admin/token" method="POST"&gt;
+    &lt;service class="Magento\Integration\Api\AdminTokenServiceInterface" method="createAdminAccessToken"/&gt;
+    &lt;resources&gt;
+        &lt;resource ref="anonymous"/&gt;
+    &lt;/resources&gt;
+&lt;/route&gt;
+&lt;route url="/V1/integration/customer/token" method="POST"&gt;
+    &lt;service class="Magento\Integration\Api\ CustomerTokenServiceInterface" method="createCustomerAccessToken"/&gt;
+    &lt;resources&gt;
+        &lt;resource ref="anonymous"/&gt;
+    &lt;/resources&gt;
+&lt;/route&gt;</pre></div><p class="calibre7">We<a id="id388" class="calibre1"/> can clearly see how even token-based authentication itself is defined as API, using the anonymous resource so that everyone can access it. In a nutshell, token-based authentication is a feature of the <code class="email">Magento\Integration</code> module.</p><p class="calibre7">Now that we have our authentication token, we can start making other API calls. Remember, token simply means we have been authenticated against a given username and password. It does not mean we get full access to all Web API methods. This further depends on whether our customer or user has the proper access role.</p></div>
+<div class="book" title="Hands-on with OAuth-based authentication"><div class="book" id="20R682-818f5224668745eb9070ddf1d85e6bfa"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch09lvl1sec61" class="calibre1"/>Hands-on with OAuth-based authentication</h1></div></div></div><p class="calibre7">OAuth-based<a id="id389" class="calibre1"/> authentication is the most complex, yet most flexible one supported by Magento. Before we get to use it, the merchant must register our external application as integration with the Magento instance. Placing ourselves in the role of merchant, we do so in the Magento admin area under <span class="strong"><strong class="calibre8">System</strong></span> | <span class="strong"><strong class="calibre8">Extensions</strong></span> | <span class="strong"><strong class="calibre8">Integrations</strong></span>. Clicking on the <span class="strong"><strong class="calibre8">Add New Integration</strong></span> button opens the screen as shown in the following screenshot:</p><div class="mediaobject"><img src="../images/00062.jpeg" alt="Hands-on with OAuth-based authentication" class="calibre10"/></div><p class="calibre11"> </p><p class="calibre7">The value <code class="email">External Book App</code> is the freely given name of our external application. If we were connecting it with Twitter, we could have easily put its name here. Next to <span class="strong"><strong class="calibre8">Name</strong></span>, we have the <span class="strong"><strong class="calibre8">Email</strong></span>, <span class="strong"><strong class="calibre8">Callback URL</strong></span>, and <span class="strong"><strong class="calibre8">Identity Link URL</strong></span> fields. The value of e-mail is not really that important. The callback URL and identity link URL define the external application endpoint that receives OAuth credentials. The values of these links point to <span class="strong"><em class="calibre9">external app</em></span> that stands as the OAuth client. We will come back to it in a moment.</p><p class="calibre7">In<a id="id390" class="calibre1"/> the <span class="strong"><strong class="calibre8">API</strong></span> tab under the <span class="strong"><strong class="calibre8">Available APIs</strong></span> pane, we set <span class="strong"><strong class="calibre8">Resource Access</strong></span> to the value of <span class="strong"><strong class="calibre8">All</strong></span> or <span class="strong"><strong class="calibre8">Custom</strong></span>. If set to <span class="strong"><strong class="calibre8">Custom</strong></span>, we can further fine-tune the resources in the <span class="strong"><strong class="calibre8">Resources</strong></span> option we want to allow access to this integration as shown in the following screenshot:</p><div class="mediaobject"><img src="../images/00063.jpeg" alt="Hands-on with OAuth-based authentication" class="calibre10"/></div><p class="calibre11"> </p><p class="calibre7">We <a id="id391" class="calibre1"/>should always give the minimum required resources to the external application we are using. This way, we minimize possible security risks. The preceding screenshot shows us defining only <code class="email">Sales</code>, <code class="email">Products</code>, <code class="email">Customer</code>, and <code class="email">Marketing</code> resources to the integration. This means that the API user would not be able to use content resources, such as save or delete pages.</p><p class="calibre7">If we click the <span class="strong"><strong class="calibre8">Save</strong></span> button now, we should be redirected back to the <span class="strong"><strong class="calibre8">System</strong></span> | <span class="strong"><strong class="calibre8">Extensions</strong></span> | <span class="strong"><strong class="calibre8">Integrations</strong></span> screen as shown in the following screenshot:</p><div class="mediaobject"><img src="../images/00064.jpeg" alt="Hands-on with OAuth-based authentication" class="calibre10"/></div><p class="calibre11"> </p><p class="calibre7">There are three things to focus our attention here. First, we are seeing an <span class="strong"><strong class="calibre8">Integration not secure</strong></span> message. This is because when we defined our callback URL and identity link URL, we used HTTP and not HTTPS protocol. When doing real-world connections, for security reasons, we need to be sure to use HTTPS. Further, we notice how the <span class="strong"><strong class="calibre8">Status</strong></span> column still says <span class="strong"><strong class="calibre8">Inactive</strong></span>.</p><p class="calibre7">The <span class="strong"><strong class="calibre8">Activate</strong></span> link, to the right of the <span class="strong"><strong class="calibre8">Status</strong></span> column, is the preceding step before the two-legged OAuth handshake starts. Only an administrator with access to integration listing in the backend can initiate this.</p><p class="calibre7">At this<a id="id392" class="calibre1"/> point, we need to pull the entire PHP code behind the <code class="email">External Book App</code> OAuth client from here, <a class="calibre1" href="https://github.com/ajzele/B05032-BookAppOauthClient">https://github.com/ajzele/B05032-BookAppOauthClient</a>, and place it into the root <a id="id393" class="calibre1"/>of our Magento installation under the <code class="email">pub/external-book-app/</code> folder as shown in the following screenshot:</p><div class="mediaobject"><img src="../images/00065.jpeg" alt="Hands-on with OAuth-based authentication" class="calibre10"/></div><p class="calibre11"> </p><p class="calibre7">The function of these files is to simulate our own mini-OAuth client. We will not go into much detail about the content of these files, It is more important to look at it as an external OAuth client app. The <code class="email">callback-url.php</code> and <code class="email">identity-link-url.php</code> files will execute when Magento triggers the callback and identity link URL's as configured under the output image on the previous page.</p><p class="calibre7">Once the OAuth client files are in place, we go back to our integrations listing. Here, we click on the <span class="strong"><strong class="calibre8">Activate</strong></span> link. This opens a modal box, asking us to approve access to the API resources as shown in the following screenshot:</p><div class="mediaobject"><img src="../images/00066.jpeg" alt="Hands-on with OAuth-based authentication" class="calibre10"/></div><p class="calibre11"> </p><p class="calibre7">Notice <a id="id394" class="calibre1"/>how API resources listed here match those few we set under the <span class="strong"><strong class="calibre8">API</strong></span> tab when creating integration. There are only two actions we can do here really: either click <span class="strong"><strong class="calibre8">Cancel</strong></span> or <span class="strong"><strong class="calibre8">Allow</strong></span> to start the two-legged OAuth handshake. Clicking the <span class="strong"><strong class="calibre8">Allow</strong></span> button does two things in parallel.</p><p class="calibre7">First, it instantly posts the credentials to the endpoint (callback URL) specified when creating the <code class="email">External Book App</code> integration. The <span class="strong"><strong class="calibre8">HTTP POST</strong></span> from Magento to the callback URL contains parameters with values similar to the following:</p><div class="informalexample"><pre class="programlisting">Array
+(
+    [oauth_consumer_key] =&gt; cn5anfyvkg7sgm2lrv8cxvq0dxcrj7xm
+    [oauth_consumer_secret] =&gt; wvmgy0dmlkos2vok04k3h94r40jvi5ye
+    [store_base_url] =&gt; http://magento2-merchant.loc/index.php/
+    [oauth_verifier] =&gt; hlnsftola6c7b6wjbtb6wwfx4tow2x6x
+)</pre></div><p class="calibre7">Basically, a HTTP POST request is hitting the <code class="email">callback-url.php</code> file whose content (partial) is as follows:</p><div class="informalexample"><pre class="programlisting">session_id('BookAppOAuth');
+session_start();
+
+$_SESSION['oauth_consumer_key'] = $_POST['oauth_consumer_key'];
+$_SESSION['oauth_consumer_secret'] = $_POST['oauth_consumer_secret'];
+$_SESSION['store_base_url'] = $_POST['store_base_url'];
+$_SESSION['oauth_verifier'] = $_POST['oauth_verifier'];
+
+session_write_close();
+
+header('HTTP/1.0 200 OK');
+
+echo 'Response';</pre></div><p class="calibre7">We<a id="id395" class="calibre1"/> can see that parameters passed by Magento are stored into an external app session named <code class="email">BookAppOAuth</code>. Later on, within the <code class="email">check-login.php</code> file, these parameters will be used to instantiate the <code class="email">BookAppOauthClient</code>, which will further be used to get a request token, which is a pre-authorized token.</p><p class="calibre7">Parallel to <span class="strong"><strong class="calibre8">Callback URL</strong></span> HTTP POST, we have a popup window opening as shown in the following screenshot:</p><div class="mediaobject"><img src="../images/00067.jpeg" alt="Hands-on with OAuth-based authentication" class="calibre10"/></div><p class="calibre11"> </p><p class="calibre7">The login form we see in the popup is just some dummy content we placed under the <code class="email">identity-link-url.php</code> file. Magento passes two values to this file via HTTP GET. These are <code class="email">consumer_id</code> and <code class="email">success_call_back</code>. The <code class="email">consumer_id</code> value is the ID of our integration we created in the admin area. It is up to the OAuth client app to decide if it wants to do anything with this value or not. The <code class="email">success_call_back</code> URL points to our Magento <code class="email">admin integration/loginSuccessCallback</code> path. If we take a look at the code of the <code class="email">identity-link-url.php</code> file, we can see the form is set to do the <code class="email">POST</code> action on the URL like <code class="email">check-login.php?consumer_id={$consumerId}&amp;callback_url={$callbackUrl}</code>.</p><p class="calibre7">If we<a id="id396" class="calibre1"/> now click the <span class="strong"><strong class="calibre8">Login</strong></span> button, the form will <code class="email">POST</code> data to the <code class="email">check-login.php</code> file passing it <code class="email">consumer_id</code> and <code class="email">callback_url</code> within the URL as <code class="email">GET</code> parameters.</p><p class="calibre7">The content of <code class="email">check-login.php</code> is defined (partially) as follows:</p><div class="informalexample"><pre class="programlisting">require '../../vendor/autoload.php';
+
+$consumer = $_REQUEST['consumer_id'];
+$callback = $_REQUEST['callback_url'];
+
+session_id('BookAppOAuth');
+session_start();
+
+$consumerKey = $_SESSION['oauth_consumer_key'];
+$consumerSecret = $_SESSION['oauth_consumer_secret'];
+$magentoBaseUrl = rtrim($_SESSION['store_base_url'], '/');
+$oauthVerifier = $_SESSION['oauth_verifier'];
+
+define('MAGENTO_BASE_URL', $magentoBaseUrl);
+
+$credentials = new \OAuth\Common\Consumer\Credentials($consumerKey, $consumerSecret, $magentoBaseUrl);
+$oAuthClient = new BookAppOauthClient($credentials);
+$requestToken = $oAuthClient-&gt;requestRequestToken();
+
+$accessToken = $oAuthClient-&gt;requestAccessToken(
+    $requestToken-&gt;getRequestToken(),
+    $oauthVerifier,
+    $requestToken-&gt;getRequestTokenSecret()
+);
+
+header('Location: '. $callback);</pre></div><p class="calibre7">To keep thing simple, we have no real user login check here. We might have added one above the OAuth-related calls, and then authenticate the user against some username and password before allowing it to use OAuth. However, for simplicity reasons we omitted this part from our sample OAuth client app.</p><p class="calibre7">Within the <code class="email">check-login.php</code> file, we can see that based on the previously stored session parameters we perform the following:</p><div class="book"><ul class="itemizedlist"><li class="listitem">Instantiate the <code class="email">\OAuth\Common\Consumer\Credentials</code> object passing it the <code class="email">oauth_consumer_key</code>, <code class="email">oauth_consumer_secret</code>, <code class="email">store_base_url</code> stored in the session</li><li class="listitem">Instantiate the <code class="email">BookAppOauthClient</code> object passing its constructor the entire credentials object</li><li class="listitem">Use the <code class="email">OauthClient</code> object to get the request token</li><li class="listitem">Use the request token to get a long-lived access token</li></ul></div><p class="calibre7">If <a id="id397" class="calibre1"/>everything executes successfully, the popup window closes and we get redirected back to the integrations listing. The difference now is that looking at the grid, we have an <span class="strong"><strong class="calibre8">Active</strong></span> status and next to it we have a <span class="strong"><strong class="calibre8">Reauthorize</strong></span> link, as shown in the following screenshot:</p><div class="mediaobject"><img src="../images/00068.jpeg" alt="Hands-on with OAuth-based authentication" class="calibre10"/></div><p class="calibre11"> </p><p class="calibre7">What we are really after at this point are <span class="strong"><strong class="calibre8">Access Token</strong></span> and <span class="strong"><strong class="calibre8">Access Token Secret</strong></span>. We can see those if we edit the <code class="email">External Book App</code> integration. These values should now be present on the <span class="strong"><strong class="calibre8">Integration Details</strong></span> tab as shown in the following screenshot:</p><div class="mediaobject"><img src="../images/00069.jpeg" alt="Hands-on with OAuth-based authentication" class="calibre10"/></div><p class="calibre11"> </p><p class="calibre7"><span class="strong"><strong class="calibre8">Access Token</strong></span> is the key to all of our further API calls, and with it we successfully finish our authentication bit of OAuth-based authentication.</p></div>
+<div class="book" title="OAuth-based Web API calls"><div class="book" id="21PMQ2-818f5224668745eb9070ddf1d85e6bfa"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch09lvl1sec62" class="calibre1"/>OAuth-based Web API calls</h1></div></div></div><p class="calibre7">Once <a id="id398" class="calibre1"/>we have obtained OAuth access token, from the preceding steps, we can start making Web API calls to other methods. Even though the Web API coverage is the same for both REST and SOAP, there is a significant difference when making method calls.</p><p class="calibre7">For the purpose of giving a more robust example, we will be targeting the customer group <code class="email">save</code> method, (partially) defined in the <code class="email">vendor/magento/module-customer/etc/webapi.xml</code> file as follows:</p><div class="informalexample"><pre class="programlisting">&lt;route url="/V1/customerGroups" method="POST"&gt;
+    &lt;service class="Magento\Customer\Api\GroupRepositoryInterface" method="save"/&gt;
+    &lt;resources&gt;
+        &lt;resource ref="Magento_Customer::group"/&gt;
+    &lt;/resources&gt;
+&lt;/route&gt;</pre></div><p class="calibre7">To use the access token to make Web API calls, like <code class="email">POST /V1/customerGroups</code>, we need to include these request parameters in the authorization request header in the call:</p><div class="book"><ul class="itemizedlist"><li class="listitem"><code class="email">oauth_consumer_key</code>, available from the Magento admin area, under the integration edit screen.</li><li class="listitem"><code class="email">oauth_nonce</code>, random value, uniquely generated by the application for each request.</li><li class="listitem"><code class="email">oauth_signature_method</code>, name of the signature method used to sign the request. Valid values are: <code class="email">HMAC-SHA1</code>, <code class="email">RSA-SHA1</code>, and <code class="email">PLAINTEXT</code>.</li><li class="listitem">Even though the Outh protocol supports <code class="email">PLAINTEXT</code>, Magento does not. We will be using <code class="email">HMAC-SHA1</code>.</li><li class="listitem"><code class="email">oauth_timestamp</code>, integer value, Unix-like timestamp.</li><li class="listitem"><code class="email">oauth_token</code>, available from the Magento admin area, under the integration edit screen.</li><li class="listitem"><code class="email">oauth_version</code>, Magento supports Oauth 1.0a, thus we use <code class="email">1.0</code>.</li><li class="listitem"><code class="email">oauth_signature</code>, generated signature value, omitted from the signature generation process.</li></ul></div><p class="calibre7">To generate an OAuth 1.0a HMAC-SHA1 signature for a HTTP request takes focused effort, if done manually.</p><p class="calibre7">We need to determine the HTTP method and URL of the request, which equals to <code class="email">POST http://magento2-merchant.loc/rest/V1/customerGroups</code>. It is important to use the correct protocol here, so make sure that the <code class="email">https://</code> or <code class="email">http://</code> portion of the URL matches the actual request sent to the API.</p><p class="calibre7">We then gather all of the parameters included in the request. There are two such locations for these additional parameters: the URL (as part of the query string) and the request body.</p><p class="calibre7">In the <a id="id399" class="calibre1"/>HTTP request, the parameters are URL encoded, but we need to collect the raw values. In addition to the request parameters, every <code class="email">oauth_*</code> parameter needs to be included in the signature, except the <code class="email">oauth_signature</code> itself.</p><p class="calibre7">The parameters are normalized into a single string as follows:</p><div class="book"><ul class="itemizedlist"><li class="listitem">Parameters are sorted by name, using lexicographical byte value ordering. If two or more parameters share the same name, they are sorted by their value.</li><li class="listitem">Parameters are concatenated in their sorted order into a single string. For each parameter, the name is separated from the corresponding value by an <code class="email">=</code> character (ASCII code 61), even if the value is empty. Each name-value pair is separated by an <code class="email">&amp;</code> character (ASCII code 38).</li></ul></div><p class="calibre7">Further, we define the signing key as a value of <code class="email">{Consumer Key}+{&amp;}+{Access Token Secret}</code>.</p><p class="calibre7">Once we apply the string normalization rules to parameters and determine the signing key, we call <code class="email">hash_hmac('sha1', $data, {Signing Key}, true)</code> to get the final <code class="email">oauth_signature</code> value.</p><p class="calibre7">This should get us the <code class="email">oauth_signature</code> as a random 28-characters-long string, similar to this one – <code class="email">Pi/mGfA0SOlIxO9W30sEch6bjGE=</code>.</p><p class="calibre7">Understanding how to generate the signature string is important, but getting it right every time is tedious and time consuming. We can help ourselves by instantiating the objects of the built-in <code class="email">\OAuth\Common\Consumer\Credentials</code> and <code class="email">\OAuth\OAuth1\Signature\Signature</code> classes, like (partially) shown as follows:</p><div class="informalexample"><pre class="programlisting">$credentials = new \OAuth\Common\Consumer\Credentials($consumerKey, $consumerSecret, $magentoBaseUrl);
+$signature = new \OAuth\OAuth1\Signature\Signature($credentials);
+$signature-&gt;setTokenSecret($accessTokenSecret);
+$signature-&gt;setHashingAlgorithm('HMAC-SHA1');
+
+echo $signature-&gt;getSignature($uri, array(
+    'oauth_consumer_key' =&gt; $consumerKey,
+    'oauth_nonce' =&gt; 'per-request-unique-token',
+    'oauth_signature_method' =&gt; 'HMAC-SHA1',
+    'oauth_timestamp' =&gt; '1437319569',
+    'oauth_token' =&gt; $accessToken,
+    'oauth_version' =&gt; '1.0',
+), 'POST');</pre></div><p class="calibre7">Now<a id="id400" class="calibre1"/> that we have the <code class="email">oauth_signature</code> value, we are ready to do our console <code class="email">curl</code> REST example. It comes down to running the following on a console:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre8">curl -X POST http://magento2.ce/rest/V1/customerGroups</strong></span>
+<span class="strong"><strong class="calibre8">-H 'Content-Type: application/json'</strong></span>
+<span class="strong"><strong class="calibre8">-H 'Authorization: OAuth</strong></span>
+<span class="strong"><strong class="calibre8">oauth_consumer_key="vw2xi6kaq0o3f7ay60owdpg2f8nt66g6",</strong></span>
+<span class="strong"><strong class="calibre8">oauth_nonce="per-request-token-by-app-1",</strong></span>
+<span class="strong"><strong class="calibre8">oauth_signature_method="HMAC-SHA1",</strong></span>
+<span class="strong"><strong class="calibre8">oauth_timestamp="1437319569",</strong></span>
+<span class="strong"><strong class="calibre8">oauth_token="cney3fmk9p5282bm1khb83q846l7dner",</strong></span>
+<span class="strong"><strong class="calibre8">oauth_version="1.0",</strong></span>
+<span class="strong"><strong class="calibre8">oauth_signature="Pi/mGfA0SOlIxO9W30sEch6bjGE="'</strong></span>
+<span class="strong"><strong class="calibre8">-d '{"group": {"code": "The Book Writer", "tax_class_id": "3"}}'</strong></span>
+</pre></div><p class="calibre7">Note that the preceding command is merely visually broken into new lines. It should all be single line on a console. Once executed, the API call will create a new customer group called <code class="email">The Book Writer</code>. A logical question one might ask looking at the <code class="email">curl</code> command is how come we did not normalize the POST data passed as JSON via the <code class="email">–d</code> flag switch. This is because parameters in the HTTP POST request body are only taken into consideration for signature generation if content-type is <code class="email">application/x-www-form-urlencoded</code>.</p><p class="calibre7">The console cURL SOAP requests do not require usage of the OAuth signature. We can execute a SOAP request passing <code class="email">Authorization: Bearer { Access Token value }</code> into the request header, like shown in the following example:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre8">curl -X POST http://magento2.ce/index.php/soap/default?services= customerGroupRepositoryV1 -H 'Content-Type: application/soap+xml; charset=utf-8; action="customerGroupRepositoryV1Save"' -H 'Authorization: Bearer cney3fmk9p5282bm1khb83q846l7dner' -d @request.xml</strong></span>
+</pre></div><p class="calibre7">Where <code class="email">request.xml</code> contains content as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;env:Envelope  &gt;
+    &lt;env:Body&gt;
+        &lt;ns1:customerGroupRepositoryV1SaveRequest&gt;
+            &lt;group&gt;
+                &lt;code&gt;The Book Writer&lt;/code&gt;
+                &lt;taxClassId&gt;3&lt;/taxClassId&gt;
+            &lt;/group&gt;
+        &lt;/ns1:customerGroupRepositoryV1SaveRequest&gt;
+    &lt;/env:Body&gt;
+&lt;/env:Envelope&gt;</pre></div><p class="calibre7">The<a id="id401" class="calibre1"/> following code example demonstrates the PHP cURL SOAP-like request for the customer group <code class="email">save</code> method call:</p><div class="informalexample"><pre class="programlisting">$request = new SoapClient(
+    'http://magento2.ce/index.php/soap/?wsdl&amp;services= customerGroupRepositoryV1',
+    array(
+        'soap_version' =&gt; SOAP_1_2,
+        'stream_context' =&gt; stream_context_create(array(
+            'http' =&gt; array(
+                'header' =&gt; 'Authorization: Bearer cney3fmk9p5282bm1khb83q846l7dner')
+            )
+        )
+    )
+);
+
+$response = $request-&gt;customerGroupRepositoryV1Save(array(
+    'group' =&gt; array(
+        'code' =&gt; 'The Book Writer',
+        'taxClassId' =&gt; 3
+    )
+));</pre></div><p class="calibre7">Notice how the method name <code class="email">customerGroupRepositoryV1Save</code> actually comprises service name <code class="email">customerGroupRepositoryV1</code>, plus the <code class="email">Save</code> name of the actual method within the service.</p><p class="calibre7">We can get a list of all services defined by opening a URL like <code class="email">http://magento2.ce/soap/default?wsdl_list</code> in the browser (depending on our Magento installation).</p></div>
+<div class="book" title="Hands-on with session-based authentication" id="22O7C1-818f5224668745eb9070ddf1d85e6bfa"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch09lvl1sec63" class="calibre1"/>Hands-on with session-based authentication</h1></div></div></div><p class="calibre7">Session-based <a id="id402" class="calibre1"/>authentication is the third and most simple type of authentication in Magento. We do not have any complexities of token-passing here. As the customer, we log in to the Magento storefront with our customer credentials. As an admin, we log in to the Magento admin with our admin credentials. Magento uses a cookie named <code class="email">PHPSESSID</code> to track the session where our login state is stored. The Web API framework uses our logged-in session information to verify our identity and authorize access to the requested resource.</p><p class="calibre7">Customers<a id="id403" class="calibre1"/> can access resources that are configured with anonymous or self-permission in the <code class="email">webapi.xml</code> configuration file, like <code class="email">GET /rest/V1/customers/me</code>.</p><p class="calibre7">If we try to open the <code class="email">http://magento2.ce/rest/V1/customers/me</code> URL while in the browser, but not logged in as the customer, we would get a response as follows:</p><div class="informalexample"><pre class="programlisting">&lt;response&gt;
+    &lt;message&gt;Consumer is not authorized to access %resources&lt;/message&gt;
+    &lt;parameters&gt;
+        &lt;resources&gt;self&lt;/resources&gt;
+    &lt;/parameters&gt;
+&lt;/response&gt;</pre></div><p class="calibre7">If we log in as the customer and then try to open that same URL, we would get a response as follows:</p><div class="informalexample"><pre class="programlisting">&lt;response&gt;
+    &lt;id&gt;2&lt;/id&gt;
+    &lt;group_id&gt;1&lt;/group_id&gt;
+    &lt;created_at&gt;2015-11-22 14:15:33&lt;/created_at&gt;
+    &lt;created_in&gt;Default Store View&lt;/created_in&gt;
+    &lt;email&gt;john@change.me&lt;/email&gt;
+    &lt;firstname&gt;John&lt;/firstname&gt;
+    &lt;lastname&gt;Doe&lt;/lastname&gt;
+    &lt;store_id&gt;1&lt;/store_id&gt;
+    &lt;website_id&gt;1&lt;/website_id&gt;
+    &lt;addresses/&gt;
+    &lt;disable_auto_group_change&gt;0&lt;/disable_auto_group_change&gt;
+&lt;/response&gt;</pre></div><p class="calibre7">Admin users can access resources that are assigned to their Magento admin profile.</p></div>
+
+<div id="page" style="height:0pt"/><div class="book" title="Creating custom Web APIs"><div class="book" id="23MNU2-818f5224668745eb9070ddf1d85e6bfa"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch09lvl1sec64" class="calibre1"/>Creating custom Web APIs</h1></div></div></div><p class="calibre7">Magento <a id="id404" class="calibre1"/>comes with a solid number of API methods that we can call. However, sometimes this is not enough, as our business needs dictate additional logic, and we need to be able to add our own methods to the Web API.</p><p class="calibre7">The best part of creating our own API's is that we do not have to be concerned about making them REST or SOAP. Magento abstracts this so that our API methods are automatically available for REST and for SOAP calls.</p><p class="calibre7">Adding new API's conceptually evolves around two things: defining business logic through various classes, and exposing it via the <code class="email">webapi.xml</code> file. However, as we will soon see, there is a lot of <span class="strong"><strong class="calibre8">boilerplate</strong></span> to it.</p><p class="calibre7">Let's create a miniature module called <code class="email">Foggyline_Slider</code>, on which we will demonstrate <code class="email">create (POST)</code>, <code class="email">update (PUT)</code>, <code class="email">delete (DELETE)</code>, and <code class="email">list (GET)</code> method calls.</p><p class="calibre7">Create <a id="id405" class="calibre1"/>a module registration file, <code class="email">app/code/Foggyline/Slider/registration.php</code>, with content (partial) as follows:</p><div class="informalexample"><pre class="programlisting">\Magento\Framework\Component\ComponentRegistrar::register(
+    \Magento\Framework\Component\ComponentRegistrar::MODULE,
+    'Foggyline_Slider',
+    __DIR__
+);</pre></div><p class="calibre7">Create a module configuration file, <code class="email">app/code/Foggyline/Slider/etc/module.xml</code>, with content as follows:</p><div class="informalexample"><pre class="programlisting">&lt;config  xsi:noNamespaceSchemaLocation="urn:magento:framework:Module /etc/module.xsd"&gt;
+    &lt;module name="Foggyline_Slider" setup_version="1.0.0"/&gt;
+&lt;/config&gt;</pre></div><p class="calibre7">Create an install script where our future models will persist module data. We do so by creating the <code class="email">app/code/Foggyline/Slider/Setup/InstallSchema.php</code> file with content (partial) as follows:</p><div class="informalexample"><pre class="programlisting">namespace Foggyline\Slider\Setup;
+
+use Magento\Framework\Setup\InstallSchemaInterface;
+use Magento\Framework\Setup\ModuleContextInterface;
+use Magento\Framework\Setup\SchemaSetupInterface;
+
+class InstallSchema implements InstallSchemaInterface
+{
+    public function install(SchemaSetupInterface $setup, ModuleContextInterface $context)
+    {
+        $installer = $setup;
+        $installer-&gt;startSetup();
+
+        /**
+         * Create table 'foggyline_slider_slide'
+         */
+        $table = $installer-&gt;getConnection()
+            -&gt;newTable($installer- &gt;getTable('foggyline_slider_slide'))
+            -&gt;addColumn(
+                'slide_id',
+                \Magento\Framework\DB\Ddl\Table::TYPE_INTEGER,
+                null,
+                ['identity' =&gt; true, 'unsigned' =&gt; true, 'nullable' =&gt; false, 'primary' =&gt; true],
+                'Slide Id'
+            )
+            -&gt;addColumn(
+                'title',
+                \Magento\Framework\DB\Ddl\Table::TYPE_TEXT,
+                200,
+                [],
+                'Title'
+            )
+            -&gt;setComment('Foggyline Slider Slide');
+        $installer-&gt;getConnection()-&gt;createTable($table);
+        ...
+        $installer-&gt;endSetup();
+
+    }
+}</pre></div><p class="calibre7">Now<a id="id406" class="calibre1"/> we specify the ACL for our resources. Our resources are going to be CRUD actions we do on our module entities. We will structure our module in a way that <code class="email">slide</code> and <code class="email">image</code> are separate entities, where one slide can have multiple image entities linked to it. Thus, we would like to be able to control access to save and delete actions separately for each entity. We do so by defining the <code class="email">app/code/Foggyline/Slider/etc/acl.xml</code> file as follows:</p><div class="informalexample"><pre class="programlisting">&lt;config  xsi:noNamespaceSchemaLocation="urn:magento:framework:Acl/etc/ acl.xsd"&gt;
+    &lt;acl&gt;
+        &lt;resources&gt;
+            &lt;resource id="Magento_Backend::admin"&gt;
+                &lt;resource id="Magento_Backend::content"&gt;
+                    &lt;resource id= "Magento_Backend::content_elements"&gt;
+                        &lt;resource id="Foggyline_Slider::slider" title="Slider" sortOrder="10"&gt;
+                            &lt;resource id="Foggyline_Slider::slide" title="Slider Slide" sortOrder="10"&gt;
+                                &lt;resource id= "Foggyline_Slider::slide_save" title="Save Slide" sortOrder="10" /&gt;
+                                &lt;resource id="Foggyline_Slider:: slide_delete" title="Delete Slide" sortOrder="20" /&gt;
+                            &lt;/resource&gt;
+                            &lt;resource id="Foggyline_Slider::image" title="Slider Image" sortOrder="10"&gt;
+                                &lt;resource id= "Foggyline_Slider::image_save" title="Save Image" sortOrder="10" /&gt;
+                                &lt;resource id= "Foggyline_Slider::image_delete" title="Delete Image" sortOrder="20" /&gt;
+                            &lt;/resource&gt;
+                        &lt;/resource&gt;
+                    &lt;/resource&gt;
+                &lt;/resource&gt;
+            &lt;/resource&gt;
+        &lt;/resources&gt;
+    &lt;/acl&gt;
+&lt;/config&gt;</pre></div><p class="calibre7">Now<a id="id407" class="calibre1"/> that the ACL has been set, we define our Web API resources within the <code class="email">app/code/Foggyline/Slider/etc/webapi.xml</code> file (partial) as follows:</p><div class="informalexample"><pre class="programlisting">&lt;routes  xsi:noNamespaceSchemaLocation= "urn:magento:module:Magento_Webapi:etc/webapi.xsd"&gt;
+    &lt;route url="/V1/foggylineSliderSlide/:slideId" method="GET"&gt;
+        &lt;service class="Foggyline\Slider\Api\ SlideRepositoryInterface" method="getById" /&gt;
+        &lt;resources&gt;
+            &lt;resource ref="Foggyline_Slider::slide" /&gt;
+        &lt;/resources&gt;
+    &lt;/route&gt;
+    &lt;route url="/V1/foggylineSliderSlide/search" method="GET"&gt;
+        &lt;service class="Foggyline\Slider\Api\ SlideRepositoryInterface" method="getList" /&gt;
+        &lt;resources&gt;
+            &lt;resource ref="anonymous" /&gt;
+        &lt;/resources&gt;
+    &lt;/route&gt;
+    &lt;route url="/V1/foggylineSliderSlide" method="POST"&gt;
+        &lt;service class="Foggyline\Slider\Api\ SlideRepositoryInterface" method="save" /&gt;
+        &lt;resources&gt;
+            &lt;resource ref="Foggyline_Slider::slide_save" /&gt;
+        &lt;/resources&gt;
+    &lt;/route&gt;
+    &lt;route url="/V1/foggylineSliderSlide/:id" method="PUT"&gt;
+        &lt;service class="Foggyline\Slider\Api\ SlideRepositoryInterface" method="save" /&gt;
+        &lt;resources&gt;
+            &lt;resource ref="Foggyline_Slider::slide_save" /&gt;
+        &lt;/resources&gt;
+    &lt;/route&gt;
+    &lt;route url="/V1/foggylineSliderSlide/:slideId" method="DELETE"&gt;
+        &lt;service class="Foggyline\Slider\Api\ SlideRepositoryInterface" method="deleteById" /&gt;
+        &lt;resources&gt;
+            &lt;resource ref="Foggyline_Slider::slide_delete" /&gt;
+        &lt;/resources&gt;
+    &lt;/route&gt;
+    &lt;route url="/V1/foggylineSliderImage/:imageId" method="GET"&gt;
+        &lt;service class="Foggyline\Slider\Api\ ImageRepositoryInterface" method="getById" /&gt;
+        &lt;resources&gt;
+            &lt;resource ref="Foggyline_Slider::image" /&gt;
+        &lt;/resources&gt;
+    &lt;/route&gt;
+    &lt;route url="/V1/foggylineSliderImage/search" method="GET"&gt;
+        &lt;service class="Foggyline\Slider\Api\ ImageRepositoryInterface" method="getList" /&gt;
+        &lt;resources&gt;
+            &lt;resource ref="Foggyline_Slider::image" /&gt;
+        &lt;/resources&gt;
+    &lt;/route&gt;
+    &lt;route url="/V1/foggylineSliderImage" method="POST"&gt;
+        &lt;service class="Foggyline\Slider\Api\ ImageRepositoryInterface" method="save" /&gt;
+        &lt;resources&gt;
+            &lt;resource ref="Foggyline_Slider::image_save" /&gt;
+        &lt;/resources&gt;
+    &lt;/route&gt;
+    &lt;route url="/V1/foggylineSliderImage/:id" method="PUT"&gt;
+        &lt;service class="Foggyline\Slider\Api\ ImageRepositoryInterface" method="save" /&gt;
+        &lt;resources&gt;
+            &lt;resource ref="Foggyline_Slider::image_save" /&gt;
+        &lt;/resources&gt;
+    &lt;/route&gt;
+    &lt;route url="/V1/foggylineSliderImage/:imageId" method="DELETE"&gt;
+        &lt;service class="Foggyline\Slider\Api\ ImageRepositoryInterface" method="deleteById" /&gt;
+        &lt;resources&gt;
+            &lt;resource ref="Foggyline_Slider::image_delete" /&gt;
+        &lt;/resources&gt;
+    &lt;/route&gt;
+&lt;/routes&gt;</pre></div><p class="calibre7">Notice <a id="id408" class="calibre1"/>how each of those service class attributes point to the interface, not the class. This is the way we should build our exposable services, always having an interface definition behind them. As we will soon see, using <code class="email">di.xml</code>, this does not mean Magento will try to create objects from these interfaces directly.</p><p class="calibre7">We now create the <code class="email">app/code/Foggyline/Slider/etc/di.xml</code> file with content (partial) as follows:</p><div class="informalexample"><pre class="programlisting">&lt;config  xsi:noNamespaceSchemaLocation= "urn:magento:framework:ObjectManager/etc/config.xsd"&gt;
+
+    &lt;preference for="Foggyline\Slider\Api\Data\SlideInterface" type="Foggyline\Slider\Model\Slide"/&gt;
+
+    &lt;preference for="Foggyline\Slider\Api\ SlideRepositoryInterface" type= "Foggyline\Slider\Model\SlideRepository"/&gt;
+    ...
+&lt;/config&gt;</pre></div><p class="calibre7">What is happening here is that we are telling Magento something like, "hey, whenever you need to pass around an instance that conforms to the <code class="email">Foggyline\Slider\Api\Data\SlideInterface</code> interface, preferably use the <code class="email">Foggyline\Slider\Model\Slide</code> class for it."</p><p class="calibre7">At this point, we still do not have any of those interfaces or model classes actually created. When creating APIs, we should first start by defining interfaces, and then our models should extend from those interfaces.</p><p class="calibre7">Interface <code class="email">Foggyline\Slider\Api\Data\SlideInterface</code> is defined within the <code class="email">app/code/Foggyline/Slider/Api/Data/SlideInterface.php</code> file (partial) as follows:</p><div class="informalexample"><pre class="programlisting">namespace Foggyline\Slider\Api\Data;
+
+/**
+* @api
+*/
+interface SlideInterface
+{
+    const PROPERTY_ID = 'slide_id';
+    const PROPERTY_SLIDE_ID = 'slide_id';
+    const PROPERTY_TITLE = 'title';
+
+    /**
+    * Get Slide entity 'slide_id' property value
+    * @return int|null
+    */
+    public function getId();
+
+    /**
+    * Set Slide entity 'slide_id' property value
+    * @param int $id
+    * @return $this
+    */
+    public function setId($id);
+
+    /**
+    * Get Slide entity 'slide_id' property value
+    * @return int|null
+    */
+    public function getSlideId();
+
+    /**
+    * Set Slide entity 'slide_id' property value
+    * @param int $slideId
+    * @return $this
+    */
+    public function setSlideId($slideId);
+
+    /**
+    * Get Slide entity 'title' property value
+    * @return string|null
+    */
+    public function getTitle();
+
+    /**
+    * Set Slide entity 'title' property value
+    * @param string $title
+    * @return $this
+    */
+    public function setTitle($title);
+}</pre></div><p class="calibre7">We <a id="id409" class="calibre1"/>are going for ultimate simplification here. Our <code class="email">Slide</code> entity only really has ID and title values. The <code class="email">id</code> and <code class="email">slide_id</code> point to the same field in the database and the implementation of their getters and setters should yield the same results.</p><p class="calibre7">Although <code class="email">API/Data/*.php</code> interfaces become blueprint requirements for our data models, we also have <code class="email">Api/*RepositoryInterface.php</code> files. The idea here is to extract <a id="id410" class="calibre1"/>create, update, delete, search, and similar data-handling logic away from the data model class into its own class. This way, our model classes become more pure data and business logic classes while the rest of persistence and search-related logic moves into these repository classes.</p><p class="calibre7">Our <span class="strong"><strong class="calibre8">Slide </strong></span><a id="id411" class="calibre1"/>
+<span class="strong"><strong class="calibre8">Repository Interface</strong></span> is defined within the <code class="email">app/code/Foggyline/Slider/Api/SlideRepositoryInterface.php</code> file as follows:</p><div class="informalexample"><pre class="programlisting">namespace Foggyline\Slider\Api;
+
+/**
+* @api
+*/
+interface SlideRepositoryInterface
+{
+    /**
+    * Retrieve slide entity.
+    * @param int $slideId
+    * @return \Foggyline\Slider\Api\Data\SlideInterface
+    * @throws \Magento\Framework\Exception\NoSuchEntityException If slide with the specified ID does not exist.
+    * @throws \Magento\Framework\Exception\LocalizedException
+    */
+    public function getById($slideId);
+
+    /**
+    * Save slide.
+    * @param \Foggyline\Slider\Api\Data\SlideInterface $slide
+    * @return \Foggyline\Slider\Api\Data\SlideInterface
+    * @throws \Magento\Framework\Exception\LocalizedException
+    */
+    public function save(\Foggyline\Slider\Api\Data\SlideInterface $slide);
+
+    /**
+    * Retrieve slides matching the specified criteria.
+    * @param \Magento\Framework\Api\SearchCriteriaInterface $searchCriteria
+    * @return \Magento\Framework\Api\SearchResultsInterface
+    * @throws \Magento\Framework\Exception\LocalizedException
+    */
+    public function getList(\Magento\Framework\Api\SearchCriteriaInterface $searchCriteria);
+
+    /**
+    * Delete slide by ID.
+    * @param int $slideId
+    * @return bool true on success
+    * @throws \Magento\Framework\Exception\NoSuchEntityException
+    * @throws \Magento\Framework\Exception\LocalizedException
+    */
+    public function deleteById($slideId);
+}</pre></div><p class="calibre7">With<a id="id412" class="calibre1"/> interfaces in place, we can move on to model class. In order to persist and fetch data in a database, our <code class="email">Slide</code> entity really needs three files under the <code class="email">Model</code> directory. These are called data <span class="strong"><em class="calibre9">model</em></span>, <span class="strong"><em class="calibre9">resource class</em></span>, and <span class="strong"><em class="calibre9">collection class</em></span>.</p><p class="calibre7">The data model class is defined under the <code class="email">app/code/Foggyline/Slider/Model/Slide.php</code> file (partial) as follows:</p><div class="informalexample"><pre class="programlisting">namespace Foggyline\Slider\Model;
+
+class Slide extends \Magento\Framework\Model\AbstractModel
+    implements \Foggyline\Slider\Api\Data\SlideInterface {     /**
+    * Initialize Foggyline Slide Model
+    *
+    * @return void
+    */
+    protected function _construct()
+    {
+        /* _init($resourceModel) */
+        $this-&gt;_init ('Foggyline\Slider\Model\ResourceModel\Slide');
+    }
+
+    /**
+    * Get Slide entity 'slide_id' property value
+    *
+    * @api
+    * @return int|null
+    */
+    public function getId()
+    {
+        return $this-&gt;getData(self::PROPERTY_ID);
+    }
+
+    /**
+    * Set Slide entity 'slide_id' property value
+    *
+    * @api
+    * @param int $id
+    * @return $this
+    */
+    public function setId($id)
+    {
+        $this-&gt;setData(self::PROPERTY_ID, $id);
+        return $this;
+    }
+
+    /**
+    * Get Slide entity 'slide_id' property value
+    *
+    * @api
+    * @return int|null
+    */
+    public function getSlideId()
+    {
+        return $this-&gt;getData(self::PROPERTY_SLIDE_ID);
+    }
+
+    /**
+    * Set Slide entity 'slide_id' property value
+    *
+    * @api
+    * @param int $slideId
+    * @return $this
+    */
+    public function setSlideId($slideId)
+    {
+        $this-&gt;setData(self::PROPERTY_SLIDE_ID, $slideId);
+        return $this;
+    }
+
+    /**
+    * Get Slide entity 'title' property value
+    *
+    * @api
+    * @return string|null
+    */
+    public function getTitle()
+    {
+        return $this-&gt;getData(self::PROPERTY_TITLE);
+    }
+
+    /**
+    * Set Slide entity 'title' property value
+    *
+    * @api
+    * @param string $title
+    * @return $this
+    */
+    public function setTitle($title)
+    {
+        $this-&gt;setData(self::PROPERTY_TITLE, $title);
+    }
+}</pre></div><p class="calibre7">Following<a id="id413" class="calibre1"/> the model data class is the model resource class, defined in the <code class="email">app/code/Foggyline/Slider/Model/ResourceModel/Slide.php</code> file (partial) as follows:</p><div class="informalexample"><pre class="programlisting">namespace Foggyline\Slider\Model\ResourceModel;
+
+/**
+* Foggyline Slide resource
+*/
+class Slide extends \Magento\Framework\Model\ResourceModel\Db\AbstractDb
+{
+    /**
+    * Define main table
+    *
+    * @return void
+    */
+    protected function _construct()
+    {
+        /* _init($mainTable, $idFieldName) */
+        $this-&gt;_init('foggyline_slider_slide', 'slide_id');
+    }
+}</pre></div><p class="calibre7">Finally, the<a id="id414" class="calibre1"/> third bit is the model collection class, defined in the <code class="email">app/code/Foggyline/Slider/Model/ResourceModel/Slide/Collection.php</code> file as follows:</p><div class="informalexample"><pre class="programlisting">namespace Foggyline\Slider\Model\ResourceModel\Slide;
+
+/**
+* Foggyline slides collection
+*/
+class Collection extends \Magento\Framework\Model\ResourceModel\Db\Collection\ AbstractCollection
+{
+    /**
+    * Define resource model and model
+    *
+    * @return void
+    */
+    protected function _construct()
+    {
+        /* _init($model, $resourceModel) */
+        $this-&gt;_init('Foggyline\Slider\Model\Slide', 'Foggyline\Slider\Model\ResourceModel\Slide');
+    }
+}</pre></div><p class="calibre7">If we were to manually instantiate the model data class now, we would be able to persist the data in the database. To complete the <code class="email">di.xml</code> requirements, we still lack one more final ingredient – the <code class="email">Model/SlideRepository</code> class file.</p><p class="calibre7">Let us go and create the <code class="email">app/code/Foggyline/Slider/Model/SlideRepository.php</code> file with content (partial) as follows:</p><div class="informalexample"><pre class="programlisting">namespace Foggyline\Slider\Model;
+
+use Magento\Framework\Api\DataObjectHelper;
+use Magento\Framework\Api\SearchCriteriaInterface;
+use Magento\Framework\Exception\CouldNotDeleteException;
+use Magento\Framework\Exception\CouldNotSaveException;
+use Magento\Framework\Exception\NoSuchEntityException;
+use Magento\Framework\Reflection\DataObjectProcessor;
+
+class SlideRepository implements \Foggyline\Slider\Api\SlideRepositoryInterface
+{
+    /**
+    * @var \Foggyline\Slider\Model\ResourceModel\Slide
+    */
+    protected $resource;
+
+    /**
+    * @var \Foggyline\Slider\Model\SlideFactory
+    */
+    protected $slideFactory;
+
+    /**
+    * @var \Foggyline\Slider\Model\ResourceModel\Slide\ CollectionFactory
+    */
+    protected $slideCollectionFactory;
+
+    /**
+    * @var \Magento\Framework\Api\SearchResultsInterface
+    */
+    protected $searchResultsFactory;
+
+    /**
+    * @var \Magento\Framework\Api\DataObjectHelper
+    */
+    protected $dataObjectHelper;
+
+    /**
+    * @var \Magento\Framework\Reflection\DataObjectProcessor
+    */
+    protected $dataObjectProcessor;
+
+    /**
+    * @var \Foggyline\Slider\Api\Data\SlideInterfaceFactory
+    */
+    protected $dataSlideFactory;
+
+    /**
+    * @param ResourceModel\Slide $resource
+    * @param SlideFactory $slideFactory
+    * @param ResourceModel\Slide\CollectionFactory $slideCollectionFactory
+    * @param \Magento\Framework\Api\SearchResultsInterface $searchResultsFactory
+    * @param DataObjectHelper $dataObjectHelper
+    * @param DataObjectProcessor $dataObjectProcessor
+    * @param \Foggyline\Slider\Api\Data\SlideInterfaceFactory $dataSlideFactory
+    */
+    public function __construct(
+        \Foggyline\Slider\Model\ResourceModel\Slide $resource,
+        \Foggyline\Slider\Model\SlideFactory $slideFactory,
+        \Foggyline\Slider\Model\ResourceModel\Slide\ CollectionFactory $slideCollectionFactory,
+        \Magento\Framework\Api\SearchResultsInterface $searchResultsFactory,
+        \Magento\Framework\Api\DataObjectHelper $dataObjectHelper,
+        \Magento\Framework\Reflection\DataObjectProcessor $dataObjectProcessor,
+        \Foggyline\Slider\Api\Data\SlideInterfaceFactory $dataSlideFactory
+
+    )
+    {
+        $this-&gt;resource = $resource;
+        $this-&gt;slideFactory = $slideFactory;
+        $this-&gt;slideCollectionFactory = $slideCollectionFactory;
+        $this-&gt;searchResultsFactory = $searchResultsFactory;
+        $this-&gt;dataObjectHelper = $dataObjectHelper;
+        $this-&gt;dataObjectProcessor = $dataObjectProcessor;
+        $this-&gt;dataSlideFactory = $dataSlideFactory;
+    }
+    ...
+}</pre></div><p class="calibre7">It might<a id="id415" class="calibre1"/> appear that there is a lot going on here, but really we are just passing on some class and interface names to the constructor in order to instantiate the objects we will use across individual service methods defined in the <code class="email">webapi.xml</code> file.</p><p class="calibre7">The first service method on our list is <code class="email">getById</code>, defined within <code class="email">SlideRepository.php</code> as follows:</p><div class="informalexample"><pre class="programlisting">/**
+* Retrieve slide entity.
+*
+* @api
+* @param int $slideId
+* @return \Foggyline\Slider\Api\Data\SlideInterface
+* @throws \Magento\Framework\Exception\NoSuchEntityException If slide with the specified ID does not exist.
+* @throws \Magento\Framework\Exception\LocalizedException
+*/
+public function getById($slideId)
+{
+    $slide = $this-&gt;slideFactory-&gt;create();
+    $this-&gt;resource-&gt;load($slide, $slideId);
+    if (!$slide-&gt;getId()) {
+        throw new NoSuchEntityException(__('Slide with id %1 does not exist.', $slideId));
+    }
+    return $slide;
+}</pre></div><p class="calibre7">Then <a id="id416" class="calibre1"/>we have the save method, defined within <code class="email">SlideRepository.php</code> as follows:</p><div class="informalexample"><pre class="programlisting">/**
+* Save slide.
+*
+* @param \Foggyline\Slider\Api\Data\SlideInterface $slide
+* @return \Foggyline\Slider\Api\Data\SlideInterface
+* @throws \Magento\Framework\Exception\LocalizedException
+*/
+public function save(\Foggyline\Slider\Api\Data\SlideInterface $slide)
+{
+    try {
+        $this-&gt;resource-&gt;save($slide);
+    } catch (\Exception $exception) {
+        throw new CouldNotSaveException(__($exception- &gt;getMessage()));
+    }
+    return $slide;
+}</pre></div><p class="calibre7">The <code class="email">save</code> method addresses both <code class="email">POST</code> and <code class="email">PUT</code> requests defined in <code class="email">webapi.xml</code>, thus effectively handling the creation of new slides or an update of existing ones.</p><p class="calibre7">Going further, we have the <code class="email">getList</code> method, defined within <code class="email">SlideRepository.php</code> as follows:</p><div class="informalexample"><pre class="programlisting">/**
+* Retrieve slides matching the specified criteria.
+*
+* @param \Magento\Framework\Api\SearchCriteriaInterface $searchCriteria
+* @return \Magento\Framework\Api\SearchResultsInterface
+* @throws \Magento\Framework\Exception\LocalizedException
+*/
+public function getList(\Magento\Framework\Api\SearchCriteriaInterface $searchCriteria)
+{
+    $this-&gt;searchResultsFactory-&gt;setSearchCriteria ($searchCriteria);
+
+    $collection = $this-&gt;slideCollectionFactory-&gt;create();
+
+    foreach ($searchCriteria-&gt;getFilterGroups() as $filterGroup) {         foreach ($filterGroup-&gt;getFilters() as $filter) {
+            $condition = $filter-&gt;getConditionType() ?: 'eq';
+            $collection-&gt;addFieldToFilter($filter-&gt;getField(), [$condition =&gt; $filter-&gt;getValue()]);
+        }
+    }
+    $this-&gt;searchResultsFactory-&gt;setTotalCount($collection-&gt; getSize());
+    $sortOrders = $searchCriteria-&gt;getSortOrders();
+    if ($sortOrders) {
+        foreach ($sortOrders as $sortOrder) {
+            $collection-&gt;addOrder(
+                $sortOrder-&gt;getField(),
+                (strtoupper($sortOrder-&gt;getDirection()) === 'ASC') ? 'ASC' : 'DESC'
+            );
+        }
+    }
+    $collection-&gt;setCurPage($searchCriteria-&gt;getCurrentPage());
+    $collection-&gt;setPageSize($searchCriteria-&gt;getPageSize());
+    $slides = [];
+    /** @var \Foggyline\Slider\Model\Slide $slideModel */
+    foreach ($collection as $slideModel) {
+        $slideData = $this-&gt;dataSlideFactory-&gt;create();
+        $this-&gt;dataObjectHelper-&gt;populateWithArray(
+            $slideData,
+            $slideModel-&gt;getData(),
+            '\Foggyline\Slider\Api\Data\SlideInterface'
+        );
+        $slides[] = $this-&gt;dataObjectProcessor-&gt; buildOutputDataArray(
+            $slideData,
+            '\Foggyline\Slider\Api\Data\SlideInterface'
+        );
+    }
+    $this-&gt;searchResultsFactory-&gt;setItems($slides);
+    return $this-&gt;searchResultsFactory;
+}</pre></div><p class="calibre7">Finally, we <a id="id417" class="calibre1"/>have the <code class="email">deleteById</code> method, defined within <code class="email">SlideRepository.php</code> as follows:</p><div class="informalexample"><pre class="programlisting">/**
+* Delete Slide
+*
+* @param \Foggyline\Slider\Api\Data\SlideInterface $slide
+* @return bool
+* @throws CouldNotDeleteException
+*/
+public function delete(\Foggyline\Slider\Api\Data\SlideInterface $slide)
+{
+    try {
+        $this-&gt;resource-&gt;delete($slide);
+    } catch (\Exception $exception) {
+        throw new CouldNotDeleteException(__($exception-&gt; getMessage()));
+    }
+    return true;
+}
+
+/**
+* Delete slide by ID.
+*
+* @param int $slideId
+* @return bool true on success
+* @throws \Magento\Framework\Exception\NoSuchEntityException
+* @throws \Magento\Framework\Exception\LocalizedException
+*/
+public function deleteById($slideId)
+{
+    return $this-&gt;delete($this-&gt;getById($slideId));
+}</pre></div><p class="calibre7">Keep in mind that we only covered the <code class="email">Slide</code> entity in the preceding partial code examples, which is enough to progress further with API call examples.</p></div>
+
+<div class="book" title="Creating custom Web APIs">
+<div class="book" title="API call examples"><div class="book"><div class="book"><div class="book"><h2 class="title1" id="calibre_pb_1"><a id="ch09lvl2sec31" class="calibre1"/>API call examples</h2></div></div></div><p class="calibre7">Since all <a id="id418" class="calibre1"/>of our defined API's are resource protected, we first need to authenticate as the admin user, assuming the admin user has access to all our custom resources that encompass the ones we defined. For simplicity sake, we will use the token-based authentication method, examples of which are given previously in this chapter. Once authenticated, we should have a 32 random characters long token like <code class="email">pk8h93nq9cevaw55bohkjbp0o7kpl4d3</code>, for example.</p><p class="calibre7">Once the <a id="id419" class="calibre1"/>token key has been obtained, we will test the following API calls using console cURL, PHP cURL, PHP SoapClient, and console SOAP style cURL examples:</p><div class="book"><ul class="itemizedlist"><li class="listitem"><code class="email">GET /V1/foggylineSliderSlide/:slideId</code>, calls the <code class="email">getById</code> service method, requires the <code class="email">Foggyline_Slider::slide</code> resource</li><li class="listitem"><code class="email">GET /V1/foggylineSliderSlide/search</code>, calls the <code class="email">getList</code> service method, requires the <code class="email">Foggyline_Slider::slide</code> resource</li><li class="listitem"><code class="email">POST /V1/foggylineSliderSlide</code>, calls the <code class="email">save</code> service method, requires the <code class="email">Foggyline_Slider::slide_save</code> resource</li><li class="listitem"><code class="email">PUT /V1/foggylineSliderSlide/:id</code>, calls the <code class="email">save</code> service method, requires the <code class="email">Foggyline_Slider::slide_save</code> resource</li><li class="listitem"><code class="email">DELETE /V1/foggylineSliderSlide/:slideId</code>, calls the <code class="email">deleteById</code> service method, requires the <code class="email">Foggyline_Slider::slide_delete</code> resource</li></ul></div><div class="book" title="The getById service method call examples"><div class="book"><div class="book"><div class="book"><h3 class="title2"><a id="ch09lvl3sec12" class="calibre1"/>The getById service method call examples</h3></div></div></div><p class="calibre7">The <a id="id420" class="calibre1"/>console cURL style for executing <code class="email">GET /V1/foggylineSliderSlide/:slideId</code> is done as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre8">curl -X GET -H 'Content-type: application/json' \</strong></span>
+<span class="strong"><strong class="calibre8">-H 'Authorization: Bearer pk8h93nq9cevaw55bohkjbp0o7kpl4d3' \</strong></span>
+<span class="strong"><strong class="calibre8">http://magento2.ce/rest/V1/foggylineSliderSlide/1</strong></span>
+</pre></div><p class="calibre7">The PHP cURL style for executing <code class="email">GET /V1/foggylineSliderSlide/:slideId</code> is done as follows:</p><div class="informalexample"><pre class="programlisting">$ch = curl_init('http://magento2.ce/rest/V1/foggylineSliderSlide/1');
+curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+    'Content-Type: application/json',
+    'Authorization: Bearer pk8h93nq9cevaw55bohkjbp0o7kpl4d3'
+));
+
+$result = curl_exec($ch);</pre></div><p class="calibre7">The response for console and PHP cURL style should be a JSON string similar to the following one:</p><div class="informalexample"><pre class="programlisting">{"slide_id":1,"title":"Awesome stuff #1"}</pre></div><p class="calibre7">The PHP SoapClient style for executing <code class="email">GET /V1/foggylineSliderSlide/:slideId</code> is done as follows:</p><div class="informalexample"><pre class="programlisting">$request = new SoapClient(
+    'http://magento2.ce/index.php/soap/? wsdl&amp;services=foggylineSliderSlideRepositoryV1',
+    array(
+        'soap_version' =&gt; SOAP_1_2,
+        'stream_context' =&gt; stream_context_create(array(
+                'http' =&gt; array(
+                    'header' =&gt; 'Authorization: Bearer pk8h93nq9cevaw55bohkjbp0o7kpl4d3')
+            )
+        )
+    )
+);
+$response = $request-&gt; foggylineSliderSlideRepositoryV1GetById(array('slideId'=&gt;1));</pre></div><p class="calibre7">The <a id="id421" class="calibre1"/>response for PHP SoapClient style should be the <code class="email">stdClass</code> PHP object as follows:</p><div class="informalexample"><pre class="programlisting">object(stdClass)#2 (1) {
+    ["result"]=&gt;
+    object(stdClass)#3 (2) {
+    ["slideId"]=&gt;
+    int(1)
+    ["title"]=&gt;
+    string(16) "Awesome stuff #1"
+    }
+}</pre></div><p class="calibre7">The console SOAP style cURL for executing <code class="email">GET /V1/foggylineSliderSlide/:slideId</code> is done as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre8">curl -X POST \</strong></span>
+<span class="strong"><strong class="calibre8">-H 'Content-Type: application/soap+xml; charset=utf-8; action="foggylineSliderSlideRepositoryV1GetById"' \</strong></span>
+<span class="strong"><strong class="calibre8">-H 'Authorization: Bearer pk8h93nq9cevaw55bohkjbp0o7kpl4d3' \</strong></span>
+<span class="strong"><strong class="calibre8">-d @request.xml \</strong></span>
+<span class="strong"><strong class="calibre8">http://magento2.ce/index.php/soap/default?services=foggyline SliderSlideRepositoryV1</strong></span>
+</pre></div><p class="calibre7">Where <code class="email">request.xml</code> has content as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;env:Envelope  &gt;
+    &lt;env:Body&gt;
+        &lt;ns1:foggylineSliderSlideRepositoryV1GetByIdRequest&gt;
+            &lt;slideId&gt;1&lt;/slideId&gt;
+        &lt;/ns1:foggylineSliderSlideRepositoryV1GetByIdRequest&gt;
+    &lt;/env:Body&gt;
+&lt;/env:Envelope&gt;</pre></div><p class="calibre7">Notice<a id="id422" class="calibre1"/> how we did not really do <code class="email">GET</code>, rather a <code class="email">POST</code> type of request. Also, the URL to which we are pointing our <code class="email">POST</code> is not really the same as with previous requests. This is because Magento SOAP requests are always <code class="email">POST</code> (or <code class="email">PUT</code>) type, as the data is submitted in XML format. XML format in return specifies the service, and the request header action specifies the method to be called on the service.</p><p class="calibre7">The response for console SOAP style cURL should be an XML as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;env:Envelope  &gt;
+    &lt;env:Body&gt;
+        &lt;ns1:foggylineSliderSlideRepositoryV1GetByIdResponse&gt;
+            &lt;result&gt;
+                &lt;slideId&gt;1&lt;/slideId&gt;
+                &lt;title&gt;Awesome stuff #1&lt;/title&gt;
+            &lt;/result&gt;
+        &lt;/ns1:foggylineSliderSlideRepositoryV1GetByIdResponse&gt;
+    &lt;/env:Body&gt;
+&lt;/env:Envelope&gt;</pre></div></div><div class="book" title="The getList service method call examples"><div class="book"><div class="book"><div class="book"><h3 class="title2"><a id="ch09lvl3sec13" class="calibre1"/>The getList service method call examples</h3></div></div></div><p class="calibre7">The<a id="id423" class="calibre1"/> console cURL style for executing <code class="email">GET /V1/foggylineSliderSlide/search</code> is done as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre8">curl -X GET -H 'Content-type: application/json' \</strong></span>
+<span class="strong"><strong class="calibre8">-H 'Authorization: Bearer pk8h93nq9cevaw55bohkjbp0o7kpl4d3' \</strong></span>
+<span class="strong"><strong class="calibre8">"http://magento2.ce/rest/V1/foggylineSliderSlide/search?search_criteria%5Bfilter_groups%5D%5B0%5D%5Bfilters%5D%5B0%5D%5Bfield%5D=title&amp;search_criteria%5Bfilter_groups%5D%5B0%5D%5Bfilters%5D%5B0%5D%5Bvalue%5D=%25some%25&amp;search_criteria%5Bfilter_groups%5D%5B0%5D%5Bfilters%5D%5B0%5D%5Bcondition_type%5D=like&amp;search_criteria%5Bcurrent_page%5D=1&amp;search_criteria%5Bpage_size%5D=10&amp;search_criteria%5Bsort_orders%5D%5B0%5D%5Bfield%5D=slide_id&amp;search_criteria%5Bsort_orders%5D%5B0%5D%5Bdirection%5D=ASC"</strong></span>
+</pre></div><p class="calibre7">The PHP cURL style for executing <code class="email">GET /V1/foggylineSliderSlide/search</code> is done as follows:</p><div class="informalexample"><pre class="programlisting">$searchCriteriaJSON = '{
+  "search_criteria": {
+    "filter_groups": [
+      {
+        "filters": [
+          {
+            "field": "title",
+            "value": "%some%",
+            "condition_type": "like"
+          }
+        ]
+      }
+    ],
+    "current_page": 1,
+    "page_size": 10,
+    "sort_orders": [
+      {
+        "field": "slide_id",
+        "direction": "ASC"
+      }
+    ]
+  }
+}';
+
+$searchCriteriaQueryString = http_build_query(json_decode($searchCriteriaJSON));
+
+$ch = curl_init('http://magento2.ce/rest/V1/foggylineSliderSlide/ search?' . $searchCriteriaQueryString);
+  curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+      'Content-Type: application/json',
+      'Authorization: Bearer pk8h93nq9cevaw55bohkjbp0o7kpl4d3'
+  ));
+
+$result = curl_exec($ch);</pre></div><p class="calibre7">The <a id="id424" class="calibre1"/>response for console and PHP cURL style should be a JSON string similar to the following one:</p><div class="informalexample"><pre class="programlisting">{"items":[{"slide_id":2,"title":"Just some other slider"},{"slide_id":1,"title":"Awesome stuff #1"}], "search_criteria":{"filter_groups":[{"filters": [{"field":"title","value":"%some%","condition_type":"like"}]}], "sort_orders":[{"field":"slide_id","direction":"- 1"}],"page_size":10,"current_page":1},"total_count":2}</pre></div><p class="calibre7">The <a id="id425" class="calibre1"/>PHP SoapClient style for executing <code class="email">GET /V1/foggylineSliderSlide/search</code> is done as follows:</p><div class="informalexample"><pre class="programlisting">$searchCriteria = [
+    'searchCriteria' =&gt;
+        [
+            'filterGroups' =&gt;
+                [
+                    [
+                        'filters' =&gt;
+                            [
+                                [
+                                    'field' =&gt; 'title',
+                                    'value' =&gt; '%some%',
+                                    'condition_type' =&gt; 'like',
+                                ],
+                            ],
+                    ],
+                ],
+            'currentPage' =&gt; 1,
+            'pageSize' =&gt; 10,
+            'sort_orders' =&gt;
+                [
+                    [
+                        'field' =&gt; 'slide_id',
+                        'direction' =&gt;'ASC',
+                    ],
+                ],
+        ],
+];
+
+$request = new SoapClient(
+    'http://magento2.ce/index.php/soap/?wsdl&amp;services= foggylineSliderSlideRepositoryV1',
+    array(
+        'soap_version' =&gt; SOAP_1_2,
+        'trace'=&gt;1,
+        'stream_context' =&gt; stream_context_create(array(
+                'http' =&gt; array(
+                    'header' =&gt; 'Authorization: Bearer pk8h93nq9cevaw55bohkjbp0o7kpl4d3')
+            )
+        )
+    )
+);
+
+$response = $request-&gt; foggylineSliderSlideRepositoryV1GetList($searchCriteria);</pre></div><p class="calibre7">The<a id="id426" class="calibre1"/> response for PHP SoapClient style should be the <code class="email">stdClass</code> PHP object as follows:</p><div class="informalexample"><pre class="programlisting">object(stdClass)#2 (1) {
+  ["result"]=&gt;
+  object(stdClass)#3 (3) {
+    ["items"]=&gt;
+    object(stdClass)#4 (0) {
+    }
+    ["searchCriteria"]=&gt;
+    object(stdClass)#5 (3) {
+      ["filterGroups"]=&gt;
+      object(stdClass)#6 (1) {
+        ["item"]=&gt;
+        object(stdClass)#7 (1) {
+          ["filters"]=&gt;
+          object(stdClass)#8 (1) {
+            ["item"]=&gt;
+            object(stdClass)#9 (2) {
+              ["field"]=&gt;
+              string(5) "title"
+              ["value"]=&gt;
+              string(6) "%some%"
+            }
+          }
+        }
+      }
+      ["pageSize"]=&gt;
+      int(10)
+      ["currentPage"]=&gt;
+      int(1)
+    }
+    ["totalCount"]=&gt;
+    int(0)
+  }
+}</pre></div><p class="calibre7">The console SOAP style cURL for executing <code class="email">GET /V1/foggylineSliderSlide/search</code> is done as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre8">curl -X POST \</strong></span>
+<span class="strong"><strong class="calibre8">-H 'Content-Type: application/soap+xml; charset=utf-8; action="foggylineSliderSlideRepositoryV1GetList"' \</strong></span>
+<span class="strong"><strong class="calibre8">-H 'Authorization: Bearer pk8h93nq9cevaw55bohkjbp0o7kpl4d3' \</strong></span>
+<span class="strong"><strong class="calibre8">-d @request.xml \</strong></span>
+<span class="strong"><strong class="calibre8">http://magento2.ce/index.php/soap/default?services=foggyline SliderSlideRepositoryV1</strong></span>
+</pre></div><p class="calibre7">Where <code class="email">request.xml</code> has content as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;env:Envelope  &gt;
+    &lt;env:Body&gt;
+        &lt;ns1:foggylineSliderSlideRepositoryV1GetListRequest&gt;
+            &lt;searchCriteria&gt;
+                &lt;filterGroups&gt;
+                    &lt;item&gt;
+                        &lt;filters&gt;
+                            &lt;item&gt;
+                                &lt;field&gt;title&lt;/field&gt;
+                                &lt;value&gt;%some%&lt;/value&gt;
+                            &lt;/item&gt;
+                        &lt;/filters&gt;
+                    &lt;/item&gt;
+                &lt;/filterGroups&gt;
+                &lt;pageSize&gt;10&lt;/pageSize&gt;
+                &lt;currentPage&gt;1&lt;/currentPage&gt;
+            &lt;/searchCriteria&gt;
+        &lt;/ns1:foggylineSliderSlideRepositoryV1GetListRequest&gt;
+    &lt;/env:Body&gt;
+&lt;/env:Envelope&gt;</pre></div><p class="calibre7">Notice <a id="id427" class="calibre1"/>we did not really do <code class="email">GET</code>, rather <code class="email">POST</code>. Also, the URL to which we are pointing our <code class="email">POST</code> is not really the same as with previous requests. This is because Magento SOAP requests are always <code class="email">POST</code> type, as the data is submitted in XML format. XML format in return specifies the service, and the request header action specifies the method to be called on the service.</p><p class="calibre7">The response for console SOAP style cURL should be an XML as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;env:Envelope  &gt;
+    &lt;env:Body&gt;
+        &lt;ns1:foggylineSliderSlideRepositoryV1GetListResponse&gt;
+            &lt;result&gt;
+                &lt;items/&gt;
+                &lt;searchCriteria&gt;
+                    &lt;filterGroups&gt;
+                        &lt;item&gt;
+                            &lt;filters&gt;
+                                &lt;item&gt;
+                                    &lt;field&gt;title&lt;/field&gt;
+                                    &lt;value&gt;%some%&lt;/value&gt;
+                                &lt;/item&gt;
+                            &lt;/filters&gt;
+                        &lt;/item&gt;
+                    &lt;/filterGroups&gt;
+                    &lt;pageSize&gt;10&lt;/pageSize&gt;
+                    &lt;currentPage&gt;1&lt;/currentPage&gt;
+                &lt;/searchCriteria&gt;
+                &lt;totalCount&gt;0&lt;/totalCount&gt;
+            &lt;/result&gt;
+        &lt;/ns1:foggylineSliderSlideRepositoryV1GetListResponse&gt;
+    &lt;/env:Body&gt;
+&lt;/env:Envelope&gt;</pre></div></div><div class="book" title="The save (as new) service method call examples"><div class="book"><div class="book"><div class="book"><h3 class="title2"><a id="ch09lvl3sec14" class="calibre1"/>The save (as new) service method call examples</h3></div></div></div><p class="calibre7">The <a id="id428" class="calibre1"/>console cURL style for executing <code class="email">POST /V1/foggylineSliderSlide</code> is done as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre8">curl -X POST -H 'Content-type: application/json' \</strong></span>
+<span class="strong"><strong class="calibre8">-H 'Authorization: Bearer pk8h93nq9cevaw55bohkjbp0o7kpl4d3' \</strong></span>
+<span class="strong"><strong class="calibre8">-d '{"slide": {"title": "API test"}}' \</strong></span>
+<span class="strong"><strong class="calibre8">http://magento2.ce/rest/V1/foggylineSliderSlide/</strong></span>
+</pre></div><p class="calibre7">The PHP cURL style for executing <code class="email">POST /V1/foggylineSliderSlide</code> is done as follows:</p><div class="informalexample"><pre class="programlisting">$slide = json_encode(['slide'=&gt;['title'=&gt; 'API test']]);
+
+$ch = curl_init('http://magento2.ce/rest/V1/foggylineSliderSlide');
+  curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+  curl_setopt($ch, CURLOPT_POSTFIELDS, $slide);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+      'Content-Type: application/json',
+      'Content-Length: ' . strlen($slide),
+      'Authorization: Bearer pk8h93nq9cevaw55bohkjbp0o7kpl4d3'
+  ));
+
+$result = curl_exec($ch);</pre></div><p class="calibre7">The<a id="id429" class="calibre1"/> response for console and PHP cURL style should be a JSON string similar to the following one:</p><div class="informalexample"><pre class="programlisting">{"slide_id":4,"title":"API test"}</pre></div><p class="calibre7">The PHP SoapClient style for executing <code class="email">POST /V1/foggylineSliderSlide</code> is done as follows:</p><div class="informalexample"><pre class="programlisting">$slide = ['slide'=&gt;['title'=&gt; 'API test']];
+
+$request = new SoapClient(
+    'http://magento2.ce/index.php/soap/?wsdl&amp;services= foggylineSliderSlideRepositoryV1',
+    array(
+        'soap_version' =&gt; SOAP_1_2,
+        'trace'=&gt;1,
+        'stream_context' =&gt; stream_context_create(array(
+                'http' =&gt; array(
+                    'header' =&gt; 'Authorization: Bearer pk8h93nq9cevaw55bohkjbp0o7kpl4d3')
+            )
+        )
+    )
+);
+
+$response = $request-&gt; foggylineSliderSlideRepositoryV1Save($slide);</pre></div><p class="calibre7">The response for PHP SoapClient style should be the <code class="email">stdClass</code> PHP object as follows:</p><div class="informalexample"><pre class="programlisting">object(stdClass)#2 (1) {
+  ["result"]=&gt;
+  object(stdClass)#3 (2) {
+    ["slideId"]=&gt;
+    int(6)
+    ["title"]=&gt;
+    string(8) "API test"
+  }
+}</pre></div><p class="calibre7">The console SOAP style cURL for executing <code class="email">POST /V1/foggylineSliderSlide</code> is done as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre8">curl -X POST \</strong></span>
+<span class="strong"><strong class="calibre8">-H 'Content-Type: application/soap+xml; charset=utf-8; action="foggylineSliderSlideRepositoryV1Save"' \</strong></span>
+<span class="strong"><strong class="calibre8">-H 'Authorization: Bearer pk8h93nq9cevaw55bohkjbp0o7kpl4d3' \</strong></span>
+<span class="strong"><strong class="calibre8">-d @request.xml \</strong></span>
+<span class="strong"><strong class="calibre8">http://magento2.ce/index.php/soap/default?services=foggyline SliderSlideRepositoryV1</strong></span>
+</pre></div><p class="calibre7">Where <code class="email">request.xml</code> has content as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;env:Envelope  &gt;
+    &lt;env:Body&gt;
+        &lt;ns1:foggylineSliderSlideRepositoryV1SaveRequest&gt;
+            &lt;slide&gt;
+                &lt;title&gt;API test&lt;/title&gt;
+            &lt;/slide&gt;
+        &lt;/ns1:foggylineSliderSlideRepositoryV1SaveRequest&gt;
+    &lt;/env:Body&gt;
+&lt;/env:Envelope&gt;</pre></div><p class="calibre7">The <a id="id430" class="calibre1"/>response for console SOAP style cURL should be an XML as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;env:Envelope  &gt;
+    &lt;env:Body&gt;
+        &lt;ns1:foggylineSliderSlideRepositoryV1SaveResponse&gt;
+            &lt;result&gt;
+                &lt;slideId&gt;8&lt;/slideId&gt;
+                &lt;title&gt;API test&lt;/title&gt;
+            &lt;/result&gt;
+        &lt;/ns1:foggylineSliderSlideRepositoryV1SaveResponse&gt;
+    &lt;/env:Body&gt;
+&lt;/env:Envelope&gt;</pre></div></div><div class="book" title="The save (as update) service method call examples"><div class="book"><div class="book"><div class="book"><h3 class="title2"><a id="ch09lvl3sec15" class="calibre1"/>The save (as update) service method call examples</h3></div></div></div><p class="calibre7">The<a id="id431" class="calibre1"/> console cURL style for executing <code class="email">PUT /V1/foggylineSliderSlide/:id</code> is done as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre8">curl -X PUT -H 'Content-type: application/json' \</strong></span>
+<span class="strong"><strong class="calibre8">-H 'Authorization: Bearer pk8h93nq9cevaw55bohkjbp0o7kpl4d3' \</strong></span>
+<span class="strong"><strong class="calibre8">-d '{"slide": {"slide_id": 2, "title": "API update test"}}' \</strong></span>
+<span class="strong"><strong class="calibre8">http://magento2.ce/rest/V1/foggylineSliderSlide/2</strong></span>
+</pre></div><p class="calibre7">The PHP cURL style for executing <code class="email">PUT /V1/foggylineSliderSlide/:id</code> is done as follows:</p><div class="informalexample"><pre class="programlisting">$slideId = 2;
+$slide = json_encode(['slide'=&gt;['slide_id'=&gt; $slideId, 'title'=&gt; 'API update test']]);
+
+$ch = curl_init('http://magento2.ce/rest/V1/foggylineSliderSlide/' . $slideId);
+  curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
+  curl_setopt($ch, CURLOPT_POSTFIELDS, $slide);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+      'Content-Type: application/json',
+      'Content-Length: ' . strlen($slide),
+      'Authorization: Bearer pk8h93nq9cevaw55bohkjbp0o7kpl4d3'
+  ));
+
+$result = curl_exec($ch);</pre></div><p class="calibre7">The <a id="id432" class="calibre1"/>response for console and PHP cURL style should be a JSON string similar to the following one:</p><div class="informalexample"><pre class="programlisting">{"id":2,"slide_id":2,"title":"API update test"}</pre></div><p class="calibre7">The PHP SoapClient style for executing <code class="email">PUT /V1/foggylineSliderSlide/:id</code> is done as follows:</p><div class="informalexample"><pre class="programlisting">$slideId = 2;
+$slide = ['slide'=&gt;['slideId'=&gt; $slideId, 'title'=&gt; 'API update test']];
+
+$request = new SoapClient(
+    'http://magento2.ce/index.php/soap/?wsdl&amp;services= foggylineSliderSlideRepositoryV1',
+    array(
+        'soap_version' =&gt; SOAP_1_2,
+        'trace'=&gt;1,
+        'stream_context' =&gt; stream_context_create(array(
+                'http' =&gt; array(
+                    'header' =&gt; 'Authorization: Bearer pk8h93nq9cevaw55bohkjbp0o7kpl4d3')
+            )
+        )
+    )
+);
+
+$response = $request-&gt; foggylineSliderSlideRepositoryV1Save($slide);</pre></div><p class="calibre7">The response for PHP SoapClient style should be the <code class="email">stdClass</code> PHP object as follows:</p><div class="informalexample"><pre class="programlisting">object(stdClass)#2 (1) {
+  ["result"]=&gt;
+  object(stdClass)#3 (2) {
+    ["slideId"]=&gt;
+    int(2)
+    ["title"]=&gt;
+    string(15) "API update test"
+  }
+}</pre></div><p class="calibre7">The<a id="id433" class="calibre1"/> console SOAP style cURL for executing <code class="email">PUT /V1/foggylineSliderSlide/:id</code> is done as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre8">curl -X PUT \</strong></span>
+<span class="strong"><strong class="calibre8">-H 'Content-Type: application/soap+xml; charset=utf-8; action="foggylineSliderSlideRepositoryV1Save"' \</strong></span>
+<span class="strong"><strong class="calibre8">-H 'Authorization: Bearer pk8h93nq9cevaw55bohkjbp0o7kpl4d3' \</strong></span>
+<span class="strong"><strong class="calibre8">-d @request.xml \</strong></span>
+<span class="strong"><strong class="calibre8">http://magento2.ce/index.php/soap/default?services= foggylineSliderSlideRepositoryV1</strong></span>
+</pre></div><p class="calibre7">Where <code class="email">request.xml</code> has content as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;env:Envelope  &gt;
+    &lt;env:Body&gt;
+        &lt;ns1:foggylineSliderSlideRepositoryV1SaveRequest&gt;
+            &lt;slide&gt;
+                &lt;slideId&gt;2&lt;/slideId&gt;
+                &lt;title&gt;API update test&lt;/title&gt;
+            &lt;/slide&gt;
+        &lt;/ns1:foggylineSliderSlideRepositoryV1SaveRequest&gt;
+    &lt;/env:Body&gt;
+&lt;/env:Envelope&gt;</pre></div><p class="calibre7">The response for console SOAP style cURL should be an XML as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;env:Envelope  &gt;
+    &lt;env:Body&gt;
+        &lt;ns1:foggylineSliderSlideRepositoryV1SaveResponse&gt;
+            &lt;result&gt;
+                &lt;slideId&gt;2&lt;/slideId&gt;
+                &lt;title&gt;API update test&lt;/title&gt;
+            &lt;/result&gt;
+        &lt;/ns1:foggylineSliderSlideRepositoryV1SaveResponse&gt;
+    &lt;/env:Body&gt;
+&lt;/env:Envelope&gt;</pre></div></div><div class="book" title="The deleteById service method call examples"><div class="book"><div class="book"><div class="book"><h3 class="title2"><a id="ch09lvl3sec16" class="calibre1"/>The deleteById service method call examples</h3></div></div></div><p class="calibre7">The console cURL style <a id="id434" class="calibre1"/>for executing <code class="email">DELETE /V1/foggylineSliderSlide/:slideId</code> is done as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre8">curl -X DELETE -H 'Content-type: application/json' \</strong></span>
+<span class="strong"><strong class="calibre8">-H 'Authorization: Bearer pk8h93nq9cevaw55bohkjbp0o7kpl4d3' \</strong></span>
+<span class="strong"><strong class="calibre8">http://magento2.ce/rest/V1/foggylineSliderSlide/3</strong></span>
+</pre></div><p class="calibre7">The PHP cURL style for executing <code class="email">DELETE /V1/foggylineSliderSlide/:slideId</code> is done as follows:</p><div class="informalexample"><pre class="programlisting">$slideId = 4;
+
+$ch = curl_init('http://magento2.ce/rest/V1/foggylineSliderSlide/' . $slideId);
+  curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+      'Content-Type: application/json',
+      'Authorization: Bearer pk8h93nq9cevaw55bohkjbp0o7kpl4d3'
+  ));
+
+$result = curl_exec($ch);</pre></div><p class="calibre7">The response for console and PHP cURL style should be a JSON string similar to the following one:</p><div class="informalexample"><pre class="programlisting">true</pre></div><p class="calibre7">The PHP SoapClient style for executing <code class="email">DELETE /V1/foggylineSliderSlide/:slideId</code> is done as follows:</p><div class="informalexample"><pre class="programlisting">$slideId = 2;
+
+$request = new SoapClient(
+    'http://magento2.ce/index.php/soap/?wsdl&amp;services= foggylineSliderSlideRepositoryV1',
+    array(
+        'soap_version' =&gt; SOAP_1_2,
+        'trace'=&gt;1,
+        'stream_context' =&gt; stream_context_create(array(
+                'http' =&gt; array(
+                    'header' =&gt; 'Authorization: Bearer pk8h93nq9cevaw55bohkjbp0o7kpl4d3')
+            )
+        )
+    )
+);
+
+$response = $request-&gt; foggylineSliderSlideRepositoryV1DeleteById(array('slideId'=&gt; $slideId));</pre></div><p class="calibre7">The<a id="id435" class="calibre1"/> response for PHP SoapClient style should be the <code class="email">stdClass</code> PHP object as follows:</p><div class="informalexample"><pre class="programlisting">object(stdClass)#2 (1) {
+  ["result"]=&gt;
+  bool(true)
+}</pre></div><p class="calibre7">The console SOAP style cURL for executing <code class="email">DELETE /V1/foggylineSliderSlide/:slideId</code> is done as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong class="calibre8">curl -X POST \</strong></span>
+<span class="strong"><strong class="calibre8">-H 'Content-Type: application/soap+xml; charset=utf-8; action="foggylineSliderSlideRepositoryV1DeleteById"' \</strong></span>
+<span class="strong"><strong class="calibre8">-H 'Authorization: Bearer pk8h93nq9cevaw55bohkjbp0o7kpl4d3' \</strong></span>
+<span class="strong"><strong class="calibre8">-d @request.xml \</strong></span>
+<span class="strong"><strong class="calibre8">http://magento2.ce/index.php/soap/default?services= foggylineSliderSlideRepositoryV1</strong></span>
+</pre></div><p class="calibre7">Where <code class="email">request.xml</code> has content as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;env:Envelope  &gt;
+    &lt;env:Body&gt;
+        &lt;ns1:foggylineSliderSlideRepositoryV1DeleteByIdRequest&gt;
+            &lt;slideId&gt;5&lt;/slideId&gt;
+        &lt;/ns1:foggylineSliderSlideRepositoryV1DeleteByIdRequest&gt;
+    &lt;/env:Body&gt;
+&lt;/env:Envelope&gt;</pre></div><p class="calibre7">The response for console SOAP style cURL should be an XML as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;env:Envelope  &gt;
+    &lt;env:Body&gt;
+        &lt;ns1:foggylineSliderSlideRepositoryV1DeleteByIdResponse&gt;
+            &lt;result&gt;true&lt;/result&gt;
+        &lt;/ns1:foggylineSliderSlideRepositoryV1DeleteByIdResponse&gt;
+    &lt;/env:Body&gt;
+&lt;/env:Envelope&gt;</pre></div><p class="calibre7">The <a id="id436" class="calibre1"/>preceding API call examples cover all of our custom-defined APIs for the <code class="email">Slide</code> entity.</p><p class="calibre7">Looking back at the <code class="email">$searchCriteria</code> variable, we used the <code class="email">GET</code> type of HTTP method, passing the entire variable as a query string. If we think about it, we could have specified <code class="email">POST</code> during the Web API resource definition and packed the content of the <code class="email">$searchCriteria</code> variable into the request body. Although the <code class="email">GET</code> method approach might look a bit dirtier, imagine if we assigned the anonymous or self role to the resource: we would be able to simply open a lengthy URL in the browser and have the search results. Think of a possible widget use, where a widget would simply do an AJAX request to the URL and fetch the results for guests or the customer.</p><p class="calibre7">The full <a id="id437" class="calibre1"/>module source code can be found here: <a class="calibre1" href="https://github.com/ajzele/B05032-Foggyline_Slider">https://github.com/ajzele/B05032-Foggyline_Slider</a>. Aside from the <code class="email">Slide</code> entity, the full module code includes the <code class="email">Image</code> entity as well. Since each slide can contain multiple images, we can further test the <code class="email">Image</code> API calls analogous to the preceding calls.</p></div></div></div>
+<div class="book" title="Search Criteria Interface for list filtering"><div class="book" id="24L8G2-818f5224668745eb9070ddf1d85e6bfa"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch09lvl1sec65" class="calibre1"/>Search Criteria Interface for list filtering</h1></div></div></div><p class="calibre7">Knowing<a id="id438" class="calibre1"/> how to do a proper list filtering to fetch the entities that match a certain lookup is essential for the effective use of <code class="email">getList</code> services across core Magento and possibly custom-coded API's. An example is fetching the list of customers registered within the last 24 hours for the latest added product.</p><p class="calibre7">Let's take a look back at our <code class="email">app/code/Foggyline/Slider/etc/webapi.xml</code> file, the bit where we defined the service <code class="email">method="getList"</code>. The service class is defined as <code class="email">Foggyline\Slider\Api\SlideRepositoryInterface</code>, which is defined as a preference for the <code class="email">Foggyline\Slider\Model\SlideRepository</code> class. Finally, within the <code class="email">SlideRepository</code> class, we have the actual <code class="email">getList</code>. Method <code class="email">getList</code> is defined as follows:</p><div class="informalexample"><pre class="programlisting">getList(\Magento\Framework\Api\SearchCriteriaInterface $searchCriteria);</pre></div><p class="calibre7">We can see that the <code class="email">getList</code> method takes only one parameter, object instance, that complies with <code class="email">SearchCriteriaInterface</code> called <code class="email">$searchCriteria</code>.</p><p class="calibre7">What this means is we already have the (incomplete) JSON object of the following type to pass to the <code class="email">getList</code> method:</p><div class="informalexample"><pre class="programlisting">{
+  "search_criteria": {
+  }
+}</pre></div><p class="calibre7">In order<a id="id439" class="calibre1"/> to further understand the inner workings of <code class="email">search_criteria</code>, we need to understand <code class="email">SearchCriteriaInterface</code>, which is (partially) defined as follows:</p><div class="informalexample"><pre class="programlisting">interface SearchCriteriaInterface
+{
+    /* @param \Magento\Framework\Api\Search\FilterGroup[] $filterGroups */
+    public function setFilterGroups(array $filterGroups = null);
+
+    /* @param \Magento\Framework\Api\SortOrder[] $sortOrders */
+    public function setSortOrders(array $sortOrders = null);
+
+    /* @param int $pageSize */
+    public function setPageSize($pageSize);
+
+    /* @param int $currentPage */
+    public function setCurrentPage($currentPage);
+}</pre></div><p class="calibre7">Every interface getter and setter method expects the values to be found in passed API parameters. What this means is that the <code class="email">getPageSize()</code> and <code class="email">setPageSize()</code> methods would expect <code class="email">search_criteria</code> to have an integer type <code class="email">page_size</code> property on it. Similarly, the <code class="email">getFilterGroups()</code> and <code class="email">setFilterGroups()</code> methods would expect <code class="email">search_criteria</code> to have an array of <code class="email">\Magento\Framework\Api\Search\FilterGroup</code> passed to it. These insights bring us to an (incomplete) JSON object of the following type to pass to the <code class="email">getList</code> method:</p><div class="informalexample"><pre class="programlisting">{
+  "search_criteria": {
+    "filter_groups": [
+    ],
+    "current_page": 1,
+    "page_size": 10,
+    "sort_orders": [
+    ]
+  }
+}</pre></div><p class="calibre7">Now we have got to the point where we need to determine what goes into <code class="email">filter_groups</code> and <code class="email">sort_orders</code>, since these are not simple types but compound values.</p><p class="calibre7">Looking<a id="id440" class="calibre1"/> further into <code class="email">\Magento\Framework\Api\Search\FilterGroup</code>, we see the definition of the <code class="email">getFilters()</code> and <code class="email">setFilters()</code> methods that work with an array of <code class="email">\Magento\Framework\Api\Filter</code> objects. What this means is that <code class="email">filter_groups</code> has a property filter that is an array of individual filter objects defined as <code class="email">\Magento\Framework\Api\Filter</code>. With this in mind, we are now down to the following form of the <code class="email">search_criteria</code> JSON object:</p><div class="informalexample"><pre class="programlisting">{
+  "search_criteria": {
+    "filter_groups": [
+      {
+        "filters": [
+        ]
+      }
+    ],
+    "current_page": 1,
+    "page_size": 10,
+    "sort_orders": [
+    ]
+  }
+}</pre></div><p class="calibre7">Looking further into individual <code class="email">\Magento\Framework\Api\Filter</code>, through its getters and setters it defines we can conclude properties like <code class="email">field</code>, <code class="email">value</code>, and <code class="email">condition_type</code>. This brings us one step further to finalizing our <code class="email">search_criteria</code> JSON object, which is now structured as follows:</p><div class="informalexample"><pre class="programlisting">{
+  "search_criteria": {
+    "filter_groups": [
+      {
+        "filters": [
+          {
+            "field": "title",
+            "value": "%some%",
+            "condition_type": "like"
+          }
+        ]
+      }
+    ],
+    "current_page": 1,
+    "page_size": 10,
+    "sort_orders": [
+    ]
+  }
+}</pre></div><p class="calibre7">Let us<a id="id441" class="calibre1"/> take a look at <code class="email">sort_orders</code> as the last outstanding bit. <code class="email">sort_orders</code> is of type <code class="email">\Magento\Framework\Api\SortOrder</code>, which has getters and setters for the field and direction properties. Knowing this, we are able to fully construct our <code class="email">search_criteria</code> JSON object (or array) that we would be passing to the <code class="email">getList()</code> service method call, as follows:</p><div class="informalexample"><pre class="programlisting">{
+  "search_criteria": {
+    "filter_groups": [
+      {
+        "filters": [
+          {
+            "field": "title",
+            "value": "%some%",
+            "condition_type": "like"
+          }
+        ]
+      }
+    ],
+    "current_page": 1,
+    "page_size": 10,
+    "sort_orders": [
+      {
+        "field": "slide_id",
+        "direction": -1
+      }
+    ]
+  }
+}</pre></div><p class="calibre7">What happens when we define multiple entries under <code class="email">filter_groups</code>, <code class="email">filters</code>, or <code class="email">sort_orders</code>? The logical expectation would be that these break into <code class="email">AND</code> and <code class="email">OR</code> operators in SQL when they hit the database. Surprisingly, this is not always the case, at least not with our preceding example. Since the actual implementation of the <code class="email">getList</code> method is left for us to handle, we can decide how we want to handle the filter groups and filters.</p><p class="calibre7">Looking back at our <code class="email">getList</code> method, as (partially) shown next, we are not doing anything to imply an <code class="email">OR</code> operator, so everything ends up with an <code class="email">AND</code> condition on the database:</p><div class="informalexample"><pre class="programlisting">foreach ($searchCriteria-&gt;getFilterGroups() as $filterGroup) {
+    foreach ($filterGroup-&gt;getFilters() as $filter) {
+        $condition = $filter-&gt;getConditionType() ?: 'eq';
+        $collection-&gt;addFieldToFilter($filter-&gt;getField(), [$condition =&gt; $filter-&gt;getValue()]);
+  }
+}</pre></div><p class="calibre7">The <a id="id442" class="calibre1"/>preceding code simply loops through all filter groups, pulling in all filters within the group and calling the same <code class="email">addFieldToFilter</code> method for everything. Similar behavior is implemented across core Magento modules. Although the filtering itself follows the <code class="email">\Magento\Framework\Api\SearchCriteriaInterface</code> interface, there is no unified Magento-wide approach to force <code class="email">AND</code> and <code class="email">OR</code> operators in filtering.</p><p class="calibre7">However, Magento core API's like <code class="email">GET</code> products do implement both <code class="email">AND</code> and <code class="email">OR</code> conditions. In cases like these, filter groups result in <code class="email">OR</code> and filters within the group result in <code class="email">AND</code> conditions.</p><div class="informalexample" title="Note"><h3 class="title2"><a id="tip16" class="calibre1"/>Tip</h3><p class="calibre7">Following best practices, we should make sure our modules that implement search criteria do so respecting the <code class="email">filter_groups</code>/<code class="email">filters</code> and <code class="email">OR</code>/<code class="email">AND</code> relationship.</p></div></div>
+<div class="book" title="Summary" id="25JP21-818f5224668745eb9070ddf1d85e6bfa"><div class="book"><div class="book"><div class="book"><h1 class="title" id="calibre_pb_0"><a id="ch09lvl1sec66" class="calibre1"/>Summary</h1></div></div></div><p class="calibre7">In this chapter, we covered a lot of ground relating to Magento API's. There is much more left to be said, but the steps outlined here should be enough to get us started even with more advanced API usage. We started the chapter with learning about types of users and the authentication methods supported. Strong emphasis was placed on making several types of API calls, like console cURL, PHP cURL, PHP SoapClient, and console cURL SOAP. This was to encourage developers to understand the inner workings of API calls more deeply than just using high-level libraries.</p><p class="calibre7">Throughout the next chapter, we will look into some of the major sections of Magento.</p></div></body></html>
