@@ -1,0 +1,634 @@
+<html><head></head><body>
+<div id="_idContainer190">
+<h1 class="chapter-number" id="_idParaDest-145"><a id="_idTextAnchor146"/><span class="koboSpan" id="kobo.1.1">10</span></h1>
+<h1 id="_idParaDest-146"><a id="_idTextAnchor147"/><span class="koboSpan" id="kobo.2.1">Continuous Delivery</span></h1>
+<p><span class="koboSpan" id="kobo.3.1">We’ve built a software solution complete with automated tests and have set up a continuous integration pipeline to run those automated tests. </span><span class="koboSpan" id="kobo.3.2">Now, if a developer in your team pushes some code that changes the expected behavior of the solution, our automated tests and continuous integration solution will catch those issues and will help you and your team stop releasing detrimental code. </span><span class="koboSpan" id="kobo.3.3">But what if all the tests have passed after pushing all the new code to the repository? </span><span class="koboSpan" id="kobo.3.4">Wouldn’t it be great if we had a solution to help us prepare and deploy the application into a development, staging, or </span><span class="No-Break"><span class="koboSpan" id="kobo.4.1">production server?</span></span></p>
+<p><span class="koboSpan" id="kobo.5.1">In this chapter, we will add the last missing piece to our development process. </span><span class="koboSpan" id="kobo.5.2">We will prepare a remote server in AWS, and we will automatically deploy our application into that server using </span><strong class="bold"><span class="koboSpan" id="kobo.6.1">continuous delivery</span></strong><span class="koboSpan" id="kobo.7.1"> (</span><strong class="bold"><span class="koboSpan" id="kobo.8.1">CD</span></strong><span class="koboSpan" id="kobo.9.1">). </span></p>
+<p><span class="No-Break"><em class="italic"><span class="koboSpan" id="kobo.10.1">Figure 10</span></em></span><em class="italic"><span class="koboSpan" id="kobo.11.1">.1</span></em><span class="koboSpan" id="kobo.12.1"> shows the steps we are going to take to deploy our solution code to a public-facing web server. </span><span class="koboSpan" id="kobo.12.2">We will go through the process of pushing new code to the repository, which, in turn, will trigger the CI pipeline we configured in the previous chapter. </span><span class="koboSpan" id="kobo.12.3">The CI pipeline will run the automated tests we’ve built and, when successful, the CD process will upload our solution code into AWS S3. </span><span class="koboSpan" id="kobo.12.4">Then, we will use AWS CodeDeploy to deploy our application into an AWS EC2 instance that will serve as our example </span><span class="No-Break"><span class="koboSpan" id="kobo.13.1">production server:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer143">
+<span class="koboSpan" id="kobo.14.1"><img alt="Figure 10.1 – Entire flow" src="image/Figure_10.01_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.15.1">Figure 10.1 – Entire flow</span></p>
+<p><span class="koboSpan" id="kobo.16.1">From a developer pushing new code and running all automated tests in the cloud to automatically deploying the solution code into a Linux server, we will be covering all </span><span class="No-Break"><span class="koboSpan" id="kobo.17.1">of that!</span></span></p>
+<p><span class="koboSpan" id="kobo.18.1">In this chapter, we will go through the </span><span class="No-Break"><span class="koboSpan" id="kobo.19.1">following topics:</span></span></p>
+<ul>
+<li><span class="koboSpan" id="kobo.20.1">Setting up an AWS </span><span class="No-Break"><span class="koboSpan" id="kobo.21.1">EC2 instance</span></span></li>
+<li><span class="koboSpan" id="kobo.22.1">Creating an AWS </span><span class="No-Break"><span class="koboSpan" id="kobo.23.1">CodeDeploy application</span></span></li>
+<li><span class="koboSpan" id="kobo.24.1">Installing Docker and other dependencies inside the AWS </span><span class="No-Break"><span class="koboSpan" id="kobo.25.1">EC2 instance</span></span></li>
+<li><span class="koboSpan" id="kobo.26.1">Continuous delivery with Bitbucket Pipelines and AWS CodeDeploy </span></li>
+</ul>
+<h1 id="_idParaDest-147"><a id="_idTextAnchor148"/><span class="koboSpan" id="kobo.27.1">Technical requirements</span></h1>
+<p><span class="koboSpan" id="kobo.28.1">In this chapter, you should follow the instructions provided in the previous chapter and configure a Bitbucket Pipelines pipeline. </span><span class="koboSpan" id="kobo.28.2">You are also expected to have basic knowledge of AWS and should use the code in this book’s code base </span><span class="No-Break"><span class="koboSpan" id="kobo.29.1">at </span></span><a href="https://github.com/PacktPublishing/Test-Driven-Development-with-PHP-8/tree/main/Chapter%2010"><span class="No-Break"><span class="koboSpan" id="kobo.30.1">https://github.com/PacktPublishing/Test-Driven-Development-with-PHP-8/tree/main/Chapter%2010</span></span></a><span class="No-Break"><span class="koboSpan" id="kobo.31.1">.</span></span></p>
+<p><span class="koboSpan" id="kobo.32.1">To see all the tests running properly, you can run the following command to download the complete code of this chapter, and run the </span><span class="No-Break"><span class="koboSpan" id="kobo.33.1">Docker containers:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.34.1">
+curl -Lo phptdd.zip "https://github.com/PacktPublishing/Test-Driven-Development-with-PHP-8/raw/main/Chapter%2010/complete.zip" &amp;&amp; unzip -o phptdd.zip &amp;&amp; cd complete &amp;&amp; ./demoSetup.sh</span></pre>
+<p><span class="koboSpan" id="kobo.35.1">To run the containers and execute the commands in this chapter, you should be inside the </span><span class="No-Break"><strong class="source-inline"><span class="koboSpan" id="kobo.36.1">docker-server-web-1</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.37.1"> container.</span></span></p>
+<p><span class="koboSpan" id="kobo.38.1">Run the following command to confirm the container name for our </span><span class="No-Break"><span class="koboSpan" id="kobo.39.1">web server:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.40.1">
+docker ps</span></pre>
+<p><span class="koboSpan" id="kobo.41.1">To run the containers, run the following command from the </span><strong class="source-inline"><span class="koboSpan" id="kobo.42.1">/phptdd/docker</span></strong><span class="koboSpan" id="kobo.43.1"> directory from the repository in your </span><span class="No-Break"><span class="koboSpan" id="kobo.44.1">host machine:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.45.1">
+docker-compose build &amp;&amp; docker-compose up -d
+docker exec -it docker_server-web_1 /bin/bash</span></pre>
+<p><span class="koboSpan" id="kobo.46.1">Once inside the container, run the following command to install the libraries required </span><span class="No-Break"><span class="koboSpan" id="kobo.47.1">through Composer:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.48.1">
+/var/www/html/symfony# ./setup.sh</span></pre>
+<p><span class="koboSpan" id="kobo.49.1">Within the </span><strong class="source-inline"><span class="koboSpan" id="kobo.50.1">/var/www/html/symfony</span></strong><span class="koboSpan" id="kobo.51.1"> directory, run the following command to see all the </span><span class="No-Break"><span class="koboSpan" id="kobo.52.1">tests passing:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.53.1">
+/var/www/html/symfony# ./runCoverage.sh</span></pre>
+<p><span class="koboSpan" id="kobo.54.1">After running the </span><strong class="source-inline"><span class="koboSpan" id="kobo.55.1">runCoverage.sh</span></strong><span class="koboSpan" id="kobo.56.1"> command, it should execute all our Symfony tests, and you can make sure that they </span><span class="No-Break"><span class="koboSpan" id="kobo.57.1">all pass.</span></span></p>
+<h1 id="_idParaDest-148"><a id="_idTextAnchor149"/><span class="koboSpan" id="kobo.58.1">Setting up an AWS EC2 instance</span></h1>
+<p><span class="koboSpan" id="kobo.59.1">If you don’t already have an AWS account, you can follow the instructions at </span><a href="https://aws.amazon.com/premiumsupport/knowledge-center/create-and-activate-aws-account/"><span class="koboSpan" id="kobo.60.1">https://aws.amazon.com/premiumsupport/knowledge-center/create-and-activate-aws-account/</span></a><span class="koboSpan" id="kobo.61.1"> to create one.You will also have to create an AWS IAM User group. </span><span class="koboSpan" id="kobo.61.2">The instructions can be found on https://docs.aws.amazon.com/IAM/latest/UserGuide/id_groups_create.html. </span><span class="koboSpan" id="kobo.61.3">You will need an AWS IAM User, and follow the official documentation from AWS to create an IAM user in your AWS account at </span><a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html."><span class="koboSpan" id="kobo.62.1">https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html.</span></a> </p>
+<p><span class="koboSpan" id="kobo.63.1">We will also need </span><a id="_idIndexMarker502"/><span class="koboSpan" id="kobo.64.1">the following AWS resources to complete the </span><span class="No-Break"><span class="koboSpan" id="kobo.65.1">EC2 setup:</span></span></p>
+<ul>
+<li><span class="koboSpan" id="kobo.66.1">AWS EC2 </span><span class="No-Break"><span class="koboSpan" id="kobo.67.1">key pair</span></span></li>
+<li><span class="koboSpan" id="kobo.68.1">IAM </span><span class="No-Break"><span class="koboSpan" id="kobo.69.1">instance profile</span></span></li>
+</ul>
+<p><span class="koboSpan" id="kobo.70.1">Why do we need an EC2 instance? </span><span class="koboSpan" id="kobo.70.2">Well, this will serve as our remote server. </span><span class="koboSpan" id="kobo.70.3">You can think of it as your host </span><a id="_idIndexMarker503"/><span class="koboSpan" id="kobo.71.1">computer running in the cloud. </span><span class="koboSpan" id="kobo.71.2">We will use this server to host our Docker containers to run and serve </span><span class="No-Break"><span class="koboSpan" id="kobo.72.1">our application:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer144">
+<span class="koboSpan" id="kobo.73.1"><img alt="Figure 10.1 – EC2 instance" src="image/Figure_10.02_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.74.1">Figure 10.1 – EC2 instance</span></p>
+<p><span class="koboSpan" id="kobo.75.1">As you can see from the diagram, it’s going to serve as almost a replica of your local development environment. </span><span class="koboSpan" id="kobo.75.2">That’s the big benefit of using containers, as we discussed in </span><a href="B18318_03.xhtml#_idTextAnchor039"><span class="No-Break"><em class="italic"><span class="koboSpan" id="kobo.76.1">Chapter 3</span></em></span></a><span class="koboSpan" id="kobo.77.1">, </span><em class="italic"><span class="koboSpan" id="kobo.78.1">Setting Up Our Development Environment Using </span></em><span class="No-Break"><em class="italic"><span class="koboSpan" id="kobo.79.1">Docker Containers.</span></em></span></p>
+<p><span class="koboSpan" id="kobo.80.1">Follow these </span><a id="_idIndexMarker504"/><span class="koboSpan" id="kobo.81.1">steps to create an </span><span class="No-Break"><span class="koboSpan" id="kobo.82.1">EC2 instance:</span></span></p>
+<ol>
+<li><span class="koboSpan" id="kobo.83.1">Sign in to the AWS console and search for </span><strong class="source-inline"><span class="koboSpan" id="kobo.84.1">EC2</span></strong><span class="koboSpan" id="kobo.85.1"> in the </span><strong class="bold"><span class="koboSpan" id="kobo.86.1">Services</span></strong><span class="koboSpan" id="kobo.87.1"> search bar to go to the EC2 dashboard. </span></li>
+<li><span class="koboSpan" id="kobo.88.1">In the EC2 dashboard, click on the </span><strong class="bold"><span class="koboSpan" id="kobo.89.1">Launch </span></strong><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.90.1">instance</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.91.1"> button:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer145">
+<span class="koboSpan" id="kobo.92.1"><img alt="Figure 10.2 – The Launch instance button" src="image/Figure_10.03_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.93.1">Figure 10.2 – The Launch instance button</span></p>
+<p><span class="koboSpan" id="kobo.94.1">You will be shown the </span><strong class="bold"><span class="koboSpan" id="kobo.95.1">Launch an instance</span></strong><span class="koboSpan" id="kobo.96.1"> wizard. </span></p>
+<ol>
+<li value="3"><span class="koboSpan" id="kobo.97.1">In the </span><strong class="bold"><span class="koboSpan" id="kobo.98.1">Name</span></strong><span class="koboSpan" id="kobo.99.1"> field, enter </span><strong class="source-inline"><span class="koboSpan" id="kobo.100.1">tddphp-instance1</span></strong><span class="koboSpan" id="kobo.101.1">. </span><span class="koboSpan" id="kobo.101.2">This name tag is going to be very important. </span><span class="koboSpan" id="kobo.101.3">We </span><a id="_idIndexMarker505"/><span class="koboSpan" id="kobo.102.1">will use this tag for our CodeDeploy application later in </span><span class="No-Break"><span class="koboSpan" id="kobo.103.1">this chapter:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer146">
+<span class="koboSpan" id="kobo.104.1"><img alt="Figure 10.3 – Instance name tag" src="image/Figure_10.04_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.105.1">Figure 10.3 – Instance name tag</span></p>
+<ol>
+<li value="4"><span class="koboSpan" id="kobo.106.1">Next, in the </span><strong class="bold"><span class="koboSpan" id="kobo.107.1">Application and OS Images (Amazon Machine Image)</span></strong><span class="koboSpan" id="kobo.108.1"> area, select </span><strong class="bold"><span class="koboSpan" id="kobo.109.1">Amazon Linux </span></strong><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.110.1">2 AMI</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.111.1">:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer147">
+<span class="koboSpan" id="kobo.112.1"><img alt="Figure 10.4 – Amazon Linux 2 AMI" src="image/Figure_10.05_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.113.1">Figure 10.4 – Amazon Linux 2 AMI</span></p>
+<ol>
+<li value="5"><span class="koboSpan" id="kobo.114.1">Next, you can select the EC2 instance type. </span><span class="koboSpan" id="kobo.114.2">For this example, you can stick to the </span><strong class="bold"><span class="koboSpan" id="kobo.115.1">t2.micro</span></strong><span class="koboSpan" id="kobo.116.1"> instance as </span><a id="_idIndexMarker506"/><span class="koboSpan" id="kobo.117.1">this type is free tier eligible. </span><span class="koboSpan" id="kobo.117.2">You can also select a more powerful instance configuration – that’s entirely up </span><span class="No-Break"><span class="koboSpan" id="kobo.118.1">to you:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer148">
+<span class="koboSpan" id="kobo.119.1"><img alt="Figure 10.5 – t2.micro instance type" src="image/Figure_10.06_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.120.1">Figure 10.5 – t2.micro instance type</span></p>
+<ol>
+<li value="6"><span class="koboSpan" id="kobo.121.1">You will need a key pair to be able to SSH into this machine instance. </span><span class="koboSpan" id="kobo.121.2">If you don’t already have </span><a id="_idIndexMarker507"/><span class="koboSpan" id="kobo.122.1">one set up, just click on the </span><strong class="bold"><span class="koboSpan" id="kobo.123.1">Create new key pair</span></strong><span class="koboSpan" id="kobo.124.1"> link; a popup will appear for you to create a new </span><span class="No-Break"><span class="koboSpan" id="kobo.125.1">key pair:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer149">
+<span class="koboSpan" id="kobo.126.1"><img alt="Figure 10.6 – Creating a new key pair" src="image/Figure_10.07_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.127.1">Figure 10.6 – Creating a new key pair</span></p>
+<ol>
+<li value="7"><span class="koboSpan" id="kobo.128.1">After creating the key pair, you can assign it to the key pair field in the EC2 </span><span class="No-Break"><span class="koboSpan" id="kobo.129.1">instance wizard.</span></span></li>
+<li><span class="koboSpan" id="kobo.130.1">Next, in the </span><strong class="bold"><span class="koboSpan" id="kobo.131.1">Network settings</span></strong><span class="koboSpan" id="kobo.132.1"> section, allow all HTTP and HTTPs traffic. </span><span class="koboSpan" id="kobo.132.2">This is so that we can </span><a id="_idIndexMarker508"/><span class="koboSpan" id="kobo.133.1">easily access the web application from </span><span class="No-Break"><span class="koboSpan" id="kobo.134.1">a browser:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer150">
+<span class="koboSpan" id="kobo.135.1"><img alt="Figure 10.7 – Network settings; allow HTTP and HTTPS" src="image/Figure_10.08_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.136.1">Figure 10.7 – Network settings; allow HTTP and HTTPS</span></p>
+<ol>
+<li value="9"><span class="koboSpan" id="kobo.137.1">Next, in the </span><strong class="bold"><span class="koboSpan" id="kobo.138.1">Advanced details</span></strong><span class="koboSpan" id="kobo.139.1"> section, if you don’t already have an IAM instance profile, you can easily create one by clicking on the </span><strong class="bold"><span class="koboSpan" id="kobo.140.1">Create new IAM</span></strong> <span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.141.1">profile</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.142.1"> link:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer151">
+<span class="koboSpan" id="kobo.143.1"><img alt="Figure 10.8 – Creating a new IAM profile link" src="image/Figure_10.09_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.144.1">Figure 10.8 – Creating a new IAM profile link</span></p>
+<ol>
+<li value="10"><span class="koboSpan" id="kobo.145.1">You will be </span><a id="_idIndexMarker509"/><span class="koboSpan" id="kobo.146.1">redirected to the IAM wizard. </span><span class="koboSpan" id="kobo.146.2">Enter any IAM role name you want to use; then, select the </span><strong class="bold"><span class="koboSpan" id="kobo.147.1">Custom trust policy</span></strong><span class="koboSpan" id="kobo.148.1"> option in the </span><strong class="bold"><span class="koboSpan" id="kobo.149.1">Trusted entity </span></strong><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.150.1">type</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.151.1"> section:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer152">
+<span class="koboSpan" id="kobo.152.1"><img alt="Figure 10.9 – Custom trust policy text area" src="image/Figure_10.10_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.153.1">Figure 10.9 – Custom trust policy text area</span></p>
+<ol>
+<li value="11"><span class="koboSpan" id="kobo.154.1">In the text </span><a id="_idIndexMarker510"/><span class="koboSpan" id="kobo.155.1">area, use the </span><span class="No-Break"><span class="koboSpan" id="kobo.156.1">following policy:</span></span><pre class="source-code"><span class="koboSpan" id="kobo.157.1">
+{</span></pre><pre class="source-code"><span class="koboSpan" id="kobo.158.1">
+    “Version”: “2012-10-17”,</span></pre><pre class="source-code"><span class="koboSpan" id="kobo.159.1">
+    “Statement”: [</span></pre><pre class="source-code"><span class="koboSpan" id="kobo.160.1">
+        {</span></pre><pre class="source-code"><span class="koboSpan" id="kobo.161.1">
+            “Effect”: “Allow”,</span></pre><pre class="source-code"><span class="koboSpan" id="kobo.162.1">
+            “Principal”: {</span></pre><pre class="source-code"><span class="koboSpan" id="kobo.163.1">
+                “Service”: [</span></pre><pre class="source-code"><span class="koboSpan" id="kobo.164.1">
+                    “ec2.amazonaws.com”,</span></pre><pre class="source-code"><span class="koboSpan" id="kobo.165.1">
+                    “codedeploy.ap-southeast-2.</span></pre><pre class="source-code"><span class="koboSpan" id="kobo.166.1">
+                        amazonaws.com”</span></pre><pre class="source-code"><span class="koboSpan" id="kobo.167.1">
+                ]</span></pre><pre class="source-code"><span class="koboSpan" id="kobo.168.1">
+            },</span></pre><pre class="source-code"><span class="koboSpan" id="kobo.169.1">
+            “Action”: “sts:AssumeRole”</span></pre><pre class="source-code"><span class="koboSpan" id="kobo.170.1">
+        }</span></pre><pre class="source-code"><span class="koboSpan" id="kobo.171.1">
+    ]</span></pre><pre class="source-code"><span class="koboSpan" id="kobo.172.1">
+}</span></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.173.1">Since I am in Australia, I usually use the </span><strong class="source-inline"><span class="koboSpan" id="kobo.174.1">Sydney ap-southeast-2</span></strong><span class="koboSpan" id="kobo.175.1"> region. </span><span class="koboSpan" id="kobo.175.2">You can replace this with any region you prefer. </span></p>
+<ol>
+<li value="12"><span class="koboSpan" id="kobo.176.1">Click the </span><strong class="bold"><span class="koboSpan" id="kobo.177.1">Next</span></strong><span class="koboSpan" id="kobo.178.1"> button </span><span class="No-Break"><span class="koboSpan" id="kobo.179.1">to proceed.</span></span></li>
+<li><span class="koboSpan" id="kobo.180.1">In the </span><strong class="bold"><span class="koboSpan" id="kobo.181.1">Add permissions</span></strong><span class="koboSpan" id="kobo.182.1"> section, search for the following policies, and tick the checkbox </span><a id="_idIndexMarker511"/><span class="koboSpan" id="kobo.183.1">before the </span><span class="No-Break"><span class="koboSpan" id="kobo.184.1">policy name:</span></span><ul><li><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.185.1">AmazonEC2FullAccess</span></strong></span></li><li><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.186.1">AmazonS3FullAccess</span></strong></span></li><li><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.187.1">AWSCodeDeployFullAccess</span></strong></span></li></ul></li>
+<li><span class="koboSpan" id="kobo.188.1">After selecting these policies, </span><span class="No-Break"><span class="koboSpan" id="kobo.189.1">click </span></span><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.190.1">Next</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.191.1">.</span></span></li>
+</ol>
+<p><span class="koboSpan" id="kobo.192.1">Make sure these policies are displayed in the IAM wizard review screen before creating </span><span class="No-Break"><span class="koboSpan" id="kobo.193.1">the role:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer153">
+<span class="koboSpan" id="kobo.194.1"><img alt="Figure 10.10 – Access policies" src="image/Figure_10.11_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.195.1">Figure 10.10 – Access policies</span></p>
+<ol>
+<li value="15"><span class="koboSpan" id="kobo.196.1">Next, click on the </span><strong class="bold"><span class="koboSpan" id="kobo.197.1">Create role</span></strong><span class="koboSpan" id="kobo.198.1"> button, then go back to the </span><strong class="bold"><span class="koboSpan" id="kobo.199.1">EC2 instance</span></strong><span class="koboSpan" id="kobo.200.1"> wizard. </span><span class="koboSpan" id="kobo.200.2">You can </span><a id="_idIndexMarker512"/><span class="koboSpan" id="kobo.201.1">now select the IAM role you just created from the </span><strong class="bold"><span class="koboSpan" id="kobo.202.1">Advanced </span></strong><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.203.1">details</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.204.1"> section:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer154">
+<span class="koboSpan" id="kobo.205.1"><img alt="Figure 10.11 – Newly created IAM instance profile" src="image/Figure_10.12_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.206.1">Figure 10.11 – Newly created IAM instance profile</span></p>
+<ol>
+<li value="16"><span class="koboSpan" id="kobo.207.1">And that’s it – scroll to the very bottom of the page and click on the </span><strong class="bold"><span class="koboSpan" id="kobo.208.1">Launch instance</span></strong><span class="koboSpan" id="kobo.209.1"> button. </span><span class="koboSpan" id="kobo.209.2">It will take a few minutes for AWS to launch your new EC2 instance. </span><span class="koboSpan" id="kobo.209.3">After a few minutes, go back to the dashboard; you should now see your EC2 </span><span class="No-Break"><span class="koboSpan" id="kobo.210.1">instance running:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer155">
+<span class="koboSpan" id="kobo.211.1"><img alt="Figure 10.12 – Amazon Linux 2 instance running" src="image/Figure_10.13_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.212.1">Figure 10.12 – Amazon Linux 2 instance running</span></p>
+<p><span class="koboSpan" id="kobo.213.1">We now have a running Amazon Linux 2 instance; we will use this instance to run </span><span class="No-Break"><span class="koboSpan" id="kobo.214.1">our containers.</span></span></p>
+<p><span class="koboSpan" id="kobo.215.1">Before proceeding with </span><a id="_idIndexMarker513"/><span class="koboSpan" id="kobo.216.1">the CodeDeploy setup, we need to create an S3 bucket. </span><span class="koboSpan" id="kobo.216.2">This bucket will be used both by our Bitbucket Pipelines and the </span><span class="No-Break"><span class="koboSpan" id="kobo.217.1">CodeDeploy application:</span></span></p>
+<ol>
+<li value="1"><span class="koboSpan" id="kobo.218.1">While in the AWS console, search for </span><strong class="source-inline"><span class="koboSpan" id="kobo.219.1">S3</span></strong><span class="koboSpan" id="kobo.220.1"> and click the </span><strong class="bold"><span class="koboSpan" id="kobo.221.1">S3</span></strong> <span class="No-Break"><span class="koboSpan" id="kobo.222.1">service item:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer156">
+<span class="koboSpan" id="kobo.223.1"><img alt="Figure 10.13 – S3 service" src="image/Figure_10.14_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.224.1">Figure 10.13 – S3 service</span></p>
+<p><span class="koboSpan" id="kobo.225.1">You will be redirected to the Amazon S3 dashboard. </span></p>
+<ol>
+<li value="2"><span class="koboSpan" id="kobo.226.1">Click on the </span><strong class="bold"><span class="koboSpan" id="kobo.227.1">Create </span></strong><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.228.1">bucket</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.229.1"> button:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer157">
+<span class="koboSpan" id="kobo.230.1"><img alt="Figure 10.14 – The Create bucket button" src="image/Figure_10.15_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.231.1">Figure 10.14 – The Create bucket button</span></p>
+<ol>
+<li value="3"><span class="koboSpan" id="kobo.232.1">Use any unique name you want for the bucket and select the same region you used for your EC2 instance. </span><span class="koboSpan" id="kobo.232.2">For me, </span><span class="No-Break"><span class="koboSpan" id="kobo.233.1">it’s </span></span><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.234.1">ap-southeast-2</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.235.1">:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer158">
+<span class="koboSpan" id="kobo.236.1"><img alt="Figure 10.15 – Creating an S3 bucket" src="image/Figure_10.16_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.237.1">Figure 10.15 – Creating an S3 bucket</span></p>
+<ol>
+<li value="4"><span class="koboSpan" id="kobo.238.1">You can leave </span><a id="_idIndexMarker514"/><span class="koboSpan" id="kobo.239.1">all the default settings as-is and click on the </span><strong class="bold"><span class="koboSpan" id="kobo.240.1">Create bucket</span></strong><span class="koboSpan" id="kobo.241.1"> button. </span></li>
+</ol>
+<p><span class="koboSpan" id="kobo.242.1">And that’s it. </span><span class="koboSpan" id="kobo.242.2">We can now proceed with creating the CodeDeploy application. </span><span class="koboSpan" id="kobo.242.3">The CodeDeploy application will use the EC2 instance and S3 bucket we </span><span class="No-Break"><span class="koboSpan" id="kobo.243.1">just created.</span></span></p>
+<h1 id="_idParaDest-149"><a id="_idTextAnchor150"/><span class="koboSpan" id="kobo.244.1">Creating an AWS CodeDeploy application</span></h1>
+<p><span class="koboSpan" id="kobo.245.1">We will be using AWS CodeDeploy to automate the deployment of our PHP application into an EC2 server. </span><span class="koboSpan" id="kobo.245.2">But where will CodeDeploy get the files to deploy? </span><span class="koboSpan" id="kobo.245.3">It will get them from an S3 bucket. </span><span class="koboSpan" id="kobo.245.4">But how will our solution code end up in S3 in the first place? </span><span class="koboSpan" id="kobo.245.5">Well, we will tell Bitbucket Pipelines to upload it there! </span><span class="koboSpan" id="kobo.245.6">We will cover that later in </span><span class="No-Break"><span class="koboSpan" id="kobo.246.1">this chapter:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer159">
+<span class="koboSpan" id="kobo.247.1"><img alt="Figure 10.16 – CodeDeploy flow" src="image/Figure_10.17_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.248.1">Figure 10.16 – CodeDeploy flow</span></p>
+<p><span class="koboSpan" id="kobo.249.1">Follow these </span><a id="_idIndexMarker515"/><span class="koboSpan" id="kobo.250.1">steps to set up AWS CodeDeploy, which will be triggered by our Bitbucket CI pipeline once all of our automated tests </span><span class="No-Break"><span class="koboSpan" id="kobo.251.1">have passed:</span></span></p>
+<ol>
+<li value="1"><span class="koboSpan" id="kobo.252.1">In the AWS console, search for the CodeDeploy service and click on the </span><strong class="bold"><span class="koboSpan" id="kobo.253.1">Create </span></strong><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.254.1">application</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.255.1"> button:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer160">
+<span class="koboSpan" id="kobo.256.1"><img alt="Figure 10.17 – Creating the CodeDeploy application" src="image/Figure_10.18_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.257.1">Figure 10.17 – Creating the CodeDeploy application</span></p>
+<ol>
+<li value="2"><span class="koboSpan" id="kobo.258.1">In the CodeDeploy wizard, use any name you want in the </span><strong class="bold"><span class="koboSpan" id="kobo.259.1">Application configuration</span></strong><span class="koboSpan" id="kobo.260.1"> section. </span><span class="koboSpan" id="kobo.260.2">Then, in the </span><strong class="bold"><span class="koboSpan" id="kobo.261.1">Compute platform</span></strong><span class="koboSpan" id="kobo.262.1"> field, select the </span><strong class="bold"><span class="koboSpan" id="kobo.263.1">EC2/On-premises</span></strong><span class="koboSpan" id="kobo.264.1"> option and click on the </span><strong class="bold"><span class="koboSpan" id="kobo.265.1">Create </span></strong><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.266.1">application</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.267.1"> button:</span></span></li>
+</ol>
+<p class="IMG---Figure"> </p>
+<div>
+<div class="IMG---Figure" id="_idContainer161">
+<span class="koboSpan" id="kobo.268.1"><img alt="Figure 10.18 – Application configuration section" src="image/Figure_10.19_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.269.1">Figure 10.18 – Application configuration section</span></p>
+<p><span class="koboSpan" id="kobo.270.1">You will be redirected to the CodeDeploy </span><strong class="bold"><span class="koboSpan" id="kobo.271.1">Applications</span></strong><span class="koboSpan" id="kobo.272.1"> page. </span></p>
+<ol>
+<li value="3"><span class="koboSpan" id="kobo.273.1">Next, click on the </span><strong class="bold"><span class="koboSpan" id="kobo.274.1">Create deployment </span></strong><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.275.1">group</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.276.1"> button:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer162">
+<span class="koboSpan" id="kobo.277.1"><img alt="" src="image/Figure_10.20_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Figure"><span class="koboSpan" id="kobo.278.1">Figure  10.19 – The Create deployment group button</span></p>
+<ul>
+<li><span class="koboSpan" id="kobo.279.1">In the </span><strong class="bold"><span class="koboSpan" id="kobo.280.1">Deployment group name</span></strong><span class="koboSpan" id="kobo.281.1"> section, use any name you want. </span><span class="koboSpan" id="kobo.281.2">In this example, I will </span><span class="No-Break"><span class="koboSpan" id="kobo.282.1">use </span></span><span class="No-Break"><strong class="source-inline"><span class="koboSpan" id="kobo.283.1">codedeploy_group1</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.284.1">:</span></span></li>
+</ul>
+<div>
+<div class="IMG---Figure" id="_idContainer163">
+<span class="koboSpan" id="kobo.285.1"><img alt="Figure 10.20 – Deployment group wizard – group name" src="image/Figure_10.21_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.286.1">Figure 10.20 – Deployment group wizard – group name</span></p>
+<ol>
+<li value="4"><span class="koboSpan" id="kobo.287.1">Next, in </span><a id="_idIndexMarker516"/><span class="koboSpan" id="kobo.288.1">the </span><strong class="bold"><span class="koboSpan" id="kobo.289.1">Service role</span></strong><span class="koboSpan" id="kobo.290.1"> section, select the IAM role we created earlier in </span><span class="No-Break"><span class="koboSpan" id="kobo.291.1">this chapter:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer164">
+<span class="koboSpan" id="kobo.292.1"><img alt="Figure 10.21 – Deployment group wizard – IAM role" src="image/Figure_10.22_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.293.1">Figure 10.21 – Deployment group wizard – IAM role</span></p>
+<ol>
+<li value="5"><span class="koboSpan" id="kobo.294.1">Next, in the </span><strong class="bold"><span class="koboSpan" id="kobo.295.1">Environment configuration</span></strong><span class="koboSpan" id="kobo.296.1"> section, check the </span><strong class="bold"><span class="koboSpan" id="kobo.297.1">Amazon EC2 instances</span></strong><span class="koboSpan" id="kobo.298.1"> checkbox. </span><span class="koboSpan" id="kobo.298.2">Then, in the </span><strong class="bold"><span class="koboSpan" id="kobo.299.1">Tag group</span></strong><span class="koboSpan" id="kobo.300.1"> section, add the EC2 instance name we created earlier, which is </span><strong class="source-inline"><span class="koboSpan" id="kobo.301.1">tddphp-instance1</span></strong><span class="koboSpan" id="kobo.302.1">. </span><span class="koboSpan" id="kobo.302.2">This is very important. </span><span class="koboSpan" id="kobo.302.3">This is how we tell CodeDeploy that we want to deploy the application in this specific instance. </span><span class="koboSpan" id="kobo.302.4">You can add more tags here if you want to deploy to other instances </span><span class="No-Break"><span class="koboSpan" id="kobo.303.1">as well:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer165">
+<span class="koboSpan" id="kobo.304.1"><img alt="Figure 10.22 – Deployment group wizard – EC2 instance details" src="image/Figure_10.23_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.305.1">Figure 10.22 – Deployment group wizard – EC2 instance details</span></p>
+<ol>
+<li value="6"><span class="koboSpan" id="kobo.306.1">Next, in </span><a id="_idIndexMarker517"/><span class="koboSpan" id="kobo.307.1">the </span><strong class="bold"><span class="koboSpan" id="kobo.308.1">Load balancer</span></strong><span class="koboSpan" id="kobo.309.1"> section, uncheck the </span><strong class="bold"><span class="koboSpan" id="kobo.310.1">Enable load balancing</span></strong><span class="koboSpan" id="kobo.311.1"> checkbox, then click on the </span><strong class="bold"><span class="koboSpan" id="kobo.312.1">Create deployment </span></strong><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.313.1">group</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.314.1"> button:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer166">
+<span class="koboSpan" id="kobo.315.1"><img alt="Figure 10.23 – Deployment group wizard – ﻿Load balancer" src="image/Figure_10.24_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.316.1">Figure 10.23 – Deployment group wizard – Load balancer</span></p>
+<p><span class="koboSpan" id="kobo.317.1">Great! </span><span class="koboSpan" id="kobo.317.2">That’s it for </span><a id="_idIndexMarker518"/><span class="koboSpan" id="kobo.318.1">the CodeDeploy configuration from the AWS console. </span></p>
+<p><span class="koboSpan" id="kobo.319.1">Next, we will need to get inside the EC2 instance we just created and install some applications we need for it to be able to connect to CodeDeploy, and for us to be able to run </span><span class="No-Break"><span class="koboSpan" id="kobo.320.1">Docker containers.</span></span></p>
+<h1 id="_idParaDest-150"><a id="_idTextAnchor151"/><span class="koboSpan" id="kobo.321.1">Installing Docker and other dependencies inside the AWS EC2 instance</span></h1>
+<p><span class="koboSpan" id="kobo.322.1">We will need three very important applications inside the EC2 instance. </span><span class="koboSpan" id="kobo.322.2">First, we will need the AWS CodeDeploy agent, after which we’ll need to install Docker and docker-compose so that we can build and run the Docker containers we need for </span><span class="No-Break"><span class="koboSpan" id="kobo.323.1">our application.</span></span></p>
+<h2 id="_idParaDest-151"><a id="_idTextAnchor152"/><span class="koboSpan" id="kobo.324.1">Connecting to the EC2 instance</span></h2>
+<p><span class="koboSpan" id="kobo.325.1">We need to get </span><a id="_idIndexMarker519"/><span class="koboSpan" id="kobo.326.1">inside the instance before we can install anything. </span><span class="koboSpan" id="kobo.326.2">Thankfully, we can do this by using the AWS console from </span><span class="No-Break"><span class="koboSpan" id="kobo.327.1">a browser:</span></span></p>
+<ol>
+<li value="1"><span class="koboSpan" id="kobo.328.1">In the EC2 dashboard, select the running instance we created earlier and click on the </span><strong class="bold"><span class="koboSpan" id="kobo.329.1">Connect</span></strong><span class="koboSpan" id="kobo.330.1"> button at the top of </span><span class="No-Break"><span class="koboSpan" id="kobo.331.1">the table:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer167">
+<span class="koboSpan" id="kobo.332.1"><img alt="Figure 10.24 – EC2 table – the Connect button" src="image/Figure_10.25_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.333.1">Figure 10.24 – EC2 table – the Connect button</span></p>
+<p><span class="koboSpan" id="kobo.334.1">You will be redirected to the </span><strong class="bold"><span class="koboSpan" id="kobo.335.1">Connect to instance</span></strong><span class="koboSpan" id="kobo.336.1"> page. </span></p>
+<ol>
+<li value="2"><span class="koboSpan" id="kobo.337.1">Click on </span><a id="_idIndexMarker520"/><span class="koboSpan" id="kobo.338.1">the </span><strong class="bold"><span class="koboSpan" id="kobo.339.1">Connect</span></strong><span class="koboSpan" id="kobo.340.1"> button on that page. </span><span class="koboSpan" id="kobo.340.2">Finally, you will be redirected to the browser’s </span><span class="No-Break"><span class="koboSpan" id="kobo.341.1">terminal window:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer168">
+<span class="koboSpan" id="kobo.342.1"><img alt="Figure 10.25 – EC2 terminal window" src="image/Figure_10.26_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.343.1">Figure 10.25 – EC2 terminal window</span></p>
+<p><span class="koboSpan" id="kobo.344.1">Great! </span><span class="koboSpan" id="kobo.344.2">Now, we can install the applications we need for CD and our </span><span class="No-Break"><span class="koboSpan" id="kobo.345.1">PHP solution.</span></span></p>
+<h2 id="_idParaDest-152"><a id="_idTextAnchor153"/><span class="koboSpan" id="kobo.346.1">Installing CodeDeploy Agent</span></h2>
+<p><span class="koboSpan" id="kobo.347.1">The CodeDeploy </span><a id="_idIndexMarker521"/><span class="koboSpan" id="kobo.348.1">application we created earlier in the chapter will need additional software installed inside our EC2 instance so that it can communicate with it. </span><span class="koboSpan" id="kobo.348.2">This is why we need CodeDeploy Agent. </span><span class="koboSpan" id="kobo.348.3">You can read more about it on the </span><a id="_idIndexMarker522"/><span class="koboSpan" id="kobo.349.1">official AWS documentation page for CodeDeploy </span><span class="No-Break"><span class="koboSpan" id="kobo.350.1">Agent: </span></span><a href="https://docs.aws.amazon.com/codedeploy/latest/userguide/codedeploy-agent.html"><span class="No-Break"><span class="koboSpan" id="kobo.351.1">https://docs.aws.amazon.com/codedeploy/latest/userguide/codedeploy-agent.html</span></span></a><span class="No-Break"><span class="koboSpan" id="kobo.352.1">.</span></span></p>
+<p><span class="koboSpan" id="kobo.353.1">Follow these steps to install </span><span class="No-Break"><span class="koboSpan" id="kobo.354.1">CodeDeploy Agent:</span></span></p>
+<ol>
+<li value="1"><span class="koboSpan" id="kobo.355.1">In the terminal, enter the following commands to install </span><span class="No-Break"><span class="koboSpan" id="kobo.356.1">the agent:</span></span><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.357.1">sudo yum update -y</span></strong></pre><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.358.1">sudo yum install -y ruby</span></strong></pre><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.359.1">sudo yum install -y wget</span></strong></pre><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.360.1">wget </span></strong><span class="koboSpan" id="kobo.361.1">https://aws-codedeploy-ap-southeast-2.s3.ap-</span></pre><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.362.1">    southeast-2.amazonaws.com/latest/install</span></strong></pre><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.363.1">chmod +x ./install</span></strong></pre><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.364.1">sudo ./install auto</span></strong></pre></li>
+<li><span class="koboSpan" id="kobo.365.1">After running those commands, verify that the agent is running by running the </span><span class="No-Break"><span class="koboSpan" id="kobo.366.1">following command:</span></span><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.367.1">sudo service codedeploy-agent status</span></strong></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.368.1">You should </span><a id="_idIndexMarker523"/><span class="koboSpan" id="kobo.369.1">now get the </span><span class="No-Break"><span class="koboSpan" id="kobo.370.1">following result:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer169">
+<span class="koboSpan" id="kobo.371.1"><img alt="Figure 10.26 – CodeDeploy Agent is running" src="image/Figure_10.27_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.372.1">Figure 10.26 – CodeDeploy Agent is running</span></p>
+<p><span class="koboSpan" id="kobo.373.1">Awesome! </span><span class="koboSpan" id="kobo.373.2">Our EC2 instance can now be used by our CodeDeploy application. </span><span class="koboSpan" id="kobo.373.3">Next, we can proceed with </span><span class="No-Break"><span class="koboSpan" id="kobo.374.1">installing Docker.</span></span></p>
+<h2 id="_idParaDest-153"><a id="_idTextAnchor154"/><span class="koboSpan" id="kobo.375.1">Installing Docker</span></h2>
+<p><span class="koboSpan" id="kobo.376.1">We’ve been using Docker containers to run our PHP solution. </span><span class="koboSpan" id="kobo.376.2">Now, CodeDeploy will try to deploy our code in the EC2 instance we just created, but our solution code depends on Docker and docker-compose being installed. </span></p>
+<p><span class="koboSpan" id="kobo.377.1">Follow these </span><a id="_idIndexMarker524"/><span class="koboSpan" id="kobo.378.1">steps to </span><span class="No-Break"><span class="koboSpan" id="kobo.379.1">install Docker:</span></span></p>
+<ol>
+<li value="1"><span class="koboSpan" id="kobo.380.1">Run the following commands in the AWS </span><span class="No-Break"><span class="koboSpan" id="kobo.381.1">terminal window:</span></span><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.382.1">sudo amazon-linux-extras install -y docker</span></strong></pre><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.383.1">sudo service docker start</span></strong></pre><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.384.1">sudo usermod -aG docker ec2-user</span></strong></pre><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.385.1">sudo chkconfig docker on</span></strong></pre></li>
+<li><span class="koboSpan" id="kobo.386.1">After running the installation commands, check whether Docker is installed correctly by running the </span><span class="No-Break"><span class="koboSpan" id="kobo.387.1">following command:</span></span><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.388.1">docker --version</span></strong></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.389.1">You should see the </span><span class="No-Break"><span class="koboSpan" id="kobo.390.1">following result:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer170">
+<span class="koboSpan" id="kobo.391.1"><img alt="Figure 10.27 – Docker installed" src="image/Figure_10.28_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.392.1">Figure 10.27 – Docker installed</span></p>
+<ol>
+<li value="3"><span class="koboSpan" id="kobo.393.1">Next, we will need to reboot the instance to make sure that we can execute Docker with the correct permissions. </span><span class="koboSpan" id="kobo.393.2">Run the </span><span class="No-Break"><span class="koboSpan" id="kobo.394.1">following command:</span></span><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.395.1">sudo reboot</span></strong></pre></li>
+<li><span class="koboSpan" id="kobo.396.1">After running the command, the terminal window will hang up. </span><span class="koboSpan" id="kobo.396.2">Give it a few minutes, then </span><a id="_idIndexMarker525"/><span class="koboSpan" id="kobo.397.1">connect to the EC2 portal again, as we </span><span class="No-Break"><span class="koboSpan" id="kobo.398.1">did earlier:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer171">
+<span class="koboSpan" id="kobo.399.1"><img alt="Figure 10.28 – Terminal error while rebooting" src="image/Figure_10.29_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.400.1">Figure 10.28 – Terminal error while rebooting</span></p>
+<p><span class="koboSpan" id="kobo.401.1">If you see the preceding error message, don’t fret. </span><span class="koboSpan" id="kobo.401.2">Just wait a few minutes and then try connecting again. </span></p>
+<p><span class="koboSpan" id="kobo.402.1">Lastly, we’ll need to install docker-compose. </span></p>
+<h2 id="_idParaDest-154"><a id="_idTextAnchor155"/><span class="koboSpan" id="kobo.403.1">Installing docker-compose</span></h2>
+<p><span class="koboSpan" id="kobo.404.1">We’ve been using the docker-compose tool to run and configure our multi-container setup in our local </span><a id="_idIndexMarker526"/><span class="koboSpan" id="kobo.405.1">development environment. </span><span class="koboSpan" id="kobo.405.2">We will also need to install it in the EC2 instance. </span><span class="koboSpan" id="kobo.405.3">Follow </span><span class="No-Break"><span class="koboSpan" id="kobo.406.1">these steps:</span></span></p>
+<ol>
+<li value="1"><span class="koboSpan" id="kobo.407.1">Back in the AWS terminal window, run the </span><span class="No-Break"><span class="koboSpan" id="kobo.408.1">following commands:</span></span><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.409.1">sudo curl -L “https://github.com/docker/compose/releases/download/v2.11.2/docker-compose-$(uname -s)-$(uname -m)” -o /usr/local/bin/docker-compose</span></strong></pre><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.410.1">sudo chmod +x /usr/local/bin/docker-compose</span></strong></pre></li>
+<li><span class="koboSpan" id="kobo.411.1">After running those two commands, to make sure that docker-compose has been installed properly, run the </span><span class="No-Break"><span class="koboSpan" id="kobo.412.1">following command:</span></span><pre class="source-code">
+<strong class="bold"><span class="koboSpan" id="kobo.413.1">docker-compose --version</span></strong></pre></li>
+</ol>
+<p><span class="koboSpan" id="kobo.414.1">You should see the version that is installed. </span><span class="koboSpan" id="kobo.414.2">Great! </span><span class="koboSpan" id="kobo.414.3">At this stage, we have installed everything we </span><a id="_idIndexMarker527"/><span class="koboSpan" id="kobo.415.1">need for CodeDeploy to be able to deploy our PHP application in this </span><span class="No-Break"><span class="koboSpan" id="kobo.416.1">EC2 instance.</span></span></p>
+<p><span class="koboSpan" id="kobo.417.1">Next, we will add an Elastic IP to our </span><span class="No-Break"><span class="koboSpan" id="kobo.418.1">EC2 instance.</span></span></p>
+<h2 id="_idParaDest-155"><a id="_idTextAnchor156"/><span class="koboSpan" id="kobo.419.1">Attaching Elastic IP to the EC2 instance</span></h2>
+<p><span class="koboSpan" id="kobo.420.1">To make our EC2 instance </span><a id="_idIndexMarker528"/><span class="koboSpan" id="kobo.421.1">easily accessible through a </span><a id="_idIndexMarker529"/><span class="koboSpan" id="kobo.422.1">web browser, we will add an AWS Elastic IP to the EC2 instance. </span><span class="koboSpan" id="kobo.422.2">We can also easily attach this Elastic IP to a different EC2 instance when we </span><span class="No-Break"><span class="koboSpan" id="kobo.423.1">need to.</span></span></p>
+<p><span class="koboSpan" id="kobo.424.1">To create an Elastic IP, follow </span><span class="No-Break"><span class="koboSpan" id="kobo.425.1">these steps:</span></span></p>
+<ol>
+<li value="1"><span class="koboSpan" id="kobo.426.1">Go back to the EC2 dashboard in the AWS console, then click on the </span><strong class="bold"><span class="koboSpan" id="kobo.427.1">Elastic </span></strong><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.428.1">IPs</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.429.1"> button:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer172">
+<span class="koboSpan" id="kobo.430.1"><img alt="Figure 10.29 – The Elastic IPs button" src="image/Figure_10.30_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.431.1">Figure 10.29 – The Elastic IPs button</span></p>
+<ol>
+<li value="2"><span class="koboSpan" id="kobo.432.1">On the </span><a id="_idIndexMarker530"/><span class="koboSpan" id="kobo.433.1">next screen, select the </span><strong class="bold"><span class="koboSpan" id="kobo.434.1">Amazon’s pool of Ipv4 addresses</span></strong><span class="koboSpan" id="kobo.435.1"> radio </span><a id="_idIndexMarker531"/><span class="koboSpan" id="kobo.436.1">button in the </span><strong class="bold"><span class="koboSpan" id="kobo.437.1">Public Ipv4 address pool</span></strong><span class="koboSpan" id="kobo.438.1"> section. </span><span class="koboSpan" id="kobo.438.2">Then, click on the </span><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.439.1">Allocate</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.440.1"> button:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer173">
+<span class="koboSpan" id="kobo.441.1"><img alt="Figure 10.30 – Allocate Elastic IP address" src="image/Figure_10.31_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.442.1">Figure 10.30 – Allocate Elastic IP address</span></p>
+<ol>
+<li value="3"><span class="koboSpan" id="kobo.443.1">Next, click </span><a id="_idIndexMarker532"/><span class="koboSpan" id="kobo.444.1">on the newly created Elastic IP address, then </span><a id="_idIndexMarker533"/><span class="koboSpan" id="kobo.445.1">click on the </span><strong class="bold"><span class="koboSpan" id="kobo.446.1">Associate Elastic IP </span></strong><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.447.1">address</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.448.1"> button:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer174">
+<span class="koboSpan" id="kobo.449.1"><img alt="Figure 10.31 – The Associate Elastic IP address button" src="image/Figure_10.32_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.450.1">Figure 10.31 – The Associate Elastic IP address button</span></p>
+<ol>
+<li value="4"><span class="koboSpan" id="kobo.451.1">On the next </span><a id="_idIndexMarker534"/><span class="koboSpan" id="kobo.452.1">screen, in the </span><strong class="bold"><span class="koboSpan" id="kobo.453.1">Instance</span></strong><span class="koboSpan" id="kobo.454.1"> field, select </span><a id="_idIndexMarker535"/><span class="koboSpan" id="kobo.455.1">the EC2 instance we created earlier. </span><span class="koboSpan" id="kobo.455.2">Then, click on the </span><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.456.1">Associate</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.457.1"> button:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer175">
+<span class="koboSpan" id="kobo.458.1"><img alt="Figure 10.32 – Associating the Elastic IP address with the EC2 instance" src="image/Figure_10.33_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.459.1">Figure 10.32 – Associating the Elastic IP address with the EC2 instance</span></p>
+<p><span class="koboSpan" id="kobo.460.1">At this stage, we </span><a id="_idIndexMarker536"/><span class="koboSpan" id="kobo.461.1">will have a permanent IP </span><a id="_idIndexMarker537"/><span class="koboSpan" id="kobo.462.1">address pointed to our EC2 instance. </span><span class="koboSpan" id="kobo.462.2">Once we deploy the PHP application into the EC2 instance, we will use this IP to access the </span><span class="No-Break"><span class="koboSpan" id="kobo.463.1">web application.</span></span></p>
+<p><span class="koboSpan" id="kobo.464.1">Next, we will need to configure Bitbucket Pipelines to tell it that we want to automatically deploy our code using </span><span class="No-Break"><span class="koboSpan" id="kobo.465.1">AWS CodeDeploy.</span></span></p>
+<h1 id="_idParaDest-156"><a id="_idTextAnchor157"/><span class="koboSpan" id="kobo.466.1">Continuous delivery with Bitbucket Pipelines and AWS CodeDeploy</span></h1>
+<p><span class="koboSpan" id="kobo.467.1">In the previous section, we prepared an AWS EC2 instance for our PHP application. </span><span class="koboSpan" id="kobo.467.2">Now, we will need a way to get our solution code from Bitbucket into the EC2 instance itself. </span><span class="koboSpan" id="kobo.467.3">For this, we will need to configure Bitbucket Pipelines to use AWS CodeDeploy. </span><span class="koboSpan" id="kobo.467.4">You can read more about Bitbucket Pipelines to AWS CodeDeploy deployments </span><span class="No-Break"><span class="koboSpan" id="kobo.468.1">at </span></span><a href="https://support.atlassian.com/bitbucket-cloud/docs/deploy-to-aws-with-codedeploy/"><span class="No-Break"><span class="koboSpan" id="kobo.469.1">https://support.atlassian.com/bitbucket-cloud/docs/deploy-to-aws-with-codedeploy/</span></span></a><span class="No-Break"><span class="koboSpan" id="kobo.470.1">.</span></span></p>
+<h2 id="_idParaDest-157"><a id="_idTextAnchor158"/><span class="koboSpan" id="kobo.471.1">Bitbucket Pipelines settings</span></h2>
+<p><span class="koboSpan" id="kobo.472.1">We will need to </span><a id="_idIndexMarker538"/><span class="koboSpan" id="kobo.473.1">add some AWS-specific information into Bitbucket as we will be using this information to connect to our AWS CodeDeploy application. </span><span class="koboSpan" id="kobo.473.2">To add this information, follow </span><span class="No-Break"><span class="koboSpan" id="kobo.474.1">these steps:</span></span></p>
+<ol>
+<li value="1"><span class="koboSpan" id="kobo.475.1">In the Bitbucket repository dashboard, click on the </span><strong class="bold"><span class="koboSpan" id="kobo.476.1">Repository </span></strong><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.477.1">settings</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.478.1"> option:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer176">
+<span class="koboSpan" id="kobo.479.1"><img alt="Figure 10.32 – Repository settings" src="image/Figure_10.34_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.480.1">Figure 10.32 – Repository settings</span></p>
+<ol>
+<li value="2"><span class="koboSpan" id="kobo.481.1">Then, select the </span><strong class="bold"><span class="koboSpan" id="kobo.482.1">Repository variables</span></strong><span class="koboSpan" id="kobo.483.1"> link from the left menu. </span><span class="koboSpan" id="kobo.483.2">You should be redirected </span><a id="_idIndexMarker539"/><span class="koboSpan" id="kobo.484.1">to the </span><strong class="bold"><span class="koboSpan" id="kobo.485.1">Repository variables</span></strong><span class="koboSpan" id="kobo.486.1"> page. </span><span class="koboSpan" id="kobo.486.2">In the </span><strong class="bold"><span class="koboSpan" id="kobo.487.1">Name</span></strong><span class="koboSpan" id="kobo.488.1"> and </span><strong class="bold"><span class="koboSpan" id="kobo.489.1">Value</span></strong><span class="koboSpan" id="kobo.490.1"> fields, add the following names </span><span class="No-Break"><span class="koboSpan" id="kobo.491.1">and values:</span></span><ul><li><strong class="bold"><span class="koboSpan" id="kobo.492.1">AWS_ACCESS_KEY_ID</span></strong><span class="koboSpan" id="kobo.493.1">: Use the value from the key </span><span class="No-Break"><span class="koboSpan" id="kobo.494.1">pair file</span></span></li><li><strong class="bold"><span class="koboSpan" id="kobo.495.1">AWS_SECRET_ACCESS_KEY</span></strong><span class="koboSpan" id="kobo.496.1">: Use the value from the key </span><span class="No-Break"><span class="koboSpan" id="kobo.497.1">pair file</span></span></li><li><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.498.1">AWS_DEFAULT_REGION</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.499.1">: </span></span><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.500.1">ap-southeast-2</span></strong></span></li><li><strong class="bold"><span class="koboSpan" id="kobo.501.1">S3_BUCKET</span></strong><span class="koboSpan" id="kobo.502.1">: &lt;your unique S3 </span><span class="No-Break"><span class="koboSpan" id="kobo.503.1">bucket name&gt;</span></span></li><li><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.504.1">DEPLOYMENT_GROUP</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.505.1">: </span></span><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.506.1">codedeploy_group1</span></strong></span></li><li><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.507.1">APPLICATION_NAME</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.508.1">: </span></span><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.509.1">mycodedeployapp</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.510.1">:</span></span></li></ul></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer177">
+<span class="koboSpan" id="kobo.511.1"><img alt="Figure 10.33 – Repository variables; AWS values" src="image/Figure_10.35_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.512.1">Figure 10.33 – Repository variables; AWS values</span></p>
+<p><span class="koboSpan" id="kobo.513.1">Next, we will need to tell Bitbucket Pipelines that we want to zip and upload our application to AWS S3. </span><span class="koboSpan" id="kobo.513.2">Then, we will deploy it to our EC2 instance using </span><span class="No-Break"><span class="koboSpan" id="kobo.514.1">AWS CodeDeploy.</span></span></p>
+<ol>
+<li value="3"><span class="koboSpan" id="kobo.515.1">Back to our code base, in the root directory, you will find the </span><strong class="source-inline"><span class="koboSpan" id="kobo.516.1">bitbucket-pipelines.yml</span></strong><span class="koboSpan" id="kobo.517.1"> file we </span><a id="_idIndexMarker540"/><span class="koboSpan" id="kobo.518.1">created in the previous chapter. </span><span class="koboSpan" id="kobo.518.2">Add the following lines to </span><span class="No-Break"><span class="koboSpan" id="kobo.519.1">the file:</span></span></li>
+</ol>
+<p class="SC---Heading" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.520.1">/bitbucket-pipelines.yml</span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.521.1">
+- step:
+    name: Package and Upload
+    script:
+      - apk add zip
+      - zip -r phptddapp.zip .
+      </span><span class="koboSpan" id="kobo.521.2">- pipe: atlassian/aws-code-deploy:0.2.10
+        variables:
+          AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+          AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+          AWS_SECRET_ACCESS_KEY: 
+              $AWS_SECRET_ACCESS_KEY
+          COMMAND: ‘upload’
+          APPLICATION_NAME: ‘mycodedeployapp’
+          ZIP_FILE: ‘phptddapp.zip’
+          S3_BUCKET: $S3_BUCKET
+          VERSION_LABEL: ‘phptdd-app-1.0.0’
+- step:
+    name: Deploy to AWS
+    script:
+      - pipe: atlassian/aws-code-deploy:0.2.5
+        variables:
+          AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+          AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+          AWS_SECRET_ACCESS_KEY: 
+              $AWS_SECRET_ACCESS_KEY
+          APPLICATION_NAME: $APPLICATION_NAME
+          DEPLOYMENT_GROUP: $DEPLOYMENT_GROUP
+          S3_BUCKET: $S3_BUCKET
+          COMMAND: ‘deploy’
+          VERSION_LABEL: ‘phptdd-app-1.0.0’
+          IGNORE_APPLICATION_STOP_FAILURES: ‘true’
+          FILE_EXISTS_BEHAVIOR: ‘OVERWRITE’
+          WAIT: ‘true’</span></pre>
+<p><span class="koboSpan" id="kobo.522.1">Here, we will be using the AWS values we entered in the repository variables page in the previous section. </span></p>
+<p><span class="koboSpan" id="kobo.523.1">Next, we need to </span><a id="_idIndexMarker541"/><span class="koboSpan" id="kobo.524.1">tell CodeDeploy what scripts to run when deploying </span><span class="No-Break"><span class="koboSpan" id="kobo.525.1">our application.</span></span></p>
+<h2 id="_idParaDest-158"><a id="_idTextAnchor159"/><span class="koboSpan" id="kobo.526.1">Creating a CodeDeploy configuration file</span></h2>
+<p><span class="koboSpan" id="kobo.527.1">CodeDeploy will </span><a id="_idIndexMarker542"/><span class="koboSpan" id="kobo.528.1">need a base configuration file called </span><strong class="source-inline"><span class="koboSpan" id="kobo.529.1">appspec.yml</span></strong><span class="koboSpan" id="kobo.530.1">. </span><span class="koboSpan" id="kobo.530.2">Here, we can tell CodeDeploy to run scripts for us, such as running docker-compose and running our Symfony application’s </span><span class="No-Break"><strong class="source-inline"><span class="koboSpan" id="kobo.531.1">setup.sh</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.532.1"> script.</span></span></p>
+<p><span class="koboSpan" id="kobo.533.1">Create the </span><strong class="source-inline"><span class="koboSpan" id="kobo.534.1">/appspec.yml</span></strong><span class="koboSpan" id="kobo.535.1"> file and add the following content </span><span class="No-Break"><span class="koboSpan" id="kobo.536.1">to it:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.537.1">
+version: 0.0
+os: linux
+files:
+  - source: /
+    destination: /home/ec2-user/phptdd
+hooks:
+  AfterInstall:
+    - location: aws/codedeploy/containers_setup_php.sh
+      timeout: 3600
+      runas: ec2-user</span></pre>
+<p><span class="koboSpan" id="kobo.538.1">In this file, we are telling CodeDeploy that we want our code to be copied into </span><strong class="source-inline"><span class="koboSpan" id="kobo.539.1">/home/ec2-user/phptdd directory</span></strong><span class="koboSpan" id="kobo.540.1">. </span><span class="koboSpan" id="kobo.540.2">Then, after the installation process, we want to </span><a id="_idIndexMarker543"/><span class="koboSpan" id="kobo.541.1">run the </span><strong class="source-inline"><span class="koboSpan" id="kobo.542.1">containers_setup_php.sh</span></strong><span class="koboSpan" id="kobo.543.1"> file, which we will create next. </span><span class="koboSpan" id="kobo.543.2">Create this file with the </span><span class="No-Break"><span class="koboSpan" id="kobo.544.1">following content:</span></span></p>
+<p class="SC---Heading" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.545.1">aws/codedeploy/containers_setup_php.sh</span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.546.1">
+#!/bin/bash
+# Build and run containers (PHP, MySQL)
+docker-compose -f ~/phptdd/docker/docker-compose-production.yml down
+docker-compose -f ~/phptdd/docker/docker-compose-production.yml build
+docker-compose -f ~/phptdd/docker/docker-compose-production.yml up -d
+# Setup the PHP Applications inside the containers (install composer packages, setup db, etc).
+</span><span class="koboSpan" id="kobo.546.2">docker-compose -f ~/phptdd/docker/docker-compose-production.yml exec server-web php --version
+docker-compose -f ~/phptdd/docker/docker-compose-production.yml exec server-web /var/www/html/symfony/setup.sh
+docker-compose -f ~/phptdd/docker/docker-compose-production.yml exec server-web /var/www/html/behat/setup.sh</span></pre>
+<p><span class="koboSpan" id="kobo.547.1">You will notice that </span><a id="_idIndexMarker544"/><span class="koboSpan" id="kobo.548.1">we are running docker-compose. </span><span class="koboSpan" id="kobo.548.2">After that, we are running the custom </span><strong class="source-inline"><span class="koboSpan" id="kobo.549.1">setup.sh</span></strong><span class="koboSpan" id="kobo.550.1"> files we created for the Symfony and </span><span class="No-Break"><span class="koboSpan" id="kobo.551.1">Behat applications.</span></span></p>
+<p><span class="koboSpan" id="kobo.552.1">Next, we need to run the entire CI/CD process using </span><span class="No-Break"><span class="koboSpan" id="kobo.553.1">Bitbucket Pipelines.</span></span></p>
+<h2 id="_idParaDest-159"><a id="_idTextAnchor160"/><span class="koboSpan" id="kobo.554.1">Running Bitbucket Pipelines</span></h2>
+<p><span class="koboSpan" id="kobo.555.1">Now that we have </span><a id="_idIndexMarker545"/><span class="koboSpan" id="kobo.556.1">everything we need, just commit and push the files to your repository to trigger a Bitbucket pipeline to run, or just manually run </span><span class="No-Break"><span class="koboSpan" id="kobo.557.1">a pipeline.</span></span></p>
+<p><span class="koboSpan" id="kobo.558.1">Our pipeline is now divided into </span><span class="No-Break"><span class="koboSpan" id="kobo.559.1">three steps:</span></span></p>
+<ul>
+<li><strong class="bold"><span class="koboSpan" id="kobo.560.1">Run automated tests</span></strong><span class="koboSpan" id="kobo.561.1">: These will run our Symfony and </span><span class="No-Break"><span class="koboSpan" id="kobo.562.1">Behat tests</span></span></li>
+<li><strong class="bold"><span class="koboSpan" id="kobo.563.1">Package and upload</span></strong><span class="koboSpan" id="kobo.564.1">: This will zip and upload our code to </span><span class="No-Break"><span class="koboSpan" id="kobo.565.1">AWS S3</span></span></li>
+<li><strong class="bold"><span class="koboSpan" id="kobo.566.1">Deploy to AWS</span></strong><span class="koboSpan" id="kobo.567.1">: This will use CodeDeploy to deploy our solution inside the EC2 instance </span><span class="No-Break"><span class="koboSpan" id="kobo.568.1">we configured</span></span></li>
+</ul>
+<p><span class="koboSpan" id="kobo.569.1">It will take a few minutes to run everything, but imagine replacing the manual process of testing tens, hundreds, or thousands of features and server deployment manually: </span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer178">
+<span class="koboSpan" id="kobo.570.1"><img alt="Figure 10.34 – CI/CD result" src="image/Figure_10.36_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.571.1">Figure 10.34 – CI/CD result</span></p>
+<p><span class="koboSpan" id="kobo.572.1">Great – after 18 minutes, we have completed the entire process! </span><span class="koboSpan" id="kobo.572.2">This setup and process can still be tweaked </span><a id="_idIndexMarker546"/><span class="koboSpan" id="kobo.573.1">and optimized, but in just a few minutes, we were able to automatically run all our test scenarios, and automatically deploy them into a </span><span class="No-Break"><span class="koboSpan" id="kobo.574.1">remote server!</span></span></p>
+<p><span class="koboSpan" id="kobo.575.1">But did the deployment work? </span><span class="koboSpan" id="kobo.575.2">Let’s find out. </span></p>
+<p><span class="koboSpan" id="kobo.576.1">Go back to the AWS console and connect to the EC2 </span><span class="No-Break"><span class="koboSpan" id="kobo.577.1">instance again:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer179">
+<span class="koboSpan" id="kobo.578.1"><img alt="Figure 10.35 – New phptdd directory" src="image/Figure_10.37_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.579.1">Figure 10.35 – New phptdd directory</span></p>
+<p><span class="koboSpan" id="kobo.580.1">The first thing you’ll notice if the code deployment worked is that there should be a new </span><strong class="source-inline"><span class="koboSpan" id="kobo.581.1">/phptdd</span></strong><span class="koboSpan" id="kobo.582.1"> directory. </span><span class="koboSpan" id="kobo.582.2">Let’s see whether it’s got something </span><span class="No-Break"><span class="koboSpan" id="kobo.583.1">in it:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer180">
+<span class="koboSpan" id="kobo.584.1"><img alt="Figure 10.36 – /phptdd content" src="image/Figure_10.38_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.585.1">Figure 10.36 – /phptdd content</span></p>
+<p><span class="koboSpan" id="kobo.586.1">As you can see, we </span><a id="_idIndexMarker547"/><span class="koboSpan" id="kobo.587.1">have all the files we pushed into our Bitbucket repository! </span><span class="koboSpan" id="kobo.587.2">But what about our Docker containers? </span><span class="koboSpan" id="kobo.587.3">Let’s see whether they </span><span class="No-Break"><span class="koboSpan" id="kobo.588.1">are running.</span></span></p>
+<p><span class="koboSpan" id="kobo.589.1">Run the </span><span class="No-Break"><span class="koboSpan" id="kobo.590.1">following command:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.591.1">
+docker ps</span></pre>
+<p><span class="koboSpan" id="kobo.592.1">If everything got installed properly by CodeDeploy, we should see our </span><span class="No-Break"><span class="koboSpan" id="kobo.593.1">containers running:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer181">
+<span class="koboSpan" id="kobo.594.1"><img alt="Figure 10.37 – Docker containers running" src="image/Figure_10.39_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.595.1">Figure 10.37 – Docker containers running</span></p>
+<p><span class="koboSpan" id="kobo.596.1">That’s good – all our </span><a id="_idIndexMarker548"/><span class="koboSpan" id="kobo.597.1">containers are running! </span><span class="koboSpan" id="kobo.597.2">Now, what if we run our automated tests? </span><span class="koboSpan" id="kobo.597.3">Let’s see how it goes. </span><span class="koboSpan" id="kobo.597.4">Run the </span><span class="No-Break"><span class="koboSpan" id="kobo.598.1">following command:</span></span></p>
+<pre class="source-code"><span class="koboSpan" id="kobo.599.1">
+docker-compose -f -/phptdd/docker/docker-compose-production.yml</span></pre>
+<p><span class="koboSpan" id="kobo.600.1">You should see </span><span class="No-Break"><span class="koboSpan" id="kobo.601.1">the following:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer182">
+<span class="koboSpan" id="kobo.602.1"><img alt="Figure 10.38 – Running a Symfony coverage test in EC2" src="image/Figure_10.40_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.603.1">Figure 10.38 – Running a Symfony coverage test in EC2</span></p>
+<p><span class="koboSpan" id="kobo.604.1">Great! </span><span class="koboSpan" id="kobo.604.2">All our Symfony PHP tests are passing! </span><span class="koboSpan" id="kobo.604.3">But what about the actual web application? </span><span class="koboSpan" id="kobo.604.4">The automated tests won’t make sense to </span><span class="No-Break"><span class="koboSpan" id="kobo.605.1">our visitors.</span></span></p>
+<p><span class="koboSpan" id="kobo.606.1">Go back to the EC2 dashboard and click on the EC2 instance we created. </span><span class="koboSpan" id="kobo.606.2">Then, click on the </span><strong class="bold"><span class="koboSpan" id="kobo.607.1">Elastic IP </span></strong><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.608.1">addresses</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.609.1"> link:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer183">
+<span class="koboSpan" id="kobo.610.1"><img alt="Figure 10.39 – Elastic IP address﻿es link" src="image/Figure_10.41_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.611.1">Figure 10.39 – Elastic IP addresses link</span></p>
+<p><span class="koboSpan" id="kobo.612.1">The Elastic IP address </span><a id="_idIndexMarker549"/><span class="koboSpan" id="kobo.613.1">details will be loaded. </span><span class="koboSpan" id="kobo.613.2">Then, copy the </span><strong class="bold"><span class="koboSpan" id="kobo.614.1">Public </span></strong><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.615.1">DNS</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.616.1"> value:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer184">
+<span class="koboSpan" id="kobo.617.1"><img alt="Figure 10.40 – Elastic IP – Public DNS" src="image/Figure_10.42_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.618.1">Figure 10.40 – Elastic IP – Public DNS</span></p>
+<p><span class="koboSpan" id="kobo.619.1">After copying the </span><a id="_idIndexMarker550"/><span class="koboSpan" id="kobo.620.1">public DNS, just simply paste it into your web browser and see whether </span><span class="No-Break"><span class="koboSpan" id="kobo.621.1">it loads:</span></span></p>
+<div>
+<div class="IMG---Figure" id="_idContainer185">
+<span class="koboSpan" id="kobo.622.1"><img alt="Figure 10.41 – HomeController" src="image/Figure_10.43_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.623.1">Figure 10.41 – HomeController</span></p>
+<p><span class="koboSpan" id="kobo.624.1">As you can see, we can now access our web application from a web browser. </span><span class="koboSpan" id="kobo.624.2">You can try to register an account, log in, and add new toy </span><span class="No-Break"><span class="koboSpan" id="kobo.625.1">car entries.</span></span></p>
+<p><span class="koboSpan" id="kobo.626.1">Let’s try the registration feature first: </span></p>
+<ol>
+<li value="1"><span class="koboSpan" id="kobo.627.1">Click on the </span><strong class="bold"><span class="koboSpan" id="kobo.628.1">Register</span></strong><span class="koboSpan" id="kobo.629.1"> link and enter an email address and </span><span class="No-Break"><span class="koboSpan" id="kobo.630.1">a password:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer186">
+<span class="koboSpan" id="kobo.631.1"><img alt="Figure 10.42 – Register" src="image/Figure_10.44_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.632.1">Figure 10.42 – Register</span></p>
+<ol>
+<li value="2"><span class="koboSpan" id="kobo.633.1">Click </span><strong class="bold"><span class="koboSpan" id="kobo.634.1">Register</span></strong><span class="koboSpan" id="kobo.635.1">. </span><span class="koboSpan" id="kobo.635.2">Next, click on the </span><span class="No-Break"><strong class="bold"><span class="koboSpan" id="kobo.636.1">login</span></strong></span><span class="No-Break"><span class="koboSpan" id="kobo.637.1"> button:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer187">
+<span class="koboSpan" id="kobo.638.1"><img alt="Figure 10.40 – Login" src="image/Figure_10.45_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.639.1">Figure 10.40 – Login</span></p>
+<p><span class="koboSpan" id="kobo.640.1">If it works properly, it will </span><a id="_idIndexMarker551"/><span class="koboSpan" id="kobo.641.1">redirect you to the </span><strong class="bold"><span class="koboSpan" id="kobo.642.1">Add Toy Car</span></strong><span class="koboSpan" id="kobo.643.1"> page. </span></p>
+<ol>
+<li value="3"><span class="koboSpan" id="kobo.644.1">On the </span><strong class="bold"><span class="koboSpan" id="kobo.645.1">Add Toy Car</span></strong><span class="koboSpan" id="kobo.646.1"> page, add some values in </span><span class="No-Break"><span class="koboSpan" id="kobo.647.1">the fields:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer188">
+<span class="koboSpan" id="kobo.648.1"><img alt="Figure 10.41 – Add Toy Car" src="image/Figure_10.46_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.649.1">Figure 10.41 – Add Toy Car</span></p>
+<ol>
+<li value="4"><span class="koboSpan" id="kobo.650.1">Click </span><a id="_idIndexMarker552"/><span class="koboSpan" id="kobo.651.1">on the </span><strong class="bold"><span class="koboSpan" id="kobo.652.1">Add Toy Car</span></strong><span class="koboSpan" id="kobo.653.1"> button. </span><span class="koboSpan" id="kobo.653.2">If it works, it should redirect you to the </span><span class="No-Break"><span class="koboSpan" id="kobo.654.1">table controller:</span></span></li>
+</ol>
+<div>
+<div class="IMG---Figure" id="_idContainer189">
+<span class="koboSpan" id="kobo.655.1"><img alt="Figure 10.42 – Table controller" src="image/Figure_10.47_B18318.jpg"/></span>
+</div>
+</div>
+<p class="IMG---Caption" lang="en-US" xml:lang="en-US"><span class="koboSpan" id="kobo.656.1">Figure 10.42 – Table controller</span></p>
+<p><span class="koboSpan" id="kobo.657.1">In the table controller, the toy car entries we have created will all be displayed. </span><span class="koboSpan" id="kobo.657.2">If we want to add </span><a id="_idIndexMarker553"/><span class="koboSpan" id="kobo.658.1">more features to the application, we can simply start with a Jira ticket, create a new branch, write some code, commit it, and push the code – that’s it. </span><span class="koboSpan" id="kobo.658.2">The CI/CD process will take care of </span><span class="No-Break"><span class="koboSpan" id="kobo.659.1">the rest!</span></span></p>
+<h1 id="_idParaDest-160"><a id="_idTextAnchor161"/><span class="koboSpan" id="kobo.660.1">Summary</span></h1>
+<p><span class="koboSpan" id="kobo.661.1">In this chapter, we covered the process of setting up an AWS EC2 instance, AWS CodeDeploy, and all the other AWS resources we need to host our PHP application. </span><span class="koboSpan" id="kobo.661.2">We integrated Bitbucket Pipelines with our AWS CodeDeploy application, and we used custom scripts to automatically configure our Docker containers inside the AWS EC2 instance whenever </span><span class="No-Break"><span class="koboSpan" id="kobo.662.1">CodeDeploy runs.</span></span></p>
+<p><span class="koboSpan" id="kobo.663.1">We covered this process from a developer pushing new code changes to the application, running all the automated tests, and deploying the entire solution to a Linux server through AWS. </span><span class="koboSpan" id="kobo.663.2">We are also able to manually test our web application using a web browser to make sure consumers can use </span><span class="No-Break"><span class="koboSpan" id="kobo.664.1">the application.</span></span></p>
+<p><span class="koboSpan" id="kobo.665.1">In the next chapter, we will investigate some tools to help us monitor our application. </span><span class="koboSpan" id="kobo.665.2">This will be very helpful when working on large applications as this will help us, as developers, analyze our application’s performance and health. </span></p>
+</div>
+</body></html>
