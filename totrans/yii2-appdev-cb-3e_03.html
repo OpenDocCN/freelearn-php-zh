@@ -1,0 +1,1001 @@
+<html><head></head><body><div class="chapter" id="1565U1-ae331331bc644dc9b658d3634f0748da" title="Chapter&#xA0;3.&#xA0;ActiveRecord, Model, and Database"><div class="titlepage"><div><div><h1 class="title"><a id="ch03"/>Chapter 3. ActiveRecord, Model, and Database</h1></div></div></div><p>In this chapter, we will cover the following topics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">Getting data from a database</li><li class="listitem">Defining and using multiple DB connections</li><li class="listitem">Customizing the ActiveQuery class</li><li class="listitem">Processing model fields with AR event-like methods</li><li class="listitem">Automating timestamps</li><li class="listitem">Setting up an author automatically</li><li class="listitem">Setting up a slug automatically</li><li class="listitem">Transactions</li><li class="listitem">Replication and read-write splitting</li><li class="listitem">Implementing single table inheritance</li></ul></div><div class="section" title="Introduction"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec33"/>Introduction</h1></div></div></div><p>In this chapter, you will learn how to work with a database efficiently, when to use models and when not to, how to work with multiple databases, how to automatically preprocess Active Record fields, how to use transactions, and so on.</p></div></div>
+<div class="section" title="Getting data from a database"><div class="titlepage" id="164MG2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch03lvl1sec34"/>Getting data from a database</h1></div></div></div><p>Most applications <a class="indexterm" id="id186"/>use databases today. Be it a small website or a <a class="indexterm" id="id187"/>social network, at least some parts are powered by databases.</p><p>Yii introduces three ways to allow you to work with databases. They are as follows:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">Active Record</li><li class="listitem">Query Builder</li><li class="listitem">SQL via DAO</li></ul></div><p>We will use all these <a class="indexterm" id="id188"/>methods to get data from the <code class="literal">film</code>, <code class="literal">film_actor</code>, and <code class="literal">actor</code> tables and show it in a list. Also, we will compare the execution time and <a class="indexterm" id="id189"/>memory usage to determine in which cases we should use these methods.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec102"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Download the <a class="indexterm" id="id190"/>Sakila database from <a class="ulink" href="http://dev.mysql.com/doc/index-other.html">http://dev.mysql.com/doc/index-other.html</a>.</li><li class="listitem">Execute the downloaded SQLs; first schema, then data.</li><li class="listitem">Configure the DB connection in <code class="literal">config/main.php</code> to use the Sakila database.</li><li class="listitem">Use Gii to create models for the actor and film tables.</li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec103"/>How to do it…</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create <code class="literal">app/controllers/DbController.php</code> as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use app\models\Actor;
+use Yii;
+use yii\db\Query;
+use yii\helpers\ArrayHelper;
+use yii\helpers\Html;
+use yii\web\Controller;
+
+/**
+* Class DbController
+* @package app\controllers
+*/
+class DbController extends Controller
+{
+    /**
+    * Example of Active Record usage.
+    *
+    * @return string
+    */
+    public function actionAr()
+    {
+        $records = Actor::find()
+                        -&gt;joinWith('films')
+                        -&gt;orderBy('actor.first_name, actor.last_name, film.title')
+                        -&gt;all();
+
+        return $this-&gt;renderRecords($records);
+    }
+
+    /**
+    * Example of Query class usage.
+    *
+    * @return string
+    */
+    public function actionQuery()
+    {
+        $rows = (new Query())
+            -&gt;from('actor')
+            -&gt;innerJoin('film_actor', 'actor.actor_id=film_actor.actor_id')
+            -&gt;leftJoin('film', 'film.film_id=film_actor.film_id')
+            -&gt;orderBy('actor.first_name, actor.last_name, actor.actor_id, film.title')
+            -&gt;all();
+
+        return $this-&gt;renderRows($rows);
+    }
+
+    /**
+    * Example of SQL execution usage.
+    *
+    * @return string
+    */
+    public function actionSql()
+    {
+        $sql = 'SELECT *
+            FROM actor a
+            JOIN film_actor fa ON fa.actor_id = a.actor_id
+            JOIN film f ON fa.film_id = f.film_id
+            ORDER BY a.first_name, a.last_name, a.actor_id, f.title';
+
+        $rows = Yii::$app-&gt;db-&gt;createCommand($sql)-&gt;queryAll();
+
+        return $this-&gt;renderRows($rows);
+    }
+
+    /**
+    * Render records for Active Record array.
+    *
+    * @param array $records
+    *
+    * @return string
+    */
+    protected function renderRecords(array $records = [])
+    {
+        if (!$records) {
+            return $this-&gt;renderContent('Actor list is empty.');
+        }
+
+        $items = [];
+
+        foreach ($records as $record) {
+            $actorFilms = $record-&gt;films
+                ? Html::ol(ArrayHelper::getColumn($record-&gt;films, 'title')): null;
+            $actorName = $record-&gt;first_name.' '.$record-&gt;last_name;
+                $items[] = $actorName.$actorFilms;
+       }
+
+        return $this-&gt;renderContent(Html::ol($items, [
+            'encode' =&gt; false,
+        ]));
+    }
+
+    /**
+    * Render rows for result of query.
+    *
+    * @param array $rows
+    *
+    * @return string
+    */
+    protected function renderRows(array $rows = [])
+    {
+        if (!$rows) {
+            return $this-&gt;renderContent('Actor list is empty.');
+        }
+
+        $items = [];
+        $films = [];
+
+        $actorId = null;
+        $actorName = null;
+        $actorFilms = null;
+
+        $lastActorId = $rows[0]['actor_id'];
+
+        foreach ($rows as $row) {
+            $actorId = $row['actor_id'];
+            $films[] = $row['title'];
+
+            if ($actorId != $lastActorId) {
+                $actorName = $row['first_name'].' '.$row['last_name'];
+                $actorFilms = $films ? Html::ol($films) : null;
+
+                $items[] = $actorName.$actorFilms;
+                $films = [];
+                $lastActorId = $actorId;
+            }
+        }
+
+        if ($actorId == $lastActorId) {
+            $actorFilms = $films ? Html::ol($films) : null;
+            $items[] = $actorName.$actorFilms;
+        }
+
+        return $this-&gt;renderContent(Html::ol($items, [
+            'encode' =&gt; false,
+        ]));
+    }
+}</pre></div></li><li class="listitem">Here, we <a class="indexterm" id="id191"/>have three <a class="indexterm" id="id192"/>actions corresponding to the three different methods of getting data from a database.</li><li class="listitem">After running the preceding <code class="literal">db/ar</code>, <code class="literal">db/query</code> and <code class="literal">db/sql</code> actions, you should get a tree showing 200 actors and 1,000 films they have acted in, as shown in the following screenshot:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00373.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">At the bottom, there are statistics that give information about the memory usage and execution time. Absolute numbers can be different if you run this code, but the difference between the methods used should be about the same:<div class="informaltable"><table border="1"><colgroup><col/><col/><col/></colgroup><thead><tr><th valign="bottom">
+<p>Method</p>
+</th><th valign="bottom">
+<p>Memory usage (megabytes)</p>
+</th><th valign="bottom">
+<p>Execution time (seconds)</p>
+</th></tr></thead><tbody><tr><td valign="top">
+<p>Active Record</p>
+</td><td valign="top">
+<p>21.4</p>
+</td><td valign="top">
+<p>2.398</p>
+</td></tr><tr><td valign="top">
+<p>Query Builder</p>
+</td><td valign="top">
+<p>28.3</p>
+</td><td valign="top">
+<p>0.477</p>
+</td></tr><tr><td valign="top">
+<p>SQL (DAO)</p>
+</td><td valign="top">
+<p>27.6</p>
+</td><td valign="top">
+<p>0.481</p>
+</td></tr></tbody></table></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec104"/>How it works…</h2></div></div></div><p>The <code class="literal">actionAr</code> action method gets model instances using the Active Record approach.</p><p>We start with the <code class="literal">Actor</code> model generated with Gii to get all the actors, and specify <code class="literal">joinWith =&gt; 'films'</code> to get the corresponding films using a single query or eager loading through relation, which Gii builds for us from <code class="literal">InnoDB</code> table foreign keys. We then simply iterate over all the actors and for each actor, over each film. Then, for each item, we print its name.</p><p>The <code class="literal">actionQuery</code> function uses Query Builder. First, we create a query for the current DB connection with <code class="literal">\yii\db\Query</code>. We then add query parts one by one with <code class="literal">from</code>, <code class="literal">joinInner</code>, and <code class="literal">leftJoin</code>. These methods escape values, tables, and field names automatically. The <code class="literal">all()</code> function of <code class="literal">\yii\db\Query</code> returns an array of raw database rows. Each row is <a class="indexterm" id="id193"/>also an array, indexed with result field names. We <a class="indexterm" id="id194"/>pass the result to <code class="literal">renderRows</code>, which renders it.</p><p>With <code class="literal">actionSql</code>, we do the same, except that we pass SQL directly instead of adding its parts one by one. It's worth mentioning that we should escape parameter values manually using <code class="literal">Yii::app()-&gt;db-&gt;quoteValue</code> before using them in the query string:</p><p>The <code class="literal">renderRows</code> method renders the Query Builder.</p><p>The <code class="literal">renderRecords</code> method renders the active records.</p><div class="informaltable"><table border="1"><colgroup><col/><col/><col/><col/></colgroup><thead><tr><th valign="bottom">
+<p>Method</p>
+</th><th valign="bottom">
+<p>Active Record</p>
+</th><th valign="bottom">
+<p>Query Builder</p>
+</th><th valign="bottom">
+<p>SQL (DAO)</p>
+</th></tr></thead><tbody><tr><td valign="top">
+<p>Syntax</p>
+</td><td valign="top">
+<p>This will do SQL for you.</p>
+<p>Gii will <a cid="c5" class="indexterm" id="id195"/>generate models and relations for you.</p>
+<p>Works with models, completely OO-style, and a very clean API.</p>
+<p>Produces an array of properly nested models as the result.</p>
+</td><td valign="top">
+<p>Clean API, suitable for building query on the fly.</p>
+<p>Produces raw data arrays as the result.</p>
+</td><td valign="top">
+<p>Good for complex SQL.</p>
+<p>Manual values and keyword quoting.</p>
+<p>Not very suitable for building a query on the fly.</p>
+<p>Produces raw data arrays as the result.</p>
+</td></tr><tr><td valign="top">
+<p>Performance</p>
+</td><td valign="top">
+<p>Higher <a cid="c6" class="indexterm" id="id196"/>memory usage and execution time compared to SQL and Query Builder.</p>
+</td><td valign="top">
+<p>Okay.</p>
+</td><td valign="top">
+<p>Okay.</p>
+</td></tr><tr><td valign="top">
+<p>Extra features</p>
+</td><td valign="top">
+<p>Quotes <a cid="c7" class="indexterm" id="id197"/>values and names automatically.</p>
+<p>Behaviors. Before/after hooks.</p>
+<p>Validation. Prototyping selects.</p>
+</td><td valign="top">
+<p>Quotes values and names automatically.</p>
+</td><td valign="top">
+<p>None.</p>
+</td></tr><tr><td valign="top">
+<p>Best for</p>
+</td><td valign="top">
+<p>Update, <a cid="c8" class="indexterm" id="id198"/>delete, and create actions for single models (the model gives a huge benefit when using with forms).</p>
+</td><td valign="top">
+<p>Working with large amount of data and building queries on the fly.</p>
+</td><td valign="top">
+<p>Complex queries you want to complete with pure SQL and have maximum possible performance.</p>
+</td></tr></tbody></table></div></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec105"/>There's more...</h2></div></div></div><p>In order to learn more about <a class="indexterm" id="id199"/>working with databases in Yii, refer to the following resources:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-db-dao.html">http://www.yiiframework.com/doc-2.0/guide-db-dao.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-db-query-builder.html">http://www.yiiframework.com/doc-2.0/guide-db-query-builder.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-db-active-record.html">http://www.yiiframework.com/doc-2.0/guide-db-active-record.html</a></li></ul></div></div></div>
+<div class="section" title="Defining and using multiple DB connections"><div class="titlepage" id="173722-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch03lvl1sec35"/>Defining and using multiple DB connections</h1></div></div></div><p>Multiple database connections are not used very often for new standalone web applications. However, <a class="indexterm" id="id200"/>when you are building an add-on application for an existing system, you will most probably need another database connection.</p><p>From this recipe, you will <a class="indexterm" id="id201"/>learn how to define multiple DB connections and use them with DAO, Query Builder, and Active Record models.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec106"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Create two MySQL databases named <code class="literal">db1</code> and <code class="literal">db2</code>.</li><li class="listitem">Create a table named post in <code class="literal">db1</code>, as follows:<div class="informalexample"><pre class="programlisting">DROP TABLE IF EXISTS 'post';
+CREATE TABLE IF NOT EXISTS 'post' (
+    'id' INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    'title' VARCHAR(255) NOT NULL,
+    'text' TEXT NOT NULL,
+     PRIMARY KEY  ('id')
+);</pre></div></li><li class="listitem">Create a table named <code class="literal">comment</code> in <code class="literal">db2</code>, as follows:<div class="informalexample"><pre class="programlisting">DROP TABLE IF EXISTS 'comment';
+CREATE TABLE IF NOT EXISTS 'comment' (
+    'id' INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    'text' TEXT NOT NULL,
+    'post_id' INT(10) UNSIGNED NOT NULL,
+     PRIMARY KEY  ('id')
+);</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec107"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">We will start with configuring the DB connections. Open <code class="literal">config/main.php</code> and define a primary connection as described in the official guide:<div class="informalexample"><pre class="programlisting">'db' =&gt; [
+    'connectionString' =&gt;'mysql:host=localhost;dbname=db1',
+    'username' =&gt; 'root',
+    'password' =&gt; '',
+    'charset' =&gt; 'utf8',
+],</pre></div></li><li class="listitem">Copy it, <a class="indexterm" id="id202"/>rename the <code class="literal">db</code> component to <code class="literal">db2</code>, and change the connection string accordingly. Also, you need to add the class name as follows:<div class="informalexample"><pre class="programlisting">'db2' =&gt; [
+    'class'=&gt;'yii\db\Connection',
+    'connectionString' =&gt; 'mysql:host=localhost;dbname=db2',
+    'username' =&gt; 'root',
+    'password' =&gt; '',
+    'charset' =&gt; 'utf8',
+],</pre></div></li><li class="listitem">That is it. Now <a class="indexterm" id="id203"/>you have two database connections and you can use them with DAO and Query Builder, as follows:<div class="informalexample"><pre class="programlisting">$rows1 = Yii::$app-&gt;db-&gt;createCommand($sql)-&gt;queryAll();
+$rows2 = Yii::$app-&gt;db2-&gt;createCommand($sql)-&gt;queryAll();</pre></div></li><li class="listitem">Now, if we need to use Active Record models, we first need to create the Post and Comment models with Gii. You can select an appropriate connection for each model. Set the <code class="literal">db2</code> for database connection ID when you create the Comment model, as shown in the following screenshot:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00375.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">Now you <a class="indexterm" id="id204"/>can <a class="indexterm" id="id205"/>use the <code class="literal">Comment</code> model as usual and create c<code class="literal">ontrollers/ DbController.php</code>, as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use app\models\Post;
+use app\models\Comment;
+use yii\helpers\ArrayHelper;
+use yii\helpers\Html;
+use yii\web\Controller;
+
+/**
+* Class DbController.
+* @package app\controllers
+*/
+class DbController extends Controller
+{
+    public function actionIndex()
+    {
+        $post = new Post();
+        $post-&gt;title = 'Post #'.rand(1, 1000);
+        $post-&gt;text = 'text';
+        $post-&gt;save();
+
+        $posts = Post::find()-&gt;all();
+
+        echo Html::tag('h1', 'Posts');
+        echo Html::ul(ArrayHelper::getColumn($posts, 'title'));
+
+        $comment = new Comment();
+        $comment-&gt;post_id = $post-&gt;id;
+        $comment-&gt;text = 'comment #'.rand(1, 1000);
+        $comment-&gt;save();
+
+        $comments = Comment::find()-&gt;all();
+
+        echo Html::tag('h1', 'Comments');
+        echo Html::ul(ArrayHelper::getColumn($comments, 'text'));
+    }
+}</pre></div></li><li class="listitem">Run <code class="literal">db/index</code> multiple <a class="indexterm" id="id206"/>times and you should see <a class="indexterm" id="id207"/>records added to both databases, as shown in the following screenshot:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00377.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec108"/>How it works...</h2></div></div></div><p>In Yii, you can <a class="indexterm" id="id208"/>add and configure your own components through <a class="indexterm" id="id209"/>the configuration file. For nonstandard components such as <code class="literal">db2</code>, you have to specify the component class. Similarly, you can add <code class="literal">db3</code>, <code class="literal">db4</code>, or any other component, for example, <code class="literal">facebookApi</code>. The remaining array key/value pairs are assigned to the component's public properties, respectively.</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec109"/>There's more...</h2></div></div></div><p>Depending on the RDBMS used, there are additional things we can do to make it easier to use multiple databases.</p><div class="section" title="Cross-database relations"><div class="titlepage"><div><div><h3 class="title"><a id="ch03lvl3sec12"/>Cross-database relations</h3></div></div></div><p>If you are using MySQL, <a class="indexterm" id="id210"/>it is possible to create cross-database relations for your models. In order to do this, you should prefix the <code class="literal">Comment</code> model's table name with the database name, as follows:</p><div class="informalexample"><pre class="programlisting">class Comment extends \yii\db\ActiveRecord
+{
+    //...
+    public function tableName()
+    {
+        return 'db2.comment';
+    }
+    //... 
+}</pre></div><p>Now, if you have a comments relation defined in the <code class="literal">Post</code> model relations method, you can use the following code:</p><div class="informalexample"><pre class="programlisting">$posts = Post::find()-&gt;joinWith('comments')-&gt;all();</pre></div></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec110"/>See also</h2></div></div></div><p>For further <a class="indexterm" id="id211"/>information, refer to <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-db-dao.html#creating-db-connections">http://www.yiiframework.com/doc-2.0/guide-db-dao.html#creating-db-connections</a>.</p></div></div>
+<div class="section" id="181NK1-ae331331bc644dc9b658d3634f0748da" title="Customizing the ActiveQuery class"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec36"/>Customizing the ActiveQuery class</h1></div></div></div><p>By default, all Active Record queries are supported by <code class="literal">yii\db\ActiveQuery</code>. To use a customized query class in <a class="indexterm" id="id212"/>an Active Record class, you should override the <code class="literal">yii\db\ActiveRecord::find()</code> method and return an instance of your customized query class.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec111"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Set up the database connection and create a table named <code class="literal">post</code>, as follows:<div class="informalexample"><pre class="programlisting">DROP TABLE IF EXISTS 'post';
+CREATE TABLE IF NOT EXISTS 'post' (
+    'id' INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    'lang' VARCHAR(5) NOT NULL DEFAULT 'en',
+    'title' VARCHAR(255) NOT NULL,
+    'text' TEXT NOT NULL,
+     PRIMARY KEY ('id')
+);
+INSERT INTO 'post'('id','lang','title','text')
+VALUES (1,'en_us','Yii news','Text in English'),
+(2,'de','Yii Nachrichten','Text in Deutsch');</pre></div></li><li class="listitem">Generate a <code class="literal">Post</code> model using Gii with an enabled <span class="strong"><strong>Generate ActiveQuery</strong></span> option that generates the <code class="literal">PostQuery</code> class.</li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec112"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Add the <a class="indexterm" id="id213"/>following method to <code class="literal">models/PostQuery.php</code>:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\models;
+
+/**
+* This is the ActiveQuery class for [[Post]].
+*
+* @see Post
+*/
+class PostQuery extends \yii\db\ActiveQuery
+{
+    /**
+    * @param $lang
+    *
+    * @return $this
+    */
+    public function lang($lang)
+    {
+        return $this-&gt;where([ 'lang' =&gt; $lang ]);
+    }
+}</pre></div></li><li class="listitem">That is it. Now, <a class="indexterm" id="id214"/>we can use our model. Create <code class="literal">controllers/DbController.php</code> as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use app\models\Post;
+use yii\helpers\Html;
+use yii\web\Controller;
+
+/**
+* Class DbController.
+* @package app\controllers
+*/
+class DbController extends Controller
+{
+    public function actionIndex()
+    {
+        // Get posts written in default application language
+        $posts = Post::find()-&gt;all();
+
+        echo Html::tag('h1', 'Default language');
+        foreach ($posts as $post) {
+            echo Html::tag('h2', $post-&gt;title);
+            echo $post-&gt;text;
+        }
+
+       // Get posts written in German
+       $posts = Post::find()-&gt;lang('de')-&gt;all();
+
+        echo Html::tag('h1', 'German');
+        foreach ($posts as $post) {
+            echo Html::tag('h2', $post-&gt;title);
+            echo $post-&gt;text;
+        }
+    }
+}</pre></div></li><li class="listitem">Now, run <code class="literal">db/index</code> and you should get an output similar to the one shown in the following screenshot:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00380.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec113"/>How it works...</h2></div></div></div><p>We have <a class="indexterm" id="id215"/>rewritten the <code class="literal">find</code> method in the <code class="literal">Post</code> model and extended the ActiveQuery class. The <code class="literal">lang</code> method returns ActiveQuery with the specified language value. In order to support chained calls, <code class="literal">lang</code> returns the model instance by itself.</p></div><div class="section" title="There's more…"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec114"/>There's more…</h2></div></div></div><p>According to the Yii2 <a class="indexterm" id="id216"/>Guide, in Yii 1.1, there was a concept called scope. Scope is no longer directly supported in Yii 2.0, and you should use customized query classes and query methods to achieve the same goal.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec115"/>See also</h2></div></div></div><p>For further <a class="indexterm" id="id217"/>information, refer to the following URLs:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-db-active-record.html#customizing-query-classes">http://www.yiiframework.com/doc-2.0/guide-db-active-record.html#customizing-query-classes</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-intro-upgrade-from-v1.html#active-record">http://www.yiiframework.com/doc-2.0/guide-intro-upgrade-from-v1.html#active-record</a></li></ul></div></div></div>
+<div class="section" id="190861-ae331331bc644dc9b658d3634f0748da" title="Processing model fields with AR event-like methods"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec37"/>Processing model fields with AR event-like methods</h1></div></div></div><p>Active Record <a class="indexterm" id="id218"/>implementation in Yii is very powerful and has many features. One of these features is the event-like methods, which you can use to preprocess model fields before putting them into the database or getting them <a class="indexterm" id="id219"/>from a database, as <a class="indexterm" id="id220"/>well as to delete data related to the model, and so on.</p><p>In this recipe, we will link all URLs in the post text and list all existing Active Record event-like methods.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec116"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Set up the database connection and create a table named <code class="literal">post</code>, as follows:<div class="informalexample"><pre class="programlisting">DROP TABLE IF EXISTS 'post';
+CREATE TABLE IF NOT EXISTS 'post' (
+    'id' INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    'title' VARCHAR(255) NOT NULL,
+    'text' TEXT NOT NULL,
+     PRIMARY KEY ('id')
+);</pre></div></li><li class="listitem">Generate the <code class="literal">post</code> model using Gii.</li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec117"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Add the following method to <code class="literal">models/Post.php</code>:<div class="informalexample"><pre class="programlisting">/**
+* @param bool $insert
+*
+* @return bool
+*/
+public function beforeSave($insert)
+{
+    $this-&gt;text = preg_replace('~((?:https?|ftps?)://.*?)( |$)~iu',
+    '&lt;a href="\1"&gt;\1&lt;/a&gt;\2', $this-&gt;text);
+
+    return parent::beforeSave($insert);
+}</pre></div></li><li class="listitem">That is it. Now, <a class="indexterm" id="id221"/>try saving a post <a class="indexterm" id="id222"/>containing a link. Create <code class="literal">controllers/TestController.php</code> as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use app\models\Post;
+use yii\helpers\Html;
+use yii\helpers\VarDumper;
+use yii\web\Controller;
+
+/**
+* Class TestController.
+* @package app\controllers
+*/
+class TestController extends Controller
+{
+    public function actionIndex()
+    {
+        $post = new Post();
+        $post-&gt;title = 'links test';
+        $post-&gt;text = 'before http://www.yiiframework.com/ after';
+        $post-&gt;save();
+
+        return $this-&gt;renderContent(Html::tag('pre', VarDumper::dumpAsString(
+            $post-&gt;attributes
+        )));
+    }
+}</pre></div></li><li class="listitem">That is it. Now, run <code class="literal">test/index</code>. You should get the following result:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00383.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec118"/>How it works...</h2></div></div></div><p>The <code class="literal">beforeSave</code> method <a class="indexterm" id="id223"/>is implemented <a class="indexterm" id="id224"/>in the <code class="literal">ActiveRecord</code> class and executed just before saving a model. Using a regular expression, we replace everything that looks like a URL with a link that uses this URL and call the parent implementation, so that real events are raised properly. In order to prevent saving, you can return false.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec119"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">For further <a class="indexterm" id="id225"/>information, refer to <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-db-active-record.html#active-record-life-cycles">http://www.yiiframework.com/doc-2.0/guide-db-active-record.html#active-record-life-cycles</a>.</li><li class="listitem">The <span class="emphasis"><em>Working with events</em></span> recipe in <a class="link" href="part0015.xhtml#E9OE1-ae331331bc644dc9b658d3634f0748da" title="Chapter 1. Fundamentals">Chapter 1</a>, <span class="emphasis"><em>Fundamentals</em></span></li><li class="listitem">The <span class="emphasis"><em>Automating timestamps</em></span> recipe</li><li class="listitem">The <span class="emphasis"><em>Setting up an author automatically</em></span> recipe</li><li class="listitem">The <span class="emphasis"><em>Setting up a slug automatically</em></span> recipe</li></ul></div></div></div>
+<div class="section" title="Automating timestamps"><div class="titlepage" id="19UOO2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch03lvl1sec38"/>Automating timestamps</h1></div></div></div><p>For instance, we have a <a class="indexterm" id="id226"/>simple blog application. As in any blog, it has posts, comments, and so on. We would like to populate the timestamps during the create/update events for posts. Let us assume that our post model is named <code class="literal">BlogPost</code> model.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec120"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Set up the database connection and create a table named <code class="literal">blog_post</code>, as follows:<div class="informalexample"><pre class="programlisting">DROP TABLE IF EXISTS 'blog_post';
+CREATE TABLE IF NOT EXISTS 'blog_post' (
+    'id' INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    'title' VARCHAR(255) NOT NULL,
+    'text' TEXT NOT NULL,
+    'created_date' INTEGER,
+    'modified_date'INTEGER,
+     PRIMARY KEY  ('id')
+);</pre></div></li><li class="listitem">Use Gii to create a <a class="indexterm" id="id227"/>model for the <code class="literal">blog_post</code> table.</li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec121"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Add the following method to <code class="literal">models/BlogPost.php</code>:<div class="informalexample"><pre class="programlisting">/**
+* @return array
+*/
+public function behaviors()
+{
+    return [
+        'timestamp'=&gt; [
+            'class' =&gt; 'yii\behaviors\TimestampBehavior',
+            'createdAtAttribute' =&gt; 'creation_date',
+            'updatedAtAttribute' =&gt; 'modified_date'
+        ]
+    ];
+}</pre></div></li><li class="listitem">Create <code class="literal">controllers/TestController.php</code> as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use app\models\BlogPost;
+use yii\helpers\Html;
+use yii\helpers\VarDumper;
+use yii\web\Controller;
+
+/**
+* Class TestController.
+* @package app\controllers
+*/
+class TestController extends Controller
+{
+    public function actionIndex()
+    {
+        $blogPost = new BlogPost();
+        $blogPost-&gt;title = 'Gotcha!';
+        $blogPost-&gt;text = 'We need some laughter to ease the tension of holiday shopping.';
+        $blogPost-&gt;save();
+
+        return $this-&gt;renderContent(Html::tag('pre',
+        VarDumper::dumpAsString($blogPost-&gt;attributes)
+        ));
+    }
+}</pre></div></li><li class="listitem">That is it. Now, run <code class="literal">test/index</code>. You <a class="indexterm" id="id228"/>should get the following result:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00387.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec122"/>How it works…</h2></div></div></div><p>By default, the Timestamp behavior populates <code class="literal">created_at </code>(the timestamp which points to the time when the model was created) and <code class="literal">updated_at </code>(the time when the model was updated). It's a standard <a class="indexterm" id="id229"/>practice to name these fields, but if we would like to make a change, we can specify fields, which will be updated, and model events.</p></div><div class="section" title="There's more…"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec123"/>There's more…</h2></div></div></div><p>For instance, our fields are named <code class="literal">creation_date </code>and <code class="literal">modified_date</code>.</p><p>Let's configure our model with behavior according to these fields. In addition, we should add our behavior's <a class="indexterm" id="id230"/>code to our <code class="literal">Post</code> model:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\models;
+
+use Yii;
+use yii\db\BaseActiveRecord;
+
+class Post extends \yii\db\ActiveRecord
+{
+    // ..
+    public function behaviors()
+    {
+        return [
+            [
+                'class' =&gt; 'yii\behaviors\TimestampBehavior',
+                'attributes' =&gt; [
+                    BaseActiveRecord::EVENT_BEFORE_INSERT =&gt; 'creation_date',
+                    BaseActiveRecord::EVENT_BEFORE_UPDATE =&gt; 'modified_date',
+               ]
+           ]
+       ];
+    }
+    // ..
+}</pre></div><p>In this example, we've pointed to the <code class="literal">creation_date</code> and <code class="literal">modified_date</code> attributes before creating and updating our model accordingly by dint of using special ActiveRecord events: <code class="literal">EVENT_BEFORE_INSERT </code>and <code class="literal">EVENT_BEFORE_UPDATE</code>.</p><div class="section" title="In addition..."><div class="titlepage"><div><div><h3 class="title"><a id="ch03lvl3sec13"/>In addition...</h3></div></div></div><p>You may want to save the <a class="indexterm" id="id231"/>timestamp for custom scenarios. Let's say you want to update the <code class="literal">last_login</code> field, for example, for a specific controller action. In this situation, you can trigger the timestamp update for your specific attribute using the following:</p><div class="informalexample"><pre class="programlisting">$model-&gt;touch('last_login');</pre></div><p>Be aware that <code class="literal">touch()</code> can't be used for new models. You will get <code class="literal">InvalidCallException</code> in this case:</p><div class="informalexample"><pre class="programlisting">$model = new Post();
+$model-&gt;touch('creation_date');</pre></div><p>The<code class="literal"> touch()</code> method calls model saving inside itself so you don't need to save the model after calling it.</p></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec124"/>See also</h2></div></div></div><p>For further <a class="indexterm" id="id232"/>information, refer to <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-concept-behaviors.html#using-timestampbehavior">http://www.yiiframework.com/doc-2.0/guide-concept-behaviors.html#using-timestampbehavior</a>.</p></div></div>
+<div class="section" title="Setting up an author automatically"><div class="titlepage" id="1AT9A2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch03lvl1sec39"/>Setting up an author automatically</h1></div></div></div><p>The <code class="literal">Blameable</code> behavior allows you to update one or more authors' fields automatically. This is primarily used to populate data into the <code class="literal">created_by</code> and <code class="literal">updated_by</code> fields. Similar to the Timestamp <a class="indexterm" id="id233"/>behavior, you can easily specify some special parameters and essential events for this behavior.</p><p>Let us return to the example from the previous section. We also have posts in our blog application. For example, let's assume that our blog model is called <code class="literal">BlogPost</code>. The model has <code class="literal">author_id</code>,<code class="literal"> </code>the field which points to who created this post, and <code class="literal">updater_id,</code> the field which points to who updated it. We would like to populate these attributes automatically during the create/update model events. Now you can learn how to do it.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec125"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Set up the database connection and create a table named <code class="literal">blog_post</code>, as follows:<div class="informalexample"><pre class="programlisting">DROP TABLE IF EXISTS 'blog_post';
+CREATE TABLE IF NOT EXISTS 'blog_post' (
+    'id' INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    'author_id' INT(10) UNSIGNED DEFAULT NULL,
+    'updater_id' INT(10) UNSIGNED DEFAULT NULL,
+    'title' VARCHAR(255) NOT NULL,
+    'text' TEXT NOT NULL,
+    PRIMARY KEY  ('id')
+);</pre></div></li><li class="listitem">Use Gii to create the <code class="literal">BlogPost</code> model for the <code class="literal">blost_post</code> table.</li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec126"/>How to do it…</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Add the <a class="indexterm" id="id234"/>following <code class="literal">behaviors</code> method to <code class="literal">models/BlogPost.php</code>:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\models;
+
+use Yii;
+use yii\db\BaseActiveRecord;
+
+/**
+* This is the model class for table "blog_post".
+*
+* @property integer $id
+* @property integer $author_id
+* @property integer $updater_id
+* @property string $title
+* @property string $text
+*/
+class BlogPost extends \yii\db\ActiveRecord
+{
+    /**
+    * @return array
+    */
+    public function behaviors()
+    {
+        return [
+            [
+                'class' =&gt; 'yii\behaviors\BlameableBehavior',
+                'attributes' =&gt; [
+                    BaseActiveRecord::EVENT_BEFORE_INSERT =&gt; 'author_id',
+                    BaseActiveRecord::EVENT_BEFORE_UPDATE =&gt; 'updater_id'
+                ]
+            ]
+        ];
+    }
+}</pre></div></li><li class="listitem">Create <code class="literal">controllers/TestController.php</code> as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use app\models\BlogPost;
+use app\models\User;
+use Yii;
+use yii\helpers\Html;
+use yii\helpers\VarDumper;
+use yii\web\Controller;
+
+/**
+* Class TestController.
+* @package app\controllers
+*/
+class TestController extends Controller
+{
+    public function actionIndex()
+    {
+        $users = new User();
+        $identity = $users-&gt;findIdentity(100);
+
+        Yii::$app-&gt;user-&gt;setIdentity($identity);
+
+        $blogPost = new BlogPost();
+        $blogPost-&gt;title = 'Very pretty title';
+        $blogPost-&gt;text = 'Success is not final, failure is not fatal...';
+        $blogPost-&gt;save();
+
+        return $this-&gt;renderContent(Html::tag('pre', VarDumper::dumpAsString(
+            $blogPost-&gt;attributes
+        )));
+    }
+}</pre></div></li><li class="listitem">That is it. Now, run <code class="literal">test/index</code>. You will <a class="indexterm" id="id235"/>get the following result:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00388.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec127"/>How it works...</h2></div></div></div><p>By default, the <code class="literal">Blameable</code> behavior populates the <code class="literal">created_by </code>and <code class="literal">updated_by </code>attributes, but we will make a change and set up our behavior according to our own fields.</p><p>We also specified model <a class="indexterm" id="id236"/>events and fields in the model, so, during the model creation, <code class="literal">author_id </code>will be populated. Similarly, during the model update, we will populate <code class="literal">updater_id</code>.</p><p>What <code class="literal">Blameable </code>does is insert the current user id value into the <code class="literal">created_by</code> and <code class="literal">updated_by</code> fields during the create/update model events. This is a super-convenient way of doing things. Every time a model gets created or updated, we automatically fill out the essential fields.</p><p>This works out really well for little projects such as for large systems, where multiple users are admin and you need to keep track of who is doing what. You can also use this for frontend implementations, for example, if you had a <code class="literal">blog_comment</code> table and you wanted to use this method to keep track of the author of a comment. Also, you could set the author's fields in the controller, but the behavior helps you to avoid writing unnecessary and additional code. This is a very effective and easy way to implement this thing.</p></div><div class="section" title="There's more…"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec128"/>There's more…</h2></div></div></div><p>Sometimes we need to fill out <code class="literal">author_id </code>and <code class="literal">updater_id </code>by an id other than that of the current user. In such a case, we may detach our behavior as follows:</p><div class="informalexample"><pre class="programlisting">$model-&gt;detachBehavior('blammable');</pre></div><p>We can detach any behavior we like in this way.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec129"/>See also</h2></div></div></div><p>For further <a class="indexterm" id="id237"/>information, refer to <a class="ulink" href="http://www.yiiframework.com/doc-2.0/yii-behaviors-blameablebehavior.html">http://www.yiiframework.com/doc-2.0/yii-behaviors-blameablebehavior.html</a>.</p></div></div>
+<div class="section" title="Setting up a slug automatically"><div class="titlepage" id="1BRPS2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch03lvl1sec40"/>Setting up a slug automatically</h1></div></div></div><p>On the web, slug is a short <a class="indexterm" id="id238"/>text used in a URL to identify and describe a resource. A slug is the <a class="indexterm" id="id239"/>part of a URL which identifies a page using human-readable keywords. Sluggable behavior is the Yii2 model behavior that allows us to generate unique slugs.</p><p>In this section, we will be guiding you through modifying Yii's default view URL routes for model objects to be more <a class="indexterm" id="id240"/>user-friendly and search engine-friendly. Yii provides built-in support for this via its sluggable behaviors.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec130"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Set up the database connection and create a table named <code class="literal">blog_post</code>, as follows:<div class="informalexample"><pre class="programlisting">DROP TABLE IF EXISTS 'blog_post';
+CREATE TABLE IF NOT EXISTS 'blog_post' (
+    'id' INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    'title' VARCHAR(255) NOT NULL,
+    'slug' VARCHAR(255) NOT NULL,
+    'text' TEXT NOT NULL,
+    PRIMARY KEY ('id')
+);</pre></div></li><li class="listitem">Use Gii to create a model for the post table.</li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec131"/>How to do it…</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Add the following <code class="literal">behaviors</code> method to <code class="literal">models/BlogPost.php</code>:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\models;
+
+use Yii;
+use yii\db\BaseActiveRecord;
+
+class BlogPost extends \yii\db\ActiveRecord
+{
+    // ..
+    public function behaviors()
+    {
+        return [
+            [
+                'class' =&gt; 'yii\behaviors\SluggableBehavior',
+                'attribute' =&gt; 'title',
+                'slugAttribute' =&gt; 'slug',
+                'immutable'=&gt; false,
+                'ensureUnique' =&gt; true
+            ]
+        ];
+    }
+    // ..
+}</pre></div></li><li class="listitem">Create <code class="literal">controllers/TestController.php</code> as <a class="indexterm" id="id241"/>follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use app\models\BlogPost;
+use Yii;
+use yii\helpers\Html;
+use yii\helpers\VarDumper;
+use yii\web\Controller;
+
+/**
+* Class TestController
+* @package app\controllers
+*/
+class TestController extends Controller
+{
+    public function actionIndex()
+    {
+        $blogPostA        = new BlogPost();
+        $blogPostA-&gt;title = 'Super Quote title 1';
+        $blogPostA-&gt;text  = 'The price of success is hard work, dedication to the job at hand';
+        $blogPostA-&gt;save();
+
+        $blogPostB        = new BlogPost();
+        $blogPostB-&gt;title = 'Super Quote title 2';
+        $blogPostB-&gt;text  = 'Happiness lies in the joy of achievement...';
+        $blogPostB-&gt;save();
+
+        return $this-&gt;renderContent(
+            '&lt;pre&gt;' .
+            VarDumper::dumpAsString(
+              $blogPostA-&gt;attributes
+          ).
+          VarDumper::dumpAsString(
+              $blogPostB-&gt;attributes
+          ) .
+          '&lt;/pre&gt;'
+      );
+  }
+}</pre></div></li><li class="listitem">The result will be as follows:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00390.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec132"/>How it works…</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">Yii offers some nice <a class="indexterm" id="id242"/>enhancements to <code class="literal">SluggableBehavior</code> for useful scenarios.</li><li class="listitem">For example, once a search engine records a slug, you probably don't want the page URL to change.</li><li class="listitem">The immutable attribute tells Yii to keep the slug the same after it's first created—even if the title will be updated.</li><li class="listitem">If users enter messages that overlap in content, the <code class="literal">ensureUnique</code> property will automatically append a unique suffix to duplicates. This makes certain that each message has <a class="indexterm" id="id243"/>a unique URL, even if the message is identical.</li><li class="listitem">If you go ahead and create another post with the exact same title, you'll see that its slug is incremented to hot-update-for-ios-devices-2.</li></ul></div><div class="note" title="Note"><h3 class="title"><a id="note06"/>Note</h3><p>
+<span class="strong"><strong>Note</strong></span>: If you get an error related to the immutable property, it may be that you need to run a Composer update to get the latest version of Yii.</p></div></div><div class="section" title="There's more…"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec133"/>There's more…</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Use Gii to generate CRUD for the model class <code class="literal">app\models\Post</code> and the controller class <code class="literal">app\controllers\BlogPostController</code>.</li><li class="listitem">Add the following action to <code class="literal">controllers/BlogPostController.php</code>:<div class="informalexample"><pre class="programlisting">/**
+* @param $slug
+*
+* @return string
+* @throws NotFoundHttpException
+*/
+public function actionSlug($slug)
+{
+    $model = BlogPost::findOne(['slug'=&gt;$slug]);
+
+    if ($model === null) {
+        throw new NotFoundHttpException('The requested page does not exist.');
+    }
+
+    return $this-&gt;render('view', [
+        'model' =&gt; $model,
+        ]);
+}</pre></div></li><li class="listitem">That it is. If you run <code class="literal">blogpost/slug</code> with the slug value as <code class="literal">sluggablebehavior-test</code>, you will get the following result:<div class="mediaobject"><img alt="There's more…" src="../Images/image00392.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">It's suggested that the previous slug recipe be successfully completed with a created instance of <code class="literal">Post</code> model.</li><li class="listitem">To beautify the URL, add the following <code class="literal">urlManager</code> component in <code class="literal">config\web.php</code>:<div class="informalexample"><pre class="programlisting">//..
+'urlManager' =&gt; [
+    'enablePrettyUrl' =&gt; true,
+    'rules' =&gt; [
+        'blog-post' =&gt; 'blog-post/index',
+        'blog-post/index' =&gt; 'blog-post/index',
+        'blog-post/create' =&gt; 'blog-post/create',
+        'blog-post/view/&lt;id:\d+&gt;' =&gt; 'blog-post/view',
+        'blog-post/update/&lt;id:\d+&gt;' =&gt; 'blog-post/update',
+        'blog-post/delete/&lt;id:\d+&gt;' =&gt; 'blog-post/delete',
+        'blog-post/&lt;slug&gt;' =&gt; 'blog-post/slug',
+        'defaultRoute' =&gt; '/site/index',
+    ],
+]
+//..</pre></div></li><li class="listitem">It's important that the <code class="literal">'blog-post/&lt;slug&gt;' =&gt; 'blog-post/slug'</code> rule is the last in the post URL rule list.</li><li class="listitem">Now, if you go to the page using your slug URL, such as <code class="literal">index.php/blog-post/super-quote-title-1/</code>, you will get a result like similar to that in step 3:<div class="mediaobject"><img alt="There's more…" src="../Images/image00395.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec134"/>See also</h2></div></div></div><p>For further <a class="indexterm" id="id244"/>information, refer to:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/yii-behaviors-sluggablebehavior.html">http://www.yiiframework.com/doc-2.0/yii-behaviors-sluggablebehavior.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-runtime-routing.html#url-rules">http://www.yiiframework.com/doc-2.0/guide-runtime-routing.html#url-rules</a></li></ul></div></div></div>
+<div class="section" title="Transactions"><div class="titlepage" id="1CQAE2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch03lvl1sec41"/>Transactions</h1></div></div></div><p>In modern databases, transactions also do some other things, such as ensuring that you can't access data that <a class="indexterm" id="id245"/>another person has written halfway. However, the basic idea is the same—transactions are there to ensure that no matter what happens, the data you work with will be in a sensible state. They guarantee that there will <span class="emphasis"><em>not</em></span> be a situation where money is withdrawn from one account, but not deposited to another.</p><p>Yii2 supports a powerful transaction mechanism with savepoints.</p><p>A classic example is of transferring money from one bank account to another. To do that, you have to first withdraw the amount from the source account, and then deposit it to the destination account. The operation has to succeed in full. If you stop halfway, the money will be lost, and that is very bad. For instance, we have a recipient account and a sender account. We would like to transfer money from sender to recipient. Let's assume that we have an account model.</p><div class="section" title="Getting ready..."><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec135"/>Getting ready...</h2></div></div></div><p>Our account model will be very simple and it will contain only the <code class="literal">id</code> and <code class="literal">balance</code> fields.</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Create a migration, which adds an account table, using the following command:<div class="informalexample"><pre class="programlisting">./yii migrate/create create_account_table</pre></div></li><li class="listitem">Also, update the just- <a class="indexterm" id="id246"/>created migration using the following code:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+use yii\db\Schema;
+use yii\db\Migration;
+
+class m150620_062034_create_account_table extends Migration
+{
+    const TABLE_NAME = '{{%account}}';
+
+    public function up()
+    {
+        $tableOptions = null;
+        if ($this-&gt;db-&gt;driverName === 'mysql') {
+            $tableOptions = 'CHARACTER SET utf8 COLLATE utf8_general_ci ENGINE=InnoDB';
+       }
+
+       $this-&gt;createTable(self::TABLE_NAME, [
+           'id' =&gt; Schema::TYPE_PK,
+           'balance' =&gt; ' NUMERIC(15,2) DEFAULT NULL',
+       ], $tableOptions);
+
+    }
+
+    public function down()
+    {
+        $this-&gt;dropTable(self::TABLE_NAME);
+    }
+}</pre></div></li><li class="listitem">Then, install migration with the following command:<div class="informalexample"><pre class="programlisting">./yii migrate up</pre></div></li><li class="listitem">Use Gii to create a model for the account table.</li><li class="listitem">Create a migration, which adds some test <code class="literal">Account</code> models with balance for our table:<div class="informalexample"><pre class="programlisting">./yii migrate/create add_account_records</pre></div></li><li class="listitem">Also, update the <a class="indexterm" id="id247"/>just-created migration using the following code:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+use yii\db\Migration;
+use app\models\Account;
+
+class m150620_063252_add_account_records extends Migration
+{
+    public function up()
+    {
+        $accountFirst = new Account();
+        $accountFirst-&gt;balance = 1110;
+        $accountFirst-&gt;save();
+
+        $accountSecond = new Account();
+        $accountSecond-&gt;balance = 779;
+        $accountSecond-&gt;save();
+
+        $accountThird = new Account();
+        $accountThird-&gt;balance = 568;
+        $accountThird-&gt;save();
+        return true;
+    }
+
+    public function down()
+    {
+        $this-&gt;truncateTable('{{%account}}');
+        return false;
+    }
+}</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec136"/>How to do it…</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Add the following rule to the <code class="literal">rules</code> method, to <code class="literal">models/Account.php</code>:<div class="informalexample"><pre class="programlisting">public function rules()
+{
+    return [
+        //..
+        [['balance'], 'number', 'min' =&gt; 0],
+        //..
+    ];
+}</pre></div></li><li class="listitem">Let us assume that our <a class="indexterm" id="id248"/>balance may be only positive and that it can't be negative.</li><li class="listitem">Create <code class="literal">TestController</code> with success and error actions:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use app\models\Account;
+use Yii;
+use yii\db\Exception;
+use yii\helpers\Html;
+use yii\helpers\VarDumper;
+use yii\web\Controller;
+
+class TestController extends Controller
+{
+
+    public function actionSuccess()
+    {
+        $transaction = Yii::$app-&gt;db-&gt;beginTransaction();
+
+        try {
+            $recipient = Account::findOne(1);
+            $sender    = Account::findOne(2);
+
+            $transferAmount = 177;
+            $recipient-&gt;balance += $transferAmount;
+            $sender-&gt;balance -= $transferAmount;
+
+            if ($sender-&gt;save() &amp;&amp; $recipient-&gt;save()) {
+                $transaction-&gt;commit();
+
+                return $this-&gt;renderContent(
+                    Html::tag('h1', 'Money transfer was successfully')
+                );
+            } else {
+                $transaction-&gt;rollBack();
+                throw new Exception('Money transfer failed:' .
+                VarDumper::dumpAsString($sender-&gt;getErrors()) .
+                VarDumper::dumpAsString($recipient-&gt;getErrors())
+                );
+            }
+        } catch ( Exception $e ) {
+            $transaction-&gt;rollBack();
+            throw $e;
+        }
+    }
+
+    public function actionError()
+    {
+        $transaction = Yii::$app-&gt;db-&gt;beginTransaction();
+
+        try {
+            $recipient = Account::findOne(1);
+            $sender    = Account::findOne(3);
+
+            $transferAmount = 1000;
+            $recipient-&gt;balance += $transferAmount;
+            $sender-&gt;balance -= $transferAmount;
+
+            if ($sender-&gt;save() &amp;&amp; $recipient-&gt;save()) {
+                $transaction-&gt;commit();
+
+                return $this-&gt;renderContent(
+                    Html::tag('h1', 'Money transfer was successfully')
+                );
+            } else {
+                $transaction-&gt;rollBack();
+
+                throw new Exception('Money transfer failed: ' .
+                VarDumper::dumpAsString($sender-&gt;getErrors()) .
+                VarDumper::dumpAsString($recipient-&gt;getErrors())
+               );
+           }
+
+        } catch ( Exception $e ) {
+            $transaction-&gt;rollBack();
+            throw $e;
+        }
+    }
+}</pre></div></li><li class="listitem">Run <code class="literal">test/success</code> and you should get the output shown in the following screenshot:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00397.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">In this case, the transaction <a class="indexterm" id="id249"/>mechanism will not update the recipient and sender balance if some error occurred.</li><li class="listitem">Run <code class="literal">test/erro</code>r and you should get the output shown in the following screenshot:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00400.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div><p>As you will remember, we added a rule to the <code class="literal">Account</code> model, so our account balance can be only positive. The transaction will roll back in this case and it prevents a situation where money is withdrawn from a sender's account but not deposited to the recipient's account.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec137"/>See also</h2></div></div></div><p>For further <a class="indexterm" id="id250"/>information, refer to:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-db-dao.html#performing-transactions">http://www.yiiframework.com/doc-2.0/guide-db-dao.html#performing-transactions</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-db-dao.html#nesting-transactions">http://www.yiiframework.com/doc-2.0/guide-db-dao.html#nesting-transactions</a></li></ul></div></div></div>
+<div class="section" id="1DOR01-ae331331bc644dc9b658d3634f0748da" title="Replication and read-write splitting"><div class="titlepage" id="aid-1DOR02"><div><div><h1 class="title"><a id="ch03lvl1sec42"/>Replication and read-write splitting</h1></div></div></div><p>In this recipe we will have a look at how to do replication and read-write splitting. We will see how slave and master servers help us in getting these done.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec138"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new <a class="indexterm" id="id251"/>application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Set up the database <a class="indexterm" id="id252"/>connection and create a table named <code class="literal">post</code>, as follows:<div class="informalexample"><pre class="programlisting">DROP TABLE IF EXISTS 'blog_post';
+CREATE TABLE IF NOT EXISTS 'blog_post' (
+    'id' INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    'title' VARCHAR(255) NOT NULL,
+    'text' TEXT NOT NULL,
+    'created_at' INTEGER,
+    'modified_at'INTEGER,
+     PRIMARY KEY  ('id')
+);</pre></div></li><li class="listitem">Generate the <code class="literal">BlogPost</code> model for the table <code class="literal">blog_post</code>.</li><li class="listitem">Configure <a class="indexterm" id="id253"/>master-slave replication between your database servers, for example, as in the article at <a class="ulink" href="https://www.digitalocean.com/community/tutorials/how-to-set-up-master-slave-replication-in-mysql/">https://www.digitalocean.com/community/tutorials/how-to-set-up-master-slave-replication-in-mysql/</a>.</li><li class="listitem">Configure the <code class="literal">db</code> component in <code class="literal">config/main.php</code>; here's an example of configuration:<div class="informalexample"><pre class="programlisting">'components' =&gt;
+    // ..
+    'db' =&gt; [
+        'class' =&gt; 'yii\db\Connection',
+
+        'dsn' =&gt; 'mysql:host=4.4.4.4;dbname=masterdb',
+        'username' =&gt; 'master',
+        'password' =&gt; 'pass',
+        'charset' =&gt; 'utf8',
+
+        'slaveConfig' =&gt; [
+            'username' =&gt; 'slave',
+            'password' =&gt; 'pass',
+        ],
+
+        // list of slave configurations
+        'slaves' =&gt; [
+            ['dsn' =&gt; 'mysql:host=5.5.5.5;dbname=slavedb']
+        ]
+    ],
+    // ..
+]</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec139"/>How to do it…</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create <code class="literal">TestController.php</code> as <a class="indexterm" id="id254"/>follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use app\models\BlogPost;
+use Yii;
+use yii\helpers\Html;
+use yii\helpers\VarDumper;
+use yii\web\Controller;
+
+/**
+* Class TestController
+* @package app\controllers
+*/
+class TestController extends Controller
+{
+    public function actionIndex(){
+
+        $masterModel = new BlogPost();
+        $masterModel-&gt;title = 'Awesome';
+        $masterModel-&gt;text = 'Something is going on..';
+        $masterModel-&gt;save();
+
+        $postId = $masterModel-&gt;id;
+
+        $replModel = BlogPost::findOne($postId);
+
+        return $this-&gt;renderContent(
+            Html::tag('h2', 'Master') .
+            Html::tag('pre', VarDumper::dumpAsString(
+                $masterModel
+                   ? $masterModel-&gt;attributes
+                   : null
+            )) .
+            Html::tag('h2', 'Slave') .
+            Html::tag('pre', VarDumper::dumpAsString(
+                $replModel
+                    ? $replModel-&gt;attributes
+                    : null
+
+            ))
+        );
+    }
+
+}</pre></div></li><li class="listitem">Run <code class="literal">test/index</code> and you <a class="indexterm" id="id255"/>should <a class="indexterm" id="id256"/>get the output shown in the following screenshot:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00401.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec140"/>How it works…</h2></div></div></div><p>Slave servers are used for data reading, whereas the master server is used for writing. After the ActiveRecord model is saved at the master server, new records, replicate to the slave server and then <code class="literal">$replModel</code> finds records on it.</p></div><div class="section" title="There's more…"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec141"/>There's more…</h2></div></div></div><p>The <code class="literal">\yii\db\Connection</code> component supports load balancing and failover between slaves. When <a class="indexterm" id="id257"/>performing a read query for the first time, the <code class="literal">\yii\db\Connection</code> component will randomly pick a slave and try connecting to it. If the slave is found dead, it will try another one. If none of the slaves are available, it will connect to the master. By configuring a server status cache, a dead server can be remembered so that it will not be tried again during a certain period of time.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec142"/>See also</h2></div></div></div><p>For further <a class="indexterm" id="id258"/>information, refer <a class="indexterm" id="id259"/>to the following URLs:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-db-dao.html#replication-and-read-write-splitting">http://www.yiiframework.com/doc-2.0/guide-db-dao.html#replication-and-read-write-splitting</a></li><li class="listitem"><a class="ulink" href="http://dev.mysql.com/doc/refman/5.6/en/replication.html">http://dev.mysql.com/doc/refman/5.6/en/replication.html</a></li><li class="listitem"><a class="ulink" href="http://docs.mongodb.org/manual/tutorial/deploy-replica-set/">http://docs.mongodb.org/manual/tutorial/deploy-replica-set/</a></li><li class="listitem"><a class="ulink" href="http://docs.mongodb.org/manual/tutorial/deploy-replica-set-for-testing/">http://docs.mongodb.org/manual/tutorial/deploy-replica-set-for-testing/</a></li></ul></div></div></div>
+<div class="section" title="Implementing single table inheritance"><div class="titlepage" id="1ENBI2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch03lvl1sec43"/>Implementing single table inheritance</h1></div></div></div><p>Relational databases do not support inheritance. If we need to store inheritance in the database, we should <a class="indexterm" id="id260"/>somehow support it through code. This code <a class="indexterm" id="id261"/>should be efficient, so that it should generate as few JOINs as possible. A common solution to this problem was described by <span class="emphasis"><em>Martin Fowler</em></span> and is named <span class="strong"><strong>single table inheritance</strong></span>.</p><p>When we use this pattern, we store all the class tree data in a single table and use the type field to determine a model for each row.</p><p>As an example, we will implement the single table inheritance for the following class tree:</p><p>Car</p><p>|- SportCar</p><p>|- FamilyCar</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec143"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Create and set up a database. Add the following table:<div class="informalexample"><pre class="programlisting">DROP TABLE IF EXISTS 'car';
+CREATE TABLE 'car' (
+    'id' int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    'name' varchar(255) NOT NULL,
+    'type' varchar(100) NOT NULL,
+     PRIMARY KEY ('id')
+);
+
+INSERT INTO 'car' ('name', 'type')
+VALUES ('Ford Focus', 'family'),
+('Opel Astra', 'family'),
+('Kia Ceed', 'family'),
+('Porsche Boxster', 'sport'),
+('Ferrari 550', 'sport');</pre></div></li><li class="listitem">Use Gii to create a <code class="literal">Car</code> model for the <code class="literal">car</code> table and generate ActiveQuery for the <code class="literal">Car</code> model.</li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec144"/>How to do it…</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Add the following <a class="indexterm" id="id262"/>method and property to <code class="literal">models/CarQuery.php</code>:<div class="informalexample"><pre class="programlisting">/**
+* @var
+*/
+public $type;
+
+/**
+* @param \yii\db\QueryBuilder $builder
+*
+* @return \yii\db\Query
+*/
+public function prepare($builder)
+    {
+        if ($this-&gt;type !== null) {
+            $this-&gt;andWhere(['type' =&gt; $this-&gt;type]);
+        }
+        return parent::prepare($builder);
+    }</pre></div></li><li class="listitem">Create <code class="literal">models/SportCar.php</code> as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\models;
+
+use Yii;
+
+/**
+* Class SportCar
+* @package app\models
+*/
+class SportCar extends Car
+{
+    const TYPE = 'sport';
+
+    /**
+    * @return CarQuery
+    */
+    public static function find()
+    {
+        return new CarQuery(get_called_class(), ['where' =&gt; ['type' =&gt; self::TYPE]]);
+    }
+
+    /**
+    * @param bool $insert
+    *
+    * @return bool
+    */
+    public function beforeSave($insert)
+    {
+        $this-&gt;type = self::TYPE;
+        return parent::beforeSave($insert);
+    }
+}</pre></div></li><li class="listitem">Create <code class="literal">models/FamilyCar.php</code> as <a class="indexterm" id="id263"/>follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\models;
+
+use Yii;
+
+/**
+* Class FamilyCar
+* @package app\models
+*/
+class FamilyCar extends Car
+{
+    const TYPE = 'family';
+
+    /**
+    * @return CarQuery
+    */
+    public static function find()
+    {
+        return new CarQuery(get_called_class(), ['where' =&gt; ['type' =&gt; self::TYPE]]);
+    }
+
+    /**
+    * @param bool $insert
+    *
+    * @return bool
+    */
+    public function beforeSave($insert)
+    {
+        $this-&gt;type = self::TYPE;
+        return parent::beforeSave($insert);
+    }
+}</pre></div></li><li class="listitem">Add the <a class="indexterm" id="id264"/>following method to <code class="literal">models/Car.php</code>:<div class="informalexample"><pre class="programlisting">    /**
+    * @param array $row
+    *
+    * @return Car|FamilyCar|SportCar
+    */
+    public static function instantiate($row)
+    {
+        switch ($row['type']) {
+            case SportCar::TYPE:
+                return new SportCar();
+            case FamilyCar::TYPE:
+                return new FamilyCar();
+            default:
+                return new self;
+        }
+    }</pre></div></li><li class="listitem">Add <code class="literal">TestController</code> with the <a class="indexterm" id="id265"/>following code:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use app\models\Car;
+use app\models\FamilyCar;
+use Yii;
+use yii\helpers\Html;
+use yii\web\Controller;
+
+/**
+* Class TestController
+* @package app\controllers
+*/
+class TestController extends Controller
+{
+    public function actionIndex()
+    {
+        echo Html::tag('h1', 'All cars');
+
+        $cars = Car::find()-&gt;all();
+        foreach ($cars as $car) {
+            // Each car can be of class Car, SportCar or FamilyCar
+            echo get_class($car).' '.$car-&gt;name."&lt;br /&gt;";
+        }
+
+        echo Html::tag('h1', 'Family cars');
+
+        $familyCars = FamilyCar::find()-&gt;all();
+        foreach($familyCars as $car)
+        {
+            // Each car should be FamilyCar
+            echo get_class($car).' '.$car-&gt;name."&lt;br /&gt;";
+        }
+    }
+}</pre></div></li><li class="listitem">Run <code class="literal">test/index</code> and you should get the output shown in the following screenshot:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00403.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec145"/>How it works…</h2></div></div></div><p>The base model <code class="literal">Car</code> is a typically-used Yii AR model except that it has two added methods. The <code class="literal">tableName</code> method explicitly declares the table name to be used for the model. For the <code class="literal">Car</code> model <a class="indexterm" id="id266"/>alone, this does not make sense, but for child models, it will return the same car table, which is just what we want—a single table for the entire class tree. The instantiate method is used by AR internally to create a model instance from the raw data when we call methods such as <code class="literal">Car:::find()-&gt;all()</code>. We use a <code class="literal">switch</code> statement to create different classes based on the type attribute and use the same class if the attribute value is either not specified or points to the non-existing class.</p><p>The <code class="literal">SportCar</code> and <code class="literal">FamilyCar</code> models simply set the default AR scope, so when we search for models with the <code class="literal">SportCar::</code>
+<code class="literal">model()-&gt;</code> methods, we will get the <code class="literal">SportCar</code> model only.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec146"/>See also</h2></div></div></div><p>Use the following <a class="indexterm" id="id267"/>references to learn more about the single <a class="indexterm" id="id268"/>table inheritance pattern and Yii Active Record implementation:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://martinfowler.com/eaaCatalog/singleTableInheritance.html">http://martinfowler.com/eaaCatalog/singleTableInheritance.html</a></li><li class="listitem"><a class="ulink" href="https://blog.liip.ch/archive/2012/03/27/table-inheritance-with-doctrine.html">https://blog.liip.ch/archive/2012/03/27/table-inheritance-with-doctrine.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc/api/CActiveRecord/">http://www.yiiframework.com/doc/api/CActiveRecord/</a></li></ul></div></div></div></body></html>

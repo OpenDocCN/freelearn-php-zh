@@ -1,0 +1,1009 @@
+<html><head></head><body><div class="chapter" id="MSDG1-ae331331bc644dc9b658d3634f0748da" title="Chapter&#xA0;2.&#xA0;Routing, Controllers, and Views"><div class="titlepage"><div><div><h1 class="title"><a id="ch02"/>Chapter 2. Routing, Controllers, and Views</h1></div></div></div><p>In this chapter, we will cover the following topics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">Configuring URL rules</li><li class="listitem">Generating URLs</li><li class="listitem">Using regular expressions in URL rules</li><li class="listitem">Using a base controller</li><li class="listitem">Using standalone actions</li><li class="listitem">Creating a custom filter</li><li class="listitem">Displaying static pages</li><li class="listitem">Using flash messages</li><li class="listitem">Using the controller context in a view</li><li class="listitem">Reusing views with partials</li><li class="listitem">Using blocks</li><li class="listitem">Using decorators</li><li class="listitem">Defining multiple layouts</li><li class="listitem">Pagination and sorting data</li></ul></div><div class="section" title="Introduction"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec18"/>Introduction</h1></div></div></div><p>This chapter will help you to learn some handy things about the Yii URL router, controllers, and views. You will be able to make your controllers and views more flexible.</p></div></div>
+<div class="section" title="Configuring URL rules"><div class="titlepage" id="NQU22-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch02lvl1sec19"/>Configuring URL rules</h1></div></div></div><p>In this recipe, we will learn how to configure URL rules. Before we begin lets set up an application.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec41"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a <a class="indexterm" id="id83"/>new application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Create the <code class="literal">@app/controllers/TestController.php</code> controller with the following code inside:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use yii\helpers\Html;
+use yii\web\Controller;
+
+class TestController extends Controller
+{
+    public function actionIndex()
+    {
+        return $this-&gt;renderContent(Html::tag('h2',
+            'Index action'
+        ));
+    }
+
+    public function actionPage($alias)
+    {
+        return $this-&gt;renderContent(Html::tag('h2',
+            'Page is '. Html::encode($alias)
+        ));
+    }
+}</pre></div><p>This is the application controller that we are going to customize URLs for.</p></li><li class="listitem">Configure your application server to use clean URLs. If you are using Apache with <code class="literal">mod_rewrite</code> and <code class="literal">AllowOverride</code> turned on, then you should add the following lines to the <code class="literal">.htaccess</code> file under your <code class="literal">@web</code> directory:<div class="informalexample"><pre class="programlisting">Options +FollowSymLinks
+IndexIgnore */*
+RewriteEngine on
+# if a directory or a file exists, use it directly
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+# otherwise forward it to index.php
+RewriteRule . index.php</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec42"/>How to do it…</h2></div></div></div><p>Our website <a class="indexterm" id="id84"/>should display the index page at <code class="literal">/home</code> and all other pages at <code class="literal">/page/&lt;alias_ here&gt;</code>. Additionally, <code class="literal">/about</code> should lead to a page with the alias about:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Add the following config of the <code class="literal">urlManager</code> component in <code class="literal">@app/config/web.php</code>:<div class="informalexample"><pre class="programlisting">'components' =&gt; [
+    // ..
+    'urlManager' =&gt; [
+        'enablePrettyUrl' =&gt; true,
+        'rules' =&gt; [
+            'home' =&gt; 'test/index',
+            '&lt;alias:about&gt;' =&gt; 'test/page',
+            'page/&lt;alias&gt;' =&gt; 'test/page',
+        ]
+    ],
+    // ..
+],</pre></div><p>After saving your changes, you should be able to browse the following URLs:</p><div class="informalexample"><pre class="programlisting">‰/home
+‰/about
+‰/page/about 
+/page/test</pre></div></li><li class="listitem">Try running the <code class="literal">/home</code> URL and you will get the following:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00382.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">Then try running the <code class="literal">/about</code> page:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00396.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec43"/>How it works…</h2></div></div></div><p>Let's review <a class="indexterm" id="id85"/>what was done and why it works. We'll start with the right-most part of the first rule:</p><div class="informalexample"><pre class="programlisting">  'home' =&gt; 'test/index',</pre></div><p>What is <code class="literal">test/index</code> exactly? In the Yii application, each controller and its actions have corresponding internal routes. A format for an internal route is <code class="literal">moduleID/controllerID/actionID</code>. For example, the <code class="literal">actionPage</code> method of <code class="literal">TestController</code> corresponds to the <code class="literal">test/page</code> route. So, in order to get the controller ID, you should take its name without the Controller postfix and make its first letter lowercase. To get an action ID, you should take the action method name without the action prefix, and again, make its first letter lowercase.</p><p>Now, what is home? To understand it in a better way, we need to know, at least superficially, what's happening when we access our application using different URLs.</p><p>When we use <code class="literal">/home</code>, the URL router checks our rules one by one starting from the top, trying to match the URL entered with the rule. If a match is found, then the router gets the controller and its action from an internal route assigned to the rule and executes it. So, <code class="literal">/home</code> is the URL pattern that defines which URLs will be processed by the rule it belongs to.</p></div><div class="section" title="There's more…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec44"/>There's more…</h2></div></div></div><p>You can also create parameterized rules using a special syntax. Let's review the third rule:</p><div class="informalexample"><pre class="programlisting">'page/&lt;alias&gt;' =&gt; test/page',</pre></div><p>Here, we are defining an alias parameter that should be specified in the URL after <code class="literal">/page/</code>. It can be virtually anything and it will be passed as the <code class="literal">$alias</code> parameter to the following:</p><div class="informalexample"><pre class="programlisting">TestController::actionPage($alias).</pre></div><p>You can define a pattern for such a parameter. We did it for the second rule, as follows:</p><div class="informalexample"><pre class="programlisting">'&lt;alias:about&gt;' =&gt; test/page',</pre></div><p>The alias <a class="indexterm" id="id86"/>here should match <code class="literal">about</code>, otherwise, the rule will not be applied.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec45"/>See also</h2></div></div></div><p>Refer to <a class="indexterm" id="id87"/>the following links for further reading:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-runtime-routing.html">http://www.yiiframework.com/doc-2.0/guide-runtime-routing.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-runtime-url-handling.html">http://www.yiiframework.com/doc-2.0/guide-runtime-url-handling.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/yii-web-urlmanager.html">http://www.yiiframework.com/doc-2.0/yii-web-urlmanager.html</a></li><li class="listitem">The <span class="emphasis"><em>Using regular expressions in URL rules</em></span> recipe</li></ul></div></div></div>
+<div class="section" title="Generating URLs"><div class="titlepage" id="OPEK2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch02lvl1sec20"/>Generating URLs</h1></div></div></div><p>Yii allows <a class="indexterm" id="id88"/>you to not only route your URLs to different controller actions, but also to generate a URL by specifying a proper internal route and its parameters. This is really useful because you can focus on internal routes while developing your application, and only worry about real URLs before going live. Never specify URLs directly and make sure that you use the Yii URL toolset. It will allow you to change URLs without rewriting a lot of application code.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec46"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Find your <code class="literal">@app/config/web.php</code> file and replace the rules array as follows:<div class="informalexample"><pre class="programlisting">'urlManager' =&gt; array(
+    'enablePrettyUrl' =&gt; true,
+    'showScriptName' =&gt; false,
+),</pre></div></li><li class="listitem">Configure your application server to use clean URLs. If you are using Apache with <code class="literal">mod_rewrite</code> and <code class="literal">AllowOverride</code> turned on, then you should add the following lines to the <code class="literal">.htaccess</code> file under your <code class="literal">@app/web </code>folder:<div class="informalexample"><pre class="programlisting">Options +FollowSymLinks
+IndexIgnore */*
+RewriteEngine on
+# if a directory or a file exists, use it directly
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+# otherwise forward it to index.php
+RewriteRule . index.php</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec47"/>How to do it…</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">In your <code class="literal">@app/controllers</code> directory, create <code class="literal">BlogController</code> with the following <a class="indexterm" id="id89"/>code inside:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+use yii\web\Controller;
+
+class BlogController extends Controller
+{
+
+    public function actionIndex()
+    {
+        return $this-&gt;render('index');
+    }
+
+    public function actionRssFeed($param)
+    {
+        return $this-&gt;renderContent('This is RSS feed for our blog and ' . $param);
+    }
+
+    public function actionArticle($alias)
+    {
+        return $this-&gt;renderContent('This is an article with alias ' . $alias);
+    }
+
+    public function actionList()
+    {
+        return $this-&gt;renderContent('Blog\'s articles here');
+    }
+
+    public function actionHiTech()
+    {
+        return $this-&gt;renderContent('Just a test of action which contains more than one words in the name') ;
+    }
+}</pre></div><p>This is our blog controller that we are going to generate custom URLs for.</p></li><li class="listitem">In <a class="indexterm" id="id90"/>your <code class="literal">@app/controllers</code> directory, create <code class="literal">TestController</code> with the following code inside:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+use Yii;
+use yii\web\Controller;
+
+class TestController extends Controller
+{
+
+    public function actionUrls()
+    {
+        return $this-&gt;render('urls');
+    }
+
+}</pre></div></li><li class="listitem">In the <code class="literal">@app/views</code> directory, create the <code class="literal">test</code> directory and the <code class="literal">urls.php</code> view file, and place the following code inside:<div class="informalexample"><pre class="programlisting">&lt;?php
+    use yii\helpers\Url;
+    use yii\helpers\Html;
+?&gt;
+&lt;h1&gt;Generating URLs&lt;/h1&gt;
+
+&lt;h3&gt;Generating a link with URL to &lt;i&gt;blog&lt;/i&gt; controller and &lt;i&gt;article&lt;/i&gt; action with alias as param&lt;/h3&gt;
+&lt;?= Html::a('Link Name', ['blog/article', 'alias' =&gt; 'someAlias']); ?&gt;
+
+&lt;h3&gt;Current url&lt;/h3&gt;
+&lt;?=Url::to('')?&gt;
+
+&lt;h3&gt;Current Controller, but you can specify an action&lt;/h3&gt;
+&lt;?=Url::toRoute(['view', 'id' =&gt; 'contact']);?&gt;
+
+&lt;h3&gt;Current module, but you can specify controller and action&lt;/h3&gt;
+&lt;?= Url::toRoute('blog/article')?&gt;
+
+&lt;h3&gt;An absolute route to blog/list &lt;/h3&gt;
+&lt;?= Url::toRoute('/blog/list')?&gt;
+
+&lt;h3&gt; URL for &lt;i&gt;blog&lt;/i&gt; controller and action &lt;i&gt;HiTech&lt;/i&gt; &lt;/h3&gt;
+&lt;?= Url::toRoute('blog/hi-tech')?&gt;
+
+&lt;h3&gt;Canonical URL for current page&lt;/h3&gt;
+&lt;?= Url::canonical()?&gt;
+
+&lt;h3&gt;Getting a home URL&lt;/h3&gt;
+&lt;?= Url::home()?&gt;
+
+&lt;h3&gt;Saving a URL of the current page and getting it for re-use&lt;/h3&gt;
+&lt;?php Url::remember()?&gt;
+&lt;?=Url::previous()?&gt;
+
+&lt;h3&gt;Creating URL to &lt;i&gt;blog&lt;/i&gt; controller and &lt;i&gt;rss-feed&lt;/i&gt; action while URL helper isn't available&lt;/h3&gt;
+&lt;?=Yii::$app-&gt;urlManager-&gt;createUrl(['blog/rss-feed', 'param' =&gt; 'someParam'])?&gt;
+
+&lt;h3&gt;Creating an absolute URL to &lt;i&gt;blog&lt;/i&gt; controller and &lt;i&gt;rss-feed&lt;/i&gt;&lt;/h3&gt;
+&lt;p&gt;It's very useful for emails and console applications&lt;/p&gt;
+
+&lt;?=Yii::$app-&gt;urlManager-&gt;createAbsoluteUrl(['blog/rss-feed', 'param' =&gt; 'someParam'])?&gt;</pre></div></li><li class="listitem">Go to <a class="indexterm" id="id91"/>the URL <code class="literal">http://yii-book.app/test/urls</code> and you will see the output. (Refer to the full list of methods in the preceding code.):<div class="mediaobject"><img alt="How to do it…" src="../Images/image00487.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec48"/>How it works...</h2></div></div></div><p>We need to generate URLs pointing to the controller actions (RssFeed, Article, List, HiTech) of <code class="literal">BlogController</code>.</p><p>Depending on where we need it, there are different ways of doing it, but the basics are the same. Let's list some methods that generate URLs.</p><p>What is <a class="indexterm" id="id92"/>an internal route? Each controller and its actions have corresponding routes. A format for a route is <code class="literal">moduleID/controllerID/actionID</code>. For example, the <code class="literal">actionHiTech</code> method of <code class="literal">BlogController</code> corresponds to the <code class="literal">blog/hi-tech</code> route.</p><p>To get a controller ID, you should take its name without the Controller postfix and make its first letter lowercase. To get an action ID, you should take the action method name without the action prefix and make the first letter in each word lowercase, and separate them with a dash (-) sign (for example, <code class="literal">actionHiTech</code>
+<span class="emphasis"><em> </em></span>will be <code class="literal">hi-tech</code>).</p><p>The <code class="literal">$_GET</code> variables are the parameters that will be passed to an action with an internal route specified. For example, if we want to create a URL to a <code class="literal">BlogController::action</code> article that passes the <code class="literal">$_GET['name']</code> parameter to it, it can be done as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?= Html::a('Link Name', ['blog/article', 'alias' =&gt; 'someAlias']); ?&gt;</pre></div><p>Relative URLs can be used inside your application, while absolute ones should be used for pointing to locations outside your website (such as other websites) or for linking to resources meant to be accessed from outside (RSS feeds, e-mails, and so on).</p><p>You can <a class="indexterm" id="id93"/>do it easily with the URL manager. The URL manager is a built-in application component named <code class="literal">urlManager</code>. You have to use this component, which is accessible from both web and console applications via <code class="literal">Yii::$app-&gt;urlManager</code>.</p><p>When <a class="indexterm" id="id94"/>you cannot get a controller instance, for example, when you implement a console application, you can use the two following <code class="literal">urlManager</code> creation <a class="indexterm" id="id95"/>methods:</p><div class="informalexample"><pre class="programlisting">&lt;?=Yii::$app-&gt;urlManager-&gt;createUrl(['blog/rss-feed', 'param' =&gt; 'someParam'])?&gt;
+&lt;?=Yii::$app-&gt;urlManager-&gt;createAbsoluteUrl(['blog/rss-feed', 'param' =&gt; 'someParam'])?&gt;</pre></div></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec49"/>There's more...</h2></div></div></div><p>For <a class="indexterm" id="id96"/>further information, refer to the following URLs:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="https://en.wikipedia.org/wiki/Canonical_link_element">https://en.wikipedia.org/wiki/Canonical_link_element</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-structure-controllers.html">http://www.yiiframework.com/doc-2.0/guide-structure-controllers.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-runtime-routing.html">http://www.yiiframework.com/doc-2.0/guide-runtime-routing.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-helper-url.html">http://www.yiiframework.com/doc-2.0/guide-helper-url.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/yii-web-urlmanager.html">http://www.yiiframework.com/doc-2.0/yii-web-urlmanager.html</a></li></ul></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec50"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">The <span class="emphasis"><em>Configuring URL rules</em></span> recipe</li></ul></div></div></div>
+<div class="section" title="Using regular expressions in URL rules"><div class="titlepage" id="PNV62-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch02lvl1sec21"/>Using regular expressions in URL rules</h1></div></div></div><p>One of <a class="indexterm" id="id97"/>the hidden features of the Yii URL router is that you can use regular expressions that are pretty powerful for handling strings.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec51"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a <a class="indexterm" id="id98"/>new application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">In your <code class="literal">@app/controllers</code> directory, create <code class="literal">PostController.php</code> using the following:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use yii\helpers\Html;
+use yii\web\Controller;
+
+class PostController extends Controller
+{
+    public function actionView($alias)
+    {
+        return $this-&gt;renderContent(Html::tag('h2',
+            'Showing post with alias ' . Html::encode($alias)
+        ));
+    }
+
+    public function actionIndex($type = 'posts', $order = 'DESC')
+   {
+        return $this-&gt;renderContent(Html::tag('h2',
+           'Showing ' . Html::encode($type) . ' ordered ' . Html::encode($order)
+        ));
+    }
+
+    public function actionHello($name)
+    {
+        return $this-&gt;renderContent(Html::tag('h2',
+            'Hello, ' . Html::encode($name) . '!'
+        ));
+    }
+}</pre></div><p>This is our application controller that we are going to access using our custom URLs.</p></li><li class="listitem">Configure your application server to use clean URLs. If you are using Apache with <code class="literal">mod_rewrite</code> and <code class="literal">AllowOverride</code> turned on, then you should add the following lines to the <code class="literal">.htaccess</code> file under your <code class="literal">@web</code> folder:<div class="informalexample"><pre class="programlisting">Options +FollowSymLinks
+IndexIgnore */*
+RewriteEngine on
+# if a directory or a file exists, use it directly
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+# otherwise forward it to index.php
+RewriteRule . index.php</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec52"/>How to do it…</h2></div></div></div><p>We want our <code class="literal">PostController</code> action to accept parameters according to some specified rules and <a class="indexterm" id="id99"/>give the <code class="literal">404 not found</code> HTTP response for all parameters that do not match. In addition, post/index should have an alias URL archive.</p><p>Add the <a class="indexterm" id="id100"/>following config of the <code class="literal">urlManager</code> component to <code class="literal">@app/config/web.php</code>:</p><div class="informalexample"><pre class="programlisting">'components' =&gt; [
+    // ..
+    'urlManager' =&gt; [
+        'enablePrettyUrl' =&gt; true,
+        'rules' =&gt; [
+            'post/&lt;alias:[-a-z]+&gt;' =&gt; 'post/view',
+            '&lt;type:(archive|posts)&gt;' =&gt; 'post/index',
+            '&lt;type:(archive|posts)&gt;/&lt;order:(DESC|ASC)&gt;' =&gt; 'post/index',
+            'sayhello/&lt;name&gt;' =&gt; 'post/hello',
+        ]
+    ],
+    // ..
+],</pre></div><p>The following URLs will be successful:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><code class="literal">http://yii-book.app/post/test</code></li><li class="listitem"><code class="literal">http://yii-book.app/posts</code></li><li class="listitem"><code class="literal">http://yii-book.app/archive</code></li><li class="listitem"><code class="literal">http://yii-book.app/posts/ASC</code></li><li class="listitem"><code class="literal">http://yii-book.app/sayhello</code></li></ul></div><p>The following URLs will fail:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><code class="literal">http://yii-book.app/archive/test</code></li><li class="listitem"><code class="literal">http://yii-book.app/post/another_post</code></li></ul></div><p>The following screenshot shows that the URL <code class="literal">http://yii-book.app/post/test</code> has run successfully:</p><div class="mediaobject"><img alt="How to do it…" src="../Images/image00489.jpeg"/></div><p style="clear:both; height: 1em;"> </p><p>The following <a class="indexterm" id="id101"/>screenshot shows that the URL <code class="literal">http://yii-book.app/archive</code> has run successfully too:</p><div class="mediaobject"><img alt="How to do it…" src="../Images/image00490.jpeg"/></div><p style="clear:both; height: 1em;"> </p><p>The <a class="indexterm" id="id102"/>following screenshot shows that the URL <code class="literal">http://yii-book.app/archive/test</code> did not run successfully and encountered an error:</p><div class="mediaobject"><img alt="How to do it…" src="../Images/image00493.jpeg"/></div><p style="clear:both; height: 1em;"> </p></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec53"/>How it works…</h2></div></div></div><p>You can use regular expressions in both the parameter definition and the rest of the rule. Let's read our rules one by one:</p><div class="informalexample"><pre class="programlisting">'post/&lt;alias:[-a-z]+&gt;' =&gt; 'post/view',</pre></div><p>The alias <a class="indexterm" id="id103"/>parameter should contain one or more English letters or a dash. No other symbols are allowed.</p><div class="informalexample"><pre class="programlisting">'(posts|archive)' =&gt; 'post/index', 
+'(posts|archive)/&lt;order:(DESC|ASC)&gt;' =&gt; 'post/index',</pre></div><p>Both <code class="literal">posts</code> and <code class="literal">archive</code> lead to <code class="literal">post/index</code>. The <code class="literal">order</code> parameter can only accept two values—<code class="literal">DESC</code> and <code class="literal">ASC</code>:</p><div class="informalexample"><pre class="programlisting">'sayhello/&lt;name&gt;' =&gt; 'post/hello',</pre></div><p>You should <a class="indexterm" id="id104"/>specify the name part but there are no restrictions on what characters are allowed. Note that regardless of the rule used, the developer should never assume that the input data is safe.</p><div class="mediaobject"><img alt="How it works…" src="../Images/image00497.jpeg"/></div><p style="clear:both; height: 1em;"> </p></div><div class="section" title="There's more…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec54"/>There's more…</h2></div></div></div><p>To <a class="indexterm" id="id105"/>learn more about regular expressions, you <a class="indexterm" id="id106"/>can use the following sources:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://www.php.net/manual/en/reference.pcre.pattern.syntax.php">http://www.php.net/manual/en/reference.pcre.pattern.syntax.php</a></li><li class="listitem"><span class="emphasis"><em>Mastering Regular Expressions</em></span>, <span class="emphasis"><em>Jeffrey Friedl</em></span> available at <a class="ulink" href="http://regex.info/">http://regex.info/</a>.</li></ul></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec55"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">The <span class="emphasis"><em>Configuring URL rules</em></span> recipe</li></ul></div></div></div>
+<div class="section" id="QMFO1-ae331331bc644dc9b658d3634f0748da" title="Using a base controller"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec22"/>Using a base controller</h1></div></div></div><p>In many <a class="indexterm" id="id107"/>frameworks, the concept of a base controller that is being extended by other ones is described right in the guide. In Yii, it is not in the guide, as you can achieve flexibility in many other ways. Still, using a base controller is possible and can be useful.</p><p>Let's say we want to add some controllers that will be accessible only when the user is logged in. We can certainly set this constraint for each controller separately, but we will do it in a better way.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec56"/>Getting ready</h2></div></div></div><p>Create a new application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-startinstallation.html">http://www.yiiframework.com/doc-2.0/guide-startinstallation.html</a>.</p></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec57"/>How to do it…</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">First, we <a class="indexterm" id="id108"/>will need a base controller that our user-only controllers will use. Let's create <code class="literal">@app/components/BaseController.php</code> with the following code:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\components;
+
+use Yii;
+use yii\web\Controller;
+use yii\filters\AccessControl;
+
+class BaseController extends Controller
+{
+    public function actions()
+    {
+        return [
+            'error' =&gt; ['class' =&gt; 'yii\web\ErrorAction'],
+        ];
+    }
+
+    public function behaviors()
+    {
+        return [
+            'access' =&gt; [
+                'class' =&gt; AccessControl::className(),
+                'rules' =&gt; [
+                    [
+                        'allow' =&gt; true,
+                        'actions' =&gt; 'error'
+                    ],
+                    [
+                        'allow' =&gt; true,
+                        'roles' =&gt; ['@'],
+                    ],
+                ],
+            ]
+        ];
+    }
+}</pre></div><p>This controller has an action map with an error action also.</p></li><li class="listitem">Now, create <code class="literal">TestController</code> by Gii, but set the value of the base class field as <code class="literal">app/components/BaseController</code>:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00500.jpeg"/></div><p style="clear:both; height: 1em;"> </p><p>You will get <a class="indexterm" id="id109"/>something similar to the following:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\controllers;
+class TestController extends \app\components\BaseController
+{
+    public function actionIndex()
+    {
+        return $this-&gt;render('index');
+    }
+}</pre></div></li><li class="listitem">Now, your <code class="literal">TestController</code> will be only accessible if the user is logged in, even though we have not declared it explicitly in the <code class="literal">TestController</code> class. You can check it by visiting <code class="literal">http://yii-book.app/index.php?r=test/index</code> while logged out.</li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec58"/>How it works…</h2></div></div></div><p>The trick is nothing more than a basic class inheritance. If filters or access control rules are not found in <code class="literal">TestController</code>, then they will be called from <code class="literal">SecureController</code>.</p></div><div class="section" title="There's more…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec59"/>There's more…</h2></div></div></div><p>If you need <a class="indexterm" id="id110"/>to extend the base controller's method, keep in the <a class="indexterm" id="id111"/>mind that it must not be overridden. For example, we need to add a page action to the controller's action map:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use yii\helpers\ArrayHelper;
+use app\components\BaseController;
+
+class TestController extends BaseController
+{
+    public function actions()
+    {
+        return ArrayHelper::merge(parent::actions(), [
+            'page' =&gt; [
+                'class' =&gt; 'yii\web\ViewAction',
+            ],
+        ]);
+    }
+
+    public function behaviors()
+    {
+        $behaviors = parent::behaviors();
+
+        $rules = $behaviors['access']['rules'];
+
+        $rules = ArrayHelper::merge(
+            $rules,
+            [
+                [
+                    'allow' =&gt; true,
+                    'actions' =&gt; ['page']
+                ]
+            ]
+        );
+
+        $behaviors['access']['rules'] = $rules;
+
+        return $behaviors;
+    }
+
+    public function actionIndex()
+    {
+        return $this-&gt;render('index');
+    }
+}</pre></div><p>For <a class="indexterm" id="id112"/>further <a class="indexterm" id="id113"/>information, refer to <a class="ulink" href="http://www.yiiframework.com/doc-2.0/yii-base-controller.html">http://www.yiiframework.com/doc-2.0/yii-base-controller.html</a>.</p></div></div>
+<div class="section" title="Using standalone actions"><div class="titlepage" id="RL0A2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch02lvl1sec23"/>Using standalone actions</h1></div></div></div><p>In Yii, you <a class="indexterm" id="id114"/>can define controller actions as separate classes and then connect them to your controllers. This will help you to reuse some common functionality.</p><p>For example, you can move the backend for autocomplete fields to an action and save some time by not having to write it over and over again.</p><p>Another example is that we can create all CRUD operations as separate standalone actions. We will write, create, view, and delete operations of the model and view the list operation of models.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec60"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Let's create <code class="literal">post</code> table. Create migration for this using the following command:<div class="informalexample"><pre class="programlisting">./yii migrate/create create_post_table</pre></div></li><li class="listitem">Update the just-created migration's methods and list of imported classes as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+use yii\db\Schema;
+use yii\db\Migration;
+
+class m150719_152435_create_post_table extends Migration
+{
+    const TABLE_NAME = '{{%post}}';
+
+    public function up()
+    {
+        $tableOptions = null;
+        if ($this-&gt;db-&gt;driverName === 'mysql') {
+            $tableOptions = 'CHARACTER SET utf8 COLLATE utf8_general_ci ENGINE=InnoDB';
+        }
+
+        $this-&gt;createTable(self::TABLE_NAME, [
+            'id' =&gt; Schema::TYPE_PK,
+            'title' =&gt; Schema::TYPE_STRING.'(255) NOT NULL',
+            'content' =&gt; Schema::TYPE_TEXT.' NOT NULL',
+        ], $tableOptions);
+
+        for ($i = 1; $i &lt; 7; $i++) {
+            $this-&gt;insert(self::TABLE_NAME, [
+                'title' =&gt; 'Test article #'.$i,
+                'content' =&gt; 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. '
+                 .'Sed sit amet mauris est. Sed at dignissim dui. '
+                 .'Phasellus arcu massa, facilisis a fringilla sit amet, '
+                 .'rhoncus ut enim.',
+            ]);
+        }
+    }
+
+    public function down()
+    {
+        $this-&gt;dropTable(self::TABLE_NAME);
+    }
+}</pre></div></li><li class="listitem">Install <a class="indexterm" id="id115"/>all migrations using the following command:<div class="informalexample"><pre class="programlisting">./yii migrate up</pre></div></li><li class="listitem">Create the <code class="literal">Post</code> model using Gii.</li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec61"/>How to do it…</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create the standalone action <code class="literal">@app/actions/CreateAction.php</code> as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\actions;
+
+use Yii;
+use yii\base\Action;
+
+class CreateAction extends Action
+{
+    public $modelClass;
+
+    public function run()
+    {
+        $model = new $this-&gt;modelClass();
+
+        if ($model-&gt;load(Yii::$app-&gt;request-&gt;post()) &amp;&amp; $model-&gt;save()) {
+            $this-&gt;controller-&gt;redirect(['view', 'id' =&gt; $model-&gt;getPrimaryKey()]);
+        } else {
+            return $this-&gt;controller-&gt;render('//crud/create', [
+                'model' =&gt; $model
+            ]);
+        }
+    }
+}</pre></div></li><li class="listitem">Create the <a class="indexterm" id="id116"/>standalone action <code class="literal">@app/actions/DeleteAction.php</code> as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\actions;
+
+use yii\base\Action;
+use yii\web\NotFoundHttpException;
+
+class DeleteAction extends Action
+{
+    public $modelClass;
+
+    public function run($id)
+    {
+        $class = $this-&gt;modelClass;
+
+        if (($model = $class::findOne($id)) === null) {
+            throw new NotFoundHttpException('The requested page does not exist.');
+        }
+
+        $model-&gt;delete();
+
+        return $this-&gt;controller-&gt;redirect(['index']);
+    }
+}</pre></div></li><li class="listitem">Create the <a class="indexterm" id="id117"/>standalone action <code class="literal">@app/actions/IndexAction.php</code> as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\actions;
+
+use yii\base\Action;
+use yii\data\Pagination;
+
+class IndexAction extends Action
+{
+    public $modelClass;
+    public $pageSize = 3;
+
+    public function run()
+    {
+        $class = $this-&gt;modelClass;
+        $query = $class::find();
+        $countQuery = clone $query;
+
+        $pages = new Pagination([
+            'totalCount' =&gt; $countQuery-&gt;count(),
+        ]);
+        $pages-&gt;setPageSize($this-&gt;pageSize);
+
+        $models = $query-&gt;offset($pages-&gt;offset)
+                           -&gt;limit($pages-&gt;limit)
+                           -&gt;all();
+
+        return $this-&gt;controller-&gt;render('//crud/index', [
+            'pages' =&gt; $pages,
+            'models' =&gt; $models
+        ]);
+    }
+}</pre></div></li><li class="listitem">Create the standalone action <code class="literal">@app/actions/ViewAction.php</code> as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\actions;
+
+use yii\base\Action;
+use yii\web\NotFoundHttpException;
+
+class ViewAction extends Action
+{
+    public $modelClass;
+
+    public function run($id)
+    {
+        $class = $this-&gt;modelClass;
+
+        if (($model = $class::findOne($id)) === null) {
+             throw new NotFoundHttpException('The requested page does not exist.');
+        }
+
+         return $this-&gt;controller-&gt;render('//crud/view', [
+            'model' =&gt; $model
+         ]);
+    }
+}</pre></div></li><li class="listitem">Create <a class="indexterm" id="id118"/>the view file <code class="literal">@app/views/crud/create.php</code> as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+use yii\helpers\Html;
+use yii\widgets\ActiveForm;
+
+/*
+* @var yii\web\View $this
+*/
+
+?&gt;
+&lt;h1&gt;&lt;?= Yii::t('app', 'Create post'); ?&gt;&lt;/h1&gt;
+&lt;?php $form = ActiveForm::begin();?&gt;
+&lt;?php $form-&gt;errorSummary($model); ?&gt;
+
+&lt;?= $form-&gt;field($model, 'title')-&gt;textInput() ?&gt;
+&lt;?= $form-&gt;field($model, 'content')-&gt;textarea() ?&gt;
+
+&lt;?= Html::submitButton(Yii::t('app', 'Create'), ['class' =&gt; 'btn btn-primary']) ?&gt;
+
+&lt;?php ActiveForm::end(); ?&gt;</pre></div></li><li class="listitem">Create the <a class="indexterm" id="id119"/>view file <code class="literal">@app/views/crud/index.php</code> as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+use yii\widgets\LinkPager;
+use yii\helpers\Html;
+use yii\helpers\Url;
+
+/*
+* @var yii\web\View $this
+* @var yii\data\Pagination $pages
+* @var array $models
+*/
+
+?&gt;
+&lt;h1&gt;Posts&lt;/h1&gt;
+&lt;?= Html::a('+ Create a post', Url::toRoute('post/create')); ?&gt;
+
+&lt;?php foreach ($models as $model):?&gt;
+    &lt;h3&gt;&lt;?= Html::encode($model-&gt;title);?&gt;&lt;/h3&gt;
+    &lt;p&gt;&lt;?= Html::encode($model-&gt;content);?&gt;&lt;/p&gt;
+
+    &lt;p&gt;
+        &lt;?= Html::a('view', Url::toRoute(['post/view', 'id' =&gt; $model-&gt;id]));?&gt; |
+        &lt;?= Html::a('delete', Url::toRoute(['post/delete', 'id' =&gt; $model-&gt;id]));?&gt;
+    &lt;/p&gt;
+&lt;?php endforeach; ?&gt;
+
+&lt;?= LinkPager::widget([
+    'pagination' =&gt; $pages,
+]); ?&gt;</pre></div></li><li class="listitem">Create the view file <code class="literal">@app/views/crud/view.php</code> as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+use yii\helpers\Html;
+use yii\helpers\Url;
+
+/*
+* @var yii\web\View $this
+* @var app\models\Post $model
+*/
+
+?&gt;
+&lt;p&gt;&lt;?= Html::a('&lt; back to posts', Url::toRoute('post/index')); ?&gt;&lt;/p&gt;
+
+&lt;h2&gt;&lt;?= Html::encode($model-&gt;title);?&gt;&lt;/h2&gt;
+&lt;p&gt;&lt;?= Html::encode($model-&gt;content);?&gt;&lt;/p&gt;</pre></div><p>To use <a class="indexterm" id="id120"/>standalone actions, we declared it in the action map by overriding the actions method.</p></li><li class="listitem">Run <code class="literal">post</code>/<code class="literal">index</code>:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00501.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec62"/>How it works…</h2></div></div></div><p>Every <a class="indexterm" id="id121"/>controller can be built from standalone actions, like a puzzle from pieces. The difference is that you can make standalone actions very flexible and reuse them in many places.</p><p>In our actions, we defined the <code class="literal">modelClass</code> public property, which helps to set up a specific Model class in the <code class="literal">acti</code>
+<code class="literal">ons</code> method of <code class="literal">PostController</code>.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec63"/>See also</h2></div></div></div><p>For <a class="indexterm" id="id122"/>further information, refer to <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-structure-controllers.html#standalone-actions">http://www.yiiframework.com/doc-2.0/guide-structure-controllers.html#standalone-actions</a>.</p></div></div>
+<div class="section" id="SJGS1-ae331331bc644dc9b658d3634f0748da" title="Creating a custom filter"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec24"/>Creating a custom filter</h1></div></div></div><p>Filters are <a class="indexterm" id="id123"/>objects that run before and/or after controller actions. For example, an access control filter may run before actions to ensure that they are allowed to be accessed by particular end users; a content compression filter may run after actions to compress the response content before sending them out to end users.</p><p>A filter may consist of a prefilter (filtering logic applied before actions) and/or a postfilter (logic applied after actions). Filters are essentially a special kind of behavior. Therefore, using filters is the same as using behaviors.</p><p>Let's assume that we have a web application, which provides a user interface for working only at specified hours, for example, from 10 AM to 6 PM.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec64"/>Getting ready</h2></div></div></div><p>Create a new application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</p></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec65"/>How to do it…</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a controller, <code class="literal">@app/controllers/TestController.php</code>, as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use app\components\CustomFilter;
+use yii\helpers\Html;
+use yii\web\Controller;
+
+class TestController extends Controller
+{
+    public function behaviors()
+    {
+        return [
+            'access' =&gt; [
+                'class' =&gt; CustomFilter::className(),
+            ],
+        ];
+    }
+
+    public function actionIndex()
+    {
+        return $this-&gt;renderContent(Html::tag('h1',
+            'This is a test content'
+        ));
+    }
+}</pre></div></li><li class="listitem">Create a <a class="indexterm" id="id124"/>new filter, <code class="literal">@app/components/CustomFilter.php</code>, as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\components;
+
+use Yii;
+use yii\base\ActionFilter;
+use yii\web\HttpException;
+
+class CustomFilter extends ActionFilter
+{
+    const WORK_TIME_BEGIN = 10;
+    const WORK_TIME_END = 18;
+
+    protected function canBeDisplayed()
+    {
+        $hours = date('G');
+
+        return $hours &gt;= self::WORK_TIME_BEGIN &amp;&amp; $hours &lt;= self::WORK_TIME_END;
+    }
+
+    public function beforeAction($action)
+    {
+        if (!$this-&gt;canBeDisplayed())
+        {
+            $error = 'This part of website works from '
+                    . self::WORK_TIME_BEGIN . ' to '
+                    . self::WORK_TIME_END . ' hours.';
+
+            throw new HttpException(403, $error);
+        }
+
+        return parent::beforeAction($action);
+    }
+
+    public function afterAction($action, $result)
+    {
+        if (Yii::$app-&gt;request-&gt;url == '/test/index') {
+            Yii::trace("This is the index action");
+        }
+
+        return parent::afterAction($action, $result);
+    }
+}</pre></div></li><li class="listitem">If you've visited this page outside of the specified time period, you'll get the following:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00504.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec66"/>How it works…</h2></div></div></div><p>At first, we <a class="indexterm" id="id125"/>added a piece of code to our controller, which implements our custom filter:</p><div class="informalexample"><pre class="programlisting">public function behaviors()
+{
+    return [
+        'access' =&gt; [
+            'class' =&gt; CustomFilter::className(),
+           ],
+        ];
+}</pre></div><p>By default, the filter applies to all actions of the controller, but we can specify actions for which it will be applied, or even exclude actions from our filter.</p><p>You have two actions inside it—<code class="literal">beforeAction</code> and <code class="literal">afterActions</code>. The first one runs before the controller's actions and the next one after.</p><p>In our simple example, we defined a condition which doesn't allow access to website if the time is earlier than 10 AM, and in the after method we just run a trace method if the current path is <code class="literal">test/index</code>.</p><p>You can see the result in the debugger, in the <code class="literal">log</code> section:</p><div class="mediaobject"><img alt="How it works…" src="../Images/image00506.jpeg"/></div><p style="clear:both; height: 1em;"> </p><p>In real <a class="indexterm" id="id126"/>applications, filters are more complex and also, Yii2 provides a lot of built-in filters, such as core, authentication, content negotiator, HTTP cache end, and so on.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec67"/>See also</h2></div></div></div><p>For further <a class="indexterm" id="id127"/>information, refer to <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guidestructure-filters.html">http://www.yiiframework.com/doc-2.0/guidestructure-filters.html</a>.</p></div></div>
+<div class="section" title="Displaying static pages"><div class="titlepage" id="TI1E2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch02lvl1sec25"/>Displaying static pages</h1></div></div></div><p>If you <a class="indexterm" id="id128"/>have a few static pages and aren't going to change them very frequently, then it's not worth querying the database and implementing page management for them.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec68"/>Getting ready</h2></div></div></div><p>Create a new application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-startinstallation.html">http://www.yiiframework.com/doc-2.0/guide-startinstallation.html</a>.</p></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec69"/>How to do it…</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create the test controller file, <code class="literal">@app/controllers/TestController.php</code>, as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use yii\web\Controller;
+
+class TestController extends Controller
+{
+    public function actions()
+    {
+        return [
+            'page' =&gt; [
+                'class' =&gt; 'yii\web\ViewAction',
+            ]
+        ];
+    }
+}</pre></div></li><li class="listitem">Now, put your pages into <code class="literal">views/test/pages</code>, and name them <code class="literal">index.php</code> and <code class="literal">contact.php</code>. The content of <code class="literal">index.php</code> is as follows:<div class="informalexample"><pre class="programlisting">&lt;h1&gt;Index&lt;/h1&gt;
+content of index file
+
+Contact.php content is:
+
+&lt;h2&gt;Contacts&lt;/h2&gt;
+&lt;p&gt;Our contact: contact@localhost&lt;/p&gt;</pre></div></li><li class="listitem">Now <a class="indexterm" id="id129"/>you can check your pages by typing in the URL,</li><li class="listitem"><code class="literal">http://yii-book.app/index.php?r=test/page&amp;view=contact</code>:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00509.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">Alternatively, you can type in the URL <code class="literal">http://yii-book.app/test/page/view/about</code>, if you have configured clean URLs with a path format.</li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec70"/>How it works…</h2></div></div></div><p>We connect the external action named <code class="literal">\yii\web\ViewAction</code>, which simply tries to find a view named the same as the <code class="literal">$_GET</code> parameter supplied. If it is there, it displays it. If not, then it will give you a <code class="literal">404 not found</code> page. In case <code class="literal">viewParam</code> is not set, the <code class="literal">defaultView</code> value will be used.</p></div><div class="section" title="There's more…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec71"/>There's more…</h2></div></div></div><div class="section" title="About ViewAction"><div class="titlepage"><div><div><h3 class="title"><a id="ch02lvl3sec07"/>About ViewAction</h3></div></div></div><p>There are <a class="indexterm" id="id130"/>some useful <code class="literal">\yii\web\ViewAction</code> parameters <a class="indexterm" id="id131"/>we can use. These are listed in the following table:</p><div class="informaltable"><table border="1"><colgroup><col/><col/></colgroup><thead><tr><th valign="bottom">
+<p>Parameter name</p>
+</th><th valign="bottom">
+<p>Description</p>
+</th></tr></thead><tbody><tr><td valign="top">
+<p>
+<code class="literal">defaultView</code>
+</p>
+</td><td valign="top">
+<p>The name <a cid="c1" class="indexterm" id="id132"/>of the default view when the <code class="literal">yii\web\ViewAction::$viewParam</code> GET parameter is not provided by the user. Defaults to <code class="literal">'index'</code>. This should be in the format of <code class="literal">path/to/view</code>, similar to that given in the <code class="literal">GET</code> parameter.</p>
+</td></tr><tr><td valign="top">
+<p>
+<code class="literal">layout</code>
+</p>
+</td><td valign="top">
+<p>The name <a cid="c2" class="indexterm" id="id133"/>of the layout to be applied to the requested view. This will be assigned to <code class="literal">yii\base\Controller::$layout</code> before the view is rendered. Defaults to null, meaning the controller's layout will be used. If false, no layout will be applied.</p>
+</td></tr><tr><td valign="top">
+<p>
+<code class="literal">viewParam</code>
+</p>
+</td><td valign="top">
+<p>The name <a cid="c3" class="indexterm" id="id134"/>of the <code class="literal">GET</code> parameter that contains the requested view name.</p>
+</td></tr><tr><td valign="top">
+<p>
+<code class="literal">viewPrefix</code>
+</p>
+</td><td valign="top">
+<p>A string to <a cid="c4" class="indexterm" id="id135"/>be prefixed to the user-specified view name to form a complete view name. For example, if a user requests <code class="literal">tutorial/chap1</code>, the corresponding view name will be <code class="literal">pages/tutorial/chap1</code>, assuming that the prefix is pages. The actual view file is determined by <code class="literal">yii\base\View::findViewFile()</code>.</p>
+</td></tr></tbody></table></div></div><div class="section" title="Configuring URL rules"><div class="titlepage"><div><div><h3 class="title"><a id="ch02lvl3sec08"/>Configuring URL rules</h3></div></div></div><p>The <code class="literal">ViewAction</code> action <a class="indexterm" id="id136"/>provides you a way to minify your controller, but the URLs look like <code class="literal">http://yii-book.app/index.php?r=test/page&amp;page=about</code>. To make URLs short and more readable, add a URL rule to <code class="literal">urlManager</code> component:</p><div class="informalexample"><pre class="programlisting">'&lt;view:about&gt;' =&gt; 'test/page'</pre></div><p>If the <code class="literal">urlManager</code> component configures properly you will get the following:</p><div class="mediaobject"><img alt="Configuring URL rules" src="../Images/image00511.jpeg"/></div><p style="clear:both; height: 1em;"> </p><p>To <a class="indexterm" id="id137"/>configure the <code class="literal">urlManager</code> component, refer to the <span class="emphasis"><em>Configuring URL rules</em></span> recipe.</p></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec72"/>See also</h2></div></div></div><p>For <a class="indexterm" id="id138"/>further <a class="indexterm" id="id139"/>information, refer to the following URLs:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/yii-web-viewaction.html">http://www.yiiframework.com/doc-2.0/yii-web-viewaction.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-structure-views.html#rendering-static-pages">http://www.yiiframework.com/doc-2.0/guide-structure-views.html#rendering-static-pages</a></li><li class="listitem">The <span class="emphasis"><em>Configuring URL rules</em></span> recipe</li></ul></div></div></div>
+<div class="section" title="Using flash messages"><div class="titlepage" id="UGI02-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch02lvl1sec26"/>Using flash messages</h1></div></div></div><p>When you <a class="indexterm" id="id140"/>are editing a model with a form, deleting a model, or doing any other operation, it is good to tell users if it went well or if there was an error. Typically, after some kind of action, such as editing a form, a redirect will happen and we need to display a message on the page we want to go to. However, how do we pass it from the current page to the redirect target and clean up afterwards? Flash messages will help us do this.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec73"/>Getting ready</h2></div></div></div><p>Create a new application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</p></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec74"/>How to do it…</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Let's create a <code class="literal">@app/controllers/TestController.php</code> controller as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use Yii;
+use yii\web\Controller;
+use yii\filters\AccessControl;
+
+class <a class="indexterm" id="id141"/>TestController extends Controller
+{
+    public function behaviors()
+    {
+        return [
+            'access' =&gt; [
+                'class' =&gt; AccessControl::className(),
+                'rules' =&gt; [
+                    [
+                        'allow' =&gt; true,
+                        'roles' =&gt; ['@'],
+                        'actions' =&gt; ['user']
+                    ],
+                    [
+                        'allow' =&gt; true,
+                        'roles' =&gt; ['?'],
+                        'actions' =&gt; ['index', 'success', 'error']
+                    ],
+                ],
+                'denyCallback' =&gt; function ($rule, $action) {
+                    Yii::$app-&gt;session-&gt;setFlash('error', 
+                    'This section is only for registered users.');
+                    $this-&gt;redirect(['index']);
+                },
+            ],
+        ];
+    }
+
+    public function actionUser()
+    {
+        return $this-&gt;renderContent('user');
+    }
+
+    public function actionSuccess()
+    {
+        Yii::$app-&gt;session-&gt;setFlash('success', 'Everything went fine!');
+        $this-&gt;redirect(['index']);
+    }
+
+    public function actionError()
+    {
+        Yii::$app-&gt;session-&gt;setFlash('error', 'Everything went wrong!');
+        $this-&gt;redirect(['index']);
+    }
+
+    public function actionIndex()
+    {
+        return $this-&gt;render('index');
+    }
+}</pre></div></li><li class="listitem">Additionally, create <a class="indexterm" id="id142"/>the <code class="literal">@app/views/common/alert.php</code> view as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+    use yii\bootstrap\Alert;
+?&gt;
+&lt;?php if (Yii::$app-&gt;session-&gt;hasFlash('success')):?&gt;
+    &lt;?= Alert::widget([
+        'options' =&gt; ['class' =&gt; 'alert-success'],
+        'body' =&gt; Yii::$app-&gt;session-&gt;getFlash('success'),
+    ]);?&gt;
+&lt;?php endif ?&gt;
+
+&lt;?php if (Yii::$app-&gt;session-&gt;hasFlash('error')) :?&gt;
+    &lt;?= Alert::widget([
+        'options' =&gt; ['class' =&gt; 'alert-danger'],
+        'body' =&gt; Yii::$app-&gt;session-&gt;getFlash('error'),
+    ]);?&gt;
+&lt;?php endif; ?&gt;</pre></div></li><li class="listitem">Create the <code class="literal">@app/views/test/index.php</code> file view as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+/* @var $this yii\web\View */
+
+?&gt;
+
+&lt;?= $this-&gt;render('//common/alert') ?&gt;
+
+&lt;h2&gt;Guest page&lt;/h2&gt;
+&lt;p&gt;There's a content of guest page&lt;/p&gt;</pre></div></li><li class="listitem">Create the <code class="literal">@app/views/test/user.php</code> file view as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+/* @var $this yii\web\View */
+
+?&gt;
+
+&lt;?= $this-&gt;render('//common/alert') ?&gt;
+
+&lt;h2&gt;User page&lt;/h2&gt;
+&lt;p&gt;There's a content of user page&lt;/p&gt;</pre></div></li><li class="listitem">Now, if <a class="indexterm" id="id143"/>you go to <code class="literal">http://yii-book.app/index.php?r=test/success</code>, you will be redirected to <code class="literal">http://yii-book.app/index.php?r=test/index</code> and a success message will be displayed as follows:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00513.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">Moreover, if you go to <code class="literal">http://yii-book.app/index.php?r=test/error</code>, you will be redirected to the same page, but with an error message. Refreshing the <code class="literal">index</code> page will hide the message:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00515.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">Then try running <code class="literal">http://yii-book.app/index.php?r=test/user</code>. You will be <a class="indexterm" id="id144"/>redirected to <code class="literal">http://yii-book.app/index.php?r=test/index</code> and an error message will be displayed that executed in the <code class="literal">denyCallback</code> function:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00518.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec75"/>How it works…</h2></div></div></div><p>We set a flash message with <code class="literal">Yii::$app-&gt;session-&gt;('success', 'Everything went fine!')</code>. Internally, it saves a message into a session state, so at the lowest level, our message is being kept in <code class="literal">$_SESSION</code> until <code class="literal">Yii::$app-&gt;session-&gt;getFlash('success')</code> is called and the <code class="literal">$_SESSION</code> key is deleted.</p><p>The flash message will be automatically deleted after it is accessed in a request.</p></div><div class="section" title="There's more…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec76"/>There's more…</h2></div></div></div><div class="section" title="The getAllFlashes() method"><div class="titlepage"><div><div><h3 class="title"><a id="ch02lvl3sec09"/>The getAllFlashes() method</h3></div></div></div><p>Sometimes <a class="indexterm" id="id145"/>you need to handle all flashes. You can do it in a simple manner, as follows:</p><div class="informalexample"><pre class="programlisting">$flashes = Yii::$app-&gt;session-&gt;getAllFlashes();
+
+&lt;?php foreach ($flashes as $key =&gt; $message): ?&gt;
+    &lt;?= Alert::widget([
+        'options' =&gt; ['class' =&gt; 'alert-info'],
+        'body' =&gt; $message,
+    ]);
+    ?&gt;
+&lt;?php endforeach; ?&gt;</pre></div></div><div class="section" title="The removeAllFlashes() method"><div class="titlepage"><div><div><h3 class="title"><a id="ch02lvl3sec10"/>The removeAllFlashes() method</h3></div></div></div><p>When you <a class="indexterm" id="id146"/>need to flush all your flashes, use the following:</p><div class="informalexample"><pre class="programlisting">Yii::$app-&gt;session-&gt;removeAllFlashes();</pre></div></div><div class="section" title="The removeFlash() method"><div class="titlepage"><div><div><h3 class="title"><a id="ch02lvl3sec11"/>The removeFlash() method</h3></div></div></div><p>When you <a class="indexterm" id="id147"/>need to remove the <code class="literal">flash</code> method with a specified key, use the following:</p><div class="informalexample"><pre class="programlisting">Yii::$app-&gt;session-&gt;removeFlash('success');</pre></div><p>In this <a class="indexterm" id="id148"/>example, we added a very useful callback function, which sets up an error message and does a redirect to the <code class="literal">test/ind</code>
+<code class="literal">ex</code> page.</p></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec77"/>See also</h2></div></div></div><p>For <a class="indexterm" id="id149"/>further <a class="indexterm" id="id150"/>information, refer to:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/yii-web-session.html">http://www.yiiframework.com/doc-2.0/yii-web-session.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/yii-bootstrap-alert.html">http://www.yiiframework.com/doc-2.0/yii-bootstrap-alert.html</a></li></ul></div></div></div>
+<div class="section" id="VF2I1-ae331331bc644dc9b658d3634f0748da" title="Using the controller context in a view"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec27"/>Using the controller context in a view</h1></div></div></div><p>Yii views <a class="indexterm" id="id151"/>are pretty powerful and have many features. One <a class="indexterm" id="id152"/>of them is that you can use the controller context in a view. So, let's try it.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec78"/>Getting ready</h2></div></div></div><p>Create a new application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</p></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec79"/>How to do it…</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a <code class="literal">controllers/ViewController.php</code> as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use yii\web\Controller;
+
+class ViewController extends Controller
+{
+    public $pageTitle;
+
+    public function actionIndex()
+    {
+        $this-&gt;pageTitle = 'Controller context test';
+
+        return $this-&gt;render('index');
+    }
+
+    public function hello()
+    {
+        if (!empty($_GET['name'])) {
+            echo 'Hello, '  . $_GET['name'] . '!';
+        }
+    }
+}</pre></div></li><li class="listitem">Now, we will create a <code class="literal">views/view.php</code> showing what we can do:<div class="informalexample"><pre class="programlisting">&lt;h1&gt;&lt;?= $this-&gt;context-&gt;pageTitle ?&gt;&lt;/h1&gt;
+&lt;p&gt;Hello call. &lt;?php $this-&gt;context-&gt;hello() ?&gt;&lt;/p&gt;</pre></div></li><li class="listitem">In order to test it, you can follow <code class="literal">/index.php?r=view/index&amp;name=Alex</code>:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00520.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec80"/>How it works…</h2></div></div></div><p>We are <a class="indexterm" id="id153"/>using <code class="literal">$this</code> in a view to refer to a currently <a class="indexterm" id="id154"/>running controller. When doing this, we can call a controller method and access its properties. The most useful property is <code class="literal">pageTitle</code>, which refers to the current page title. There are many built-in methods that are extremely useful in views such as <code class="literal">renderPartials</code> and widget.</p></div><div class="section" title="There's more…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec81"/>There's more…</h2></div></div></div><p>The <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-structure-views.html#accessing-data-in-views">http://www.yiiframework.com/doc-2.0/guide-structure-views.html#accessing-data-in-views</a> URL contains the API documentation for <code class="literal">CController</code>, where <a class="indexterm" id="id155"/>you can get a good list of methods you can use in your view.</p></div></div>
+<div class="section" title="Reusing views with partials"><div class="titlepage" id="10DJ42-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch02lvl1sec28"/>Reusing views with partials</h1></div></div></div><p>Yii supports <a class="indexterm" id="id156"/>partials, so if you have a block without much logic that you want to reuse or want to implement e-mail templates, partials are the right way to go about this.</p><p>Imagine that we have two Twitter accounts, one for our blog and another for company activity, and our goal is to output Twitter timelines on specified pages.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec82"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Create Twitter widgets at <a class="ulink" href="https://twitter.com/settings/widgets/">https://twitter.com/settings/widgets/</a> for <code class="literal">php_net</code> and <code class="literal">yiiframework</code> users, and find a <code class="literal">data-widget-id</code> value for each widget created.</li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec83"/>How to do it…</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a controller, <code class="literal">@app/controllers/BlogController.php</code>, as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use yii\web\Controller;
+
+class BlogController extends Controller
+{
+    public function actionIndex()
+    {
+        $posts = [
+            [
+                'title' =&gt; 'First post',
+                'content' =&gt; 'There\'s an example of reusing views with partials.',
+            ],
+            [
+                'title' =&gt; 'Second post',
+                'content' =&gt; 'We use twitter widget.'
+            ],
+        ];
+
+        return $this-&gt;render('index', [
+            'posts' =&gt; $posts
+        ]);
+    }
+}</pre></div></li><li class="listitem">Create a <a class="indexterm" id="id157"/>view file named <code class="literal">@app/views/common/twitter.php</code> and paste an embed code from Twitter. You will get something like the following:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+/* @var $this \yii\web\View */
+/* @var $widget_id integer */
+/* @var $screen_name string */
+
+?&gt;
+&lt;script&gt;!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");&lt;/script&gt;
+
+&lt;?php if ($widget_id &amp;&amp; $screen_name): ?&gt;
+&lt;a class="twitter-timeline"
+    data-widget-id="&lt;?= $widget_id?&gt;"
+    href="https://twitter.com/&lt;?= $screen_name?&gt;"
+    height="300"&gt;
+    Tweets by @&lt;?= $screen_name?&gt;
+&lt;/a&gt;
+&lt;?php endif;?&gt;</pre></div></li><li class="listitem">Create a <a class="indexterm" id="id158"/>view <code class="literal">@app/views/blog/index.php</code> file as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+/* @var $category string */
+/* @var $posts array */
+/* @var $this \yii\web\View */
+
+?&gt;
+
+&lt;div class="row"&gt;
+    &lt;div class="col-xs-7"&gt;
+        &lt;h1&gt;Posts&lt;/h1&gt;
+        &lt;hr&gt;
+        &lt;?php foreach ($posts as $post): ?&gt;
+            &lt;h3&gt;&lt;?= $post['title']?&gt;&lt;/h3&gt;
+            &lt;p&gt;&lt;?= $post['content']?&gt;&lt;/p&gt;
+        &lt;?php endforeach;?&gt;
+    &lt;/div&gt;
+    &lt;div class="col-xs-5"&gt;
+        &lt;?= $this-&gt;render('//common/twitter', [
+            'widget_id' =&gt; '620531418213576704',
+            'screen_name' =&gt; 'php_net',
+        ]);?&gt;
+    &lt;/div&gt;
+&lt;/div&gt;</pre></div></li><li class="listitem">Replace the <code class="literal">@app/views/site/about.php</code> file's content with the following:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+use yii\helpers\Html;
+/* @var $this yii\web\View */
+$this-&gt;title = 'About';
+?&gt;
+
+&lt;div class="col-xs-7"&gt;
+    &lt;h1&gt;&lt;?= Html::encode($this-&gt;title) ?&gt;&lt;/h1&gt;
+    &lt;p&gt;
+        This is the About page. You may modify this page.
+    &lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="col-xs-5"&gt;
+    &lt;?= $this-&gt;render('//common/twitter', [
+        'widget_id' =&gt; '620526086343012352',
+        'screen_name' =&gt; 'yiiframework'
+    ]);?&gt;
+&lt;/div&gt;</pre></div></li><li class="listitem">Try to <a class="indexterm" id="id159"/>run <code class="literal">index.php?r=blog/index</code>:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00523.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">Try to run <code class="literal">index.php?r=site/about</code>:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00525.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec84"/>How it works…</h2></div></div></div><p>In the current example, two views render <code class="literal">@app/views/common/twitter.php</code> with additional <a class="indexterm" id="id160"/>parameters for forming Twitter widgets inside themselves. Note that views can be rendered in controllers, widgets, or any other place, by calling the view rendering methods. For example, <code class="literal">\yii\base\Controller::render</code> does the same template processing as <code class="literal">\yii\base\View::render</code>, except the former does not use layout.</p><p>In each view file, we can access two instances of the View class using $this, so any view file can be rendered in an other view by calling the <code class="literal">render</code> method.</p></div><div class="section" title="There's more…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec85"/>There's more…</h2></div></div></div><p>For <a class="indexterm" id="id161"/>further information, refer to <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guidestructure-views.html#rendering-views">http://www.yiiframework.com/doc-2.0/guidestructure-views.html#rendering-views</a>.</p></div></div>
+<div class="section" id="11C3M1-ae331331bc644dc9b658d3634f0748da" title="Using blocks"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec29"/>Using blocks</h1></div></div></div><p>One of <a class="indexterm" id="id162"/>the Yii features you can use in your views is blocks. The basic idea is that you can record some output and then reuse it later in a view. A good example would be to define additional content regions for your layout and filling them elsewhere.</p><p>In the previous version, Yii 1.1, blocks were called clips.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec86"/>Getting ready</h2></div></div></div><p>Create a new application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</p></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec87"/>How to do it…</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">For our example, we need to define two regions in our layout—<code class="literal">beforeContent</code> and <code class="literal">footer</code>.</li><li class="listitem">Open <code class="literal">@app/views/layouts/main.php</code> and insert the following code line just before the content output:<div class="informalexample"><pre class="programlisting">&lt;?php if(!empty($this-&gt;blocks['beforeContent'])) echo $this-&gt;blocks['beforeContent']; ?&gt;</pre></div></li><li class="listitem">Then, replace the footer code with the following code:<div class="informalexample"><pre class="programlisting">&lt;footer class="footer"&gt;
+    &lt;div class="container"&gt;
+        &lt;?php if (!empty($this-&gt;blocks['footer'])):
+            echo $this-&gt;blocks['footer'] ?&gt;
+        &lt;?php else: ?&gt;
+           &lt;p class="pull-left"&gt;&amp;copy; My Company &lt;?= date('Y') ?&gt;&lt;/p&gt;
+           &lt;p class="pull-right"&gt;&lt;?= Yii::powered() ?&gt;&lt;/p&gt;
+        &lt;?php endif; ?&gt;
+    &lt;/div&gt;
+&lt;/footer&gt;</pre></div></li><li class="listitem">That is it! Then, add a new action to <code class="literal">controllers/SiteController.php</code>, named <code class="literal">blocks</code>:<div class="informalexample"><pre class="programlisting">public function actionBlocks()
+{
+    return $this-&gt;render('blocks');
+}</pre></div></li><li class="listitem">Now, create <a class="indexterm" id="id163"/>a view file, <code class="literal">views/site/blocks.php</code>, with the following content:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+use \yii\Helpers\Html;
+
+/* @var $this \yii\web\View */
+?&gt;
+
+&lt;?php $this-&gt;beginBlock('beforeContent');
+    echo Html::tag('pre', 'Your IP is ' . Yii::$app-&gt;request-&gt;userIP);
+$this-&gt;endBlock(); ?&gt;
+
+&lt;?php $this-&gt;beginBlock('footer');
+    echo Html::tag('h3', 'My custom footer block');
+$this-&gt;endBlock(); ?&gt;
+
+&lt;h1&gt;Blocks usage example&lt;/h1&gt;</pre></div></li><li class="listitem">Now, when you open your <code class="literal">/index.php?r=site/blocks</code> page, you should get your IP just before the page content and a built-with note in the footer:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00527.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec88"/>How it works…</h2></div></div></div><p>We mark <a class="indexterm" id="id164"/>regions with the code that just checks for the existence of a specific block, and if the block exists, the code outputs it. Then, we record content for blocks we defined using the special controller methods named <code class="literal">beginBlock</code> and <code class="literal">endBlock</code>.</p><p>From <a class="indexterm" id="id165"/>controller, you can easily access our block's variables via <code class="literal">$this-&gt;view-&gt;blocks['blockID']</code>.</p></div><div class="section" title="There's more…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec89"/>There's more…</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">The <span class="emphasis"><em>Using the controller context in a view</em></span> recipe</li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-structure-views.html#using-blocks">http://www.yiiframework.com/doc-2.0/guide-structure-views.html#using-blocks</a></li></ul></div></div></div>
+<div class="section" id="12AK81-ae331331bc644dc9b658d3634f0748da" title="Using decorators"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec30"/>Using decorators</h1></div></div></div><p>In Yii, we <a class="indexterm" id="id166"/>can enclose content into a decorator. The common usage of decorators is layout. When you are rendering a view using the render method of your controller, Yii automatically decorates it with the main layout. Let's create a simple decorator that will properly format quotes.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec90"/>Getting ready</h2></div></div></div><p>Create a new application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</p></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec91"/>How to do it…</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">First, we will create a decorator file, <code class="literal">@app/views/decorators/quote.php</code>:<div class="informalexample"><pre class="programlisting">&lt;div class="quote"&gt;
+    &lt;h2&gt;&amp;ldquo;&lt;?= $content?&gt;&amp;rdquo;, &lt;?= $author?&gt;&lt;/h2&gt;
+&lt;/div&gt;</pre></div></li><li class="listitem">Now, replace the content of <code class="literal">@app/views/site/index.php</code> with the following code:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+use yii\widgets\ContentDecorator;
+
+/* @var */
+?&gt;
+
+&lt;?php ContentDecorator::begin([
+        'viewFile' =&gt; '@app/views/decorators/quote.php',
+        'view' =&gt; $this,
+        'params' =&gt; ['author' =&gt; 'S. Freud']
+    ]
+);?&gt;
+Time spent with cats is never wasted.
+&lt;?php ContentDecorator::end();?&gt;</pre></div></li><li class="listitem">Now, your <span class="strong"><strong>Home</strong></span> page should look like the following:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00528.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec92"/>How it works…</h2></div></div></div><p>Decorators <a class="indexterm" id="id167"/>are pretty simple. Everything between <code class="literal">ContentDecorator::begin()</code>
+<span class="emphasis"><em> </em></span>and <code class="literal">ContentDecorator::end()</code>
+<span class="emphasis"><em> </em></span>is rendered into a <code class="literal">$content</code> variable and passed into a decorator template. Then, the decorator template is rendered and inserted in the place where <code class="literal">ContentDecorator::end()</code>
+<span class="emphasis"><em> </em></span>was called.</p><p>We can pass additional variables into the decorator template using a second parameter of <code class="literal">ContentDecorator::begin()</code>, such as the one we did for the author.</p><p>Note that <a class="indexterm" id="id168"/>we have used <code class="literal">@app/views/decorators/quot</code>
+<code class="literal">e.php</code> as the view path.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec93"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">The <a class="ulink" href="http://www.yiiframework.com/doc-2.0/yii-widgets-contentdecorator.html">http://www.yiiframework.com/doc-2.0/yii-widgets-contentdecorator.html</a> URL provides more details about decorators:</li><li class="listitem">The <span class="emphasis"><em>Using the controller context in a view</em></span> recipe</li></ul></div></div></div>
+<div class="section" title="Defining multiple layouts"><div class="titlepage" id="1394Q2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch02lvl1sec31"/>Defining multiple layouts</h1></div></div></div><p>Most applications <a class="indexterm" id="id169"/>use a single layout for all their views. However, there are situations when multiple layouts are needed. For example, an application can use different layouts on different pages: two additional columns for blogs, one additional column for articles, and no additional columns for portfolios.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec94"/>Getting ready</h2></div></div></div><p>Create a new application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-startinstallation.html">http://www.yiiframework.com/doc-2.0/guide-startinstallation.html</a>.</p></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec95"/>How to do it…</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create two layouts in views/layouts: <code class="literal">blog</code> and <code class="literal">articles</code>. Blog will contain the following code:<div class="informalexample"><pre class="programlisting">&lt;?php $this-&gt;beginContent('//layouts/main')?&gt;
+    &lt;div&gt;
+        &lt;?= $content ?&gt;
+    &lt;/div&gt;
+    &lt;div class="sidebar tags"&gt;
+        &lt;ul&gt;
+            &lt;li&gt;&lt;a href="#php"&gt;PHP&lt;/a&gt;&lt;/li&gt;
+            &lt;li&gt;&lt;a href="#yii"&gt;Yii&lt;/a&gt;&lt;/li&gt;
+        &lt;/ul&gt;
+    &lt;/div&gt;
+    &lt;div class="sidebar links"&gt;
+        &lt;ul&gt;
+            &lt;li&gt;&lt;a href="http://yiiframework.com/"&gt;
+                Yiiframework&lt;/a&gt;&lt;/li&gt;
+            &lt;li&gt;&lt;a href="http://php.net/"&gt;PHP&lt;/a&gt;&lt;/li&gt;
+        &lt;/ul&gt;
+    &lt;/div&gt;
+&lt;?php $this-&gt;endContent()?&gt;</pre></div></li><li class="listitem">Articles <a class="indexterm" id="id170"/>will contain the following code:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+    /* @var $this yii\web\View */
+?&gt;
+
+&lt;?php $this-&gt;beginContent('@app/views/layouts/main.php'); ?&gt;
+    &lt;div class="container"&gt;
+        &lt;div class="col-xs-8"&gt;
+            &lt;?= $content ?&gt;
+        &lt;/div&gt;
+        &lt;div class="col-xs-4"&gt;
+            &lt;h4&gt;Table of contents&lt;/h4&gt;
+            &lt;ol&gt;
+                &lt;li&gt;&lt;a href="#intro"&gt;Introduction&lt;/a&gt;&lt;/li&gt;
+                &lt;li&gt;&lt;a href="#quick-start"&gt;Quick start&lt;/a&gt;&lt;/li&gt;
+                &lt;li&gt;..&lt;/li&gt;
+            &lt;/ol&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;?php $this-&gt;endContent() ?&gt;</pre></div></li><li class="listitem">Create a view file, <code class="literal">views/site/content.php</code>, as follows:<div class="informalexample"><pre class="programlisting">&lt;h1&gt;Title&lt;/h1&gt;
+&lt;p&gt;Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.&lt;/p&gt;</pre></div></li><li class="listitem">Create three <a class="indexterm" id="id171"/>controllers named <code class="literal">BlogController</code>, <code class="literal">ArticleController</code>, and <code class="literal">PortfolioController</code>, with index actions in all three. The content of the <code class="literal">controllers/BlogController.php</code> file is as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use yii\web\Controller;
+
+class BlogController extends Controller
+{
+    public $layout = 'blog';
+
+    public function actionIndex()
+    {
+        return $this-&gt;render('//site/content');
+    }
+}</pre></div></li><li class="listitem">The content of the <code class="literal">controllers/ArticleController.php</code> file is as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use yii\web\Controller;
+
+class ArticleController extends Controller
+{
+    public $layout = 'articles';
+
+    public function actionIndex()
+    {
+        return $this-&gt;render('//site/content');
+    }
+}</pre></div></li><li class="listitem">The content of the <code class="literal">controllers/PortfolioController.php</code> file is as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use yii\web\Controller;
+
+class PortfolioController extends Controller
+{
+    public function actionIndex()
+    {
+        return $this-&gt;render('//site/content');
+    }
+}</pre></div></li><li class="listitem">Now try <a class="indexterm" id="id172"/>running <code class="literal">http://yii-book.app/?r=blog/index</code>:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00529.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">Then try running <code class="literal">http://yii-book.app/?r=article/index</code>:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00531.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">Finally, try running <code class="literal">http://yii-book.app/?r=portfolio/index</code>:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00535.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec96"/>How it works…</h2></div></div></div><p>We defined <a class="indexterm" id="id173"/>two additional layouts for the blog and articles. As we don't want to copy and paste common parts from the main layout, we apply additional layout decorators using <code class="literal">$this-&gt;beginContent and $this-&gt;endContent.</code>
+</p><p>So, we use a view rendered inside the articles layout as the main layout's <code class="literal">$content</code>.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec97"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">The <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-structure-views.html#nested-layouts">http://www.yiiframework.com/doc-2.0/guide-structure-views.html#nested-layouts</a> URL <a class="indexterm" id="id174"/>provides more details about layouts.</li><li class="listitem">The <span class="emphasis"><em>Using the controller context in a view</em></span> recipe</li><li class="listitem">The <span class="emphasis"><em>Using decorators</em></span> recipe</li></ul></div></div></div>
+<div class="section" id="147LC1-ae331331bc644dc9b658d3634f0748da" title="Pagination and sorting data"><div class="titlepage" id="aid-147LC2"><div><div><h1 class="title"><a id="ch02lvl1sec32"/>Pagination and sorting data</h1></div></div></div><p>In the <a class="indexterm" id="id175"/>latest Yii releases, the focus was moved from using Active Record directly, to grids, lists, and data providers. Still, sometimes it is better to use Active <a class="indexterm" id="id176"/>Record directly. Let's see how to list paginated AR records with the ability to sort them. In this section, we would like to create a list of films and sort them by some attributes from a database. In our example, we will sort our films by film title and rental rate attributes.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec98"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Download <a class="indexterm" id="id177"/>the Sakila database from <a class="ulink" href="http://dev.mysql.com/doc/index-other.html">http://dev.mysql.com/doc/index-other.html</a>.</li><li class="listitem">Execute the downloaded SQLs; first schema, then data.</li><li class="listitem">Configure the DB connection in <code class="literal">config/main.php</code> to use the Sakila database.</li><li class="listitem">Use Gii to create the <code class="literal">Film</code> model.</li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec99"/>How to do it…</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">First, you need to create <code class="literal">@app/controllers/FilmController.php</code>:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use app\models\Film;
+use yii\web\Controller;
+use yii\data\Pagination;
+use yii\data\Sort;
+
+class FilmController extends Controller
+{
+    public function actionIndex()
+    {
+        $query = Film::find();
+        $countQuery = clone $query;
+        $pages = new Pagination(['totalCount' =&gt; $countQuery-&gt;count()]);
+        $pages-&gt;pageSize = 5;
+
+        $sort = new Sort([
+            'attributes' =&gt; [
+                'title',
+                'rental_rate'
+            ]
+        ]);
+
+        $models = $query-&gt;offset($pages-&gt;offset)
+            -&gt;limit($pages-&gt;limit)
+            -&gt;orderBy($sort-&gt;orders)
+            -&gt;all();
+
+        return $this-&gt;render('index', [
+            'models' =&gt; $models,
+            'sort' =&gt; $sort,
+            'pages' =&gt; $pages
+        ]);
+    }
+}</pre></div></li><li class="listitem">Now, let's <a class="indexterm" id="id178"/>implement <code class="literal">@app/views/film/index.php</code>, as <a class="indexterm" id="id179"/>follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+use yii\widgets\LinkPager;
+
+/**
+ * @var \app\models\Film $models
+ * @var \yii\web\View $this
+ * @var \yii\data\Pagination $pages
+ * @var \yii\data\Sort $sort
+ */
+
+?&gt;
+
+&lt;h1&gt;Films List&lt;/h1&gt;
+
+&lt;p&gt;&lt;?=$sort-&gt;link('title')?&gt; | &lt;?=$sort-&gt;link('rental_rate')?&gt;&lt;/p&gt;
+
+&lt;?php foreach ($models as $model): ?&gt;
+    &lt;div class="list-group"&gt;
+        &lt;h4 class="list-group-item-heading"&gt; &lt;?=$model-&gt;title ?&gt;
+            &lt;label class="label label-default"&gt; &lt;?=$model-&gt;rental_rate ?&gt;
+            &lt;/label&gt;
+        &lt;/h4&gt;
+        &lt;p class="list-group-item-text"&gt;&lt;?=$model-&gt;description ?&gt;&lt;/p&gt;
+    &lt;/div&gt;
+&lt;?php endforeach ?&gt;
+
+&lt;?=LinkPager::widget([
+    'pagination' =&gt; $pages
+]); ?&gt;</pre></div></li><li class="listitem">Try to <a class="indexterm" id="id180"/>load <code class="literal">http://yii-book.app/index.php?r=film/index</code>. You should get a working pagination <a class="indexterm" id="id181"/>and links that allow sorting of list by the film's title or by rental rate:<div class="mediaobject"><img alt="How to do it…" src="../Images/image00371.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec100"/>How it works...</h2></div></div></div><p>First, we got the total models count and initialized the new pagination component instance with it by passing the <code class="literal">totalCount</code> variable to our <code class="literal">Pagination</code> instance. Then, we used the <code class="literal">$pages-&gt;pageSize</code> field to set up the page size for our pagination. After that, we created <a class="indexterm" id="id182"/>a sorter instance for the model, specifying model attributes <a class="indexterm" id="id183"/>we wanted to sort by and applying order conditions to the query by calling <code class="literal">orderBy</code> and passing <code class="literal">$sort-&gt;orders</code> as a parameter. Then, we called <code class="literal">all()</code> to get records from the DB.</p><p>At this point, we have the models list, pages, and data used for the link pager, and the sorter that we use to generate sorting links.</p><p>In a view, we use the data we have gathered. First, we generate links with the <code class="literal">Sort::link</code> method. Then, we list the models. Finally, using the <span class="emphasis"><em>LinkPager </em></span>widgets, we render the pagination control.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec101"/>See also</h2></div></div></div><p>Visit the <a class="indexterm" id="id184"/>following links to get more information about pagination <a class="indexterm" id="id185"/>and sorting:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/yii-data-pagination.html">http://www.yiiframework.com/doc-2.0/yii-data-pagination.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/yii-data-sort.html">http://www.yiiframework.com/doc-2.0/yii-data-sort.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-output-pagination.html">http://www.yiiframework.com/doc-2.0/guide-output-pagination.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-output-sorting.html">http://www.yiiframework.com/doc-2.0/guide-output-sorting.html</a></li></ul></div></div></div></body></html>

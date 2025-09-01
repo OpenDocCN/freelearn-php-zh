@@ -1,0 +1,1852 @@
+<html><head></head><body><div class="chapter" id="3DLGM1-ae331331bc644dc9b658d3634f0748da" title="Chapter&#xA0;11.&#xA0;Testing"><div class="titlepage"><div><div><h1 class="title"><a id="ch11"/>Chapter 11. Testing</h1></div></div></div><p>In this chapter, we will cover the following topics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">Testing application with Codeception</li><li class="listitem">Unit testing with PHPUnit</li><li class="listitem">Unit testing with Atoum</li><li class="listitem">Unit testing with Behat</li></ul></div><div class="section" title="Introduction"><div class="titlepage"><div><div><h1 class="title"><a id="ch11lvl1sec109"/>Introduction</h1></div></div></div><p>In this chapter, you will learn how to use the best technologies for testing, such as Codeception, PhpUnit, Atoum, and Behat. You will be introduced to how to write simple tests and how to avoid regression errors in your application.</p></div></div>
+<div class="section" title="Testing application with Codeception"><div class="titlepage" id="3EK182-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch11lvl1sec110"/>Testing application with Codeception</h1></div></div></div><p>By default, the basic and <a class="indexterm" id="id821"/>advanced Yii2 application skeletons <a class="indexterm" id="id822"/>use <span class="strong"><strong>Codeception</strong></span> as a testing <a class="indexterm" id="id823"/>framework. Codeception supports writing of unit, functional, and acceptance tests out of the box. For unit tests, it uses the PHPUnit test framework, which will be covered in the next recipe.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec391"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new <code class="literal">yii2-app-basic</code> application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.<div class="note" title="Note"><h3 class="title"><a id="note25"/>Note</h3><p>Note: If your use version 2.0.9 (or earlier) of the basic application just upgrade manually <code class="literal">tests</code> directory, and also add <code class="literal">config/test.php</code>, <code class="literal">config/test_db.php</code> and <code class="literal">web/index-test.php</code> files. Besides you must copy <code class="literal">require</code> and <code class="literal">require-dev</code> sections of <code class="literal">composer.json</code> file and run <code class="literal">composer updat</code>
+<code class="literal">e</code>.</p></div></li><li class="listitem">Create and apply the following migration:<div class="informalexample"><pre class="programlisting">&lt;?php
+use yii\db\Migration;
+
+class m160309_070856_create_post extends Migration
+{
+    public function up()
+    {
+        $this-&gt;createTable('{{%post}}', [
+            'id' =&gt; $this-&gt;primaryKey(),
+            'title' =&gt; $this-&gt;string()-&gt;notNull(),
+            'text' =&gt; $this-&gt;text()-&gt;notNull(),
+            'status' =&gt; $this-&gt;smallInteger()-&gt;notNull()-
+            &gt;defaultValue(0),
+        ]);
+    }
+
+    public function down()
+    {
+        $this-&gt;dropTable('{{%post}}');
+    }
+}</pre></div></li><li class="listitem">Create <a class="indexterm" id="id824"/>the <code class="literal">Post</code> <a class="indexterm" id="id825"/>model:<div class="informalexample"><pre class="programlisting">namespace app\models;
+
+use Yii;
+use yii\db\ActiveRecord;
+
+/**
+ * @property integer $id
+ * @property string $title
+ * @property string $text
+ * @property integer $status
+ * @property integer $created_at
+ * @property integer $updated_at
+ */
+class Post extends ActiveRecord
+{
+    const STATUS_DRAFT = 0;
+    const STATUS_ACTIVE = 1;
+
+    public static function tableName()
+    {
+        return '{{%post}}';
+    }
+
+    public function rules()
+    {
+        return [
+            [['title', 'text'], 'required'],
+            [['text'], 'string'],
+            ['status', 'in', 'range' =&gt; [self::STATUS_DRAFT, self::STATUS_ACTIVE]],
+            ['status', 'default', 'value' =&gt; self::STATUS_DRAFT],
+            [['title'], 'string', 'max' =&gt; 255],
+        ];
+    }
+
+    public function behaviors()
+    {
+        return [
+            TimestampBehavior::className(),
+        ];
+    }
+
+    public static function getStatusList()
+    {
+        return [
+            self::STATUS_DRAFT =&gt; 'Draft',
+            self::STATUS_ACTIVE =&gt; 'Active',
+        ];
+    }
+    public function publish()
+    {
+        if ($this-&gt;status == self::STATUS_ACTIVE) {
+            throw new \DomainException('Post is already published.');
+        }
+        $this-&gt;status = self::STATUS_ACTIVE;
+    }
+
+    public function draft()
+    {
+        if ($this-&gt;status == self::STATUS_DRAFT) {
+            throw new \DomainException('Post is already drafted.');
+        }
+        $this-&gt;status = self::STATUS_DRAFT;
+    }
+}</pre></div></li><li class="listitem">Generate CRUD:<div class="mediaobject"><img alt="Getting ready" src="../Images/image00447.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">Also, add the <a class="indexterm" id="id826"/>status drop-down list for the <code class="literal">status</code> field and <a class="indexterm" id="id827"/>name for the submit button in <code class="literal">views/admin/posts/_form.php</code>:<div class="informalexample"><pre class="programlisting">&lt;div class="post-form"&gt;
+
+    &lt;?php $form = ActiveForm::begin(); ?&gt;
+
+    &lt;?= $form-&gt;field($model, 'title')-&gt;textInput(['maxlength' =&gt; true])  ?&gt;
+
+    &lt;?= $form-&gt;field($model, 'text')-&gt;textarea(['rows' =&gt; 6]) ?&gt;
+
+    &lt;?= $form-&gt;field($model, 'status')-&gt;dropDownList(Post::getStatusList()) ?&gt;
+
+    &lt;div class="form-group"&gt;
+        &lt;?= Html::submitButton($model-&gt;isNewRecord ? 'Create' : 'Update', [
+            'class' =&gt; $model-&gt;isNewRecord ? 'btn btn-success' : 'btn btn-primary',
+            'name' =&gt; 'submit-button',
+        ]) ?&gt;
+    &lt;/div&gt;
+
+    &lt;?php ActiveForm::end(); ?&gt;
+
+&lt;/div&gt;</pre></div></li><li class="listitem">Now check that the controller works:<div class="mediaobject"><img alt="Getting ready" src="../Images/image00498.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div><p>Create <a class="indexterm" id="id828"/>any <a class="indexterm" id="id829"/>demo posts.</p></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec392"/>How to do it…</h2></div></div></div><div class="section" title="Preparing for the tests"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec58"/>Preparing for the tests</h3></div></div></div><p>Follow these steps to <a class="indexterm" id="id830"/>prepare for the tests:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create <code class="literal">yii2_basic_tests</code> or other test database and update it by applying migrations:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>tests/bin/yii migrate</strong></span>
+</pre></div><p>The command needs to be run in the tests directory. You can specify your test database options in configuration file <code class="literal">/config/test_db.php</code>.</p></li><li class="listitem">Codeception uses autogenerated Actor classes for own test suites. Build them with this command:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>composer exec codecep</strong></span>
+<span class="strong"><strong>t build</strong></span>
+</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="Running unit and functional tests"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec59"/>Running unit and functional tests</h3></div></div></div><p>We can <a class="indexterm" id="id831"/>run any types of the application's tests right now:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong># run all available tests</strong></span>
+<span class="strong"><strong>composer exec codecept run</strong></span>
+
+<span class="strong"><strong># run functional tests</strong></span>
+<span class="strong"><strong>composer exec codecept run functional</strong></span>
+
+<span class="strong"><strong># run unit tests</strong></span>
+<span class="strong"><strong>composer exec codecept run unit</strong></span>
+</pre></div><p>As a result, you can <a class="indexterm" id="id832"/>view, testing report like this:</p><div class="mediaobject"><img alt="Running unit and functional tests" src="../Images/image00449.jpeg"/></div><p style="clear:both; height: 1em;"> </p></div><div class="section" title="Getting coverage reports"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec60"/>Getting coverage reports</h3></div></div></div><p>You can get code coverage reports for your code. By default, code coverage is disabled in the <code class="literal">tests/codeception.yml</code> configuration file; you should uncomment the necessary rows to be able to <a class="indexterm" id="id833"/>collect code coverage:</p><div class="informalexample"><pre class="programlisting">coverage:
+   enabled: true
+   whitelist:
+       include:
+           - models/*
+           - controllers/*
+           - commands/*
+           - mail/*
+   blacklist:
+       include:
+           - assets/*
+           - config/*
+           - runtime/*
+           - vendor/*
+           - views/*
+           - web/*
+           - tests/*</pre></div><p>You <a class="indexterm" id="id834"/>must install the XDebug PHP extension from <a class="ulink" href="https://xdebug.org">https://xdebug.org</a>. For example, on <a class="indexterm" id="id835"/>Ubuntu or Debian you can type the following in your terminal:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>sudo apt-get install php5-xdebug</strong></span>
+</pre></div><p>On Windows, you must open the <code class="literal">php.ini</code> file and add the custom code with the path to your PHP installation directory:</p><div class="informalexample"><pre class="programlisting">[xdebug]
+zend_extension_ts=C:/php/ext/php_xdebug.dll</pre></div><p>Alternatively, if you use the non-thread safe edition, type the following:</p><div class="informalexample"><pre class="programlisting">[xdebug]
+zend_extension=C:/php/ext/php_xdebug.dll</pre></div><p>Finally, you can run tests and collect the coverage report with the following command:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>#collect coverage for all tests</strong></span>
+<span class="strong"><strong>composer exec codecept run --coverage-html</strong></span>
+
+<span class="strong"><strong>#collect coverage only for unit tests</strong></span>
+<span class="strong"><strong>composer exec codecept run unit --coverage-html</strong></span>
+
+<span class="strong"><strong>#collect coverage for unit and functional tests</strong></span>
+<span class="strong"><strong>composer exec codecept run functional,unit --coverage-html</strong></span>
+</pre></div><p>You can see the text code coverage output in the terminal:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>Code Coverage Report:     </strong></span>
+<span class="strong"><strong>  2016-03-31 08:13:05     </strong></span>
+<span class="strong"><strong>                          </strong></span>
+<span class="strong"><strong> Summary:                 </strong></span>
+<span class="strong"><strong>  Classes: 20.00% (1/5)   </strong></span>
+<span class="strong"><strong>  Methods: 40.91% (9/22)  </strong></span>
+<span class="strong"><strong>  Lines:   30.65% (38/124)</strong></span>
+
+<span class="strong"><strong>\app\models::ContactForm</strong></span>
+<span class="strong"><strong>  Methods:  33.33% ( 1/ 3)   Lines:  80.00% ( 12/ 15)</strong></span>
+<span class="strong"><strong>\app\models::LoginForm</strong></span>
+<span class="strong"><strong>  Methods: 100.00% ( 4/ 4)   Lines: 100.00% ( 18/ 18)</strong></span>
+<span class="strong"><strong>\app\models::User</strong></span>
+<span class="strong"><strong>  Methods:  57.14% ( 4/ 7)   Lines:  53.33% (  8/ 15)</strong></span>
+<span class="strong"><strong>Remote CodeCoverage reports are not printed to console</strong></span>
+
+<span class="strong"><strong>HTML report generated in coverage</strong></span>
+</pre></div><p>Also, you can <a class="indexterm" id="id836"/>see HTML-report under the <code class="literal">tests/codeception/_output/coverage</code> directory:</p><div class="mediaobject"><img alt="Getting coverage reports" src="../Images/image00378.jpeg"/></div><p style="clear:both; height: 1em;"> </p><p>You can click on any class and analyze which lines of code have not been executed during the testing process.</p></div><div class="section" title="Running acceptance tests"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec61"/>Running acceptance tests</h3></div></div></div><p>In acceptance <a class="indexterm" id="id837"/>tests you can use PhpBrowser for requesting server via Curl. It helps to check your site controllers and to parse HTTP and HTML response codes. But if you want to test your CSS or JavaScript behavior, you must use real browser.</p><p>Selenium Server is an interactive tool, which integrates into Firefox and other browsers and allows to open site pages and emulate human actions.</p><p>For working with real browser we must install Selenium Server:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Require full Codeception package instead of basic:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>composer require --dev codeception/codeception</strong></span>
+<span class="strong"><strong>composer remove --dev codeception/base</strong></span>
+</pre></div></li><li class="listitem">Download the following software:<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">Install <a class="indexterm" id="id838"/>Mozilla Firefox browser from https://www.mozilla.org</li><li class="listitem">Install <a class="indexterm" id="id839"/>Java Runtime Environment from https://www.java.com/en/download/</li><li class="listitem">Download <a class="indexterm" id="id840"/>Selenium Standalone Server from http://www.seleniumhq.org/download/</li><li class="listitem">Download <a class="indexterm" id="id841"/>Geckodriver from https://github.com/mozilla/geckodriver/releases</li></ul></div></li><li class="listitem">Launch server with the driver in new terminal window:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>java -jar -Dwebdriver.gecko.driver=~/geckodriver ~/selenium-server-standalone-x.xx.x.jar</strong></span>
+</pre></div></li><li class="listitem">Copy <code class="literal">tests/acceptance.suite.yml.example</code> to <code class="literal">tests/acceptance.suite.yml</code> file and configure one like this:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>class_name: AcceptanceTester</strong></span>
+<span class="strong"><strong>modules:</strong></span>
+<span class="strong"><strong>   enabled:</strong></span>
+<span class="strong"><strong>       - WebDriver:</strong></span>
+<span class="strong"><strong>           url: http://127.0.0.1:8080/</strong></span>
+<span class="strong"><strong>           browser: firefox</strong></span>
+<span class="strong"><strong>       - Yii2:</strong></span>
+<span class="strong"><strong>           part: orm</strong></span>
+<span class="strong"><strong>           entryScript: index-test.php</strong></span>
+<span class="strong"><strong>           cleanup: false</strong></span>
+</pre></div></li><li class="listitem">Open <a class="indexterm" id="id842"/>new terminal frame and start web server:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>tests/bin/yii serve</strong></span>
+</pre></div></li><li class="listitem">Run acceptance tests:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>composer exec codecept run acceptance</strong></span>
+</pre></div></li></ol><div style="height:10px; width: 1px"/></div><p>And you should see how Selenium starts the browser and check all site pages.</p></div><div class="section" title="Creating database fixtures"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec62"/>Creating database fixtures</h3></div></div></div><p>Before running own <a class="indexterm" id="id843"/>tests, we must clear the own test database and load specific test data into it. The <code class="literal">yii2-codeception</code> extension provides the <code class="literal">ActiveFixture</code> base class for creating test data sets for own models. Follow these steps to create database fixtures:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create the fixture class for the <code class="literal">Post</code> model:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace tests\fixtures;
+
+use yii\test\ActiveFixture;
+
+class PostFixture extends ActiveFixture
+{
+    public $modelClass = 'app\modules\Post';
+    public $dataFile = '@tests/_data/post.php';
+}</pre></div></li><li class="listitem">Add a demonstration <a class="indexterm" id="id844"/>data set in <code class="literal">test/_data/post.php</code> file:<div class="informalexample"><pre class="programlisting">&lt;?php
+return [
+    [
+        'id' =&gt; 1,
+        'title' =&gt; 'First Post',
+        'text' =&gt; 'First Post Text',
+        'status' =&gt; 1,
+        'created_at' =&gt; 1457211600,
+        'updated_at' =&gt; 1457211600,
+    ],
+    [
+        'id' =&gt; 2,
+        'title' =&gt; 'Old Title For Updating',
+        'text' =&gt; 'Old Text For Updating',
+        'status' =&gt; 1,
+        'created_at' =&gt; 1457211600,
+        'updated_at' =&gt; 1457211600,
+    ],
+    [
+        'id' =&gt; 3,
+        'title' =&gt; 'Title For Deleting',
+        'text' =&gt; 'Text For Deleting',
+        'status' =&gt; 1,
+        'created_at' =&gt; 1457211600,
+        'updated_at' =&gt; 1457211600,
+    ],
+];</pre></div></li><li class="listitem">Activate fixtures support for unit and acceptance tests. Just add <code class="literal">fixtures</code> part into <code class="literal">unit.suite.yml</code> file:<div class="informalexample"><pre class="programlisting">class_name: UnitTester
+modules:
+   enabled:
+     - Asserts
+     - Yii2:
+           part: [orm, fixtures, email]</pre></div><p>Also, add the <code class="literal">fixtures</code> part into <code class="literal">acceptance.suite.yml</code>:</p><div class="informalexample"><pre class="programlisting">class_name: AcceptanceTester
+modules:
+   enabled:
+       - WebDriver:
+           url: http://127.0.0.1:8080/
+           browser: firefox
+       - Yii2:
+           part: [orm, fixtures]
+           entryScript: index-test.php
+           cleanup: false</pre></div></li><li class="listitem">Regenerate <code class="literal">tester</code> classes for applying these changes by the following command:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>composer exec codecept build</strong></span>
+</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="Writing unit or integration test"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec63"/>Writing unit or integration test</h3></div></div></div><p>Unit and <a class="indexterm" id="id845"/>integration tests check the source code of our project.</p><p>Unit <a class="indexterm" id="id846"/>tests check only the current class or their method in isolation from other classes and resources such as databases, files, and many more.</p><p>Integration tests check the working of your classes in integration with other classes and resources.</p><p>ActiveRecord models in Yii2 always use databases for loading table schema as we must create a real test database and our tests will be integrational.</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Write tests for checking model validation, saving, and changing its status:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace tests\unit\models;
+
+use app\models\Post;
+use Codeception\Test\Unit;
+use tests\fixtures\PostFixture;
+
+class PostTest extends Unit
+{
+    /**
+    * @var \UnitTester
+    */
+    protected $tester;
+
+    public function _before()
+    {
+        $this-&gt;tester-&gt;haveFixtures([
+            'post' =&gt; [
+                'class' =&gt; PostFixture::className(),
+                'dataFile' =&gt; codecept_data_dir() . 'post.php'
+            ]
+        ]);
+    }
+
+    public function testValidateEmpty()
+    {
+        $model = new Post();
+
+        expect('model should not validate', $model-&gt;validate())-&gt;false();
+
+        expect('title has error', $model-&gt;errors)-&gt;hasKey('title');
+        expect('title has error', $model-&gt;errors)-&gt;hasKey('text');
+    }
+
+    public function testValidateCorrect()
+    {
+         $model = new Post([
+             'title' =&gt; 'Other Post',
+             'text' =&gt; 'Other Post Text',
+         ]);
+
+         expect('model should validate', $model-&gt;validate())-&gt;true();
+    }
+
+    public function testSave()
+    {
+        $model = new Post([
+            'title' =&gt; 'Test Post',
+            'text' =&gt; 'Test Post Text',
+        ]);
+
+         expect('model should save', $model-&gt;save())-&gt;true();
+
+        expect('title is correct', $model-&gt;title)-&gt;equals('Test Post');
+        expect('text is correct', $model-&gt;text)-&gt;equals('Test Post Text');
+        expect('status is draft', $model-&gt;status)-&gt;equals(Post::STATUS_DRAFT);
+        expect('created_at is generated', $model-&gt;created_at)-&gt;notEmpty();
+        expect('updated_at is generated', $model-&gt;updated_at)-&gt;notEmpty();
+    }
+
+    public function testPublish()
+    {
+        $model = new Post(['status' =&gt; Post::STATUS_DRAFT]);
+
+        expect('post is drafted', $model-&gt;status)-&gt;equals(Post::STATUS_DRAFT);
+        $model-&gt;publish();
+        expect('post is published', $model-&gt;status)-&gt;equals(Post::STATUS_ACTIVE);
+    }
+
+    public function testAlreadyPublished()
+    {
+        $model = new Post(['status' =&gt; Post::STATUS_ACTIVE]);
+
+        $this-&gt;setExpectedException('\LogicException');
+        $model-&gt;publish();
+    }
+
+    public function testDraft()
+    {
+        $model = new Post(['status' =&gt; Post::STATUS_ACTIVE]);
+
+        expect('post is published', $model-&gt;status)-&gt;equals(Post::STATUS_ACTIVE);
+        $model-&gt;draft();
+        expect('post is drafted', $model-&gt;status)-&gt;equals(Post::STATUS_DRAFT);
+    }
+
+    public function testAlreadyDrafted()
+    {
+        $model = new Post(['status' =&gt; Post::STATUS_ACTIVE]);
+
+        $this-&gt;setExpectedException('\LogicException');
+        $model-&gt;publish();
+    }
+}</pre></div></li><li class="listitem">Run <a class="indexterm" id="id847"/>the tests:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>composer exec codecept run unit</strong></span>
+</pre></div></li><li class="listitem">Now <a class="indexterm" id="id848"/>see the result:<div class="mediaobject"><img alt="Writing unit or integration test" src="../Images/image00452.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div><p>That is all. If you deliberately or casually break any model's method you will see a broken test.</p></div><div class="section" title="Writing functional test"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec64"/>Writing functional test</h3></div></div></div><p>Functional test <a class="indexterm" id="id849"/>checks that your application works correctly. This suite prepares <code class="literal">$_GET</code>, <code class="literal">$_POST</code>, and others request variables and call the <code class="literal">Application::handleRequest</code> method. It helps to test your controllers and their responses without running of real server.</p><p>Now we <a class="indexterm" id="id850"/>can write tests for our admin CRUD:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Generate a new test class:<div class="informalexample"><pre class="programlisting">codecept generate:cest functional admin/Posts</pre></div></li><li class="listitem">Fix the namespace in the generated file and write own tests:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace tests\functional\admin;
+
+use app\models\Post;
+use FunctionalTester;
+use tests\fixtures\PostFixture;
+use yii\helpers\Url;
+
+class PostsCest
+{
+    function _before(FunctionalTester $I)
+    {
+        $I-&gt;haveFixtures([
+            'user' =&gt; [
+                'class' =&gt; PostFixture::className(),
+                'dataFile' =&gt; codecept_data_dir() . 'post.php'
+            ]
+        ]);
+    }
+
+    public function testIndex(FunctionalTester $I)
+    {
+        $I-&gt;amOnPage(['admin/posts/index']);
+        $I-&gt;see('Posts', 'h1');
+    }
+
+    public function testView(FunctionalTester $I)
+    {
+        $I-&gt;amOnPage(['admin/posts/view', 'id' =&gt; 1]);
+        $I-&gt;see('First Post', 'h1');
+    }
+
+    public function testCreateInvalid(FunctionalTester $I)
+    {
+        $I-&gt;amOnPage(['admin/posts/create']);
+        $I-&gt;see('Create', 'h1');
+
+        $I-&gt;submitForm('#post-form', [
+            'Post[title]' =&gt; '',
+            'Post[text]' =&gt; '',
+        ]);
+
+        $I-&gt;expectTo('see validation errors');
+        $I-&gt;see('Title cannot be blank.', '.help-block');
+        $I-&gt;see('Text cannot be blank.', '.help-block');
+    }
+
+    public function testCreateValid(FunctionalTester $I)
+    {
+        $I-&gt;amOnPage(['admin/posts/create']);
+        $I-&gt;see('Create', 'h1');
+
+        $I-&gt;submitForm('#post-form', [
+            'Post[title]' =&gt; 'Post Create Title',
+            'Post[text]' =&gt; 'Post Create Text',
+            'Post[status]' =&gt; 'Active',
+        ]);
+
+        $I-&gt;expectTo('see view page');
+        $I-&gt;see('Post Create Title', 'h1');
+    }
+
+    public function testUpdate(FunctionalTester $I)
+    {
+        // ...
+    }
+    public function testDelete(FunctionalTester $I)
+    {
+        $I-&gt;amOnPage(['/admin/posts/view', 'id' =&gt; 3]);
+        $I-&gt;see('Title For Deleting', 'h1');
+
+        $I-&gt;amGoingTo('delete item');
+        $I-&gt;sendAjaxPostRequest(Url::to(['/admin/posts/delete', 'id' =&gt; 3]));
+        $I-&gt;expectTo('see that post is deleted');
+        $I-&gt;dontSeeRecord(Post::className(), [
+            'title' =&gt; 'Title For Deleting',
+        ]);
+    }
+}</pre></div></li><li class="listitem">Run <a class="indexterm" id="id851"/>tests with the command:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>composer exec codecept run functional</strong></span>
+</pre></div></li><li class="listitem">Now see the results:<div class="mediaobject"><img alt="Writing functional test" src="../Images/image00440.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div><p>All <a class="indexterm" id="id852"/>tests passed. In other case you can see snapshots of tested pages in <code class="literal">tests/_output</code> directory for failed tests.</p></div><div class="section" title="Writing acceptance test"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec65"/>Writing acceptance test</h3></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Acceptance <a class="indexterm" id="id853"/>tester hit the real site from test server instead of calling <code class="literal">Application::handleRequest</code> method. High-level acceptance tests look like middle-level functional tests, but in case of Selenium it allows to check JavaScript behavior in real browser.</li><li class="listitem">You must get the following class in <code class="literal">tests/acceptance</code> directory:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace tests\acceptance\admin;
+
+use AcceptanceTester;
+use tests\fixtures\PostFixture;
+use yii\helpers\Url;
+
+class PostsCest
+{
+    function _before(AcceptanceTester $I)
+    {
+        $I-&gt;haveFixtures([
+            'post' =&gt; [
+                'class' =&gt; PostFixture::className(),
+                'dataFile' =&gt; codecept_data_dir() . 'post.php'
+            ]
+        ]);
+    }
+
+    public function testIndex(AcceptanceTester $I)
+    {
+        $I-&gt;wantTo('ensure that post index page works');
+        $I-&gt;amOnPage(Url::to(['/admin/posts/index']));
+        $I-&gt;see('Posts', 'h1');
+    }
+
+    public function testView(AcceptanceTester $I)
+   {
+        $I-&gt;wantTo('ensure that post view page works');
+        $I-&gt;amOnPage(Url::to(['/admin/posts/view', 'id' =&gt; 1]));
+        $I-&gt;see('First Post', 'h1');
+    }
+
+    public function testCreate(AcceptanceTester $I)
+    {
+        $I-&gt;wantTo('ensure that post create page works');
+        $I-&gt;amOnPage(Url::to(['/admin/posts/create']));
+        $I-&gt;see('Create', 'h1');
+
+        $I-&gt;fillField('#post-title', 'Post Create Title');
+        $I-&gt;fillField('#post-text', 'Post Create Text');
+        $I-&gt;selectOption('#post-status', 'Active');
+
+        $I-&gt;click('submit-button');
+        $I-&gt;wait(3);
+
+        $I-&gt;expectTo('see view page');
+        $I-&gt;see('Post Create Title', 'h1');
+    }
+
+    public function testDelete(AcceptanceTester $I)
+    {
+        $I-&gt;amOnPage(Url::to(['/admin/posts/view', 'id' =&gt; 3]));
+        $I-&gt;see('Title For Deleting', 'h1');
+
+        $I-&gt;click('Delete');
+        $I-&gt;acceptPopup();
+        $I-&gt;wait(3);
+
+        $I-&gt;see('Posts', 'h1');
+    }
+}</pre></div><p>Do not forget to call <code class="literal">wait</code> method for waiting for page to be opened or reloaded.</p></li><li class="listitem">Run the PHP test <a class="indexterm" id="id854"/>server in a new terminal frame:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>tests/bin/yii serve</strong></span>
+</pre></div></li><li class="listitem">Run the acceptance tests:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>composer exec codecept run acceptance</strong></span>
+</pre></div></li><li class="listitem">See the results:<div class="mediaobject"><img alt="Writing acceptance test" src="../Images/image00454.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div><p>Selenium will start Firefox web browser and execute our testing commands.</p></div><div class="section" title="Creating API test suite"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec66"/>Creating API test suite</h3></div></div></div><p>Besides unit, functional, and <a class="indexterm" id="id855"/>acceptance suites, Codeception allows to create specific test suites. For example, we can create it for API testing with support of XML and JSON parsing.</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create the REST API controller <code class="literal">controllers/api/PostsController.php</code> for the <code class="literal">Post</code> model:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\controllers\api;
+
+use yii\rest\ActiveController;
+
+class PostsController extends ActiveController
+{
+    public $modelClass = '\app\models\Post';
+}</pre></div></li><li class="listitem">Add REST routes for the <code class="literal">UrlManager</code> component in <code class="literal">config/web.php</code>:<div class="informalexample"><pre class="programlisting">'components' =&gt; [
+    // ...
+    'urlManager' =&gt; [
+        'enablePrettyUrl' =&gt; true,
+        'showScriptName' =&gt; false,
+        'rules' =&gt; [
+            ['class' =&gt; 'yii\rest\UrlRule', 'controller' =&gt; 'api/posts'],
+        ],
+    ],
+],</pre></div><p>and some config (but with enabled <code class="literal">showScriptName</code> option) in <code class="literal">config/test.php</code>:</p><div class="informalexample"><pre class="programlisting">'components' =&gt; [
+    // ...
+    'urlManager' =&gt; [
+        'enablePrettyUrl' =&gt; true,
+        'showScriptName' =&gt; true,
+        'rules' =&gt; [
+            ['class' =&gt; 'yii\rest\UrlRule', 'controller' =&gt; 'api/posts'],
+        ],
+     ],
+],</pre></div></li><li class="listitem">Add the <code class="literal">web/.htaccess</code> file with the following content:<div class="informalexample"><pre class="programlisting">RewriteEngine On
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . index.php</pre></div></li><li class="listitem">Check that the <code class="literal">api/posts</code> controller works:<div class="mediaobject"><img alt="Creating API test suite" src="../Images/image00517.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">Create the API test suite <code class="literal">tests/api.suite.yml</code> configuration file with <a class="indexterm" id="id856"/>the REST module:<div class="informalexample"><pre class="programlisting">class_name: ApiTester
+modules:
+   enabled:
+       - REST:
+           depends: PhpBrowser
+           url: 'http://127.0.0.1:8080/index-test.php'
+           part: [json]
+       - Yii2:
+           part: [orm, fixtures]
+           entryScript: index-test.php</pre></div><p>Now rebuild testers:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>composer exec codecept build</strong></span>
+</pre></div></li><li class="listitem">Create <code class="literal">tests/api</code> directory and generate new test class:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>composer exec codecept generate:cest api Posts</strong></span>
+</pre></div></li><li class="listitem">Write tests <a class="indexterm" id="id857"/>for your REST-API:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace tests\api;
+
+use ApiTester;
+use tests\fixtures\PostFixture;
+use yii\helpers\Url;
+
+class PostsCest
+{
+   function _before(ApiTester $I)
+   {
+       $I-&gt;haveFixtures([
+           'post' =&gt; [
+               'class' =&gt; PostFixture::className(),
+               'dataFile' =&gt; codecept_data_dir() . 'post.php'
+           ]
+       ]);
+   }
+
+   public function testGetAll(ApiTester $I)
+   {
+       $I-&gt;sendGET('/api/posts');
+       $I-&gt;seeResponseCodeIs(200);
+       $I-&gt;seeResponseIsJson();
+       $I-&gt;seeResponseContainsJson([0 =&gt; ['title' =&gt; 'First Post']]);
+   }
+
+   public function testGetOne(ApiTester $I)
+   {
+       $I-&gt;sendGET('/api/posts/1');
+       $I-&gt;seeResponseCodeIs(200);
+       $I-&gt;seeResponseIsJson();
+       $I-&gt;seeResponseContainsJson(['title' =&gt; 'First Post']);
+   }
+
+   public function testGetNotFound(ApiTester $I)
+   {
+       $I-&gt;sendGET('/api/posts/100');
+       $I-&gt;seeResponseCodeIs(404);
+       $I-&gt;seeResponseIsJson();
+       $I-&gt;seeResponseContainsJson(['name' =&gt; 'Not Found']);
+   }
+
+   public function testCreate(ApiTester $I)
+   {
+       $I-&gt;sendPOST('/api/posts', [
+           'title' =&gt; 'Test Title',
+           'text' =&gt; 'Test Text',
+       ]);
+       $I-&gt;seeResponseCodeIs(201);
+       $I-&gt;seeResponseIsJson();
+       $I-&gt;seeResponseContainsJson(['title' =&gt; 'Test Title']);
+   }
+
+   public function testUpdate(ApiTester $I)
+   {
+       $I-&gt;sendPUT('/api/posts/2', [
+           'title' =&gt; 'New Title',
+       ]);
+       $I-&gt;seeResponseCodeIs(200);
+       $I-&gt;seeResponseIsJson();
+       $I-&gt;seeResponseContainsJson([
+           'title' =&gt; 'New Title',
+           'text' =&gt; 'Old Text For Updating',
+       ]);
+   }
+
+   public function testDelete(ApiTester $I)
+   {
+       $I-&gt;sendDELETE('/api/posts/3');
+       $I-&gt;seeResponseCodeIs(204);
+   }
+}</pre></div></li><li class="listitem">Run <a class="indexterm" id="id858"/>application server:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>tests/bin yii serve</strong></span>
+</pre></div></li><li class="listitem">Run API tests:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>composer exec codecept run api</strong></span>
+</pre></div><p>Now see the result:</p><div class="mediaobject"><img alt="Creating API test suite" src="../Images/image00426.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div><p>All <a class="indexterm" id="id859"/>tests passed and our API works correctly.</p></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec393"/>How it works…</h2></div></div></div><p>Codeception is high-level <a class="indexterm" id="id860"/>testing framework, based on the PHPUnit <a class="indexterm" id="id861"/>package for providing infrastructure for writing unit, integration, functional, and acceptance tests.</p><p>We can use built-in Yii2 module of Codeception which allows us to load fixtures, work with models and other things from Yii Framework.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec394"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">For further <a class="indexterm" id="id862"/>information, refer to:<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://codeception.com/docs/01-Introduction">http://codeception.com/docs/01-Introduction</a></li><li class="listitem"><a class="ulink" href="https://phpunit.de/manual/5.2/en/installation.html">https://phpunit.de/manual/5.2/en/installation.html</a></li></ul></div></li><li class="listitem">The <code class="literal">tests/README.md</code> file of <a class="indexterm" id="id863"/>your basic or advanced application:<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="https://github.com/yiisoft/yii2-app-basic/blob/master/tests/README.md">https://github.com/yiisoft/yii2-app-basic/blob/master/tests/README.md</a></li><li class="listitem"><a class="ulink" href="https://github.com/yiisoft/yii2-app-advanced/blob/master/tests/README.md">https://github.com/yiisoft/yii2-app-advanced/blob/master/tests/README.md</a></li></ul></div></li><li class="listitem">The <span class="emphasis"><em>Unit testing with PHPUnit</em></span> recipe</li></ul></div></div></div>
+<div class="section" title="Unit testing with PHPUnit"><div class="titlepage" id="3FIHQ2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch11lvl1sec111"/>Unit testing with PHPUnit</h1></div></div></div><p>PHPUnit is the most popular PHP testing framework. It is simple for configuration and usage. Also, the framework supports <a class="indexterm" id="id864"/>code coverage reports and has a lot of <a class="indexterm" id="id865"/>additional plugins. Codeception from the previous recipe uses PHPUnit for own work and writing unit tests. In this recipe, we will create a demonstration shopping cart extension with PHPUnit tests.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec395"/>Getting ready</h2></div></div></div><p>Create a new <code class="literal">yii2-app-basic</code> application using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guidestart-installation.html">http://www.yiiframework.com/doc-2.0/guidestart-installation.html</a>.</p></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec396"/>How to do it…</h2></div></div></div><p>First, we must create a new empty directory for own extension.</p><div class="section" title="Preparing extension structure"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec67"/>Preparing extension structure</h3></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">First, create the directory <a class="indexterm" id="id866"/>structure for your extension:<div class="informalexample"><pre class="programlisting">book
+└── cart
+    ├── src
+    └── tests</pre></div><p>To work with the extension as a Composer package, prepare the <code class="literal">book/cart/composer.json</code> file like this:</p><div class="informalexample"><pre class="programlisting">{
+    "name": "book/cart",
+    "type": "yii2-extension",
+    "require": {
+        "yiisoft/yii2": "~2.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "4.*"
+    },
+    "autoload": {
+        "psr-4": {
+            "book\\cart\\": "src/",
+            "book\\cart\\tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "asset-installer-paths": {
+            "npm-asset-library": "vendor/npm",
+            "bower-asset-library": "vendor/bower"
+        }
+    }
+}</pre></div></li><li class="listitem">Add the <code class="literal">book/cart/.gitignore</code> file with the following lines:<div class="informalexample"><pre class="programlisting">/vendor
+/composer.lock</pre></div></li><li class="listitem">Add the following lines to the PHPUnit default configuration file <code class="literal">book/cart/phpunit.xml.dist</code> like this:<div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0" encoding="utf-8"?&gt;
+&lt;phpunit bootstrap="./tests/bootstrap.php"
+         colors="true"
+         convertErrorsToExceptions="true"
+         convertNoticesToExceptions="true"
+         convertWarningsToExceptions="true"
+         stopOnFailure="false"&gt;
+    &lt;testsuites&gt;
+        &lt;testsuite name="Test Suite"&gt;
+            &lt;directory&gt;./tests&lt;/directory&gt;
+        &lt;/testsuite&gt;
+    &lt;/testsuites&gt;
+    &lt;filter&gt;
+        &lt;whitelist&gt;
+            &lt;directory suffix=".php"&gt;./src/&lt;/directory&gt;
+        &lt;/whitelist&gt;
+    &lt;/filter&gt;
+&lt;/phpunit&gt;</pre></div></li><li class="listitem">Install all the <a class="indexterm" id="id867"/>dependencies of the extension:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>composer install</strong></span>
+</pre></div></li><li class="listitem">Now we must get the following structure:<div class="informalexample"><pre class="programlisting">book
+└── cart
+    ├── src
+    ├── tests
+    ├── .gitignore
+    ├── composer.json
+    ├── phpunit.xml.dist
+    └── vendor</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="Writing extension code"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec68"/>Writing extension code</h3></div></div></div><p>To write the <a class="indexterm" id="id868"/>extension code, follow these steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create the <code class="literal">book\cart\Cart</code> class in the <code class="literal">src</code> directory:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace book\cart;
+
+use book\cart\storage\StorageInterface;
+use yii\base\Component;
+use yii\base\InvalidConfigException;
+
+class Cart extends Component
+{
+    /**
+     * @var StorageInterface
+     */
+    private $_storage;
+    /**
+     * @var array
+     */
+    private $_items;
+
+    public function setStorage($storage)
+    {
+        if (is_array($storage)) {
+            $this-&gt;_storage = \Yii::createObject($storage);
+        } else {
+            $this-&gt;_storage = $storage;
+        }
+    }
+
+    public function add($id, $amount = 1)
+    {
+        $this-&gt;loadItems();
+        if (isset($this-&gt;_items[$id])) {
+            $this-&gt;_items[$id] += $amount;
+        } else {
+            $this-&gt;_items[$id] = $amount;
+        }
+        $this-&gt;saveItems();
+    }
+
+    public function set($id, $amount)
+    {
+        $this-&gt;loadItems();
+        $this-&gt;_items[$id] = $amount;
+        $this-&gt;saveItems();
+    }
+
+    public function remove($id)
+    {
+        $this-&gt;loadItems();
+        if (isset($this-&gt;_items[$id])) {
+            unset($this-&gt;_items[$id]);
+        }
+        $this-&gt;saveItems();
+    }
+
+    public function clear()
+    {
+        $this-&gt;loadItems();
+        $this-&gt;_items = [];
+        $this-&gt;saveItems();
+    }
+
+    public function getItems()
+    {
+        $this-&gt;loadItems();
+        return $this-&gt;_items;
+    }
+
+    public function getCount()
+    {
+        $this-&gt;loadItems();
+        return count($this-&gt;_items);
+    }
+
+    public function getAmount()
+    {
+        $this-&gt;loadItems();
+        return array_sum($this-&gt;_items);
+    }
+
+    private function loadItems()
+    {
+        if ($this-&gt;_storage === null) {
+            throw new InvalidConfigException('Storage must be set');
+        }
+        if ($this-&gt;_items === null) {
+            $this-&gt;_items = $this-&gt;_storage-&gt;load();
+        }
+    }
+
+    private function saveItems()
+    {
+         $this-&gt;_storage-&gt;save($this-&gt;_items);
+    }
+}</pre></div></li><li class="listitem">Create <a class="indexterm" id="id869"/><code class="literal">StorageInterface</code> interface in the <code class="literal">src/storage</code> subdirectory:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace book\cart\storage;
+
+interface StorageInterface
+{
+    /**
+     * @return array
+     */
+    public function load();
+
+    /**
+     * @param array $items
+     */
+    public function save(array $items);
+}</pre></div><p>and SessionStorage class:</p><div class="informalexample"><pre class="programlisting">namespace book\cart\storage;
+
+use Yii;
+
+class SessionStorage implements StorageInterface
+{
+    public $sessionKey = 'cart';
+
+    public function load()
+    {
+        return Yii::$app-&gt;session-&gt;get($this-&gt;sessionKey, []);
+    }
+
+    public function save(array $items)
+    {
+        Yii::$app-&gt;session-&gt;set($this-&gt;sessionKey, $items);
+    }
+}</pre></div></li><li class="listitem">Now <a class="indexterm" id="id870"/>we must get the following structure:<div class="informalexample"><pre class="programlisting">book
+└── cart
+    ├── src
+    │   ├── storage
+    │   │   ├── SessionStorage.php
+    │   │   └── StorageInterface.php
+    │   └── Cart.php
+    ├── tests
+    ├── .gitignore
+    ├── composer.json
+    ├── phpunit.xml.dist
+    └── vendor</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="Writing extension tests"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec69"/>Writing extension tests</h3></div></div></div><p>To conduct the <a class="indexterm" id="id871"/>extension test, follow these steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Add the <code class="literal">book/cart/tests/bootstrap.php</code> entry script for PHPUnit:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+defined('YII_DEBUG') or define('YII_DEBUG', true);
+defined('YII_ENV') or define('YII_ENV', 'test');
+
+require(__DIR__ . '/../vendor/autoload.php');
+require(__DIR__ . '/../vendor/yiisoft/yii2/Yii.php');</pre></div></li><li class="listitem">Create a test base class by initializing the Yii application before each test and by destroying the application afterwards:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace book\cart\tests;
+
+use yii\di\Container;
+use yii\web\Application;
+
+abstract class TestCase extends \PHPUnit_Framework_TestCase
+{
+    protected function setUp()
+    {
+        parent::setUp();
+        $this-&gt;mockApplication();
+    }
+
+    protected function tearDown()
+    {
+        $this-&gt;destroyApplication();
+        parent::tearDown();
+    }
+
+    protected function mockApplication()
+    {
+        new Application([
+            'id' =&gt; 'testapp',
+            'basePath' =&gt; __DIR__,
+            'vendorPath' =&gt; dirname(__DIR__) . '/vendor',
+        ]);
+    }
+
+    protected function destroyApplication()
+    {
+        \Yii::$app = null;
+        \Yii::$container = new Container();
+    }
+}</pre></div></li><li class="listitem">Add a <a class="indexterm" id="id872"/>memory-based clean fake class that implements the <code class="literal">StorageInterface</code> interface:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace book\cart\tests\storage;
+
+use book\cart\storage\StorageInterface;
+
+class FakeStorage implements StorageInterface
+{
+    private $items = [];
+
+    public function load()
+    {
+        return $this-&gt;items;
+    }
+
+    public function save(array $items)
+    {
+        $this-&gt;items = $items;
+    }
+}</pre></div><p>It will store items into a private variable instead of working with a real session. It allows to run tests independently (without real storage driver) and also improves testing performance.</p></li><li class="listitem">Add <a class="indexterm" id="id873"/>the <code class="literal">CartTest</code> class:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace book\cart\tests;
+
+use book\cart\Cart;
+use book\cart\tests\storage\FakeStorage;
+
+class CartTest extends TestCase
+{
+    /**
+     * @var Cart
+     */
+    private $cart;
+
+    public function setUp()
+    {
+        parent::setUp();
+        $this-&gt;cart = new Cart(['storage' =&gt; new FakeStorage()]);
+    }
+
+    public function testEmpty()
+    {
+        $this-&gt;assertEquals([], $this-&gt;cart-&gt;getItems());
+        $this-&gt;assertEquals(0, $this-&gt;cart-&gt;getCount());
+        $this-&gt;assertEquals(0, $this-&gt;cart-&gt;getAmount());
+    }
+
+    public function testAdd()
+    {
+        $this-&gt;cart-&gt;add(5, 3);
+        $this-&gt;assertEquals([5 =&gt; 3], $this-&gt;cart-&gt;getItems());
+
+        $this-&gt;cart-&gt;add(7, 14);
+        $this-&gt;assertEquals([5 =&gt; 3, 7 =&gt; 14], $this-&gt;cart-&gt;getItems());
+
+        $this-&gt;cart-&gt;add(5, 10);
+        $this-&gt;assertEquals([5 =&gt; 13, 7 =&gt; 14], $this-&gt;cart-&gt;getItems());
+    }
+
+    public function testSet()
+    {
+        $this-&gt;cart-&gt;add(5, 3);
+        $this-&gt;cart-&gt;add(7, 14);
+        $this-&gt;cart-&gt;set(5, 12);
+        $this-&gt;assertEquals([5 =&gt; 12, 7 =&gt; 14], $this-&gt;cart-&gt;getItems());
+    }
+
+    public function testRemove()
+    {
+        $this-&gt;cart-&gt;add(5, 3);
+        $this-&gt;cart-&gt;remove(5);
+        $this-&gt;assertEquals([], $this-&gt;cart-&gt;getItems());
+    }
+
+    public function testClear()
+    {
+        $this-&gt;cart-&gt;add(5, 3);
+        $this-&gt;cart-&gt;add(7, 14);
+        $this-&gt;cart-&gt;clear();
+        $this-&gt;assertEquals([], $this-&gt;cart-&gt;getItems());
+    }
+
+    public function testCount()
+    {
+        $this-&gt;cart-&gt;add(5, 3);
+        $this-&gt;assertEquals(1, $this-&gt;cart-&gt;getCount());
+
+        $this-&gt;cart-&gt;add(7, 14);
+        $this-&gt;assertEquals(2, $this-&gt;cart-&gt;getCount());
+    }
+
+    public function testAmount()
+    {
+        $this-&gt;cart-&gt;add(5, 3);
+        $this-&gt;assertEquals(3, $this-&gt;cart-&gt;getAmount());
+
+        $this-&gt;cart-&gt;add(7, 14);
+        $this-&gt;assertEquals(17, $this-&gt;cart-&gt;getAmount());
+    }
+
+    public function testEmptyStorage()
+    {
+        $cart = new Cart();
+        $this-&gt;setExpectedException('yii\base\InvalidConfigException');
+        $cart-&gt;getItems();
+    }
+}</pre></div></li><li class="listitem">Add a <a class="indexterm" id="id874"/>separated test for checking the <code class="literal">SessionStorage</code> class:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace book\cart\tests\storage;
+
+use book\cart\storage\SessionStorage;
+use book\cart\tests\TestCase;
+
+class SessionStorageTest extends TestCase
+{
+    /**
+     * @var SessionStorage
+     */
+    private $storage;
+
+    public function setUp()
+    {
+        parent::setUp();
+        $this-&gt;storage = new SessionStorage(['key' =&gt; 'test']);
+    }
+
+    public function testEmpty()
+    {
+        $this-&gt;assertEquals([], $this-&gt;storage-&gt;load());
+    }
+
+    public function testStore()
+    {
+        $this-&gt;storage-&gt;save($items = [1 =&gt; 5, 6 =&gt; 12]);
+
+        $this-&gt;assertEquals($items, $this-&gt;storage-&gt;load());
+    }
+}</pre></div></li><li class="listitem">Right now we must get the following structure:<div class="informalexample"><pre class="programlisting">book
+└── cart
+    ├── src
+    │   ├── storage
+    │   │   ├── SessionStorage.php
+    │   │   └── StorageInterface.php
+    │   └── Cart.php
+    ├── tests
+    │   ├── storage
+    │   │   ├── FakeStorage.php
+    │   │   └── SessionStorageTest.php
+    │   ├── bootstrap.php
+    │   ├── CartTest.php
+    │   └── TestCase.php
+    ├── .gitignore
+    ├── composer.json
+    ├── phpunit.xml.dist
+    └── vendor</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="Running tests"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec70"/>Running tests</h3></div></div></div><p>During the installation of <a class="indexterm" id="id875"/>all dependencies with the <code class="literal">composer install</code> command, the Composer package manager installs the <code class="literal">PHPUnit</code> package into the <code class="literal">vendor</code> directory and places the executable file <code class="literal">phpunit</code> in the <code class="literal">vendor/bin </code>subdirectory.</p><p>Now we can run the following script:</p><div class="informalexample"><pre class="programlisting">cd book/cart
+vendor/bin/phpunit</pre></div><p>We must see the following testing report:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>PHPUnit 4.8.26 by Sebastian Bergmann and contributors.</strong></span>
+
+<span class="strong"><strong>..........</strong></span>
+
+<span class="strong"><strong>Time: 906 ms, Memory: 11.50MB</strong></span>
+
+<span class="strong"><strong>OK (10 tests, 16 assertions)</strong></span>
+</pre></div><p>Each dot shows a success result of the correspondent test.</p><p>Try to deliberately break an own cart by commenting the <code class="literal">unset</code> operation:</p><div class="informalexample"><pre class="programlisting">class Cart extends Component
+{
+    …
+
+    public function remove($id)
+    {
+        $this-&gt;loadItems();
+        if (isset($this-&gt;_items[$id])) {
+            // unset($this-&gt;_items[$id]);
+        }
+        $this-&gt;saveItems();
+    }
+
+    ...
+}</pre></div><p>Run the tests again:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>PHPUnit 4.8.26 by Sebastian Bergmann and contributors.</strong></span>
+
+<span class="strong"><strong>...F......</strong></span>
+
+<span class="strong"><strong>Time: 862 ms, Memory: 11.75MB</strong></span>
+
+<span class="strong"><strong>There was 1 failure:</strong></span>
+
+<span class="strong"><strong>1) book\cart\tests\CartTest::testRemove</strong></span>
+<span class="strong"><strong>Failed asserting that two arrays are equal.</strong></span>
+<span class="strong"><strong>--- Expected</strong></span>
+<span class="strong"><strong>+++ Actual</strong></span>
+<span class="strong"><strong>@@ @@</strong></span>
+<span class="strong"><strong> Array (</strong></span>
+<span class="strong"><strong>+    5 =&gt; 3</strong></span>
+<span class="strong"><strong> )</strong></span>
+
+<span class="strong"><strong>/book/cart/tests/CartTest.php:52</strong></span>
+
+<span class="strong"><strong>FAILURES!</strong></span>
+<span class="strong"><strong>Tests: 10, Assertions: 16, Failures: 1</strong></span>
+</pre></div><p>In this <a class="indexterm" id="id876"/>case, we have seen one failure (marked as <code class="literal">F</code> instead of dot) and a failure report.</p></div><div class="section" title="Analyzing code coverage"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec71"/>Analyzing code coverage</h3></div></div></div><p>You must <a class="indexterm" id="id877"/>install the XDebug PHP extension from <a class="ulink" href="https://xdebug.org">https://xdebug.org</a>. For example, on <a class="indexterm" id="id878"/>Ubuntu or Debian, you can type the following in your terminal:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>sudo apt-get install php5-xdebug</strong></span>
+</pre></div><p>On Windows, you must open the <code class="literal">php.ini</code> file and add the custom code with path to your PHP installation directory:</p><div class="informalexample"><pre class="programlisting">[xdebug]
+zend_extension_ts=C:/php/ext/php_xdebug.dll</pre></div><p>Alternatively, if you use the non-thread safe edition, type the following:</p><div class="informalexample"><pre class="programlisting">[xdebug]
+zend_extension=C:/php/ext/php_xdebug.dll</pre></div><p>After installing XDebug, run the tests again with the <code class="literal">--coverage-html</code> flag and specify a report directory:</p><div class="informalexample"><pre class="programlisting">vendor/bin/phpunit --coverage-html tests/_output</pre></div><p>After running open the <code class="literal">tests/_output/index.html</code> file in your browser, you will see an explicit coverage report for each directory and class:</p><div class="mediaobject"><img alt="Analyzing code coverage" src="../Images/image00415.jpeg"/></div><p style="clear:both; height: 1em;"> </p><p>You can <a class="indexterm" id="id879"/>click on any class and analyze which lines of code have not been executed during the testing process. For example, open our <code class="literal">Cart</code> class report:</p><div class="mediaobject"><img alt="Analyzing code coverage" src="../Images/image00460.jpeg"/></div><p style="clear:both; height: 1em;"> </p><p>In <a class="indexterm" id="id880"/>our case, we forgot to test the creating storage from array configuration.</p></div><div class="section" title="Usage of component"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec72"/>Usage of component</h3></div></div></div><p>After publishing the <a class="indexterm" id="id881"/>extension on Packagist, we can install a one-to-any project:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>composer require book/cart</strong></span>
+</pre></div><p>Also, enable the component in the application configuration file:</p><div class="informalexample"><pre class="programlisting">'components' =&gt; [
+    // …
+    'cart' =&gt; [
+        'class' =&gt; 'book\cart\Cart',
+        'storage' =&gt; [
+            'class' =&gt; 'book\cart\storage\SessionStorage',
+        ],
+    ],
+],</pre></div><p>As an alternative way without publishing the extension on Packagist, we must set up the <code class="literal">@book</code> alias for enabling correct class autoloading:</p><div class="informalexample"><pre class="programlisting">$config = [
+    'id' =&gt; 'basic',
+    'basePath' =&gt; dirname(__DIR__),
+    'bootstrap' =&gt; ['log'],
+    'aliases' =&gt; [
+        '@book' =&gt; dirname(__DIR__) . '/book',
+    ],
+    'components' =&gt; [
+        'cart' =&gt; [
+            'class' =&gt; 'book\cart\Cart',
+            'storage' =&gt; [
+                'class' =&gt; 'book\cart\storage\SessionStorage',
+            ],
+        ],
+        // ...
+    ],
+]</pre></div><p>Anyway, we can use it as the <code class="literal">Yii::$app-&gt;cart</code> component in our project:</p><div class="informalexample"><pre class="programlisting">Yii::$app-&gt;cart-&gt;add($product-&gt;id, $amount);</pre></div></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec397"/>How it works…</h2></div></div></div><p>Before creating your own tests, <a class="indexterm" id="id882"/>you must just create any subdirectory and <a class="indexterm" id="id883"/>add the <code class="literal">phpunit.xml</code> or <code class="literal">phpunit.xml.dist</code> file in the root directory of your project:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0" encoding="utf-8"?&gt;
+&lt;phpunit bootstrap="./tests/bootstrap.php"
+         colors="true"
+         convertErrorsToExceptions="true"
+         convertNoticesToExceptions="true"
+         convertWarningsToExceptions="true"
+         stopOnFailure="false"&gt;
+    &lt;testsuites&gt;
+        &lt;testsuite name="Test Suite"&gt;
+            &lt;directory&gt;./tests&lt;/directory&gt;
+        &lt;/testsuite&gt;
+    &lt;/testsuites&gt;
+    &lt;filter&gt;
+        &lt;whitelist&gt;
+            &lt;directory suffix=".php"&gt;./src/&lt;/directory&gt;
+        &lt;/whitelist&gt;
+    &lt;/filter&gt;
+&lt;/phpunit&gt;</pre></div><p>PHPUnit loads configuration from the second file if the first one does not exist in the working directory. Also, you can create the <code class="literal">bootstrap.php</code> file by initializing autoloader and your framework's environments:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+defined('YII_DEBUG') or define('YII_DEBUG', true);
+defined('YII_ENV') or define('YII_ENV', 'test');
+require(__DIR__ . '/../vendor/autoload.php');
+require(__DIR__ . '/../vendor/yiisoft/yii2/Yii.php');</pre></div><p>Finally, you can install PHPUnit via Composer (locally or globally) and use the <code class="literal">phpunit</code> console command in the directory with the XML configuration file.</p><p>PHPUnit scans the testing directory and finds files with the <code class="literal">*Test.php</code> suffix. All your test classes must extend the <code class="literal">PHPUnit_Framework_TestCase</code> class and contain public methods with the <code class="literal">test*</code> prefix like this:</p><div class="informalexample"><pre class="programlisting">class MyTest extends TestCase
+{
+    public function testSomeFunction()
+    {
+        $this-&gt;assertTrue(true);
+    }
+}</pre></div><p>In the body of your tests, you can use any of the existing <code class="literal">assert*</code> methods:</p><div class="informalexample"><pre class="programlisting">$this-&gt;assertEqual('Alex', $model-&gt;name);
+$this-&gt;assertTrue($model-&gt;validate());
+$this-&gt;assertFalse($model-&gt;save());
+$this-&gt;assertCount(3, $items);
+$this-&gt;assertArrayHasKey('username', $model-&gt;getErrors());
+$this-&gt;assertNotNull($model-&gt;author);
+$this-&gt;assertInstanceOf('app\models\User', $model-&gt;author);</pre></div><p>Also, you <a class="indexterm" id="id884"/>can override the <code class="literal">setUp()</code> or <code class="literal">tearDown()</code> methods for adding <a class="indexterm" id="id885"/>expressions that will be run before and after each test method.</p><p>For example, you can define own base <code class="literal">TestCase</code> class by reinitializing the Yii application:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+namespace book\cart\tests;
+
+use yii\di\Container;
+use yii\web\Application;
+
+abstract class TestCase extends \PHPUnit_Framework_TestCase
+{
+    protected function setUp()
+    {
+        parent::setUp();
+        $this-&gt;mockApplication();
+    }
+
+    protected function tearDown()
+    {
+        $this-&gt;destroyApplication();
+        parent::tearDown();
+    }
+
+    protected function mockApplication()
+    {
+        new Application([
+            'id' =&gt; 'testapp',
+            'basePath' =&gt; __DIR__,
+            'vendorPath' =&gt; dirname(__DIR__) . '/vendor',
+        ]);
+    }
+
+    protected function destroyApplication()
+    {
+        \Yii::$app = null;
+        \Yii::$container = new Container();
+    }
+}</pre></div><p>Now you <a class="indexterm" id="id886"/>can extend this class in your subclasses. Even your <code class="literal">test</code> method will <a class="indexterm" id="id887"/>work with an own instance of the application. It helps to avoid side effects and to create independent tests.</p><div class="note" title="Note"><h3 class="title"><a id="note26"/>Note</h3><p>Yii 2.0.* uses the old PHPUnit 4.* version for compatibility with PHP 5.4.</p></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec398"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">For all information <a class="indexterm" id="id888"/>about PHPUnit usage, refer to the official documentation at <a class="ulink" href="https://phpunit.de/manual/current/en/index.html">https://phpunit.de/manual/current/en/index.html</a></li><li class="listitem">The <span class="emphasis"><em>Testing application with Codeception</em></span> recipe</li></ul></div></div></div>
+<div class="section" title="Unit testing with Atoum"><div class="titlepage" id="3GH2C2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch11lvl1sec112"/>Unit testing with Atoum</h1></div></div></div><p>Besides PHPUnit and <a class="indexterm" id="id889"/>Codeception, Atoum is a simple unit testing framework. You can <a class="indexterm" id="id890"/>use this framework for testing your extensions or for testing a code of your application.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec399"/>Getting ready</h2></div></div></div><p>Create an empty directory for the new project.</p></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec400"/>How to do it…</h2></div></div></div><p>In this recipe, we will create a demonstration shopping cart extension with Atoum tests.</p><div class="section" title="Preparing the extension structure"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec73"/>Preparing the extension structure</h3></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">First, create <a class="indexterm" id="id891"/>the directory structure for your extension:<div class="informalexample"><pre class="programlisting">book
+└── cart
+    ├── src
+    └── tests</pre></div></li><li class="listitem">For working with the extension as a composer package, prepare the <code class="literal">book/cart/composer.json</code> file as follows:<div class="informalexample"><pre class="programlisting">{
+    "name": "book/cart",
+    "type": "yii2-extension",
+    "require": {
+        "yiisoft/yii2": "~2.0"
+    },
+    "require-dev": {
+        "atoum/atoum": "^2.7"
+    },
+    "autoload": {
+        "psr-4": {
+            "book\\cart\\": "src/",
+            "book\\cart\\tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "asset-installer-paths": {
+            "npm-asset-library": "vendor/npm",
+            "bower-asset-library": "vendor/bower"
+        }
+    }
+}</pre></div></li><li class="listitem">Add the following lines to the <code class="literal">book/cart/,gitignore</code> file:<div class="informalexample"><pre class="programlisting">/vendor
+/composer.lock</pre></div></li><li class="listitem">Install all <a class="indexterm" id="id892"/>the dependencies of the extension:<div class="informalexample"><pre class="programlisting">composer install</pre></div></li><li class="listitem">Now we will get the following structure:<div class="informalexample"><pre class="programlisting">book
+└── cart
+    ├── src
+    ├── tests
+    ├── .gitignore
+    ├── composer.json
+    ├── phpunit.xml.dist
+    └── vendor</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="Writing the extension code"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec74"/>Writing the extension code</h3></div></div></div><p>Copy <a class="indexterm" id="id893"/>the <code class="literal">Cart</code>, <code class="literal">StorageInterface</code>, and <code class="literal">SessionStorage</code> classes from the <span class="emphasis"><em>Unit testing with PHPUnit</em></span> recipe.</p><p>Finally, we must get the following structure:</p><div class="informalexample"><pre class="programlisting">book
+└── cart
+    ├── src
+    │   ├── storage
+    │   │   ├── SessionStorage.php
+    │   │   └── StorageInterface.php
+    │   └── Cart.php
+    ├── tests
+    ├── .gitignore
+    ├── composer.json
+    └── vendor</pre></div></div><div class="section" title="Writing the extension tests"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec75"/>Writing the extension tests</h3></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Add the <code class="literal">book/cart/tests/bootstrap.php</code> entry script:<div class="informalexample"><pre class="programlisting">&lt;?php
+defined('YII_DEBUG') or define('YII_DEBUG', true);
+defined('YII_ENV') or define('YII_ENV', 'test');
+require(__DIR__ . '/../vendor/autoload.php');
+require(__DIR__ . '/../vendor/yiisoft/yii2/Yii.php');</pre></div></li><li class="listitem">Create <a class="indexterm" id="id894"/>a test base class by initializing the Yii application before each test and by destroying the application after ones:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace book\cart\tests;
+
+use yii\di\Container;
+use yii\console\Application;
+use mageekguy\atoum\test;
+
+abstract class TestCase extends test
+{
+    public function beforeTestMethod($method)
+    {
+        parent::beforeTestMethod($method);
+        $this-&gt;mockApplication();
+    }
+
+    public function afterTestMethod($method)
+    {
+        $this-&gt;destroyApplication();
+        parent::afterTestMethod($method);
+    }
+
+    protected function mockApplication()
+    {
+        new Application([
+            'id' =&gt; 'testapp',
+            'basePath' =&gt; __DIR__,
+            'vendorPath' =&gt; dirname(__DIR__) . '/vendor',
+            'components' =&gt; [
+                'session' =&gt; [
+                    'class' =&gt; 'yii\web\Session',
+                ],
+            ]
+        ]);
+    }
+
+    protected function destroyApplication()
+    {
+        \Yii::$app = null;
+        \Yii::$container = new Container();
+    }
+}</pre></div></li><li class="listitem">Add a <a class="indexterm" id="id895"/>memory-based clean fake class that implements the <code class="literal">StorageInterface</code> interface:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace book\cart\tests;
+
+use book\cart\storage\StorageInterface;
+
+class FakeStorage implements StorageInterface
+{
+    private $items = [];
+
+    public function load()
+    {
+        return $this-&gt;items;
+    }
+
+    public function save(array $items)
+    {
+        $this-&gt;items = $items;
+    }
+}</pre></div><p>This will store items into a private variable instead of working with the real session. It allows us to run tests independently (without real storage driver) and also improves testing performance.</p></li><li class="listitem">Add the <code class="literal">Cart</code> test class:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace book\cart\tests\units;
+
+use book\cart\tests\FakeStorage;
+use book\cart\Cart as TestedCart;
+use book\cart\tests\TestCase;
+
+class Cart extends TestCase
+{
+    /**
+     * @var TestedCart
+     */
+    private $cart;
+
+    public function beforeTestMethod($method)
+    {
+        parent::beforeTestMethod($method);
+        $this-&gt;cart = new TestedCart(['storage' =&gt; new FakeStorage()]);
+    }
+
+    public function testEmpty()
+    {
+        $this-&gt;array($this-&gt;cart-&gt;getItems())-&gt;isEqualTo([]);
+        $this-&gt;integer($this-&gt;cart-&gt;getCount())-&gt;isEqualTo(0);
+        $this-&gt;integer($this-&gt;cart-&gt;getAmount())-&gt;isEqualTo(0);
+    }
+
+    public function testAdd()
+    {        
+        $this-&gt;cart-&gt;add(5, 3);
+        $this-&gt;array($this-&gt;cart-&gt;getItems())-&gt;isEqualTo([5 =&gt; 3]);
+
+        $this-&gt;cart-&gt;add(7, 14);
+        $this-&gt;array($this-&gt;cart-&gt;getItems())-&gt;isEqualTo([5 =&gt; 3, 7 =&gt; 14]);
+
+        $this-&gt;cart-&gt;add(5, 10);
+        $this-&gt;array($this-&gt;cart-&gt;getItems())-&gt;isEqualTo([5 =&gt; 13, 7 =&gt; 14]);
+    }
+
+    public function testSet()
+    {
+        $this-&gt;cart-&gt;add(5, 3);
+        $this-&gt;cart-&gt;add(7, 14);
+        $this-&gt;cart-&gt;set(5, 12);
+        $this-&gt;array($this-&gt;cart-&gt;getItems())-&gt;isEqualTo([5 =&gt; 12, 7 =&gt; 14]);
+    }
+
+    public function testRemove()
+    {
+        $this-&gt;cart-&gt;add(5, 3);
+        $this-&gt;cart-&gt;remove(5);
+        $this-&gt;array($this-&gt;cart-&gt;getItems())-&gt;isEqualTo([]);
+    }
+
+    public function testClear()
+    {
+        $this-&gt;cart-&gt;add(5, 3);
+        $this-&gt;cart-&gt;add(7, 14);
+        $this-&gt;cart-&gt;clear();
+        $this-&gt;array($this-&gt;cart-&gt;getItems())-&gt;isEqualTo([]);
+    }
+
+    public function testCount()
+    {
+        $this-&gt;cart-&gt;add(5, 3);
+        $this-&gt;integer($this-&gt;cart-&gt;getCount())-&gt;isEqualTo(1);
+
+        $this-&gt;cart-&gt;add(7, 14);
+        $this-&gt;integer($this-&gt;cart-&gt;getCount())-&gt;isEqualTo(2);
+    }
+
+    public function testAmount()
+    {
+        $this-&gt;cart-&gt;add(5, 3);
+        $this-&gt;integer($this-&gt;cart-&gt;getAmount())-&gt;isEqualTo(3);
+
+        $this-&gt;cart-&gt;add(7, 14);
+        $this-&gt;integer($this-&gt;cart-&gt;getAmount())-&gt;isEqualTo(17);
+    }
+
+    public function testEmptyStorage()
+    {
+        $cart = new TestedCart();
+
+        $this-&gt;exception(function () use ($cart) {
+            $cart-&gt;getItems();
+        })-&gt;hasMessage('Storage must be set');
+    }
+}</pre></div></li><li class="listitem">Add a separated test for checking the <code class="literal">SessionStorage</code> class:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace book\cart\tests\units\storage;
+
+use book\cart\storage\SessionStorage as TestedStorage;
+use book\cart\tests\TestCase;
+
+class SessionStorage extends TestCase
+{
+    /**
+     * @var TestedStorage
+     */
+    private $storage;
+
+    public function beforeTestMethod($method)
+    {
+        parent::beforeTestMethod($method);
+        $this-&gt;storage = new TestedStorage(['key' =&gt; 'test']);
+    }
+    
+    public function testEmpty()
+    {
+        $this
+            -&gt;given($storage = $this-&gt;storage)
+            -&gt;then
+                -&gt;array($storage-&gt;load())
+                    -&gt;isEqualTo([]);
+    }
+
+    public function testStore()
+    {
+        $this
+            -&gt;given($storage = $this-&gt;storage)
+            -&gt;and($storage-&gt;save($items = [1 =&gt; 5, 6 =&gt; 12]))
+            -&gt;then
+                -&gt;array($this-&gt;storage-&gt;load())
+                    -&gt;isEqualTo($items)
+        ;
+    }
+}</pre></div></li><li class="listitem">Now <a class="indexterm" id="id896"/>we will get the following structure:<div class="informalexample"><pre class="programlisting">book
+└── cart
+    ├── src
+    │   ├── storage
+    │   │   ├── SessionStorage.php
+    │   │   └── StorageInterface.php
+    │   └── Cart.php
+    ├── tests
+    │   ├── units
+    │   │   ├── storage
+    │   │   │   └── SessionStorage.php
+    │   │   └── Cart.php
+    │   ├── bootstrap.php
+    │   ├── FakeStorage.php
+    │   └── TestCase.php
+    ├── .gitignore
+    ├── composer.json
+    └── vendor</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="Running tests"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec76"/>Running tests</h3></div></div></div><p>During the <a class="indexterm" id="id897"/>installation of all dependencies with the <code class="literal">composer install</code> command, the Composer package manager installs the <code class="literal">Atounm</code> package into the <code class="literal">vendor</code> directory and places the executable file <code class="literal">atoum</code> in the <code class="literal">vendor/bin</code> subdirectory.</p><p>Now we can run the following script:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>cd book/cart</strong></span>
+<span class="strong"><strong>vendor/bin/atoum -d tests/units -bf tests/bootstrap.php</strong></span>
+</pre></div><p>Also, we must see the following testing report:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt; atoum path: /book/cart/vendor/atoum/atoum/vendor/bin/atoum</strong></span>
+<span class="strong"><strong>&gt; atoum version: 2.7.0</strong></span>
+<span class="strong"><strong>&gt; atoum path: /book/cart/vendor/atoum/atoum/vendor/bin/atoum</strong></span>
+<span class="strong"><strong>&gt; atoum version: 2.7.0</strong></span>
+<span class="strong"><strong>&gt; PHP path: /usr/bin/php5</strong></span>
+<span class="strong"><strong>&gt; PHP version:</strong></span>
+<span class="strong"><strong>=&gt; PHP 5.5.9-1ubuntu4.16 (cli)</strong></span>
+<span class="strong"><strong>&gt; book\cart\tests\units\Cart...</strong></span>
+<span class="strong"><strong>[SSSSSSSS__________________________________________________][8/8]</strong></span>
+<span class="strong"><strong>=&gt; Test duration: 1.13 seconds.</strong></span>
+<span class="strong"><strong>=&gt; Memory usage: 3.75 Mb.</strong></span>
+<span class="strong"><strong>&gt; book\cart\tests\units\storage\SessionStorage...</strong></span>
+<span class="strong"><strong>[SS________________________________________________________][2/2]</strong></span>
+<span class="strong"><strong>=&gt; Test duration: 0.03 second.</strong></span>
+<span class="strong"><strong>=&gt; Memory usage: 1.00 Mb.</strong></span>
+<span class="strong"><strong>&gt; Total tests duration: 1.15 seconds.</strong></span>
+<span class="strong"><strong>&gt; Total tests memory usage: 4.75 Mb.</strong></span>
+<span class="strong"><strong>&gt; Code coverage value: 16.16%</strong></span>
+</pre></div><p>Each <code class="literal">S</code> symbol shows a success result of the correspondent test.</p><p>Try to deliberately break the cart by commenting the <code class="literal">unset</code> operation:</p><div class="informalexample"><pre class="programlisting">class Cart extends Component
+{
+    ...
+
+    public function remove($id)
+    {
+        $this-&gt;loadItems();
+        if (isset($this-&gt;_items[$id])) {
+            // unset($this-&gt;_items[$id]);
+        }
+        $this-&gt;saveItems();
+    }
+
+    ...
+}</pre></div><p>Run the <a class="indexterm" id="id898"/>tests again:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt; atoum version: 2.7.0</strong></span>
+<span class="strong"><strong>&gt; PHP path: /usr/bin/php5</strong></span>
+<span class="strong"><strong>&gt; PHP version:</strong></span>
+<span class="strong"><strong>=&gt; PHP 5.5.9-1ubuntu4.16 (cli)</strong></span>
+<span class="strong"><strong>book\cart\tests\units\Cart...</strong></span>
+<span class="strong"><strong>[SSFSSSSS__________________________________________________][8/8]</strong></span>
+<span class="strong"><strong>=&gt; Test duration: 1.09 seconds.</strong></span>
+<span class="strong"><strong>=&gt; Memory usage: 3.25 Mb.</strong></span>
+<span class="strong"><strong>&gt; book\cart\tests\units\storage\SessionStorage...</strong></span>
+<span class="strong"><strong>[SS________________________________________________________][2/2]</strong></span>
+<span class="strong"><strong>=&gt; Test duration: 0.02 second.</strong></span>
+<span class="strong"><strong>=&gt; Memory usage: 1.00 Mb.</strong></span>
+<span class="strong"><strong>...</strong></span>
+<span class="strong"><strong>Failure (2 tests, 10/10 methods, 0 void method, 0 skipped method, 0 uncompleted method, 1 failure, 0 error, 0 exception)!</strong></span>
+<span class="strong"><strong>&gt; There is 1 failure:</strong></span>
+<span class="strong"><strong>=&gt; book\cart\tests\units\Cart::testRemove():</strong></span>
+<span class="strong"><strong>In file /book/cart/tests/units/Cart.php on line 53, mageekguy\atoum\asserters\phpArray() failed: array(1) is not equal to array(0)</strong></span>
+<span class="strong"><strong>-Expected</strong></span>
+<span class="strong"><strong>+Actual</strong></span>
+<span class="strong"><strong>@@ -1 +1,3 @@</strong></span>
+<span class="strong"><strong>-array(0) {</strong></span>
+<span class="strong"><strong>+array(1) {</strong></span>
+<span class="strong"><strong>+  [5] =&gt;</strong></span>
+<span class="strong"><strong>+  int(3)</strong></span>
+</pre></div><p>In this <a class="indexterm" id="id899"/>case, we have seen one failure (marked as <code class="literal">F</code> instead of dot) and a failure report.</p></div><div class="section" title="Analyzing code coverage"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec77"/>Analyzing code coverage</h3></div></div></div><p>You must install the <a class="indexterm" id="id900"/>XDebug PHP extension from <a class="ulink" href="https://xdebug.org">https://xdebug.org</a>. For example, on Ubuntu or Debian you can type the following in your terminal:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>sudo apt-get install php5-xdebug</strong></span>
+</pre></div><p>On <a class="indexterm" id="id901"/>Windows, you must open the <code class="literal">php.ini</code> file and add the custom code with the path to your PHP installation directory:</p><div class="informalexample"><pre class="programlisting">[xdebug]
+zend_extension_ts=C:/php/ext/php_xdebug.dll</pre></div><p>Alternatively, if you use the non-thread safe edition, type the following:</p><div class="informalexample"><pre class="programlisting">[xdebug]
+zend_extension=C:/php/ext/php_xdebug.dll</pre></div><p>After installing XDebug, create the <code class="literal">book/cart/coverage.php</code> configuration file with coverage report options:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+use \mageekguy\atoum;
+/** @var atoum\scripts\runner $script */
+$report = $script-&gt;addDefaultReport();
+$coverageField = new atoum\report\fields\runner\coverage\html('Cart', __DIR__ . '/tests/coverage');
+$report-&gt;addField($coverageField);</pre></div><p>Now run the tests again with the <code class="literal">-c</code> option to use this configuration:</p><div class="informalexample"><pre class="programlisting">vendor/bin/atoum -d tests/units -bf tests/bootstrap.php -c coverage.php</pre></div><p>After running the tests, open the <code class="literal">tests/coverage/index.html</code> file in your browser. You will see an explicit coverage report for each directory and class:</p><div class="mediaobject"><img alt="Analyzing code coverage" src="../Images/image00486.jpeg"/></div><p style="clear:both; height: 1em;"> </p><p>You <a class="indexterm" id="id902"/>can click on any class and analyze which lines of code have not been executed during the testing process.</p></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec401"/>How it works…</h2></div></div></div><p>The Atoum <a class="indexterm" id="id903"/>testing framework supports the <span class="strong"><strong>Behavior-Driven Design</strong></span> (<span class="strong"><strong>BDD</strong></span>) <a class="indexterm" id="id904"/>syntax flow, as <a class="indexterm" id="id905"/>follows:</p><div class="informalexample"><pre class="programlisting">public function testSome()
+{
+    $this
+        -&gt;given($cart = new TestedCart())
+        -&gt;and($cart-&gt;add(5, 13))
+        -&gt;then
+            -&gt;sizeof($cart-&gt;getItems())
+                -&gt;isEqualTo(1)
+            -&gt;array($cart-&gt;getItems())
+                -&gt;isEqualTo([5 =&gt; 3])
+            -&gt;integer($cart-&gt;getCount())
+                -&gt;isEqualTo(1)
+            -&gt;integer($cart-&gt;getAmount())
+                -&gt;isEqualTo(3);
+}</pre></div><p>However, you can use the usual PHPUnit-like syntax to write unit tests:</p><div class="informalexample"><pre class="programlisting">public function testSome()
+{
+    $cart = new TestedCart();
+    $cart-&gt;add(5, 3);
+
+    $this
+        -&gt;array($cart-&gt;getItems())-&gt;isEqualTo([5 =&gt; 3])
+        -&gt;integer($cart-&gt;getCount())-&gt;isEqualTo(1)
+        -&gt;integer($cart-&gt;getAmount())-&gt;isEqualTo(3)
+    ;
+}</pre></div><p>Atoum also <a class="indexterm" id="id906"/>supports code coverage <a class="indexterm" id="id907"/>reports for analyzing the testing quality.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec402"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">For more <a class="indexterm" id="id908"/>information about Atoum, refer to <a class="ulink" href="http://docs.atoum.org/en/latest/">http://docs.atoum.org/en/latest/</a></li><li class="listitem">For sources and usage samples, refer to <a class="ulink" href="https://github.com/atoum/atoum">https://github.com/atoum/atoum</a></li><li class="listitem">The <span class="emphasis"><em>Unit testing with PHPUnit</em></span> recipe</li></ul></div></div></div>
+<div class="section" title="Unit testing with Behat"><div class="titlepage" id="3HFIU2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch11lvl1sec113"/>Unit testing with Behat</h1></div></div></div><p>Behat is a<a class="indexterm" id="id909"/> BDD framework for testing your code with human-readable sentences that describes code behavior in various use cases.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec403"/>Getting ready</h2></div></div></div><p>Create an empty directory for a new project.</p></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec404"/>How to do it…</h2></div></div></div><p>In this recipe, we will create a <a class="indexterm" id="id910"/>demonstration shopping <a class="indexterm" id="id911"/>cart extension with Behat tests.</p><div class="section" title="Preparing extension structure"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec78"/>Preparing extension structure</h3></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">First, create <a class="indexterm" id="id912"/>a directory structure for your extension:<div class="informalexample"><pre class="programlisting">book
+└── cart
+    ├── src
+    └── features</pre></div></li><li class="listitem">To work with the extension as a Composer package, prepare the <code class="literal">book/cart/composer.json</code> file as follows:<div class="informalexample"><pre class="programlisting">{
+    "name": "book/cart",
+    "type": "yii2-extension",
+    "require": {
+        "yiisoft/yii2": "~2.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "4.*",
+        "behat/behat": "^3.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "book\\cart\\": "src/",
+            "book\\cart\\features\\": "features/"
+        }
+    },
+    "extra": {
+        "asset-installer-paths": {
+            "npm-asset-library": "vendor/npm",
+            "bower-asset-library": "vendor/bower"
+        }
+    }
+}</pre></div></li><li class="listitem">Add the following lines to the <code class="literal">book/cart/.gitignore</code> file:<div class="informalexample"><pre class="programlisting">/vendor
+/composer.lock</pre></div></li><li class="listitem">Install all <a class="indexterm" id="id913"/> the dependencies of the extension:<div class="informalexample"><pre class="programlisting">composer install</pre></div></li><li class="listitem">Now we get the following structure:<div class="informalexample"><pre class="programlisting">book
+└── cart
+    ├── src
+    ├── features
+    ├── .gitignore
+    ├── composer.json
+    └── vendor</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="Writing extension code"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec79"/>Writing extension code</h3></div></div></div><p>Copy <a class="indexterm" id="id914"/>the <code class="literal">Cart</code>, <code class="literal">StorageInterface</code>, and <code class="literal">SessionStorage</code> classes from the <span class="emphasis"><em>Unit testing with PHPUnit</em></span> recipe.</p><p>Finally, we get the following structure:</p><div class="informalexample"><pre class="programlisting">book
+└── cart
+    ├── src
+    │   ├── storage
+    │   │   ├── SessionStorage.php
+    │   │   └── StorageInterface.php
+    │   └── Cart.php
+    ├── features
+    ├── .gitignore
+    ├── composer.json
+    └── vendor</pre></div></div><div class="section" title="Writing extension tests"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec80"/>Writing extension tests</h3></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Add the <code class="literal">book/cart/features/bootstrap/bootstrap.php</code> entry script:<div class="informalexample"><pre class="programlisting">&lt;?php
+defined('YII_DEBUG') or define('YII_DEBUG', true);
+defined('YII_ENV') or define('YII_ENV', 'test');
+
+require_once __DIR__ . '/../../vendor/yiisoft/yii2/Yii.php';</pre></div></li><li class="listitem">Create <a class="indexterm" id="id915"/>the <code class="literal">features/cart.feature</code> file and write cart testing scenarios:<div class="informalexample"><pre class="programlisting">Feature: Shopping cart
+  In order to buy products
+  As a customer
+  I need to be able to put interesting products into a cart
+
+  Scenario: Checking empty cart
+    Given there is a clean cart
+    Then I should have 0 products
+    Then I should have 0 product
+    And the overall cart amount should be 0
+
+  Scenario: Adding products to the cart
+    Given there is a clean cart
+    When I add 3 pieces of 5 product
+    Then I should have 3 pieces of 5 product
+    And I should have 1 product
+    And the overall cart amount should be 3
+
+    When I add 14 pieces of 7 product
+    Then I should have 3 pieces of 5 product
+    And I should have 14 pieces of 7 product
+    And I should have 2 products
+    And the overall cart amount should be 17
+
+    When I add 10 pieces of 5 product
+    Then I should have 13 pieces of 5 product
+    And I should have 14 pieces of 7 product
+    And I should have 2 products
+    And the overall cart amount should be 27
+
+  Scenario: Change product count in the cart
+    Given there is a cart with 5 pieces of 7 product
+    When I set 3 pieces for 7 product
+    Then I should have 3 pieces of 7 product
+
+  Scenario: Remove products from the cart
+    Given there is a cart with 5 pieces of 7 product
+    When I add 14 pieces of 7 product
+    And I clear cart
+    Then I should have empty cart</pre></div></li><li class="listitem">Add the <a class="indexterm" id="id916"/>storage test <code class="literal">features/storage.feature</code> file:<div class="informalexample"><pre class="programlisting">Feature: Shopping cart storage
+  I need to be able to put items into a storage
+
+  Scenario: Checking empty storage
+    Given there is a clean storage
+    Then I should have empty storage
+
+  Scenario: Save items into storage
+    Given there is a clean storage
+    When I save 3 pieces of 7 product to the storage
+    Then I should have 3 pieces of 7 product in the storage</pre></div></li><li class="listitem">Add implementation for all steps in the <code class="literal">features/bootstrap/CartContext.php</code> file:<div class="informalexample"><pre class="programlisting">&lt;?php
+use Behat\Behat\Context\SnippetAcceptingContext;
+use book\cart\Cart;
+use book\cart\features\bootstrap\storage\FakeStorage;
+use yii\di\Container;
+use yii\web\Application;
+
+require_once __DIR__ . '/bootstrap.php';
+
+class CartContext implements SnippetAcceptingContext
+{
+    /**
+     * @var Cart
+     * */
+    private $cart;
+
+    /**
+     * @Given there is a clean cart
+     */
+    public function thereIsACleanCart()
+    {
+        $this-&gt;resetCart();
+    }
+
+    /**
+     * @Given there is a cart with :pieces of :product product
+     */
+    public function thereIsAWhichCostsPs($product, $amount)
+    {
+        $this-&gt;resetCart();
+        $this-&gt;cart-&gt;set($product, floatval($amount));
+    }
+
+    /**
+     * @When I add :pieces of :product
+     */
+    public function iAddTheToTheCart($product, $pieces)
+    {
+        $this-&gt;cart-&gt;add($product, $pieces);
+    }
+
+    /**
+     * @When I set :pieces for :arg2 product
+     */
+    public function iSetPiecesForProduct($pieces, $product)
+    {
+        $this-&gt;cart-&gt;set($product, $pieces);
+    }
+
+    /**
+     * @When I clear cart
+     */
+    public function iClearCart()
+    {
+        $this-&gt;cart-&gt;clear();
+    }
+
+    /**
+     * @Then I should have empty cart
+     */
+    public function iShouldHaveEmptyCart()
+    {
+        PHPUnit_Framework_Assert::assertEquals(
+            0,
+            $this-&gt;cart-&gt;getCount()
+        );
+    }
+
+    /**
+     * @Then I should have :count product(s)
+     */
+    public function iShouldHaveProductInTheCart($count)
+    {
+        PHPUnit_Framework_Assert::assertEquals(
+            intval($count),
+            $this-&gt;cart-&gt;getCount()
+        );
+    }
+
+    /**
+     * @Then the overall cart amount should be :amount
+     */
+    public function theOverallCartPriceShouldBePs($amount)
+    {
+        PHPUnit_Framework_Assert::assertSame(
+            intval($amount),
+            $this-&gt;cart-&gt;getAmount()
+        );
+    }
+
+    /**
+     * @Then I should have :pieces of :product
+     */
+    public function iShouldHavePiecesOfProduct($pieces, $product)
+    {
+        PHPUnit_Framework_Assert::assertArraySubset(
+            [intval($product) =&gt; intval($pieces)],
+            $this-&gt;cart-&gt;getItems()
+        );
+    }
+
+    private function resetCart()
+    {
+        $this-&gt;cart = new Cart(['storage' =&gt; new FakeStorage()]);
+    }
+}</pre></div></li><li class="listitem">Also, in <a class="indexterm" id="id917"/>the <code class="literal">features/bootstrap/StorageContext.php</code> file, add the following:<div class="informalexample"><pre class="programlisting">&lt;?php
+use Behat\Behat\Context\SnippetAcceptingContext;
+use book\cart\Cart;
+use book\cart\features\bootstrap\storage\FakeStorage;
+use book\cart\storage\SessionStorage;
+use yii\di\Container;
+use yii\web\Application;
+
+require_once __DIR__ . '/bootstrap.php';
+
+class StorageContext implements SnippetAcceptingContext
+{
+    /**
+     * @var SessionStorage
+     * */
+    private $storage;
+
+    /**
+     * @Given there is a clean storage
+     */
+    public function thereIsACleanStorage()
+    {
+        $this-&gt;mockApplication();
+        $this-&gt;storage = new SessionStorage(['key' =&gt; 'test']);
+    }
+
+    /**
+     * @When I save :pieces of :product to the storage
+     */
+    public function iSavePiecesOfProductToTheStorage($pieces, $product)
+    {
+        $this-&gt;storage-&gt;save([$product =&gt; $pieces]);
+    }
+
+    /**
+     * @Then I should have empty storage
+     */
+    public function iShouldHaveEmptyStorage()
+    {
+        PHPUnit_Framework_Assert::assertCount(
+            0,
+            $this-&gt;storage-&gt;load()
+        );
+    }
+
+    /**
+     * @Then I should have :pieces of :product in the storage
+     */
+    public function iShouldHavePiecesOfProductInTheStorage($pieces, $product)
+    {
+        PHPUnit_Framework_Assert::assertArraySubset(
+            [intval($product) =&gt; intval($pieces)],
+            $this-&gt;storage-&gt;load()
+        );
+    }
+
+    private function mockApplication()
+    {
+        Yii::$container = new Container();
+        new Application([
+            'id' =&gt; 'testapp',
+            'basePath' =&gt; __DIR__,
+            'vendorPath' =&gt; __DIR__ . '/../../vendor',
+        ]);
+    }
+}</pre></div></li><li class="listitem">Add the <code class="literal">features/bootstrap/CartContext/FakeStorage.php</code> file with a fake storage <a class="indexterm" id="id918"/>class:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace book\cart\features\bootstrap\storage;
+
+use book\cart\storage\StorageInterface;
+
+class FakeStorage implements StorageInterface
+{
+    private $items = [];
+
+    public function load()
+    {
+        return $this-&gt;items;
+    }
+
+    public function save(array $items)
+    {
+        $this-&gt;items = $items;
+    }
+}</pre></div></li><li class="listitem">Add <code class="literal">book/cart/behat.yml</code> with contexts definition:<div class="informalexample"><pre class="programlisting">default:
+    suites:
+        default:
+            contexts:
+                - CartContext
+                - StorageContext</pre></div></li><li class="listitem">Now <a class="indexterm" id="id919"/>we will get the following structure:<div class="informalexample"><pre class="programlisting">book
+└── cart
+    ├── src
+    │   ├── storage
+    │   │   ├── SessionStorage.php
+    │   │   └── StorageInterface.php
+    │   └── Cart.php
+    ├── features
+    │   ├── bootstrap
+    │   │   ├── storage
+    │   │   │   └── FakeStorage.php
+    │   │   ├── bootstrap.php
+    │   │   ├── CartContext.php
+    │   │   └── StorageContext.php
+    │   ├── cart.feature
+    │   └── storage.feature
+    ├── .gitignore
+    ├── behat.yml
+    ├── composer.json
+    └── vendor</pre></div></li></ol><div style="height:10px; width: 1px"/></div><p>Now <a class="indexterm" id="id920"/>we can run our tests.</p></div><div class="section" title="Running tests"><div class="titlepage"><div><div><h3 class="title"><a id="ch11lvl3sec81"/>Running tests</h3></div></div></div><p>During <a class="indexterm" id="id921"/>the installation of all dependencies with the command <code class="literal">composer install</code>, the Composer package manager installs the Behat package into the <code class="literal">vendor</code> directory and places the executable <code class="literal">behat</code> file in the <code class="literal">vendor/bin</code> subdirectory.</p><p>Now we can run the following script:</p><div class="informalexample"><pre class="programlisting">cd book/cart
+vendor/bin/behat</pre></div><p>Also, we must see the following testing report:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>Feature: Shopping cart</strong></span>
+<span class="strong"><strong>  In order to buy products</strong></span>
+<span class="strong"><strong>  As a customer</strong></span>
+<span class="strong"><strong>  I need to be able to put interesting products into a cart</strong></span>
+
+<span class="strong"><strong>  Scenario: Checking empty cart             # features/cart.feature:6</strong></span>
+<span class="strong"><strong>    Given there is a clean cart             # thereIsACleanCart()</strong></span>
+<span class="strong"><strong>    Then I should have 0 products           # iShouldHaveProductInTheCart()</strong></span>
+<span class="strong"><strong>    Then I should have 0 product            # iShouldHaveProductInTheCart()</strong></span>
+<span class="strong"><strong>    And the overall cart amount should be 0 # theOverallCartPriceShouldBePs()</strong></span>
+
+<span class="strong"><strong>  ...</strong></span>
+<span class="strong"><strong>  </strong></span>
+<span class="strong"><strong>Feature: Shopping cart storage</strong></span>
+<span class="strong"><strong>  I need to be able to put items into a storage</strong></span>
+
+<span class="strong"><strong>  Scenario: Checking empty storage   # features/storage.feature:4</strong></span>
+<span class="strong"><strong>    Given there is a clean storage   # thereIsACleanStorage()</strong></span>
+<span class="strong"><strong>    Then I should have empty storage # iShouldHaveEmptyStorage()</strong></span>
+
+<span class="strong"><strong>  ...</strong></span>
+
+<span class="strong"><strong>6 scenarios (6 passed)</strong></span>
+<span class="strong"><strong>31 steps (31 passed)</strong></span>
+<span class="strong"><strong>0m0.23s (13.76Mb)</strong></span>
+</pre></div><p>Try to deliberately break the cart by commenting the <code class="literal">unset</code> operation:</p><div class="informalexample"><pre class="programlisting">class Cart extends Component
+{
+    …
+
+    public function set($id, $amount)
+    {
+        $this-&gt;loadItems();
+        // $this-&gt;_items[$id] = $amount;
+        $this-&gt;saveItems();
+    }
+
+
+    ...
+}</pre></div><p>Now run <a class="indexterm" id="id922"/>the tests again:</p><div class="informalexample"><pre class="programlisting">Feature: Shopping cart
+  In order to buy products
+  As a customer
+Feature: Shopping cart
+  In order to buy products
+  As a customer
+  I need to be able to put interesting products into a cart
+
+  ...
+
+  Scenario: Change product count in the cart       # features/cart.feature:31
+    Given there is a cart with 5 pieces of 7 prod  # thereIsAWhichCostsPs()
+    When I set 3 pieces for 7 product              # iSetPiecesForProduct()
+    Then I should have 3 pieces of 7 product       # iShouldHavePiecesOf()
+      Failed asserting that an array has the subset Array &amp;0 (
+          7 =&gt; 3
+      ).
+
+  Scenario: Remove products from the cart         # features/cart.feature:36
+    Given there is a cart with 5 pieces of 7 prod # thereIsAWhichCostsPs()
+    When I add 14 pieces of 7 product             # iAddTheToTheCart()
+    And I clear cart                              # iClearCart()
+    Then I should have empty cart                 # iShouldHaveEmptyCart()
+
+--- Failed scenarios:
+
+    features/cart.feature:31
+
+6 scenarios (5 passed, 1 failed)
+31 steps (30 passed, 1 failed)
+0m0.22s (13.85Mb)</pre></div><p>In this <a class="indexterm" id="id923"/>case, we have seen one failure and a failure report.</p></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec405"/>How it works…</h2></div></div></div><p>Behat is a BDD testing <a class="indexterm" id="id924"/>framework. It facilitates writing preceding human-readable testing scenarios to low-level technical implementation.</p><p>When we write scenarios for every feature, we can use a set of operators:</p><div class="informalexample"><pre class="programlisting">Scenario: Adding products to the cart
+    Given there is a clean cart
+    When I add 3 pieces of 5 product
+    Then I should have 3 pieces of 5 product
+    And I should have 1 product
+    And the overall cart amount should be 3</pre></div><p>Behat parses our sentences and finds the associated implementation of the sentence in the context class:</p><div class="informalexample"><pre class="programlisting">class FeatureContext implements SnippetAcceptingContext
+{    
+    /**
+     * @When I add :pieces of :product
+     */
+    public function iAddTheToTheCart($product, $pieces)
+    {
+        $this-&gt;cart-&gt;add($product, $pieces);
+    }
+}</pre></div><p>You can create a single <code class="literal">FeatureContex</code>
+<code class="literal">t</code> class (by default) or create a set of specific contexts for feature groups and scenarios.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch11lvl2sec406"/>See also</h2></div></div></div><p>For getting more <a class="indexterm" id="id925"/>information about Behat refer to the following URLs:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://docs.behat.org/en/v3.0/">http://docs.behat.org/en/v3.0/</a></li><li class="listitem"><a class="ulink" href="https://github.com/Behat/Behat">https://github.com/Behat/Behat</a></li></ul></div><p>And to get more information about alternative test frameworks, see the other recipes in this chapter.</p></div></div></body></html>

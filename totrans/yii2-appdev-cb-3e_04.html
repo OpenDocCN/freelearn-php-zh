@@ -1,0 +1,966 @@
+<html><head></head><body><div class="chapter" id="1FLS41-ae331331bc644dc9b658d3634f0748da" title="Chapter&#xA0;4.&#xA0;Forms"><div class="titlepage"><div><div><h1 class="title"><a id="ch04"/>Chapter 4. Forms</h1></div></div></div><p>In this chapter, we will cover the following topics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">Writing your own validators</li><li class="listitem">Uploading files</li><li class="listitem">Adding and customizing CaptchaWidget</li><li class="listitem">Customizing Captcha</li><li class="listitem">Creating a custom input widget</li><li class="listitem">Tabular input</li><li class="listitem">Conditional validation</li><li class="listitem">Complex forms with multiple models</li><li class="listitem">AJAX-dependent drop-down list</li><li class="listitem">AJAX validation</li><li class="listitem">Creating a custom client-side validation</li></ul></div><div class="section" title="Introduction"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec44"/>Introduction</h1></div></div></div><p>Yii makes working with forms a breeze and the documentation on it is almost complete. Still, there are some areas that need clarification and examples. We will describe them in this chapter.</p></div></div>
+<div class="section" title="Writing your own validators"><div class="titlepage" id="1GKCM2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch04lvl1sec45"/>Writing your own validators</h1></div></div></div><p>Yii provides a good set of built-in form validators that cover the most typical developer needs and are highly configurable. However, in some cases, a developer may need to create a custom validator.</p><p>This recipe is a good example of creating <a class="indexterm" id="id269"/>a standalone validator that checks the number of words.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec147"/>Getting ready</h2></div></div></div><p>Create a new application by using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec148"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a <a class="indexterm" id="id270"/>standalone validator at <code class="literal">@app/components/WordsValidator.php</code> as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\components;
+use yii\validators\Validator;
+class WordsValidator extends Validator
+{
+    public $size = 50;
+    public function validateValue($value){
+        if (str_word_count($value) &gt; $this-&gt;size) {
+            return ['The number of words must be less than {size}', ['size' =&gt; $this-&gt;size]];
+        }
+        return false;
+    }
+}</pre></div></li><li class="listitem">Create an <code class="literal">Article</code> model at <code class="literal">@app/models/Article.php</code> as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\models;
+use app\components\WordsValidator;
+use yii\base\Model;
+class Article extends Model
+{
+    public $title;
+    public function rules()
+    {
+        return [
+            ['title', 'string'],
+            ['title', WordsValidator::className(), 'size' =&gt; 10],
+        ];
+    }
+}</pre></div></li><li class="listitem">Create <code class="literal">@app/controllers/ModelValidationController.php</code> as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\controllers;
+use app\models\Article;
+use yii\helpers\Html;
+use yii\web\Controller;
+class ModelValidationController extends Controller
+{
+    private function getLongTitle()
+    {
+        return 'There is a very long content for current article, '.'it should be less then ten words';
+    }
+    private function getShortTitle()
+    {
+        return 'There is a shot title';
+    }
+    private function renderContentByModel($title)
+    {
+        $model = new Article();
+        $model-&gt;title = $title;
+        if ($model-&gt;validate()) {
+            $content = Html::tag('div', 'Model is valid.',[
+                'class' =&gt; 'alert alert-success',
+            ]);
+        } else {
+            $content = Html::errorSummary($model, [
+                'class' =&gt; 'alert alert-danger',
+            ]);
+        }
+        return $this-&gt;renderContent($content);
+    }
+    public function actionSuccess()
+    {
+        $title = $this-&gt;getShortTitle();
+        return $this-&gt;renderContentByModel($title);
+    }
+    public function actionFailure()
+    {
+        $title = $this-&gt;getLongTitle();
+        return $this-&gt;renderContentByModel($title);
+    }
+}</pre></div></li><li class="listitem">Run the <code class="literal">success</code> action <a class="indexterm" id="id271"/>of the <code class="literal">modelValidation</code> controller by opening the <code class="literal">index.php?r=model-validation/success</code> URL, and you'll get the following:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00404.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">Run the <code class="literal">failure</code> action of the <code class="literal">modelValidation</code> controller <a class="indexterm" id="id272"/>by opening the <code class="literal">index.php?r=model-validation/failure</code> URL, and you'll get the following:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00406.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">Create <code class="literal">@app/controllers/AdhocValidationController.php</code> as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\controllers;
+use app\components\WordsValidator;
+use app\models\Article;
+use yii\helpers\Html;
+use yii\web\Controller;
+class AdhocValidationController extends Controller
+{
+    private function getLongTitle()
+    {
+        return 'There is a very long content for current article, '.'it should be less then ten words';
+    }
+    private function getShortTitle()
+    {
+        return 'There is a shot title';
+    }
+    private function renderContentByTitle($title)
+    {
+        $validator = new WordsValidator([
+            'size' =&gt; 10,
+        ]);
+        if ($validator-&gt;validate($title, $error)) {
+            $content = Html::tag('div', 'Value is valid.',[
+                'class' =&gt; 'alert alert-success',
+            ]);
+        } else {
+            $content = Html::tag('div', $error, [
+                'class' =&gt; 'alert alert-danger',
+            ]);
+        }
+        return $this-&gt;renderContent($content);
+    }
+    public function actionSuccess()
+    {
+        $title = $this-&gt;getShortTitle();
+        return $this-&gt;renderContentByTitle($title);
+    }
+    public function actionFailure()
+    {
+        $title = $this-&gt;getLongTitle();
+        return $this-&gt;renderContentByTitle($title);
+    }
+}</pre></div></li><li class="listitem">Run the <code class="literal">success</code> action <a class="indexterm" id="id273"/>of the <code class="literal">AdhocValidationController</code> by opening the <code class="literal">index.php?r=adhoc-validation/success</code> URL, and you'll get the following:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00408.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">Run the <code class="literal">failure</code> action of the <code class="literal">adhocValidation</code> controller by opening the <code class="literal">index.php?r=adhoc-validation/failure</code> URL, and you'll get the following:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00411.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec149"/>How it works...</h2></div></div></div><p>First, we created a standalone <a class="indexterm" id="id274"/>validator that checks the number of words by using the standard <code class="literal">str_word_count </code>PHP function, and then demonstrated two validator use cases:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">Using the validator as a validation rule in the <code class="literal">Article</code> model</li><li class="listitem">Using the validator as an ad hoc validator</li></ul></div><p>The validator has a size attribute, which sets the maximum value for the number of words.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec150"/>See also</h2></div></div></div><p>For further <a class="indexterm" id="id275"/>information, refer to the following URLs:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-input-validation.html">http://www.yiiframework.com/doc-2.0/guide-input-validation.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-tutorial-corevalidators.html">http://www.yiiframework.com/doc-2.0/guide-tutorial-corevalidators.html</a></li></ul></div></div></div>
+<div class="section" title="Uploading files"><div class="titlepage" id="1HIT82-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch04lvl1sec46"/>Uploading files</h1></div></div></div><p>Handling file uploads is a pretty common task for a web application. Yii has some helpful classes built in to <a class="indexterm" id="id276"/>do this. Let's create a simple form that will allow the upload of ZIP archives and store them in <code class="literal">/uploads</code>.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec151"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new application by using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Create the <code class="literal">@app/web/uploads</code> directory.</li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec152"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">We will start with the <a class="indexterm" id="id277"/>model, so create the <code class="literal">@app/models/Upload.php</code> model as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\models;
+use yii\base\Model;
+use yii\web\UploadedFile;
+class UploadForm extends Model
+{
+    /**
+    * @var UploadedFile
+    */
+    public $file;
+    public function rules()
+    {
+        return [
+            ['file', 'file', 'skipOnEmpty' =&gt; false, 'extensions' =&gt; 'zip'],
+        ];
+    }
+    public function upload()
+    {
+        if ($this-&gt;validate()) {
+            $this-&gt;file-&gt;saveAs('uploads/' . $this-&gt;file-&gt;baseName . '.' . $this-&gt;file-&gt;extension);
+           return true;
+        } else {
+            return false;
+        }
+    }
+}</pre></div></li><li class="listitem">Now we will move on to the controller, so create <code class="literal">@app/controllers/UploadController.php</code> as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\controllers;
+use Yii;
+use yii\web\Controller;
+use app\models\UploadForm;
+use yii\web\UploadedFile;
+class UploadController extends Controller
+{
+    public function actionUpload()
+    {
+        $model = new UploadForm();
+        if (Yii::$app-&gt;request-&gt;isPost) {
+            $model-&gt;file = UploadedFile::getInstance($model, 'file');
+            if ($model-&gt;upload()) {
+                return $this-&gt;renderContent("File {$model-&gt;file-&gt;name} is uploaded successfully");
+            }
+        }
+        return $this-&gt;render('index', ['model' =&gt; $model]);
+    }
+}</pre></div></li><li class="listitem"> Finally, you <a class="indexterm" id="id278"/>can view <code class="literal">@app/views/upload/index.php</code> as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+use yii\widgets\ActiveForm;
+use yii\helpers\Html;
+?&gt;
+&lt;?php $form = ActiveForm::begin(['options' =&gt; ['enctype' =&gt; 'multipart/form-data']]) ?&gt;
+    &lt;?= $form-&gt;field($model, 'file')-&gt;fileInput() ?&gt;
+    &lt;?= Html::submitButton('Upload', ['class' =&gt; 'btn-success'])?&gt;
+&lt;?php ActiveForm::end() ?&gt;</pre></div></li><li class="listitem"> That is it. Now, run the upload controller and try uploading both ZIP archives and other files, as shown in the following screenshot:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00413.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec153"/>How it works...</h2></div></div></div><p>The model we use is pretty simple. We define only one field, named <code class="literal">$file</code>, and a validation rule that uses the <code class="literal">FileValidator</code> file validator, which reads only ZIP files.</p><p>We create a model instance and fill it with data from <code class="literal">$_POST</code> if the form is submitted:</p><div class="informalexample"><pre class="programlisting">$model-&gt;file = UploadedFile::getInstance($model, 'file');
+if ($model-&gt;upload()) {
+    return $this-&gt;renderContent("File {$model-&gt;file-&gt;name} is uploaded successfully");
+}</pre></div><p>We then use <code class="literal">UploadedFile::getInstance</code>, which gives us access to use the <code class="literal">UploadedFile</code> instance. This class is a wrapper around the <code class="literal">$_FILE</code> array that PHP fills when the file is <a class="indexterm" id="id279"/>uploaded. We make sure that the file is a ZIP archive by calling the model's <code class="literal">validate</code> method, then we save the file using <code class="literal">UploadedFile::saveAs</code>.</p><p>In order to upload a file, the HTML form must meet the following two important requirements:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">Method must be set to <code class="literal">POST</code></li><li class="listitem">The <code class="literal">enctype</code> attribute must be set to <code class="literal">multipart/form-data</code></li></ul></div><p>It is important to remember that you add the <code class="literal">enctype</code> option to the form so that the file can be properly uploaded.</p><p>We can generate this HTML using the <code class="literal">Html</code> helper or <code class="literal">ActiveForm</code> with <code class="literal">htmlOptions</code> set. Here, HTML was used:</p><div class="informalexample"><pre class="programlisting">&lt;?= Html::beginForm('', 'post', ['enctype'=&gt;'multipart/form-data'])?&gt;</pre></div><p>In the end, we display an error and a field for the model's file attribute, and render a submit button.</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec154"/>There's more...</h2></div></div></div><p>To upload multiple files, Yii2 implements two special methods.</p><p>For instance, you <a class="indexterm" id="id280"/>have defined <code class="literal">$imageFiles</code> in your model in the view file in common all will be the same with a little difference:</p><div class="informalexample"><pre class="programlisting">..
+&lt;?= $form-&gt;field($model, 'imageFiles[]')-&gt;fileInput(['multiple' =&gt; true, 'accept' =&gt; 'image/*']) ?&gt;
+..</pre></div><p>To get all file instances, you have to call <code class="literal">UploadedFile::getInstances()</code> instead of <code class="literal">UploadedFile::getInstance()</code>:</p><div class="informalexample"><pre class="programlisting">..
+$model-&gt;imageFiles = UploadedFile::getInstances($model, 'imageFiles');
+..</pre></div><p>Handling and <a class="indexterm" id="id281"/>saving multiple files can be done with a simple code snippet:</p><div class="informalexample"><pre class="programlisting">foreach ($this-&gt;imageFiles as $file) {
+    $file-&gt;saveAs('uploads/' . $file-&gt;baseName . '.' . $file-&gt;extension);
+}</pre></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec155"/>See also</h2></div></div></div><p>For further <a class="indexterm" id="id282"/>information, refer to:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-input-file-upload.html">http://www.yiiframework.com/doc-2.0/guide-input-file-upload.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-input-file-upload.html#uploading-multiple-files">http://www.yiiframework.com/doc-2.0/guide-input-file-upload.html#uploading-multiple-files</a></li></ul></div></div></div>
+<div class="section" title="Adding and customizing CaptchaWidget"><div class="titlepage" id="1IHDQ2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch04lvl1sec47"/>Adding and customizing CaptchaWidget</h1></div></div></div><p>Nowadays, on the Internet, if you leave a form without spam protection, you will get a ton of spam <a class="indexterm" id="id283"/>data entered in a short time. Yii includes a Captcha component <a class="indexterm" id="id284"/>that makes adding such protection a breeze. The only problem is that there is no systematic guide on how to use it.</p><p>In the following example, we will add Captcha protection to a simple form.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec156"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new application by using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Create a form model, <code class="literal">@app/models/EmailForm.php</code>, as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\models;
+use yii\base\Model;
+class EmailForm extends Model
+{
+    public $email;
+    public function rules()
+    {
+        return [
+            ['email', 'email']
+        ];
+    }
+}</pre></div></li><li class="listitem">Create <a class="indexterm" id="id285"/>a controller, <code class="literal">@app/controllers/EmailController.php</code>, as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\controllers;
+use Yii;
+use yii\web\Controller;
+use app\models\EmailForm;
+class EmailController extends Controller
+{
+    public function actionIndex(){
+        $success = false;
+        $model = new EmailForm();
+        if ($model-&gt;load(Yii::$app-&gt;request-&gt;post()) &amp;&amp; $model-&gt;validate()) {
+            Yii::$app-&gt;session-&gt;setFlash('success', 'Success!');
+        }
+        return $this-&gt;render('index', [
+            'model' =&gt; $model,
+            'success' =&gt; $success,
+        ]);
+    }
+}</pre></div></li><li class="listitem">Create a<a class="indexterm" id="id286"/> view, <code class="literal">@app/views/email/index.php</code>, as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+use yii\helpers\Html;
+use yii\captcha\Captcha;
+use yii\widgets\ActiveForm;
+?&gt;
+&lt;?php if (Yii::$app-&gt;session-&gt;hasFlash('success')): ?&gt;
+    &lt;div class="alert alert-success"&gt;&lt;?=Yii::$app-&gt;session-&gt;getFlash('success')?&gt;&lt;/div&gt;
+&lt;?php else: ?&gt;
+    &lt;?php $form = ActiveForm::begin()?&gt;
+        &lt;div class="control-group"&gt;
+            &lt;div class="controls"&gt;
+                &lt;?= $form-&gt;field($model, 'email')-&gt;textInput(['class' =&gt; 'form-control']); ?&gt;
+                &lt;?php echo Html::error($model, 'email', ['class' =&gt; 'help-block'])?&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+        &lt;?php if (Captcha::checkRequirements() &amp;&amp; Yii::$app-&gt;user-&gt;isGuest): ?&gt;
+            &lt;div class="control-group"&gt;
+                &lt;?= $form-&gt;field($model, 'verifyCode')-&gt;widget(\yii\captcha\Captcha::classname(), [
+                'captchaAction' =&gt; 'email/captcha'
+                ]) ?&gt;
+            &lt;/div&gt;
+        &lt;?php endif; ?&gt;
+        &lt;div class="control-group"&gt;
+            &lt;label class="control-label" for=""&gt;&lt;/label&gt;
+            &lt;div class="controls"&gt;
+                &lt;?=Html::submitButton('Submit', ['class' =&gt; 'btn btn-success'])?&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;?php ActiveForm::end()?&gt;
+&lt;?php endif;?&gt;</pre></div></li><li class="listitem">Now, we have <a class="indexterm" id="id287"/>an e-mail submission form, as shown in the <a class="indexterm" id="id288"/>following screenshot, which validates the e-mail field. Let's add Captcha:<div class="mediaobject"><img alt="Getting ready" src="../Images/image00414.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec157"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">First, we need to customize the form model. We need to add <code class="literal">$verifyCode</code>, which will hold the verification code entered and add a validation rule for it:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\models;
+use yii\base\Model;
+use yii\captcha\Captcha;
+class EmailForm extends Model
+{
+    public $email;
+    public $verifyCode;
+    public function rules()
+    {
+        return [
+            ['email', 'email'],
+            ['verifyCode', 'captcha', 'skipOnEmpty' =&gt; !Captcha::checkRequirements(), 'captchaAction' =&gt; 'email/captcha']
+        ];
+    }
+}</pre></div></li><li class="listitem">We then need to <a class="indexterm" id="id289"/>add an external action to the controller. Add <a class="indexterm" id="id290"/>the following code to it:<div class="informalexample"><pre class="programlisting">public function actions()
+{
+    return [
+        'captcha' =&gt; [
+            'class' =&gt; 'yii\captcha\CaptchaAction',
+        ],
+    ];
+}</pre></div></li><li class="listitem">In a view, we need to show an additional field and the Captcha image. The following code will do this for us:<div class="informalexample"><pre class="programlisting">...
+&lt;?php if (Captcha::checkRequirements() &amp;&amp; Yii::$app-&gt;user-&gt;isGuest): ?&gt;
+    &lt;div class="control-group"&gt;
+        &lt;?=Captcha::widget([
+            'model' =&gt; $model,
+            'attribute' =&gt; 'verifyCode',
+        ]);?&gt;
+        &lt;?php echo Html::error($model, 'verifyCode')?&gt;
+    &lt;/div&gt;
+&lt;?php endif; ?&gt;
+...</pre></div></li><li class="listitem">Also, do not forget <a class="indexterm" id="id291"/>to add the <code class="literal">Captcha</code> import in the header section of the view:<div class="informalexample"><pre class="programlisting">&lt;?php
+    use yii\helpers\Html;
+    use yii\captcha\Captcha;
+?&gt;
+….</pre></div></li><li class="listitem">That is it. Now, you <a class="indexterm" id="id292"/>can run the e-mail controller and see Captcha in action, as shown in the following screenshot:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00416.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div><p>If there are no errors on the screen and no <code class="literal">Captcha</code> field on the form, most probably, you don't have the GD PHP or Imagick extensions installed and configured. Imagick or GD is required for Captcha because it generates images. We have added several <code class="literal">Captcha::checkRequirements()</code> checks, so the application will not use Captcha if the image cannot be displayed, but it will still work.</p></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec158"/>How it works...</h2></div></div></div><p>In a view, we call the Captcha widget that renders the <code class="literal">img</code> tag with a <code class="literal">src</code> attribute pointing to the Captcha <a class="indexterm" id="id293"/>action we added to the controller. In this action, an image <a class="indexterm" id="id294"/>with a random word is generated. The word generated is a code that the user should enter into the form. It is stored in a user session and an image is displayed to the user. When the user enters the e-mail and verification code into the form, we assign these values to the form model and then validate it. For the verification of the code field, we use <code class="literal">CaptchaValidator</code>. It gets the code from the user session and compares it to the code entered. If they don't match, the model data is considered invalid.</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec159"/>There's more...</h2></div></div></div><p>If you restrict access to controller actions by using the <code class="literal">accessRules</code> controller method, don't forget to grant everyone access to them:</p><div class="informalexample"><pre class="programlisting">public function behaviors()
+{
+    return [
+        'access' =&gt; [
+            'class' =&gt; AccessControl::className(),
+            'rules' =&gt; [
+                [
+                    'actions' =&gt; ['index', 'captcha'],
+                    'allow' =&gt; true,
+                ]
+            ],
+        ],
+    ];
+}</pre></div></div></div>
+<div class="section" id="1JFUC1-ae331331bc644dc9b658d3634f0748da" title="Customizing Captcha"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec48"/>Customizing Captcha</h1></div></div></div><p>A standard Yii Captcha is good enough to protect you from spam, but there are situations where you may want to <a class="indexterm" id="id295"/>customize it, such as the following:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"> You face a spam bot that can read image text and you need to add more security</li><li class="listitem"> You want to make it more interesting or easier to enter the Captcha text</li></ul></div><p>In our example, we will modify Yii's Captcha so it will require the user to solve a really simple arithmetic puzzle instead of just repeating the text in an image.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec160"/>Getting ready</h2></div></div></div><p>As a starting point for this example, we will take the result of the <span class="emphasis"><em>Adding and customizing CaptchaWidget</em></span> recipe. Alternatively, you can take any form that uses Captcha, as we are not modifying the existing code a lot.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec161"/>How to do it...</h2></div></div></div><p>We need to customize <code class="literal">CaptchaAction</code>, which generates the code and renders its image representation. The code should be <a class="indexterm" id="id296"/>a random number and the representation should be an arithmetic expression that gives the same result:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create an <code class="literal">@app/components/MathCaptchaAction.php</code> action as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\components;
+use \Yii;
+use yii\captcha\CaptchaAction;
+class MathCaptchaAction extends CaptchaAction
+{
+    protected function renderImage($code)
+    {
+        return parent::renderImage($this-&gt;getText($code));
+    }
+    protected function generateVerifyCode()
+    {
+        return mt_rand((int)$this-&gt;minLength,
+        (int)$this-&gt;maxLength);
+    }
+    protected function getText($code)
+    {
+        $code = (int) $code;
+        $rand = mt_rand(1, $code-1);
+        $op = mt_rand(0, 1);
+        if ($op) {
+            return $code - $rand . " + "  . $rand;
+        }
+        else {
+            return $code + $rand . " - " . " " . $rand;
+        }
+    }
+}</pre></div></li><li class="listitem">Now, in our controller's <code class="literal">actions</code> method, we need to replace <code class="literal">CaptchaAction</code> with our own Captcha action, as follows:<div class="informalexample"><pre class="programlisting">public function actions()
+{
+    return [
+        'captcha' =&gt; [
+            'class' =&gt; 'app\components\MathCaptchaAction',
+            'minLength' =&gt; 1,
+            'maxLength' =&gt; 10,
+        ],
+    ];
+}</pre></div></li><li class="listitem">Now, run your form and try the new Captcha. It will show arithmetic expressions with numbers <a class="indexterm" id="id297"/>from 1 to 10 and will require entering an answer, as shown in the following screenshot:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00418.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div><p>We override two <code class="literal">CaptchaAction</code> methods. In <code class="literal">generateVerifyCode()</code>, we generate a random number instead of text. Then, as we need to render an expression instead of just showing text, we override <code class="literal">renderImage</code>. The expression itself is generated in our custom <code class="literal">getText()</code> method.</p><p>The <code class="literal">$minLength</code> and <code class="literal">$maxLenght</code> properties are already defined in <code class="literal">CaptchaAction</code>, so we don't have to add them to our <code class="literal">Math</code>
+<code class="literal">CaptchaAction</code> class.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec162"/>See also</h2></div></div></div><p>For further <a class="indexterm" id="id298"/>information, refer to the following:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/yii-captcha-captcha.html">http://www.yiiframework.com/doc-2.0/yii-captcha-captcha.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/yii-captcha-captchaaction.html">http://www.yiiframework.com/doc-2.0/yii-captcha-captchaaction.html</a></li><li class="listitem">The <span class="emphasis"><em>Using standalone actions</em></span> recipe in <a class="link" href="part0024.xhtml#MSDG1-ae331331bc644dc9b658d3634f0748da" title="Chapter 2. Routing, Controllers, and Views">Chapter 2</a>, <span class="emphasis"><em>Routing, Controllers, and Views</em></span></li></ul></div></div></div>
+<div class="section" title="Creating a custom input widget"><div class="titlepage" id="1KEEU2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch04lvl1sec49"/>Creating a custom input widget</h1></div></div></div><p>Yii has a very good set of form widgets, but as with every framework out there, Yii does not have them all. In <a class="indexterm" id="id299"/>this recipe, we will learn how to create your own input widget. For our example, we will create a range input widget.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec163"/>Getting ready</h2></div></div></div><p>Create a new application by using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec164"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a widget file, <code class="literal">@app/components/RangeInputWidget.php</code>, as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\components;
+use yii\base\Exception;
+use yii\base\Model;
+use yii\base\Widget;
+use yii\helpers\Html;
+class RangeInputWidget extends Widget
+{
+    public $model;
+    public $attributeFrom;
+    public $attributeTo;
+    public $htmlOptions = [];
+    protected function hasModel()
+    {
+        return $this-&gt;model instanceof Model&amp;&amp; $this-&gt;attributeFrom !== null&amp;&amp; $this-&gt;attributeTo !== null;}
+    public function run()
+    {
+        if (!$this-&gt;hasModel()) {
+            throw new Exception('Model must be set');
+        }
+        return Html::activeTextInput($this-&gt;model, $this-&gt;attributeFrom, $this-&gt;htmlOptions)
+            .' &amp;rarr; '
+            .Html::activeTextInput($this-&gt;model, $this-&gt;attributeTo, $this-&gt;htmlOptions);
+    }
+}</pre></div></li><li class="listitem">Create a <a class="indexterm" id="id300"/>controller file, <code class="literal">@app/controllers/RangeController.php</code>, as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\controllers;
+use Yii;
+use yii\web\Controller;
+use app\models\RangeForm;
+class RangeController extends Controller
+{
+    public function actionIndex()
+    {
+        $model = new RangeForm();
+        if ($model-&gt;load(Yii::$app-&gt;request-&gt;post()) &amp;&amp; $model-&gt;validate()) {
+            Yii::$app-&gt;session-&gt;setFlash('rangeFormSubmitted',
+                'The form was successfully processed!'
+            );
+        }
+        return $this-&gt;render('index', array(
+            'model' =&gt; $model,
+        ));
+    }
+}</pre></div></li><li class="listitem">Create a form file, <code class="literal">@app/models/RangeForm.php</code>, as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\models;
+use yii\base\Model;
+class RangeForm extends Model
+{
+    public $from;
+    public $to;
+    public function rules()
+    {
+        return [
+            [['from', 'to'], 'number', 'integerOnly' =&gt; true],
+            ['from', 'compare', 'compareAttribute' =&gt; 'to', 'operator' =&gt; '&lt;='],
+        ];
+    }
+}</pre></div></li><li class="listitem">Create <a class="indexterm" id="id301"/>a view file, <code class="literal">@app/views/range/index.php</code>, as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+use yii\helpers\Html;
+use yii\bootstrap\ActiveForm;
+use app\components\RangeInputWidget;
+?&gt;
+&lt;h1&gt;Range form&lt;/h1&gt;
+&lt;?php if (Yii::$app-&gt;session-&gt;hasFlash('rangeFormSubmitted')): ?&gt;
+    &lt;div class="alert alert-success"&gt;
+        &lt;?= Yii::$app-&gt;session-&gt;getFlash('rangeFormSubmitted'); ?&gt;
+    &lt;/div&gt;
+&lt;?php endif?&gt;
+&lt;?= Html::errorSummary($model, ['class'=&gt;'alert alert-danger'])?&gt;
+&lt;?php $form = ActiveForm::begin([
+    'options' =&gt; [
+        'class' =&gt; 'form-inline'
+    ]
+]); ?&gt;
+    &lt;div class="form-group"&gt;
+        &lt;?= RangeInputWidget::widget([
+            'model' =&gt; $model,
+            'attributeFrom' =&gt; 'from',
+            'attributeTo' =&gt; 'to',
+            'htmlOptions' =&gt; [
+                'class' =&gt;'form-control'
+            ]
+        ]) ?&gt;
+    &lt;/div&gt;
+    &lt;?= Html::submitButton('Submit', ['class' =&gt; 'btn btn-primary', 'name' =&gt; 'contact-button']) ?&gt;
+&lt;?php ActiveForm::end(); ?&gt;</pre></div></li><li class="listitem">Run a <code class="literal">range</code> controller by opening <code class="literal">index.php?r=range</code> and you'll get the following:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00420.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">Enter <code class="literal">200</code> in <a class="indexterm" id="id302"/>the first text input field and <code class="literal">300</code> in the second, and you'll get the following:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00422.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">The widget outputs an error if the first value is bigger than the second; that is it. Try to input correct values, <code class="literal">100</code> and <code class="literal">200</code>, for the first and second inputs, respectively:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00424.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec165"/>How it works...</h2></div></div></div><p>We write the range <a class="indexterm" id="id303"/>input widget, which requires four parameters:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><code class="literal">model</code>: If it is not set, an exception will be thrown</li><li class="listitem"><code class="literal">attributeFrom</code>: This is used to set minimum range value</li><li class="listitem"><code class="literal">attributeTo</code>: This is used to set maximum range value</li><li class="listitem"><code class="literal">htmlOptions</code>: It is passed to each input</li></ul></div><p>This widget is used in form validation, and is set to check that the first value is less than or equal to the second value.</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec166"/>There's more...</h2></div></div></div><p>The Yii2 framework has an official Twitter Bootstrap extension that provides you with a pack of PHP wrappers <a class="indexterm" id="id304"/>over Twitter Bootstrap widgets. Before you <a class="indexterm" id="id305"/>write your own widget, check whether a Bootstrap widget exists at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/extbootstrap-index.html">http://www.yiiframework.com/doc-2.0/extbootstrap-index.html</a>.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec167"/>See also</h2></div></div></div><p>In order to learn more <a class="indexterm" id="id306"/>about widgets, you can use the following resources:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/yii-base-widget.html">http://www.yiiframework.com/doc-2.0/yii-base-widget.html</a></li><li class="listitem"><a class="ulink" href="https://github.com/yiisoft/yii2-bootstrap/blob/master/docs/guide/usage-widgets.md">https://github.com/yiisoft/yii2-bootstrap/blob/master/docs/guide/usage-widgets.md</a></li></ul></div></div></div>
+<div class="section" title="Tabular input"><div class="titlepage" id="1LCVG2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch04lvl1sec50"/>Tabular input</h1></div></div></div><p>In this section, we will show you how to use a model to save and validate related models. Sometimes you will need to handle multiple models of the same kind in a single form.</p><p>For instance, we have <a class="indexterm" id="id307"/>contests and prizes for contests. Any contest might contain an unlimited number of prizes. So, we need the ability to create a contest with prizes, validate them, display all errors, and save the primary model (contest model) and all related models (prize models) to the database.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec168"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new application by using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Create migrations for contest and prize tables with the following commands:<div class="informalexample"><pre class="programlisting">./yii migrate/create create_table_contest_and_prize_table
+Update just created migration's methods up() and down() by following code
+public function up()
+{
+    $tableOptions = null;
+    if ($this-&gt;db-&gt;driverName === 'mysql') {
+        $tableOptions = 'CHARACTER SET utf8 COLLATE utf8_general_ci ENGINE=InnoDB';
+    }
+    $this-&gt;createTable('{{%contest}}', [
+        'id' =&gt; Schema::TYPE_PK,
+        'name' =&gt; Schema::TYPE_STRING . ' NOT NULL',
+    ], $tableOptions);
+    $this-&gt;createTable('{{%prize}}', [
+        'id' =&gt; Schema::TYPE_PK,
+        'name' =&gt; Schema::TYPE_STRING,
+        'amount' =&gt; Schema::TYPE_INTEGER,
+    ], $tableOptions);
+    $this-&gt;createTable('{{%contest_prize_assn}}', [
+        'contest_id' =&gt; Schema::TYPE_INTEGER,
+        'prize_id' =&gt; Schema::TYPE_INTEGER,
+    ], $tableOptions);
+    $this-addForeignKey('fk_contest_prize_assn_contest_id', '{{%contest_prize_assn}}', 'contest_id', {{%contest}}', 'id');
+    $this-&gt;addForeignKey('fk_contest_prize_assn_prize_id', '{{%contest_prize_assn}}', 'prize_id', '{{%prize}}', 'id');
+}
+public function down()
+{
+    $this-dropForeignKey('fk_contest_prize_assn_contest_id', '{{%contest_prize_assn}}');
+    $this-&gt;dropForeignKey('fk_contest_prize_assn_prize_id', '{{%contest_prize_assn}}');
+    $this-&gt;dropTable('{{%contest_prize_assn}}');
+    $this-&gt;dropTable('{{%prize}}');
+    $this-&gt;dropTable('{{%contest}}');
+}</pre></div></li><li class="listitem">Then, install migration <a class="indexterm" id="id308"/>with the following command:<div class="informalexample"><pre class="programlisting">./yii migrate/up</pre></div></li><li class="listitem">With Gii, generate contest, prize, and <code class="literal">ContestPrizeAssn</code> models.</li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec169"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Let's create <code class="literal">@app/controllers/ContestController.php</code> with the following code:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\controllers;
+use app\models\Contest;
+use app\models\ContestPrizeAssn;
+use app\models\Prize;
+use Yii;
+use yii\base\Model;
+use yii\helpers\VarDumper;
+use yii\web\Controller;
+class ContestController extends Controller
+{
+    public function actionCreate()
+    {
+        $contestName = 'Happy New Year';
+        $firstPrize = new Prize();
+        $firstPrize-&gt;name = 'Iphone 6s';
+        $firstPrize-&gt;amount = 4;
+        $secondPrize = new Prize();
+        $secondPrize-&gt;name = 'Sony Playstation 4';
+        $secondPrize-&gt;amount = 2;
+        $contest = new Contest();
+        $contest-&gt;name = $contestName;
+        $prizes = [$firstPrize, $secondPrize];
+        if ($contest-&gt;validate() &amp;&amp; Model::validateMultiple($prizes)) {
+            $contest-&gt;save(false);
+            foreach ($prizes as $prize) {
+                $prize-&gt;save(false);
+                $contestPrizeAssn = new ContestPrizeAssn();
+                $contestPrizeAssn-&gt;prize_id = $prize-&gt;id;
+                $contestPrizeAssn-&gt;contest_id = $contest&gt;id;
+                $contestPrizeAssn-&gt;save(false);
+            }
+            return $this-&gt;renderContent(
+                'All prizes have been successfully saved!'
+            );
+        } else {
+            return $this-&gt;renderContent(
+                VarDumper::dumpAsString($contest-&gt;getErrors())
+            );
+        }
+    }
+    public function actionUpdate()
+    {
+        $prizes = Prize::find()-&gt;all();
+        if (Model::loadMultiple($prizes, Yii::$app-&gt;request-&gt;post()) &amp;&amp; Model::validateMultiple($prizes)) {
+            foreach ($prizes as $prize) {
+                $prize-&gt;save(false);
+            }
+            return $this-&gt;renderContent(
+                'All prizes have been successfully saved!'
+            );
+        }
+        return $this-&gt;render('update', ['prizes' =&gt; $prizes]);
+    }
+}</pre></div></li><li class="listitem">Create <code class="literal">@app/views/contest/update.php</code> and place <a class="indexterm" id="id309"/>the following code inside it:<div class="informalexample"><pre class="programlisting">&lt;?php
+use yii\helpers\Html;
+use yii\widgets\ActiveForm;
+$form = ActiveForm::begin();
+foreach ($prizes as $i =&gt; $prize) {
+    echo $form-&gt;field($prize, "[$i]amount")-&gt;label($prize-&gt;name);
+}
+echo Html::submitButton('submit' , ['class' =&gt; 'btn btn-success']);
+ActiveForm::end();</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec170"/>How it works...</h2></div></div></div><p>The following information shows how to implement tabular input with Yii.</p><p>In the <code class="literal">contest/update</code> action, <a class="indexterm" id="id310"/>we will be able to display all prizes with their amounts and edit them all at once. We've used two special Yii methods:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><code class="literal">Model::loadMultiple()</code>: This method populates a set of models with data from the end user</li><li class="listitem"><code class="literal">Model::validateMultiple()</code>: This methods takes a set of models and validates them all at once</li></ul></div><p>Because we've validated our models before with <code class="literal">validateMultiple()</code>, we're passing <code class="literal">false</code> as a parameter to <code class="literal">save()</code> to avoid running validation twice.</p><p>First, visit <code class="literal">/index.php?r=contest/create page</code>. After visiting, you will see the page that will validate and create <code class="literal">'Happy New Year'</code> with two prizes, and will pass the prizes to the current contest model. You should note that we will only save the contest model and prizes to the database if they are valid:</p><div class="mediaobject"><img alt="How it works..." src="../Images/image00425.jpeg"/></div><p style="clear:both; height: 1em;"> </p><p>It is provided by following condition:</p><div class="informalexample"><pre class="programlisting">if ($contest-&gt;validate() &amp;&amp; Model::validateMultiple($prizes)) { ...}</pre></div><p>Go to the <code class="literal">/index.php?r=contest/update</code> page and you will see this form:</p><div class="mediaobject"><img alt="How it works..." src="../Images/image00429.jpeg"/></div><p style="clear:both; height: 1em;"> </p><p>In the <code class="literal">@app/views/contest/update.php</code> for each prize, we render a name and an input with an amount. We must <a class="indexterm" id="id311"/>add an index to each input name so that <code class="literal">Model::loadMultiple()</code> may identify which model to fill with which values.</p><p>In conclusion, this approach is used for collecting tabular input data when you process all your attributes from a view form and populate parent and related models from the form.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec171"/>See also</h2></div></div></div><p>For further <a class="indexterm" id="id312"/>information, refer to the following URL:</p><p>
+<a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-input-tabular-input.html#collecting-tabular-input">http://www.yiiframework.com/doc-2.0/guide-input-tabular-input.html#collecting-tabular-input</a>
+</p></div></div>
+<div class="section" id="1MBG21-ae331331bc644dc9b658d3634f0748da" title="Conditional validation"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec51"/>Conditional validation</h1></div></div></div><p>There are cases when <a class="indexterm" id="id313"/>it is necessary to enable or disable specific validation rules in the model. Yii2 provides a mechanism to do that.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec172"/>Getting ready</h2></div></div></div><p>Create a new application by using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-startinstallation.html">http://www.yiiframework.com/doc-2.0/guide-startinstallation.html</a>.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec173"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a form file, <code class="literal">@app/models/DeliveryForm.php</code>, as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\models;
+use app\components\WordsValidator;
+use yii\base\Model;
+class DeliveryForm extends Model
+{
+    const TYPE_PICKUP = 1;
+    const TYPE_COURIER = 2;
+    public $type;
+    public $address;
+    public function rules()
+    {
+        return [
+            ['type', 'required'],
+            ['type', 'in', 'range'=&gt;[self::TYPE_PICKUP, self::TYPE_COURIER]],
+            ['address', 'required', 'when' =&gt; function ($model) {
+                return $model-&gt;type == self::TYPE_COURIER;
+            }, 'whenClient' =&gt; "function (attribute, value) {
+                return $('#deliveryform-type').val() == '".self::TYPE_COURIER."';
+            }"]
+        ];
+    }
+    public function typeList()
+    {
+        return [
+            self::TYPE_PICKUP =&gt; 'Pickup',
+            self::TYPE_COURIER =&gt; 'Courier delivery',
+        ];
+    }
+}</pre></div></li><li class="listitem">Create a <a class="indexterm" id="id314"/>controller file, <code class="literal">@app/controllers/ValidationController.php</code>, as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\controllers;
+use Yii;
+use yii\web\Controller;
+use app\models\DeliveryForm;
+class ValidationController extends Controller
+{
+    public function actionIndex()
+    {
+        $model = new DeliveryForm();
+        if ($model-&gt;load(Yii::$app-&gt;request-&gt;post()) &amp;&amp; $model-&gt;validate()) {
+            Yii::$app-&gt;session-&gt;setFlash('success',
+                'The form was successfully processed!'
+            );
+        }
+        return $this-&gt;render('index', array(
+            'model' =&gt; $model,
+        ));
+    }
+}</pre></div></li><li class="listitem">Create <a class="indexterm" id="id315"/>a view file, <code class="literal">@app/views/validation/index.php</code>, as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+use yii\bootstrap\ActiveForm;
+use yii\helpers\Html;
+?&gt;
+    &lt;h1&gt;Delivery form&lt;/h1&gt;
+    &lt;?php if (Yii::$app-&gt;session-&gt;hasFlash('success')): ?&gt;
+    &lt;div class="alert alert-success"&gt;&lt;?= Yii::$app-&gt;session-&gt;getFlash('success'); ?&gt;&lt;/div&gt;
+    &lt;?php endif; ?&gt;
+    &lt;?php $form = ActiveForm::begin(); ?&gt;
+    &lt;?= $form-&gt;field($model, 'type')-&gt;dropDownList($model-&gt;typeList(), [
+        'prompt'=&gt;'Select delivery type']
+    ) ?&gt;
+    &lt;?= $form-&gt;field($model, 'address') ?&gt;
+    &lt;div class="form-group"&gt;
+        &lt;?= Html::submitButton('Submit', ['class' =&gt; 'btn btn-primary']) ?&gt;
+    &lt;/div&gt;
+&lt;?php ActiveForm::end(); ?&gt;</pre></div></li><li class="listitem">Run the <code class="literal">validation </code>controller by opening the <code class="literal">index.php?r=validation</code> URL, and choose the <code class="literal">courier delivery</code> value for type input; then you'll get the following:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00431.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec174"/>How it works...</h2></div></div></div><p>The <code class="literal">DeliveryForm address</code> attribute is <a class="indexterm" id="id316"/>required when the <code class="literal">type</code> attribute is set to <code class="literal">DeliveryForm::TYPE_COURIER</code>; otherwise, we choose the <code class="literal">Courier delivery</code> option in <code class="literal">type</code> select.</p><p>Also, to support client-side conditional validation, we configure the <code class="literal">whenClient</code> property, which takes a string representing a JavaScript function whose return value determines whether to apply the rule or not.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec175"/>See also</h2></div></div></div><p>For further information, refer <a class="indexterm" id="id317"/>to <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guideinput-validation.html#conditional-validation">http://www.yiiframework.com/doc-2.0/guideinput-validation.html#conditional-validation</a>
+</p></div></div>
+<div class="section" title="Complex forms with multiple models"><div class="titlepage" id="1NA0K2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch04lvl1sec52"/>Complex forms with multiple models</h1></div></div></div><p>When dealing with some complex data, it is possible that you may need to use multiple different models to <a class="indexterm" id="id318"/>collect the user input. For example, you <a class="indexterm" id="id319"/>have an order form with user information such as first name, last name, and phone number; you also have a delivery address and some kind of product.</p><p>You would like to save all this data in one form. With Yii models and support forms, you can easily do this. Assuming that the user info will be stored in the user table and in the order form, we will save product information and the <code class="literal">user_id</code> of the user who has ordered a product. We also have a product table with some information in it.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec176"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new application by using the Composer package manger, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Create migrations for contest and prize tables with the following commands:<div class="informalexample"><pre class="programlisting">./yii migrate/create create_order_tables</pre></div></li><li class="listitem">Update the newly-created migration's <code class="literal">up()</code> and <code class="literal">down()</code> methods with the following code:<div class="informalexample"><pre class="programlisting">&lt;?php
+use yii\db\Schema;
+use yii\db\Migration;
+use app\models\Product;
+class m150813_161817_create_order_form_tables extends Migration
+{
+    public function up()
+    {
+        $tableOptions = null;
+        if ($this-&gt;db-&gt;driverName === 'mysql') {
+            $tableOptions = 'CHARACTER SET utf8 COLLATE utf8_general_ci ENGINE=InnoDB';
+        }
+        $this-&gt;createTable('user', [
+            'id' =&gt; Schema::TYPE_PK,
+            'first_name' =&gt; Schema::TYPE_STRING . ' NOT NULL',
+            'last_name' =&gt; Schema::TYPE_STRING . ' NOT NULL',
+            'phone' =&gt; Schema::TYPE_STRING . ' NOT NULL',
+        ], $tableOptions);
+        $this-&gt;createTable('product', [
+            'id' =&gt; Schema::TYPE_PK,
+            'title' =&gt; Schema::TYPE_STRING . ' NOT NULL',
+            'price' =&gt; Schema::TYPE_FLOAT . '(6,2) ',
+        ], $tableOptions);
+        $this-&gt;createTable('order', [
+            'id' =&gt; Schema::TYPE_PK,
+            'user_id' =&gt; Schema::TYPE_INTEGER . ' NULL',
+            'address' =&gt; Schema::TYPE_STRING . ' NOT NULL',
+            'product_id' =&gt; Schema::TYPE_INTEGER . ' NOT NULL',
+        ], $tableOptions);
+        $product1 = new Product();
+        $product1-&gt;title = 'Iphone 6';
+        $product1-&gt;price = 400.5;
+        $product1-&gt;save();
+        $product3 = new Product();
+        $product3-&gt;title = 'Samsung Galaxy Note 5';
+        $product3-&gt;price = 900;
+        $product3-&gt;save();
+        $this-&gt;addForeignKey('fk_order_product_id', 'order', 'product_id', 'product', 'id');
+    }
+    public function down()
+    {
+        $this-&gt;dropTable('order');
+        $this-&gt;dropTable('user');
+        $this-&gt;dropTable('product');
+    }
+}</pre></div></li><li class="listitem">Then, install <a class="indexterm" id="id320"/>migration with the following command:<div class="informalexample"><pre class="programlisting">./yii migrate/up</pre></div></li><li class="listitem">With Gii, <a class="indexterm" id="id321"/>generate user, order, and product models.</li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec177"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create <code class="literal">@app/controllers/TestController</code> with the following code:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\controllers;
+use app\models\Order;
+use app\models\User;
+use Yii;
+use yii\web\Controller;
+class TestController extends Controller
+{
+    public function actionOrder()
+    {
+        $user = new User();
+        $order = new Order();
+        if ($user-&gt;load(Yii::$app-&gt;request-&gt;post()) &amp;&amp; $order-&gt;load(Yii::$app-&gt;request-&gt;post())) {
+        if ($user-&gt;validate() &amp;&amp; $order-&gt;validate()) {
+            $user-&gt;save(false);
+            $order-&gt;user_id = $user-&gt;id;
+            $order-&gt;save(false);
+            $this-&gt;redirect(['/test/result', 'id' =&gt; $order-&gt;id]);
+            }
+        }
+        return $this-&gt;render('order', ['user' =&gt; $user, 'order' =&gt; $order]);
+    }
+    public function actionResult($id)
+    {
+        $order = Order::find($id)-&gt;with('product', 'user')-&gt;one();
+        return $this-&gt;renderContent(
+            'Product: ' . $order-&gt;product-&gt;title . '&lt;/br&gt;' .
+            'Price: ' . $order-&gt;product-&gt;price . '&lt;/br&gt;' .
+            'Customer: ' . $order-&gt;user-&gt;first_name . ' ' . $order-&gt;user-&gt;last_name . '&lt;/br&gt;' .
+            'Address: ' . $order-&gt;address
+        );
+    }
+}</pre></div></li><li class="listitem">Then <a class="indexterm" id="id322"/>create a view file, <code class="literal">@app/views/test/order.php</code>, and <a class="indexterm" id="id323"/>add the following code:<div class="informalexample"><pre class="programlisting">&lt;?php
+use yii\helpers\Html;
+use yii\widgets\ActiveForm;
+use app\models\Product;
+use yii\helpers\ArrayHelper;
+/**
+* @var $user \app\models\User
+* @var $order \app\models\Order
+*/
+$form = ActiveForm::begin([
+    'id' =&gt; 'order-form',
+    'options' =&gt; ['class' =&gt; 'form-horizontal'],
+]) ?&gt;
+&lt;?= $form-&gt;field($user, 'first_name')-&gt;textInput(); ?&gt;
+&lt;?= $form-&gt;field($user, 'last_name')-&gt;textInput(); ?&gt;
+&lt;?= $form-&gt;field($user, 'phone')-&gt;textInput(); ?&gt;
+&lt;?= $form-&gt;field($order, 'product_id')-&gt;dropDownList(ArrayHelper::map(Product::find()-&gt;all(), 'id', 'title')); ?&gt;
+&lt;?= $form-&gt;field($order, 'address')-&gt;textInput(); ?&gt;
+&lt;?= Html::submitButton('Save', ['class' =&gt; 'btn btn-primary']) ?&gt;
+&lt;?php ActiveForm::end() ?&gt;</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec178"/>How it works...</h2></div></div></div><p>You can <a class="indexterm" id="id324"/>see the form at <code class="literal">http://yii-book.app/index.php?r=test/order</code>. Our form <a class="indexterm" id="id325"/>collects information from the user and order models.</p><p>Let's fill out our form:</p><div class="mediaobject"><img alt="How it works..." src="../Images/image00434.jpeg"/></div><p style="clear:both; height: 1em;"> </p><p>After saving, <a class="indexterm" id="id326"/>you will <a class="indexterm" id="id327"/>see the following result:</p><div class="mediaobject"><img alt="How it works..." src="../Images/image00436.jpeg"/></div><p style="clear:both; height: 1em;"> </p><p>In the controller, we <a class="indexterm" id="id328"/>validate and store it. Of course, this example <a class="indexterm" id="id329"/>is very simple. In real projects, you may have more than one model and you will be able to use this approach for them. This approach is very useful when you want to create or update more than one instance in the same form.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec179"/>See also</h2></div></div></div><p>For further <a class="indexterm" id="id330"/>information, refer to <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-input-multiple-models.html">http://www.yiiframework.com/doc-2.0/guide-input-multiple-models.html</a>
+</p></div></div>
+<div class="section" title="AJAX-dependent drop-down list"><div class="titlepage" id="1O8H62-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch04lvl1sec53"/>AJAX-dependent drop-down list</h1></div></div></div><p>Often, you'll need a form with two dropdowns, and one dropdown's values will be dependent on the <a class="indexterm" id="id331"/>value of the other dropdown. Using Yii's built-in AJAX functionality, you can create such a dropdown.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec180"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new application by using composer, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Create an <code class="literal">@app/model/Product.php</code> model as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\models;
+use yii\db\ActiveRecord;
+class Product extends ActiveRecord
+{
+    public function rules()
+    {
+        return [
+            ['title', 'string'],
+            [['title', 'category_id', 'sub_category_id'], 'required'],
+            ['category_id', 'exist', 'targetAttribute' =&gt; 'id', 'targetClass' =&gt; 'app\models\Category'],
+            ['sub_category_id', 'exist', 'targetAttribute' =&gt; 'id', 'targetClass' =&gt; 'app\models\Category'],
+        ];
+    }
+    public function attributeLabels()
+    {
+        return [
+            'category_id' =&gt; 'Category',
+            'sub_category_id' =&gt; 'Sub category',
+        ];    }
+}</pre></div></li><li class="listitem">Create an <code class="literal">@app/models/Category.php</code> model <a class="indexterm" id="id332"/>as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\models;
+use yii\db\ActiveRecord;
+class Category extends ActiveRecord
+{
+    public function rules()
+    {
+        return [
+            ['title', 'string'],
+        ];
+    }
+    /**
+    * @return array
+    */
+    public static function getSubCategories($categoryId)
+    {
+        $subCategories = [];
+        if ($categoryId) {
+            $subCategories = self::find()
+                -&gt;where(['category_id' =&gt; $categoryId])
+                -&gt;asArray()
+                -&gt;all();
+        }
+        return $subCategories;
+    }
+}</pre></div></li><li class="listitem">Create a <code class="literal">create_category_and_product_tables</code> migration with the following command:<div class="informalexample"><pre class="programlisting">./yii migrate/create create_category_and_product_tables</pre></div></li><li class="listitem">Update the <a class="indexterm" id="id333"/>just-created migration's methods and list of imported classes as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+use yii\db\Schema;
+use yii\db\Migration;
+class m150813_005030_create_categories extends Migration
+{
+    public function up()
+    {
+        $tableOptions = null;
+        $this-&gt;createTable('{{%product}}', [
+            'id' =&gt; Schema::TYPE_PK,
+            'category_id' =&gt; Schema::TYPE_INTEGER . ' NOT NULL',
+            'sub_category_id' =&gt; Schema::TYPE_INTEGER . ' NOT NULL',
+            'title' =&gt; Schema::TYPE_STRING . ' NOT NULL',
+        ], $tableOptions);
+        $this-&gt;createTable('{{%category}}', [
+            'id' =&gt; Schema::TYPE_PK,
+            'category_id' =&gt; Schema::TYPE_INTEGER,
+            'title' =&gt; Schema::TYPE_STRING . ' NOT NULL',
+        ], $tableOptions);
+        $this-&gt;addForeignKey('fk_product_category_id', '{{%product}}', 'category_id', '{{%category}}', 'id');
+        $this-&gt;addForeignKey('fk_product_sub_category_id', '{{%product}}', 'category_id', '{{%category}}', 'id');
+        $this-&gt;batchInsert('{{%category}}', ['id', 'title'], [
+            [1, 'TV, Audio/Video'],
+            [2, 'Photo'],
+            [3, 'Video']
+        ]);
+        $this-&gt;batchInsert('{{%category}}', ['category_id', 'title'], [
+            [1, 'TV'],
+            [1, 'Acoustic System'],
+            [2, 'Cameras'],
+            [2, 'Flashes and Lenses '],
+            [3, 'Video Cams'],
+            [3, 'Action Cams'],
+            [3, 'Accessories']
+        ]);
+    }
+    public function down()
+    {
+        $this-&gt;dropTable('{{%product}}');
+        $this-&gt;dropTable('{{%category}}');
+    }
+}</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec181"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a <a class="indexterm" id="id334"/>controller file, <code class="literal">@app/controllers/DropdownController.php</code>, as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\controllers;
+use app\models\Product;
+use app\models\Category;
+use app\models\SubCategory;
+use Yii;
+use yii\helpers\ArrayHelper;
+use yii\helpers\Json;
+use yii\web\Controller;
+use yii\web\HttpException;
+class DropdownController extends Controller
+{
+    public function actionGetSubCategories($id)
+    {
+        if (!Yii::$app-&gt;request-&gt;isAjax) {
+            throw new HttpException(400, 'Only ajax request is allowed.');
+        }
+        return Json::encode(Category::getSubCategories($id));
+    }
+    public function actionIndex()
+    {
+        $model = new Product();
+        if ($model-&gt;load(Yii::$app-&gt;request-&gt;post()) &amp;&amp; $model-&gt;validate()) {
+            Yii::$app-&gt;session-&gt;setFlash('success',
+            'Model was successfully saved'
+            );
+        }
+        return $this-&gt;render('index', [
+            'model' =&gt; $model,
+        ]);
+    }
+}</pre></div></li><li class="listitem">Create <a class="indexterm" id="id335"/>a view file, <code class="literal">@app/views/dropdown/index.php</code>, as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+use yii\bootstrap\ActiveForm;
+use yii\helpers\Html;
+use yii\helpers\Url;
+use app\models\Category;
+use yii\helpers\ArrayHelper;
+use yii\web\View;
+$url = Url::toRoute(['dropdown/get-sub-categories']);
+$this-&gt;registerJs("
+(function(){
+    var select = $('#product-sub_category_id');
+    var buildOptions = function(options) {
+        if (typeof options === 'object') {
+            select.children('option').remove();
+            $('&lt;option /&gt;')
+                .appendTo(select)
+                .html('Select a sub category')
+            $.each(options, function(index, option) {
+                $('&lt;option /&gt;', {value:option.id})
+                .appendTo(select)
+                .html(option.title);
+            });
+        }
+    };
+    var categoryOnChange = function(category_id){
+        $.ajax({
+            dataType: 'json',
+            url: '" . $url . "&amp;id=' + category_id ,
+            success: buildOptions
+        });
+    };
+    window.buildOptions = buildOptions;
+    window.categoryOnChange = categoryOnChange;
+})();
+", View::POS_READY);
+?&gt;
+&lt;h1&gt;Product&lt;/h1&gt;
+&lt;?php if (Yii::$app-&gt;session-&gt;hasFlash('success')): ?&gt;
+    &lt;div class="alert alert-success"&gt;&lt;?= Yii::$app-&gt;session-&gt;getFlash('success'); ?&gt;&lt;/div&gt;
+&lt;?php endif; ?&gt;
+&lt;?php $form = ActiveForm::begin(); ?&gt;
+    &lt;?= $form-&gt;field($model, 'title')-&gt;textInput() ?&gt;
+    &lt;?= $form-&gt;field($model, 'category_id')-&gt;dropDownList(ArrayHelper::map(
+        Category::find()-&gt;where('category_id IS NULL')-&gt;asArray()-&gt;all(),'id', 'title'), [
+        'prompt' =&gt; 'Select a category',
+        'onChange' =&gt; 'categoryOnChange($(this).val());',
+    ]) ?&gt;
+    &lt;?= $form-&gt;field($model, 'sub_category_id')-&gt;dropDownList(
+        ArrayHelper::map(Category::getSubCategories($model-&gt;sub_category_id), 'id' ,'title'), [
+        'prompt' =&gt; 'Select a sub category',
+    ]) ?&gt;
+    &lt;div class="form-group"&gt;
+        &lt;?= Html::submitButton('Submit', ['class' =&gt; 'btn btn-primary']) ?&gt;
+    &lt;/div&gt;
+&lt;?php ActiveForm::end(); ?&gt;</pre></div></li><li class="listitem">Run the <code class="literal">dropdown</code> controller <a class="indexterm" id="id336"/>by opening <code class="literal">index.php?r=dropdown</code>, then add a new product with the value <code class="literal">Canon - EOS Rebel T6i DSLR</code> for the title field:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00437.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">As you <a class="indexterm" id="id337"/>can see, the <code class="literal">Category</code> input has three options. Let's select the <span class="strong"><strong>Photo</strong></span> option and after that, the second input selection will have two further options:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00438.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">That is it. If you select another category, you will get sub-categories of this category.</li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec182"/>How it works...</h2></div></div></div><p>In this example, we have two dependent lists with categories and sub-categories, and one model, <code class="literal">Category</code>. The <a class="indexterm" id="id338"/>main idea is simple: we just bound the JQuery <code class="literal">onChange</code> event to the <code class="literal">category_id</code> field in our form. Every time a user changes this field, our app sends an AJAX request to the <code class="literal">get-sub-categories</code> action. This action returns a JSON-formatted list of sub-categories, and then, on the client-side, we build a list of options for our sub-categories list.</p></div></div>
+<div class="section" id="1P71O1-ae331331bc644dc9b658d3634f0748da" title="AJAX validation"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec54"/>AJAX validation</h1></div></div></div><p>Some validations can only be <a class="indexterm" id="id339"/>done on the server-side, because only the server has the necessary information. For example, to validate that a company name or user e-mail is unique, we have to check the corresponding tables on the server side. In this case, you should use built-in AJAX validation. Yii2 supports AJAX form validation, which essentially sends the form values to the server, validates them, and sends back the validation errors, all without leaving the page. It does this every time you tab out of a (changed) field.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec183"/>Getting ready</h2></div></div></div><p>Create a new application by using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-startinstallation.html">http://www.yiiframework.com/doc-2.0/guide-startinstallation.html</a>.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec184"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">In the basic app template, we have a simple contact form. You can see this page at <code class="literal">http://yii-book.app/index.php?r=site/contact</code>. Open and modify the related view form, <code class="literal">@app/views/site/contact.php</code>. To enable AJAX validation for the whole form, set up the <code class="literal">enableAjaxValidation</code> option as <code class="literal">true</code> in the <code class="literal">form</code> config:<div class="informalexample"><pre class="programlisting">$form = ActiveForm::begin([
+    'id' =&gt; 'contact-form',
+    'enableAjaxValidation' =&gt; true,
+]);</pre></div></li><li class="listitem">Also, you should <a class="indexterm" id="id340"/>add handling for the AJAX validation on the server-side. This code snippet just checks whether the current request is AJAX and if it's a <code class="literal">POST</code> request. If it is, we will receive errors in JSON format:<div class="informalexample"><pre class="programlisting">if (Yii::$app-&gt;request-&gt;isAjax &amp;&amp; $model-&gt;load(Yii::$app-&gt;request-&gt;post())) {
+    Yii::$app-&gt;response-&gt;format = Response::FORMAT_JSON;
+    return ActiveForm::validate($model);
+}</pre></div></li><li class="listitem">Let's modify our <code class="literal">actionContact()</code> in the <code class="literal">SiteController</code> with the following code:<div class="informalexample"><pre class="programlisting">public function actionContact()
+{
+    $model = new ContactForm();
+    if (Yii::$app-&gt;request-&gt;isAjax &amp;&amp; $model-&gt;load(Yii::$app-&gt;request-&gt;post())) {
+        Yii::$app-&gt;response-&gt;format = Response::FORMAT_JSON;
+        return ActiveForm::validate($model);
+    }
+    if ($model-&gt;load(Yii::$app-&gt;request-&gt;post()) &amp;&amp; $model-&gt;contact(Yii::$app-&gt;params['adminEmail'])) {
+        Yii::$app-&gt;session-&gt;setFlash('contactFormSubmitted');
+        return $this-&gt;refresh();
+    } else {
+        return $this-&gt;render('contact', [
+            'model' =&gt; $model,
+        ]);
+    }
+}</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec185"/>How it works...</h2></div></div></div><p>The previous code will check whether the current request is AJAX. If it is, it will respond to this request by running the validation and returning the errors in JSON format.</p><p>You can check the response <a class="indexterm" id="id341"/>from the server in the debug panel in the browser. Try to submit an empty form and you will see the response.</p><p>For example, in the Google Chrome browser, press <span class="emphasis"><em>F12</em></span> and select the <span class="strong"><strong>Network</strong></span> tab in the development toolbar. You will see the JSON array with errors and messages:</p><div class="mediaobject"><img alt="How it works..." src="../Images/image00439.jpeg"/></div><p style="clear:both; height: 1em;"> </p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec186"/>See also</h2></div></div></div><p>
+<a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-input-validation.html#ajaxvalidation">http://www.yiiframework.com/doc-2.0/guide-input-validation.html#ajaxvalidation</a>
+</p></div></div>
+<div class="section" title="Creating a custom client-side validation"><div class="titlepage" id="1Q5IA2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch04lvl1sec55"/>Creating a custom client-side validation</h1></div></div></div><p>In the <span class="emphasis"><em>Writing your own validators</em></span> recipe, we created a standalone validator. In this recipe, we will modify <a class="indexterm" id="id342"/>a validator to create extra client-side validation, which also checks the number of words.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec187"/>Getting ready</h2></div></div></div><p>Create a new application by using the Composer package manger, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-startinstallation.html">http://www.yiiframework.com/doc-2.0/guide-startinstallation.html</a>.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec188"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create <code class="literal">@app/components/WordsValidator.php</code> as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\components;
+use yii\validators\Validator;
+class WordsValidator extends Validator
+{
+    public $size = 50;
+    public $message = 'The number of words must be less than {size}';
+    public function validateValue($value)
+    {
+        preg_match_all('/(\w+)/i', $value, $matches);
+        if (count($matches[0]) &gt; $this-&gt;size) {
+            return [$this-&gt;message, ['size' =&gt; $this-&gt;size]];
+        }
+    }
+    public function clientValidateAttribute($model, $attribute, $view)
+    {
+        $message = strtr($this-&gt;message, ['{size}' =&gt; $this-&gt;size]);
+        return &lt;&lt;&lt;JS
+        if (value.split(/\w+/gi).length &gt; $this-&gt;size ) {
+            messages.push("$message");
+        }
+        JS;
+    }
+}</pre></div></li><li class="listitem">Create <code class="literal">@app/models/Article.php</code> as <a class="indexterm" id="id343"/>follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\models;
+use app\components\WordsValidator;
+use yii\base\Model;
+class Article extends Model
+{
+    public $title;
+    public function rules()
+    {
+        return [
+            ['title', 'string'],
+            ['title', WordsValidator::className(), 'size' =&gt; 10],
+        ];
+    }
+}</pre></div></li><li class="listitem">Create <code class="literal">@app/controllers/ValidationController.php</code> as <a class="indexterm" id="id344"/>follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\controllers;
+use app\models\Article;
+use Yii;
+use yii\web\Controller;
+class ValidationController extends Controller
+{
+    public function actionIndex()
+    {
+        $model = new Article();
+        if ($model-&gt;load(Yii::$app-&gt;request-&gt;post()) &amp;&amp; $model-&gt;validate()) {
+            Yii::$app-&gt;session-&gt;setFlash('success', 'Model is valid');
+        }
+        return $this-&gt;render('index', [
+            'model' =&gt; $model,
+        ]);
+    }
+}</pre></div></li><li class="listitem">Create <code class="literal">@app/views/validation/index.php</code> as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+use yii\bootstrap\ActiveForm;
+use yii\helpers\Html;
+?&gt;
+&lt;h1&gt;Article form&lt;/h1&gt;
+&lt;?php if (Yii::$app-&gt;session-&gt;hasFlash('success')): ?&gt;
+    &lt;div class="alert alert-success"&gt;&lt;?= Yii::$app-&gt;session-&gt;getFlash('success'); ?&gt;&lt;/div&gt;
+&lt;?php endif; ?&gt;
+&lt;?php $form = ActiveForm::begin(); ?&gt;
+    &lt;?= $form-&gt;field($model, 'title') ?&gt;
+    &lt;div class="form-group"&gt;
+        &lt;?= Html::submitButton('Submit', ['class' =&gt; 'btn btn-primary']) ?&gt;
+    &lt;/div&gt;
+&lt;?php ActiveForm::end(); ?&gt;</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec189"/>How it works...</h2></div></div></div><p>Run the validation controller <a class="indexterm" id="id345"/>by opening <code class="literal">index.php?r=validation</code>. You will see an example of an incorrect value if you enter more than ten words:</p><div class="mediaobject"><img alt="How it works..." src="../Images/image00442.jpeg"/></div><p style="clear:both; height: 1em;"> </p><p>If you enter fewer than ten words, client-side validation will be successful:</p><div class="mediaobject"><img alt="How it works..." src="../Images/image00445.jpeg"/></div><p style="clear:both; height: 1em;"> </p><p>First, we created <code class="literal">@app/components/WordsValidator.php</code>, which extends the <code class="literal">@yii\validators\Validator</code> class, and added the newly-created validator class to the title attribute of the <code class="literal">Article</code> model:</p><div class="informalexample"><pre class="programlisting">..
+['title', WordsValidator::className(), 'size' =&gt; 10],
+..</pre></div><p>Inside our validator, we've defined two special methods: <code class="literal">validateValue()</code> and <code class="literal">clientValidateAttribute()</code>.</p><p>Our validator class <a class="indexterm" id="id346"/>implements the <code class="literal">validateValue()</code> method to support data validation out of the context of a data model. The second method just returns the JavaScript needed for performing client-side validation.</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec190"/>There's more...</h2></div></div></div><p>If we would like to hide <a class="indexterm" id="id347"/>validator realization, or want to control all validation processes only on the server-side, we can create a <code class="literal">Deferred</code> object.</p><p>First, modify the <code class="literal">WordsValidator</code> validator as follows:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+namespace app\components;
+use yii\validators\Validator;
+use yii\helpers\Url;
+class WordsValidator extends Validator
+{
+    public $size = 50;
+    public $message = 'The number of words must be less than {size}';
+    public function validateValue($value)
+    {
+        if (str_word_count($value) &gt; $this-&gt;size) {
+            return ['The number of words must be less than {size}', ['size' =&gt; $this-&gt;size]];
+        }
+        return false;
+    }
+    public function clientValidateAttribute($model, $attribute, $view)
+    {
+        $url = Url::toRoute(['validation/check-words']);
+        return &lt;&lt;&lt;JS
+        deferred.push($.get("$url", {words: value}).done(function(data) {
+            if (!data.result) {
+                messages.push(data.error);
+            }
+        }));
+        JS;
+    }
+}</pre></div><p>In the preceding code, <a class="indexterm" id="id348"/>the deferred variable is provided by Yii, which is an array of <code class="literal">Deferred</code> objects. The <code class="literal">$.get() jQuery</code> method creates a <code class="literal">Deferred</code> object, which is pushed to the <code class="literal">deferred</code> array.</p><p>Second, add this <code class="literal">checkWords</code> action to the <code class="literal">validation</code> controller:</p><div class="informalexample"><pre class="programlisting">public function actionCheckWords()
+{
+    \Yii::$app-&gt;response-&gt;format = \yii\web\Response::FORMAT_JSON;
+    $value = Yii::$app-&gt;getRequest()-&gt;get('words');
+    $validator = new WordsValidator([
+    'size' =&gt; 10,
+    ]);
+    $result = $validator-&gt;validate($value, $error);
+    return ['result' =&gt; $result,'error' =&gt; $error
+    ];
+}</pre></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec191"/>See also</h2></div></div></div><p>For further <a class="indexterm" id="id349"/>information, refer to the following URLs:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-input-validation.html#implementing-client-side-validation">http://www.yiiframework.com/doc-2.0/guide-input-validation.html#implementing-client-side-validation</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-input-validation.html#deferred-validation">http://www.yiiframework.com/doc-2.0/guide-input-validation.html#deferred-validation</a></li></ul></div></div></div></body></html>

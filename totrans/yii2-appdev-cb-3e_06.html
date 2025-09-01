@@ -1,0 +1,449 @@
+<html><head></head><body><div class="chapter" id="22O7C1-ae331331bc644dc9b658d3634f0748da" title="Chapter&#xA0;6.&#xA0;RESTful Web Services"><div class="titlepage"><div><div><h1 class="title"><a id="ch06"/>Chapter 6. RESTful Web Services</h1></div></div></div><p>In this chapter, we will cover the following topics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">Creating a REST server</li><li class="listitem">Authentication</li><li class="listitem">Rate limiting</li><li class="listitem">Versioning</li><li class="listitem">Error handling</li></ul></div><div class="section" title="Introduction"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec64"/>Introduction</h1></div></div></div><p>This chapter will help you to learn some handy things about the Yii URL router, controllers, and views. You will be able to make your controllers and views more flexible.</p></div></div>
+<div class="section" title="Creating a REST server"><div class="titlepage" id="23MNU2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch06lvl1sec65"/>Creating a REST server</h1></div></div></div><p>In the<a class="indexterm" id="id424"/> following recipe, we use<a class="indexterm" id="id425"/> an example that illustrates how you can build and set up RESTful APIs with minimal coding effort. This recipe will be reused in other recipes in this chapter.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec224"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new application by using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Create a migration for creating an article table with the following command:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>./yii migrate/create create_film_table</strong></span>
+</pre></div></li><li class="listitem">Then, update the just-created migration method, <code class="literal">up</code>, with the following code:<div class="informalexample"><pre class="programlisting">public function up()
+    {
+        $tableOptions = null;
+        if ($this-&gt;db-&gt;driverName === 'mysql') {
+            $tableOptions = 'CHARACTER SET utf8 COLLATE
+                utf8_general_ci ENGINE=InnoDB';
+        }
+        $this-&gt;createTable('{{%film}}', [
+            'id' =&gt; $this-&gt;primaryKey(),
+            'title' =&gt; $this-&gt;string(64)-&gt;notNull(),
+            'release_year' =&gt; $this-&gt;integer(4)-&gt;notNull(),
+        ], $tableOptions);
+
+        $this-&gt;batchInsert('{{%film}}', ['id','title','release_year'], [
+            [1, 'Interstellar', 2014],
+            [2, "Harry Potter and the Philosopher's Stone",2001],
+            [3, 'Back to the Future', 1985],
+            [4, 'Blade Runner', 1982],
+            [5, 'Dallas Buyers Club', 2013],
+        ]);
+    }</pre></div><p>Update <a class="indexterm" id="id426"/>the <code class="literal">down</code> method with the following code:</p><div class="informalexample"><pre class="programlisting">public function down()
+{
+    $this-&gt;dropTable('film');
+}</pre></div></li><li class="listitem">Run the created <code class="literal">create_film_table</code> migration.</li><li class="listitem">Generate the <code class="literal">Film</code> model with the Gii module.</li><li class="listitem">Configure your application server to use clean URLs. If you are using Apache with <code class="literal">mod_rewrite</code> and <code class="literal">AllowOverride</code> turned on, then you should add the following lines to the <code class="literal">.htaccess</code> file under your <code class="literal">@web</code> directory:<div class="informalexample"><pre class="programlisting">Options +FollowSymLinks
+IndexIgnore */*
+RewriteEngine on
+# if a directory or a file exists, use it directly
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+# otherwise forward it to index.php
+RewriteRule . index.php</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec225"/>How to do it…</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a controller, <code class="literal">@app/controller/FilmController.php,</code> with the following code:<div class="informalexample"><pre class="programlisting">&lt;?php
+    namespace app\controllers;
+
+    use yii\rest\ActiveController;
+
+    class FilmController extends ActiveController
+    {
+        public $modelClass = app\models\Film';
+    }</pre></div><p>Update<a class="indexterm" id="id427"/> the <code class="literal">@app/config/web.php</code> configuration file. Add the following config of the <code class="literal">urlManager</code> component:</p><div class="informalexample"><pre class="programlisting">'urlManager' =&gt; [
+    'enablePrettyUrl' =&gt; true,
+    'enableStrictParsing' =&gt; true,
+    'showScriptName' =&gt; false,
+    'rules' =&gt; [
+        ['class' =&gt; 'yii\rest\UrlRule', 'controller' =&gt; 'films'],
+    ],
+],</pre></div></li><li class="listitem">Reconfigure the request component in <code class="literal">@app/config/web.php</code>:<div class="informalexample"><pre class="programlisting">'request' =&gt; [
+    'cookieValidationKey' =&gt; 'mySecretKey',
+    'parsers' =&gt; [
+        'application/json' =&gt; 'yii\web\JsonParser',
+    ],
+]</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec226"/>How it works…</h2></div></div></div><p>We extend <code class="literal">\yii\rest\ActiveController</code> to create our own controller, then for the created controller, the <code class="literal">modelClass</code> property was set. The <code class="literal">\yii\rest\ActiveController</code> class implements a common set of actions for supporting RESTful access to ActiveRecord.</p><p>With the above minimal amount of effort, you have already finished creating  RESTful APIs for accessing film data.</p><p>The APIs you have created include:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><code class="literal">GET /films</code>: This lists all films page by page</li><li class="listitem"><code class="literal">HEAD /films</code>: This shows the overview information of a film listing</li><li class="listitem"><code class="literal">POST /films</code>: This creates a new film</li><li class="listitem"><code class="literal">GET /films/5</code>: This returns the details of film <code class="literal">5</code></li><li class="listitem"><code class="literal">HEAD /films/5</code>: This shows the overview information of film <code class="literal">5</code></li><li class="listitem"><code class="literal">PATCH /films/5 and PUT /films/5</code>: This updates film <code class="literal">5</code></li><li class="listitem"><code class="literal">DELETE /films/5</code>: This deletes film <code class="literal">5</code></li><li class="listitem"><code class="literal">OPTIONS /films</code>: This shows the supported verbs regarding the <code class="literal">/films</code> endpoint</li><li class="listitem"><code class="literal">OPTIONS /films/5</code>: This shows the supported verbs regarding the <code class="literal">/films/5</code> endpoint</li></ul></div><p>It works like<a class="indexterm" id="id428"/> this because <code class="literal">\yii\rest\ActiveController</code> supports the following actions:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><code class="literal">index</code>: This lists the models</li><li class="listitem"><code class="literal">view</code>: This returns the details of a model</li><li class="listitem"><code class="literal">create</code>: This creates a new model</li><li class="listitem"><code class="literal">update</code>: This updates an existing model</li><li class="listitem"><code class="literal">delete</code>: This deletes an existing model</li><li class="listitem"><code class="literal">options</code>: This returns the allowed HTTP methods</li></ul></div><p>And there's also a <code class="literal">verbs()</code> method that defines the allowed request methods for each action.</p><p>To check that our RESTful API is working correctly, let's send several requests.</p><p>Let's begin with the <code class="literal">GET</code> request. Run this in the console:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>curl -i -H "Accept:application/json" "http://yii-book.app/films"</strong></span>
+</pre></div><p>You will get the following output:</p><div class="informalexample"><pre class="programlisting">HTTP/1.1 200 OK
+Date: Wed, 23 Sep 2015 17:46:35 GMT
+Server: Apache
+X-Powered-By: PHP/5.5.23
+X-Pagination-Total-Count: 5
+X-Pagination-Page-Count: 1
+X-Pagination-Current-Page: 1
+X-Pagination-Per-Page: 20
+Link: &lt;http://yii-book.app/films?page=1&gt;; rel=self
+Content-Length: 301
+Content-Type: application/json; charset=UTF-8
+
+[{"id":1,"title":"Interstellar","release_year":2014},{"id":2,"title":"Harry Potter and the Philosopher's Stone","release_year":2001},{"id":3,"title":"Back to the Future","release_year":1985},{"id":4,"title":"Blade Runner","release_year":1982},{"id":5,"title":"Dallas Buyers Club","release_year":2013}]</pre></div><p>Let's send a <code class="literal">POST</code> request. Run this in the console:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>curl -i -H "Accept:application/json" -X POST -d title="New film" -d release_year=2015 "http://yii-book.app/films"</strong></span>
+</pre></div><p>You will get the following output:</p><div class="informalexample"><pre class="programlisting">HTTP/1.1 201 Created
+Date: Wed, 23 Sep 2015 17:48:06 GMT
+Server: Apache
+X-Powered-By: PHP/5.5.23
+Location: http://yii-book.app/films/6
+Content-Length: 49
+Content-Type: application/json; charset=UTF-8
+
+{"title":"New film","release_year":"2015","id":6}</pre></div><p>Let's get the<a class="indexterm" id="id429"/> created film. Run in this the console:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>curl -i -H "Accept:application/json" "http://yii-book.app/films/6"</strong></span>
+</pre></div><p>You will get the following output:</p><div class="informalexample"><pre class="programlisting">HTTP/1.1 200 OK
+Date: Wed, 23 Sep 2015 17:48:36 GMT
+Server: Apache
+X-Powered-By: PHP/5.5.23
+Content-Length: 47
+Content-Type: application/json; charset=UTF-8
+
+{"id":6,"title":"New film","release_year":2015}</pre></div><p>Let's send a <code class="literal">DELETE</code> request. Run this in the console:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>curl -i -H "Accept:application/json" -X DELETE "http://yii-book.app/films/6"</strong></span>
+</pre></div><p>And you will get the following output:</p><div class="informalexample"><pre class="programlisting">HTTP/1.1 204 No Content
+Date: Wed, 23 Sep 2015 17:48:55 GMT
+Server: Apache
+X-Powered-By: PHP/5.5.23
+Content-Length: 0
+Content-Type: application/json; charset=UTF-8</pre></div></div><div class="section" title="There's more…"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec227"/>There's more…</h2></div></div></div><p>We will now look at content negotiation and customizing the Rest URL rule:</p><div class="section" title="Content negotiation"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl3sec22"/>Content negotiation</h3></div></div></div><p>You can also <a class="indexterm" id="id430"/>easily format your response with content negotiation behavior.</p><p>For example, you can put this code to your controller and all data will be returned in an XML format.</p><p>You should have a look at the full list of formats in the documentation.</p><div class="informalexample"><pre class="programlisting">use yii\web\Response;
+public function behaviors()
+{
+    $behaviors = parent::behaviors();
+    $behaviors['contentNegotiator']['formats']['application/xml']= Response::FORMAT_XML;
+    return $behaviors;
+}</pre></div><p>Run this in the console:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>curl -i -H "Accept:application/xml" "http://yii-book.app/films"</strong></span>
+</pre></div><p>You will get the following output:</p><div class="informalexample"><pre class="programlisting">HTTP/1.1 200 OK
+Date: Wed, 23 Sep 2015 18:02:47 GMT
+Server: Apache
+X-Powered-By: PHP/5.5.23
+X-Pagination-Total-Count: 5
+X-Pagination-Page-Count: 1
+X-Pagination-Current-Page: 1
+X-Pagination-Per-Page: 20
+Link: &lt;http://yii-book.app/films?page=1&gt;; rel=self
+Content-Length: 516
+Content-Type: application/xml; charset=UTF-8
+
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;response&gt;
+    &lt;item&gt;
+        &lt;id&gt;1&lt;/id&gt;
+        &lt;title&gt;Interstellar&lt;/title&gt;
+        &lt;release_year&gt;2014
+        &lt;/release_year&gt;
+    &lt;/item&gt;
+    &lt;item&gt;
+        &lt;id&gt;2&lt;/id&gt;
+        
+
+&lt;title&gt;Harry Potter and the Philosopher's Stone&lt;/title&gt;
+        &lt;release_year&gt;2001
+        &lt;/release_year&gt;
+    &lt;/item&gt;
+    &lt;item&gt;
+        &lt;id&gt;3&lt;/id&gt;
+        &lt;title&gt;Back to the Future&lt;/title&gt;
+        &lt;release_year&gt;1985
+        &lt;/release_year&gt;
+    &lt;/item&gt;
+    &lt;item&gt;
+        &lt;id&gt;4&lt;/id&gt;
+        &lt;title&gt;Blade Runner&lt;/title&gt;
+        &lt;release_year&gt;1982
+        &lt;/release_year&gt;
+    &lt;/item&gt;
+    &lt;item&gt;
+        &lt;id&gt;5&lt;/id&gt;
+        &lt;title&gt;Dallas Buyers Club&lt;/title&gt;
+        &lt;release_year&gt;2013
+        &lt;/release_year&gt;
+    &lt;/item&gt;
+&lt;/response&gt;</pre></div></div><div class="section" title="Customizing the Rest URL rule"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl3sec23"/>Customizing the Rest URL rule</h3></div></div></div><p>You have to<a class="indexterm" id="id431"/> remember a controller ID, by default, is defined in plural form. This is because <code class="literal">yii\rest\UrlRule</code> automatically pluralizes controller IDs. You can simply disable this by setting <code class="literal">yii\rest\UrlRule::$pluralize</code> to false:</p><div class="informalexample"><pre class="programlisting">'urlManager' =&gt; [
+    //..
+    'rules' =&gt; [
+        [
+            'class' =&gt; 'yii\rest\UrlRule',
+            'controller' =&gt; 'film'
+            'pluralize' =&gt; false
+        ],
+    ],
+    //..
+]</pre></div><p>If you would also like to specify how a controller ID should appear in the patterns, you are able to add a <a class="indexterm" id="id432"/>custom name to an array as a key value pair, where the array key is the controller ID and the array value is the actual controller ID. For example:</p><div class="informalexample"><pre class="programlisting">'urlManager' =&gt; [
+    //..
+    'rules' =&gt; [
+        [
+            'class' =&gt; 'yii\rest\UrlRule',
+            'controller' =&gt; ['super-films' =&gt; 'film']
+        ],
+    ],
+    //..
+]</pre></div></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec228"/>See also</h2></div></div></div><p>For further information, refer <a class="indexterm" id="id433"/>to the following URL:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-rest-quick-start.html">http://www.yiiframework.com/doc-2.0/guide-rest-quick-start.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/yii-rest-urlrule.html">http://www.yiiframework.com/doc-2.0/yii-rest-urlrule.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-rest-response-formatting.html">http://www.yiiframework.com/doc-2.0/guide-rest-response-formatting.html</a></li><li class="listitem"><a class="ulink" href="http://budiirawan.com/setup-restful-api-yii2/">http://budiirawan.com/setup-restful-api-yii2/</a></li></ul></div></div></div>
+<div class="section" id="24L8G1-ae331331bc644dc9b658d3634f0748da" title="Authentication"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec66"/>Authentication</h1></div></div></div><p>In this recipe will have the authentication model set up.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec229"/>Getting ready</h2></div></div></div><p>Repeat all <a class="indexterm" id="id434"/>steps from the <span class="emphasis"><em>Creating a REST server</em></span> recipe in <span class="emphasis"><em>Getting ready</em></span> and <span class="emphasis"><em>How to do it</em></span> sections.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec230"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Modify <code class="literal">@app/controllers/FilmController</code> to the following:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+    namespace app\controllers;
+
+    use app\models\User;
+    use Yii;
+    use yii\helpers\ArrayHelper;
+    use yii\rest\ActiveController;
+    use yii\filters\auth\HttpBasicAuth;
+
+    class FilmController extends ActiveController
+    {
+        public $modelClass = 'app\models\Film';
+
+        public function behaviors()
+        {
+            return ArrayHelper::merge(parent::behaviors(),[
+                'authenticator' =&gt; [
+                'authMethods' =&gt; [
+                    'basicAuth' =&gt; [
+                        'class' =&gt;HttpBasicAuth::className(),
+                        'auth' =&gt; function ($username,$password) {
+                            $user =User::findByUsername($username);
+
+                            if ($user !== null &amp;&amp; $user-&gt;validatePassword($password)){
+                                return $user;
+                            }
+
+                            return null;
+                        },
+                    ]
+                ]
+            ]
+
+        ]);
+    }
+}</pre></div></li></ol><div style="height:10px; width: 1px"/></div><p>Open <code class="literal">http://yii-book.app/films</code> in a<a class="indexterm" id="id435"/> browser and make sure that we configure HTTP Basic Authentication:<a class="indexterm" id="id436"/></p><div class="mediaobject"><img alt="How to do it..." src="../Images/image00407.jpeg"/></div><p style="clear:both; height: 1em;"> </p><p>Let's try to authenticate. Run this in the console:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>curl -i -H "Accept:application/json" "http://yii-book.app/films"</strong></span>
+</pre></div><p>And you will get the following:</p><div class="informalexample"><pre class="programlisting">HTTP/1.1 401 Unauthorized
+Date: Thu, 24 Sep 2015 01:01:24 GMT
+Server: Apache
+X-Powered-By: PHP/5.5.23
+Www-Authenticate: Basic realm="api"
+Content-Length: 149
+Content-Type: application/json; charset=UTF-8
+
+{"name":"Unauthorized","message":"You are requesting with an invalid credential.","code":0,"status":401,"type":"yii\\web\\UnauthorizedHttpException"}</pre></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">And now try <code class="literal">auth</code> with <code class="literal">cURL</code>:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>curl -i -H "Accept:application/json" -u admin:admin "http://yii-book.app/films"</strong></span>
+</pre></div></li><li class="listitem">You should then get a response that looks like this:<div class="informalexample"><pre class="programlisting">HTTP/1.1 200 OK
+Date: Thu, 24 Sep 2015 01:01:40 GMT
+Server: Apache
+X-Powered-By: PHP/5.5.23
+Set-Cookie: PHPSESSID=8b3726040bf8850ebd07209090333103; path=/; HttpOnly
+Expires: Thu, 19 Nov 1981 08:52:00 GMT
+Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0
+Pragma: no-cache
+X-Pagination-Total-Count: 5
+X-Pagination-Page-Count: 1
+X-Pagination-Current-Page: 1
+X-Pagination-Per-Page: 20
+Link: &lt;http://yii-book.app/films?page=1&gt;; rel=self
+Content-Length: 301
+Content-Type: application/json; charset=UTF-8
+[{"id":1,"title":"Interstellar","release_year":2014},{"id":2,"title":"Harry Potter and the Philosopher's Stone","release_year":2001},{"id":3,"title":"Back to the Future","release_year":1985},{"id":4,"title":"Blade Runner","release_year":1982},{"id":5,"title":"Dallas Buyers Club","release_year":2013}]</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec231"/>How it works…</h2></div></div></div><p>We've also added <a class="indexterm" id="id437"/>the <code class="literal">authenticator</code> behavior to the <code class="literal">HttpBasicAuth</code> class, so we will be able to authenticate with just a login and password. You might implement any authentication method that is described in the official guide in the RESTful web services section.</p></div><div class="section" title="There's more…"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec232"/>There's more…</h2></div></div></div><p>There are different ways to send an access token:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">HTTP Basic Auth</li><li class="listitem">Query parameter</li><li class="listitem">OAuth</li></ul></div><p>Yii supports all of these authentication methods.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec233"/>See also</h2></div></div></div><p>For further <a class="indexterm" id="id438"/>information, refer to <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-rest-rate-limiting.html">http://www.yiiframework.com/doc-2.0/guide-rest-rate-limiting.html</a>.</p></div></div>
+<div class="section" title="Rate limiting"><div class="titlepage" id="25JP22-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch06lvl1sec67"/>Rate limiting</h1></div></div></div><p>To prevent <a class="indexterm" id="id439"/>abuse, you <a class="indexterm" id="id440"/>should consider adding rate limiting to your APIs. For example, you may want to limit the API usage of each user to be, at most, five API calls within a period of one minute. If too many requests are received from a user within the stated period of time, a response with the status code 429 (<span class="emphasis"><em>Too Many Requests</em></span>) should be returned.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec234"/>Getting ready</h2></div></div></div><p>Repeat all the<a class="indexterm" id="id441"/> steps from the <span class="emphasis"><em>Creating a REST server</em></span> recipe's <span class="emphasis"><em>Getting ready</em></span> and <span class="emphasis"><em>How to do it...</em></span> sections.</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a migration for creating a user allowance table with the following command:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong> ./yii migrate/create create_user_allowance_table</strong></span>
+</pre></div></li><li class="listitem">Then, update the just-created migration method, <code class="literal">up</code>, with the following code:<div class="informalexample"><pre class="programlisting">public function up()
+    {
+        $tableOptions = null;
+        if ($this-&gt;db-&gt;driverName === 'mysql') {
+            $tableOptions = 'CHARACTER SET utf8 COLLATEutf8_general_ci ENGINE=InnoDB';
+       }
+       $this-&gt;createTable('{{%user_allowance}}', [
+           'user_id' =&gt; $this-&gt;primaryKey(),
+           'allowed_number_requests' =&gt; $this-&gt;integer(10)-&gt;notNull(),
+           'last_check_time' =&gt; $this-&gt;integer(10)-&gt;notNull()
+       ], $tableOptions);
+    }</pre></div></li><li class="listitem">Update the <code class="literal">down</code> methodwith the following code:<div class="informalexample"><pre class="programlisting">public function down()
+    {
+        $this-&gt;dropTable('{{%user_allowance}}');
+    }</pre></div></li><li class="listitem">Run the created <code class="literal">create_film_table</code> migration.</li><li class="listitem">Generate the <code class="literal">UserAllowance</code> model with the Gii module.</li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec235"/>How to do it…</h2></div></div></div><p>First, you have to update <code class="literal">@app/controllers/FilmController.php</code> with the <a class="indexterm" id="id442"/>following code:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+    namespace app\controllers;
+
+    use yii\rest\ActiveController;
+    use yii\filters\RateLimiter;
+    use yii\filters\auth\QueryParamAuth;
+
+    class FilmController extends ActiveController
+    {
+        public $modelClass = 'app\models\Film';
+
+        public function behaviors()
+        {
+            $behaviors = parent::behaviors();
+
+            $behaviors['authenticator'] = [
+            'class' =&gt; QueryParamAuth::className(),
+            ];
+
+            $behaviors['rateLimiter'] = [
+            'class' =&gt; RateLimiter::className(),
+            'enableRateLimitHeaders' =&gt; true
+            ];
+
+        return $behaviors;
+    }
+}</pre></div><p>To enable<a class="indexterm" id="id443"/> rate limiting, the <code class="literal">User</code> model class should implement <code class="literal">yii\filters\RateLimitInterface</code> and requires the implementation of three methods: <code class="literal">getRateLimit()</code>, <code class="literal">loadAllowance(),</code> and <code class="literal">saveAllowance()</code>. You have to add them with <code class="literal">RATE_LIMIT_NUMBER</code> and <code class="literal">RATE_LIMIT_RESET </code>constants:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+    namespace app\models;
+
+    class User extends \yii\base\Object implements \yii\web\IdentityInterface, \yii\filters\RateLimitInterface
+    {
+        public $id;
+        public $username;
+        public $password;
+        public $authKey;
+        public $accessToken;
+
+        const RATE_LIMIT_NUMBER = 5;
+        const RATE_LIMIT_RESET = 60;
+
+    //  it means that user allowed only 5 requests per one minute
+        public function getRateLimit($request, $action)
+        {
+            return [self::RATE_LIMIT_NUMBER,self::RATE_LIMIT_RESET];
+        }
+
+        public function loadAllowance($request, $action)
+        {
+            $userAllowance = UserAllowance::findOne($this-&gt;id);
+
+            return $userAllowance ?
+            [$userAllowance-&gt;allowed_number_requests,$userAllowance-&gt;last_check_time] :
+             $this-&gt;getRateLimit($request, $action);
+        }
+
+    public function saveAllowance($request, $action,$allowance, $timestamp)
+    {
+        $userAllowance = ($allowanceModel =UserAllowance::findOne($this-&gt;id)) ?$allowanceModel : new UserAllowance();
+        $userAllowance-&gt;user_id = $this-&gt;id;
+        $userAllowance-&gt;last_check_time = $timestamp;
+        $userAllowance-&gt;allowed_number_requests =$allowance;
+        $userAllowance-&gt;save();
+    }
+
+   // other User model methods
+}</pre></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec236"/>How it works…</h2></div></div></div><p>Once the<a class="indexterm" id="id444"/> identity class implements the required interface, Yii will automatically use <code class="literal">[[yii\filters\RateLimiter]]</code> configured as an action filter for <code class="literal">[[yii\rest\Controller]]</code> to perform a rate limiting check. We've also added the <code class="literal">'authenticator'</code> behavior with the <code class="literal">QueryParamAuth</code> class. So, we are now able to authenticate<a class="indexterm" id="id445"/> with just an access token passed through a query parameter. You can add any authentication method that is described in the official guide in the RESTful web services section.</p><p>Let's explain our methods. They are pretty easy to understand.</p><p>
+<code class="literal">getRateLimit()</code>: This<a class="indexterm" id="id446"/> returns the maximum number of allowed requests and the time period (example, <code class="literal">[100, 600]</code> means there can be at most 100 API calls within 600 seconds)</p><p>
+<code class="literal">loadAllowance()</code>: This<a class="indexterm" id="id447"/> returns the number of remaining requests allowed and the corresponding UNIX timestamp when the rate limit was last checked</p><p>
+<code class="literal">saveAllowance()</code>: This <a class="indexterm" id="id448"/>saves both the number of remaining requests allowed and the current UNIX timestamp</p><p>We store our data in the MySQL database. For performance, you might use a NoSQL database or another storage system with a higher time to get and load data.</p><p>Now let's try to check the rate limit feature. Run this in the console:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>curl -i "http://yii-book.app/films?access-token=100-token"</strong></span>
+</pre></div><p>You will get the following output:</p><div class="informalexample"><pre class="programlisting">HTTP/1.1 200 OK
+Date: Thu, 24 Sep 2015 01:35:51 GMT
+Server: Apache
+X-Powered-By: PHP/5.5.23
+Set-Cookie: PHPSESSID=495a928978cc732bee853b83f521eba2; path=/; HttpOnly
+Expires: Thu, 19 Nov 1981 08:52:00 GMT
+Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0
+Pragma: no-cache
+X-Rate-Limit-Limit: 5
+X-Rate-Limit-Remaining: 4
+X-Rate-Limit-Reset: 0
+X-Pagination-Total-Count: 5
+X-Pagination-Page-Count: 1
+X-Pagination-Current-Page: 1
+X-Pagination-Per-Page: 20
+Link: &lt;http://yii-book.app/films?access-token=100-token&amp;page=1&gt;; rel=self
+Content-Length: 301
+Content-Type: application/json; charset=UTF-8
+
+[{"id":1,"title":"Interstellar","release_year":2014},{"id":2,"title":"Harry Potter and the Philosopher's Stone","release_year":2001},{"id":3,"title":"Back to the Future","release_year":1985},{"id":4,"title":"Blade Runner","release_year":1982},{"id":5,"title":"Dallas Buyers Club","release_year":2013}]</pre></div><p>Let's learn<a class="indexterm" id="id449"/> about returned headers. When rate limiting is enabled, by default<a class="indexterm" id="id450"/> every response will be sent with the following HTTP headers containing the current rate limiting information:</p><p>
+<span class="strong"><strong>X-Rate-Limit-Limit</strong></span>: This is <a class="indexterm" id="id451"/>the maximum number of requests allowed within a time period</p><p>
+<span class="strong"><strong>X-Rate-Limit-Remaining</strong></span>: This <a class="indexterm" id="id452"/>is the number of remaining requests in the current time period</p><p>
+<span class="strong"><strong>X-Rate-Limit-Reset</strong></span>: This <a class="indexterm" id="id453"/>is the number of seconds to wait in order to get the maximum number of allowed requests</p><p>So, now try to exceed the limit, request the following URL more than five times per minute and you will see <code class="literal">TooManyRequestsHttpExeption</code>:</p><div class="informalexample"><pre class="programlisting">HTTP/1.1 429 Too Many Requests
+Date: Thu, 24 Sep 2015 01:37:24 GMT
+Server: Apache
+X-Powered-By: PHP/5.5.23
+Set-Cookie: PHPSESSID=bb630ca8a641ef92bd210c0a936e3149; path=/; HttpOnly
+Expires: Thu, 19 Nov 1981 08:52:00 GMT
+Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0
+Pragma: no-cache
+X-Rate-Limit-Limit: 5
+X-Rate-Limit-Remaining: 0
+X-Rate-Limit-Reset: 60
+Content-Length: 131
+Content-Type: application/json; charset=UTF-8
+{"name":"Too Many Requests","message":"Rate limit exceeded.","code":0,"status":429,"type":"yii\\web\\TooManyRequestsHttpException"}</pre></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec237"/>See also</h2></div></div></div><p>For further<a class="indexterm" id="id454"/> information, refer to the following URLs:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="https://en.wikipedia.org/wiki/Leaky_bucket">https://en.wikipedia.org/wiki/Leaky_bucket</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-rest-rate-limiting.html">http://www.yiiframework.com/doc-2.0/guide-rest-rate-limiting.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/yii-filters-ratelimiter.html">http://www.yiiframework.com/doc-2.0/yii-filters-ratelimiter.html</a></li></ul></div></div></div>
+<div class="section" id="26I9K1-ae331331bc644dc9b658d3634f0748da" title="Versioning"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec68"/>Versioning</h1></div></div></div><p>If you build your API<a class="indexterm" id="id455"/> unversioned, it's terrifying. Let's imagine you're pushing out a breaking change – basically any change that runs counter to what client developers have planned for, such as renaming or deleting a parameter or changing the format of the<a class="indexterm" id="id456"/> response – you run the risk of bringing down many, if not all, of your customers' systems, leading to angry support calls or, worse, massive churn. That's why you have to keep your API versioned. In Yii2, versioning can be easily done through modules, so versions will be represented as isolated block of code.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec238"/>Getting ready</h2></div></div></div><p>Repeat all steps<a class="indexterm" id="id457"/> from the <span class="emphasis"><em>Creating a REST server </em></span>recipe's <span class="emphasis"><em>Getting ready</em></span> and <span class="emphasis"><em>How to do it…</em></span> sections.</p></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec239"/>How to do it…</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create the following structure in your app folder. In total, you have to create the <code class="literal">@app/modules</code> folder with the <code class="literal">v1</code> and <code class="literal">v2</code> folders inside it. In each module's folder, you must create controllers and models folders:<div class="informalexample"><pre class="programlisting">app/
+    modules/
+        v1/
+            controllers/
+                FilmController.php
+            Module.php
+        v2/
+            controllers/
+                FilmController.php
+            Module.php</pre></div></li><li class="listitem">Add the import modules to <code class="literal">@app/config/web.php</code>:<div class="informalexample"><pre class="programlisting">'modules' =&gt; [
+   'v1' =&gt; [
+       'class' =&gt; 'app\modules\v1\Module',
+   ],
+    'v2' =&gt; [
+       'class' =&gt; 'app\modules\v2\Module'
+   ]
+],</pre></div></li><li class="listitem">Create <code class="literal">@app/modules/v1/controllers/FilmController.php</code> and <code class="literal">@app/modules/v2/controllers/FilmController.php</code> with the following code:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+    namespace app\modules\v1\controllers;
+
+    use yii\rest\ActiveController;
+
+
+    class FilmController extends ActiveController
+    {
+        public $modelClass = 'app\models\Film';
+    }
+
+    &lt;?php
+
+        namespace app\modules\v1\controllers;
+
+        use yii\rest\ActiveController;
+
+
+        class FilmController extends ActiveController
+        {
+            public $modelClass = 'app\models\Film';
+        }</pre></div><div class="informalexample"><pre class="programlisting">&lt;?php
+    namespace app\modules\v1;
+
+    class Module extends  \yii\base\Module
+    {
+        public function init()
+        {
+            parent::init();
+        }
+    }
+
+&lt;?php
+    namespace app\modules\v2;
+
+    class Module extends  \yii\base\Module
+    {
+        public function init()
+        {
+            parent::init();
+        }
+    }</pre></div></li></ol><div style="height:10px; width: 1px"/></div><p>Create <code class="literal">@app/modules/v1/Module.php</code> and <code class="literal">@app/modules/v2/Module.php</code> with<a class="indexterm" id="id458"/> the following<a class="indexterm" id="id459"/> code:</p></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec240"/>How it works…</h2></div></div></div><p>Each module r<a class="indexterm" id="id460"/>epresents an independent version of our API.</p><p>Now you will be <a class="indexterm" id="id461"/>able to specify the API's version in two ways:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">By the API's URL. You can specify either v1 or v2 versions. The result is that <code class="literal">http://yii-book.app/v1/film</code> will return a list of films for version 1 and <code class="literal">http://yii-book.app/v2/film</code> will do so for version 2.</li><li class="listitem">You can also put a version number through HTTP request headers. As usual, it can be done through the <code class="literal">Accept </code>header:<div class="informalexample"><pre class="programlisting">  // as a vendor content type
+  Accept: application/vnd.company.myproject-v1+json
+  // via a parameter
+  Accept: application/json; version=v1</pre></div></li></ol><div style="height:10px; width: 1px"/></div><p>So, we now have two versions of our API, and we can easily modify the v2 version without any headaches. Our old customers continue to work with the v1 version, and new customers or those who would like to upgrade will use the v2 version.</p></div><div class="section" title="There's more…"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec241"/>There's more…</h2></div></div></div><p>Fur further<a class="indexterm" id="id462"/> information, refer to:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-rest-versioning.html">http://www.yiiframework.com/doc-2.0/guide-rest-versioning.html</a></li><li class="listitem"><a class="ulink" href="http://budiirawan.com/setup-restful-api-yii2/">http://budiirawan.com/setup-restful-api-yii2/</a></li></ul></div></div></div>
+<div class="section" id="27GQ61-ae331331bc644dc9b658d3634f0748da" title="Error handling"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec69"/>Error handling</h1></div></div></div><p>Sometimes you may<a class="indexterm" id="id463"/> want to customize the default error response format. For example, we need to know the response timestamp and whether the response<a class="indexterm" id="id464"/> is successful. Frameworks provide an easy way to do this.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec242"/>Getting ready</h2></div></div></div><p>Repeat all the steps from the <span class="emphasis"><em>Creating a REST server</em></span> recipe's in the <span class="emphasis"><em>Getting ready</em></span> and <span class="emphasis"><em>How to do it…</em></span> sections.</p></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec243"/>How to do it…</h2></div></div></div><p>To achieve this goal, you can respond to the <code class="literal">beforeSend</code> event of the response component in <code class="literal">@app/config/web.php,</code> as follows:</p><div class="informalexample"><pre class="programlisting">'response' =&gt; [
+    'class' =&gt; 'yii\web\Response',
+    'on beforeSend' =&gt; function ($event) {
+        $response = $event-&gt;sender;
+        if ($response-&gt;data !== null) {
+            $response-&gt;data = [
+            'success' =&gt; $response-&gt;isSuccessful,
+            'timestamp' =&gt; time(),
+            'path' =&gt; Yii::$app-&gt;request-&gt;getPathInfo(),
+            'data' =&gt; $response-&gt;data,
+            ];
+        }
+    },
+],</pre></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec244"/>How it works…</h2></div></div></div><p>To learn what happens in this code, let's play a bit with it. First, run this in console:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>curl -i "http://yii-book.app/films/1" </strong></span>
+</pre></div><p>You will get the following output:</p><div class="informalexample"><pre class="programlisting">HTTP/1.1 200 OK
+Date: Thu, 24 Sep 2015 04:24:52 GMT
+Server: Apache
+X-Powered-By: PHP/5.5.23
+Content-Length: 115
+Content-Type: application/json; charset=UTF-8
+
+{"success":true,"timestamp":1443068692,"path":"films/1","data":{"id":1,"title":"Interstellar","release_year":2014}}</pre></div><p>Secondly, run this in your console:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>curl -i "http://yii-book.app/films/1000"</strong></span>
+</pre></div><p>And you will<a class="indexterm" id="id465"/> get the following:</p><div class="informalexample"><pre class="programlisting">HTTP/1.1 404 Not Found
+Date: Thu, 24 Sep 2015 04:24:26 GMT
+Server: Apache
+X-Powered-By: PHP/5.5.23
+Content-Length: 186
+Content-Type: application/json; charset=UTF-8
+
+{"success":false,"timestamp":1443068666,"path":"films/1000","data":{"name":"Not Found","message":"Object not found: 1000","code":0,"status":404,"type":"yii\\web\\NotFoundHttpException"}}</pre></div><p>We've changed<a class="indexterm" id="id466"/> the response content before sending. That way, it is easy to define whether the response is successful or not.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec245"/>See also</h2></div></div></div><p>For further<a class="indexterm" id="id467"/> information, refer to <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-rest-error-handling.html">http://www.yiiframework.com/doc-2.0/guide-rest-error-handling.html</a>.</p></div></div></body></html>

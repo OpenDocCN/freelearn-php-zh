@@ -1,0 +1,956 @@
+<html><head></head><body><div class="chapter" id="1R42S1-ae331331bc644dc9b658d3634f0748da" title="Chapter&#xA0;5.&#xA0;Security"><div class="titlepage"><div><div><h1 class="title"><a id="ch05"/>Chapter 5. Security</h1></div></div></div><p>In this chapter, we will cover the following topics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">Authentication</li><li class="listitem">Using controller filters</li><li class="listitem">Preventing XSS</li><li class="listitem">Preventing SQL injections</li><li class="listitem">Preventing CSRF</li><li class="listitem">Using RBAC</li><li class="listitem">Encrypting/Decrypting data</li></ul></div><div class="section" title="Introduction"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec56"/>Introduction</h1></div></div></div><p>Security is a <a class="indexterm" id="id350"/>crucial part of any web application.</p><p>In this chapter, you will learn how to keep your application secure according to the general web application security principle "filter input, escape output". We will cover topics such as creating your own controller filters, preventing XSS, CSRF, and SQL injections, escaping output, and using role-based access control. To know security best practices refer to <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-security-best-practices.html#avoiding-debug-info-and-tools-at-production">http://www.yiiframework.com/doc-2.0/guide-security-best-practices.html#avoiding-debug-info-and-tools-at-production</a>.</p></div></div>
+<div class="section" title="Authentication"><div class="titlepage" id="1S2JE2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch05lvl1sec57"/>Authentication</h1></div></div></div><p>Most web <a class="indexterm" id="id351"/>applications provide a way for users to log in or reset their forgotten passwords. In Yii2, we don't have this opportunity by default. For a <code class="literal">basic </code>application template, Yii provides only two test users by default, which are statically described in the <code class="literal">User</code> model. So, we have to implement special code to be able to enable user login from the database.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec192"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a<a class="indexterm" id="id352"/> new <a class="indexterm" id="id353"/>application by using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">In the component section of your config, add:<div class="informalexample"><pre class="programlisting">'user' =&gt; [
+    'identityClass' =&gt; 'app\models\User',
+    'enableAutoLogin' =&gt; true,
+],</pre></div></li><li class="listitem">Create a <code class="literal">User</code> table. Create a migration by entering the following command:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>./yii migrate/create create_user_table</strong></span>
+</pre></div></li><li class="listitem">Update the just created migration with the following code:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+use yii\db\Schema;
+use yii\db\Migration;
+
+class m150626_112049_create_user_table extends Migration
+{
+  public function up()
+  {
+      $tableOptions = null;
+      if ($this-&gt;db-&gt;driverName === 'mysql') {
+          $tableOptions = 'CHARACTER SET utf8 COLLATE utf8_general_ci ENGINE=InnoDB';
+      }
+
+      $this-&gt;createTable('{{%user}}', [
+          'id' =&gt; Schema::TYPE_PK,
+          'username' =&gt; Schema::TYPE_STRING . ' NOT NULL',
+          'auth_key' =&gt; Schema::TYPE_STRING . '(32) NOT NULL',
+          'password_hash' =&gt; Schema::TYPE_STRING . ' NOT NULL',
+          'password_reset_token' =&gt; Schema::TYPE_STRING,
+      ], $tableOptions);
+  }
+
+  public function down()
+  {
+      $this-&gt;dropTable('{{%user}}');
+  }
+}</pre></div></li><li class="listitem">Update the existing <code class="literal">models/User</code> model <a class="indexterm" id="id354"/>with the following code:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\models;
+use yii\db\ActiveRecord;
+use yii\web\IdentityInterface;
+use yii\base\NotSupportedException;
+use Yii;
+
+class User extends ActiveRecord implements IdentityInterface
+{
+  /**
+   * @inheritdoc
+   */
+  public function rules()
+  {
+      return [
+
+          ['username', 'required'],
+          ['username', 'unique'],
+          ['username', 'string', 'min' =&gt; 3],
+          ['username', 'match', 'pattern' =&gt; '~^[A-Za-z][A-Za-z0-9]+$~', 'message' =&gt; 'Username can contain only alphanumeric characters.'],
+
+          [['username', 'password_hash', 'password_reset_token'],
+              'string', 'max' =&gt; 255
+          ],
+          ['auth_key', 'string', 'max' =&gt; 32],
+      ];
+  }
+
+  /**
+   * @inheritdoc
+   */
+  public static function findIdentity($id)
+  {
+      return static::findOne($id);
+  }
+
+  public static function findIdentityByAccessToken($token, $type = null)
+  {
+      throw new NotSupportedException('"findIdentityByAccessToken" is not implemented.');
+  }
+
+  /**
+   * Finds user by username
+   *
+   * @param  string      $username
+   * @return User
+   */
+  public static function findByUsername($username)
+  {
+      return static::findOne(['username' =&gt; $username]);
+  }
+  /**
+   * @inheritdoc
+   */
+  public function getId()
+  {
+      return $this-&gt;getPrimaryKey();
+  }
+
+  /**
+   * @inheritdoc
+   */
+  public function getAuthKey()
+  {
+      return $this-&gt;auth_key;
+  }
+
+  /**
+   * @inheritdoc
+   */
+  public function validateAuthKey($authKey)
+  {
+      return $this-&gt;getAuthKey() === $authKey;
+  }
+
+  /**
+   * Validates password
+   *
+   * @param  string  $password password to validate
+   * @return boolean if password provided is valid for current user
+   */
+  public function validatePassword($password)
+  {
+      return Yii::$app-&gt;getSecurity()-&gt;validatePassword($password, $this-&gt;password_hash);
+  }
+
+  /**
+   * Generates password hash from password and sets it to the model
+   *
+   * @param string $password
+   */
+  public function setPassword($password)
+  {
+      $this-&gt;password_hash = Yii::$app-&gt;getSecurity()-&gt;generatePasswordHash($password);
+  }
+
+  /**
+   * Generates "remember me" authentication key
+   */
+  public function generateAuthKey()
+  {
+      $this-&gt;auth_key = Yii::$app-&gt;getSecurity()-&gt;generateRandomString();
+  }
+
+  /**
+   * Generates new password reset token
+   */
+  public function generatePasswordResetToken()
+  {
+      $this-&gt;password_reset_token = Yii::$app-&gt;getSecurity()-&gt;generateRandomString() . '_' . time();
+  }
+
+  /**
+   * Finds user by password reset token
+   *
+   * @param  string      $token password reset token
+   * @return static|null
+   */
+
+  public static function findByPasswordResetToken($token)
+  {
+      $expire = Yii::$app-&gt;params['user.passwordResetTokenExpire'];
+      $parts = explode('_', $token);
+      $timestamp = (int) end($parts);
+      if ($timestamp + $expire &lt; time()) {
+          return null;
+      }
+      return static::findOne([
+          'password_reset_token' =&gt; $token
+      ]);
+  }
+}</pre></div></li><li class="listitem">Create a <a class="indexterm" id="id355"/>migration, which will add a test user. Use the following command:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>./yii migrate/create create_test_user</strong></span>
+</pre></div></li><li class="listitem">Update the just created migration with the following code:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+use yii\db\Migration;
+use app\models\User;
+
+class m150626_120355_create_test_user extends Migration
+{
+  public function up()
+  {
+      $testUser = new User();
+      $testUser-&gt;username = 'admin';
+      $testUser-&gt;setPassword('admin');
+      $testUser-&gt;generateAuthKey();
+      $testUser-&gt;save();
+
+  }
+
+  public function down()
+  {
+      User::findByUsername('turbulence')-&gt;delete();
+      return false;
+  }
+}</pre></div></li><li class="listitem">Install all migrations with the following command:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>./yii migrate up</strong></span>
+</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec193"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Now, follow the URL <code class="literal">site/login</code> action and enter <code class="literal">admin</code>/<code class="literal">admin</code> as your credentials:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00386.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">Congratulations! If you have completed these steps, you should able to log in.</li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec194"/>How it works...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">First, we created a<a class="indexterm" id="id356"/> migration for the user table. Apart from our ID and username, our table contains special fields such as <code class="literal">auth_key</code> (the main use of this is to authenticate the user by cookie), <code class="literal">password_hash </code>(for security reasons we won't store the password as it is and will store only the password hash), and <code class="literal">password_reset_token</code> (used when we need to reset the user's password).</li><li class="listitem">The result after installation and <code class="literal">create_test_user</code> migration should look like the following screenshot:<div class="mediaobject"><img alt="How it works..." src="../Images/image00399.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div><p>We've also added <a class="indexterm" id="id357"/>special methods to the <code class="literal">User</code> model and changed the inheritance to <code class="literal">class User extends ActiveRecord implements IdentityInterface</code> because we need to be able to find users in the database.</p><p>You also can copy the <a class="indexterm" id="id358"/>
+<code class="literal">User</code> model from an advanced app at <a class="ulink" href="https://github.com/yiisoft/yii2-app-advanced/blob/master/common/models/User.php">https://github.com/yiisoft/yii2-app-advanced/blob/master/common/models/User.php</a>.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec195"/>See also</h2></div></div></div><p>For further<a class="indexterm" id="id359"/> information, refer to <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-security-authentication.html">http://www.yiiframework.com/doc-2.0/guide-security-authentication.html</a>
+</p></div></div>
+<div class="section" title="Using controller filters"><div class="titlepage" id="1T1402-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch05lvl1sec58"/>Using controller filters</h1></div></div></div><p>In<a class="indexterm" id="id360"/> many cases, we need to filter the incoming data or perform some actions based on the data. For example, with custom filters, we can filter visitors by IP, force users to use HTTPS, or redirect the user to an installation page prior to using the application.</p><p>In Yii2, filters are essentially a special kind of behavior, so using filters is the same as using behaviors.</p><p>Yii has a lot of built-in usable filters, which include:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">Core</li><li class="listitem">Custom</li><li class="listitem">Authentication</li><li class="listitem">Content Negotiator</li><li class="listitem">HttpCache</li><li class="listitem">PageCache</li><li class="listitem">RateLimiter</li><li class="listitem">Verb</li><li class="listitem">Cors</li></ul></div><p>In this recipe, we will implement the following:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">Limiting access to the controller action to authorized users only</li><li class="listitem">Limiting access to the controller action to specified IPs</li><li class="listitem">Limiting access to specific user roles</li></ul></div><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec196"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create<a class="indexterm" id="id361"/> a new application by using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Create <code class="literal">app/components/AccessRule.php</code>:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\components;
+
+use app\models\User;
+class AccessRule extends \yii\filters\AccessRule {
+
+  /**
+   * @inheritdoc
+   */
+  protected function matchRole($user)
+  {
+      if (empty($this-&gt;roles)) {
+          return true;
+      }
+      $isGuest = $user-&gt;getIsGuest();
+      foreach ($this-&gt;roles as $role) {
+          switch($role) {
+              case '?':
+                  return ($isGuest) ? true : false;
+              case User::ROLE_USER:
+                  return (!$isGuest) ? true : false;
+              case $user-&gt;identity-&gt;role: // Check if the user is logged in, and the roles match
+
+                  return (!$isGuest) ? true : false;
+              default:
+                  return false;
+          }
+      }
+      return false;
+  }
+}</pre></div></li><li class="listitem">Create <code class="literal">app/controllers/AccessController.php</code> as <a class="indexterm" id="id362"/>follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+use app\models\User;
+use Yii;
+use yii\filters\AccessControl;
+use app\components\AccessRule;
+use yii\web\Controller;
+
+class AccessController extends Controller
+{
+  public function behaviors()
+  {
+      return [
+          'access' =&gt; [
+              'class' =&gt; AccessControl::className(),
+              // We will override the default rule config with the new AccessRule class
+              'ruleConfig' =&gt; [
+                  'class' =&gt; AccessRule::className(),
+              ],
+              'rules' =&gt; [
+                  [
+                      'allow' =&gt; true,
+                      'actions' =&gt; ['auth-only'],
+                      'roles' =&gt; [User::ROLE_USER]
+                  ],
+                  [
+                      'allow' =&gt; true,
+                      'actions' =&gt; ['ip'],
+                      'ips' =&gt; ['127.0.0.1'],
+                  ],
+                  [
+                      'allow' =&gt; true,
+                      'actions' =&gt; ['user'],
+                      'roles' =&gt; [ User::ROLE_ADMIN],
+                  ],
+                  [
+                      'allow' =&gt; false,
+                  ]
+              ],
+          ]
+      ];
+  }
+
+  public function actionAuthOnly()
+  {
+      echo "Looks like you are authorized to run me.";
+  }
+  public function actionIp()
+  {
+      echo "Your IP is in our list. Lucky you!";
+  }
+  public function actionUser()
+  {
+      echo "You're the right man. Welcome!";
+  }
+}</pre></div></li><li class="listitem">Modify<a class="indexterm" id="id363"/> the <code class="literal">User</code> class as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\models;
+
+class User extends \yii\base\Object implements \yii\web\IdentityInterface
+{
+ // add roles contstants 
+  CONST ROLE_USER  = 200;
+  CONST ROLE_ADMIN  = 100; 
+
+  public $id;
+  public $username;
+  public $password;
+  public $authKey;
+  public $accessToken;
+  public $role;
+
+  private static $users = [
+      '100' =&gt; [
+          'id' =&gt; '100',
+          'username' =&gt; 'admin',
+          'password' =&gt; 'admin',
+          'authKey' =&gt; 'test100key',
+          'accessToken' =&gt; '100-token',
+          'role' =&gt; USER::ROLE_ADMIN // add admin role for admin user
+      ],
+      '101' =&gt; [
+          'id' =&gt; '101',
+          'username' =&gt; 'demo',
+          'password' =&gt; 'demo',
+          'authKey' =&gt; 'test101key',
+          'accessToken' =&gt; '101-token',
+          'role' =&gt; USER::ROLE_USER // add user role for admin user
+      ],
+  ];
+…
+}</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec197"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">To <a class="indexterm" id="id364"/>use <code class="literal">AccessControl</code>, declare it in the <code class="literal">behaviors()</code> method of your controller class. We do this as follows:<div class="informalexample"><pre class="programlisting">public function behaviors()
+{
+  return [
+      'access' =&gt; [
+          'class' =&gt; AccessControl::className(),
+          'rules' =&gt; [
+              [
+                  'allow' =&gt; true,
+                  'actions' =&gt; ['auth-only'],
+                  'roles' =&gt; ['@'],
+              ],
+              [
+                  'allow' =&gt; true,
+                  'actions' =&gt; ['ip'],
+                  'ips' =&gt; ['127.0.0.1'],
+              ],
+              [
+                  'allow' =&gt; true,
+                  'actions' =&gt; ['user'],
+                    'roles' =&gt; ['admin'],
+              ],
+              [
+                'allow' =&gt; true,
+                'actions' =&gt; ['user'],
+                'matchCallback' =&gt; function ($rule, $action) {
+                  return preg_match('/MSIE 9/',$_SERVER['HTTP_USER_AGENT']) !== false;
+                }
+              ],
+
+              ['allow' =&gt; false]
+          ],
+      ]
+  ];
+}</pre></div></li><li class="listitem">Now try to run controller actions using Internet Explorer and other browsers by using both the <code class="literal">admin</code> and <code class="literal">demo</code> usernames.</li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec198"/>How it works...</h2></div></div></div><p>We will start<a class="indexterm" id="id365"/> with limiting access to the controller action to authorized users only. See the following code in the <code class="literal">rules</code> array:</p><div class="informalexample"><pre class="programlisting">[
+  'allow' =&gt; true,
+  'actions' =&gt; ['auth-only'],
+  'roles' =&gt; [User::ROLE_USER]
+],</pre></div><p>Each array here is an access rule. You can either use <code class="literal">allow=true</code> or <code class="literal">allow=false</code> for a deny rule. For each rule, there are several parameters.</p><p>By default, Yii does not deny everything, so consider adding <code class="literal">['allow' =&gt; false]</code> to the end of your rules list if you need maximum security.</p><p>In our rule, we use two parameters. The first is the actions parameter, which takes an array of actions to which the rule will be applied. The second is the roles parameter, which takes an array of user roles to determine the users this rule applies to.</p><p>Yii2's built in Access Control supports only two roles by default: guest (not logged in), represented by <code class="literal">?</code>, and authenticated, represented by <code class="literal">@</code>.</p><p>With simple access controls, we can just limit access to specific pages or controller actions based on the login state. If users are not logged in when they visit these pages, Yii will redirect them to the login page.</p><p>Rules are executed one by one, starting from the top, until one matches. If nothing matches, then the action is treated as allowed.</p><p>The next task is to limit access to specific IPs. In this case, the following two access rules are involved:</p><div class="informalexample"><pre class="programlisting">              [
+                  'allow' =&gt; true,
+                  'actions' =&gt; ['ip'],
+                  'ips' =&gt; ['127.0.0.1'],
+              ],</pre></div><p>The first <a class="indexterm" id="id366"/>rule allows access to the IP action from a list of IPs specified. In our case, we are using a loopback address, which always points to our own computer. Try changing it to <code class="literal">127.0.0.2</code>, for example, to see how it works when the address does not match. The second rule denies everything, including all other IPs.</p><p>Next, we limit access to one specific user role, as follows:</p><div class="informalexample"><pre class="programlisting">[
+  'allow' =&gt; true,
+  'actions' =&gt; ['user'],
+  'roles' =&gt; [ User::ROLE_ADMIN],
+],</pre></div><p>The preceding rule allows a user with a role equal to <code class="literal">admin</code> to run the user action. Therefore, if you log in as <code class="literal">admin</code>, it will let you in, but if you log in as <code class="literal">demo</code>, it will not.</p><div class="mediaobject"><img alt="How it works..." src="../Images/image00453.jpeg"/></div><p style="clear:both; height: 1em;"> </p><p>We have overridden the standard <code class="literal">AccessRule</code> class on our own, which is located in the <code class="literal">components/AccessRule.php</code> file. Inside our <code class="literal">AccessRule</code> class, we have overridden the <code class="literal">matchRole</code> method on our own, where we get and check the current user role and match it with roles from our rules.</p><p>Finally, we need to deny access to a specific browser. For this recipe, we are denying only Internet Explorer 9. The rule itself is put on top, so it executes first, as follows:</p><div class="informalexample"><pre class="programlisting">[
+  'allow' =&gt; true,
+  'actions' =&gt; ['user'],
+  'matchCallback' =&gt; function ($rule, $action) {
+      return preg_match('/MSIE 9/',$_SERVER['HTTP_USER_AGENT'])!== false;
+  }
+],</pre></div><p>The detection <a class="indexterm" id="id367"/>technique that we are using is not very reliable, as MSIE is contained in many other user agent strings. For a list of <a class="indexterm" id="id368"/>possible user agent strings, you can refer to <a class="ulink" href="http://www.useragentstring.com/">http://www.useragentstring.com/</a>.</p><p>In the preceding code, we used another filter rule property named <code class="literal">'matchCallback'</code>. This property will apply only when functions which are described in this property return <code class="literal">true</code>.</p><p>Our function checks if the user agent string contains MSIE 9.0 sting. Depending on your requirements, you can specify any PHP code.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec199"/>See also</h2></div></div></div><p>In order to learn more about <a class="indexterm" id="id369"/>access control and filters, refer to the following:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-structure-filters.html">http://www.yiiframework.com/doc-2.0/guide-structure-filters.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/yii-filters-accesscontrol.html">http://www.yiiframework.com/doc-2.0/yii-filters-accesscontrol.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/yii-filters-accessrule.html">http://www.yiiframework.com/doc-2.0/yii-filters-accessrule.html</a></li><li class="listitem"><a class="ulink" href="https://github.com/yiisoft/yii2/blob/master/docs/guide/structure-filters.md">https://github.com/yiisoft/yii2/blob/master/docs/guide/structure-filters.md</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-security-authorization.html#access-control-filter">http://www.yiiframework.com/doc-2.0/guide-security-authorization.html#access-control-filter</a></li><li class="listitem">The <span class="emphasis"><em>Using RBAC</em></span> recipe</li></ul></div></div></div>
+<div class="section" title="Preventing XSS"><div class="titlepage" id="1TVKI2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch05lvl1sec59"/>Preventing XSS</h1></div></div></div><p>XSS stands<a class="indexterm" id="id370"/> for cross-site scripting and is a type of vulnerability that allows one to inject a client-side script (typically JavaScript) in a page viewed by other users. Considering the power of client-side scripting, this <a class="indexterm" id="id371"/>can lead to very serious consequences such as bypassing security checks, getting other user's credentials, or data leaks.</p><p>In this recipe, we will see how to prevent XSS by escaping the output with both <code class="literal">\yii\helpers\Html</code> and <code class="literal">\yii\helpers\HtmlPurifier</code>.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec200"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new application by using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Create <code class="literal">controllers/XssController.php</code>:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use Yii;
+use yii\helpers\Html;
+use yii\web\Controller;
+
+/**
+* Class SiteController.
+* @package app\controllers
+*/
+class XssController extends Controller
+{
+   /**
+    * @return string
+    */
+   public function actionIndex()
+   {
+       $username = Yii::$app-&gt;request-&gt;get('username', 'nobody');
+
+       return $this-&gt;renderContent(Html::tag('h1',
+           'Hello, ' . $username . '!'
+       ));
+   }
+}</pre></div></li><li class="listitem">Normally, it will be used as <code class="literal">/xss/simple?username=Administrator</code>. However, as the main security principle <span class="emphasis"><em>filter input, escape output</em></span> was not taken into account, malicious users will be able to use it in the following way:<div class="informalexample"><pre class="programlisting">/xss/simple?username=&lt;script&gt;alert('XSS');&lt;/script&gt;</pre></div></li><li class="listitem">The <a class="indexterm" id="id372"/>previous code will result in a script execution, as shown in the following screenshot:<div class="mediaobject"><img alt="Getting ready" src="../Images/image00421.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec201"/>How to do it...</h2></div></div></div><p>Carry out the following steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">In order to prevent the XSS alert shown in the previous screenshot, we need to escape the data before passing it to the browser. We do this as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use Yii;
+use yii\helpers\Html;
+use yii\web\Controller;
+
+/**
+* Class SiteController.
+* @package app\controllers
+*/
+class XssController extends Controller
+{
+   /**
+    * @return string
+    */
+   public function actionIndex()
+   {
+       $username = Yii::$app-&gt;request-&gt;get('username', 'nobody');
+
+       return $this-&gt;renderContent(Html::tag('h1',
+           Html::encode('Hello, ' . $username . '!')
+       ));
+   }
+}</pre></div></li><li class="listitem">Now<a class="indexterm" id="id373"/> instead of an alert, we will get properly escaped HTML, as shown in the following screenshot:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00435.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">Therefore, the basic rule is to always escape all dynamic data. For example, we should do the same for a link name:<div class="informalexample"><pre class="programlisting">use \yii\helpers\Html;
+
+echo Html::a(Html::encode($_GET['username']), array());</pre></div></li></ol><div style="height:10px; width: 1px"/></div><p>That's it. You have a page that is free from XSS. Now, what if we want to allow some HTML to pass? We cannot use <code class="literal">\yii\helpers\Html::encode </code>anymore because it will render HTML as just a code and we need the actual representation. Fortunately, there is a tool bundled with Yii that allows you to filter the malicious HTML. It is named <code class="literal">HTML Purifier</code> and <a class="indexterm" id="id374"/>can be used in the following way:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use Yii;
+use yii\helpers\Html;
+use yii\helpers\HtmlPurifier;
+use yii\web\Controller;
+
+/**
+* Class SiteController.
+* @package app\controllers
+*/
+class XssController extends Controller
+{
+   /**
+    * @return string
+    */
+   public function actionIndex()
+   {
+       $username = Yii::$app-&gt;request-&gt;get('username', 'nobody');
+
+       $content = Html::tag('h1', 'Hello, ' . $username . '!');
+
+       return $this-&gt;renderContent(
+           HtmlPurifier::process($content)
+       );
+   }
+}</pre></div><p>Now if we access the HTML action using a URL such as <code class="literal">/xss/index?username=&lt;i&gt;username&lt;/i&gt;!&lt;script&gt;alert('XSS')&lt;/script&gt;</code>, HTML Purifier will remove the malicious part and we will get the following result:</p><div class="mediaobject"><img alt="How to do it..." src="../Images/image00446.jpeg"/></div><p style="clear:both; height: 1em;"> </p></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec202"/>How it works...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Internally, <code class="literal">\yii\helpers\Html::encode</code> looks like the following:<div class="informalexample"><pre class="programlisting">public static function encode($content, $doubleEncode = true)
+{
+   return htmlspecialchars($content, ENT_QUOTES | ENT_SUBSTITUTE, Yii::$app ? Yii::$app-&gt;charset : 'UTF-8', $doubleEncode);
+}</pre></div></li><li class="listitem">So basically, we use PHP's internal <code class="literal">htmlspecialchars</code> function, which is pretty secure if one does not forget to pass the correct charset in the third argument.</li></ol><div style="height:10px; width: 1px"/></div><p>
+<code class="literal">\yii\helpers\HtmlPurifier</code> uses the HTML Purifier library, which is the most advanced solution<a class="indexterm" id="id375"/> out there to prevent XSS inside of HTML. We have used its default configuration, which is okay for most user-entered content.</p></div><div class="section" title="There's more…"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec203"/>There's more…</h2></div></div></div><p>There are more things to know about XSS and HTML Purifier; they are discussed in the following section.</p><div class="section" title="XSS types"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lvl3sec14"/>XSS types</h3></div></div></div><p>There are two main<a class="indexterm" id="id376"/> types of XSS injections, which are as follows:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">Non-persistent</li><li class="listitem">Persistent</li></ul></div><p>The first type is the one we have used in <a class="indexterm" id="id377"/>the recipe and is the most common XSS type; it can be found in most insecure web applications. Data passed by the user or through a URL is not stored anywhere, so the injected script will be executed only once and only for the user who entered it. Still, it is not as secure as it looks. Malicious users can include XSS in a link to another website and their core will be executed when another user follows the link.</p><p>The second type is much more serious, as the data entered by a malicious user is stored in the database and is shown to many, if not all, website users. Using this type of XSS, malicious users can literally destroy your website by commanding all users to delete all data to which they have access.</p></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec204"/>See also</h2></div></div></div><p>In order to learn more about <a class="indexterm" id="id378"/>XSS and how to deal with it, refer to the following resources:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://htmlpurifier.org/docs">http://htmlpurifier.org/docs</a></li><li class="listitem"><a class="ulink" href="http://ha.ckers.org/xss.html">http://ha.ckers.org/xss.html</a></li><li class="listitem"><a class="ulink" href="http://shiflett.org/blog/2007/may/character-encoding-and-xss">http://shiflett.org/blog/2007/may/character-encoding-and-xss</a></li></ul></div></div></div>
+<div class="section" title="Preventing SQL injections"><div class="titlepage" id="1UU542-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch05lvl1sec60"/>Preventing SQL injections</h1></div></div></div><p>SQL injection is<a class="indexterm" id="id379"/> a type of code injection that uses vulnerability at the database level and allows you to execute arbitrary SQL, allowing malicious users to carry out actions such as deleting data or raising their privileges.</p><p>In this recipe, we will see examples of vulnerable code and fix them.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec205"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new <a class="indexterm" id="id380"/>application by using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Execute the following SQL:<div class="informalexample"><pre class="programlisting">DROP TABLE IF EXISTS `user`;
+CREATE TABLE `user` (
+   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+   `username` varchar(100) NOT NULL,
+   `password` varchar(32) NOT NULL,
+   PRIMARY KEY (`id`)
+);
+
+INSERT INTO `user`(`id`,`username`,`password`) VALUES ( '1','Alex','202cb962ac59075b964b07152d234b70');
+
+INSERT INTO `user`(`id`,`username`,`password`) VALUES ( '2','Qiang','202cb962ac59075b964b07152d234b70');</pre></div></li><li class="listitem">Generate a <code class="literal">User</code> model using Gii.</li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec206"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">First, we <a class="indexterm" id="id381"/>will implement a simple action that checks whether the username and password that came from a URL are correct. Create <code class="literal">app/controllers/SqlController.php</code>:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use app\models\User;
+use Yii;
+use yii\base\Controller;
+use yii\base\Exception;
+use yii\helpers\ArrayHelper;
+use yii\helpers\Html;
+
+/**
+* Class SqlController.
+* @package app\controllers
+*/
+class SqlController extends Controller
+{
+   protected function renderContentByResult($result)
+   {
+       if ($result) {
+           $content = "Success";
+       } else {
+           $content = "Failure";
+       }
+
+       return $this-&gt;renderContent($content);
+   }
+
+   public function actionSimple()
+   {
+       $userName = Yii::$app-&gt;request-&gt;get('username');
+       $password = Yii::$app-&gt;request-&gt;get('password');
+
+       $passwordHash = md5($password);
+
+       $sql = "SELECT * FROM `user`"
+              ." WHERE `username` = '".$userName."'"
+              ." AND password = '".$passwordHash."' LIMIT |1";
+
+       $result = Yii::$app-&gt;db-&gt;createCommand($sql)-&gt;queryOne();
+
+       return $this-&gt;renderContentByResult($result);
+   }
+
+}</pre></div></li><li class="listitem">Let's try<a class="indexterm" id="id382"/> to access it using the <code class="literal">/sql/simple?username=test&amp;password=test</code> URL. As we are unaware of both the username and password, it will, as expected, print <span class="strong"><strong>Failure</strong></span>.</li><li class="listitem">Now try <code class="literal">/sql/simple?username=%27+or+%271%27%3D%271%27%3B+--&amp;password=whatever</code>. This time, it lets us in, even though we still don't know anything about the actual credentials. The decoded part of <code class="literal">usernamevalue</code> looks like the following:<div class="informalexample"><pre class="programlisting">' or '1'='1'; --</pre></div></li><li class="listitem">Close the quote so that the syntax stays correct. Add <code class="literal">OR '1'='1',</code> which makes the condition always true. Use <code class="literal">; --</code> to end the query and comment the rest.</li><li class="listitem">As no escaping was done, the whole query executed was:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>SELECT * FROM user WHERE username = '' or '1'='1'; --' AND password = '008c5926ca861023c1d2a36653fd88e2' LIMIT 1;</strong></span>
+</pre></div></li><li class="listitem">The best way to fix this is to use a prepared statement, as follows:<div class="informalexample"><pre class="programlisting">public function actionPrepared()
+{
+   $userName = Yii::$app-&gt;request-&gt;get('username');
+   $password = Yii::$app-&gt;request-&gt;get('password');
+
+   $passwordHash = md5($password);
+
+   $sql = "SELECT * FROM `user`"
+          ." WHERE `username` = :username"
+          ." AND password = :password LIMIT 1";
+
+   $command = Yii::$app-&gt;db-&gt;createCommand($sql);
+   $command-&gt;bindValue(':username', $userName);
+   $command-&gt;bindValue(':password', $passwordHash);
+   $result = $command-&gt;queryOne();
+
+   return $this-&gt;renderContentByResult($result);
+}</pre></div></li><li class="listitem">Now check <code class="literal">/sql/prepared</code> with the same malicious parameters. This time everything <a class="indexterm" id="id383"/>was fine and we received the <span class="strong"><strong>Failure</strong></span> message. The same principle applies to ActiveRecord. The only difference here is that AR uses other syntax:<div class="informalexample"><pre class="programlisting">public function actionAr()
+{
+   $userName = Yii::$app-&gt;request-&gt;get('username');
+   $password = Yii::$app-&gt;request-&gt;get('password');
+
+   $passwordHash = md5($password);
+
+   $result = User::findOne([
+       'username' =&gt; $userName,
+       'password' =&gt; $passwordHash
+   ]);
+
+   return $this-&gt;renderContentByResult($result);
+}</pre></div></li><li class="listitem">In the previous code, we used the <code class="literal">username</code> and <code class="literal">password</code> parameters like an array key with a value style. If we had written the previous code by using only the first argument, it would be vulnerable:<div class="informalexample"><pre class="programlisting">public function actionWrongAr()
+{
+   $userName = Yii::$app-&gt;request-&gt;get('username');
+   $password = Yii::$app-&gt;request-&gt;get('password');
+
+   $passwordHash = md5($password);
+
+   $condition = "`username` = '".$userName." AND `password` = '".$passwordHash."'";
+
+   $result = User::find()-&gt;where($condition)-&gt;one();
+
+   return $this-&gt;renderContentByResult($result);
+}</pre></div></li><li class="listitem">If used properly, prepared statements can save you from all types of SQL injections. Still, there are some common problems:<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">You can only bind one value to a single parameter, so if you want to query <code class="literal">WHERE IN(1, 2, 3, 4)</code>, you will have to create and bind four parameters.</li><li class="listitem">Prepared statements cannot be used for table names, column names, and other keywords.</li></ul></div></li><li class="listitem">When using <code class="literal">ActiveRecord</code>, the first problem can be solved by adding <code class="literal">where</code>, as follows:<div class="informalexample"><pre class="programlisting">public function actionIn()
+{
+   $names  = ['Alex', 'Qiang'];
+   $users = User::find()-&gt;where(['username' =&gt; $names])-&gt;all();
+
+   return $this-&gt;renderContent(Html::ul(
+       ArrayHelper::getColumn($users, 'username')
+   ));
+}</pre></div></li><li class="listitem">The second problem can be solved in multiple ways. The first way is to rely on active record and PDO quoting:<div class="informalexample"><pre class="programlisting">public function actionColumn()
+{
+   $attr = Yii::$app-&gt;request-&gt;get('attr');
+   $value = Yii::$app-&gt;request-&gt;get('value');
+
+   $users = User::find()-&gt;where([$attr =&gt; $value])-&gt;all();
+
+   return $this-&gt;renderContent(Html::ul(
+       ArrayHelper::getColumn($users, 'username')
+   ));
+}</pre></div></li><li class="listitem">But the <a class="indexterm" id="id384"/>most secure way is to use the whitelist approach, as follows:<div class="informalexample"><pre class="programlisting">public function actionWhiteList()
+{
+   $attr = Yii::$app-&gt;request-&gt;get('attr');
+   $value = Yii::$app-&gt;request-&gt;get('value');
+
+   $allowedAttr = ['username', 'id'];
+
+   if (!in_array($attr, $allowedAttr)) {
+       throw new Exception("Attribute specified is not allowed.");
+   }
+
+   $users = User::find()-&gt;where([$attr =&gt; $value])-&gt;all();
+
+   return $this-&gt;renderContent(Html::ul(
+       ArrayHelper::getColumn($users, 'username')
+   ));
+}</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec207"/>How it works...</h2></div></div></div><p>The main goal <a class="indexterm" id="id385"/>when preventing SQL injection is to properly filter the input. In all cases except table names, we have used prepared statements—a feature supported by most relational database servers. They allows you to build statements once and then use them multiple times, and they provide a safe way of binding parameter values.</p><p>In Yii, you can use prepared statements for both Active Record and DAO. When using DAO, it can be achieved by using either <code class="literal">bindValue</code> or <code class="literal">bindParam</code>. The latter is useful when we want to execute multiple queries of the same type while varying parameter values:</p><div class="informalexample"><pre class="programlisting">public function actionBind()
+{
+   $userName = 'Alex';
+   $passwordHash = md5('password1');
+
+   $sql = "INSERT INTO `user` (`username`, `password`) VALUES (:username, :password);";
+
+   // insert first user
+   $command = Yii::$app-&gt;db-&gt;createCommand($sql);
+   $command-&gt;bindParam('username', $userName);
+   $command-&gt;bindParam('password', $passwordHash);
+   $command-&gt;execute();
+
+   // insert second user
+   $userName = 'Qiang';
+   $passwordHash = md5('password2');
+   $command-&gt;execute();
+
+   return $this-&gt;renderContent(Html::ul(
+       ArrayHelper::getColumn(User::find()-&gt;all(), 'username')
+   ));
+}</pre></div><p>Most Active Record methods accept parameters. To be safe, you should use these instead of just passing the raw data in.</p><p>As for <a class="indexterm" id="id386"/>quoting table names, columns, and other keywords, you can either rely on Active Record or use the whitelist approach.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec208"/>See also</h2></div></div></div><p>In order to<a class="indexterm" id="id387"/> learn more about SQL injections and working with databases through Yii, refer to the following:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://www.slideshare.net/billkarwin/sql-injection-myths-and-fallacies">http://www.slideshare.net/billkarwin/sql-injection-myths-and-fallacies</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/yii-db-connection.html">http://www.yiiframework.com/doc-2.0/yii-db-connection.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/yii-db-command.html">http://www.yiiframework.com/doc-2.0/yii-db-command.html</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-security-best-practices.html#avoiding-sql-injections">http://www.yiiframework.com/doc-2.0/guide-security-best-practices.html#avoiding-sql-injections</a></li><li class="listitem">The <span class="emphasis"><em>Getting data from a database</em></span> recipe in <a class="link" href="part0039.xhtml#1565U1-ae331331bc644dc9b658d3634f0748da" title="Chapter 3. ActiveRecord, Model, and Database">Chapter 3</a>, <span class="emphasis"><em>ActiveRecord, Model, and Database</em></span></li></ul></div></div></div>
+<div class="section" title="Preventing CSRF"><div class="titlepage" id="1VSLM2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch05lvl1sec61"/>Preventing CSRF</h1></div></div></div><p>CSRF is<a class="indexterm" id="id388"/> an abbreviation for cross-site request forgery, where a malicious user tricks the user's browser into silently performing an HTTP request to the website when the user is logged in.</p><p>An example of such an <a class="indexterm" id="id389"/>attack is inserting an invisible image tag with <code class="literal">src</code> pointing to <code class="literal">http://example.com/site/logout</code>. Even if the <code class="literal">image</code> tag is inserted in another website, you will be immediately logged out from <code class="literal">example.com</code>. The consequences of CSRF can be very serious: destroying website data, preventing all website users from logging in, exposing private data, and so on.</p><p>Some facts about CSRF:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">As CSRF should be performed by the victim user's browser, the attacker cannot normally change the HTTP headers sent. However, there are both browser and Flash plugin vulnerabilities that exist which allow users to spoof headers, so we should not rely on these.</li><li class="listitem">The attacker should pass the same parameters and values as the user would normally.</li></ul></div><p>Considering these, a good method of dealing with CSRF is by passing and checking a unique token during form submissions and, additionally, using GET according to the HTTP specification.</p><p>Yii includes built-in token generation and token checking. Additionally, it can automate inserting a token into the HTML forms.</p><p>In order to avoid CSRF, you should always:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">Follow, HTTP specification, that is, <code class="literal">GET</code> should not change its application state</li><li class="listitem">Keep Yii CSRF protection enabled</li></ul></div><p>In this recipe, we <a class="indexterm" id="id390"/>will see how to make sure our application is CSRF-resistant.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec209"/>Getting ready</h2></div></div></div><p>Create a new application by using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec210"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">In order to turn ON the anti-CSRF protection, we should add <code class="literal">config/main.php</code> as follows:<div class="informalexample"><pre class="programlisting">'components' =&gt; [
+    ..
+   request =&gt; [
+        ..
+       'enableCsrfValidation =&gt; true,
+        ..
+   ],
+    ..
+],</pre></div></li><li class="listitem">The option <code class="literal">enableCsrfValidation</code> defaults to <code class="literal">true</code>. When CSRF validation is enabled, forms submitted to a Yii web application must originate from the same application. If not, a <code class="literal">400 HTTP exception</code> will be raised.<p>Note that this feature requires that the user client accepts cookies.</p></li><li class="listitem">After configuring the application, you should use <code class="literal">ActiveForm::beginForm</code> and <code class="literal">CHtml::endForm</code> instead of HTML form tags in view with <code class="literal">ActiveForm</code>:<div class="informalexample"><pre class="programlisting">&lt;?php $form = ActiveForm::begin(['id' =&gt; 'login-form']); ?&gt;
+     &lt;input type='text' name='name'
+     .........
+&lt;?php ActiveForm::end(); ?&gt;</pre></div></li><li class="listitem">OR manually:<div class="informalexample"><pre class="programlisting">&lt;form action='#' method='POST'&gt;
+  &lt;input type="hidden" name="&lt;?= Yii::$app-&gt;request-&gt;csrfParam ?&gt;" value="&lt;?=Yii::$app-&gt;request-&gt;getCsrfToken()?&gt;" /&gt;
+  ....
+&lt;/form&gt;</pre></div></li><li class="listitem">In the first case, Yii automatically adds a hidden token field, as follows:<div class="informalexample"><pre class="programlisting">      &lt;form action="/csrf/create" method="post"&gt;
+      &lt;div style="display:none"&gt;&lt;input type="hidden" value="e4d1021e79ac
+      269e8d6289043a7a8bc154d7115a" name="YII_CSRF_TOKEN" /&gt;</pre></div></li><li class="listitem">If you <a class="indexterm" id="id391"/>save this form as HTML and try submitting it, you will get a message like the one shown in the following screenshot instead of regular data processing:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00464.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec211"/>How it works...</h2></div></div></div><p>Internally, during form rendering, we have code like this:</p><div class="informalexample"><pre class="programlisting">if ($request-&gt;enableCsrfValidation &amp;&amp; !strcasecmp($method, 'post')) {
+  $hiddenInputs[] = static::hiddenInput($request-&gt;csrfParam, $request-&gt;getCsrfToken());
+}
+
+if (!empty($hiddenInputs)) {
+  $form .= "\n" . implode("\n", $hiddenInputs);
+}</pre></div><p>In the previous code, <code class="literal">getCsrfToken()</code> generates a unique token value and writes it to a cookie. Then, on subsequent requests, both the cookie and <code class="literal">POST</code> values are compared. If they don't match, an error message is shown instead of usual data processing.</p><p>If you need to <a class="indexterm" id="id392"/>perform a <code class="literal">POST</code> request but don't want to build a form using <code class="literal">CHtml</code>, then you can pass a parameter with a name from <code class="literal">Yii::app()-&gt;request-&gt;csrfParam</code> and a value from <code class="literal">Yii::$app-&gt;request-&gt;getCsrfToken()</code>.</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec212"/>There's more...</h2></div></div></div><p>Lets have a look at some  more features.</p><p>Disabling CSRF-tokens for all actions</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">If you have a <a class="indexterm" id="id393"/>problem with <code class="literal">enableCsrfValidation</code> you can switch it off.</li><li class="listitem">To disable CSRF, add <a class="indexterm" id="id394"/>this code to your controller:<div class="informalexample"><pre class="programlisting">public function beforeAction($action) { 
+    $this-&gt;enableCsrfValidation = false; 
+    return parent::beforeAction($action);
+}</pre></div></li></ol><div style="height:10px; width: 1px"/></div><div class="section" title="Disabling CSRF-tokens for a specific action"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lvl3sec15"/>Disabling CSRF-tokens for a specific action</h3></div></div></div><div class="informalexample"><pre class="programlisting">public function beforeAction($action) { 
+    $this-&gt;enableCsrfValidation =  ($action-&gt;id !== "actionId"); 
+    return parent::beforeAction($action);
+}</pre></div></div><div class="section" title="CSRF validation for Ajax-calls"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lvl3sec16"/>CSRF validation for Ajax-calls</h3></div></div></div><p>When the <code class="literal">enableCsrfValidation</code> option<a class="indexterm" id="id395"/> is enabled in the main layout, add <code class="literal">csrfMetaTags</code>:</p><div class="informalexample"><pre class="programlisting">&lt;head&gt;
+  .......
+  &lt;?= Html::csrfMetaTags() ?&gt;
+&lt;/head&gt;
+
+Now you will be able to simply add it to ajax-call
+var csrfToken = $('meta[name="csrf-token"]').attr("content");
+$.ajax({
+        url: 'request'
+        type: 'post',
+        dataType: 'json',
+        data: {param1: param1, _csrf : csrfToken},
+});</pre></div></div><div class="section" title="Additionally [rename]"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lvl3sec17"/>Additionally [rename]</h3></div></div></div><p>If your <a class="indexterm" id="id396"/>application requires a very high security level, such as a bank account management system, extra measures can be taken.</p><p>First, you can turn off the remember me feature using <code class="literal">config/main.php,</code> as follows:</p><div class="informalexample"><pre class="programlisting">'components' =&gt; [
+    ..
+   'user' =&gt; [
+        ..
+       'enableAutoLogin' =&gt; false,
+        ..
+   ],
+    ..
+],</pre></div><p>Note that this will not work if the <code class="literal">enabledSession</code> option is <code class="literal">true</code>.</p><p>Then, you can lower the session timeout, as follows:</p><div class="informalexample"><pre class="programlisting">'components' =&gt; [
+    ..
+   'session' =&gt; [
+        ..
+       'timeout' =&gt; 200,
+        ..
+   ],
+    ..
+],</pre></div><p>This sets the number of seconds after which data will be seen as <span class="emphasis"><em>garbage</em></span> and cleaned up.</p><p>Of course, these measures will make the user experience worse, but they will add an additional level of security.</p></div><div class="section" title="Using GET and POST properly"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lvl3sec18"/>Using GET and POST properly </h3></div></div></div><p>HTTP insists on <a class="indexterm" id="id397"/>not using <code class="literal">GET</code> operations that <a class="indexterm" id="id398"/>change data or state. Sticking to this rule is good practice. It will not prevent all types of CSRF, but it will at least implement some injections, such as <code class="literal">&lt;img src=, pointless&gt;</code>.</p></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec213"/>See also</h2></div></div></div><p>In order<a class="indexterm" id="id399"/> to learn more about SQL injections and working with databases through Yii, refer to the following URLs:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://en.wikipedia.org/wiki/Cross-site_request_forgery">http://en.wikipedia.org/wiki/Cross-site_request_forgery</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-security-best-practices.html#avoiding-csrf">http://www.yiiframework.com/doc-2.0/guide-security-best-practices.html#avoiding-csrf</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/yii-web-request.html#%24enableCsrfValidation-detail">http://www.yiiframework.com/doc-2.0/yii-web-request.html#$enableCsrfValidation-detail</a></li><li class="listitem">The <span class="emphasis"><em>Preventing XSS</em></span> recipe.</li></ul></div></div></div>
+<div class="section" title="Using RBAC"><div class="titlepage" id="20R682-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch05lvl1sec62"/>Using RBAC</h1></div></div></div><p>
+<span class="strong"><strong>Role-Based Access Control</strong></span> (<span class="strong"><strong>RBAC</strong></span>) provides simple yet powerful centralized access control. It is<a class="indexterm" id="id400"/> the most powerful access control method available in Yii. It is described in the guide, but since it is rather complex and powerful, it is not as easy to understand without getting under the hood a little.</p><p>In this recipe, we will take the roles hierarchy from the definitive guide, import it, and explain what is<a class="indexterm" id="id401"/> happening internally.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec214"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new application by using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Create a MySQL database and configure it.</li><li class="listitem">Configure the <code class="literal">authManager</code> component in your <code class="literal">config/main.php</code> and <code class="literal">config/console.php</code> as follows:<div class="informalexample"><pre class="programlisting">return [
+   // ...
+   'components' =&gt; [
+       'authManager' =&gt; [
+           'class' =&gt; 'yii\rbac\DbManager',
+       ],
+       // ...
+   ],
+];</pre></div></li><li class="listitem">Run the migration:<div class="informalexample"><pre class="programlisting">yii migrate --migrationPath=@yii/rbac/migrations</pre></div></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec215"/>How to do it...</h2></div></div></div><p>Carry out the following steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create the access rule <code class="literal">rbac/AuthorRule.php</code>:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\rbac;
+
+use yii\rbac\Rule;
+
+/**
+* Class AuthorRule.
+* @package app\rbac
+*/
+class AuthorRule extends Rule
+{
+   public $name = 'isAuthor';
+
+   /**
+    * @param int|string $user
+    * @param \yii\rbac\Item $item
+    * @param array $params
+    *
+    * @return bool
+    */
+   public function execute($user, $item, $params)
+   {
+       return isset($params['post']) ? $params['post']-&gt;createdBy == $user : false;
+   }
+}</pre></div></li><li class="listitem">Create<a class="indexterm" id="id402"/> a console command, <code class="literal">command/RbacController.php</code>, to <code class="literal">init</code> the RBAC rules command:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\commands;
+
+use app\models\User;
+use Yii;
+use yii\console\Controller;
+
+/**
+* Class RbacController.
+* @package app\commands
+*/
+class RbacController extends Controller
+{
+   public function actionInit()
+   {
+       $auth = Yii::$app-&gt;authManager;
+
+       $createPost = $auth-&gt;createPermission('createPost');
+       $createPost-&gt;description = 'Create a post';
+
+       $updatePost = $auth-&gt;createPermission('updatePost');
+       $updatePost-&gt;description = 'Update a post';
+
+       $updatePost = $auth-&gt;createPermission('updatePost');
+       $updatePost-&gt;description = 'Update a post';
+
+       $deletePost = $auth-&gt;createPermission('deletePost');
+       $deletePost-&gt;description = 'Delete a post';
+
+       $readPost = $auth-&gt;createPermission('readPost');
+       $readPost-&gt;description = 'Read a post';
+
+       $authorRule = new \app\rbac\AuthorRule();
+
+       // add permissions
+       $auth-&gt;add($createPost);
+       $auth-&gt;add($updatePost);
+       $auth-&gt;add($deletePost);
+       $auth-&gt;add($readPost);
+       $auth-&gt;add($authorRule);
+
+       // add the "updateOwnPost" permission and associate the rule with it.
+       $updateOwnPost = $auth-&gt;createPermission('updateOwnPost');
+       $updateOwnPost-&gt;description = 'Update own post';
+       $updateOwnPost-&gt;ruleName = $authorRule-&gt;name;
+
+       $auth-&gt;add($updateOwnPost);
+       $auth-&gt;addChild($updateOwnPost, $updatePost);
+
+       // create Author role
+       $author = $auth-&gt;createRole('author');
+       $auth-&gt;add($author);
+       $auth-&gt;addChild($author, $createPost);
+       $auth-&gt;addChild($author, $updateOwnPost);
+       $auth-&gt;addChild($author, $readPost);
+
+       // create Admin role
+       $admin = $auth-&gt;createRole('admin');
+       $auth-&gt;add($admin);
+       $auth-&gt;addChild($admin, $updatePost);
+       $auth-&gt;addChild($admin, $deletePost);
+       $auth-&gt;addChild($admin, $author);
+
+       // assign roles
+       $auth-&gt;assign($admin, User::findByUsername('admin')-&gt;id);
+       $auth-&gt;assign($author, User::findByUsername('demo')-&gt;id);
+
+       echo "Done!\n";
+   }
+}</pre></div></li><li class="listitem">That's it. Run <a class="indexterm" id="id403"/>it in the console:<div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>yii rbac/init</strong></span>
+</pre></div></li><li class="listitem">Create <code class="literal">controllers/RbacController.php</code> as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use app\models\User;
+use stdClass;
+use Yii;
+use yii\filters\AccessControl;
+use yii\helpers\Html;
+use yii\web\Controller;
+
+/**
+* Class RbacController.
+*/
+class RbacController extends Controller
+{
+   public function behaviors()
+   {
+       return [
+           'access' =&gt; [
+               'class' =&gt; AccessControl::className(),
+               'rules' =&gt; [
+                   [
+                       'allow' =&gt; true,
+                       'actions' =&gt; ['delete'],
+                       'roles' =&gt; ['deletePost'],
+                   ],
+                   [
+                       'allow' =&gt; true,
+                       'actions' =&gt; ['test'],
+                   ],
+               ],
+           ],
+       ];
+   }
+
+   public function actionDelete()
+   {
+       return $this-&gt;renderContent(
+           Html::tag('h1', 'Post deleted.')
+       );
+   }
+
+   /**
+    * @param $description
+    * @param $rule
+    * @param array $params
+    *
+    * @return string
+    */
+   protected function renderAccess($description, $rule, $params = [])
+   {
+       $access = Yii::$app-&gt;user-&gt;can($rule, $params);
+
+       return $description.': '.($access ? 'yes' : 'no');
+   }
+
+   public function actionTest()
+   {
+       $post = new stdClass();
+       $post-&gt;createdBy = User::findByUsername('demo')-&gt;id;
+
+       return $this-&gt;renderContent(
+           Html::tag('h1', 'Current permissions').
+           Html::ul([
+               $this-&gt;renderAccess('Use can create post', 'createPost'),
+               $this-&gt;renderAccess('Use can read post', 'readPost'),
+               $this-&gt;renderAccess('Use can update post', 'updatePost'),
+               $this-&gt;renderAccess('Use can own update post', 'updateOwnPost', [
+                   'post' =&gt; $post,
+               ]),
+               $this-&gt;renderAccess('Use can delete post', 'deletePost'),
+           ])
+       );
+   }
+}</pre></div></li><li class="listitem">Now <a class="indexterm" id="id404"/>run <code class="literal">rbac/test</code> once to check access to all the created permissions of the RBAC hierarchy:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00468.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">Then, try to log in as <code class="literal">demo</code> (the password is <code class="literal">demo</code>) and run <code class="literal">rbac/test</code> again:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00494.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">Then, try <a class="indexterm" id="id405"/>to log in as <code class="literal">admin</code> (the password is <code class="literal">admin</code>) and run <code class="literal">rbac/test</code> again:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00473.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">Log in as <code class="literal">demo</code> user and run <code class="literal">rbac/delete</code>:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00475.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">Log in as <code class="literal">admin</code> and run <code class="literal">rbac/delete</code>:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00536.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec216"/>How it works…</h2></div></div></div><p>Yii implements<a class="indexterm" id="id406"/> a general hierarchical RBAC following the <code class="literal">NIST RBAC</code> model. It provides RBAC functionality through the <code class="literal">authManagerapplication</code> component.</p><p>The RBAC hierarchy is a directed acyclic graph, that is, a set of nodes and their directed connections or edges. There are three types of node available: roles, permissions, and rules.</p><p>A role represents a collection of permissions (for example creating posts and updating posts). A role may be assigned to one or multiple users. To check if a user has a specified permission, we may check whether the user is assigned with a role that contains that permission.</p><p>Both roles and <a class="indexterm" id="id407"/>permissions can be organized in a hierarchy. In particular, a role may consist of other roles or permissions, and a permission may consist of other permissions. Yii implements a partial-order hierarchy, which includes the more special <code class="literal">tree</code> hierarchy. While a role can contain a permission, it is not true vice versa.</p><p>For testing permissions, we have created two actions. The first action, <code class="literal">test</code>, contains checkers for created permissions and roles. The second action is <code class="literal">delete</code>, which is limited through the access filter. The rule for the access filter contains the following code:</p><div class="informalexample"><pre class="programlisting">[
+   'allow' =&gt; true,
+   'actions' =&gt; ['delete'],
+   'roles' =&gt; ['deletePost'],
+],</pre></div><p>This means that we are allowing all users who have the <code class="literal">deletePost</code> permission to run the <code class="literal">deletePost</code> action. Yii starts checking with the <code class="literal">deletePost</code> permission. Besides the fact that the access rule element is named as <code class="literal">roles</code>, you can specify an RBAC hierarchy node be it a role, rule, or permission. Checking for <code class="literal">updatePost</code> is complex:</p><div class="informalexample"><pre class="programlisting">Yii::$app-&gt;user-&gt;can('updatePost', ['post' =&gt; $post]);</pre></div><p>We use a second parameter to pass a post (in our case, we have simulated it with <code class="literal">stdClass</code>). If a user is logged in as <code class="literal">demo</code>, then to get access we need to go from <code class="literal">updatePost</code> to author. If you're lucky, you only have to go through <code class="literal">updatePost</code>, <code class="literal">updateOwnPost</code>, and author.</p><p>As <code class="literal">updateOwnPost</code> has a rule defined, it will be run with a parameter passed to <code class="literal">checkAccess</code>. If the result is true, then access will be granted. As Yii does not know what the shortest way is, it tries to check all possibilities until it is successful, or no alternatives are left.</p></div><div class="section" title="There's more…"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec217"/>There's more…</h2></div></div></div><p>There are some useful tricks that will help you to use RBAC efficiently, which are discussed in the following subsections.</p><div class="section" title="Keeping hierarchy simple and efficient"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lvl3sec19"/>Keeping hierarchy simple and efficient</h3></div></div></div><p>Follow<a class="indexterm" id="id408"/> these recommendations where possible to maximize the performance and reduce hierarchy complexity:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem">Avoid attaching multiple roles to a single user</li><li class="listitem">Don't <a class="indexterm" id="id409"/>connect nodes of the same type; so, for example, avoid connecting one task to another</li></ul></div></div><div class="section" title="Naming RBAC nodes"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lvl3sec20"/>Naming RBAC nodes</h3></div></div></div><p>A complex<a class="indexterm" id="id410"/> hierarchy becomes difficult to understand without using some kind of naming convention. One possible convention that helps to limit confusion is as follows:</p><div class="informalexample"><pre class="programlisting">  [group_][own_]entity_action</pre></div><p>Where <code class="literal">own</code> is used when the rule determines an ability to modify an element only if the current user is the owner of the element and the <code class="literal">group</code> is just a namespace. The <code class="literal">entity</code> is the name of the entity we are working with and <code class="literal">action</code> is the action that we are performing.</p><p>For example, if we need to create a rule that determines whether the user can delete a blog post, we will name it <code class="literal">blog_post_delete</code>. If the rule determines whether a user can edit his or her own blog comment, the name will be <code class="literal">blog_own_comment_edit</code>.</p></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec218"/>See also</h2></div></div></div><p>In order to learn <a class="indexterm" id="id411"/>more about SQL injections and working with databases through Yii, refer to the following:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem"><a class="ulink" href="http://csrc.nist.gov/rbac/sandhu-ferraiolo-kuhn-00.pdf">http://csrc.nist.gov/rbac/sandhu-ferraiolo-kuhn-00.pdf</a></li><li class="listitem"><a class="ulink" href="http://en.wikipedia.org/wiki/Role-based_access_control">http://en.wikipedia.org/wiki/Role-based_access_control</a></li><li class="listitem"><a class="ulink" href="http://en.wikipedia.org/wiki/Directed_acyclic_graph">http://en.wikipedia.org/wiki/Directed_acyclic_graph</a></li><li class="listitem"><a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-security-authorization.html#role-based-access-control-rbac">http://www.yiiframework.com/doc-2.0/guide-security-authorization.html#role-based-access-control-rbac</a></li><li class="listitem">The <span class="emphasis"><em>Using controller filters</em></span> recipe</li></ul></div></div></div>
+<div class="section" title="Encrypting/Decrypting data"><div class="titlepage" id="21PMQ2-ae331331bc644dc9b658d3634f0748da"><div><div><h1 class="title"><a id="ch05lvl1sec63"/>Encrypting/Decrypting data</h1></div></div></div><p>The Yii2 framework <a class="indexterm" id="id412"/>contains a special security component that provides<a class="indexterm" id="id413"/> a set of methods for handling common security-related tasks. The <code class="literal">\yii\base\Security</code> class requires the <code class="literal">OpenSSL</code> PHP extension instead of <code class="literal">mcrypt</code>.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec219"/>Getting ready</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new application by using the Composer package manager, as described in the official guide at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-start-installation.html">http://www.yiiframework.com/doc-2.0/guide-start-installation.html</a>.</li><li class="listitem">Set up the <a class="indexterm" id="id414"/>database connection and create a table named <code class="literal">order</code>, as follows:<div class="informalexample"><pre class="programlisting">DROP TABLE IF EXISTS `order`;
+CREATE TABLE IF NOT EXISTS `order` (
+`id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+`client` VARCHAR(255) NOT NULL,
+`total` FLOAT NOT NULL,
+`encrypted_field` BLOB NOT NULL,
+PRIMARY KEY (`id`)
+);</pre></div></li><li class="listitem">Generate an <code class="literal">Order</code> model using Gii.</li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec220"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Add an <a class="indexterm" id="id415"/>additional key parameter to <code class="literal">config/params.php</code>, as follows:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+return [
+    'adminEmail' =&gt; 'admin@example.com',
+    'key' =&gt; 'mysecretkey'
+];</pre></div></li><li class="listitem">Add the <code class="literal">behaviors</code> and <code class="literal">helper</code> properties to the <code class="literal">Order</code> model as follows:<div class="informalexample"><pre class="programlisting">public $encrypted_field_temp;
+
+public function behaviors()
+{
+   return [
+       [
+           'class' =&gt; AttributeBehavior::className(),
+           'attributes' =&gt; [
+               ActiveRecord::EVENT_BEFORE_INSERT =&gt; 'encrypted_field',
+               ActiveRecord::EVENT_BEFORE_UPDATE =&gt; 'encrypted_field',
+           ],
+           'value' =&gt; function ($event) {
+               $event-&gt;sender-&gt;encrypted_field_temp = $event-&gt;sender-&gt;encrypted_field;
+               return Yii::$app-&gt;security-&gt;encryptByKey(
+                   $event-&gt;sender-&gt;encrypted_field,
+                   Yii::$app-&gt;params['key']
+               );
+           },
+       ],
+       [
+           'class' =&gt; AttributeBehavior::className(),
+           'attributes' =&gt; [
+               ActiveRecord::EVENT_AFTER_INSERT =&gt; 'encrypted_field',
+               ActiveRecord::EVENT_AFTER_UPDATE =&gt; 'encrypted_field',
+           ],
+           'value' =&gt; function ($event) {
+               return $event-&gt;sender-&gt;encrypted_field_temp;
+           },
+       ],
+       [
+           'class' =&gt; AttributeBehavior::className(),
+           'attributes' =&gt; [
+               ActiveRecord::EVENT_AFTER_FIND =&gt; 'encrypted_field',
+           ],
+           'value' =&gt; function ($event) {
+               return Yii::$app-&gt;security-&gt;decryptByKey(
+                   $event-&gt;sender-&gt;encrypted_field,
+                   Yii::$app-&gt;params['key']
+               );
+           },
+       ],
+   ];
+}</pre></div></li><li class="listitem">Add<a class="indexterm" id="id416"/> <code class="literal">controllers/CryptoController.php</code>:<div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace app\controllers;
+
+use app\models\Order;
+use Yii;
+use yii\db\Query;
+use yii\helpers\ArrayHelper;
+use yii\helpers\Html;
+use yii\helpers\VarDumper;
+use yii\web\Controller;
+
+/**
+* Class CryptoController.
+* @package app\controllers
+*/
+class CryptoController extends Controller
+{
+   public function actionTest()
+   {
+       $newOrder = new Order();
+       $newOrder-&gt;client = "Alex";
+       $newOrder-&gt;total = 100;
+       $newOrder-&gt;encrypted_field = 'very-secret-info';
+       $newOrder-&gt;save();
+
+       $findOrder = Order::findOne($newOrder-&gt;id);
+
+       return $this-&gt;renderContent(Html::ul([
+           'New model: ' . VarDumper::dumpAsString($newOrder-&gt;attributes),
+           'Find model: ' . VarDumper::dumpAsString($findOrder-&gt;attributes)
+       ]));
+
+   }
+
+   public function actionRaw()
+   {
+       $row = (new Query())-&gt;from('order')
+           -&gt;where(['client' =&gt; 'Alex'])
+           -&gt;one();
+
+       return $this-&gt;renderContent(Html::ul(
+           $row
+       ));
+   }
+}</pre></div></li><li class="listitem">Run <code class="literal">crypto/test</code> and <a class="indexterm" id="id417"/>you will get the following:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00482.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li><li class="listitem">To <a class="indexterm" id="id418"/>view raw data, run <code class="literal">crypto/raw</code>:<div class="mediaobject"><img alt="How to do it..." src="../Images/image00484.jpeg"/></div><p style="clear:both; height: 1em;"> </p></li></ol><div style="height:10px; width: 1px"/></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec221"/>How it works...</h2></div></div></div><p>Firstly, we <a class="indexterm" id="id419"/>have added the <code class="literal">AttributeBehavior,</code> which automatically processes our data when certain events happen. Our certain events are <code class="literal">ActiveRecord::EVENT_AFTER_INSERT, ActiveRecord::EVENT_AFTER_UPDATE</code> and <code class="literal">ActiveRecord::EVENT_AFTER_FIND</code>.</p><p>During insert and update events, we decrypt our data with a special method: <code class="literal">Yii::$app-&gt;security-&gt;encryptByKey();</code>. This method uses HKDF and a random salt to decrypt our data before saving it to the database. After getting data from the database, we can also use the <code class="literal">ActiveRecord::EVENT_AFTER_FIND</code> method to decrypt our data. In this case, we also use<a class="indexterm" id="id420"/> the special Yii2 method <code class="literal">Yii::$app-&gt;security-&gt;encryptByKey();</code>.This method accepts two <a class="indexterm" id="id421"/>params: encrypted data and key.</p></div><div class="section" title="There's more…"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec222"/>There's more…</h2></div></div></div><p>Besides data encryption and data decryption, a secure component also provides key derivation <a class="indexterm" id="id422"/>using standard algorithms, data tampering prevention, and password validation.</p><div class="section" title="Working with passwords"><div class="titlepage"><div><div><h3 class="title"><a id="ch05lvl3sec21"/>Working with passwords</h3></div></div></div><p>Verifying a password:</p><div class="informalexample"><pre class="programlisting">if (Yii::$app-&gt;getSecurity()-&gt;validatePassword($password, $hash)) {
+ // all good, logging user in
+} else {
+ // wrong password
+}</pre></div></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec223"/>See also</h2></div></div></div><p>In order to learn <a class="indexterm" id="id423"/>more about SQL injections and working with databases through Yii, refer to <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-security-passwords.html">http://www.yiiframework.com/doc-2.0/guide-security-passwords.html</a>
+</p></div></div></body></html>
