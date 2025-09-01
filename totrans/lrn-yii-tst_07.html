@@ -1,0 +1,266 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;7.&#xA0;Having Fun Doing Browser Testing"><div class="titlepage"><div><div><h1 class="title"><a id="ch07"/>Chapter 7. Having Fun Doing Browser Testing</h1></div></div></div><p>We have finally arrived at <a id="id349" class="indexterm"/>the last stage of testing: <span class="strong"><strong>acceptance testing</strong></span>. This is the topmost way of testing your application with Codeception in Yii.</p><p>As we saw in the initial chapters , functional and acceptance tests are quite similar in form and implementation, so you won't see anything particularly new in this chapter.</p><p>It is important to grasp the nature of the tests that we are going to create. We can recall from <a class="link" href="ch06.html" title="Chapter 6. Testing the API – PHPBrowser to the Rescue">Chapter 6</a>, <span class="emphasis"><em>Testing the API – PHPBrowser to the Rescue</em></span>, that functional tests are used to ensure the technical correctness of what we've built from a higher standpoint than unit tests. Whereas acceptance tests are the best way of ensuring that the acceptance criteria that were defined at the very beginning are still standing after everything is implemented and put together.</p><p>In this chapter, we are going to review the existing tests, install and configure<a id="id350" class="indexterm"/> <span class="strong"><strong>Selenium,</strong></span> and then implement a small feature that will tie everything together with the work that has already been done.</p><p>In this chapter, we will discuss two main topics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Introducing Selenium WebDriver</li><li class="listitem" style="list-style-type: disc">Creating acceptance tests</li></ul></div><div class="section" title="Introducing Selenium WebDriver"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec40"/>Introducing Selenium WebDriver</h1></div></div></div><p>Yii is shipped<a id="id351" class="indexterm"/> with some acceptance tests. They cover the same elements as the functional tests that we've already seen. The only difference between these two tests is technical, and by looking at the configuration you can see that they've been configured to run with PHPBrowser. This setup may be good enough for you, or it may even be better because PHPBrowser runs faster than the available acceptance testing suites.</p><p>Setting aside PHPBrowser, which we've covered in <a class="link" href="ch06.html" title="Chapter 6. Testing the API – PHPBrowser to the Rescue">Chapter 6</a>, <span class="emphasis"><em>Testing the API – PHPBrowser to the Rescue</em></span>, Codeception can be used with other testing suites, which can perform more realistic frontend tests, including the JavaScript interaction.</p><p>Two of the choices you can have are Selenium WebDriver and PhantomJS. We won't touch PhantomJS, and it should be sufficient to know that it is a headless browser testing suite, which uses the WebDriver interface definition.</p><p>Selenium WebDriver is <a id="id352" class="indexterm"/>also known as Selenium 2.0 + WebDriver. Together with Cucumber, it is probably the most well-known frontend testing tool available. Their use has been improved by some big companies, such as Google. They are stable and have lots of features.</p><p>This is a somewhat natural evolution of Selenium 1.0, which had limitations, such as using JavaScript for interacting with web pages. For this reason, it was running on the JavaScript sandbox. This meant that, in order to get around the same-origin policy, it had to run in conjunction with a Selenium RC server, which had some issues with the browser setup.</p><p>Now the Selenium Server has replaced the RC, while remaining retro-compatible and supporting WebDriver natively.</p><p>WebDriver uses a native implementation of the browser to interact with it. This means that it might not always be available for a specific combination of language /device. However, it provides the best flexibility for controlling a page without needing emulation.</p><p>Codeception uses a PHP implementation called php-webdriver, which was developed by Facebook; its source code and issue tracker can be found at <a class="ulink" href="https://github.com/facebook/php-webdriver">https://github.com/facebook/php-webdriver</a>.</p><p>In its simplest implementation and configuration, the Selenium Server just listens for calls as a service on a specific machine, and fires up the browser on the request to perform the tests.</p><p>So, as a first step, we need to install the Selenium Server, run it, configure it in Codeception, adjust the already existing tests such that they work with it, and then add the new tests to it.</p><div class="section" title="Installing and running Selenium Server"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec53"/>Installing and running Selenium Server</h2></div></div></div><p>From version 1.7 onwards, Codeception<a id="id353" class="indexterm"/> includes the out-of-the-box php-webdriver library.</p><p>As reported in<a id="id354" class="indexterm"/> the documentation, which can be found either from Codeception (<a class="ulink" href="http://codeception.com/11-20-2013/webdriver-tests-with-codeception.html">http://codeception.com/11-20-2013/webdriver-tests-with-codeception.html</a>) or from the official page of Selenium (<a class="ulink" href="http://docs.seleniumhq.org/docs/03_webdriver.jsp">http://docs.seleniumhq.org/docs/03_webdriver.jsp</a>), you need to download the server binary and then run it on the machine from, which you intend to run your browser.</p><p>Head to <a class="ulink" href="http://www.seleniumhq.org/download/">http://www.seleniumhq.org/download/</a> and download the latest version of the software. In my case, it would be <code class="literal">selenium-server-standalone-2.44.0.jar</code>.</p><p>Where you save it doesn't matter because once it starts, its server will be listening to any network interface:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ java -jar selenium-server-standalone-2.44.0.jar</strong></span>
+<span class="strong"><strong>22:03:31.892 INFO - Launching a standalone server</strong></span>
+<span class="strong"><strong>22:03:31.980 INFO - Java: Oracle Corporation 24.65-b04</strong></span>
+<span class="strong"><strong>22:03:31.980 INFO - OS: Linux 3.17.1 amd64</strong></span>
+<span class="strong"><strong>22:03:32.002 INFO - v2.44.0, with Core v2.44.0. Built from revision 76d78cf</strong></span>
+<span class="strong"><strong>...</strong></span>
+</pre></div><div class="section" title="Configuring Yii to work with Selenium"><div class="titlepage"><div><div><h3 class="title"><a id="ch07lvl3sec11"/>Configuring Yii to work with Selenium</h3></div></div></div><p>In order to <a id="id355" class="indexterm"/>have Codeception automatically <a id="id356" class="indexterm"/>pick up and use WebDriver, we need to adjust our acceptance suite configuration:</p><div class="informalexample"><pre class="programlisting"># tests/codeception/acceptance.suite.yml
+class_name: AcceptanceTester
+modules:
+    enabled:
+        - WebDriver
+    config:
+        WebDriver:
+            url: 'http://basic-dev.yii2.sandbox'
+            browser: firefox
+            host: 192.168.56.1
+            restart: true
+            window_size: 1024x768</pre></div><p>This is a straightforward process. We<a id="id357" class="indexterm"/> need to replace the PHPBrowser module with WebDriver and configure it.</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">url</code> (required): This <a id="id358" class="indexterm"/>is the hostname used to connect to your application to perform the tests.</li><li class="listitem" style="list-style-type: disc"><code class="literal">browser</code> (required): This<a id="id359" class="indexterm"/> will specify the browser that you want to use. Some other drivers are also available for mobile phones (Android and iOS), and more information about these can be obtained from the online Selenium documentation, available at <a class="ulink" href="http://docs.seleniumhq.org/docs/03_webdriver.jsp#selenium-webdriver-s-drivers">http://docs.seleniumhq.org/docs/03_webdriver.jsp#selenium-webdriver-s-drivers</a>.</li><li class="listitem" style="list-style-type: disc"><code class="literal">host</code>: This key<a id="id360" class="indexterm"/> specifies the machine that will run the Selenium Server. By default, it will connect to your localhost. For example, I am using the VirtualBox host machine IP address. You can also specify the port and by default, it will use <code class="literal">4444</code>.</li><li class="listitem" style="list-style-type: disc"><code class="literal">restart</code>: This<a id="id361" class="indexterm"/> tells WebDriver to reset a session when a test is performed. This is particularly handy if you don't want a state to be carried over from one test to another. For instance, you can use this when you need to (re)set the cookies to test the auto login functionality.</li><li class="listitem" style="list-style-type: disc"><code class="literal">window_size</code>: This<a id="id362" class="indexterm"/> just specifies the size of the window.</li></ul></div><p>There are<a id="id363" class="indexterm"/> other options, some of which will be quite handy for testing with multiple browsers. In particular, you have the ability to set the desired capabilities for Selenium 2.0, such as being able to pass a specific profile for the browser (quite handy when performing regression testing) and so on. More information about the WebDriver module, albeit not as much as I'd love to see, can be found on the <a id="id364" class="indexterm"/>Codeception documentation page at <a class="ulink" href="http://codeception.com/docs/modules/WebDriver">http://codeception.com/docs/modules/WebDriver</a>.</p></div></div><div class="section" title="Implementing WebDriver-led tests"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec54"/>Implementing WebDriver-led tests</h2></div></div></div><p>Before<a id="id365" class="indexterm"/> we start implementing <a id="id366" class="indexterm"/>the interface that will hook into the API, which we implemented in <a class="link" href="ch06.html" title="Chapter 6. Testing the API – PHPBrowser to the Rescue">Chapter 6</a>, <span class="emphasis"><em>Testing the API – PHPBrowser to the Rescue</em></span>, it would be quite useful to look at the existing acceptance tests and see if there's anything new that we need to take into consideration.</p><p>You will find four tests: <code class="literal">HomeCept</code>, <code class="literal">AboutCept</code>, <code class="literal">LoginCept</code>, and <code class="literal">ContactCept</code>.</p><p>As stated previously, the syntax is not unusual, and we can see that the level of knowledge of the underlying structure is more limited than the functional tests that we've covered.</p><p>The important thing that we need to stress on once again is that all the actions that our <code class="literal">AcceptanceTester</code> can perform on the page, such as <code class="literal">click()</code>, <code class="literal">fillField(),</code> and the assertions that it can perform, such as <code class="literal">see()</code>, <code class="literal">seeLink()</code> and so on, accept a so-called Locator as one of its actual parameters.</p><p>The Locator parameter can be either a string or an array.</p><p>When passed as a string or a<a id="id367" class="indexterm"/> <span class="strong"><strong>fuzzy locator,</strong></span> as it is called in the Codeception terminology, it tries to guess what you're looking for by formally going through a series of steps. If you write <code class="literal">click('foo')</code>, then it will do the following:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">It tries to find the element with the ID <code class="literal">#foo</code>.</li><li class="listitem">It tries to find the class <code class="literal">.foo</code>.</li><li class="listitem">Then, it interprets it as an XPath expression.</li><li class="listitem">Finally, it will throw an <code class="literal">ElementNotFound</code> exception.</li></ol></div><p>You can be more prescriptive when using the array notation or a <a id="id368" class="indexterm"/>
+<span class="strong"><strong>strict locator</strong></span>.</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">['id' =&gt; 'foo']</code> matches <code class="literal">&lt;div id="foo"&gt;</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">['name' =&gt; 'foo']</code> matches <code class="literal">&lt;div name="foo"&gt;</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">['css' =&gt; 'input[type=input][value=foo]']</code> matches <code class="literal">&lt;input type="input" value="foo"&gt;</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">['xpath' =&gt; "//input[@type='submit'][contains(@value, 'foo')]"]</code> matches <code class="literal">&lt;input type="submit" value="foobar"&gt;</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">['link' =&gt; 'Click here']</code> matches <code class="literal">&lt;a href="google.com"&gt;Click here&lt;/a&gt;</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">['class' =&gt; 'foo']</code> matches <code class="literal">&lt;div class="foo"&gt;</code></li></ul></div><p>The preceding examples have been taken from the Codeception documentation, which can be <a id="id369" class="indexterm"/>found at <a class="ulink" href="http://codeception.com/docs/modules/WebDriver">http://codeception.com/docs/modules/WebDriver</a>.</p><p>This explains clearly how to interact with the webpage. Now, the other important bit can be found in the already existing tests, such as <code class="literal">LoginCept</code> and <code class="literal">ContactCept</code>. Here, right before asserting the presence of the validation errors, we have the following condition-led statement:</p><div class="informalexample"><pre class="programlisting">if (method_exists($I, 'wait')) {
+    $I-&gt;wait(3); // only for selenium
+}</pre></div><p>Selenium <a id="id370" class="indexterm"/>introduces two types <a id="id371" class="indexterm"/>of wait: an implicit one and an explicit one. These cause the information to be fetched from the server, and then this information is interpreted and rendered.</p><p>The implicit wait can be configured in the <code class="literal">acceptance.suite.yml</code> file, and it silently tells Selenium to poll for <span class="emphasis"><em>X</em></span> seconds if the element it's looking for is not immediately available. By default, no implicit wait is set.</p><p>The explicit wait is similar to the preceding code snippet. Doing a simple <code class="literal">$I-&gt;wait(X)</code> triggers a <code class="literal">sleep()</code>, and allows the browser to perform the required operation. For example, it would help the browser in completing animations or finishing fetching and manipulating the server-side data.</p><p>There are other ways in which you can wait for something, and some of these ways can be a little more proactive, such as <code class="literal">waitForElement()</code>, <code class="literal">waitForElementChange()</code>, <code class="literal">waitForElementVisible()</code> and <code class="literal">waitForElementNotVisible()</code>. All these methods take a locator, using the aforementioned format, and a timeout in seconds as parameters. We will see how we can use these later on.</p><p>There are other methods provided by the WebDriver Codeception module that you can use, along with the ability to debug your tests, in case something doesn't go as you want.</p><p>Now, let's try to run the available tests and see them pass:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ ../vendor/bin/codecept run acceptance</strong></span>
+<span class="strong"><strong>Codeception PHP Testing Framework v2.0.9</strong></span>
+<span class="strong"><strong>Powered by PHPUnit 4.6-dev by Sebastian Bergmann and contributors.</strong></span>
+
+<span class="strong"><strong>Acceptance Tests (5) --------------------------------------------------------------</strong></span>
+<span class="strong"><strong>Trying to ensure that about works (AboutCept) Ok</strong></span>
+<span class="strong"><strong>Trying to ensure that contact works (ContactCept) Ok</strong></span>
+<span class="strong"><strong>Trying to ensure that home page works (HomeCept) Ok</strong></span>
+<span class="strong"><strong>Trying to ensure that login works (LoginCept) Ok</strong></span>
+<span class="strong"><strong>--------------------------------------------------------------</strong></span>
+
+<span class="strong"><strong>Time: 38.54 seconds, Memory: 13.00Mb</strong></span>
+
+<span class="strong"><strong>OK (4 tests, 23 assertions)</strong></span>
+</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note29"/>Note</h3><p>Depending on which machine you'll be using for running these tests, their speed will change sensibly, although it will never be as fast as it's when performing unit tests, mostly because the whole browser stack has to be started for running these tests.</p></div></div><p>You will <a id="id372" class="indexterm"/>briefly see the browser opening <a id="id373" class="indexterm"/>and closing several times while performing the tests. Everything should look good at the end, and if it doesn't, then look into the <code class="literal">tests/codeception/_output/</code> folder. Here, you will find a markup and a screenshot of the page taken at the time of the failure. This debugging behavior is also found in the functional tests while using PHPBrowser.</p></div></div></div>
+<div class="section" title="Creating acceptance tests"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec41"/>Creating acceptance tests</h1></div></div></div><p>Now<a id="id374" class="indexterm"/> that we have seen how the acceptance tests that use Selenium WebDriver are structured, we can start integrating the work done in the previous chapter and begin adding the tests we want.</p><p>For these kinds of tests, where normally the definition of the markup is left to whoever implements the layout, you would need to define the functionality of your interface, implement the tests, and then implement the markup and add the JavaScript functionality, if needed. After you've performed these, you will add the specifics of the DOM interaction.</p><p>Knowing how many developers leave the frontend functionality definition for the very end, working "tests first" will force you to change your way of working, anticipating with as much detail as needed what lies ahead and discovering immediately any critical aspects of the design.</p><p>We will try <a id="id375" class="indexterm"/>to implement something that is simple enough to get you started with from scratch and then you can improve upon or extend it later. We know that the HTTP Basic Auth, which we have used, does not permit a stateful login. Therefore, we will have to keep some sort of a session object in JavaScript to simulate it. How this is going to work can be taken from the tests that we have written for the User API. This is practical documentation at its best.</p><p>So, our scenario can be described as follows:</p><div class="informalexample"><pre class="programlisting">I WANT TO TEST MODAL LOGIN
+
+I am on homepage
+I see link 'Login'
+I don't see link 'Logout' # i.e. I'm not logged
+I am going to 'test the login with empty credentials'
+.I click 'Login'
+I wait for modal to be visible
+I submit form with empty credentials
+I see 'Error'
+
+I am going to 'test the login with wrong credentials'
+I submit form with wrong credentials
+I see 'Error'
+
+I am going to 'test the login with valid credentials'
+I submit form with valid credentials
+I don't see the modal anymore
+I see link 'Logout'
+I don't see link 'Login'
+
+I am going to 'test logout'
+I click 'Logout'
+I don't see link 'Logout'
+I see link 'Login'</pre></div><p>The preceding syntax <a id="id376" class="indexterm"/>has been taken explicitly from the generated text version of our tests.</p><div class="section" title="Implementing the modal window"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec55"/>Implementing the modal window</h2></div></div></div><p>The <a id="id377" class="indexterm"/>work of implementing the modal window will be made easy by Bootstrap, which is a default framework bundled with the basic app.</p><p>The modal window is composed by an almost pre-determined markup and an additional JS, which provides the interaction part, thereby hooking it to the rest of the interface. I hope that the simplicity of its implementation will let you focus on the aim that lies behind it.</p><p>The following code has deliberately been taken from the <a id="id378" class="indexterm"/>Bootstrap documentation, which can be found at <a class="ulink" href="http://getbootstrap.com/javascript/#modals">http://getbootstrap.com/javascript/#modals</a>. Since the modal window can be opened from any part of the website without going to the login page, we will have to add it to the overall layout template:</p><div class="informalexample"><pre class="programlisting">    &lt;!-- views/layouts/main.ph --&gt;
+    &lt;/footer&gt;
+
+    &lt;div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true"&gt;
+        &lt;div class="modal-dialog"&gt;
+            &lt;div class="modal-content"&gt;
+                &lt;div class="modal-header"&gt;
+                    &lt;button type="button" class="close" data-dismiss="modal"&gt;&lt;span aria-hidden="true"&gt;&amp;times;&lt;/span&gt;&lt;span class="sr-only"&gt;Close&lt;/span&gt;&lt;/button&gt;
+                    &lt;h4 class="modal-title"&gt;Login&lt;/h4&gt;
+                &lt;/div&gt;
+                &lt;div class="modal-body"&gt;
+                    &lt;?= $this-&gt;render('/site/login-modal.php', ['model' =&gt; <span class="strong"><strong>Yii::$app-&gt;controller-&gt;loginForm</strong></span>]); ?&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+
+&lt;?php $this-&gt;endBody() ?&gt;
+&lt;!-- ... --&gt;</pre></div><p>As you can <a id="id379" class="indexterm"/>see, we have moved the modal form to a separate template, which will receive the model of the form as a variable, keeping everything self-contained and organized. Please note from where the model takes its value. We're going to discuss it while implementing the controller.</p><p>The <code class="literal">login-modal.php</code> template is just a rip-off of the original <code class="literal">login.php</code> template, which can be found in the same directory without <code class="literal">H1</code> in the title and the "remember me" checkbox. We just need to add a placeholder to show the error that is coming from the API. This is done to inform and debug it.</p><div class="informalexample"><pre class="programlisting">&lt;!-- views/site/login-modal.php
+&lt;!-- ... --&gt;
+&lt;div class="alert alert-danger alert-dismissible fade in"&gt;
+    &lt;button type="button" class="close" data-dismiss="alert"&gt;&lt;span aria-hidden="true"&gt;×&lt;/span&gt;&lt;span class="sr-only"&gt;Close&lt;/span&gt;&lt;/button&gt;
+    &lt;p class="error"&gt;&lt;/p&gt;
+&lt;/div&gt;
+&lt;!-- ... --&gt;</pre></div><p>We can place this snippet right after the first paragraph of the copied markup.</p></div><div class="section" title="Making the server side work"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec56"/>Making the server side work</h2></div></div></div><p>As we have<a id="id380" class="indexterm"/> said before, we want the modal window to be available everywhere. We are going to accomplish this by saving a publicly accessible property in the <code class="literal">SiteController</code>, so that we can retrieve it from the view. Remember that if you're coming from Yii 1, then views are now separate objects and not a part of the controller.</p><p>Let's use the <code class="literal">init()</code> method to do so:</p><div class="informalexample"><pre class="programlisting">// controllers/SiteController.php
+
+public $loginForm = null;
+
+public function init()
+{
+    $this-&gt;loginForm = new LoginForm();
+}</pre></div><p>Once this is done, we can load our page without errors.</p><p>In the next <a id="id381" class="indexterm"/>step, we will add the interaction to JavaScript.</p></div><div class="section" title="Adding the JavaScript interaction"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec57"/>Adding the JavaScript interaction</h2></div></div></div><p>We will <a id="id382" class="indexterm"/>cover a couple of things in this section. We will discuss the basic functional interaction with the modal, the interaction with the form, and then learn how to close everything with the corner cases and error scenarios.</p><p>The interaction with the modal will be achieved by reusing the already existing login button, which is at the top right side of the menu. We will disable it, but remember that it will provide a fallback compatibility in case something goes wrong.</p><p>The basic open-and-close of the modal window is provided out-of-the-box. We will only trigger it when required, for example upon authentication success.</p><p>Let's add the first basic skeleton for the JS module:</p><div class="informalexample"><pre class="programlisting">// web/js/main.js
+
+var YII = YII || {};</pre></div><p>For this part of our application, we will need the module pattern for creating a self-contained application.</p><div class="informalexample"><pre class="programlisting">YII.main = (function ($) {
+    'use strict';</pre></div><p>Let's start by caching all the jQuery elements that we are going to need along the way:</p><div class="informalexample"><pre class="programlisting">    var $navbar = $('.navbar-nav.nav'),
+        $modal = $('#myModal'),
+        $modalBody = $modal.find('.modal-body'),
+        $modalAlertBox = $modal.find('.alert').hide(),
+        $modalError = $modalAlertBox.find('.error'),
+        $CTALogin = $navbar.find('.login'),</pre></div><p>Once we have logged in, we will swap the link with a "fake" logout button:</p><div class="informalexample"><pre class="programlisting">        $CTALogout = $('&lt;li class="logout"&gt;&lt;a href="#"&gt;Logout&lt;/a&gt;&lt;/li&gt;'),</pre></div><p>We will need some data fields for holding our login information and creating some sort of a session:</p><div class="informalexample"><pre class="programlisting">        authorization = null,
+        username = null,
+        userID = null;</pre></div><p>Now comes<a id="id383" class="indexterm"/> the main part of our script, in which we will initialize our event listeners to the click and submit actions:</p><div class="informalexample"><pre class="programlisting">    /**
+     * initialise all the events in the page.
+     */
+    (function init() {
+        $navbar.append($CTALogout);
+        $CTALogout.hide();</pre></div><p>Let's start by appending and hiding our logout button; we will show it only when the login succeeds, and define the click action it should have:</p><div class="informalexample"><pre class="programlisting">        $navbar.on('click', '.logout a', function (e) {
+            e.preventDefault();
+
+            // unset the user info
+            authorization = null;
+            username = null;
+            userID = null;
+
+            // restore the login CTA
+            $CTALogout.hide();
+            $CTALogin.show();
+        });</pre></div><p>We need to disable the click event for the login button. Otherwise, we will be taken to the login page, instead of opening the modal:</p><div class="informalexample"><pre class="programlisting">        $navbar.on('click', '.login a', function (e) {
+            e.preventDefault();
+        });</pre></div><p>The modal triggering event is done automatically by modifying the markup of the login button. So, navigate to <code class="literal">views/layouts/main.php</code> and then adjust it as follows:</p><div class="informalexample"><pre class="programlisting">'label' =&gt; 'Login',
+'url' =&gt; ['/site/login'],
+'options' =&gt; [
+    'data-toggle'=&gt;'modal',
+    'data-target'=&gt; '#myModal',
+    'class' =&gt; 'login'
+]</pre></div><p>Next, we will deal with the form submission:</p><div class="informalexample"><pre class="programlisting">        $modalBody.on('submit', '#login-form', function (e) {
+            e.preventDefault();</pre></div><p>After disabling <a id="id384" class="indexterm"/>the default submit event, we will need to capture the username and the password, and then save it for future use:</p><div class="informalexample"><pre class="programlisting">            username = this['loginform-username'].value;
+            // we don't care to store the password... sorta
+            authorization = btoa(username + ':' + this['loginform-password'].value);</pre></div><p>The <code class="literal">authorization</code> variable will hold our authorization header that is ready for dispatch:</p><div class="informalexample"><pre class="programlisting">            $.ajax(
+                {
+                    method: 'GET',
+                    url: '/v1/users/search/' + username,
+                    dataType: 'json',
+                    async: false,
+                    beforeSend: authorize,
+                    complete: function (xhr, status) {
+
+                        if (status === 'success') {
+                            // save the user ID
+                            userID = xhr.responseJSON.id;
+                            // set the logout button
+                            $CTALogin.hide();
+                            $CTALogout.show();
+                            // clear the status errors
+                            $modalError.html('');
+                            $modalAlertBox.hide();
+                            // close the modal window
+                            $modal.modal('hide');
+                        }
+                        else {
+                            // display the error
+                            $modalError.html('&lt;strong&gt;Error&lt;/strong&gt;: ' + xhr.statusText);
+                            $modalAlertBox.show();
+                        }
+                    }
+                }
+            );
+        });
+    })();
+})(jQuery);</pre></div><p>This code is <a id="id385" class="indexterm"/>simple enough. In case of success, we save the user ID for subsequent calls, we hide the login button and display the logout one, clear the error message, and hide the modal window. Otherwise, we just display the error message.</p><p>The <code class="literal">beforesend</code> option will be initialized by the <code class="literal">authorize</code> function, which is defined as follows:</p><div class="informalexample"><pre class="programlisting">    /**
+     * modifies the XHR object to include the authorization headers.
+     *
+     * @param {jqXHR} xhr the jQuery XHR object, is automatically passed at call time
+     */
+    function authorize(xhr) {
+        xhr.setRequestHeader('Authorization', 'Basic ' + authorization);
+    }</pre></div><p>After doing this, we won't need anything else to interact with the page. So, let's put everything together.</p></div><div class="section" title="Tying everything together"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec58"/>Tying everything together</h2></div></div></div><p>At this point, we only have to add our JS to the page and then finalize our tests. In order to add our file to <a id="id386" class="indexterm"/>the page, we need to know what assets and asset bundles are.</p><div class="section" title="Dealing with Yii 2 assets bundles"><div class="titlepage"><div><div><h3 class="title"><a id="ch07lvl3sec12"/>Dealing with Yii 2 assets bundles</h3></div></div></div><p>Yii 2 has<a id="id387" class="indexterm"/> radically changed the way assets are handled. It has introduced the concept of the asset bundle.</p><p>Asset bundles are collections of scripts and style sheets that can have a higher degree of configurability as compared to the past.</p><p>This basic app already has a basic implementation. So, let's navigate to <code class="literal">/assets/AppAsset.php</code> and see how the content is structured:</p><div class="informalexample"><pre class="programlisting">&lt;?php // assets/AppAsset.php
+
+namespace app\assets;
+
+use yii\web\AssetBundle;
+
+class AppAsset extends AssetBundle
+{
+    public $basePath = '@webroot';
+    public $baseUrl = '@web';
+    public $css = [
+        'css/site.css',
+    ];
+    public $js = [];
+    public $depends = [
+        'yii\web\YiiAsset',
+        'yii\bootstrap\BootstrapAsset',
+    ];
+}</pre></div><p>The <code class="literal">AppAsset</code> extends from the <code class="literal">yii\web\AssetBundle</code> class and it simply defines a series of public properties.</p><p>The first two properties, <code class="literal">$basePath</code> and <code class="literal">$baseUrl,</code> are the most important ones. <code class="literal">$basePath</code> defines where the assets are located on a publicly accessible location, while <code class="literal">$baseUrl</code> defines how their resource is linked to the web pages, that is, their URL.</p><p>This asset, by <a id="id388" class="indexterm"/>using these two properties, defines the so called "published asset". In other words, it defines a bundle of assets, which are available at a publicly accessible location.</p><p>You can have "external assets", which are comprised of resources from external locations, and "source assets", which are not comprised of resources from publicly available locations. These assets define only a <code class="literal">$sourcePath</code> property and Yii copies them to the publicly accessible assets folder, and names them accordingly.</p><p>Source assets are normally provided by libraries and widgets, and for this reason, we won't be covering them here. Published assets are recommended  for incorporating assets into the page or pages by putting them somewhere in the <code class="literal">web/</code> folder.</p><p>In the example earlier, you saw that we defined the asset dependencies, and in our case, it's done with jQuery and Bootstrap. This is exactly why we've used them for developing the main JavaScript module.</p><p>Lastly, we need to see how we can use the asset bundle for our markup. This can be done by looking at the top of the template view. For this, navigate to <code class="literal">/views/layouts/main.php</code>. Here, we can see these two lines:</p><div class="informalexample"><pre class="programlisting">// views/layouts/main.php
+use app\assets\AppAsset;
+AppAsset::register($this);</pre></div><p>Remember that the old way of associating any asset with a specific layout, although it's not particularly advisable, hasn't been removed. This works in the same way as it was working in Yii 1, that is, by using <code class="literal">registerCssFile()</code> and <code class="literal">registerJsFile()</code>.</p><p>Assets have many other options, such as the ability to compress and compile SASS and LESS files, use Bower or NPM assets, and<a id="id389" class="indexterm"/> so on. Go to the documentation page, which is currently in a good shape and is quite comprehensive, at <a class="ulink" href="http://www.yiiframework.com/doc-2.0/guide-structure-assets.html">http://www.yiiframework.com/doc-2.0/guide-structure-assets.html</a>.</p><p>For our work, we need to slightly adjust the asset bundle provided by adding the JS file and tweak it where it's going to be added to the page, otherwise we will encounter some problems in running it before the page is parsed. Consider the following code snippet:</p><div class="informalexample"><pre class="programlisting">    public $js = [
+        'js/main.js',
+    ];
+    public $jsOptions = [
+        'position' =&gt; \yii\web\View::POS_END
+    ];</pre></div><p>Once you've added the preceding lines to the asset bundle, you need to head back to the form template that is included in the modal. This, in fact, will generate some problems because it requires<a id="id390" class="indexterm"/> injecting some script into the page in order to make the client-side validation work. This is a major problem; most of the time you will have to override the way <code class="literal">ActiveForms</code> works, so you should learn how to do it.</p><div class="informalexample"><pre class="programlisting">// views/site/login-modal.php
+
+    &lt;?php $form = ActiveForm::begin([
+        'id' =&gt; 'login-form',
+        'options' =&gt; ['class' =&gt; 'form-horizontal'],
+        <span class="strong"><strong>'enableClientScript' =&gt; false,</strong></span>
+        <span class="strong"><strong>'enableClientValidation' =&gt; false,</strong></span>
+        'fieldConfig' =&gt; [
+            'template' =&gt; "{label}\n&lt;div class=\"col-lg-4\"&gt;{input}&lt;/div&gt;\n&lt;div class=\"col-lg-5\"&gt;{error}&lt;/div&gt;",
+            'labelOptions' =&gt; ['class' =&gt; 'col-lg-offset-1 col-lg-2 control-label'],
+        ],
+    ]); ?&gt;</pre></div><p>The two options shown here will disable both the client-side validation and any additional scripting facility. Disabling only one option won't do the trick.</p><p>We can now load the page and no error message will be displayed on the console.</p></div></div><div class="section" title="Finalizing the tests"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec59"/>Finalizing the tests</h2></div></div></div><p>At this point, we <a id="id391" class="indexterm"/>just have to convert our scenarios into live code.</p><p>Let's start creating the test in the same way as we created unit tests and functional tests:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ ../vendor/bin/codecept generate:cept acceptance LoginModalCept</strong></span>
+<span class="strong"><strong>Test was created in LoginModalCept.php</strong></span>
+</pre></div><p>Navigate to the file and let's start by asserting the initial statements: where we are and ensure that we are not logged in:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+// tests/codeception/acceptance/LoginModalCept.php
+$I = new AcceptanceTester($scenario);
+$I-&gt;wantTo('test modal login');
+
+$I-&gt;amOnPage(Yii::$app-&gt;homeUrl);
+$I-&gt;seeLink('Login');
+$I-&gt;dontSeeLink('Logout');</pre></div><p>Although this <a id="id392" class="indexterm"/>might seem like a simplistic way of determining whether the user is logged in, it serves the purpose. If we find that anything more complex is needed, then we can always add it to the mix later:</p><div class="informalexample"><pre class="programlisting">$I-&gt;amGoingTo('test the login with empty credentials');
+$I-&gt;click('Login');
+$I-&gt;waitForElementVisible('.modal');
+$I-&gt;fillField('#loginform-username', '');
+$I-&gt;fillField('#loginform-password', '');
+$I-&gt;click('#login-form button');
+$I-&gt;see('Error', '.alert .error');</pre></div><p>The most important part of this test is the use of an explicit wait, <code class="literal">waitForElementVisible().</code> It does what it says on the tin: waits until the DOM element with class .modal is rendered and visible.</p><p>The assertion made at the end does not check for any specific errors. So feel free to add any level of customization here, as I've tried to be as generic as possible.</p><p>The same goes for the following test:</p><div class="informalexample"><pre class="programlisting">$I-&gt;amGoingTo('test the login with wrong credentials');
+$I-&gt;fillField('#loginform-username', 'admin');
+$I-&gt;fillField('#loginform-password', 'wrong password');
+$I-&gt;click('#login-form button');
+$I-&gt;see('Error', '.alert .error');</pre></div><p>This interesting part of the test comes when we're trying to access using valid credentials. In fact, as we've seen in the script we created previously, the modal window will be dismissed and the login button will be replaced by the logout link:</p><div class="informalexample"><pre class="programlisting">$I-&gt;amGoingTo('test the login with valid credentials');
+$I-&gt;fillField('#loginform-username', 'admin');
+$I-&gt;fillField('#loginform-password', 'admin');
+$I-&gt;click('#login-form button');
+$I-&gt;wait(3);
+$I-&gt;dontSeeElement('.modal');
+$I-&gt;seeLink('Logout');
+$I-&gt;dontSeeLink('Login');</pre></div><p>In order to do this, we need to add another explicit wait for the AJAX call to complete and then the window <a id="id393" class="indexterm"/>will disappear. Using <code class="literal">waitForElementNotVisible()</code> might not do the trick because it involves animation. It also depends on the responsiveness of the system you're testing on because it might not work as expected and fail from time to time. So, <code class="literal">wait()</code> seems like the simplest solution for the problem. Consider this code snippet:</p><div class="informalexample"><pre class="programlisting">$I-&gt;amGoingTo('test logout');
+$I-&gt;click('Logout');
+$I-&gt;dontSeeLink('Logout');
+$I-&gt;seeLink('Login');</pre></div><p>The last test doesn't need much attention and you should be able to understand it without facing any problems.</p><p>Now that we have put together our tests, let's run them:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ ../vendor/bin/codecept run acceptance</strong></span>
+<span class="strong"><strong>Codeception PHP Testing Framework v2.0.9</strong></span>
+<span class="strong"><strong>Powered by PHPUnit 4.6-dev by Sebastian Bergmann and contributors.</strong></span>
+
+<span class="strong"><strong>Acceptance Tests (6) ---------------------------------------------</strong></span>
+<span class="strong"><strong>Trying to ensure that about works (AboutCept) Ok</strong></span>
+<span class="strong"><strong>Trying to ensure that contact works (ContactCept) Ok</strong></span>
+<span class="strong"><strong>Trying to ensure that home page works (HomeCept) Ok</strong></span>
+<span class="strong"><strong>Trying to ensure that login works (LoginCept) Ok</strong></span>
+<span class="strong"><strong>Trying to test modal login (LoginModalCept) Ok</strong></span>
+<span class="strong"><strong>------------------------------------------------------------------</strong></span>
+
+<span class="strong"><strong>Time: 47.33 seconds, Memory: 13.00Mb</strong></span>
+
+<span class="strong"><strong>OK (5 tests, 32 assertions)</strong></span>
+</pre></div></div><div class="section" title="Testing multiple browsers"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec60"/>Testing multiple browsers</h2></div></div></div><p>Version 1.7 <a id="id394" class="indexterm"/>onwards, Codeception also provides a method for testing multiple browsers. This is not particularly difficult, and it can ensure that cross-browser compatibility is achieved.</p><p>This is normally done by configuring environments in the <code class="literal">acceptance.suite.yml</code> file by adding something similar to the following at the bottom of the file:</p><div class="informalexample"><pre class="programlisting">env:
+    chrome39:
+        modules:
+            config:
+                WebDriver:
+                    browser: chrome
+    firefox34:
+        # nothing changed
+    ie10:
+        modules:
+            config:
+                WebDriver:
+                    host: 192.168.56.102
+                    browser: internetexplorer</pre></div><p>Each key under the <code class="literal">env</code> variable represents a specific browser you want to run the test on, and this is done by overriding the default configuration that we have already defined.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip16"/>Tip</h3><p>Within <code class="literal">env</code>, you can override just about any other key that was specified in the YAML configuration files.</p></div></div><p>You can have several machines, each having different versions of the browsers, with Selenium Server listening on them, so you can also perform retro-compatibility tests when deciding which polyfills to use for the new features introduced recently and also depending on your browser support chart.</p><p>In order to trigger the various environments, just append the <code class="literal">--env &lt;environment&gt;</code> parameter to the <code class="literal">run</code> command:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>$ ../vendor/bin/codecept run acceptance --env chrome39 --env firefox34 --env ie10</strong></span>
+</pre></div><p>Internet Explorer requires its own driver to be installed on the host machine and a few more steps to be <a id="id395" class="indexterm"/>performed to set it up correctly, which is covered in the <a id="id396" class="indexterm"/>Selenium documentation, which can be found at <a class="ulink" href="https://code.google.com/p/selenium/wiki/InternetExplorerDriver">https://code.google.com/p/selenium/wiki/InternetExplorerDriver</a>.</p></div><div class="section" title="Understanding Selenium limits"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec61"/>Understanding Selenium limits</h2></div></div></div><p>By now, you <a id="id397" class="indexterm"/>have probably seen how powerful Selenium is. By using the browser natively, you can finally interact with the website programmatically. This will save a huge portion of time that is normally spent by human beings on doing repetitive tasks. Repetitiveness is only a cause of problems when it comes into the hands of humans, so this is effectively a good thing.</p><p>Unfortunately Selenium can't do everything, and if you have already started looking into it and researching its full use and potential, then you might have noticed that there are some limitations of its use.</p><p>Clearly any kind of "pixel-perfect" tests are nearly impossible to recreate with Selenium, although some types of tests on designs can be created, specifically for responsive designs. Other frameworks, such as <a id="id398" class="indexterm"/>Galen cover this functionality (<a class="ulink" href="http://galenframework.com/">http://galenframework.com/</a>).</p><p>A few words need to be spent on hover effects, as they might be quite difficult to achieve and you may need to use the <code class="literal">moveMouseOver()</code> method for triggering it.</p></div></div>
+<div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec42"/>Summary</h1></div></div></div><p>We have covered the final aspect of testing in this chapter. We've gone through the provided tests. We have also understood any additional syntax, configured Selenium, run the first batch of tests, and then moved on to implementing and tying the API previously developed into the interface with a modal login feature.</p><p>In the next chapter, we are going to learn about a lot of logs and how information can be generated by our tests to better our understanding of testing. We will also see if we've missed anything.</p></div></body></html>
