@@ -1,14 +1,18 @@
 - en: Batches, Queues, and Cron
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 批处理、队列和Cron
 - en: If in the previous chapter we kept things a bit more theoretical with me throwing
     "rules" at you, in this chapter I am going to make up for it and we are going
     to have some fun. This means we are going to write some code that demonstrates
     concepts related to data processing, especially larger amounts of it. And in doing
     so, we are going to cover a few topics.
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果在前一章中我们保持了一些理论性，让我向你抛出“规则”，那么在这一章中，我将弥补这一点，我们将有一些乐趣。这意味着我们将编写一些代码来展示与数据处理相关的概念，特别是大量数据处理。在这个过程中，我们将涵盖几个主题。
 - en: First, we are going to look back at the `hook_update_N()` hook we saw in [Chapter
     8](c20b297a-3a37-46ff-a80c-bf83a21bbd5d.xhtml), *The Database API*. More specifically,
     we are going to see how the `&$sandbox` parameter can be used in order to handle
@@ -17,24 +21,33 @@
     (which basically use the same system) to process data in batches across multiple
     requests. And what better example to illustrate this technique than with our Importer
     that needs to process an undefined number of products?
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，我们将回顾在第8章中看到的`hook_update_N()`钩子，*数据库API*。更具体地说，我们将看看如何使用`&$sandbox`参数来处理需要处理一些可能需要较长时间且应跨多个请求分批进行的数据更新。接下来，我们将查看独立*批处理*（基本上使用相同的系统）以跨多个请求批量处理数据。那么，用我们的需要处理未定义数量产品的导入器来展示这个技术不是更好吗？
 - en: We will take a look at a related subsystem that allows us to queue *things*
     for later processing (either in batches, during cron, or in simple requests).
     Since we are talking about cron, we will also go a bit into detail and see how
     this system works in Drupal. Finally, we will finish this chapter by taking a
     look at the Lock API in Drupal 8, an API that allows us to ensure multiple requests
     don't run a process at the same time.
+  id: totrans-3
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将查看一个相关的子系统，它允许我们为后续处理（无论是批量、cron还是简单请求）排队*事物*。由于我们正在谈论cron，我们也将深入探讨这个系统在Drupal中的工作方式。最后，我们将通过查看Drupal
+    8中的Lock API来结束本章，这是一个允许我们确保多个请求不会同时运行一个进程的API。
 - en: By the end of this chapter, you will be a lean, mean, data-processing machine.
     So, let's get to it.
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 到本章结束时，你将变成一个精简、高效的数据处理机器。所以，让我们开始吧。
 - en: Batch-powered update hooks
+  id: totrans-5
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 批量驱动的更新钩子
 - en: The first thing we are going to look at is update hooks, revisiting our previous
     Sports module created in [Chapter 8](c20b297a-3a37-46ff-a80c-bf83a21bbd5d.xhtml),
     *The Database API*. We will focus on the `&$sandbox` parameter we didn't use then.
@@ -42,26 +55,36 @@
     mark them as *retired*. The point is to illustrate how we can process each of
     these records one at a time in individual requests to prevent a PHP timeout. This
     is handy in case we have many records.
+  id: totrans-6
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将要首先查看的是更新钩子，回顾我们在第8章中创建的之前的Sports模块，*数据库API*。我们将关注当时我们没有使用的`&$sandbox`参数。目标是运行对`players`表中的每个记录的更新，并将它们标记为*退役*。目的是说明我们如何逐个处理这些记录，以单个请求的形式来防止PHP超时。如果我们有很多记录，这会很有用。
 - en: 'So to get us going, here is all the code, and we''ll see right after what everything
     means:'
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了让我们开始，这里有一切代码，我们将在之后看到每一部分的意义：
 - en: '[PRE0]'
+  id: totrans-8
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: If you remember, the function name contains the new schema version for the module,
     which will be set once this is run. Refer back to [Chapter 8](c20b297a-3a37-46ff-a80c-bf83a21bbd5d.xhtml),
     *The Database API* for more information.
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你还记得，函数名包含模块的新架构版本，这个版本将在运行时设置。有关更多信息，请参阅[第8章](c20b297a-3a37-46ff-a80c-bf83a21bbd5d.xhtml)，*数据库API*。
 - en: When this hook is fired, the `$sandbox` argument (passed by reference) is empty.
     Its goal is to act as temporary storage between the requests needed to process
     everything inside the function. We can use it to store arbitrary data, but we
     should be mindful of the size as it has to fit inside a `LONGBLOB` table column.
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 当这个钩子被触发时，`$sandbox`参数（通过引用传递）是空的。它的目标是作为在函数内部处理所有内容所需的请求之间的临时存储。我们可以用它来存储任意数据，但我们应该注意其大小，因为它必须适合`LONGBLOB`表列。
 - en: The first thing we are doing is getting our hands on the database service to
     make queries to our `players` table. But more importantly, we are checking whether the
     `$sandbox` variable is empty, which indicates that this is the start of the process.
@@ -69,8 +92,10 @@
     we want to store the progress (this is quite common), the IDs of the players that
     need to be updated, and the total number of records (also quite common). To do
     this, we make a simple query.
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们首先要做的是获取数据库服务以对`players`表进行查询。但更重要的是，我们正在检查`$sandbox`变量是否为空，这表明这是过程的开始。如果是的话，我们会添加一些特定于我们过程的数据。在这种情况下，我们想要存储进度（这很常见），需要更新的玩家的ID，以及记录总数（也很常见）。为了做到这一点，我们执行一个简单的查询。
 - en: 'Once the sandbox is set, we can get the first ID in the list while also removing
     it so that, iteratively, we have fewer records to process. Based on that ID, we
     load the relevant player, add our data to it, and update it back in the database.
@@ -84,8 +109,11 @@
     by the maximum number of records is equal to 1\. If we have 100 records, when
     the progress reaches 100, the following is true: 100 / 100 = 1\. Then, Drupal
     knows to finish the process and not call the function again.'
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: 一旦设置了sandbox，我们就可以获取列表中的第一个ID，同时移除它，这样，迭代地，我们处理的记录就越来越少。基于这个ID，我们加载相关的玩家，将我们的数据添加到其中，并在数据库中更新它。一旦完成，我们就将进度增加1（因为我们处理了一条记录）。最后，sandbox中的`#finished`键是Drupal用来确定过程是否完成的关键。它期望一个介于0和1之间的整数，后者表示我们已经完成。如果发现任何小于1的值，函数将被再次调用，`$sandbox`数组将包含我们离开时的数据（增加的进度和少一个待处理的ID）。在这种情况下，函数的主体将再次运行，处理下一条记录，依此类推，直到进度除以最大记录数等于1。如果我们有100条记录，当进度达到100时，以下是真的：100
+    / 100 = 1。然后，Drupal知道完成过程，不再调用该函数。
 - en: This process is also called batching in Drupal terms and is very useful because
     Drupal will make as many requests as needed to finish it. We can control the workload
     each request needs to make in one request. The previous example might be a bit
@@ -97,16 +125,22 @@
     records instead of one. That would have surely increased the speed, but I encourage
     you to go ahead and try that on your own now that you understand the principles
     behind using `$sandbox` for batching.
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个过程在Drupal术语中也被称作批处理，非常有用，因为Drupal会根据需要发出尽可能多的请求来完成它。我们可以控制每个请求需要完成的工作量。前一个例子可能有点过度，因为一个请求完全能够处理多个玩家。我们实际上在浪费时间，因为像这样，Drupal需要为每个请求重新启动自己。所以，这取决于我们找到那个甜蜜点。在我们之前的例子中，我们本可以将ID数组分成大约五块的块，并允许一个请求处理五条记录而不是一条。这肯定会提高速度，但我鼓励你在理解了使用`$sandbox`进行批处理的原则后，现在就自己尝试一下。
 - en: Batch operations
+  id: totrans-14
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 批量操作
 - en: Now that we have a basic understanding of Drupal's capabilities of doing multi-request
     processing, let's switch gears and look at the Batch API.
+  id: totrans-15
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们已经对Drupal的多请求处理能力有了基本的了解，让我们转换一下，看看Batch API。
 - en: In order to demonstrate how this works, we are going to rebuild the way our
     product `JsonImporter` plugin processes the product data it retrieves. Currently,
     we simply load all the products into an array of objects and loop through each,
@@ -119,48 +153,66 @@
     the assumption that the number of returned products is large, but not too large
     as to pose problems with the communication or with the ability of PHP to store
     them in memory.
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了演示这是如何工作的，我们将重建我们的产品`JsonImporter`插件处理它检索到的产品数据的方式。目前，我们只是将所有产品加载到一个对象数组中，然后遍历每个对象，将它们保存到数据库中。所以，如果JSON响应中有100,000个产品，我们可能会遇到麻烦。公平地说，如果远程提供者有这么多产品，它通常会提供一个分页的方式通过传递偏移量和限制来请求它们。这保持了负载更小（这对通信服务器双方都有好处），并且使处理更容易。在我们的这一边，我们可以将其视为我们处理数据库的方式。但就目前而言，我们将假设返回的产品数量很大，但不是大到足以引起通信问题或PHP存储在内存中的能力问题。
 - en: Moreover, while illustrating the Batch API, we will also perform an operation
     we "forgot" in [Chapter 7](392cdb70-e52a-42d1-b782-28d6eb726810.xhtml), *Your
     Own Custom Entity and Plugin Types*. During the import, we also want to delete
     any products that have been previously imported but that are no longer in the
     JSON response. It is a kind of synchronization between the two data sources, if
     you will. So, let's get to it.
+  id: totrans-17
   prefs: []
   type: TYPE_NORMAL
+  zh: 此外，在演示批次API的同时，我们还将执行在[第7章](392cdb70-e52a-42d1-b782-28d6eb726810.xhtml)“您自己的自定义实体和插件类型”中“忘记”的操作。在导入过程中，我们还想删除任何之前已导入但不再在JSON响应中的产品。如果你愿意，这是一种两种数据源之间的同步。所以，让我们开始吧。
 - en: Creating the batch
+  id: totrans-18
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 创建批次
 - en: 'Inside the `JsonImporter::import()` method, once we get our hands on the `$products`
     array, let''s replace the loop with the following:'
+  id: totrans-19
   prefs: []
   type: TYPE_NORMAL
+  zh: 在`JsonImporter::import()`方法内部，一旦我们获得了`$products`数组，让我们用以下代码替换循环：
 - en: '[PRE1]'
+  id: totrans-20
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: 'And the new *use* statement at the top:'
+  id: totrans-21
   prefs: []
   type: TYPE_NORMAL
+  zh: 以及顶部的新`use`语句：
 - en: '[PRE2]'
+  id: totrans-22
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: Creating a batch involves a number of steps, the first one being the creation
     of a batch definition, which is nothing more than an array with some data. Before
     version 8.6 of Drupal, the batch definition was created by actually defining an
     array. Now we use a dedicated batch builder object, but the end result is the
     same.
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
+  zh: 创建批次涉及多个步骤，第一步是创建一个批次定义，这只是一个包含一些数据的数组。在Drupal 8.6版本之前，批次定义是通过实际定义一个数组来创建的。现在我们使用一个专门的批次构建器对象，但最终结果是一样的。
 - en: The batch can have a title that sets the title to be used on the progress page.
     Similarly, it can also have an optional init, progress and error message that
     can be set with corresponding methods, but that also come with sensible defaults.
     For more information as to what exactly you can do with them, and what other options
     you have, make sure you check out the `BatchBuilder` class and the `batch_set`
     global function.
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
+  zh: 批次可以有一个标题，用于设置进度页面上使用的标题。同样，它还可以有一个可选的初始化、进度和错误消息，这些可以通过相应的方法设置，但同时也提供了合理的默认值。有关您可以使用它们做什么以及您还有哪些其他选项的更多信息，请确保查看`BatchBuilder`类和`batch_set`全局函数。
 - en: The most important part of the batch definition is the list of operations in
     which we specify what needs to take place in the batch. These are defined as any
     kind of valid PHP callback and an array of arguments to pass to these callbacks.
@@ -169,18 +221,24 @@
     PHP request, in the sequence in which they are defined. Moreover, each operation
     can also run across multiple requests, similar to how we wrote our update hook
     earlier.
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
+  zh: 批次定义最重要的部分是操作列表，其中我们指定在批次中需要发生什么。这些定义为任何有效的PHP回调函数和一个传递给这些回调函数的参数数组。如果后者位于尚未加载的文件中，可以使用`setFile()`方法指定文件路径以包含。每个操作都在其自己的PHP请求上运行，按照它们定义的顺序。此外，每个操作还可以跨多个请求运行，类似于我们之前编写的更新钩子。
 - en: Our first operation will be responsible for removing from Drupal the products
     that no longer exist in the JSON response, while the latter will do the import.
     Both of these receive only one parameter—the array of products.
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们的第一个操作将负责从Drupal中删除在JSON响应中不再存在的产品，而后者将执行导入。这两个操作都只接收一个参数——产品数组。
 - en: The `finished` key in the definition array (set using the `setFinishCallback()`
     method) is another callback that gets fired at the end of the batch processing,
     after all the operations are done.
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
+  zh: 定义数组中的`finished`键（使用`setFinishCallback()`方法设置）是另一个在批处理结束时触发的回调，在所有操作完成后。
 - en: Finally, we call the global `batch_set()` method, which statically sets the
     batch definition and marks it as ready to be run. There is just one more step
     to trigger the batch, and that is a call to `batch_process()`. But the reason
@@ -191,38 +249,54 @@
     done via forms. However, the other major possibility is to trigger the batch via
     a Drush command (which we can actually do). In this case, we need to use the `drush_backend_batch_process()`
     function instead.
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，我们调用全局的`batch_set()`方法，它静态地设置批处理定义并标记它为准备好运行。触发批处理只需再走一步，那就是调用`batch_process()`。但我们没有使用它的原因是，如果导入作为表单提交的一部分运行，表单API会自动触发它。所以如果我们在这里也触发它，它将不起作用。表单API为我们这样做的原因是，大多数情况下我们希望批处理只在采取行动的结果下运行。通常，这是通过表单完成的。然而，另一个主要可能性是通过Drush命令触发批处理（我们实际上可以这样做）。在这种情况下，我们需要使用`drush_backend_batch_process()`函数。
 - en: 'So, what we will do first is check that we are in a command-line environment
     (aka Drush) and trigger it only in that case:'
+  id: totrans-29
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，我们首先会检查我们是否处于命令行环境（即Drush），并且只在那种情况下触发它：
 - en: '[PRE3]'
+  id: totrans-30
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: Otherwise, we leave it up to the Form API. In doing this, we can trigger the
     import both from a Form submit handler and via Drush, and we can have plugins
     that don't necessarily use batches.
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
+  zh: 否则，我们将其留给表单API。通过这样做，我们可以从表单提交处理程序和通过Drush触发导入，并且我们可以拥有不必要使用批处理的插件。
 - en: Batch operations
+  id: totrans-32
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 批处理操作
 - en: 'Now that we have our batch definition in place, we are missing those three
     callback methods we are referencing in it. So, let''s see the first one:'
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在我们已经设置了批处理定义，但我们缺少在定义中引用的那三个回调方法。所以，让我们看看第一个：
 - en: '[PRE4]'
+  id: totrans-34
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: This is the first operation in the batch process. As an argument, it receives
     all the variables we defined in the batch definition (in our case, the products
     array). But it also gets a `$context` array variable passed by a reference, which
     we can use similarly to how we used `$sandbox` in the update hook (with some extra
     capabilities).
+  id: totrans-35
   prefs: []
   type: TYPE_NORMAL
+  zh: 这是批处理过程中的第一个操作。作为一个参数，它接收我们在批处理定义中定义的所有变量（在我们的情况下，是产品数组）。但它还通过引用接收一个`$context`数组变量，我们可以像在更新钩子中使用`$sandbox`一样使用它（具有一些额外的功能）。
 - en: The task at hand is pretty simple. We prepare a list of IDs of all the products
     in the JSON and, based on those, we query our product entities for those that
     are `NOT IN` that list. If any are found, we delete them. You'll notice already
@@ -230,8 +304,10 @@
     of Drupal's Batch API because we expect the workload to be minimal. After all,
     how many products could be missing at any given time and would need to be deleted?
     We'll assume not many for our use case.
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
+  zh: 当前任务相当简单。我们准备一个包含所有产品ID的列表，基于这些ID，我们查询我们的产品实体以获取不在该列表中的那些。如果找到任何，我们将删除它们。你可能会注意到，在这个操作中，我们并不依赖于Drupal批处理API的实际多请求功能，因为我们预计工作负载将是最低的。毕竟，在任何给定时间可能会有多少产品缺失并需要被删除？我们将假设在我们的用例中不会很多。
 - en: But while we are doing all this, we are interacting somewhat with the batch
     processing. You'll notice that the `$context` array has a `results` key. This
     is used to store information related to the outcome of each operation in the batch.
@@ -240,27 +316,37 @@
     information as to what has happened. So in our example, we create an array keyed
     by `cleared` (to namespace the data for this particular operation), to which we
     add the names of each product that has been deleted.
+  id: totrans-37
   prefs: []
   type: TYPE_NORMAL
+  zh: 但在我们做所有这些的同时，我们也在某种程度上与批处理进行交互。你会注意到`$context`数组有一个`results`键。这个键用于存储与批处理中每个操作结果相关的信息。我们不应该用它来管理进度，而是要跟踪已经完成的工作，以便在最后，我们可以向用户提供一些有用的信息，说明发生了什么。所以，在我们的例子中，我们创建了一个以`cleared`为键的数组（为了为这个特定的操作命名空间数据），并向其中添加了已删除的每个产品的名称。
 - en: Moreover, we also have a `message` key that we use to print a message as the
     action is happening. This gets printed out in "real time" to indicate to the user
     what is currently being processed. If the batch is run via the UI through a form,
     it very well might be that you won't see all the messages due to the speed of
     the processing. However, if triggered by Drush (as it will be in our case), each
     of these messages will be printed to the terminal screen.
+  id: totrans-38
   prefs: []
   type: TYPE_NORMAL
+  zh: 此外，我们还有一个`message`键，我们用它来在动作发生时打印消息。这些消息会实时打印出来，以向用户指示当前正在处理的内容。如果通过UI表单运行批处理，由于处理速度的原因，你可能会看不到所有消息。然而，如果由Drush触发（正如我们的情况），每个这些消息都会打印到终端屏幕上。
 - en: 'With this, our first operation is done. It''s time to look at the second, more
     complex, one:'
+  id: totrans-39
   prefs: []
   type: TYPE_NORMAL
+  zh: 这样，我们的第一个操作就完成了。现在是时候看看第二个，更复杂的操作了：
 - en: '[PRE5]'
+  id: totrans-40
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: The arguments it receives are exactly the same as with our previous operation
     since we defined them in the same way.
+  id: totrans-41
   prefs: []
   type: TYPE_NORMAL
+  zh: 它接收的参数与我们之前的操作完全相同，因为我们以相同的方式定义了它们。
 - en: Here again we ensure we have some products and start up our `results` array,
     this time to keep track of the imported records. But we also work with the `sandbox`
     key of the `$context` array this time, in order to use the multi-request processing
@@ -271,8 +357,10 @@
     as with our previous operation, we are using the `message` key to inform the user
     as to what is going on and the `results` key to compile a list of products that
     have been imported.
+  id: totrans-42
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这里，我们再次确保我们有了一些产品，并启动了我们的`results`数组，这次是为了跟踪导入的记录。但这次我们也与`$context`数组的`sandbox`键一起工作，以便使用多请求处理功能。方法与我们在更新钩子中做的是相似的——我们保持一个进度计数，存储产品数量的最大值，然后根据这两个值计算`$context['finished']`键。然而，在这种情况下，我们选择一次处理三个产品。同样，就像我们之前的操作一样，我们使用`message`键来通知用户正在发生的事情，并使用`results`键来编译已导入的产品列表。
 - en: Before moving on, let's talk a bit about the way we are importing the products.
     Had the JSON resource been able to return paginated results, we would have had
     to change our approach. First, we could not have deleted the missing products
@@ -283,15 +371,21 @@
     a limit stored in the sandbox. So, each Drupal batch request would have made a
     new request to the JSON resource. Of course, we would have had to keep track of
     all the processed products so that we would know which ones were able to be deleted.
+  id: totrans-43
   prefs: []
   type: TYPE_NORMAL
+  zh: 在继续之前，让我们谈谈我们导入产品的方式。如果JSON资源能够返回分页结果，我们就需要改变我们的方法。首先，我们无法以相同的方式删除缺失的产品。相反，我们必须跟踪导入产品的ID，然后才能删除缺失的产品。因此，两个操作的顺序将会颠倒。其次，产品的检索将是在`importProducts`操作内部完成的，使用存储在沙盒中的偏移量和限制。因此，每个Drupal批处理请求都会向JSON资源发出新的请求。当然，我们必须跟踪所有已处理的产品，以便我们知道哪些是可以被删除的。
 - en: 'Finally, let''s take a look at the callback used when the batch processing
     finishes:'
+  id: totrans-44
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，让我们看看批处理完成时使用的回调函数：
 - en: '[PRE6]'
+  id: totrans-45
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'This callback receives three parameters: a Boolean indicating whether the processing
     was successful or not, the results array we used inside our `$context` to keep
     track of what has been done, and the array of operations. What we are doing is
@@ -303,56 +397,83 @@
     As we''ve already learned, this approach is now deprecated, and **you should instead
     inject the Messenger service** (most beneficially in the parent class). I omitted
     that part to save space and keep things focused.'
+  id: totrans-46
   prefs: []
   type: TYPE_NORMAL
+  zh: 此回调接收三个参数：一个布尔值，指示处理是否成功，我们用于在 `$context` 中跟踪已完成工作的结果数组，以及操作数组。我们实际做的事情实际上非常简单。我们首先打印一个通用的消息，如果批量处理失败。在这种情况下，我们也提前返回。否则，我们使用
+    `$results` 数组打印有关我们已执行的操作的相关消息。注意使用你在上一章中学到的 `t()` 和 `formatPlural()` 方法。更重要的是，注意使用全局的
+    `drupal_set_message()` 来打印消息。正如我们已经学到的，这种方法现在已被弃用，**你应该改为注入 Messenger 服务**（在父类中最为有益）。我省略了这部分以节省空间并保持内容集中。
 - en: 'Our reworked JSON Importer now uses batching to make the process more stable
     in case the number of records it needs to process gets too big. Before we can
     try it out, we need to do one last step, and that is to use the `DependencySerializationTrait`
     inside the `ImporterBase` plugin class:'
+  id: totrans-47
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们重构的 JSON 导入器现在使用批量处理来使过程更加稳定，以防需要处理的记录数量太大。在我们尝试之前，我们需要做最后一步，那就是在 `ImporterBase`
+    插件类中使用 `DependencySerializationTrait`：
 - en: '[PRE7]'
+  id: totrans-48
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: The reason is that when the batch runs, Drupal stores some information about
     the object that runs it. In order to do so, it needs to serialize it. However,
     since it has dependencies such as the `EntityTypeManager`, Drupal needs a way
     to handle these in the serialization process. This trait helps with that. Moreover,
     we can use it in the base class so that all plugin classes can use batching easily
     without having to worry about this step.
+  id: totrans-49
   prefs: []
   type: TYPE_NORMAL
+  zh: 原因是当批量运行时，Drupal 存储有关运行该对象的一些信息。为了做到这一点，它需要对其进行序列化。然而，由于它具有如 `EntityTypeManager`
+    这样的依赖项，Drupal 需要一种在序列化过程中处理这些依赖项的方法。这个特性有助于解决这个问题。此外，我们可以在基类中使用它，这样所有插件类都可以轻松地使用批量处理，而无需担心这一步骤。
 - en: 'But now if we run the Drush command we wrote in [Chapter 7](392cdb70-e52a-42d1-b782-28d6eb726810.xhtml),
     *Your Own Custom Entity and Plugin Types*, to trigger our importer, we get an
     output similar to this:'
+  id: totrans-50
   prefs: []
   type: TYPE_NORMAL
+  zh: 但现在如果我们运行我们在第 7 章[第 7 章](392cdb70-e52a-42d1-b782-28d6eb726810.xhtml)中编写的 Drush
+    命令来触发我们的导入器，我们会得到类似以下输出：
 - en: '![](img/97a0a216-cc94-407d-9403-23209ebef62e.png)'
+  id: totrans-51
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](img/97a0a216-cc94-407d-9403-23209ebef62e.png)'
 - en: Note the messages set when importing each record, as well as the messages we
     set at the end of the process, which provides a kind of summary of what went down.
+  id: totrans-52
   prefs: []
   type: TYPE_NORMAL
+  zh: 注意在导入每条记录时设置的消息，以及我们在处理结束时设置的消息，这提供了一种对发生情况的总结。
 - en: When calling `batch_process()`, we can also pass in a URL to redirect to when
     the processing has finished. However, a better way is to return a `RedirectResponse`
     inside the `finished` callback. And it goes without saying that if we trigger
     the batch from Drush, there will be no actual redirect. However, it will work
     just fine in a form context.
+  id: totrans-53
   prefs: []
   type: TYPE_NORMAL
+  zh: 当调用 `batch_process()` 时，我们还可以传入一个 URL，以便在处理完成后进行重定向。然而，更好的方式是在 `finished` 回调中返回一个
+    `RedirectResponse`。不用说，如果我们从 Drush 触发批量操作，将不会有实际的重定向。然而，在表单上下文中它将正常工作。
 - en: Cron
+  id: totrans-54
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: Cron
 - en: In the previous section, we created an awesome multi-request batch processing
     of our JSON product import. In the next section, we'll jump into the Queue API
     and see how we can plan the processing of multiple items at a later stage. However,
     before we dive into that, let's talk a bit about how the Drupal 8 cron works and
     what we can do with it. This is because our discussion about the Queue API is
     closely related to it.
+  id: totrans-55
   prefs: []
   type: TYPE_NORMAL
+  zh: 在上一节中，我们创建了一个出色的多请求批量处理我们的 JSON 产品导入。在下一节中，我们将跳入 Queue API，看看我们如何在稍后阶段计划多个项目的处理。然而，在我们深入之前，让我们谈谈
+    Drupal 8 的 cron 的工作原理以及我们可以用它做什么。这是因为我们关于 Queue API 的讨论与它密切相关。
 - en: 'First of all, Drupal doesn''t actually have a fully fledged cron system. That
     is because it''s an application and not a server capable of scheduling tasks that
     run at specified times of the day at intervals. However, what it does have is
@@ -365,20 +486,29 @@
     and ensures that the next time it runs is only after the configured amount of
     time has elapsed. So in essence, if the cron is set to run every hour but the
     next visitor only comes in three hours, it will only run then:'
+  id: totrans-56
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，Drupal实际上并没有一个完整的cron系统。这是因为它是一个应用程序，不是一个能够安排在一天中指定时间间隔运行的任务的服务器。然而，它确实有一个类似cron的系统，这在繁忙的网站上可以非常接近。通常，它被亲切地称为*穷人版的cron*。为什么？因为Drupal本身没有某种推动力就无法做任何事情，它依赖于访客访问网站来触发cron任务。所以，即使我们可以配置Drupal
+    cron的频率，我们也依赖于访客访问网站并无意中触发它。Drupal会跟踪cron运行的时间，并确保下一次运行是在配置的时间过去之后。所以本质上，如果cron被设置为每小时运行一次，但下一个访客在三个小时后到来，它将只在那时运行：
 - en: '![](img/502fb72d-569a-49cf-93cb-2e512926b976.png)'
+  id: totrans-57
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](img/502fb72d-569a-49cf-93cb-2e512926b976.png)'
 - en: 'The Drupal cron is very useful for maintenance tasks and relatively small jobs
     that don''t take too many resources away from the site visitors. It can be triggered
     manually from the UI, from an outside script, or even with Drush, by using the
     following command:'
+  id: totrans-58
   prefs: []
   type: TYPE_NORMAL
+  zh: Drupal cron对于维护任务和相对较小的任务非常有用，这些任务不会从网站访客那里消耗太多资源。它可以手动从UI、外部脚本或通过以下命令使用Drush触发：
 - en: '[PRE8]'
+  id: totrans-59
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: There are many Drupal core and contributed modules that rely on this system
     to perform various tasks, and we, as module developers, can do the same by implementing
     `hook_cron()`. The latter gets fired every time the cron runs, so basically Drupal's
@@ -386,53 +516,73 @@
     must avoid overloading the request with heavy processing, otherwise the request
     might crash. But as we will see in the next section, we can do something to control
     this if we have such jobs to run.
+  id: totrans-60
   prefs: []
   type: TYPE_NORMAL
+  zh: 有许多Drupal核心和贡献模块依赖于这个系统来执行各种任务，作为模块开发者，我们也可以通过实现`hook_cron()`来做同样的事情。后者每次cron运行时都会被触发，所以基本上Drupal的cron是一系列对各个模块的函数调用。因此，我们必须避免在请求中加载过重的处理，否则请求可能会崩溃。但正如我们将在下一节中看到的，如果我们有这类工作要运行，我们可以做些事情来控制这一点。
 - en: 'First though, let''s look at an example implementation and see how it works.
     What we want to accomplish is that whenever cron runs, we delete all the records
     in the `teams` table (which we created in [Chapter 8](c20b297a-3a37-46ff-a80c-bf83a21bbd5d.xhtml),
     *The Database API*) that are no longer referenced by any player. Essentially,
     if the teams don''t have any players, they need to go. So, we could do something
     simple like this:'
+  id: totrans-61
   prefs: []
   type: TYPE_NORMAL
+  zh: 首先，让我们看看一个示例实现，看看它是如何工作的。我们想要实现的是，每当cron运行时，我们删除`teams`表中所有不再被任何球员引用的记录（我们在[第8章](c20b297a-3a37-46ff-a80c-bf83a21bbd5d.xhtml)，*数据库API*中创建的）。本质上，如果队伍没有球员，它们就需要被删除。因此，我们可以做些简单的事情，如下所示：
 - en: '[PRE9]'
+  id: totrans-62
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: We are implementing `hook_cron()`, and inside, we basically figure out which
     teams have no players and delete them. You'll notice that the query to do the
     former is actually a more complex one, as we are using a subquery, but it is still
     not rocket science. Feel free to check [Chapter 8](c20b297a-3a37-46ff-a80c-bf83a21bbd5d.xhtml),
     *The Database API*, for a refresher on the Drupal 8 database API.
+  id: totrans-63
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们正在实现`hook_cron()`，在内部，我们基本上确定哪些队伍没有球员，并将它们删除。你会注意到，执行前者的查询实际上更复杂，因为我们使用了子查询，但这还不是火箭科学。请随意查看[第8章](c20b297a-3a37-46ff-a80c-bf83a21bbd5d.xhtml)，*数据库API*，以复习Drupal
+    8数据库API。
 - en: This function will then be fired every time our Drupal cron runs, and we could
     argue that doing this task is not such a big strain on our resources. However,
     in the next section, we will see how we can handle cases like those. Moreover,
     we'll see why that approach might even be better than this one, regardless of
     resource-intensiveness.
+  id: totrans-64
   prefs: []
   type: TYPE_NORMAL
+  zh: 此函数将在我们的Drupal cron每次运行时被触发，我们可以争论说执行此任务对我们的资源并没有太大的压力。然而，在下一节中，我们将看到如何处理类似的情况。此外，我们还将看到为什么这种方法可能甚至比这种方法更好，无论资源密集程度如何。
 - en: Queues
+  id: totrans-65
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 队列
 - en: It's finally time to talk a bit about the Queue API, how it works, and what
     its main components are; the theory, basically. We will do this before diving
     into code examples which we all thoroughly enjoy.
+  id: totrans-66
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在是时候谈谈队列API了，它是如何工作的，以及它的主要组件是什么；基本上是理论。在我们深入代码示例之前，我们将这样做，我们所有人都非常喜欢这些示例。
 - en: Introduction to the Queue API
+  id: totrans-67
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 队列API简介
 - en: The main purpose of the Queue API is to provide a way for us to add items to
     a *queue* in order to have them processed at a later time. In charge of processing
     these items are the *queue worker* plugins, which can be enlisted either automatically
     by the Drupal cron, manually (programmatically) by us, or by Drush. We will look
     at an example of all three.
+  id: totrans-68
   prefs: []
   type: TYPE_NORMAL
+  zh: 队列API的主要目的是为我们提供一个将项目添加到*队列*中的方法，以便稍后处理。负责处理这些项目的有*队列工作进程*插件，这些插件可以通过Drupal
+    cron自动调用，或者通过我们手动（程序化地）调用，或者通过Drush调用。我们将查看这三个示例。
 - en: 'The central player in this API is an implementation of the `QueueInterface`,
     which is the actual queue into which we put items. There are two types of queues
     Drupal can handle: reliable and unreliable. The first preserves the order in which
@@ -441,42 +591,58 @@
     But there is also the possibility of working with unreliable queues which give
     their best effort when maintaining the item order and do not guarantee that all
     items get processed.'
+  id: totrans-69
   prefs: []
   type: TYPE_NORMAL
+  zh: 在此API中，中心角色是`QueueInterface`的实现，这是我们实际放入项目的队列。Drupal可以处理两种类型的队列：可靠和不可靠。第一种保留了项目处理的顺序（先进先出）并保证每个项目至少被处理一次。在本章中，我们将只关注这种类型的队列。但还有与不可靠队列一起工作的可能性，它们在保持项目顺序方面尽力而为，但不保证所有项目都会被处理。
 - en: By default, when we are working with queues in Drupal 8, we use a reliable queue
     that is based on a database table to store the items. This is represented by the
     `DatabaseQueue` implementation. The Batch API in fact uses a type of queue that
     extends from the default one Drupal comes with. Okay, but what does a queue do?
+  id: totrans-70
   prefs: []
   type: TYPE_NORMAL
+  zh: 默认情况下，当我们使用Drupal 8中的队列时，我们使用一个基于数据库表存储项目的可靠队列。这由`DatabaseQueue`实现表示。实际上，批处理API使用的是从Drupal自带默认队列扩展出来的队列类型。好吧，那么队列有什么作用呢？
 - en: 'A queue has three main roles:'
+  id: totrans-71
   prefs: []
   type: TYPE_NORMAL
+  zh: 队列有三个主要角色：
 - en: It creates items (adds *stuff* to a list that needs processing at some point).
+  id: totrans-72
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它创建项目（将*东西*添加到需要在某个时间点处理的列表中）。
 - en: It claims items (puts a hold on them while a worker does the processing).
+  id: totrans-73
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它声明项目（在工作进程处理期间暂时保留它们）。
 - en: It deletes items (removes the items from the queue once they have finished processing).
     Alternatively, it can also release them if another worker needs to process them
     or something went wrong and it should be retrieved later on.
+  id: totrans-74
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 它会删除项目（一旦项目完成处理，就从队列中移除）。或者，如果另一个工作进程需要处理它们，或者出了点问题需要稍后恢复，它也可以释放它们。
 - en: We will soon see a practical example of how this works. But first, let's look
     at how a queue comes about.
+  id: totrans-75
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们很快就会看到一个实际示例，说明它是如何工作的。但首先，让我们看看队列是如何产生的。
 - en: The `QueueInterface` implementation is created with the help of the `QueueFactory`
     service, named `queue`. The factory delegates to another factory service specific
     to the type of queue being created. By default this is the `QueueDatabaseFactory`
     service (named `queue.database`), which expectedly returns an instance of the
     `DatabaseQueue` class. The table used by the latter is simply called `queue`.
+  id: totrans-76
   prefs: []
   type: TYPE_NORMAL
+  zh: '`QueueInterface`实现是通过`QueueFactory`服务创建的，命名为`queue`。工厂将委托给另一个特定于创建的队列类型的工厂服务。默认情况下，这是`QueueDatabaseFactory`服务（命名为`queue.database`），它预期返回`DatabaseQueue`类的实例。后者使用的表简单地称为`queue`。'
 - en: Finally, the crux of the Queue API for us module developers is the system of
     `QueueWorker` plugins that are responsible for processing a single item in the
     queue. These can be written in two ways. The simplest approach is to have them
@@ -487,12 +653,16 @@
     but process the items ourselves whenever we want. Moreover, both types of queue
     workers can be enlisted via Drush using a command that triggers the processing
     of a queue with a given name.
+  id: totrans-77
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，对于我们这些模块开发者来说，队列API的核心是负责处理队列中单个项目的`QueueWorker`插件系统。这些插件可以以两种方式编写。最简单的方法是让它们由cron触发。在这种情况下，插件ID需要与它需要处理的项目队列的名称匹配。这样，我们就不必担心声明、释放或删除项目。cron系统会为我们处理这些。然而，一个更灵活的方法是我们实际上自己执行这些操作。我们不依赖于cron，而是在我们想要的时候自行处理项目。此外，这两种类型的队列工作员都可以通过Drush使用一个命令来注册，该命令触发具有给定名称的队列的处理。
 - en: Cron-based queues
+  id: totrans-78
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 基于cron的队列
 - en: In the previous section we wrote the `sports_cron()` implementation which, at
     each run, looks for teams that no longer have players and deletes them from the
     database. However, if we run the Drupal cron every hour, we keep running that
@@ -502,52 +672,78 @@
     from a team. This would actually be the ideal place to check whether that team
     has lost all its players. The idea, then, is to check whether the team has been
     left empty and add it to a queue to be deleted later (whenever the cron runs).
+  id: totrans-79
   prefs: []
   type: TYPE_NORMAL
+  zh: 在上一节中，我们编写了`sports_cron()`的实现，每次运行时都会查找不再有球员的球队并将它们从数据库中删除。然而，如果我们每小时运行一次Drupal的cron任务，即使我们相当确信球队不会频繁地失去所有球员，我们也会继续执行那个查询。此外，我们还基于一个简单的假设（我们尚未编写的功能）认为有一些代码负责从球队中移除球员。这实际上是一个检查该球队是否失去了所有球员的理想位置。因此，我们的想法是检查球队是否被留空，并将其添加到队列中以便稍后删除（无论cron何时运行）。
 - en: We won't go into the code specific to player and team management, but instead
     focus on the part that adds the team that needs to be deleted to the queue.
+  id: totrans-80
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们不会深入探讨特定于球员和球队管理的代码，而是专注于将需要删除的球队添加到队列的部分。
 - en: 'The first thing we need to do is get our hands on the `QueueFactory` service:'
+  id: totrans-81
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们需要做的第一件事是获取`QueueFactory`服务：
 - en: '[PRE10]'
+  id: totrans-82
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: 'Then, we need to create an instance of the default `QueueInterface` (database)
     with the name of our future worker plugin ID:'
+  id: totrans-83
   prefs: []
   type: TYPE_NORMAL
+  zh: 然后，我们需要创建一个默认的`QueueInterface`（数据库）实例，其名称为我们的未来工作插件ID：
 - en: '[PRE11]'
+  id: totrans-84
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: 'This is obviously the static approach of loading services, and you should be
     injecting them instead whenever possible. But if you cannot, there is also the
     following shorthand which can achieve the same thing in one line:'
+  id: totrans-85
   prefs: []
   type: TYPE_NORMAL
+  zh: 这显然是加载服务的静态方法，你应该尽可能地将它们注入。但如果不能这样做，也有以下简写方法，可以在一行中实现相同的效果：
 - en: '[PRE12]'
+  id: totrans-86
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: '`$queue` is an instance of `DatabaseQueue` with the name `team_cleaner`.'
+  id: totrans-87
   prefs: []
   type: TYPE_NORMAL
+  zh: '`$queue`是一个名为`team_cleaner`的`DatabaseQueue`实例。'
 - en: 'The next thing we need to do is add items to it (assuming that we''ve identified
     a team without players):'
+  id: totrans-88
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们需要做的下一件事是将项目添加到其中（假设我们已经识别出一个没有球员的球队）：
 - en: '[PRE13]'
+  id: totrans-89
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: 'It''s standard practice to create a PHP object to wrap the data for the queue
     item. Inside, we can put anything we want that can serialize properly, and that''s
     all. We can now turn to our `TeamCleaner` worker plugin, which naturally goes
     in the `Plugin/QueueWorker` namespace of our module:'
+  id: totrans-90
   prefs: []
   type: TYPE_NORMAL
+  zh: 创建一个PHP对象来封装队列项的数据是标准做法。在里面，我们可以放置任何可以正确序列化的东西，仅此而已。现在我们可以转向我们的`TeamCleaner`工作插件，它自然位于我们模块的`Plugin/QueueWorker`命名空间中：
 - en: '[PRE14]'
+  id: totrans-91
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: 'As we''re already used to it, our plugin extends the base plugin class of its
     type to inherit any potential base functionality. In our case, this is limited
     to the implementation of the `QueueWorkerInterface` which has one method whose
@@ -555,21 +751,29 @@
     us is the implementation of `ContainerFactoryPluginInterface` which allows us
     to inject the `database` service into our plugin. We use that to delete the queued
     team.'
+  id: totrans-92
   prefs: []
   type: TYPE_NORMAL
+  zh: 由于我们已经习惯了，我们的插件扩展了其类型的基插件类以继承任何潜在的基本功能。在我们的例子中，这仅限于实现`QueueWorkerInterface`，它有一个方法名称很容易描述其职责：`processItem($data)`。同样，我们也不陌生于`ContainerFactoryPluginInterface`的实现，它允许我们将`database`服务注入到我们的插件中。我们使用它来删除队列中的队伍。
 - en: All the action in fact happens in the `processItem()` method where we simply
     look into the `$data` object and delete the team with the specified ID. We also
     throw a simple exception if something goes wrong. We'll talk about exceptions
     in queue processing shortly.
+  id: totrans-93
   prefs: []
   type: TYPE_NORMAL
+  zh: 实际上，所有的动作都发生在`processItem()`方法中，我们只是查看`$data`对象并删除具有指定ID的队伍。如果出现问题，我们也会抛出一个简单的异常。我们将在稍后讨论队列处理中的异常。
 - en: 'Somewhat more interesting for the Queue API, however, is the plugin annotation.
     Apart from the standard expected plugin definition, we also encounter the following:'
+  id: totrans-94
   prefs: []
   type: TYPE_NORMAL
+  zh: 然而，对于队列API来说，插件注解更有趣。除了标准的预期插件定义外，我们还遇到了以下内容：
 - en: '[PRE15]'
+  id: totrans-95
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: 'This simply indicates that this plugin should be used by the cron system. In
     other words, when the Drupal cron runs, it loads all the worker plugin definitions,
     and whichever has this information gets processed. And the key here is the `time`
@@ -583,14 +787,19 @@
     to be enough for everything else. So, we need to adjust this carefully. As for
     the queue items that don''t fit into those 10 seconds, they will simply be processed
     at the next cron run.'
+  id: totrans-96
   prefs: []
   type: TYPE_NORMAL
+  zh: 这仅仅表明这个插件应该由cron系统使用。换句话说，当Drupal的cron运行时，它会加载所有工作插件定义，并且具有该信息的任何一个都会被处理。这里的关键是`时间`信息，我们将其设置为10秒。这实际上意味着当cron运行时，我们说的是：*在10秒内尽可能多地处理队列项目；一旦时间限制到达，停止并继续处理剩余的cron任务。*
+    这实际上非常强大，因为我们从PHP请求中分配了一段时间并专门用于我们的队列。这意味着我们不需要猜测为请求分配多少项目（就像我们在批处理中做的那样）。然而，这也意味着剩余的时间必须足够用于其他所有事情。因此，我们需要仔细调整。至于那些无法在10秒内处理完的队列项目，它们将在下一次cron运行时简单地被处理。
 - en: This approach is better than our previous one, in which we ourselves implemented
     `hook_cron()`, because we don't want to always keep checking teams for players,
     but can instead create queue items and defer the deletion until a later time,
     as needed.
+  id: totrans-97
   prefs: []
   type: TYPE_NORMAL
+  zh: 这种方法比我们之前的方法更好，因为我们自己实现了`hook_cron()`，因为我们不想总是检查队伍中的玩家，而是可以创建队列项目并在需要时推迟删除。
 - en: Very similarly, we could refactor our JSON product importer. When calling the
     `import()` method, the products would get queued, and then a separate worker plugin
     would handle the product data creation/update whenever cron runs. This of course
@@ -598,36 +807,47 @@
     classes, which is not a big deal. We are actually fine with the way things are
     at the moment, so to illustrate the programmatic processing of the queue, we will
     use another example.
+  id: totrans-98
   prefs: []
   type: TYPE_NORMAL
+  zh: 对于队列API来说，有一点更有趣的是插件注解。除了标准的预期插件定义外，我们还遇到了以下内容：
 - en: Processing a queue programmatically
+  id: totrans-99
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 处理队列的程序化
 - en: 'Now that we have our queue worker that deletes teams (for all it knows, the
     teams don''t even have to be without any players), we can explore how we can process
     this queue ourselves if we don''t want the cron option. If we wanted it to be
     processed using a Drush command, we would not have to write that ourselves. Drush
     comes with one, and it would work like this:'
+  id: totrans-100
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE16]'
+  id: totrans-101
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: 'However, we may want to create an admin interface, a form of some kind, which
     allows the user to trigger the queue processing. In that case, we could do something
     like this:'
+  id: totrans-102
   prefs: []
   type: TYPE_NORMAL
 - en: '[PRE17]'
+  id: totrans-103
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: In this example, we get our `QueueInterface` object just like we did before.
     But then, we also create an instance of our own `QueueWorker` plugin. Next, we
     use the `claimItem()` method inside a *while* loop, which returns an object that
     contains the data to be passed to the queue worker. Additionally, it blocks the
     item from being usable by another worker for a period of (lease) time (by default
     an hour).
+  id: totrans-104
   prefs: []
   type: TYPE_NORMAL
 - en: Then, we try to use the worker to process the item, and if no exception is thrown,
@@ -642,15 +862,18 @@
     be processed, so we need to skip to the next one; it needs to stay blocked until
     our loop finishes. The latter can only happen when `$queue->claimItem()` no longer
     returns anything.
+  id: totrans-105
   prefs: []
   type: TYPE_NORMAL
 - en: 'And that is pretty much the logic behind processing a queue ourselves: we claim
     an item, throw it to a worker and delete it. If something goes wrong, we work
     with exceptions to determine whether the queue can be continued or whether it
     should be skipped altogether.'
+  id: totrans-106
   prefs: []
   type: TYPE_NORMAL
 - en: The Lock API
+  id: totrans-107
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -664,6 +887,7 @@
     happening, if we trigger another cron run, it will give us a nice message asking
     us to chill because the cron is already running. It does this with the help of
     the Lock API.
+  id: totrans-108
   prefs: []
   type: TYPE_NORMAL
 - en: The Lock API is a low-level Drupal solution for ensuring that processes don't
@@ -671,8 +895,10 @@
     batch operations, queues, and other kinds of potentially time-consuming processes,
     let's look at the Lock API to see how we can leverage it for our custom code.
     But first, let's get an understanding of how this locking works.
+  id: totrans-109
   prefs: []
   type: TYPE_NORMAL
+  zh: 锁API是Drupal的一个低级解决方案，用于确保进程不会相互践踏。由于在本章中我们讨论的是批处理操作、队列和其他可能耗时的进程，让我们看看锁API，看看我们如何利用它来为我们的自定义代码。但首先，让我们了解这种锁定是如何工作的。
 - en: The concept is very simple. Before starting a process, we *acquire* a lock based
     on a given name. This means we check if, by any chance, this process has not already
     been started. If we get the green light (we *acquired* the lock), we go ahead
@@ -684,8 +910,10 @@
     the main Lock API implementation in Drupal, namely the one using the database,
     takes this analogy to heart, as it names the table where the locks are being stored
     `semaphore`.
+  id: totrans-110
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个概念非常简单。在开始一个进程之前，我们根据给定的名称*获取*一个锁。这意味着我们检查这个进程是否已经被启动。如果我们得到绿灯（我们*获取*了锁），我们就继续开始进程。在这个时候，API锁定这个命名的进程，这样其他请求就不能再次*获取*它，直到最初的请求*释放*它。这通常发生在进程完成时，其他请求可以再次启动它。在此之前，我们得到红灯，这告诉我们不能启动它——为了保持交通灯的类比。说到类比，Drupal中主要的锁API实现，即使用数据库的那个，非常重视这个类比，因为它将存储锁的表命名为`semaphore`。
 - en: 'The API is actually pretty simple. We have a Lock service, which is an implementation
     of `LockBackendInterface`. By default, Drupal 8 comes with two: the `DatabaseLockBackend`
     and `PersistentDatabaseLockBackend`. Usually, the former is used. The difference
@@ -693,8 +921,10 @@
     requests. The former in fact releases all the locks at the end of the request.
     We''ll be using this one to demonstrate how the API works, as that is what Drupal
     core uses mostly as well.'
+  id: totrans-111
   prefs: []
   type: TYPE_NORMAL
+  zh: API实际上非常简单。我们有一个锁服务，它是`LockBackendInterface`的一个实现。默认情况下，Drupal 8自带两个：`DatabaseLockBackend`和`PersistentDatabaseLockBackend`。通常，前者被使用。这两个之间的区别在于后者可以用于在多个请求之间保持锁。前者实际上在请求结束时释放所有锁。我们将使用这个来演示API的工作原理，因为这也是Drupal核心主要使用的方法。
 - en: If you remember from [Chapter 7](392cdb70-e52a-42d1-b782-28d6eb726810.xhtml),
     *Your Own Custom Entity and Plugin Types*, we created a Drush command that would
     run all of our Product importers. Of course, we so far have only created one plugin.
@@ -704,22 +934,30 @@
     as Drush commands have to actually be run by someone so there is good control
     over their timing. However, the same approach, as we will see, can be applied
     to processes triggered by unpredictable requests.
+  id: totrans-112
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果您还记得[第7章](392cdb70-e52a-42d1-b782-28d6eb726810.xhtml)中的内容，即*您的自定义实体和插件类型*，我们创建了一个Drush命令，该命令将运行我们所有的产品导入器。当然，到目前为止，我们只创建了一个插件。但我们想要确保，如果这个Drush命令在几乎相同的时间（在实际导入完成之前）多次执行，我们不会同时运行导入。这可能不是一个最现实的例子，因为Drush命令必须由某人实际运行，因此对其时间有很好的控制。然而，正如我们将看到的，同样的方法可以应用于由不可预测的请求触发的进程。
 - en: 'We defined the `ProductCommands::runPluginImport()` helper method that runs
     the import for a specific plugin. We can wrap this trigger with a *lock block*.
     First, though, we need to inject the service, and we can get to it using the `lock`
     key (or the static shorthand if we cannot inject it: `\Drupal::lock()`) . By now
     you should know how to inject a new service so I will not repeat that step here.'
+  id: totrans-113
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们定义了`ProductCommands::runPluginImport()`辅助方法，用于运行特定插件的导入。我们可以用*锁块*包装这个触发器。不过，首先我们需要注入这个服务，我们可以使用`lock`键（或者如果我们不能注入它，可以使用静态简写：`\Drupal::lock()`）。到现在你应该知道如何注入一个新的服务，所以这里我不会重复那个步骤。
 - en: 'So instead of just running the `import()` method on the plugin, we can first
     have this:'
+  id: totrans-114
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，我们不仅可以在插件上运行`import()`方法，我们还可以先做这个：
 - en: '[PRE18]'
+  id: totrans-115
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: 'We try to *acquire* the lock by passing an arbitrary name (in this case, our
     plugin ID). We are sticking to one plugin at a time here so multiple plugins should
     in fact be able to run at the same time. If the `acquire()` method returns `FALSE`,
@@ -729,32 +967,46 @@
     The `acquire()` method has locked it down, and other requests can no longer acquire
     it until we *release* it. Speaking of which, there is one thing we need to add
     at the end (after the import):'
+  id: totrans-116
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们尝试通过传递一个任意的名称（在这种情况下，我们的插件ID）来*获取*锁。我们在这里一次只处理一个插件，所以实际上多个插件应该能够同时运行。如果`acquire()`方法返回`FALSE`，这意味着我们遇到了红灯，锁已经被*获取*。在这种情况下，我们打印一条相应的消息并退出。然而，如果没有，这意味着我们有绿灯，我们可以继续执行我们的代码。`acquire()`方法已经锁定，其他请求在我们不*释放*它之前无法获取它。说到这里，我们需要在最后添加一件事情（在导入之后）：
 - en: '[PRE19]'
+  id: totrans-117
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: 'We need to *release* the lock so other requests can run it again if they like.
     That is pretty much it. If we run our Drush command twice, more or less simultaneously,
     we will have something like this in the terminal:'
+  id: totrans-118
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们需要*释放*锁，以便其他请求可以在喜欢的时候再次运行它。基本上就是这样。如果我们同时运行我们的Drush命令两次，终端上会有类似以下内容：
 - en: '![](img/a498a9ec-6c10-4485-9fc5-1fe2a1149faa.png)'
+  id: totrans-119
   prefs: []
   type: TYPE_IMG
+  zh: '![图片](img/a498a9ec-6c10-4485-9fc5-1fe2a1149faa.png)'
 - en: As you can see, only one call to the Drush command actually went through. As
     expected.
+  id: totrans-120
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如你所见，只有一次调用Drush命令是真正成功的。正如预期的那样。
 - en: 'But we can also do it a bit differently. Let''s say that we want to wait with
     the second request until the first one is finished, and then still run it. After
     all, we don''t want to miss out on any updates. We can do this using the `wait()`
     method of `LockBackendInterface`. The rework is minor:'
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 但我们也可以稍微不同一点。假设我们想要在第二个请求等待第一个请求完成后再运行它。毕竟，我们不希望错过任何更新。我们可以使用`LockBackendInterface`的`wait()`方法来实现这一点。重做的工作很小：
 - en: '[PRE20]'
+  id: totrans-122
   prefs: []
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: So basically, if we don't *acquire* a lock, we print a message that we are waiting
     for the go-ahead. Then, we use the `wait()` method, which puts the request to
     sleep for a maximum of 30 seconds. Within that time frame, it will continuously
@@ -766,22 +1018,30 @@
     what: the second parameter of the `wait()` method is the number of maximum seconds
     to wait, so we can control that as well. I recommend you check out the code to
     better understand what it does.
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
+  zh: 所以基本上，如果我们没有*获取*锁，我们会打印一条消息，表示我们在等待批准。然后，我们使用`wait()`方法，这个方法会将请求暂停最多30秒。在这段时间内，它将每25毫秒（直到达到500毫秒，此时它开始每500毫秒检查一次）连续检查锁是否可用。如果可用，它将跳出循环并返回`FALSE`（这意味着我们可以继续，因为锁已经可用）。否则，如果30秒已经过去，它将返回`TRUE`，这意味着我们仍然需要等待。此时我们放弃。猜猜看：`wait()`方法的第二个参数是最大等待秒数，因此我们也可以控制这一点。我建议你查看代码以更好地理解它是如何工作的。
 - en: Like this, we can run our two Drush commands in parallel and ensure that the
     second one that was requested only runs after the first finishes. If it takes
     longer than 30 seconds, we give up, because something probably went wrong. And
     there we have the Lock API.
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
+  zh: 就像这样，我们可以并行运行我们的两个Drush命令，并确保请求的第二个命令只在第一个完成后运行。如果它花费的时间超过30秒，我们就放弃，因为可能出了点问题。这样我们就有了锁API。
 - en: Summary
+  id: totrans-125
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 摘要
 - en: In this chapter we looked at some of the ways we, as module developers, can
     set up simple and complex data-processing tasks that can run at any time we want.
+  id: totrans-126
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们探讨了作为模块开发者，我们可以以任何我们想要的时间设置简单和复杂的数据处理任务的一些方法。
 - en: We started by looking into using the multi-request capabilities of the update
     hooks. This was a continuation from [Chapter 8](c20b297a-3a37-46ff-a80c-bf83a21bbd5d.xhtml),
     *The Database API*, where we introduced them for the first time, and we have now
@@ -800,9 +1060,13 @@
     to get control over the triggering of certain processes that take longer to complete.
     All this is done in order to prevent them being run multiple times simultaneously,
     causing errors or data corruption.
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们首先开始探索使用更新钩子的多请求功能。这延续自[第8章](c20b297a-3a37-46ff-a80c-bf83a21bbd5d.xhtml)，*数据库API*，在那里我们首次介绍了这些功能，并且我们现在已经看到了如何扩展它们的能力。然后，我们转向了更复杂的批处理API，它使用类似但更复杂的技术。这个系统允许我们构建一系列利用Drupal多请求能力的操作。我们的游乐场是JSON产品导入器，现在它可以处理大量数据而不用担心PHP内存超时。接下来，我们研究了Drupal的cron系统是如何工作的以及为什么它存在，甚至看到了一个例子，即作为模块开发者，我们如何可以将其挂钩并处理我们自己的任务，无论它何时运行。但是，然后，我们通过引入队列API将事情提升到了下一个层次，这个API允许我们将项目添加到队列中，以便它们可以在稍后阶段进行处理。正如我们所看到的，这种处理可以由cron触发，或者我们可以自己动手逐个处理。更不用说Drush选项也可以使事情变得简单。最后，我们研究了锁API，它允许我们控制某些耗时较长的过程的触发。所有这些都是在防止它们同时多次运行，从而造成错误或数据损坏的情况下完成的。
 - en: In the next chapter we are going to talk about Views and how we can programmatically
     interact with these as module developers.
+  id: totrans-128
   prefs: []
   type: TYPE_NORMAL
+  zh: 在下一章中，我们将讨论视图以及作为模块开发者，我们如何可以以编程方式与之交互。
