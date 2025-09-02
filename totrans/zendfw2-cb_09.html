@@ -1,0 +1,441 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;9.&#xA0;Catching Bugs"><div class="titlepage"><div><div><h1 class="title"><a id="ch09"/>Chapter 9. Catching Bugs</h1></div></div></div><p>In this chapter we will cover:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Handling Exceptions—your partner in crime</li><li class="listitem" style="list-style-type: disc">Logging and how it makes your life easier</li><li class="listitem" style="list-style-type: disc">Unit testing – why would you do it</li><li class="listitem" style="list-style-type: disc">Setting up and using unit testing</li></ul></div><div class="section" title="Introduction"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec49"/>Introduction</h1></div></div></div><p>On 9 September, 1947 the first computer bug was found by Grace Hopper. This computer bug was an actual insect instead of a software bug. Since then we are basically chasing bugs in our software applications, and the more we learn to code the more we begin to appreciate good error handling, and catching bugs in time.</p><p>As a coder nothing is more annoying than getting customers on the phone that say "it doesn't work", without us knowing what actually is going on. That is why this chapter is focused on catching bugs early, and finding the cause of the bug more easily.</p></div></div>
+<div class="section" title="Handling Exceptions &#x2013; your partner in crime"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec50"/>Handling Exceptions – your partner in crime</h1></div></div></div><p>To find the source of errors, good error handling should be implemented. In <a id="id646" class="indexterm"/>this recipe we'll talk about<a id="id647" class="indexterm"/> Exception handling within the Zend Framework 2 and how to optimally use it.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec115"/>Getting ready</h2></div></div></div><p>We can safely assume that we all know about try-catch and Exceptions, but to make sure nobody is caught out please take a look at the link to the PHP manual in the <span class="emphasis"><em>See also</em></span> subsection in this section.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec116"/>How to do it...</h2></div></div></div><p>Exception handling<a id="id648" class="indexterm"/> is not that difficult to use, but it is a very useful tool if used correctly.</p><div class="section" title="Exception classes in Zend Framework 2"><div class="titlepage"><div><div><h3 class="title"><a id="ch09lvl3sec234"/>Exception classes in Zend Framework 2</h3></div></div></div><p>Let's take a<a id="id649" class="indexterm"/> look at the following example:</p><div class="informalexample"><pre class="programlisting">&lt;?php 
+
+// This non existing method throws a couple of Exception, which  
+// is a PDOException, BadMethodCallException and probably more.
+try {
+  $object-&gt;executeMe();
+} catch(PDOException $e) {
+  // We catch the most specific Exception first, as this is an 
+  // Exception that has to do with a database query that went wrong
+} catch(BadMethodCallException $e) {
+  // Next up this one, as this tells us that we have done 
+  // something wrong when calling this method, maybe we forgot 
+  // some arguments, or the method might not exist?
+} catch(Exception $e) {
+  // We don't know what is going wrong, but we know something did 
+  // go wrong. Perhaps we just want to log this, or handle it on 
+  // another way?
+}</pre></div><p>This implementation of <code class="literal">try-catch</code> is also called cascading Exceptions.</p></div><div class="section" title="Handling Exceptions on dispatch or rendering"><div class="titlepage"><div><div><h3 class="title"><a id="ch09lvl3sec235"/>Handling Exceptions on dispatch or rendering</h3></div></div></div><p>To<a id="id650" class="indexterm"/> implement the trigger on one of these events we should add some code to the <code class="literal">/module/Application/Module.php</code> file in one of our Modules (it doesn't specifically matter which one).</p><div class="informalexample"><pre class="programlisting">&lt;?php
+  use Zend\Mvc\Application;
+  use Zend\Mvc\MvcEvent;
+
+  // We'll skip the beginning of the file as it has no 
+  // effect on us
+class Module
+{
+  // We want to add/create the onBootstrap method to put 
+  // our event attachment in
+  public function onBootstrap(MvcEvent $e)
+  {
+    // Get the event manager from the application
+    $eventManager = $e-&gt;getApplication()
+                      -&gt;getEventManager();
+
+    // Make sure our module router listens to our event 
+    // manager as well
+    $moduleRouteListener = new ModuleRouteListener();
+    $moduleRouteListener-&gt;attach($eventManager);
+
+    // Get the service manager for later use
+    $serviceManager = $e-&gt;getApplication()
+                        -&gt;getServiceManager();
+    
+    // Attach our handler to the events  
+    $eventManager-&gt;attach(
+        // What events do we want to attach to
+        array(
+          MvcEvent::EVENT_DISPATCH_ERROR,
+          MvcEvent::EVENT_RENDER_ERROR,
+        ),  
+
+        // What class and method do we want to trigger
+        array($this, 'handleException')
+    ); 
+  }
+
+  // This is the method we use to handle the exception
+  public function handleException(MvcEvent $event) 
+  {
+    // Make sure the error is an exception, otherwise 
+    // it might be some other parameter in the event
+       if ($event-&gt;getError() === Application::ERROR_EXCEPTION) {
+      // Now get the exception from the event
+      $exception = $event-&gt;getParam('exception');
+        
+      // Do whatever with this exception 
+    }
+  }
+
+  // Again, we are not bothered by the rest of the 
+  // Module class
+}</pre></div></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec117"/>How it works...</h2></div></div></div><p>Now <a id="id651" class="indexterm"/>we have seen how to do it, let's see how it actually works in Zend Framework 2.</p><div class="section" title="Exception classes in Zend Framework 2"><div class="titlepage"><div><div><h3 class="title"><a id="ch09lvl3sec236"/>Exception classes in Zend Framework 2</h3></div></div></div><p>Zend Framework 2<a id="id652" class="indexterm"/> throws a different Exception for almost every component of the framework, and although different in name they are all the same in functionality.</p><p>First of all here is a list of Exceptions that are default to PHP but are overridden by Zend Framework 2 because Zend Framework 2 just likes to use Exceptions that are in the Zend namespace, instead of in the global namespace:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">BadMethodCallException</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">DomainException</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">ExtensionNotLoadedException</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">InvalidArgumentException</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">InvalidCallbackException</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">LogicException</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">RuntimeException</code></li></ul></div><p>Luckily we can use the global <code class="literal">\DomainException</code> as well as <code class="literal">\Zend\Stdlib\Exception\DomainException</code> (it is such a mouthful) when catching our Exceptions, as the Exceptions are overridden from the original.</p><p>It can however be useful if we are using a chain of catches to know where a specific Exception comes from; for example, when we catch a <code class="literal">RuntimeException</code> and we know that either <code class="literal">Zend\Cache</code> or <code class="literal">Zend\Authentication</code> can throw one. However usually it is quite clear what it might be or reactions to Exceptions might be different per instance.</p><p>Zend Framework 2, however, has docblocks for every class and method and luckily for us also has documented <code class="literal">@throws</code> as well. This means that we can easily look at the documentation and see what that specific functionality throws, that way we can easily wrap our code inside a <code class="literal">try-catch</code> block and handle the Exceptions.</p><p>We can<a id="id653" class="indexterm"/> also just catch any <code class="literal">\Exception</code> that is thrown, instead of specifically targeting a named Exception, but we don't tend to do that as it doesn't give us good control over the errors occurring. In general we would like to be as specific as possible when it comes to Exceptions, and the rule is to catch them from most specific down to least specific.</p></div><div class="section" title="Handling exceptions on dispatch or rendering"><div class="titlepage"><div><div><h3 class="title"><a id="ch09lvl3sec237"/>Handling exceptions on dispatch or rendering</h3></div></div></div><p>If we don't handle<a id="id654" class="indexterm"/> exceptions on either dispatch or rendering, we are in for a bad time. One of the issues that can arise is the white screen issue where we won't see anything on the screen because of an error happening. During the development stage, this only leads to mild frustration for the developer, but think about the user that sees this on a live environment as they want to tell you their nephew/cousin/uncle is a better coder than us. We can't have that.</p><p>That is why we need to make sure that we listen to the <code class="literal">Zend\Mvc\MvcEvent::EVENT_DISPATCH_ERROR</code> and <code class="literal">Zend\Mvc\MvcEvent::EVENT_RENDER_ERROR</code> events. These events will be triggered when a controller or route is not found or an error occurrs during the rendering of the templates.</p><p>As we can see from the example, this event is only triggered when an error occurs, when dispatching, or rendering. The exception retrieved can then be used to either log, or dump to the screen, whatever feels appropriate. The idea here is that we are able to debug effectively even if we don't see the error happening.</p><p>For example, if this technique was implemented on the live application, it could log all the exceptions to a log (or e-mail to support) then we would be able to see errors that occur when we are "not around" to see it for ourselves.</p></div><div class="section" title="About try-catch"><div class="titlepage"><div><div><h3 class="title"><a id="ch09lvl3sec238"/>About try-catch</h3></div></div></div><p>The<a id="id655" class="indexterm"/> <code class="literal">try-catch</code> block<a id="id656" class="indexterm"/> in PHP is one incredibly useful tool of the trade and we would need to use it as much as possible as chains of Exceptions are much easier to solve than a <code class="literal">return false</code> or <code class="literal">null</code> back from a method. Especially in combination of events we are able to catch anything in time, or at least make sure we are able to debug it in a reasonable fashion.</p></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec118"/>See also</h2></div></div></div><p>Exceptions manual and the introduction to try-catch: <a class="ulink" href="http://php.net/manual/en/language.exceptions.php">http://php.net/manual/en/language.exceptions.php</a>
+</p></div></div>
+<div class="section" title="Logging and how it makes your life easier"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec51"/>Logging and how it makes your life easier</h1></div></div></div><p>Besides good error handling, logging<a id="id657" class="indexterm"/> is a good way to make sure you get<a id="id658" class="indexterm"/> the most knowledge of what is going on out of your system. Most of time we can even build it so that we can record events that lead up to an error, which can then be traced back to the original issue.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec119"/>Getting ready</h2></div></div></div><p>Because we want to go all exotic with the logging in Zend Framework 2, it is required for us to install the FirePHP core on our web server. We can install this library through the Composer tool (we need to assume that we already use this on the server, otherwise it would get a bit too complicated).</p><p>We can install the FirePHP library by adding the following lines in the require section of the <code class="literal">composer.json</code> file:</p><div class="informalexample"><pre class="programlisting">"firephp/firephp-core" : "dev-master"</pre></div><p>If we now execute <code class="literal">'php composer.phar update'</code> in the command line, it will install the library for use within our code later on. To make full use of the logger functionality, it would also be wise to use a browser that can understand FirePHP headers. With the Mozilla Firefox browser we need to install the Firebug and FirePHP add-ons to make it work. If we want to use FirePHP logging in Google's Chrome browser or Microsoft Internet Explorer, we need separate extensions/add-ons as well, as none of these support it by default.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec120"/>How to do it...</h2></div></div></div><p>In this recipe we will show off examples on how to implement a logger system<a id="id659" class="indexterm"/> in our application.</p><div class="section" title="Implementing a really simple file logger"><div class="titlepage"><div><div><h3 class="title"><a id="ch09lvl3sec239"/>Implementing a really simple file logger</h3></div></div></div><p>Let's <a id="id660" class="indexterm"/>implement <a id="id661" class="indexterm"/>a simple file logger first, which can be done in one of our configuration files. We will add our logger to our /<code class="literal">config/autoload/global.php</code> file as we want it available everywhere in our application:</p><div class="informalexample"><pre class="programlisting">return array( 
+  // We want to put our logger in the service manager
+  'service_manager' =&gt; array(
+    'factories' =&gt; array(
+      // We will call our logger 'log' so we can find it 
+      // easily back in our application
+      'log' =&gt; function () {
+        // Instantiate our logger
+        $log = new Zend\Log\Logger();
+
+        // Add the writer to our logger (don't forget to  
+        // make the data directory writable)
+        $log-&gt;addWriter(new Zend\Log\Writer\Stream(
+            getcwd(). '/data/application.log'
+        ));
+        
+        // Return our logger now
+        return $log;
+      },
+    ),
+  ),
+);</pre></div><p>That was <a id="id662" class="indexterm"/>pretty easy as we can see, and now <a id="id663" class="indexterm"/>everywhere we have the <code class="literal">ServiceManager</code> object to our disposal we can get the logger by doing something like the following <code class="literal">Controller</code> (file: <code class="literal">/module/Application/src/Application/Controller/IndexController.php</code>) code:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace Application\Controller;
+
+use Zend\Mvc\Controller\AbstractActionController;
+use Zend\View\Model\ViewModel;
+
+class IndexController extends AbstractActionController 
+{
+  public function indexAction() 
+  {
+    $this-&gt;getServiceLocator()
+         -&gt;get('log')
+         -&gt;debug("A Debug Log Message");
+  }
+}</pre></div></div><div class="section" title="Implementing a FirePHP logger"><div class="titlepage"><div><div><h3 class="title"><a id="ch09lvl3sec240"/>Implementing a FirePHP logger</h3></div></div></div><p>The FirePHP logger<a id="id664" class="indexterm"/> is the same as the Logger<a id="id665" class="indexterm"/> initialization shown before in <code class="literal">/config/autoload/global.php</code> with one difference, and that is <code class="literal">Zend\Log\Writer</code> attached to <code class="literal">Zend\Log\Logger</code>.</p><div class="informalexample"><pre class="programlisting">// As we can see we can just change (or add if 
+// we want more loggers) the log writer to FirePHP.
+$log-&gt;addWriter(new Zend\Log\Writer\FirePhp());</pre></div></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec121"/>How it works...</h2></div></div></div><p>Logging <a id="id666" class="indexterm"/>is one of the most underestimated pieces of code that we kind of forget to implement. And when we implement it, we forget to make use of it regularly enough.</p><p>We all know that it is important, but for some reason we are hesitant to implement it on a regular basis.</p><p>What we are going to do is install a logger in our basic Zend Framework 2 application, and a more special way of logging with FirePHP.</p><div class="section" title="Implementing a really simple file logger"><div class="titlepage"><div><div><h3 class="title"><a id="ch09lvl3sec241"/>Implementing a really simple file logger</h3></div></div></div><p>As we saw <a id="id667" class="indexterm"/>in the preceding <code class="literal">indexAction</code> method<a id="id668" class="indexterm"/>,<a id="id669" class="indexterm"/> we have simply put a debug statement in our <code class="literal">application.log</code> file, which will look similar like the following:</p><div class="informalexample"><pre class="programlisting">2013-03-04T13:58:38+02:00 DEBUG (7): A Debug Log Message</pre></div><p>The log methods we can use are <code class="literal">log()</code>, <code class="literal">info()</code>, <code class="literal">warn()</code>, <code class="literal">err()</code>, and <code class="literal">debug()</code>, if we use <code class="literal">log()</code>, we need to give it a priority first and then pass the message as parameters. As we can also see, assigned to <code class="literal">DEBUG</code> is the value <code class="literal">7</code>, this refers to the level of priority used. In our case <code class="literal">DEBUG</code> has priority <code class="literal">7</code>, but there are more priorities:</p><div class="informalexample"><pre class="programlisting">/**
+ * @const int defined from the BSD Syslog message severities
+ * @link http://tools.ietf.org/html/rfc3164
+ */
+const EMERG  = 0;
+const ALERT  = 1;
+const CRIT   = 2;
+const ERR    = 3;
+const WARN   = 4;
+const NOTICE = 5;
+const INFO   = 6;
+const DEBUG  = 7;</pre></div></div><div class="section" title="Implementing a FirePHP logger"><div class="titlepage"><div><div><h3 class="title"><a id="ch09lvl3sec242"/>Implementing a FirePHP logger</h3></div></div></div><p>If we now <a id="id670" class="indexterm"/>begin<a id="id671" class="indexterm"/> logging with the FirePHP writer, we will receive the following entries in our Browser console. (Press <span class="emphasis"><em>F12</em></span> in Mozilla Firefox, Chrome, and Microsoft Internet Explorer.)</p><div class="mediaobject"><img src="graphics/4841OS_09_01.jpg" alt="Implementing a FirePHP logger"/></div><p>As we can see this gives a quite clear view of the log items sent through the browser.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip11"/>Tip</h3><p>Please note that using the <code class="literal">debug()</code> log method in Zend Framework 2.2.4 still executes and outputs a <code class="literal">trace()</code> instead of the message we want to display when using the FirePHP writer. This is currently reported as a bug, but it hasn't been confirmed yet, so we don't know for sure if it will be ever solved.</p><p>However, using this <code class="literal">debug()</code> method results in a really (really) big return header and it will slow down the response times of a larger application by literally minutes.</p></div></div><p>One more thing before we move on, please don't use the FirePHP <code class="literal">log()</code> method<a id="id672" class="indexterm"/> in a production environment, as everyone (literally) will be able to see what and when you logged in and out; and that is something you don't want.</p></div><div class="section" title="About the Logger"><div class="titlepage"><div><div><h3 class="title"><a id="ch09lvl3sec243"/>About the Logger</h3></div></div></div><p>The <code class="literal">Log\Logger</code>
+<a id="id673" class="indexterm"/> holds a collection of methods that can be used to log in a standardized fashion. The <code class="literal">Logger</code> has one or more <code class="literal">Zend\Log\Writer</code> objects attached to it, to which the <code class="literal">Logger</code> writes to. The <code class="literal">Writer</code> is the only class that does the actual writing to the requested log method.</p><p>With <code class="literal">Writer\FirePhp</code>, this is by sending headers to the client browser through the response, with the <code class="literal">Writer\Stream</code> it is a physical file (funny how we use physical here isn't it?).</p></div></div></div>
+<div class="section" title="Unit testing &#x2013; why would you do it"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec52"/>Unit testing – why would you do it</h1></div></div></div><p>Unit testing <a id="id674" class="indexterm"/>is a<a id="id675" class="indexterm"/> form of testing that has been widely accepted in the programming world. Unfortunately a lot of PHP developers still lack the knowledge on how to utilize it to their benefit, or they just don't know how to get started. This recipe will try to change that.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec122"/>Getting ready</h2></div></div></div><p>To get started with Unit testing a Zend Framework 2 application, it is required that we have PHPUnit 3.7.x installed. We can do this in a couple of different ways, but the easiest and most recommended way is by installing it through Composer, which comes with the Zend Framework 2 application.</p><p>To install PHPUnit through Composer we just need to add the following lines to <code class="literal">composer.json</code>:</p><div class="informalexample"><pre class="programlisting">{
+  "require-dev": {
+    "phpunit/phpunit": "3.7.*"
+  }
+}</pre></div><p>After saving the <code class="literal">composer.json</code> file, run Composer to update the new requirements.</p><div class="informalexample"><pre class="programlisting">$ php composer.phar update</pre></div><p>After a short<a id="id676" class="indexterm"/> while, the Composer installer will be complete and we will be ready to begin creating our unit tests. We can see that we now have an extra directory in our vendor directory called phpunit.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec123"/>How to do it...</h2></div></div></div><p>Before we can show how to really unit test our application, it is best that we show off the concept behind it first.</p><div class="section" title="Pseudo-code examples"><div class="titlepage"><div><div><h3 class="title"><a id="ch09lvl3sec244"/>Pseudo-code examples</h3></div></div></div><p>We will<a id="id677" class="indexterm"/> now examine a couple of pseudo-code examples that display an effective way of coding according to a (sort of) TDD principle (technically it will be PHP, but we won't take it too seriously as we just want to show some example).</p><p>For this example we will have a class, called <code class="literal">Person</code>, with only the <code class="literal">isAdult()</code> method in there. After we have defined the method, we should write our first test that should let our initial outcome fail.</p><div class="informalexample"><pre class="programlisting">public function testIsAdult()
+{
+  // Initialize our Person
+  $person = new Person();
+
+  // Our first fail test that makes sure that when no 
+  // parameters are given the test will result in false
+  assertFalse($person-&gt;isAdult());
+}</pre></div><p>As we have no code in our method yet, the result will always be null, so this test will immediately fail as we expect a false to be returned back at the moment.</p><p>When we execute PHPUnit now, it would (hypothetically) result in the following result:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>PHPUnit 3.7.9 by Sebastian Bergmann.</strong></span>
+
+<span class="strong"><strong>F</strong></span>
+
+<span class="strong"><strong>FAILURES!</strong></span>
+<span class="strong"><strong>Tests: 1, Assertions: 1, Failures: 3.</strong></span>
+</pre></div><p>Normally seeing a failure would be considered wrong, however in this instance, we would know<a id="id678" class="indexterm"/> that our method does what we expect it to do: fail! The next step is to make the test pass, so let's add a simple return <code class="literal">false</code> to our <code class="literal">isAdult</code> definition.</p><div class="informalexample"><pre class="programlisting">public function isAdult()
+{
+  // If the return value is set, return that, otherwise
+  // return false; which will always happen at this 
+  // point
+  return isset($retval) ? $retval : false;
+}</pre></div><p>If we know run the test again we will see that the test has now passed:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>PHPUnit 3.7.9 by Sebastian Bergmann.</strong></span>
+
+<span class="strong"><strong>.</strong></span>
+
+<span class="strong"><strong>OK (1 test, 1 assertion)</strong></span>
+</pre></div><p>Now it is time to continue by making sure that the test fails again, this time we want to make sure that we accept a parameter, <code class="literal">$age</code> and we want this value always to be an integer and higher or equal to 18, and if not we want to get <code class="literal">false</code> returned back as result.</p><p>So let's continue and edit the <code class="literal">test</code> script so that it fails again (never was failing so much fun).</p><div class="informalexample"><pre class="programlisting">public function testIsAdult()
+{
+  // Initialize our Person
+  $person = new Person();
+
+  // Our first fail test that makes sure that when no 
+  // parameters are given the test will result in false
+  assertFalse($person-&gt;isAdult());
+
+  // Ok, that works now, let's now parse in an integer 
+  // parameter so that we get result true back
+  assertTrue($person-&gt;isAdult(21)); 
+}</pre></div><p>If we now run the test again, we will see that the test fails, which in this case triggers us to rewrite the following code so that the test will pass again:</p><div class="informalexample"><pre class="programlisting">public function isAdult($age)
+{
+  // Check if $age is an integer, and if so,  
+  // make sure the person is above 18
+  if (isset($age) &amp;&amp; is_int($age) &amp;&amp; $age &gt;= 18) {
+      $retval = true;
+  }
+
+  // If the return value is set, return that, otherwise   
+  // return false; which will always happen at this 
+  // point
+  return isset($retval) ? $retval : false;</pre></div><p>And if<a id="id679" class="indexterm"/> we now run the test, the test will pass again, which means we can (if we need to) run the cycle again of making the test fail, change the code to let it pass again, etcetera, etcetera! The cycle will continue until we are happy with the result of the method and it exactly does what we planned it to do.</p></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec124"/>How it works...</h2></div></div></div><p>When we <a id="id680" class="indexterm"/>talk about unit testing, a lot of developers have one of the following thoughts about it:</p><p>They simply don't know what it is, or what its use is; or they know they should do it, but they tend to not do it.</p><p>Of course there is also the occasional "I don't see any positive side to it" kind of developer, but we will just ignore that comment for now.</p><div class="section" title="What is unit testing"><div class="titlepage"><div><div><h3 class="title"><a id="ch09lvl3sec245"/>What is unit testing</h3></div></div></div><p>Unit testing <a id="id681" class="indexterm"/>is the art of testing the smallest testable part of an application. Unit tests are divided up in test cases, which are compartmentalized tests that should test only one specific part of your code.</p><p>This unit test can use other objects through the use of mock objects, fakes and method stubs, but the main part is that only one particular piece of code should be tested in a unit test at any given time. The idea behind this is that we have a small unit test which tests only a small part of the code, so when problems occur we don't have to look far and wide to find out where the problem lies.</p><p>In reference to Zend Framework 2 we would usually unit test the models, services and controllers but not the html output (unless we are testing the <code class="literal">ViewRenderer</code> perhaps).</p></div><div class="section" title="When should we test? – before, or after code is written"><div class="titlepage"><div><div><h3 class="title"><a id="ch09lvl3sec246"/>When should we test? – before, or after code is written</h3></div></div></div><p>In a pure <span class="strong"><strong>TDD</strong></span> (<span class="strong"><strong>test-driven development</strong></span>)<a id="id682" class="indexterm"/> point of view,<a id="id683" class="indexterm"/> it is a simple answer: before. The whole idea of TDD is that a test is written before development begins, and therefore it always fails. The reason why it is important that a test fails is that we then know that the test we wrote at least fails. If we write a test that has never failed, how can we know that it will fail when it actually should fail?</p><p>Obviously there are also arguments for writing the test afterwards, one of them being that we cannot test code that we haven't designed yet. Although there is a point to that argument, personally I don't view it is a valid one. We can write tests beforehand, but that doesn't mean that we should write the full test before the code is written. The idea is to do the following: write a test, let it fail, write code to let it pass, and repeat the process from the start again. It also forces you to think about the app architecture before you start coding your app.</p></div><div class="section" title="It is a matter of discipline"><div class="titlepage"><div><div><h3 class="title"><a id="ch09lvl3sec247"/>It is a matter of discipline</h3></div></div></div><p>Unit testing<a id="id684" class="indexterm"/> is a strong matter of discipline, as it requires us to stop being eager to code and write the test first. For a lot of developers this means that we should throw out our current "muscle-memory" coding and really think what we want to code, before we actually start to code.</p><p>Of course when we start a new piece of code we have an idea of what we want the functionality to do, for example getting records from the database. However it is important to think about what we want to get as a return from that functionality. Is it an array, or is it a <code class="literal">boolean</code>, does it throw Exceptions and what if we don't get valid parameters? All of these things are questions that are architecture related, but are usually not defined beforehand.</p><p>Unit testing works only because of a strong discipline in the team. If we were the only one in our team that would write the tests for the code, we would surely fail in being able to maintain it as other members of our team would (unintentionally probably) break our unit tests whenever they would change something in the code.</p><p>However, it cannot be under estimated that unit testing is an invaluable part of software development, even if done after the code is already written (as you can see I am all for writing tests first).</p></div></div></div>
+<div class="section" title="Setting up and using unit testing"><div class="titlepage"><div><div><h1 class="title"><a id="ch09lvl1sec53"/>Setting up and using unit testing</h1></div></div></div><p>To start <a id="id685" class="indexterm"/>using Unit testing in Zend Framework 2 can be a bit of a hassle. But don't worry; help is coming as we fly you through a proper set up of Zend Framework 2 unit testing.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec125"/>Getting ready</h2></div></div></div><p>To get started with Unit Testing a Zend Framework 2 application, it is required that we have PHPUnit 3.7.x installed. We can do this on a couple of different ways but the easiest and recommended way is by installing it through Composer which comes with the Zend Framework 2 application.</p><p>To install PHPUnit through composer we just need to add the following lines to <code class="literal">composer.json</code>.</p><div class="informalexample"><pre class="programlisting">{
+  "require-dev": {
+    "phpunit/phpunit": "3.7.*"
+  }
+}</pre></div><p>After saving the <code class="literal">composer.json</code> file, run Composer to update the new requirements.</p><div class="informalexample"><pre class="programlisting">$ php composer.phar update</pre></div><p>After a short while the Composer installer will be complete and we will be ready to begin creating our unit tests. We can see that we now have an extra directory in our vendor directory called <code class="literal">phpunit</code>.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec126"/>How to do it...</h2></div></div></div><p>Setting up unit testing with PHPUnit is fairly simple in Zend Framework 2, and fortunately well documented as well.</p><div class="section" title="Setting up the test framework"><div class="titlepage"><div><div><h3 class="title"><a id="ch09lvl3sec248"/>Setting up the test framework</h3></div></div></div><p>To get <a id="id686" class="indexterm"/>everything to work in order, we need to set up our separate test framework first. For that we will need three new files: <code class="literal">Bootstrap.php</code>, <code class="literal">TestConfig.php</code>, and <code class="literal">phpunit.xml</code>.</p><p>Because we basically want to test per module (keeping it all separate from each other, remember) we need to set this up for every module we are testing.</p><p>First of all we should create the directory called <code class="literal">test</code> in the root of the <code class="literal">module</code> directory. In that directory we create a file called <code class="literal">phpunit.xml</code> in <code class="literal">/module/Application/test/</code>, which is used by PHPUnit to determine some configurations.</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;!-- we want to bootstrap with the Bootstrap.php file, and we want tooutput in pretty colors. --&gt;
+&lt;phpunit bootstrap="Bootstrap.php" colors="true"&gt;
+  &lt;testsuites&gt;
+    &lt;!-- we can just give this a name for our own 
+         identification --&gt;
+    &lt;testsuite name="Application Module Tests"&gt;
+      &lt;!-- this is the directory we want to use for 
+           testing --&gt;
+      &lt;directory&gt;./Application&lt;/directory&gt;
+    &lt;/testsuite&gt;
+  &lt;/testsuites&gt;
+&lt;/phpunit&gt;</pre></div><p>This first file is used for the general configuration of PHPUnit, and has many more options than the ones we showed here, but these are not relevant for our setup right here.</p><p>The next thing we want is to set up the <code class="literal">TestConfig.php</code> file in <code class="literal">/module/Application/test/</code>, which is a simple configuration file that loads up the most basic configurations we need to start up the application and run our code. It is basically the same as the normal <code class="literal">application.config.php</code>, but we need it in a separate file as we want to be able to make changes without it affecting the main application.</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+// Just as the normal configuration we simply return the 
+// array
+return array(
+  // These are the modules we need to test our module. 
+  // Normally this only the current module, but if 
+  // this module has dependencies we need to add them 
+  // here as well.
+  'modules' =&gt; array(
+    'Application',
+  ),
+
+  // Here we define our default module listener options, 
+  // nothing special to note here.
+  'module_listener_options' =&gt; array(
+    'module_paths' =&gt; array(
+      'module',
+      'vendor',
+    ),
+  ),
+);</pre></div><p>The next and<a id="id687" class="indexterm"/> last thing to set up in our testing framework is the <code class="literal">Bootstrap.php</code> file in <code class="literal">/module/Application/test/</code> that we referenced in the <code class="literal">phpunit.xml</code> file as our bootstrap. This bootstrap class is created by <span class="emphasis"><em>Evan Coury</em></span> the primary author of the entire ZF2 module system, but we added the commentary to make it all a bit clearer of what is going on. It is important for us to know how this bootstrap works to ensure we can make optimal use of it.</p><div class="informalexample"><pre class="programlisting">&lt;?php
+// The namespace needs to reflect the namespace of the 
+// module we want to test.
+namespace Application; 
+
+// The following imports are needed for our class
+use Zend\Loader\AutoloaderFactory;
+use Zend\Mvc\Service\ServiceManagerConfig;
+use Zend\ServiceManager\ServiceManager;
+use Zend\Stdlib\ArrayUtils;
+use RuntimeException;
+
+// We want to put the error reporting on, so that we see 
+// if there is something going wrong
+error_reporting(E_ALL | E_STRICT);
+
+// Our current directory is going to be our root 
+// directory
+chdir(__DIR__);
+
+// Begin our bootstrap class here
+class Bootstrap
+{
+  // Here we will define our ServiceManager in
+  protected static $serviceManager;
+
+  // The merged configuration of our application will be 
+  // put in this property
+  protected static $config;
+
+  // This property isn't used, but we copied it for 
+  // originality sake any way
+  protected static $bootstrap;</pre></div><p>Now let's start<a id="id688" class="indexterm"/> by creating the init() method, which will be used later on to bootstrap the application so that we can use it to test on.</p><div class="informalexample"><pre class="programlisting">  public static function init()
+  {
+    // Read our created TestConfig file, and if it 
+    // doesn't exist try the TestConfig.php.dist, but 
+    // that won't exist in our environment
+    if (is_readable(__DIR__ . '/TestConfig.php')) {
+      $testConfig = include __DIR__ . '/TestConfig.php';
+    } else {
+      $testConfig = include __DIR__ . '/TestConfig.php.dist';
+    }
+
+    $zf2ModulePaths = array();
+
+    // Now we will load in all the module paths from the 
+    // configuration (if set). 
+    if (isset($testConfig['module_listener_options']['module_paths'])) 
+    {
+      // Get the module path from the configuration
+      $modulePaths = $testConfig['module_listener_options']['module_paths'];
+
+      // Now loop through the module paths and find out 
+      // what the parent path is of the module
+      foreach ($modulePaths as $modulePath) {
+        // This method is defined later in the class
+        if ($path = static::findParentPath($modulePath)) {
+          $zf2ModulePaths[] = $path;
+        }
+      }
+    }
+
+    // Now make a concatenated string with all the 
+    // module paths separated by a colon.
+    $zf2ModulePaths = implode(
+        PATH_SEPARATOR, $zf2ModulePaths
+    ) . PATH_SEPARATOR;
+
+    // See if we defined some module paths outside this 
+    // class or configuration and add them to the 
+    // existing module paths
+    $zf2ModulePaths .= getenv('ZF2_MODULES_TEST_PATHS') 
+                ?: (defined('ZF2_MODULES_TEST_PATHS') 
+                ? ZF2_MODULES_TEST_PATHS : '');
+
+    // Make sure that we initiate auto loading so we 
+    // don't have to worry about that (this method is 
+    // defined later in the class)
+    static::initAutoloader();
+
+    // Now create a new configuration array so that we 
+    // can merge it with the loaded configuration.
+    $baseConfig = array(
+        'module_listener_options' =&gt; array(
+        'module_paths' =&gt; explode(
+            PATH_SEPARATOR, $zf2ModulePaths
+        ),
+      ),
+    );
+
+    // Merge our configuration with the base 
+    // configuration that we just generated.
+    $config = ArrayUtils::merge(
+        $baseConfig, $testConfig
+    );</pre></div><p>Up until now showed<a id="id689" class="indexterm"/> the definition of the configuration file, and it is now all merged for use by our bootstrap. Next up is the definition of the service manager.</p><div class="informalexample"><pre class="programlisting">    // Let's create a new service manager
+    $serviceManager = new ServiceManager(
+        new ServiceManagerConfig()
+    );
+    
+    // Set the service manager to load the configuration 
+    // so that the ModuleManager can use it to load up 
+    // the modules and dependencies
+    $serviceManager-&gt;setService(
+        'ApplicationConfig', $config
+    );
+    
+    // Now get the module manager, and load up the 
+    // modules plus dependencies
+    $serviceManager-&gt;get('ModuleManager')
+                   -&gt;loadModules();
+
+    // Make the service manager and configuration 
+    // available as a static in the bootstrap class
+    static::$serviceManager = $serviceManager;
+    static::$config = $config;
+  }</pre></div><p>That's the end of our initialization, and as we can see it is pretty straightforward what is being done. The bootstrap initialization first read out the configuration and then created the service manager. After the service manager was created, we used the module manager to load up the modules (and dependencies) we required for our tests. Now that we have defined our most important part of the class, let's define the rest of the methods that we used in the preceding <code class="literal">init()</code> method.</p><div class="informalexample"><pre class="programlisting">  // Not completely unimportant, this is a getter for 
+  // our servicemanager property.
+  public static function getServiceManager()
+  {
+    return static::$serviceManager;
+  }
+
+  // A simple getter for our static configuration.
+  public static function getConfig()
+  {
+    return static::$config;
+  }
+
+  protected static function initAutoloader()
+  {
+    // Get the parent path of the ZF2 library (this 
+    // method is defined later on)
+    $vendorPath = static::findParentPath('vendor');
+
+    // Now make sure the ZF2 path is ready to go
+    if (is_readable($vendorPath . '/autoload.php')) {
+      $loader = include $vendorPath . '/autoload.php';
+    } else {
+      // The vendor path isn't in the configuration, try 
+      // to find it ourselves.
+      $zf2Path = getenv('ZF2_PATH') 
+               ?: (defined('ZF2_PATH') ? ZF2_PATH 
+               : (is_dir($vendorPath . '/ZF2/library') 
+               ? $vendorPath . '/ZF2/library' : false));
+
+      // If the path is not defined, we cannot continue
+      if (!$zf2Path) {
+        throw new RuntimeException(
+            'Unable to load ZF2.'
+        );
+      }
+
+      // Include our autoloader from ZF2
+      include $zf2Path. '/Zend/Loader/AutoloaderFactory.php'; 
+    }
+
+    // If we come here that means we have a valid ZF2 
+    // path, and can safely initialize our Autoloader.      
+    AutoloaderFactory::factory(array(
+      'Zend\Loader\StandardAutoloader' =&gt; array(
+        'autoregister_zf' =&gt; true,
+        'namespaces' =&gt; array(
+          __NAMESPACE__ =&gt; __DIR__ . '/' . __NAMESPACE__,
+        ),
+      ),
+    ));
+  }
+
+  // This method finds the parent path of a given path. 
+  protected static function findParentPath($path)
+  {
+    $dir = __DIR__;
+    $previousDir = '.';
+
+    while (!is_dir($dir . '/' . $path)) {
+      $dir = dirname($dir);
+
+    if ($previousDir === $dir) return false;
+      $previousDir = $dir;
+    }
+
+    return $dir . '/' . $path;
+  }
+}
+
+// And finally, initialize the application bootstrap
+Bootstrap::init();</pre></div><p>Now we finally<a id="id690" class="indexterm"/> set up our testing framework, it is time to write a simple test to see if everything works. What we'll do first is create a small Model (file <code class="literal">Company.php</code>: <code class="literal">/module/Application/src/Application/Model/</code>), which we are going to test.</p><div class="informalexample"><pre class="programlisting">&lt;?php
+
+namespace Application\Model;
+
+class Company
+{
+  public function hasEmployees() {}
+}</pre></div><p>That's it, no more coding at this point, as we first need to create our unit test (file<code class="literal"> CompanyTest.php</code>: <code class="literal">/module/Application/test/Application/Model/</code>).</p><div class="informalexample"><pre class="programlisting">&lt;?php
+// Define the namespace like a boss
+namespace ApplicationTest\Model;
+
+// We want to use this model for testing
+use Application\Model\Company;
+
+// Begin our test class, which needs to be extended from 
+// the PHPUnit framework test case.
+class CompanyTest extends \PHPUnit_Framework_TestCase
+{
+  /**
+   * Test some method.
+   * @covers Application\Model\Company::hasEmployees
+   */
+  public function testHasEmployees()
+  {
+    $this-&gt;markTestIncomplete();
+  }
+}</pre></div><p>And there we go, a simple test that does nothing but prints an <code class="literal">I</code> (which means one incomplete test) in<a id="id691" class="indexterm"/> the terminal if we were to execute it. As we can see we also defined a <code class="literal">@covers</code> PHPDoc tag, which is always a good idea for the sake of good documentation to actually document what method you are testing.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip12"/>Tip</h3><p>To execute the PHPUnit tests, simple go to the <code class="literal">test</code> directory and type <code class="literal">phpunit</code>, which will trigger PHPUnit to test every file that ends in <code class="literal">Test.php</code> like <code class="literal">SomeModelTest.php</code> and look for methods that begin with <code class="literal">test</code> like <code class="literal">testSomeMethod</code>.</p></div></div><p>Let's do a simple test now, which tests if our method return value is true or not (file<code class="literal"> CompanyTest.php</code> in <code class="literal">/module/Application/test/Application/Model/</code>).</p><div class="informalexample"><pre class="programlisting">public function testHasEmployees()
+{
+  // Instantiate our model (remember the use statement 
+  // in the top of the file).
+  $object = new Company();
+
+  // Make sure the method returns true
+  $this-&gt;assertTrue($object-&gt;hasEmployees());
+}</pre></div><p>If we now run PHPUnit again, we'll see that it has printed a nice big red <code class="literal">F</code> (which means the test failed)<a id="id692" class="indexterm"/> in the terminal. Now we know that the unit test fails, we will modify our model (file <code class="literal">Company.php</code> in <code class="literal">/module/Application/src/Application/Model/</code>) again to make sure it passes again.</p><div class="informalexample"><pre class="programlisting">public function hasEmployees()
+{
+  return true;
+}</pre></div><p>If we now run PHPUnit again, a <code class="literal">.</code> (which means that the test passed) simply appears in the terminal. We know now that our test worked, and that we can trust the outcome of the unit test as well. We can now use this test framework over and over again for every other method and module that we write.</p></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec127"/>How it works...</h2></div></div></div><p>What we <a id="id693" class="indexterm"/>did first is set up a small testing framework that would load in anything we need for the module that we want to test. After that we wrote a couple of simple tests for some code that we wanted.</p><p>The test framework we set up is a test framework that can be used per module separately, as it is unwise to make one test framework for the whole application. What we are trying to achieve is that our modules are still as independent as they can be (considering of course that some modules will have dependencies), and that we can test them separately as well.</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec128"/>There's more...</h2></div></div></div><p>The framework we've set up is also available in the official documentation, which means that there is always support available if we are stuck with something.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch09lvl2sec129"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The <a id="id694" class="indexterm"/>PHPUnit XML configuration file options:<a class="ulink" href="http://phpunit.de/manual/3.7/en/appendixes.configuration.html">http://phpunit.de/manual/3.7/en/appendixes.configuration.html</a></li><li class="listitem" style="list-style-type: disc">The<a id="id695" class="indexterm"/> PHPUnit cheat sheet: <a class="ulink" href="https://gist.github.com/loonies/1255249">https://gist.github.com/loonies/1255249</a></li></ul></div></div></div></body></html>

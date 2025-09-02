@@ -1,0 +1,1814 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;6.&#xA0;Embedding the PEAR Installer: Designing a Custom Plug-In System"><div class="titlepage"><div><div><h1 class="title"><a id="ch06"/>Chapter 6. Embedding the PEAR Installer: Designing a Custom Plug-In System</h1></div></div></div><p>At this point, practically everything that can be done with the<code class="literal"> pear</code> and<code class="literal"> pecl</code> commands and existing PEAR software has been revealed. In the previous chapter, we learned how to set up a custom PEAR channel, completing our quest to master the usage of the PEAR installer. Now that we can conquer the universe of PEAR, let's look even further, and see how we can solve some of the most common problems of a web-based framework with the PEAR installer.</p><p>In this chapter, we will design a custom plug-in system for a fake blog application, called<span class="strong"><strong> MyBlog</strong></span>. For MyBlog, we will design a plug-in system to manage templates, and use the PEAR installer to manage the details of querying the remote server for templates, handling dependencies between versioning, and doing the actual installation process as well. In addition, it will use an extension of REST on the remote server to store thumbnail images of the templates to aid in choosing a template. Of course, since this is a fake blog, the thumbnail images are pictures of cats, but they would be screenshots of the templates for a real blog.<a id="id340" class="indexterm"/>
+</p><p>For those who do not wish to type in every character, the code for MyBlog is always available for download directly from Packt website, or by direct installation using the PEAR installer (the fun way) via:<a id="id341" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>pear channel-discover pear.chiaraquartet.net
+pear install MyBlog
+pear run-scripts chiara/MyBlog</strong></span>
+</pre></div><p>Although a bit ugly (I never claimed to be a designer), here is the administration page of our fake MyBlog application, demonstrating the image pulled from a remote server and pagination:</p><div class="mediaobject"><img src="graphics/1904811191_6_1.jpg" alt="Embedding the PEAR Installer: Designing a Custom Plug-In System"/></div><p>Here is a screenshot of the post-install process after clicking on the second template to install it:<a id="id342" class="indexterm"/>
+</p><div class="mediaobject"><img src="graphics/1904811191_6_2.jpg" alt="Embedding the PEAR Installer: Designing a Custom Plug-In System"/></div><div class="section" title="Why Embed PEAR?"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec01"/>Why Embed PEAR?<a id="id343" class="indexterm"/>
+</h1></div></div></div><p>In many cases, PHP applications are web applications like Content Management Systems (CMS) or some other customizable framework that can be extended. Inevitably, at some point, end users will think: "Wouldn't it be nice to just click and get the functionality that I want downloaded and installed automatically?"<a id="id344" class="indexterm"/>
+</p><p>At this point, it would be simpler for you to require users to install the extra functionality using the PEAR installer, but what if we don't want our application's users to have to learn how to use PEAR at all? Users who download your CMS or framework (let's call it the XYZ framework) already have a lot to learn about how the framework is designed, how to customize and use it to author content. The last thing they want to learn is some external tool just in order to install a special voting plug-in or a new template.</p><p>What we really need is a simple page on the administration portion of the XYZ framework that allows the user to browse plug-ins, and click on one for installation, without worrying about details. Even better would be to allow the possibility for advanced users to customize the remote server used for download, whether to install experimental plug-ins, and so on.</p><p>In other words, we need to embed the PEAR installer directly inside the XYZ framework, and use it to handle the dirty work of querying remote servers, retrieving plug-ins, and doing the actual installing/upgrading process.<a id="id345" class="indexterm"/>
+</p><div class="section" title="Simplify User Choices for Installation"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec01"/>Simplify User Choices for Installation</h2></div></div></div><p>Embedding the PEAR installer makes it possible to focus on the important part of your application: ease of use and features for your users. The last thing you need is for confused users to simply give up on your application because you wasted too much time on re-inventing the internals, and not enough time on the visual and logical layout.<a id="id346" class="indexterm"/>
+</p><p>Relying on the PEAR installer will give both, more time for streamlining the look and flow of the plug-ins page, and also allow creation of simple "click here to install" links that will properly download the right plug-in for the current combination of PHP version, framework version, and requested stability level.</p></div><div class="section" title="Eliminate Chances for Error"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec02"/>Eliminate Chances for Error</h2></div></div></div><p>As always, by avoiding the urge to re-invent the wheel, this cuts down on the complexity of your application, making it much less likely that a bug will be introduced, and saving both time and future effort. PEAR's robust test suite and large community of users can be relied upon to ensure the stability of the PEAR installer, freeing you to work on the robustness of your own code.<a id="id347" class="indexterm"/>
+</p></div></div></div>
+<div class="section" title="Other Plug-In Systems"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec02"/>Other Plug-In Systems</h1></div></div></div><p>Before diving in, let's take a look at other possibilities for bundling plug-ins. There are three models currently employed by major PHP applications:<a id="id348" class="indexterm"/>
+</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Bundling plug-ins directly in the source code</li><li class="listitem" style="list-style-type: disc">Using PEAR dependencies for subpackages</li><li class="listitem" style="list-style-type: disc">Customized remote plug-in servers</li></ul></div><div class="section" title="Bundling Plug-Ins Directly in the Source Code"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec03"/>Bundling Plug-Ins Directly in the Source Code</h2></div></div></div><p>By far, the most common solution employed in the PHP world is bundling plug-ins directly in the source code. This method, as explored in previous chapters results in code that can be simpler to create, but is far more difficult to maintain, and particularly to upgrade, often resulting in out-of-date code. As recent security vulnerabilities in popular programs demonstrate, keeping code up-to-date and bug-free is not just important for minor annoyances; it can make the difference between a secure and an insecure application.<a id="id349" class="indexterm"/>
+</p><p>Although it is the most common choice, bundling plug-ins directly in the source code is just not a very flexible idea, and so we won't explore this idea in depth.</p></div><div class="section" title="Subpackages - PEAR Dependencies"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec04"/>Subpackages - PEAR Dependencies</h2></div></div></div><p>Using the PEAR installer's facility to manage dependencies is another approach to bundling plug-ins, which is starting to gain momentum at<code class="literal"> pear.php.net</code>. This approach was first suggested by the work I did on maintaining phpDocumentor. I noticed that when implementing a new template or a new converter for phpDocumentor, this often meant that point releases of the entire phpDocumentor package was necessary even when a small change was made to a template or to a converter. Although it is not necessarily bad to be releasing often, it is important to provide a good reason for users to upgrade. In this case, it meant choosing between a release with a small change and postponing the release.<a id="id350" class="indexterm"/>
+</p><p>In addition, when a new experimental converter, such as the PDF converter, was introduced, the stability level of the converter could only be documented as being less stable. Users often became confused about why an unstable converter was released with a stable phpDocumentor.</p><p>All of the problems pointed to the need for a better way to handle sub-sections of an application. The answer came in the form of subpackages. Subpackages are discrete PEAR packages that define a parent-child relationship between the larger application and a smaller section of the application.</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="tip48"/>Tip</h3><p>A subpackage is a self-contained portion of an application that can not work without a parent application; for example, the<span class="strong"><strong> MDB2_mysqli</strong></span> subpackage to the<span class="strong"><strong> MDB2</strong></span> package. MDB2 can handle connections to the mysqli driver for MySQL versions 4.1 and newer if the MDB2_mysqli package is installed. MDB2_mysqli cannot work on its own, and requires MDB2 in order to be useful. Hence, MDB2_mysqli is a subpackage of MDB2.</p></div><div class="section" title="Case Study: MDB2"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl3sec01"/>Case Study: MDB2</h3></div></div></div><p>The first package to take advantage of this idea was the MDB2 package ( <a class="ulink" href="http://pear.php.net/MDB2">http://pear.php.net/MDB2</a>) designed by Lukas Smith and Lorenzo Alberton to supersede the MDB package designed by Smith, Alberton, and inspired by Metabase created by Manuel Lemos.<a id="id351" class="indexterm"/>
+</p><p>MDB2 is a database abstraction layer that has a core set of functionality contained in the basic MDB2 package. Each specific database is accessed using a driver package. For instance, the mysqli driver is accessed using the MDB2_Driver_mysqli package. Unlike older database abstraction packages like the popular DB package, MDB2 has split off these drivers, so that each driver is maintained separately.<a id="id352" class="indexterm"/>
+</p><p>Each driver encapsulates the functionality of a single database, and as such, the subpackages are:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">MDB2_Driver_mssql ( <a class="ulink" href="http://pear.php.net/MDB2_Driver_mssql">http://pear.php.net/MDB2_Driver_mssql</a>)</li><li class="listitem" style="list-style-type: disc">MDB2_Driver_sqlite ( <a class="ulink" href="http://pear.php.net/MDB2_Driver_sqlite">http://pear.php.net/MDB2_Driver_sqlite</a>)</li><li class="listitem" style="list-style-type: disc">MDB2_Driver_querysim ( <a class="ulink" href="http://pear.php.net/MDB2_Driver_querysim">http://pear.php.net/MDB2_Driver_querysim</a>)</li><li class="listitem" style="list-style-type: disc">MDB2_Driver_pgsql ( <a class="ulink" href="http://pear.php.net/MDB2_Driver_pgsql">http://pear.php.net/MDB2_Driver_pgsql</a>)</li><li class="listitem" style="list-style-type: disc">MDB2_Driver_oci8 ( <a class="ulink" href="http://pear.php.net/MDB2_Driver_oci8">http://pear.php.net/MDB2_Driver_oci8</a>)</li><li class="listitem" style="list-style-type: disc">MDB2_Driver_mysqli ( <a class="ulink" href="http://pear.php.net/MDB2_Driver_mysqli">http://pear.php.net/MDB2_Driver_mysqli</a>)</li><li class="listitem" style="list-style-type: disc">MDB2_Driver_mysql ( <a class="ulink" href="http://pear.php.net/MDB2_Driver_mysql">http://pear.php.net/MDB2_Driver_mysql</a>)</li><li class="listitem" style="list-style-type: disc">MDB2_Driver_ibase ( <a class="ulink" href="http://pear.php.net/MDB2_Driver_ibase">http://pear.php.net/MDB2_Driver_ibase</a>)</li><li class="listitem" style="list-style-type: disc">MDB2_Driver_fbsql ( <a class="ulink" href="http://pear.php.net/MDB2_Driver_fbsql">http://pear.php.net/MDB2_Driver_fbsql</a>)</li></ul></div><p>Each driver has its own versioning, stability, and more importantly, a dependency on the database driver needed.</p><p>The old model used by the DB package makes it impossible to specify dependencies on database extensions. In other words, to require the needed extensions for each driver would mean a dependency on the mssql, sqlite, pgsql, oci8, mysqli, mysql, ibase, and fbsql PHP extensions. Not only would this force unnecessary database extensions to be loaded in<code class="literal"> php.ini</code>, it would cause potential conflicts between database extensions.</p><p>In addition, if a new driver was introduced, the stability of the DB package (stable) would automatically filter down to the extension. To get around this problem, DB uses a text file in the documentation describing the stability of each driver using a table. This information does not show up at installation time. If a new driver is introduced for MDB2, it could have a stability of<code class="literal"> devel</code> or<code class="literal"> alpha</code> even though MDB2 is<code class="literal"> stable</code>. Also beneficial is the ability to release a new version of a driver independent from the parent MDB2 package. Any time a change is made to a DB driver, the entire DB package with all of its other drivers must be released.</p><p>There are some drawbacks to the MDB2 approach. First, in order to install MDB2, there are two steps needed:<a id="id353" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>$ pear install MDB2
+$ pear install MDB2_Driver_pgsql
+</strong></span>
+</pre></div><p>This requires knowing how to use the pear command-line as well as the name of the drivers. A common mistake (one I, myself, have made) is to instead type:</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>$ pear install MDB2
+$ pear install MDB2_pgsql
+</strong></span>
+</pre></div><p>This, of course, results in a very unhelpful error message:<a id="id354" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>$ pear install MDB2_pgsql
+No releases available for package "pear.php.net/MDB2_pgsql"
+Cannot initialize 'MDB2_pgsql', invalid or missing package file
+Package "Mdb2_pgsql" is not valid
+Install failed
+</strong></span>
+</pre></div><p>In addition, uninstalling requires the same two steps, or passing both packages on the command-line:</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>$ pear uninstall MDB2 MDB2_Driver_pgsql
+</strong></span>
+</pre></div><p>There is, however, a better way to implement the subpackages model when using<code class="literal"> package.xml</code> version 2.0 (MDB2 still uses the original version 1.0 implementation of<code class="literal"> package.xml</code> as of the writing of this chapter). If MDB2 were to define install groups for each driver, this would allow users to install MDB2 and the proper database. For instance, consider this approach in<code class="literal"> package.xml:</code>
+<a id="id355" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;dependencies&gt;
+...
+...
+&lt;group name="mssql" hint="Microsoft SQL Server driver"&gt;
+&lt;package&gt;
+&lt;name&gt;MDB2_Driver_mssql&lt;/name&gt;
+&lt;channel&gt;pear.php.net&lt;/channel&gt;
+&lt;/package&gt;
+&lt;/group&gt;
+&lt;group name="sqlite" hint="SQLite driver"&gt;
+&lt;package&gt;
+&lt;name&gt;MDB2_Driver_sqlite&lt;/name&gt;
+&lt;channel&gt;pear.php.net&lt;/channel&gt;
+&lt;/package&gt;
+&lt;/group&gt;
+&lt;group name="querysim" hint="Query Simulator driver"&gt;
+&lt;package&gt;
+&lt;name&gt;MDB2_Driver_querysim&lt;/name&gt;
+&lt;channel&gt;pear.php.net&lt;/channel&gt;
+&lt;/package&gt;
+&lt;/group&gt;
+&lt;group name="pgsql" hint="Postgresql driver"&gt;
+&lt;package&gt;
+&lt;name&gt;MDB2_Driver_pgsql&lt;/name&gt;
+&lt;channel&gt;pear.php.net&lt;/channel&gt;
+&lt;/package&gt;
+&lt;/group&gt;
+&lt;group name="oci8" hint="Oracle 8 driver"&gt;
+&lt;package&gt;
+&lt;name&gt;MDB2_Driver_oci8&lt;/name&gt;
+&lt;channel&gt;pear.php.net&lt;/channel&gt;
+&lt;/package&gt;
+&lt;/group&gt;
+&lt;group name="mysqli" hint="MySQL 4.1+ driver"&gt;
+&lt;package&gt;
+&lt;name&gt;MDB2_Driver_mysqli&lt;/name&gt;
+&lt;channel&gt;pear.php.net&lt;/channel&gt;
+&lt;/package&gt;
+&lt;/group&gt;
+&lt;group name="mysql" hint="MySQL 4.0- driver"&gt;
+&lt;package&gt;
+&lt;name&gt;MDB2_Driver_mysql&lt;/name&gt;
+&lt;channel&gt;pear.php.net&lt;/channel&gt;
+&lt;/package&gt;
+&lt;/group&gt;
+&lt;group name="ibase" hint="Interbase driver"&gt;
+&lt;package&gt;
+&lt;name&gt;MDB2_Driver_ibase&lt;/name&gt;
+&lt;channel&gt;pear.php.net&lt;/channel&gt;
+&lt;/package&gt;
+&lt;/group&gt;
+&lt;group name="fbsql" hint="Firebird driver"&gt;
+&lt;package&gt;
+&lt;name&gt;MDB2_Driver_fbsql&lt;/name&gt;
+&lt;channel&gt;pear.php.net&lt;/channel&gt;
+&lt;/package&gt;
+&lt;/group&gt;
+&lt;group name="all" hint="all drivers [for uninstall]"&gt;
+&lt;package&gt;
+&lt;name&gt;MDB2_Driver_fbsql&lt;/name&gt;
+&lt;channel&gt;pear.php.net&lt;/channel&gt;
+&lt;/package&gt;
+&lt;package&gt;
+&lt;name&gt;MDB2_Driver_ibase&lt;/name&gt;
+&lt;channel&gt;pear.php.net&lt;/channel&gt;
+&lt;/package&gt;
+&lt;package&gt;
+&lt;name&gt;MDB2_Driver_mysql&lt;/name&gt;
+&lt;channel&gt;pear.php.net&lt;/channel&gt;
+&lt;/package&gt;
+&lt;package&gt;
+&lt;name&gt;MDB2_Driver_mysqli&lt;/name&gt;
+&lt;channel&gt;pear.php.net&lt;/channel&gt;
+&lt;/package&gt;
+&lt;package&gt;
+&lt;name&gt;MDB2_Driver_oci8&lt;/name&gt;
+&lt;channel&gt;pear.php.net&lt;/channel&gt;
+&lt;/package&gt;
+&lt;package&gt;
+&lt;name&gt;MDB2_Driver_pgsql&lt;/name&gt;
+&lt;channel&gt;pear.php.net&lt;/channel&gt;
+&lt;/package&gt;
+&lt;package&gt;
+&lt;name&gt;MDB2_Driver_querysim&lt;/name&gt;
+&lt;channel&gt;pear.php.net&lt;/channel&gt;
+&lt;/package&gt;
+&lt;package&gt;
+&lt;name&gt;MDB2_Driver_sqlite&lt;/name&gt;
+&lt;channel&gt;pear.php.net&lt;/channel&gt;
+&lt;/package&gt;
+&lt;package&gt;
+&lt;name&gt;MDB2_Driver_mssql&lt;/name&gt;
+&lt;channel&gt;pear.php.net&lt;/channel&gt;
+&lt;/package&gt;
+&lt;/group&gt;
+&lt;/dependencies&gt;
+</pre></div><p>This<code class="literal"> package.xml</code> would allow users much more flexibility. When installing, users would see:<a id="id358" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>$ pear install MDB2
+Install ok: channel://pear.php.net/MDB2-2.2.0
+MDB2: Optional feature mssql available (Microsoft SQL Server driver)
+MDB2: Optional feature sqlite available (SQLite driver)
+MDB2: Optional feature querysim available (Query Simulator driver)
+MDB2: Optional feature pgsql available (Postgresql driver)
+MDB2: Optional feature oci8 available (Oracle 8 driver)
+MDB2: Optional feature mysqli available (MySQL 4.1+ driver)
+MDB2: Optional feature mysql available (MySQL 4.0- driver)
+MDB2: Optional feature ibase available (Interbase driver)
+MDB2: Optional feature fbsql available (Firebird driver)
+MDB2: Optional feature all available (all drivers [for uninstall])
+</strong></span>
+</pre></div><p>In order to install MDB2 with mysqli support, the user would simply type:</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>$ pear install MDB2#mysqli
+</strong></span>
+</pre></div><p>Then, the MDB2_Driver_mysqli package would be downloaded and installed. Better yet, if at some point in time, MDB2 needs to be uninstalled, MDB2 and all of its drivers could be installed with a single command:</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>$ pear uninstall MDB2#all
+</strong></span>
+</pre></div><p>The disadvantage to this approach is that the output when installing or upgrading MDB2 is quite wordy, and could make it difficult to notice a stray error or warning. In addition, should a new driver be released, it must be added to<code class="literal"> package.xml</code> in order to make the handy feature available. On the other hand, this could be an easy way to differentiate between recommended and experimental drivers.<a id="id359" class="indexterm"/>
+</p><p>In short, this approach is ripe for exploration.</p></div></div><div class="section" title="Custom Plug-In Systems: Remote Server"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec05"/>Custom Plug-In Systems: Remote Server</h2></div></div></div><p>The primary drawback of the subpackage approach used by MDB2 is that the end-user of MDB2 must have a working understanding of the PEAR installer in order to properly install the drivers. This can be a significant stumbling block for graphically-oriented users who are expecting to go to one location in order to manage and use your application. For instance, bloggers expect to be able to concentrate on authoring and the tasks associated with blogging. Very few bloggers want to spend time studying the intricacies of a subtle and powerful installation system like the PEAR installer.<a id="id360" class="indexterm"/>
+</p><p>Instead, they want to be able to customize the look and feel of their blog, add or remove functional components of the blog at will, and do all of this from the same visual interface that is used for blogging.<a id="id361" class="indexterm"/>
+</p><p>If your application fits into a similar one-stop-for-everything model (and most web-based applications do fit this model), you will want to consider a way to remotely manage plug-ins and/or templates. In order to do this, your application needs to have three abstract components:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The application plug-in manager</li><li class="listitem" style="list-style-type: disc">The remote plug-in server</li><li class="listitem" style="list-style-type: disc">A plug-in downloader/installer</li></ul></div><p>If you've been paying attention in the last four chapters, you might note the striking similarity this bears to the goals of the PEAR Installer. Pairing up a PEAR Channel Server (refer <a class="link" href="ch05.html" title="Chapter 5. Releasing to the World: PEAR Channels">Chapter 5</a>) with a customized embedded PEAR installer will enable construction of a highly sophisticated plug-in manager with minimal coding.</p><p>However, before we dive into the PEAR-based solution, let's look at another example from the current state of affairs, the fantastic<span class="strong"><strong> Serendipity</strong></span> blog ( <a class="ulink" href="http://www.s9y.org">http://www.s9y.org</a>). The Serendipity blog is an easy-to-install, highly configurable PHP-based blogging program that is very stable and feature-rich. In addition, it has had full support for PHP 5 and the latest database extensions for longer than most PHP-based blogging software, and has just recently reached the landmark of version 1.0. Serendipity is licensed under the BSD license.<a id="id362" class="indexterm"/>
+</p><div class="section" title="Case Study: Serendipity Blog's Spartacus Plug-In Manager"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl3sec02"/>Case Study: Serendipity Blog's Spartacus Plug-In Manager</h3></div></div></div><p>The Serendipity blog manages plug-ins through the use of a specialized plug-in called<span class="strong"><strong> Spartacus</strong></span>. Spartacus is designed to work in the same way as any other Serendipity plug-in, but has the ability to query a list of trusted servers for both plug-ins and templates for the Serendipity blog, and then to easily allow users to download and/or upgrade the plug-ins.<a id="id363" class="indexterm"/>
+</p><div class="mediaobject"><img src="graphics/1904811191_6_3.jpg" alt="Case Study: Serendipity Blog's Spartacus Plug-In Manager"/></div><p>The structure of a Serendipity plug-in consists of a single PHP file located at a special location. Each plug-in resides within a separate directory, and the directory may contain a number of additional files. As such, the Spartacus plug-in consists of the<code class="literal"> serendipity_event_spartacus.php</code> file and a number of different language translations for text prompts used in the plug-in.<a id="id364" class="indexterm"/>
+</p><p>Within the<code class="literal"> serendipity_event_spartacus.php</code> file, there is a single class containing a number of different methods. The methods can be roughly grouped into a few simple categories:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Utility methods such as<code class="literal"> microtime_float()</code>, which works around deficiencies in PHP's internal<code class="literal"> microtime()</code> function in PHP versions prior to 5.0.0.<a id="id365" class="indexterm"/></li><li class="listitem" style="list-style-type: disc">Universal plug-in methods, common to every plug-in needed for introspection of plug-in name/author, Serendipity events hooked into, configuration variables, and so on.</li><li class="listitem" style="list-style-type: disc">XML-manipulation methods for processing remote meta-data about plug-ins and templates.</li><li class="listitem" style="list-style-type: disc">File-management methods for installing and uninstalling plug-ins and templates.</li><li class="listitem" style="list-style-type: disc">Remote HTTP download methods based on PEAR's<span class="strong"><strong> HTTP_Request</strong></span> package.</li><li class="listitem" style="list-style-type: disc">Data-caching methods for storing downloaded plug-in information.</li><li class="listitem" style="list-style-type: disc">Methods for building plug-in list.</li><li class="listitem" style="list-style-type: disc">Methods for building the template list and downloading the preview thumbnail.</li></ul></div><p>Even with all of this functionality, the entire plug-in file weighs in at 805 lines with comments.<a id="id366" class="indexterm"/>
+</p><p>The basic design behind Spartacus is to fetch a descriptive XML file (basically a REST service) from a trusted server, parse information about plug-ins or templates from the file, format this into the style needed by Serendipity to display plug-ins, and then to process user requests from Serendipity's event hooks and download/install plug-ins and templates.</p><p>In order to download the plug-ins, Serendipity uses a simple but inflexible system based on static URLs. Constructing the URL for a plug-in's meta-data takes place in this manner:<a id="id367" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">switch($type) {
+// Sanitize to not fetch other URLs
+default:
+case 'event':
+$url_type = 'event';
+$i18n = true;
+break;
+case 'sidebar':
+$url_type = 'sidebar';
+$i18n = true;
+break;
+case 'template':
+$url_type = 'template';
+$i18n = false;
+break;
+}
+if (!$i18n) {
+$lang = '';
+} elseif
+(isset($serendipity['languages'][$serendipity['lang']])) {
+$lang = '_' . $serendipity['lang'];
+} else {
+$lang = '_en';
+}
+$mirrors = $this-&gt;getMirrors('xml', true);
+$mirror = $mirrors[$this-&gt;get_config('mirror_xml', 0)];
+$url = $mirror . '/package_' . $url_type . $lang . '.xml';
+</pre></div><p>The<code class="literal"> $url</code> is then used to download the actual meta-data.</p><p>Displaying the meta-data requires a check to see if the plug-in is already installed:<a id="id368" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">if (in_array($data['class_name'], $plugins)) {
+$infoplugin =&amp;
+serendipity_plugin_api::load_plugin($data['class_name']);
+if (is_object($infoplugin)) {
+$bag = new serendipity_property_bag;
+$infoplugin-&gt;introspect($bag);
+<span class="strong"><strong>if ($bag-&gt;get('version') == $data['version']) {
+$installable = false;
+} elseif (version_compare($bag-&gt;get('version'),
+$data['version'], '&lt;')) {
+$data['upgradable'] = true;
+</strong></span>
+$data['upgrade_version'] = $data['version'];
+$data['version'] = $bag-&gt;get('version');
+$upgradeLink =
+'&amp;amp;serendipity[spartacus_upgrade]=true';
+}
+}
+}
+</pre></div><p>Note the highlighted entries showing the essential test of whether the plug-in can be upgraded. This is used to decide whether a plug-in is clickable (installable/upgradable).</p><p>Once a user decides to download a plug-in, Spartacus cycles through the list of files from the plug-in's metadata, and downloads them one-by-one using a static URL and a ViewCVS trick (highlighted in the following example) to retrieve them. Here is the code:<a id="id369" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">foreach($files AS $file) {
+$url = $mirror . '/' . $sfloc . '/' .
+$file . <span class="strong"><strong>'?rev=1.9999';
+</strong></span>
+$target = $pdir . $file;
+@mkdir($pdir . $plugin_to_install);
+$this-&gt;fetchfile($url, $target);
+if (!isset($baseDir)) {
+$baseDirs = explode('/', $file);
+$baseDir = $baseDirs[0];
+}
+}
+</pre></div><p>This ViewCVS trick (retrieving revision 1.9999) is a very simple way of retrieving the correct version of files to install, but it does not allow for much flexibility, and requires strict control over revisions on the server — a single mistake will bring down the installation of an entire plug-in, and potentially the entire local install of our personal Serendipity blog.<a id="id370" class="indexterm"/>
+</p><p>As such, the Serendipity developers have placed a to-do note at the top of the page with some ideas for the next implementation of Spartacus to address these issues:</p><div class="informalexample"><pre class="programlisting">/************
+TODO:
+- Perform Serendipity version checks to only install plugins
+available for version
+- Allow fetching files from mirrors / different locations -
+don't use ViewCVS hack (revision 1.999 dumbness)
+***********/
+</pre></div><p>Both of these are hard problems to solve. To solve the first, we need to be able to do some relatively complex dependency validation, and have the ability to cycle through available versions of the plug-in until we find one that can work with the current Serendipity version. The second also requires some sophisticated server/client communication, and could add significant bloat to Serendipity as they move forward in development of Spartacus.</p><p>Fortunately, there is a solution to this issue. The PEAR installer is specifically designed to handle situations even more complex than what Serendipity's Spartacus plug-in is attempting to grapple with, and can be embedded within an application with surprisingly minimal effort.</p></div><div class="section" title="Case Study: Seagull Framework's Embedded PEAR Installer"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl3sec03"/>Case Study: Seagull Framework's Embedded PEAR Installer</h3></div></div></div><p>
+<span class="strong"><strong>Seagull Framework</strong></span> ( <a class="ulink" href="http://www.seagullproject.org/">http://www.seagullproject.org/</a>) is an example of a web-based application that takes an extremely minimal approach to embedding the<a id="id371" class="indexterm"/>
+</p><p>PEAR installer. Unlike Serendipity, Seagull is more of a general-purpose framework, designed to make it easy to build other things. Seagull provides glue and more than a few handy buzzword-friendly ideas for your development pleasure, like software patterns implemented in PHP (Front Controller, Observer, Service Locator, Task Runner, Wizard, etc.), and utility classes such as HtmlRenderer, UrlParser, and Emailer.php. A quick browse of <a class="ulink" href="http://trac.seagullproject.org/browser/trunk/lib/SGL"> http://trac.seagullproject.org/browser/trunk/lib/SGL</a> shows the full range of power available.</p><p>Like phpDocumentor, Seagull is available as a one-stop unzip-and-go zip file, or can be installed using the PEAR installer. Also like phpDocumentor, lesser configuration is needed on installation or upgrade, when installing via the PEAR Installer.</p><p>In addition, Seagull bases much of its work on the pre-existing foundation of PEAR packages available from <a class="ulink" href="http://pear.php.net"> http://pear.php.net</a>. Seagull uses a full range of PEAR packages. Here's a sampling of some of the dependencies:<a id="id372" class="indexterm"/>
+</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Archive_Tar</li><li class="listitem" style="list-style-type: disc">Cache_Lite</li><li class="listitem" style="list-style-type: disc">Config</li><li class="listitem" style="list-style-type: disc">Date</li><li class="listitem" style="list-style-type: disc">DB</li><li class="listitem" style="list-style-type: disc">DB_DataObject</li><li class="listitem" style="list-style-type: disc">DB_NestedSet</li><li class="listitem" style="list-style-type: disc">File</li><li class="listitem" style="list-style-type: disc">HTML_Common</li><li class="listitem" style="list-style-type: disc">HTML_TreeMenu</li><li class="listitem" style="list-style-type: disc">HTML_QuickForm</li><li class="listitem" style="list-style-type: disc">HTML_Template_Flexy</li><li class="listitem" style="list-style-type: disc">HTTP_Header</li><li class="listitem" style="list-style-type: disc">HTTP_Download</li><li class="listitem" style="list-style-type: disc">Log</li><li class="listitem" style="list-style-type: disc">Mail_Mime</li><li class="listitem" style="list-style-type: disc">Net_Socket</li><li class="listitem" style="list-style-type: disc">Net_Useragent_Detect</li><li class="listitem" style="list-style-type: disc">Pager</li><li class="listitem" style="list-style-type: disc">Text_Password</li><li class="listitem" style="list-style-type: disc">Translation2</li><li class="listitem" style="list-style-type: disc">Validate</li><li class="listitem" style="list-style-type: disc">XML_Parser</li><li class="listitem" style="list-style-type: disc">XML_Util</li></ul></div><p>Whew!</p><p>In addition, Seagull makes use of the<span class="strong"><strong> Role_Web</strong></span> package available from the<code class="literal"> pearified.com</code> channel so that installation and upgrading is a one-stop shop.<a id="id373" class="indexterm"/>
+</p><p>Managing all of these PEAR dependencies can be a real pain in the rear end, especially when users are installing Seagull expecting to only use Seagull. When they discover that they need to use the PEAR installer to manage Seagull's dependencies, this confuses the issue.</p><p>As such, Seagull creator Demian Turner has developed the first-ever experimental embedding of the PEAR installer into Seagull. The embedding is only available in the latest versions of Seagull, and is considered to be of alpha-code quality, but is well worth examining for the principles the code employs. Here is a screenshot of the actual Seagull PEAR Manager:<a id="id374" class="indexterm"/>
+</p><div class="mediaobject"><img src="graphics/1904811191_6_4.jpg" alt="Case Study: Seagull Framework's Embedded PEAR Installer"/></div><p>Found in the<code class="literal"> modules/default/classes/PearMgr.php</code> file, the PEAR Manager for Seagull provides a customized web-based front end to any PEAR channel for listing of packages, installation, and upgrading.</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="tip49"/>Tip</h3><p><span class="strong"><strong>Location of PearMgr.php</strong></span></p><p>Seagull takes advantage of the subpackage feature of<code class="literal"> package.xml</code> version 2.0, and has split its large code base into a base package and three subpackages. The<code class="literal"> PearMgr.php</code> file is found in the<code class="literal"> pear.phpkitchen.com/Seagull_Default</code> package, which is required and automatically installed by default when installing Seagull. Users installing from SourceForge unzip-and-go will get all the files in one zip file.</p></div><p>Seagull uses a customized version (one line is changed, and the templates are different) of the<span class="strong"><strong> PEAR_Frontend_Web</strong></span> package available from<code class="literal"> pear.php.net</code> along with<code class="literal"> PearMgr.php</code> to manage PEAR installation/upgrading. Seagull also adds seven commands to the PEAR installer:<code class="literal"> sgl-clear-cache, sgl-download, sgl-list-all, sgl-list-upgrades, sgl-remote-info</code>, and<code class="literal"> sgl-search</code>. These commands are again implemented in a near carbon-copy of the PEAR equivalents, except they remove all calls to the<code class="literal"> outputData()</code> method, something we will address later on in the text.<a id="id375" class="indexterm"/>
+</p><p>The code in<code class="literal"> PearMgr.php</code> is approximately 200 lines. So, in a quarter of the length of Serendipity's Spartacus, Seagull has implemented a fully functional remote plug-in installer that can also be used to upgrade Seagull itself!</p><p>Let's take a look at the code that is used to determine which channels can be used:<a id="id376" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">$this-&gt;aChannels = array(
+'pear.phpkitchen.com' =&gt; 'Seagull',
+'pear.php.net' =&gt; 'PEAR',
+'pearified.com' =&gt; 'Pearified',
+);
+</pre></div><p>As with Spartacus, the servers are hard-coded. However, unlike Spartacus, should any of these channels add a mirror at any point in the future, PEAR will take care of updating this information, and the mirror will automatically be available to the user.</p><p>The actual package download/install/upgrade management all uses PEAR's abstract command interface:</p><div class="informalexample"><pre class="programlisting">switch ($input-&gt;command) {
+Seagull FrameworkPEAR's abstract command interfacecase 'sgl-list-all':
+if ($serialized = $cache-&gt;get($cacheId, 'pear')) {
+$data = unserialize($serialized);
+SGL::logMessage('pear data from cache',
+PEAR_LOG_DEBUG);
+} else {
+<span class="strong"><strong>$cmd = PEAR_Command::factory($input-&gt;command,
+$config);
+$data = $cmd-&gt;run($input-&gt;command, $opts, $params);
+</strong></span>
+$serialized = serialize($data);
+$cache-&gt;save($serialized, $cacheId, 'pear');
+SGL::logMessage('pear data from REST call',
+PEAR_LOG_DEBUG);
+}
+break;
+case 'sgl-install':
+case 'sgl-uninstall':
+case 'sgl-upgrade':
+$params = array($input-&gt;pkg);
+ob_start();
+<span class="strong"><strong>$cmd = PEAR_Command::factory($input-&gt;command, $config);
+$ok = $cmd-&gt;run($input-&gt;command, $opts, $params);
+</strong></span>
+$pearOutput = ob_get_contents();
+ob_end_clean();
+if ($ok) {
+$this-&gt;_redirectToDefault($input, $output);
+} else {
+print '&lt;pre&gt;';print_r($ok);
+}
+break;
+}
+</pre></div><p>The PEAR-specific code has been highlighted in the example. The entire complexity of listing packages is taken care of in just two lines of code. The same is true of installation, uninstallation, and upgrading.<a id="id378" class="indexterm"/>
+</p><p>There is a rather curious usage of output buffering to capture the informational output of the PEAR command. This appears to be necessary because PEAR will output information to the screen if given a choice, but in fact it is possible to capture this output without resorting to hacks. In defense of the Seagull developers, I can't imagine much more cutting edge code than what they are trying to do, and they did it without the benefit of this book!</p><p>The key to capturing the output of the PEAR-installation process is in fact to register a front-end object. The code below shows an example of the right way to do this kind of thing:</p><div class="informalexample"><pre class="programlisting">require_once 'PEAR/Frontend.php';
+class CaptureStuff extends PEAR_Frontend
+{
+public $data = array();
+function log($msg)
+{
+$this-&gt;data[] = array('log' =&gt; $msg);
+}
+function outputData($data, $command = '_default')
+{
+$this-&gt;data[] = array('outputData' =&gt; array($data,
+$command));
+}
+function userConfirm()
+{
+// needed to satisfy interface contract PHP4-style
+}
+}
+$capture = new CaptureStuff;
+PEAR_Frontend::setFrontendObject($capture);
+// $config is a PEAR_Config object
+$cmd = PEAR_Command::factory($command, $config);
+$cmd-&gt;run($command, array(), $params);
+</pre></div><p>At this point, the<code class="literal"> $capture-&gt;data</code> array contains all of the information that would normally be displayed by the PEAR installer in the order in which it occurred, and it can be ignored or displayed in appropriate fashion.</p><p>Now that we have seen an example of embedding the PEAR installer, it is time for our feature attraction: designing a customized PEAR channel-based plug-in system that takes full advantage of the customizability of the PEAR installer.<a id="id380" class="indexterm"/>
+</p></div></div></div>
+<div class="section" title="Designing a Custom PEAR Channel-Based Plug-In System"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec03"/>Designing a Custom PEAR Channel-Based Plug-In System</h1></div></div></div><p>For this system, we will design a template installer that is for the fictional blogging program "MyBlog." Before we look at the code, it is important to understand the problem. Here are the requirements of the MyBlog template system:<a id="id381" class="indexterm"/>
+</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Templates need to have thumbnail images associated with them that the user can use to visually preview the template.<a id="id382" class="indexterm"/></li><li class="listitem" style="list-style-type: disc">Templates must be listed without requiring scrolling (paginated results).</li><li class="listitem" style="list-style-type: disc">It must be possible to label new templates as experimental.</li><li class="listitem" style="list-style-type: disc">Templates must be matched to the MyBlog version they are intended for.</li><li class="listitem" style="list-style-type: disc">Any template that does not fit the needs of the blog user should not be displayed in the list of templates, like the templates that are too experimental or do not work with the current version of MyBlog.</li><li class="listitem" style="list-style-type: disc">Templates must be remotely installable only from a discrete list of trusted servers.</li><li class="listitem" style="list-style-type: disc">Template should also be installable from a locally downloaded template.</li><li class="listitem" style="list-style-type: disc">The plug-in manager should work in PHP 5.0.0 and later. PEAR is of course compatible with PHP versions 4.2.0 and newer, but let's assume that MyBlog is designed to take advantage of some of the fantastic new features in PHP version 5. Porting this code to work with PHP 4 is a simple task, it would involve replacing a few keywords and using PEAR_Error instead of exceptions; an exercise left to the reader.</li></ul></div><p>With all of these requirements, we will need to take advantage of<code class="literal"> channel.xml's</code> ability to specify customized web services, in this case an additional REST protocol for the template thumbnail images. In addition, we will need to implement a customized remote listing of templates that is able to filter out templates that will not work with the current version of MyBlog, and also filter by stability. The rest of the requirements can be handled easily by existing PEAR functionality.<a id="id383" class="indexterm"/>
+</p><p>In this section, we will implement the PEAR-specific code. As such, we will not make the next cool CMS out of our MyBlog program nor will we implement the server-side template thumbnail uploader, as this is a common task that is easily implemented using PHP.</p><p>In order to implement the tasks required, we will create a class responsible for downloading and processing REST from the remote server, a class for organizing and paginating the templates, and a class for downloading and installing the templates. In this case, once a template is installed, there is no need to uninstall directly, but implementing this is quite simple once the basic principles are understood. Our template switcher simply installs or upgrades if necessary.<a id="id384" class="indexterm"/>
+</p><div class="section" title="Reusing Existing Functionality"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec06"/>Reusing Existing Functionality</h2></div></div></div><p>In this example, we will make full use of the<code class="literal"> PEAR_REST</code> class,<code class="literal"> PEAR_Downloader</code> and<code class="literal"> PEAR_Installer</code> classes, and also the<code class="literal"> PEAR_Config/PEAR_Registry</code> internal classes. Re-using components is the primary strength of this approach, and is of course the primary purpose of the PEAR repository. It cannot be overstressed how important this is for both cutting down on initial development time and on the pain of debugging later on.<a id="id385" class="indexterm"/>
+</p><p>When re-using code, it is important to verify the stability and the robustness of the user community surrounding the code. The PEAR installer of course has an extensive test suite and both a large user base and a core of experienced and dedicated developers from all over the planet, who work to maintain and enhance the package.</p><p>Let's take a look at the classes from the PEAR package that we will be using.</p><div class="section" title="PEAR Installer Infrastructure: REST and PEAR Installer Classes"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl3sec04"/>PEAR Installer Infrastructure: REST and PEAR Installer Classes</h3></div></div></div><p>The PEAR installer primarily consists of several classes. The classes that we will need to understand for our template plug-in system are:<a id="id386" class="indexterm"/>
+</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">PEAR_Config</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">PEAR_Dependency2</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">PEAR_REST</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">PEAR_REST_11</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">PEAR_REST_10</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">PEAR_Downloader</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">PEAR_Downloader_Package</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">PEAR_Installer</code></li></ul></div><p>The complexity of these multi-purpose classes can be quite daunting; so let's take a step back and examine what we will actually need from each class.</p><div class="section" title="PEAR_Config"><div class="titlepage"><div><div><h4 class="title"><a id="ch06lvl4sec01"/>PEAR_Config</h4></div></div></div><p>The<code class="literal"> PEAR_Config</code> class is used to manage basic configuration issues for the PEAR installer. As such, it is designed to easily retrieve the related internal-package registry, a REST object, and all kinds of other features that we don't really need to care about.<a id="id387" class="indexterm"/>
+</p><p>For our purposes, we only really need to understand three things about the<code class="literal"> PEAR_Config</code> object as it is used by the PEAR installer:<a id="id388" class="indexterm"/>
+</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">A<code class="literal"> PEAR_Config</code> object is generally used as a singleton by the installer.</li><li class="listitem" style="list-style-type: disc">The<code class="literal"> get()</code> method is used to retrieve configuration values.</li><li class="listitem" style="list-style-type: disc">The<code class="literal"> set()</code> method is used to set configuration values in-memory only, and will not affect on-disk configuration files unless<code class="literal"> writeConfigFile()</code> is used to save the values.</li></ul></div><p>When the PEAR installer is initialized, the<code class="literal"> PEAR_Config::singleton()</code> method is called with default values. If these values are not set to the proper location, then our template plug-in system will save templates in the global PEAR location. In some cases, this is great, as the application is designed to work within the system context.</p><p>If your application instead uses a local install for plug-ins internal to the application, you'll need to set all of the configuration values before performing installation tasks. Seagull Framework is a good example of a program that needs to set the configuration values, and the method with which they are set, is the best practice. Here it is:<a id="id389" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">$conf = &amp;PEAR_Config::singleton();
+$conf-&gt;set('default_channel', 'pear.php.net');
+$conf-&gt;set('doc_dir', SGL_TMP_DIR);
+$conf-&gt;set('php_dir', SGL_LIB_PEAR_DIR);
+$conf-&gt;set('web_dir', SGL_WEB_ROOT);
+$conf-&gt;set('cache_dir', SGL_TMP_DIR);
+$conf-&gt;set('data_dir', SGL_TMP_DIR);
+$conf-&gt;set('test_dir', SGL_TMP_DIR);
+$conf-&gt;set('preferred_state', 'devel');
+</pre></div><p>At a minimum, you will need to set all of the<code class="literal"> _dir</code> configuration values (<code class="literal">bin_dir, doc_dir, ext_dir, php_dir, cache_dir, data_dir, download_dir, temp_dir</code>, and<code class="literal"> test_dir</code> as of PEAR 1.4.10) to valid values. The<code class="literal"> preferred_state</code> variable should be set to<code class="literal"> stable</code> unless the user expects to be able to install experimental templates, then one of<code class="literal"> beta, alpha</code>, or<code class="literal"> devel</code> should be used.<a id="id390" class="indexterm"/>
+</p><p>We will also be using the low-level registry in order to determine whether a template package is already installed, in a similar fashion to the method used by Serendipity's Spartacus plug-in:<a id="id391" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">$reg = $this-&gt;_config-&gt;getRegistry();
+// default channel is set to the template channel
+$existing = $reg-&gt;packageInfo($template, 'version',
+$this-&gt;_config-&gt;get('default_channel'));
+if (version_compare($existing, $version) === 0) {
+// installed already
+$this-&gt;log('Template set as active template');
+return true;
+}
+</pre></div><p>In our example, we retrieve the currently installed version of the template, and as a sanity check, ensure that we are not attempting to install the currently installed version.</p><p>It should be noted that it may be desirable to allow the user to force re-installation. If this is the case, the code should be modified such that if the versions are the same, the<code class="literal"> force</code> option is passed to installation. The topic of installation options will be discussed in the later section on<code class="literal"> PEAR_Installer</code>.</p></div><div class="section" title="PEAR_Dependency2"><div class="titlepage"><div><div><h4 class="title"><a id="ch06lvl4sec02"/>PEAR_Dependency2</h4></div></div></div><p>The<code class="literal"> PEAR_Dependency2</code> class is a simple utility class that is used by the PEAR installer to validate<code class="literal"> package.xml</code> dependencies against all of the variables on a system. This is a low-level class that in fact expects as its input the unserialized XML dependency straight from<code class="literal"> package.xml</code>.<a id="id392" class="indexterm"/>
+</p><p>In other words, consider the following to be the dependency you are trying to validate:</p><div class="informalexample"><pre class="programlisting">&lt;required&gt;
+&lt;package&gt;
+&lt;name&gt;Blah&lt;/name&gt;
+&lt;channel&gt;foo.example.com&lt;/channel&gt;
+&lt;min&gt;1.2.3&lt;/min&gt;
+&lt;/package&gt;
+</pre></div><p>
+<code class="literal">PEAR_Dependency2</code> then expects the variable representing the dependency to contain this array:</p><div class="informalexample"><pre class="programlisting">array(
+'name' =&gt; 'Blah',
+'channel' =&gt; 'foo.example.com',
+'min' =&gt; '1.2.3');
+</pre></div><p>For our application, the only use we have for the<code class="literal"> PEAR_Dependency2</code> class is to validate the dependency against the parent MyBlog application. We need to make sure that the template actually works with the current MyBlog version. As such, the only dependency we will need to validate is the required package dependency on the MyBlog package.<a id="id393" class="indexterm"/>
+</p><p>This greatly simplifies the usage of<code class="literal"> PEAR_Dependency2</code>, and all we need to understand is how to use it to validate a package dependency. The method that will be used for this task is called<code class="literal"> validatePackageDependency()</code>, as one might expect. The method signature expects the dependency array as our example above, a boolean representing whether the dependency is required or optional, and an array containing the list of all packages that will attempt to be installed in this iteration.</p><p>The third parameter is irrelevant to our task, as only one template will ever be installed at a time, and so we will always pass an empty array for this parameter.</p><p>In PHP code, the signature as we use it will look something like:</p><div class="informalexample"><pre class="programlisting">$e = $d2-&gt;validatePackageDependency($pdep, true, array());
+</pre></div><p>As with all of<code class="literal"> PEAR_Dependency2's</code> validation methods,<code class="literal"> validatePackageDependency()</code> returns either<code class="literal"> true</code>, an array, or a<code class="literal"> PEAR_Error</code> object.<code class="literal"> true</code> is returned upon success, an array containing an error message is returned if there is a warning that does not invalidate the dependency, and a<code class="literal"> PEAR_Error</code> object is returned if the dependency validation fails.<a id="id394" class="indexterm"/>
+</p><p>As PEAR's error handling allows registering a callback, it is very important to disable any callbacks while calling the dependency validation, and so our total code looks like:<a id="id395" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">PEAR::staticPushErrorHandling(PEAR_ERROR_RETURN);
+$e = $d2-&gt;validatePackageDependency($pdep, true, array());
+PEAR::staticPopErrorHandling();
+if (PEAR::isError($e)) {
+// skip any template releases that cannot work
+// with the current version of MyBlog
+continue 2;
+}
+</pre></div><p>The above code tells PEAR to simply return<code class="literal"> PEAR_Error</code> objects, temporarily ignoring any special handling the user has specified, attempt to validate the dependency, and then if the validation fails, to skip this release of the template.</p><p>How do we extract the<code class="literal"> $pdep</code> variable from dependency information? The answer is semi-intuitive, actually. Just as the example dependency from above is extracted to an array matching the XML tag name to the tag contents, the same is true of its parent tag. The full array for the dependency above is:<a id="id396" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">array(
+'dependencies' =&gt; array(
+'required' =&gt; array(
+<span class="strong"><strong>'package' =&gt; array(
+'name' =&gt; 'Blah',
+'channel' =&gt; 'foo.example.com',
+'min' =&gt; '1.2.3'
+</strong></span>
+)
+)
+)
+);
+</pre></div><p>Note that if we have more than one required package dependency, the array will look like:</p><div class="informalexample"><pre class="programlisting">array(
+'dependencies' =&gt; array(
+'required' =&gt; array(
+<span class="strong"><strong>'package' =&gt; array(
+0 =&gt; array(
+'name' =&gt; 'Blah',
+'channel' =&gt; 'foo.example.com',
+'min' =&gt; '1.2.3'),
+1 =&gt; array(
+'name' =&gt; 'Dep2',
+'channel' =&gt; 'foo.example.com',
+'min' =&gt; '1.2.3'),
+)
+</strong></span>
+)
+)
+);
+</pre></div><p>In this case, the package tags are in fact an array of arrays. I've found that the easiest way to handle this fact is to always convert the package element into an array of itself if it does not contain numeric indices.</p><p>Here is the full code that accesses the required package dependencies of a template:<a id="id397" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">if (isset($dep['required']) &amp;&amp; isset($dep['required']['package'])) {
+if (!isset($dep['required']['package'][0])) {
+$dep['required']['package'] =
+array($dep['required']['package']);
+}
+foreach ($dep['required']['package'] as $pdep) {
+if (!isset($pdep['channel'])) {
+// skip uri-based dependencies
+continue;
+}
+if ($pdep['name'] == 'MyBlog' &amp;&amp;
+$pdep['channel'] == 'pear.chiaraquartet.net') {
+PEAR::staticPushErrorHandling(PEAR_ERROR_RETURN);
+$e = $d2-&gt;validatePackageDependency($pdep, true,
+array());
+PEAR::staticPopErrorHandling();
+if (PEAR::isError($e)) {
+// skip any template releases that cannot work
+// with the current version of MyBlog
+continue 2;
+}
+}
+}
+}
+</pre></div><p>Note that we can also easily skip static uri-based dependencies by checking for the existence of a<code class="literal">&lt;channel&gt;</code> tag inside the dependency, and skip them accordingly.<a id="id398" class="indexterm"/>
+</p></div><div class="section" title="PEAR_REST and PEAR_REST_10/PEAR_REST_11"><div class="titlepage"><div><div><h4 class="title"><a id="ch06lvl4sec03"/>PEAR_REST and PEAR_REST_10/PEAR_REST_11</h4></div></div></div><p>The<code class="literal"> PEAR_REST</code> class is a general utility class for downloading, parsing, and caching remote REST files. It is the REST equivalent of the XML-RPC class that PEAR used to use for the older XMLRPC-based channels. We will be using this low-level class to retrieve the PNG thumbnail image of templates, and so need to know about the<code class="literal"> retrieveCacheFirst()</code> method. This method first checks the local cache, and if it exists, never attempts to query the remote server. If the file has never been downloaded, it then queries the server to retrieve it. As its argument, it simply takes a full URL to the file that one wishes to download, and returns its contents in a string.<a id="id399" class="indexterm"/>
+</p><p>The<code class="literal"> retrieveData()</code> method takes a different approach. If the cache is young enough (3600 seconds by default), it is used without querying the remote server. After this time, the server is queried using HTTP 1.1 and HTTP caching is used to determine whether downloading is necessary. This can dramatically cut down on bandwidth, as the file is only downloaded if there are any changes.</p><p>It should be noted that XML files (as identified by the Content-Type HTTP header) will be parsed into an array automatically by both<code class="literal"> retrieveData()</code> and<code class="literal"> retrieveCacheFirst()</code>.</p><p>
+<code class="literal">PEAR_REST_10</code> and<code class="literal"> PEAR_REST_11</code> implement the REST1.0 and REST1.1 PEAR REST standards, as described in <a class="link" href="ch05.html" title="Chapter 5. Releasing to the World: PEAR Channels">Chapter 5</a>. As such, the methods implement ways of retrieving useful information from the raw REST data, such as the download information for a particular package, or a list of all packages with current releases. For our purposes, we will need to implement a modified version of the REST1.1<code class="literal"> listAll()</code> method, one that filters out incompatible templates and experimental templates. In order to implement this, we will cut-and-paste the code from<code class="literal"> PEAR_REST_11</code> and use that to implement our<code class="literal"> listTemplates()</code> method by tweaking the loop that examines each package.<a id="id400" class="indexterm"/>
+</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="tip50"/>Tip</h3><p>Cutting and pasting from<code class="literal"> PEAR_REST_11</code> may seem to be an unclean approach, as cut and paste is generally frowned upon by the purist element, but in our case it demonstrates an important principle of the REST design. If PEAR still used XML-RPC, it would in fact be impossible to implement the customized template listing that we desire, because some of the necessary information would have been stripped on the server side.</p><p>The REST model makes the data available and expects the client to do any filtering of that data. This is in fact both more efficient and more flexible, which cuts down on programming time and completely eliminates the hacks that used to be necessary when designing around the system.</p><p>Yes, we are cutting and pasting, but the code is drawing upon a well-defined, simple system of remote REST resources, and so we can be certain it will continue to work as the standards evolve.</p></div><p>In our simple implementation, the only method of the REST1.0-based<code class="literal"> PEAR_REST_10</code> class that we will need is the<code class="literal"> getDownloadURL()</code> method, in order to implement our customized template download with restrictions. The API signature of<code class="literal"> getDownloadURL()</code> is somewhat complex, and as such it is helpful to examine the actual code with comment from the<code class="literal"> PEAR_REST_10</code> class:<a id="id401" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">/**
+* Retrieve information about a remote package to be downloaded
+* from a REST server
+*
+* @param string $base The uri to prepend to all REST calls
+* @param array $packageinfo an array of format:
+* &lt;pre&gt;
+* array(
+* 'package' =&gt; 'packagename',
+* 'channel' =&gt; 'channelname',
+* ['state' =&gt; 'alpha' (or valid state),]
+* -or-
+* ['version' =&gt; '1.whatever']
+* &lt;/pre&gt;
+* @param string $prefstate Current preferred_state config
+* variable value
+* @param bool $installed the installed version of this package
+* to compare against
+* @return array|false|PEAR_Error see {@link _returnDownloadURL()}
+*/
+function getDownloadURL($base, $packageinfo, $prefstate, $installed)
+</pre></div><p>
+<code class="literal">getDownloadURL()</code> either returns a<code class="literal"> PEAR_Error</code> or an array. The array will contain an associative index<code class="literal"> url</code> if the package can be successfully downloaded. If none of the releases meet the conditions specified, then the<code class="literal"> url</code> index will not be present. As such, we can use the<code class="literal"> getDownloadURL()</code> method very simply:</p><div class="informalexample"><pre class="programlisting">$info = $this-&gt;getDownloadURL($this-&gt;_restBase,
+array('channel' =&gt; $this-&gt;_channel,
+'package' =&gt; $templateName,
+'version' =&gt; $version),
+$this-&gt;_config-&gt;get('preferred_state', null, $this-&gt;_channel),
+$installed
+);
+if (PEAR::isError($info)) {
+throw new MyBlog_Template_Exception($info-&gt;getMessage());
+}
+if (!isset($info['url'])) {
+throw new MyBlog_Template_Exception('Template "' .
+$templateName . '" cannot be installed');
+}
+if (!extension_loaded("zlib")) {
+$ext = '.tar';
+} else {
+$ext = '.tgz';
+}
+return $info['url'] . $ext;
+</pre></div><p>Note that the<code class="literal"> url</code> does not contain a file extension, as this is determined by the presence of the zlib extension. If we have zlib, then we can download the compressed release, and save some time and bandwidth. Otherwise, the uncompressed<code class="literal"> .tar</code> is downloaded and installed instead.<a id="id402" class="indexterm"/>
+</p><p>This is essentially all of the code needed to successfully leverage our remote server querying! The only task left is the actual downloading and installation.</p></div><div class="section" title="PEAR_Downloader and PEAR_Downloader_Package"><div class="titlepage"><div><div><h4 class="title"><a id="ch06lvl4sec04"/>PEAR_Downloader and PEAR_Downloader_Package</h4></div></div></div><p>Downloading, as seen by the PEAR installer, is not just a simple task of grabbing a url via HTTP and saving its contents locally as a file. The PEAR installer intelligently downloads the right version of a package based on its dependencies and the local system, and also automatically downloads package dependencies in certain situations.<a id="id403" class="indexterm"/>
+</p><p>The<code class="literal"> PEAR Downloader</code> mechanism understands three different kinds of installable packages:<a id="id404" class="indexterm"/>
+</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Abstract package names, i.e.<code class="literal"> pear install PEAR</code> or<code class="literal"> pear install PEAR-beta</code></li><li class="listitem" style="list-style-type: disc">Absolute URLs, i.e.<code class="literal"> pear install </code> <a class="ulink" href="http://pear.example.com/Blah-1.2.3.tgz">http://pear.example.com/Blah-1.2.3.tgz</a></li><li class="listitem" style="list-style-type: disc">Local files, i.e.<code class="literal"> pear install /path/to/Blah-1.2.3.tgz</code></li></ul></div><p>Each instance is handled very differently. Local packages are handled in a simple manner, as one might expect. Absolute URLs are first downloaded, and then treated in the same way as local packages. Abstract packages are treated very differently. No downloading is performed until the installer is sure that all dependencies have been satisfied. This ensures that if a complex application's dependencies are not satisfied, no time or bandwidth will be wasted downloading large package files.</p><p>However, in each of the three kinds of downloadable packages, the way their dependencies and package information are handled is the same. Because of this, to avoid unnecessary code duplication, the three kinds of downloadable packages are abstracted into the<code class="literal"> PEAR_Downloader_Package</code> class. Many of the API functions in<code class="literal"> PEAR_Downloader</code> and<code class="literal"> PEAR_Installer</code> expect or return a<code class="literal"> PEAR_Downloader_Package</code> object.<a id="id405" class="indexterm"/>
+</p><p>However, the first and most important method to investigate is<code class="literal"> PEAR_Downloader's download()</code> method. This method expects as input a simple array of strings, each string representing one of the three forms of downloadable packages. Here is an example demonstrating all three:<a id="id406" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">$downloader-&gt;download(array('PEAR-beta',
+'http://pear.example.com/Blah-1.2.3.tgz',
+'/path/to/Blah-1.2.3.tgz'));
+</pre></div><p>Options can be passed to the<code class="literal"> download()</code> method, but they must be specified when creating the<code class="literal"> PEAR_Downloader</code> object:</p><div class="informalexample"><pre class="programlisting">$ui = PEAR_Frontend::singleton();
+$config = PEAR_Config::singleton();
+$downloader = new PEAR_Downloader($ui, $config,
+array('force' =&gt; true));
+</pre></div><p>Options available for the<code class="literal"> PEAR_Downloader</code> include<code class="literal"> force, downloadonly, soft, offline, packagingroot, nodeps, pretend, ignore-errors, nocompress, alldeps, onlyreqdeps</code>, and<code class="literal"> installroot</code>. In other words, the options that are displayed when executing<code class="literal"> pear help install</code> are all available, plus the internal option<code class="literal"> downloadonly</code>, which is used by the<code class="literal"> pear download</code> command.</p><p>The main options that may be of interest when designing an embedded PEAR installer are the following:<a id="id407" class="indexterm"/>
+</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">force:</code> This option forcibly installs even if dependencies are invalid, or the package is already installed. The best usage of the<code class="literal"> force</code> option is to repair a corrupted installation.</li><li class="listitem" style="list-style-type: disc"><code class="literal">offline:</code> This option prevents any attempts to contact remote servers, and can be useful in installation settings.</li><li class="listitem" style="list-style-type: disc"><code class="literal">nocompress:</code> This option instructs the installer to download uncompressed<code class="literal"> .tar</code> files rather than<code class="literal"> .tgz</code> files, and is useful when the zlib extension is not present.</li><li class="listitem" style="list-style-type: disc"><code class="literal">nodeps:</code> This option prevents the downloader from attempting to validate dependencies, or from downloading required package dependencies.</li><li class="listitem" style="list-style-type: disc"><code class="literal">pretend:</code> This option instructs the downloader to simply grab a listing of all packages that would be downloaded, and to return that, but not to do any actual downloading. This is useful for displaying to the user what packages would need to be installed or upgraded.</li><li class="listitem" style="list-style-type: disc"><code class="literal">alldeps/onlyreqdeps:</code> These options instruct the downloader to automatically download package dependencies. The<code class="literal"> onlyreqdeps</code> option instructs the installer to only download required dependencies, whereas<code class="literal"> alldeps</code> downloads all dependencies.<code class="literal"> onlyreqdeps</code> is obsolete by<code class="literal"> package.xml</code> version 2.0, but is still useful for the many PEAR packages that still use<code class="literal"> package.xml 1.0</code> at<code class="literal"> pear.php.net</code><a id="id408" class="indexterm"/></li></ul></div><p>The<code class="literal"> download()</code> method can return either a<code class="literal"> PEAR_Error</code> object, or an<code class="literal"> array()</code>. Now this is where things get a bit tricky. A<code class="literal"> PEAR_Error</code> object is only returned in the case of an egregious error, such as the inability to access the local package registry, or some other exceptional circumstance. An array is returned in other situations.</p><p>In other words, if downloading fails because every package passed in failed dependency validation, an empty array will be returned instead of a<code class="literal"> PEAR_Error</code> object. Another way of thinking about this is that<code class="literal"> PEAR_Downloader</code> is smart enough to skip downloads that fail and continue with ones that work, rather than halting the entire download experience just because a single package depended on the Gronk_Wzilnk package and it was unavailable.<a id="id409" class="indexterm"/>
+</p><p>To handle the condition of multiple errors,<code class="literal"> PEAR_Downloader</code> provides a<code class="literal"> getErrorMsgs()</code> method that should always be checked after downloading. This method implements a simplistic array of multiple error messages that predated the advanced<code class="literal"> PEAR_ErrorStack</code> class (and incidentally helped to inspire its creation). As such, the code that is used to download should look something like this:</p><div class="informalexample"><pre class="programlisting">$ui = PEAR_Frontend::singleton();
+$config = PEAR_Config::singleton();
+$dl = new PEAR_Downloader($this, array('upgrade' =&gt; true),
+$this-&gt;_config);
+// download the actual URL to the template
+$downloaded = $dl-&gt;download(array($info));
+if (PEAR::isError($downloaded)) {
+throw new MyBlog_Template_Exception($downloaded-&gt;getMessage());
+}
+$errors = $dl-&gt;getErrorMsgs();
+if (count($errors)) {
+$err = array();
+foreach ($errors as $error) {
+$err[] = $error;
+}
+if (!count($downloaded)) {
+throw new MyBlog_Template_Exception('template "' .
+$template . '" installation failed:&lt;br /&gt;' .
+implode('&lt;br /&gt;', $err));
+}
+}
+</pre></div><p>Note that the<code class="literal"> $info</code> variable should contain the name of a template to download in this example.</p></div><div class="section" title="PEAR_Installer"><div class="titlepage"><div><div><h4 class="title"><a id="ch06lvl4sec05"/>PEAR_Installer</h4></div></div></div><p>Finally, we arrive at the<code class="literal"> PEAR_Installer</code> class. This class is monstrous, containing code for handling file transactions, basic installation, uninstallation, and is very significantly huge in general.<code class="literal"> PEAR_Installer</code> is also one of the oldest classes in the PEAR package and although it has undergone a serious liposuction in PEAR 1.4.0 and newer, it will undergo further trimming in future versions.<a id="id410" class="indexterm"/>
+</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="tip51"/>Tip</h3><p>File transactions are the PEAR installer's equivalent to database transactions. When installing a package, the PEAR installer either fully installs a package, or rolls back the installation completely. When upgrading, the PEAR installer makes a backup copy of the previous version. If there are any problems in upgrading, the previous version is completely restored. This ensures that it is<span class="emphasis"><em> impossible</em></span> for the package to be in a half-installed state of limbo if there are any errors.</p></div><p>The method we need to know about in our quest to install templates is not too surprisingly named<code class="literal"> install()</code>. The<code class="literal"> install()</code> method is rather flexible in its input, because of backwards compatibility. It is possible to pass in the array that we would pass to<code class="literal"> PEAR_Downloader-&gt;download()</code>, but this results in significant guesswork by the installer to do what you should be telling it to do, and is deprecated. It is better is to pass in the array returned from<code class="literal"> PEAR_Downloader-&gt;downloader()</code>, and to prepare for installation with a few helper methods:</p><div class="informalexample"><pre class="programlisting">// $templatePackage is the PEAR_Downloader_Package object
+// we received from PEAR_Downloader-&gt;download()
+// $template is the name of the template
+$ui = PEAR_Frontend::singleton();
+$installer = new PEAR_Installer($ui);
+$packages = array($templatePackage);
+// always upgrade
+<span class="strong"><strong>$installer-&gt;setOptions(array('upgrade' =&gt; true));
+$installer-&gt;sortPackagesForInstall($packages);
+</strong></span>
+PEAR::staticPushErrorHandling(PEAR_ERROR_RETURN);
+<span class="strong"><strong>$err = $installer-&gt;setDownloadedPackages($packages);
+</strong></span>
+if (PEAR::isError($err)) {
+PEAR::staticPopErrorHandling();
+throw new MyBlog_Template_Exception($err-&gt;getMessage());
+}
+// always upgrade
+<span class="strong"><strong>$info = $installer-&gt;install($templatePackage,
+array('upgrade' =&gt; true));
+</strong></span>
+PEAR::staticPopErrorHandling();
+if (PEAR::isError($info)) {
+throw new MyBlog_Template_Exception($info-&gt;getMessage());
+}
+if (is_array($info)) {
+$this-&gt;log('Installation successful');
+return true;
+} else {
+throw new MyBlog_Template_Exception('install of "' . $template .
+'" failed');
+}
+</pre></div><p>Code specifically relating to installation has been highlighted above. Again, because the<code class="literal"> PEAR_Installer</code> class is an older relic within the larger PEAR installer package, some of the things we can do with<code class="literal"> PEAR_Downloader</code> must be done manually. For instance, options should be set with the<code class="literal"> setOptions()</code> method. In addition, packages should be sorted for proper installation order using<code class="literal"> sortPackagesForInstall()</code>. This ensures that dependencies are installed before any packages that depend upon them, as packages are installed by the<code class="literal"> install()</code>
+ method one at a time, without knowledge of the other packages that are being installed. This system also helps to ensure that the packages are rarely left in a dangerously corrupted state, should installation of any package fail.
+<a id="id411" class="indexterm"/>
+</p><p>Immediately preceding the<code class="literal"> install()</code> method, packages that have already been downloaded should be registered as such so that pre-installation validation is only performed once. This must be done with the<code class="literal"> setDownloadedPackages()</code> method.</p><p>Now that we have a working understanding of the internals of the PEAR installer, let's look at the server side.</p></div></div></div><div class="section" title="Extending REST with Custom Information"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec07"/>Extending REST with Custom Information</h2></div></div></div><p>In order to implement thumbnails on the server, first we need to implement customized REST for the server. Let's look at a typical<code class="literal"> channel.xml:</code>
+<a id="id412" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0" encoding="ISO-8859-1" ?&gt;
+&lt;channel version="1.0" 
+
+xsi:schemaLocation="http://pear.php.net/dtd/channel-1.0
+http://pear.php.net/dtd/channel-1.0.xsd"&gt;
+&lt;name&gt;pear.chiaraquartet.net/template&lt;/name&gt;
+&lt;summary&gt;Template example for book&lt;/summary&gt;
+&lt;suggestedalias&gt;te&lt;/suggestedalias&gt;
+&lt;servers&gt;
+&lt;primary&gt;
+&lt;rest&gt;
+&lt;baseurl type="REST1.0"&gt;
+http://pear.chiaraquartet.net/Chiara_PEAR_Server_REST/&lt;/baseurl&gt;
+&lt;baseurl type="REST1.1"&gt;
+http://pear.chiaraquartet.net/Chiara_PEAR_Server_REST/&lt;/baseurl&gt;
+&lt;/rest&gt;
+&lt;/primary&gt;
+&lt;/servers&gt;
+&lt;/channel&gt;
+</pre></div><p>If we want to add support for our custom-thumbnail REST, all we need to do is add another<code class="literal">&lt;baseurl&gt;</code> tag:</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0" encoding="ISO-8859-1" ?&gt;
+&lt;channel version="1.0" 
+
+xsi:schemaLocation="http://pear.php.net/dtd/channel-1.0
+http://pear.php.net/dtd/channel-1.0.xsd"&gt;
+&lt;name&gt;pear.chiaraquartet.net/template&lt;/name&gt;
+&lt;summary&gt;Template example for book&lt;/summary&gt;
+&lt;suggestedalias&gt;te&lt;/suggestedalias&gt;
+&lt;servers&gt;
+&lt;primary&gt;
+&lt;rest&gt;
+&lt;baseurl type="REST1.0"&gt;
+http://pear.chiaraquartet.net/template/Chiara_PEAR_Server_REST/
+&lt;/baseurl&gt;
+&lt;baseurl type="REST1.1"&gt;
+http://pear.chiaraquartet.net/template/Chiara_PEAR_Server_REST/
+&lt;/baseurl&gt;
+<span class="strong"><strong>&lt;baseurl type="MyBlogThumbnail1.0"&gt;
+http://pear.chiaraquartet.net/template/thumbnails/
+&lt;/baseurl&gt;
+</strong></span>
+&lt;/rest&gt;
+&lt;/primary&gt;
+&lt;/servers&gt;
+&lt;/channel&gt;
+</pre></div><p>The new<code class="literal"> baseurl</code> is highlighted in the previous example. This allows us to retrieve a template-thumbnail image with one line of code:<a id="id413" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">$thumbnail = $this-&gt;_rest-&gt;retrieveCacheFirst($this-&gt;_thumbnailBase .
+$template . '/' . $version . 'thumbnail.png');
+</pre></div><p>Now, we finally have enough information to actually implement our template manager!</p></div><div class="section" title="Designing a Lightweight Installer Plug-In: The Code At Last"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec08"/>Designing a Lightweight Installer Plug-In: The Code At Last</h2></div></div></div><p>For our fake MyBlog, we will use this directory tree:<a id="id414" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">MyBlog/
+Template/
+Exceptions.php
+Fetcher.php
+Interfaces.php
+Lister.php
+REST.php
+Config.php
+Main.php
+admin.php
+index.php
+image.php
+blogsetup.php
+</pre></div><p>The PEAR-embedding occurs in the files located in the<code class="literal"> Template/</code> subdirectory. The blog is implemented in the abstract by the<code class="literal"> Config.php</code> and<code class="literal"> Main.php</code> files, and the actual web files are<code class="literal"> index.php, image.php</code>, and<code class="literal"> admin.php</code>. We won't concern ourselves yet with the design of the fake MyBlog blog. If you would like to play around with the fake MyBlog, you can install it via these steps:<a id="id415" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>$ pear channel-discover pearified.com
+$ pear install pearified/Role_Web
+$ pear run-scripts pearified/Role_Web
+$ pear channel-discover pear.chiaraquartet.net
+$ pear up chiara/MyBlog
+$ pear run-scripts chiara/MyBlog
+</strong></span>
+</pre></div><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="tip52"/>Tip</h3><p>The MyBlog package from<code class="literal"> pear.chiaraquartet.net</code> makes use of a post-installation script that has no prompting of the user at all. We'll go into the details of the post-install script in greater detail later on, as it shows another side of PEAR's versatility.</p></div><div class="section" title="MyBlog_Template_IConfig and MyBlog_Template_Config"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl3sec05"/>MyBlog_Template_IConfig and MyBlog_Template_Config</h3></div></div></div><p>Let's dive in; first,<code class="literal"> Interfaces.php:</code>
+<a id="id416" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;?php
+interface MyBlog_Template_IConfig
+{
+function getTemplateChannel();
+function getCurrentTemplate();
+}
+</pre></div><p>It doesn't get much simpler than that! This allows flexibility, loosely coupling the embedded PEAR with the template's configuration, and is always a good idea.</p><p>Next, let's see the exception class, yet another example of complexity:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+class MyBlog_Template_Exception extends Exception {}
+?&gt;
+</pre></div><p>OK, I know what you're thinking: that doesn't look very complex. Actually, you're right. I was just kidding. Now for the real deal; let's start off with the configuration class from the MyBlog package. The<code class="literal"> getTemplateChannel()</code> and</p><p>
+<code class="literal">getCurrentTemplate()</code> methods are simply hard-coded strings for our sample application, but let's look at the<code class="literal"> getPearConfig()</code> method:</p><div class="informalexample"><pre class="programlisting">/**
+* Get a customized PEAR_Config object for our blog template system
+* @return PEAR_Config
+*/
+function getPearConfig(){
+static $done = false;
+$config = PEAR_Config::singleton();
+if ($done) {
+return $config;
+}
+$config-&gt;set('php_dir', '@php-dir@' . DIRECTORY_SEPARATOR .
+'MyBlog' . DIRECTORY_SEPARATOR . 'templates');
+$config-&gt;set('data_dir', '@php-dir@' . DIRECTORY_SEPARATOR .
+'MyBlog' . DIRECTORY_SEPARATOR . 'templates');
+// restrict to the template channel
+$config-&gt;set('default_channel', $this-&gt;getTemplateChannel());
+return $config;
+}
+</pre></div><p>Much like Seagull's package, we grab the<code class="literal"> PEAR_Config</code> singleton object and customize it. However, our blog's templates will only ever use the php or the data role, and we are installing into an internal PEAR repository, so we can take advantage of PEAR's replacement tasks (see <a class="link" href="ch03.html" title="Chapter 3. Leveraging Full Application Support with the PEAR Installer">Chapter 3</a> for a refresher on replacement tasks) to replace<code class="literal"> @php-dir@</code> with the value of the<code class="literal"> php_dir</code> configuration variable on the local computer.<a id="id417" class="indexterm"/>
+</p><p>In essence, this instructs PEAR to install templates into<code class="literal"> @php-dir@/MyBlog/templates/</code>, which is exactly where we want them to go.</p></div><div class="section" title="MyBlog_Template_REST"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl3sec06"/>MyBlog_Template_REST</h3></div></div></div><p>Next, let's jump into the REST class. This class simply requires a<code class="literal"> PEAR_Config</code> object to get started, and is instantiated in<code class="literal"> admin.php</code> like so:<a id="id418" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">$conf = new MyBlog_Config;
+$config = $conf-&gt;getPearConfig();
+$rest = new MyBlog_Template_REST($config, array());
+</pre></div><p>Again, simplicity of use is the emphasis. Let's see the complete code:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+/**
+* MyBlog_Template_REST
+*
+* PHP version 5
+*
+* @package MyBlog
+* @author Greg Beaver &lt;cellog@php.net&gt;
+* @copyright 2006 Gregory Beaver
+* @license http://www.opensource.org/licenses/bsd-license.php BSD License
+* @version CVS: $Id$
+* @link http://pear.chiaraquartet.net/index.php?package=MyBlog
+* @since File available since Release 0.1.0
+*/
+/**
+* Helper files from PEAR and our template system
+*/
+require_once 'PEAR/REST/11.php';
+require_once 'PEAR/REST/10.php';
+require_once 'PEAR/Dependency2.php';
+require_once 'MyBlog/Template/Exceptions.php';
+/**
+* Perform needed remote server REST actions.
+*
+* This class implements multiple inheritance through the
+* use of magic functions, and extends both PEAR_REST_11 and
+* PEAR_REST_10, giving preference to PEAR_REST_11 methods.
+*
+* The class provides modified listAll in the listTemplates() method,
+* and a way to retrieve a template thumbnail image with
+* getThumbnail().
+*/
+class MyBlog_Template_REST extends PEAR_REST_11
+{
+private $_config;
+private $_rest10;
+private $_restBase;
+private $_thumbnailBase;
+private $_channel;
+function __construct(PEAR_Config $config, $options = array())
+{
+parent::PEAR_REST_11($config, $options);
+$this-&gt;_config = $config;
+$this-&gt;_rest10 = new PEAR_REST_10($config, $options);
+}
+/**
+* Implement multiple inheritance of REST_10 and REST_11
+*
+* @param string $func
+* @param array $params
+* @return mixed
+*/
+function __call($func, $params)
+{
+if (method_exists($this-&gt;_rest10, $func)) {
+return call_user_func_array(array($this-&gt;_rest10, $func),
+$params);
+}
+}
+/**
+* Retrieve the web location of a template's thumbnail image
+*
+* @param string $base URL to template REST as defined in
+* channel.xml
+* @param string $template Template name (package name on the
+* template server)
+* @param string $version Template version
+*/
+function getThumbnail($template, $version)
+{
+return $this-&gt;_rest-&gt;retrieveCacheFirst($this-&gt;_thumbnailBase
+. $template . '/' . $version . 'thumbnail.png');
+}
+/**
+* Retrieve the Base URL for a channel's template REST
+*
+* @param string $channel
+* @return string
+* @throws MyBlog_Template_Exception
+*/
+function getRESTBase($channel)
+{
+$reg = $this-&gt;_config-&gt;getRegistry();
+if (PEAR::isError($reg)) {
+throw new MyBlog_Template_Exception('Cannot initialize
+registry: ' . $reg-&gt;getMessage());
+}
+$chan = $reg-&gt;getChannel($channel);
+if (PEAR::isError($chan)) {
+throw new MyBlog_Template_Exception('Cannot retrieve
+channel: ' . $chan-&gt;getMessage());
+}
+if
+($chan-&gt;supportsREST($this-&gt;_config-&gt;get('preferred_mirror',
+null, $channel)) &amp;&amp;
+$base = $chan-&gt;getBaseURL('MyBlogThumbnail1.0',
+$this-&gt;_config-&gt;get('preferred_mirror', null,
+$channel))) {
+$this-&gt;_thumbnailBase = $base;
+return $chan-&gt;getBaseURL('REST1.1',
+$this-&gt;_config-&gt;get('preferred_mirror', null,
+$channel));
+}
+throw new MyBlog_Template_Exception('Unable to retrieve
+MyBlogThumbnail1.0 base URL for channel ' . $channel);
+}
+/**
+* Set the channel that will be used for the template locating
+*
+* @param string $channel
+*/
+function setTemplateChannel($channel)
+{
+$this-&gt;_channel = $channel;
+$this-&gt;_restBase = $this-&gt;getRESTBase($channel);
+}
+/**
+* Retrieve information about all templates
+*
+* This code demonstrates the power of REST. The
+* REST information retrieved is in fact the same
+* information used by the list-all and remote-list
+* commands. However, the list-all/remote-list commands
+* do not return dependency and release information.
+*
+* This function uses dependency/release information to strip
+* away templates that are not compatible with the current
+* MyBlog version, or are not stable enough.
+* @param string $base
+* @return array
+*/
+function listTemplates()
+{
+$d2 = new PEAR_Dependency2($this-&gt;_config, array(),
+array('package' =&gt; '', 'channel' =&gt; ''));
+$packagesinfo = $this-&gt;_rest-&gt;retrieveData($this-&gt;_restBase .
+'c/Templates/packagesinfo.xml');
+if (PEAR::isError($packagesinfo)) {
+return;
+}
+if (!is_array($packagesinfo) || !isset($packagesinfo['pi']))
+{
+return;
+}
+if (!is_array($packagesinfo['pi']) ||
+!isset($packagesinfo['pi'][0])) {
+$packagesinfo['pi'] = array($packagesinfo['pi']);
+}
+$ret = array();
+$preferred_state = $this-&gt;_config-&gt;get('preferred_state',
+null, $this-&gt;_channel);
+// calculate the set of possible states sorted
+// from most stable -&gt; least stable
+$allowed_states =
+array_flip($this-&gt;betterStates($preferred_state, true));
+foreach ($packagesinfo['pi'] as $packageinfo) {
+$info = $packageinfo['p'];
+$package = $info['n'];
+$releases = isset($packageinfo['a']) ?
+$packageinfo['a'] : false;
+$deps = isset($packageinfo['deps']) ?
+$packageinfo['deps'] : array('b:0;');
+$version_numbers = array(
+'latest' =&gt; false,
+'stable' =&gt; false,
+'beta' =&gt; false,
+'alpha' =&gt; false,
+'devel' =&gt; false,
+);
+if ($releases) {
+if (!isset($releases['r'][0])) {
+$releases['r'] = array($releases['r']);
+}
+if (!isset($deps[0])) {
+$deps = array($deps);
+}
+foreach ($releases['r'] as $i =&gt; $release) {
+$dep = unserialize($deps[$i]['d']);
+if (isset($dep['required']) &amp;&amp;
+isset($dep['required']['package'])) {
+if (!isset($dep['required']['package'][0])) {
+$dep['required']['package'] =
+array($dep['required']['package']);
+}
+foreach ($dep['required']['package'] as
+$pdep) {
+if (!isset($pdep['channel'])) {
+// skip uri-based dependencies
+continue;
+}
+if ($pdep['name'] == 'MyBlog' &amp;&amp;
+$pdep['channel'] ==
+'pear.chiaraquartet.net') {
+PEAR::staticPushErrorHandling(PEAR_ERROR_RETURN);
+$e = $d2-&gt;validatePackageDependency($pdep, true,
+array());
+PEAR::staticPopErrorHandling();
+if (PEAR::isError($e)) {
+// skip any template releases that cannot work
+// with the current version of MyBlog
+continue 2;
+}
+}
+}
+}
+// skip releases that are not stable enough
+if (!isset($allowed_states[$release['s']])) {
+continue;
+}
+if (!$version_numbers['latest']) {
+$version_numbers['latest'] = $release['v'];
+}
+if (!$version_numbers[$release['s']]) {
+$version_numbers[$release['s']] =
+$release['v'];
+}
+}
+}
+if (!$version_numbers['latest']) {
+// no valid releases found, so don't list this
+// template
+continue;
+}
+$ret[$package] = array('versions' =&gt; $version_numbers,
+'info' =&gt; $info);
+}
+return $ret;
+}
+/**
+* Retrieve the download URL for a template
+*
+* @param string $templateName template package name to download
+* @param string $version template version to download
+* @throws MyBlog_Template_Exception
+* @return string
+*/
+function getTemplateDownloadURL($templateName, $version)
+{
+$reg = $this-&gt;_config-&gt;getRegistry();
+if (PEAR::isError($reg)) {
+throw new MyBlog_Template_Exception($reg-&gt;getMessage());
+}
+$installed = $reg-&gt;packageInfo($templateName, 'version', $this-&gt;_channel);
+if ($version === $installed) {
+throw new MyBlog_Template_Exception('template version "'
+. $version . '" is already installed');
+}
+MyBlogMyBlog_Template_REST$info = $this-&gt;getDownloadURL($this-&gt;_restBase,
+array('channel' =&gt; $this-&gt;_channel,
+'package' =&gt; $templateName,
+'version' =&gt; $version),
+$this-&gt;_config-&gt;get('preferred_state', null,
+$this-&gt;_channel),
+$installed);
+if (PEAR::isError($info)) {
+throw new MyBlog_Template_Exception($info-&gt;getMessage());
+}
+if (!isset($info['url'])) {
+throw new MyBlog_Template_Exception('Template "' .
+$templateName . '" cannot be installed');
+}
+if (!extension_loaded("zlib")) {
+$ext = '.tar';
+} else {
+$ext = '.tgz';
+}
+return $info['url'] . $ext;
+}
+}
+?&gt;
+<a id="id420" class="indexterm"/>
+</pre></div></div><div class="section" title="MyBlog_Template_Lister"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl3sec07"/>MyBlog_Template_Lister</h3></div></div></div><p>Next, let's look at the template lister. The template lister class, aptly named<code class="literal"> MyBlog_Template_Lister</code>, is instantiated via this simple code:<a id="id421" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">require_once 'MyBlog/Template/Lister.php';
+require_once 'MyBlog/Config.php';
+$blog_config = new MyBlog_Config;
+$lister = new MyBlog_Template_Lister($blog_config-&gt;getPearConfig());
+$lister-&gt;setConfigObject($blog_config);
+</pre></div><p>The primary method is<code class="literal"> listRemoteTemplates()</code> and is called like so:</p><div class="informalexample"><pre class="programlisting">list($info, $pager) = $lister-&gt;listRemoteTemplates(1);
+</pre></div><p>The only argument passed is the number of templates to include per page. We pass in<code class="literal"> 1</code> because there are two sample templates for the fake MyBlog that are available for installation. The return value is a simple array, the first element being an array of data for paging, and the second a Pager object.</p><p>This is a good example of code re-use. When I first began designing the code, I thought it would make the most sense to write my own pager, as it seemed to be a 10-line deal. However, as I began to get further involved in the implementation, the complexity spiraled out of control, and I quickly switched to using the Pager package from<code class="literal"> pear.php.net</code> ( <a class="ulink" href="http://pear.php.net/Pager">http://pear.php.net/Pager</a>). This well-designed package is also well documented, and became a 10-minute job to implement the paging.</p><p>From our example usage above, the<code class="literal"> $info</code> variable is an array in our application, and its format is simply a numerically indexed array of arrays:</p><div class="informalexample"><pre class="programlisting">array(
+array(
+'name' =&gt; 'example1',
+'version' =&gt; '1.0.0',
+'summary' =&gt; 'sample template 1'
+),
+array(
+'name' =&gt; 'example2',
+'version' =&gt; '1.0.0',
+'summary' =&gt; 'sample template 2'
+)
+);
+</pre></div><p>This can be iterated over quite easily to create the template listings. At this point, we should be ready to see the entire<code class="literal"> MyBlog_Template_Lister</code> class file<code class="literal"> Lister.php:</code>
+<a id="id422" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;?php
+/**
+* MyBlog_Template_Lister
+*
+* PHP version 5
+*
+* @package MyBlog
+* @author Greg Beaver &lt;cellog@php.net&gt;
+* @copyright 2006 Gregory Beaver
+* @license http://www.opensource.org/licenses/bsd-license.php BSD
+* License
+* @version CVS: $Id$
+* @link http://pear.chiaraquartet.net/index.php?package=MyBlog
+* @since File available since Release 0.1.0
+*/
+/**
+* Helper files from PEAR and our template system
+*/
+require_once 'PEAR/Config.php';
+require_once 'Pager/Pager.php';
+require_once 'MyBlog/Template/Interfaces.php';
+require_once 'MyBlog/Template/REST.php';
+/**
+* List local and remote templates, also the currently active
+* template.
+* @package MyBlog
+* @author Greg Beaver &lt;cellog@php.net&gt;
+* @copyright 2006 Gregory Beaver
+* @license http://www.opensource.org/licenses/bsd-license.php BSD
+* License
+* @version @package_version@
+* @link http://pear.chiaraquartet.net/index.php?package=MyBlog
+*/
+class MyBlog_Template_Lister
+{
+/**
+* Template Configuration object
+*
+* This is used to grab configuration information for
+* the current setup
+* @var Template_IConfig
+*/
+private $_templateConfig;
+/**
+* PEAR configuration object
+*
+* @var PEAR_Config
+*/
+private $_pearConfig;
+/**
+* Current template channel
+*
+* @var string
+*/
+private $_templateChannel;
+/**
+* Current template name
+*
+* @var string
+*/
+private $_currentTemplate;
+/**
+* Template REST object
+*
+* @var MyBlog_Template_REST
+*/
+private $_rest;
+/**
+* @param PEAR_Config $config
+*/
+function __construct(PEAR_Config $config = null)
+{
+if ($config === null) {
+$config = PEAR_Config::singleton();
+}
+$this-&gt;_pearConfig = $config;
+$this-&gt;_rest = new MyBlog_Template_REST($config, array());
+}
+/**
+* Set our channel for retrieving templates
+* @param string $channel
+* @throws MyBlog_Template_Exception
+*/
+function setTemplateChannel($channel)
+{
+$reg = $this-&gt;_pearConfig-&gt;getRegistry();
+if (PEAR::isError($reg)) {
+throw new MyBlog_Template_Exception('Unable to initialize
+Registry: ' . $reg-&gt;getMessage());
+}
+if (!$reg-&gt;channelExists($channel)) {
+throw new MyBlog_Template_Exception('Channel "' .
+$channel . '" is unknown');
+}
+// translate alias into actual channel name
+$channel = $reg-&gt;channelName($channel);
+$this-&gt;_templateChannel = $channel;
+$this-&gt;_rest-&gt;setTemplateChannel($channel);
+}
+/**
+* set the name of the current template package
+* @param string $template
+*/
+function setCurrentTemplate($template)
+{
+$this-&gt;_currentTemplate = $template;
+}
+/**
+* Set up the current template configuration, and
+* extract the channel and current template name.
+*
+* @param Template_IConfig $config
+*/
+function setConfigObject(MyBlog_Template_IConfig $config)
+{
+$this-&gt;_templateConfig = $config;
+$this-&gt;setTemplateChannel($config-&gt;getTemplateChannel());
+$this-&gt;setCurrentTemplate($config-&gt;getCurrentTemplate());
+}
+/**
+* Retrieve a listing of templates
+*
+* This method paginates the data, and prepares it for display by
+* the view portion of our template lister.
+* @param int $pageNumber Page number to retrieve
+* @param int $templatesPerPage number of templates to display
+* per-page
+* @return array
+* @throws MyBlog_Template_Exception indirectly, from internal
+* REST calls
+*/
+function listRemoteTemplates($templatesPerPage = 15)
+{
+$info = $this-&gt;_rest-&gt;listTemplates();
+if ($info === null || PEAR::isError($info)) {
+return array();
+}
+$params = array(
+'mode' =&gt; 'Jumping',
+'perPage' =&gt; $templatesPerPage,
+'delta' =&gt; 2,
+'itemData' =&gt; $info);
+$pager = Pager::factory($params);
+$ret = array();
+$data = $pager-&gt;getPageData();
+foreach ($data as $template =&gt; $info) {
+$ret[] = array(
+'name' =&gt; $template,
+'version' =&gt; $info['versions']['latest'],
+'summary' =&gt; $info['info']['s']);
+}
+return array($ret, $pager);
+}
+MyBlogMyBlog_Template_Lister}
+?&gt;
+</pre></div></div><div class="section" title="MyBlog_Template_Fetcher"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl3sec08"/>MyBlog_Template_Fetcher</h3></div></div></div><p>Finally, let's look at the installation manager class, which we'll call<code class="literal"> MyBlog_Template_Fetcher</code>. This class is also instantiated simply, but is a bit more involved than the other classes:<a id="id424" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">require_once 'MyBlog/Template/Fetcher.php';
+require_once 'MyBlog/Template/REST.php';
+$conf = new MyBlog_Config;
+$config = $conf-&gt;getPearConfig();
+$rest = new MyBlog_Template_REST($config, array());
+$rest-&gt;setTemplateChannel($conf-&gt;getTemplateChannel());
+$fetch = MyBlog_Template_Fetcher::factory($rest, $config);
+</pre></div><p>A<code class="literal"> MyBlog_Template_Fetcher</code> is instantiated by a factory method because it must be registered as a<code class="literal"> PEAR_Frontend</code> object in order for the PEAR installer to use it to display output (as was mentioned in the section on the Seagull Framework earlier).</p><p>The primary method we'll be using is<code class="literal"> installTemplate()</code> and its usage is like so:</p><div class="informalexample"><pre class="programlisting">try {
+$fetch-&gt;installTemplate($_GET['t'], $_GET['v']);
+$out = '';
+foreach ($fetch-&gt;log as $info) {
+if ($info[0] == 'log') {
+$out .= ' &amp;nbsp; &amp;nbsp;' . htmlspecialchars($info[1]) .
+'&lt;br /&gt;';
+} else {
+$out .= htmlspecialchars($info[1]) . '&lt;br /&gt;';
+}
+}
+// this is safe because installTemplate throws an exception
+// if the template or version are not valid PEAR package/version
+// so input is validated by this point
+$_SESSION['template'] = $_GET['t'];
+define('MYBLOG_OUTPUT_INFO', $out);
+} catch (MyBlog_Template_Exception $e) {
+define('MYBLOG_OUTPUT_INFO', '&lt;strong&gt;ERROR:&lt;/strong&gt; ' .
+$e-&gt;getMessage());
+}
+</pre></div><p>As the<code class="literal"> MyBlog_Template_Fetcher</code> class mimics a<code class="literal"> PEAR Frontend</code>, we need to define three methods,<code class="literal"> log(), outputData()</code>, and<code class="literal"> userConfirm()</code>. The first two simply store their input in an internal array for display later, and the last is a dummy method that will not be used in our sample application.<a id="id425" class="indexterm"/>
+</p><p>Finally, here is the class listing:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+/**
+* MyBlog_Template_Fetcher
+*
+* PHP version 5
+*
+* @package MyBlog
+* @author Greg Beaver &lt;cellog@php.net&gt;
+* @copyright 2006 Gregory Beaver
+* @license http://www.opensource.org/licenses/bsd-license.php BSD
+* License
+* @version CVS: $Id$
+* @link http://pear.chiaraquartet.net/index.php?package=MyBlog
+* @since File available since Release 0.1.0
+*/
+/**
+* Helper files from PEAR and our template system
+*/
+require_once 'MyBlog/Template/REST.php';
+require_once 'MyBlog/Template/Exceptions.php';
+require_once 'PEAR/Frontend.php';
+require_once 'PEAR/Downloader.php';
+require_once 'PEAR/Installer.php';
+require_once 'PEAR/Config.php';
+require_once 'PEAR/Downloader/Package.php';
+/**
+* Control installation/upgrade of MyBlog templates
+*
+* This class makes full use of internal PEAR classes to
+* download and install/upgrade templates. To simplify
+* things, the class extends PEAR_Frontend and stores output
+* from installation directly in the class, which can then
+* be retrieved for proper formatting and display to the user
+* by the MyBlog application.
+*
+* This class should be instantiated using the factory method as in:
+* &lt;code&gt;
+* $fetch = MyBlog_Template_Fetcher::factory($rest, $config);
+* &lt;/code&gt;
+* @package MyBlog
+* @author Greg Beaver &lt;cellog@php.net&gt;
+* @copyright 2006 Gregory Beaver
+* @license http://www.opensource.org/licenses/bsd-license.php BSD
+* License
+* @version @package_version@
+* @link http://pear.chiaraquartet.net/index.php?package=MyBlog
+*/
+class MyBlog_Template_Fetcher extends PEAR_Frontend
+{
+/**
+* @var Template_Fetcher_REST
+*/
+private $_rest;
+/**
+* @var PEAR_Config
+*/
+private $_config;
+/**
+* log messages from installation are stored here
+*
+* @var array
+*/
+public $log = array();
+private function __construct(MyBlog_Template_REST $rest,
+PEAR_Config $config)
+{
+$this-&gt;_config = $config;
+$this-&gt;_rest = $rest;
+}
+/**
+* Create a new MyBlog_Template_Fetcher object, and register it
+* as the global frontend for PEAR as well
+*
+* @param MyBlog_Template_REST $rest
+* @param PEAR_Config $config
+* @return MyBlog_Template_Fetcher
+*/
+static function factory(MyBlog_Template_REST $rest,
+PEAR_Config $config){
+$a = new MyBlog_Template_Fetcher($rest, $config);
+// configure this as the frontend for all installation
+// processes
+PEAR_Frontend::setFrontendObject($a);
+return $a;
+}
+/**
+* Record a message logged while installing
+*
+* This can be used later to display information on the
+* template install/download
+* process
+* @param string $msg
+*/
+function log($msg){
+$this-&gt;log[] = array('log', $msg);
+}
+/**
+* Dummy function required to be a valid UI
+*
+* @return boolean
+*/
+function userConfirm(){
+return true;
+}
+/**
+* Record a message logged while installing
+*
+* This can be used later to display information on the
+* template install/download
+* process
+* @param string $msg
+*/
+function outputData($msg, $command){
+$this-&gt;log[] = array('out', $msg);
+}
+/**
+* Given a template package name, download and install a template
+*
+* @param string $templatePath template package name
+* @param string $version template package version to install
+* @throws MyBlog_Template_Exception
+*/
+function installTemplate($template, $version){
+// first, validate input
+if (!preg_match(PEAR_COMMON_PACKAGE_NAME_PREG, $template)) {
+throw new MyBlog_Template_Exception('SECURITY ALERT:
+template is not ' . 'a valid package name, aborting');
+}
+if (!preg_match(PEAR_COMMON_PACKAGE_VERSION_PREG, $version))
+{
+throw new MyBlog_Template_Exception('SECURITY ALERT:
+template version ' . 'is not a valid version, aborting');
+}
+$reg = $this-&gt;_config-&gt;getRegistry();
+// default channel is set to the template channel
+$existing = $reg-&gt;packageInfo($template, 'version',
+$this-&gt;_config-&gt;get('default_channel'));
+if (version_compare($existing, $version) === 0) {
+// installed already
+$this-&gt;log('Template set as active template');
+return true;
+}
+// convert the template package into a discrete download URL
+$info = $this-&gt;_rest-&gt;getTemplateDownloadURL($template,
+$version);
+if (PEAR::isError($info)) {
+throw new MyBlog_Template_Exception($info-&gt;getMessage());
+}
+// download the template and install
+// (use PEAR_Downloader/Installer)
+$dl = new PEAR_Downloader($this, array('upgrade' =&gt; true),
+$this-&gt;_config);
+// download the actual URL to the template
+$downloaded = $dl-&gt;download(array($info));
+if (PEAR::isError($downloaded)) {
+throw new MyBlog_Template_Exception
+($downloaded-&gt;getMessage());
+}
+$errors = $dl-&gt;getErrorMsgs();
+if (count($errors)) {
+$err = array();
+foreach ($errors as $error) {
+$err[] = $error;
+}
+if (!count($downloaded)) {
+throw new MyBlog_Template_Exception('template "' .
+$template . '" installation failed:&lt;br /&gt;' .
+implode('&lt;br /&gt;', $err));
+}
+}
+$templatePackage = $downloaded[0];
+$installer = new PEAR_Installer($this);
+// always upgrade
+$installer-&gt;setOptions(array('upgrade' =&gt; true));
+$packages = array($templatePackage);
+$installer-&gt;sortPackagesForInstall($packages);
+PEAR::staticPushErrorHandling(PEAR_ERROR_RETURN);
+$err = $installer-&gt;setDownloadedPackages($packages);
+if (PEAR::isError($err)) {
+PEAR::staticPopErrorHandling();
+throw new MyBlog_Template_Exception($err-&gt;getMessage());
+}
+// always upgrade
+$info = $installer-&gt;install($templatePackage,
+array('upgrade' =&gt; true));
+PEAR::staticPopErrorHandling();
+if (PEAR::isError($info)) {
+throw new MyBlog_Template_Exception($info-&gt;getMessage());
+}
+if (is_array($info)) {
+$this-&gt;log('Installation successful');
+return true;
+} else {
+throw new MyBlog_Template_Exception('install of "' .
+$template . '" failed');
+}
+}
+MyBlogMyBlog_Template_Fetcher}
+lightweight installer plug-inMyBlog_Template_Fetcher?&gt;
+</pre></div><p>This is all we need to embed the PEAR installer, a mere 610 lines of code including extensive comments!</p></div><div class="section" title="The MyBlog Post-Install Script"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl3sec09"/>The MyBlog Post-Install Script</h3></div></div></div><p>To wrap up the installation, we'll need a post-install script to initialize the environment. This time, let's see the code before we learn about it:<a id="id428" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;?php
+require_once 'MyBlog/Config.php';
+require_once 'PEAR/Downloader.php';
+require_once 'PEAR/PackageFile/v2/rw.php';
+/**
+* Post-installation script for the fake MyBlog blog.
+*
+* This script simply creates the templates/ subdirectory, if
+* not present, and makes it world-writeable
+* @version @package_version@
+*/
+class blogsetup_postinstall
+{
+private $_where;
+/**
+* @var PEAR_Config
+*/
+private $_config;
+function __construct(){
+$this-&gt;_where = '@php-dir@' . DIRECTORY_SEPARATOR .
+'MyBlog' . DIRECTORY_SEPARATOR . 'templates';
+}
+/**
+* Initialize the post-installation script
+*
+* @param PEAR_Config $config
+* @param PEAR_PackageFile_v2 $pkg
+* @param string|null $lastversion Last installed version.
+* Not used in this script
+* @return boolean success of initialization
+*/
+function init(&amp;$config, &amp;$pkg, $lastversion){
+$this-&gt;_config = $config;
+return true;
+}
+/**
+* Run the script itself
+*
+* @param array $answers
+* @param string $phase
+*/
+function run($answers, $phase){
+$ui = PEAR_Frontend::singleton();
+$blogconf = new MyBlog_Config;
+$conf = $blogconf-&gt;getPearConfig();
+$reg = $conf-&gt;getRegistry();
+// we need the blog and template channels to be discovered
+$conf-&gt;set('auto_discover', true);
+if (!$reg-&gt;channelExists('pear.chiaraquartet.net/template',
+true)) {
+// make sure the registry directory exists, or this fails
+System::mkdir(array('-p', $conf-&gt;get('php_dir')));
+$dl = new PEAR_Downloader($ui, array(), $conf);
+$dl-&gt;discover('pear.chiaraquartet.net/template');
+}
+if (!$reg-&gt;channelExists('pear.chiaraquartet.net', true)) {
+// make sure the registry directory exists, or this fails
+System::mkdir(array('-p', $conf-&gt;get('php_dir')));
+$dl = new PEAR_Downloader($ui, array(), $conf);
+$dl-&gt;discover('pear.chiaraquartet.net');
+}
+// for dependency purposes fake the MyBlog package in
+// our sub-install
+$reg-&gt;deletePackage('MyBlog', 'pear.chiaraquartet.net');
+$fake = new PEAR_PackageFile_v2_rw;
+$fake-&gt;setPackage('MyBlog');
+$fake-&gt;setChannel('pear.chiaraquartet.net');
+$fake-&gt;setConfig($this-&gt;_config);
+$fake-&gt;setPackageType('php');
+$fake-&gt;setAPIStability('stable');
+$fake-&gt;setReleaseStability('stable');
+$fake-&gt;setAPIVersion('1.0.0');
+$fake-&gt;setReleaseVersion('@package_version@');
+$fake-&gt;setDate('2004-11-12');
+$fake-&gt;setDescription('foo source');
+$fake-&gt;setSummary('foo');
+$fake-&gt;setLicense('BSD License');
+$fake-&gt;clearContents();
+$fake-&gt;addFile('', 'foor.php', array('role' =&gt; 'php'));
+$fake-&gt;resetFilelist();
+$fake-&gt;installedFile('foor.php', array('attribs' =&gt;
+array('role' =&gt; 'php')));
+$fake-&gt;setInstalledAs('foor.php', 'foor.php');
+$fake-&gt;addMaintainer('lead', 'cellog', 'Greg Beaver',
+'cellog@php.net');
+$fake-&gt;setNotes('blah');
+$fake-&gt;setPearinstallerDep('1.4.3');
+$fake-&gt;setPhpDep('5.0.0');
+$reg-&gt;addPackage2($fake);
+do {
+if (file_exists($this-&gt;_where)) {
+if (OS_UNIX) {
+if (!fileperms($this-&gt;_where) == 0777) {
+chmod($this-&gt;_where, 0777);
+$ui-&gt;outputData('set templates directory to
+be world-writeable');
+break;
+}
+$ui-&gt;outputData('templates directory already
+initialized');
+break;
+} else {
+$ui-&gt;outputData('templates directory ' .
+$this-&gt;_where . ' already created');
+break;
+}
+MyBlogpost-install script} else {
+$ui-&gt;outputData('creating template directory ' .
+$this-&gt;_where);
+System::mkdir(array('-p', $this-&gt;_where));
+chmod($this-&gt;_where, 0777);
+}
+} while (false);
+if (file_exists($this-&gt;_where . DIRECTORY_SEPARATOR .
+'default')) {
+System::rm(array('-rf', $this-&gt;_where .
+DIRECTORY_SEPARATOR . 'default'));
+}
+mkdir($this-&gt;_where . DIRECTORY_SEPARATOR . 'default');
+copy('@php-dir@' . DIRECTORY_SEPARATOR . 'MyBlog' .
+DIRECTORY_SEPARATOR . 'Template' . DIRECTORY_SEPARATOR .
+'default' . DIRECTORY_SEPARATOR . 'body.tpl.php',
+$this-&gt;_where . DIRECTORY_SEPARATOR . 'default' .
+DIRECTORY_SEPARATOR . 'body.tpl.php');
+copy('@php-dir@' . DIRECTORY_SEPARATOR . 'MyBlog' .
+DIRECTORY_SEPARATOR . 'Template' . DIRECTORY_SEPARATOR .
+'default' . DIRECTORY_SEPARATOR . 'head.tpl.php',
+$this-&gt;_where . DIRECTORY_SEPARATOR . 'default' .
+DIRECTORY_SEPARATOR . 'head.tpl.php');
+$ui-&gt;outputData('default template copied');
+return true;
+}
+}
+?&gt;
+<a id="id430" class="indexterm"/>
+</pre></div><p>As with all post-installation scripts, this one has a class named according to the file name with<code class="literal"> DIRECTORY_SEPARATOR</code> replaced by<code class="literal">'_'</code> in the class name, and<code class="literal"> _postinstall</code> appended. In other words, since this is<code class="literal"> blogsetup.php</code> and is in the root directory of our<code class="literal"> package.xml</code>, our class name is<code class="literal"> blogsetup_postinstall</code>. The script has required<code class="literal"> init()</code> and<code class="literal"> run()</code> methods.<a id="id431" class="indexterm"/>
+</p><p>This script is needed because we are going to set up a customized internal PEAR repository inside the working directory of the application. In other words, the templates will be installed in their own internal universe with a unique registry and configuration settings. As such, the directory structure will need to look like the following:</p><div class="informalexample"><pre class="programlisting">pear/
+.filemap
+.registry/
+pear.reg
+...
+...
+[global PEAR registry]
+.channel.pear.chiaraquartet.net/
+myblog.reg
+.channels/
+pear.chiaraquartet.net.reg
+MyBlog/
+templates/
+.filemap
+.registry/
+.channel.pear.chiaraquartet.net_template/
+.channels/
+pear.chiaraquartet.net.reg
+pear.chiaraquartet.net_template.reg
+</pre></div><p>Registry files for installed templates will go in<code class="literal"> pear/MyBlog/templates/.registry/.channel.pear.chiaraquartet.net_template/</code>.</p><p>In addition, in our design, the default template is copied over and is always available, so that the blog can work out of the box.</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="tip53"/>Tip</h3><p>Although we did not implement this in the fake blog or the lister class, the<code class="literal"> MyBlog_Template_Fetcher</code> class is also capable of installing local template files, which allows blog maintainers to design their own templates, or modify existing ones and install them directly. For a challenge, see if you can implement local listing of installed templates. Hint: check out code from the<code class="literal"> PEAR_Registry</code> class found in<code class="literal"> PEAR/Registry.php</code>, and how it is used by the<code class="literal"> pear list</code> command in<code class="literal"> PEAR/Command/Registry.php</code>.</p></div><p>The last new feature to look at is how we can retrieve and display the thumbnail images for each template. To do this, we'll set up a small file called<code class="literal"> image.php</code>, and our<code class="literal"> src</code> attributes in<code class="literal">&lt;img&gt;</code> tags will refer to it in order to grab images.<a id="id432" class="indexterm"/>
+</p><p>
+<code class="literal">image.php</code> simply takes a template name and version, and then grabs the remote thumbnail. It is important that a file of this nature is not in fact reading local files and displaying them, as it constitutes a severe security risk. For instance, if<code class="literal"> image.php</code> simply read local files relative to the current path and displayed them, a few guesses later, something like this request would retrieve the<code class="literal"> /etc/passwd</code> file:</p><div class="informalexample"><pre class="programlisting">image.php?i=../../../etc/passwd
+</pre></div><p>In our case, if the requested template doesn't have a thumbnail on the remote server, it won't be displayed. Here is<code class="literal"> image.php:</code>
+<a id="id433" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;?php
+require_once 'MyBlog/Template/REST.php';
+require_once 'MyBlog/Config.php';
+$conf = new MyBlog_Config;
+$a = new MyBlog_Template_REST($conf-&gt;getPearConfig());
+$a-&gt;setTemplateChannel($conf-&gt;getTemplateChannel());
+<span class="strong"><strong>// sanitize input and retrieve a thumbnail image
+// make certain that URL passed in fits on 1 line, so
+// we don't magically send headers to the server by mistake
+echo $a-&gt;getThumbnail(str_replace(array("\n", "\r"), array('', ''), $_GET['t']),
+str_replace(array("\n", "\r"), array('', ''), $_GET['v']));
+</strong></span>
+?&gt;
+</pre></div><p>Again, note the highlighted security-conscious code. Security must always be a concern!</p></div><div class="section" title="The Rest of the Fake MyBlog Package"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl3sec10"/>The Rest of the Fake MyBlog Package</h3></div></div></div><p>At this point, we have examined all of the PEAR-specific code, so let's look at the fake MyBlog package (again, installable from<code class="literal"> pear.chiaraquartet.net</code> as package<code class="literal"> chiara/MyBlog</code>). First, let's see the code for the<code class="literal"> MyBlog_Config</code> class, controlling basic configuration needs:<a id="id434" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;?php
+/**
+* For MyBlog_Template_IConfig interface
+*/
+require_once 'MyBlog/Template/Interfaces.php';
+require_once 'PEAR/Config.php';
+// hard-coded "database" stuff for demonstration purposes.
+// edit this code to try other stuff
+if (!isset($_SESSION['template'])) {
+$_SESSION['template'] = '#default';
+}
+class MyBlog_Config implements MyBlog_Template_IConfig{
+function getTemplateChannel(){
+return 'pear.chiaraquartet.net/template';
+}
+function getCurrentTemplate(){
+return $_SESSION['template'];
+}
+/**
+* Get a customized PEAR_Config object for our blog
+* template system
+* @return PEAR_Config
+*/
+function getPearConfig(){
+static $done = false;
+$config = PEAR_Config::singleton();
+if ($done) {
+return $config;
+}
+$config-&gt;set('php_dir', '@php-dir@' . DIRECTORY_SEPARATOR .
+'MyBlog' . DIRECTORY_SEPARATOR . 'templates');
+$config-&gt;set('data_dir', '@php-dir@' . DIRECTORY_SEPARATOR .
+'MyBlog' . DIRECTORY_SEPARATOR . 'templates');
+// restrict to the template channel
+$config-&gt;set('default_channel', $this-&gt;getTemplateChannel());
+return $config;
+}
+}
+</pre></div><p>Simplicity itself, eh? Next, we'll look at the main MyBlog class. To implement the MyBlog, I chose to use the excellent Savant3 package (installable from the<code class="literal"> savant.pearified.com</code> channel at  <a class="ulink" href="http://savant.pearified.com)"> http://savant.pearified.com</a>), a PHP template system that uses PHP as the templating language. For our fake blog, we will have two (or three) template files, one for the<code class="literal">&lt;head&gt;</code> element, another optional template for the attributes of the<code class="literal">&lt;body&gt;</code> tag, and a third for the contents of the blog. For our sample templates, we only use<code class="literal"> head.tpl.php</code> and<code class="literal"> body.tpl.php</code>. Here is the main blog file,<code class="literal"> MyBlog_Main:</code>
+<a id="id435" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;?php
+require_once 'Savant3.php';
+class MyBlog_Main extends Savant3{
+/**
+* Output the &lt;head&gt; block
+*/
+function doHead(){
+// output user-specific stuff
+$this-&gt;display('head.tpl.php');
+// output plugin-related stuff (dummy, but here
+// for example purposes)
+$this-&gt;displayPluginHead();
+}
+/**
+* Output any onload parameters, etc.
+*/
+function doBodyTag(){
+try {
+$onload = $this-&gt;fetch('onload.tpl.php');
+if ($onload) {
+echo 'onload="' . $onload . '"';
+}
+} catch (Savant3_Exception $e) {
+// ignore
+}
+}
+/**
+* Display blog body
+*
+*/
+function doBody(){
+$this-&gt;display('body.tpl.php');
+}
+function displayPluginHead(){
+return; // do nothing
+}
+}
+?&gt;
+</pre></div><p>We have a few unused methods that are there just to show what could be done. Templates are actually displayed by<code class="literal"> index.php</code>, which consists of this code:<a id="id436" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;?php
+session_start();
+require_once 'MyBlog/Main.php';
+require_once 'MyBlog/Config.php';
+$blog_config = new MyBlog_Config;
+// default template is #default, so strip #
+// other templates must be valid package names, and so
+// can't contain #
+$blog = new MyBlog_Main(array(
+'template_path' =&gt; '@php-dir@' . DIRECTORY_SEPARATOR . 'MyBlog' .
+DIRECTORY_SEPARATOR . 'templates' . DIRECTORY_SEPARATOR .
+str_replace('#', '', $blog_config-&gt;getCurrentTemplate()),
+'exceptions' =&gt; true));
+$blog-&gt;title = 'Example MyBlog Blog';
+$blog-&gt;content = 'blah blah blah here is my fake article';
+?&gt;&lt;!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN"&gt;
+&lt;html&gt;
+&lt;head&gt;
+&lt;?php $blog-&gt;doHead(); ?&gt;
+&lt;/head&gt;
+&lt;body &lt;?php $blog-&gt;doBodyTag(); ?&gt;&gt;
+&lt;?php $blog-&gt;doBody(); ?&gt;
+&lt;a href="admin.php"&gt;Administer Blog&lt;/a&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+<a id="id437" class="indexterm"/>
+</pre></div><p>The actual templates should be looked at for completeness, so here is<code class="literal"> head.tpl.php</code> from one of the sample templates:</p><div class="informalexample"><pre class="programlisting">&lt;title&gt;&lt;?php echo $this-&gt;title; ?&gt;&lt;/title&gt;
+&lt;link href="css.php/example1/index.css" type="text/css" /&gt;
+</pre></div><p>And<code class="literal"> body.tpl.php:</code>
+</p><div class="informalexample"><pre class="programlisting">&lt;div class="topbar"&gt;
+&lt;h1 id="pageTitle"&gt;&lt;?php echo $this-&gt;title ?&gt;&lt;/h1&gt;
+&lt;/div&gt;
+&lt;div class="leftbar"&gt;Left Bar
+&lt;/div&gt;
+&lt;div class="centerbar"&gt;Center Bar&lt;br /&gt;
+&lt;?php echo $this-&gt;content; ?&gt;
+&lt;/div&gt;
+&lt;div class="rightbar"&gt;Right Bar
+&lt;/div&gt;
+</pre></div><p>Now I think it is clear why I keep referring to MyBlog as a fake blog! To demonstrate how the templates are installed, here is a<code class="literal"> package.xml</code> file from the example1 template:<a id="id438" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;package packagerversion="1.4.11" version="2.0"
+
+
+
+xsi:schemaLocation="http://pear.php.net/dtd/tasks-1.0
+http://pear.php.net/dtd/tasks-1.0.xsd
+http://pear.php.net/dtd/package-2.0
+http://pear.php.net/dtd/package-2.0.xsd"&gt;
+&lt;name&gt;example1&lt;/name&gt;
+&lt;channel&gt;pear.chiaraquartet.net/template&lt;/channel&gt;
+&lt;summary&gt;fake MyBlog template example 1&lt;/summary&gt;
+&lt;description&gt;fake MyBlog template example 1&lt;/description&gt;
+&lt;lead&gt;
+&lt;name&gt;Greg Beaver&lt;/name&gt;
+&lt;user&gt;cellog&lt;/user&gt;
+&lt;email&gt;cellog@php.net&lt;/email&gt;
+&lt;active&gt;yes&lt;/active&gt;
+&lt;/lead&gt;
+&lt;date&gt;2006-08-19&lt;/date&gt;
+&lt;time&gt;13:14:58&lt;/time&gt;
+&lt;version&gt;
+&lt;release&gt;2.0.0&lt;/release&gt;
+&lt;api&gt;1.0.0&lt;/api&gt;
+&lt;/version&gt;
+&lt;stability&gt;
+&lt;release&gt;stable&lt;/release&gt;
+&lt;api&gt;stable&lt;/api&gt;
+&lt;/stability&gt;
+&lt;license uri="http://www.opensource.org/licenses/bsd-
+license.php"&gt;BSD license&lt;/license&gt;
+&lt;notes&gt;second release&lt;/notes&gt;
+&lt;contents&gt;
+&lt;dir baseinstalldir="example1" name="/"&gt;
+&lt;file name="body.tpl.php" role="php" /&gt;
+&lt;file name="head.tpl.php" role="php" /&gt;
+&lt;/dir&gt; &lt;!-- / --&gt;
+&lt;/contents&gt;
+&lt;dependencies&gt;
+&lt;required&gt;
+&lt;php&gt;
+&lt;min&gt;5.1.0&lt;/min&gt;
+&lt;/php&gt;
+&lt;pearinstaller&gt;
+&lt;min&gt;1.4.3&lt;/min&gt;
+&lt;/pearinstaller&gt;
+&lt;package&gt;
+&lt;name&gt;MyBlog&lt;/name&gt;
+&lt;channel&gt;pear.chiaraquartet.net&lt;/channel&gt;
+&lt;min&gt;0.2.0&lt;/min&gt;
+&lt;max&gt;0.2.0&lt;/max&gt;
+&lt;/package&gt;
+&lt;/required&gt;
+&lt;/dependencies&gt;
+&lt;phprelease /&gt;
+&lt;changelog&gt;
+&lt;release&gt;
+&lt;version&gt;
+&lt;release&gt;0.1.0&lt;/release&gt;
+&lt;api&gt;0.1.0&lt;/api&gt;
+&lt;/version&gt;
+&lt;stability&gt;
+&lt;release&gt;alpha&lt;/release&gt;
+&lt;api&gt;beta&lt;/api&gt;
+&lt;/stability&gt;
+&lt;date&gt;2006-08-18&lt;/date&gt;
+&lt;license uri="http://www.opensource.org/licenses/bsd-
+license.php"&gt;BSD license&lt;/license&gt;
+&lt;notes&gt;first release&lt;/notes&gt;
+&lt;/release&gt;
+&lt;release&gt;
+&lt;version&gt;
+&lt;release&gt;1.0.0&lt;/release&gt;
+&lt;api&gt;1.0.0&lt;/api&gt;
+&lt;/version&gt;
+&lt;stability&gt;
+&lt;release&gt;stable&lt;/release&gt;
+&lt;api&gt;stable&lt;/api&gt;
+&lt;/stability&gt;
+&lt;date&gt;2006-08-18&lt;/date&gt;
+&lt;license uri="http://www.opensource.org/licenses/bsd-
+license.php"&gt;BSD license&lt;/license&gt;
+&lt;notes&gt;first release&lt;/notes&gt;
+&lt;/release&gt;
+&lt;release&gt;
+&lt;version&gt;
+&lt;release&gt;2.0.0&lt;/release&gt;
+&lt;api&gt;1.0.0&lt;/api&gt;
+&lt;/version&gt;
+&lt;stability&gt;
+&lt;release&gt;stable&lt;/release&gt;
+&lt;api&gt;stable&lt;/api&gt;
+&lt;/stability&gt;
+&lt;date&gt;2006-08-19&lt;/date&gt;
+&lt;license uri="http://www.opensource.org/licenses/bsd-
+license.php"&gt;BSD license&lt;/license&gt;
+&lt;notes&gt;second release&lt;/notes&gt;
+&lt;/release&gt;
+&lt;/changelog&gt;
+&lt;/package&gt;
+</pre></div><p>To conclude this final chapter, let's look at<code class="literal"> admin.php</code>, the administrative control center, to see how all of these elements are brought together to display templates, download the right template versions, and install them:<a id="id441" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;?php
+// silence potential notice
+@session_start();
+require_once 'MyBlog/Template/Lister.php';
+require_once 'MyBlog/Config.php';
+$blog_config = new MyBlog_Config;
+$lister = new MyBlog_Template_Lister($blog_config-&gt;getPearConfig());
+$lister-&gt;setConfigObject($blog_config);
+if (isset($_GET['dodefault'])) {
+unset($_GET['dodefault']);
+$_SESSION['template'] = '#default';
+}
+if (isset($_GET['t']) &amp;&amp; isset($_GET['v'])) {
+require_once 'MyBlog/Template/Fetcher.php';
+require_once 'MyBlog/Template/REST.php';
+$conf = new MyBlog_Config;
+$config = $conf-&gt;getPearConfig();
+$rest = new MyBlog_Template_REST($config, array());
+$rest-&gt;setTemplateChannel($conf-&gt;getTemplateChannel());
+$fetch = MyBlog_Template_Fetcher::factory($rest, $config);
+try {
+$fetch-&gt;installTemplate($_GET['t'], $_GET['v']);
+$out = '';
+foreach ($fetch-&gt;log as $info) {
+if ($info[0] == 'log') {
+$out .= ' &amp;nbsp; &amp;nbsp;' .
+htmlspecialchars($info[1]) . '&lt;br /&gt;';
+} else {
+$out .= htmlspecialchars($info[1]) . '&lt;br /&gt;';
+}
+}
+// this is safe because installTemplate throws an exception
+// if the template or version are not valid PEAR
+// package/version
+// so input is validated by this point
+$_SESSION['template'] = $_GET['t'];
+define('MYBLOG_OUTPUT_INFO', $out);
+} catch (MyBlog_Template_Exception $e) {
+define('MYBLOG_OUTPUT_INFO', '&lt;strong&gt;ERROR:&lt;/strong&gt; ' .
+$e-&gt;getMessage());
+}
+unset($_GET['t']);
+unset($_GET['v']);
+}
+?&gt;&lt;!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN"&gt;
+&lt;html&gt;
+&lt;head&gt;
+&lt;title&gt;MyBlog Administration&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;a href="index.php"&gt;Return to MyBlog&lt;/a&gt;&lt;br /&gt;
+&lt;h1&gt;MyBlog Administration&lt;/h1&gt;
+&lt;?php
+// this is defined in install.php
+if (defined('MYBLOG_OUTPUT_INFO')): ?&gt;
+&lt;h2&gt;Installation Information:&lt;/h2&gt;
+&lt;?php echo MYBLOG_OUTPUT_INFO; ?&gt;
+&lt;?php endif;
+?&gt;
+&lt;h2&gt;Choose a template&lt;/h2&gt;
+&lt;?php
+list($info, $pager) = $lister-&gt;listRemoteTemplates(1);
+$links = $pager-&gt;getLinks();
+echo $links['all'] . '&lt;br /&gt;';
+?&gt;
+&lt;?php if ($blog_config-&gt;getCurrentTemplate() == '#default'): ?&gt;
+&lt;span class="current_template"&gt;*&lt;/span&gt;
+&lt;?php endif; ?&gt;[Default Template] &lt;em&gt;(Standard, ships with
+install)&lt;/em&gt;&lt;a href="admin.php?dodefault=1"&gt;
+Choose Default Template&lt;/a&gt;&lt;br /&gt;
+&lt;?php
+foreach ($info as $template): ?&gt;
+&lt;?php if ($template['name'] ==
+$blog_config-&gt;getCurrentTemplate()): ?&gt;
+&lt;span class="current_template"&gt;*&lt;/span&gt;
+&lt;?php endif; ?&gt;
+&lt;img src="image.php?&lt;?php echo 't=' .
+htmlspecialchars(urlencode($template['name'])) . '&amp;amp;v=' .
+htmlspecialchars(urlencode($template['version'])); ?&gt;"
+height="36" width="36" /&gt;
+&lt;?php echo $template['name'] ?&gt; &lt;em&gt;(&lt;?php
+echo htmlspecialchars($template['summary']) ?&gt;)&lt;/em&gt;
+Version &lt;?php echo $template['version'] ?&gt;&lt;a
+href="admin.php?t=&lt;?php
+echo htmlspecialchars(urlencode($template['name']))
+?&gt;&amp;amp;v=&lt;?php
+echo htmlspecialchars($template['version'])
+?&gt;"&gt;Install/Upgrade&lt;/a&gt;&lt;br /&gt;
+&lt;?php endforeach;
+echo '&lt;br /&gt;' . $links['all'];
+?&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</pre></div><p>For experimentation purposes, there are two<code class="literal"> package.xml</code> files available for the MyBlog package in the code included with this book. The first,<code class="literal"> package1.xml</code>, describes itself as MyBlog version 0.1.0, and will display the templates example1 version 1.0.0 and example2 version 1.0.0 as being available for installation. After testing this, execute a from the MyBlog directory, a simple:<a id="id442" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>$ pear upgrade package.xml
+</strong></span>
+</pre></div><p>You will be upgraded to MyBlog version 0.2.0. Immediately, you'll notice that only example1 version 2.0.0 is available for installation. This is based upon the fact that example1's<code class="literal"> package1.xml</code> (version 1.0.0) has this required dependency in it:</p><div class="informalexample"><pre class="programlisting">&lt;package&gt;
+&lt;name&gt;MyBlog&lt;/name&gt;
+&lt;channel&gt;pear.chiaraquartet.net&lt;/channel&gt;
+&lt;min&gt;0.1.0&lt;/min&gt;
+&lt;max&gt;0.1.0&lt;/max&gt;
+&lt;/package&gt;
+</pre></div><p>Whereas<code class="literal"> package.xml</code> (version 2.0.0) has this required dependency in it:</p><div class="informalexample"><pre class="programlisting">&lt;package&gt;
+&lt;name&gt;MyBlog&lt;/name&gt;
+&lt;channel&gt;pear.chiaraquartet.net&lt;/channel&gt;
+&lt;min&gt;0.2.0&lt;/min&gt;
+&lt;max&gt;0.2.0&lt;/max&gt;
+&lt;/package&gt;
+</pre></div><p>These dependencies ensure that the templates are only available for blog versions they are compatible with. As such, if you decide to adopt this model, you'll need to ensure that all templates are released with a<code class="literal">&lt;max&gt;</code> element in their dependency on the blog, defining the highest version they are known to work with. As new versions are released, the templates can be released with updated<code class="literal">&lt;max&gt;</code> tags, or modified and then released. In this way, working templates will always be available for the differing blog versions.</p><p>In short: complexity is all managed by the internals of the PEAR installer, freeing you to write great programs!</p></div><div class="section" title="Improvements for the Ambitious"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl3sec11"/>Improvements for the Ambitious</h3></div></div></div><p>One of the vexing problems of all web-based plug-in installation systems involves security of directory permissions. In order to install something, the web server's user (nobody or apache are common web users) must have write access to the plug-in directory. This means that anyone with an account on the machine and a public web page can write and read from your application's plug-in directory, simply by creating a web page that does this.<a id="id443" class="indexterm"/>
+</p><p>In our sample MyBlog, I made the dubious assumption that you are the sole owner of the blog server and do not need to worry about such issues, and did not implement a system for this important security issue.</p><p>However, there is a simple solution that requires a bit of work, and is a wonderful exercise for the ambitious. The trick is to provide a link on the page that is a little lock. The user must unlock the directory prior to installation, and it must be locked after.</p><p>Locking the page consists of recursively iterating over the internal plug-in directory, and running this simple command:</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>chmod($file_or_dir, 0444);
+</strong></span>
+</pre></div><p>Unlocking is its opposite, recursively iterating over the internal plug-in directory and running this simple command:</p><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>chmod($file_or_dir, 0777);
+</strong></span>
+</pre></div><p>Why, you might ask, are there no blog or other applications performing this task? There are several answers. First of all, the same task can be accomplished quite easily using a shell script. In other words "let the user take care of their own dang security." Also, this particular security issue simply hasn't been on the radar because it requires a malicious hacker to already have access to the machine to take advantage of it — or so one would think.<a id="id444" class="indexterm"/>
+</p><p>The fact is, if the application happens to have a PHP code injection vulnerability, this would allow a malicious hacker to inject code that creates a malicious PHP script on the server, thereby gaining control over the server through the fact that the plug-in directory is writeable! Although it takes a very, very serious vulnerability to become a problem, having writeable directories can make the difference between having and losing control over a production server.</p><p>Keep this in mind as you develop — security is always an important task! Try to think like an evildoer as you design, and you will have (and cause) far fewer security vulnerabilities.</p></div></div></div>
+<div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec04"/>Summary</h1></div></div></div><p>This chapter has been quite a ride. In it, we investigated common practice methods for embedding plug-ins into web applications. Specifically, we examined three examples — MDB2 (subpackages), Serendipity (Spartacus), Seagull (partially embedded PEAR installer). For each of these examples, we weighed the pros and cons of their respective approaches.</p><p>Having determined that there may be a better way to do things, we learned how to embed the PEAR installer most effectively, in order to create a plug-in manager.</p><p>For this purpose, we created a fake blog program in just under 1000 lines of code that provides the ability to seamlessly query a remote PEAR Channel server designed to distribute templates. Using the internal classes of the PEAR installer, our MyBlog web application can intelligently install and upgrade templates with all of the sophistication expected from the PEAR installer.</p><p>We took full advantage of the PEAR installer's built-in REST client to query the remote server, the PEAR installer's download capabilities, and its robust file installer complete with file transactions. In addition, we learned how to extend the remote server's REST code to include a thumbnail image, and instructed our MyBlog's administration page to display these thumbnail images.</p><p>Finally, I would like to thank you for reading this guide to the exciting and innovative PEAR installer, and I hope it will serve you well in your quest for the perfect website and developing environment!</p></div></body></html>
