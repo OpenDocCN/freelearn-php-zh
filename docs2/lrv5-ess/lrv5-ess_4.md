@@ -1,4 +1,4 @@
-# 第四章 Eloquent ORM
+# 第四章：Eloquent ORM
 
 在上一章中，我们提到了与 Laravel 一起提供的 **对象关系映射器**（ORM）Eloquent。Eloquent 在我们的应用程序中充当模型层（MVC 中的 M）。由于它是大多数在 Laravel 中构建的应用程序的一个重要部分，我们将更详细地探讨 Eloquent。
 

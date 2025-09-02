@@ -1,4 +1,4 @@
-# 第六章 PHP Streams API 和更高阶 Observables
+# 第六章：PHP Streams API 和更高阶 Observables
 
 在本章中，我们将介绍许多我们为下一章所需的新特性。本章涵盖的几乎所有内容都与**PHP Streams API**、Promises 和事件循环（在我们的案例中是`reactphp/event-loop`项目）相关。这还包括一些更高级的 RxPHP 操作符，它们与所谓的更高阶 Observables 一起工作。
 

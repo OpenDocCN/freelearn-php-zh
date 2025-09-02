@@ -1,4 +1,4 @@
-# 8
+
 
 # 模型、数据库和 Active Record
 
