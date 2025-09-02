@@ -1,6 +1,6 @@
-# Python 卖空算法教程
+# Phalcon 入门指南
 
-> 原文：[`zh.annas-archive.org/md5/ceefdd89e585c59c20db6a7760dc11f1`](https://zh.annas-archive.org/md5/ceefdd89e585c59c20db6a7760dc11f1)
+> 原文：[`zh.annas-archive.org/md5/3f75b70a3a9a57e13c3d95e83f866056`](https://zh.annas-archive.org/md5/3f75b70a3a9a57e13c3d95e83f866056)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

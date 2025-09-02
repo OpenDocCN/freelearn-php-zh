@@ -1,6 +1,6 @@
-# Python 卖空算法教程
+# Laravel Octane 高性能指南
 
-> 原文：[`zh.annas-archive.org/md5/ceefdd89e585c59c20db6a7760dc11f1`](https://zh.annas-archive.org/md5/ceefdd89e585c59c20db6a7760dc11f1)
+> 原文：[`zh.annas-archive.org/md5/53ac6eb53ccf1baf1816775e25495357`](https://zh.annas-archive.org/md5/53ac6eb53ccf1baf1816775e25495357)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 
