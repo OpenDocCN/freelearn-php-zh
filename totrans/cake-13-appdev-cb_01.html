@@ -1,0 +1,494 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;1.&#xA0;Authentication"><div class="titlepage"><div><div><h1 class="title"><a id="ch01"/>Chapter 1. Authentication</h1></div></div></div><p>This chapter will cover the following topics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Setting up a basic authentication system</li><li class="listitem" style="list-style-type: disc">Using and configuring the<code class="literal"> Auth</code> component</li><li class="listitem" style="list-style-type: disc">Allowing logins with e-mail or username</li><li class="listitem" style="list-style-type: disc">Saving the user details after login</li><li class="listitem" style="list-style-type: disc">Getting the current user's information</li><li class="listitem" style="list-style-type: disc">Using prefixes for role-based access control</li><li class="listitem" style="list-style-type: disc">Setting up Access Control Layer based authentication</li><li class="listitem" style="list-style-type: disc">Integrating with OpenID</li></ul></div><div class="section" title="Introduction"><div class="titlepage"><div><div><h1 class="title"><a id="ch01lvl1sec01"/>Introduction</h1></div></div></div><p>This chapter explains how to set up authentication on a CakePHP application, starting from the most basic setup and finishing with advanced authorization mechanisms. This is accomplished through the use of tools that are built into the framework core, which allow us to quickly set up secure areas without losing flexibility to build more complex solutions.</p><p>The first two recipes show us how to set up a basic, yet fully working authentication system. The next three recipes allow our users to log in using different information, have their user details saved after a successful login, and show us how to get this user information. The sixth recipe shows a more complex authorization technique that relies on route prefixes. The seventh recipe sets up a complex authentication system through the use of CakePHP's Access Control Layer. Finally, the last recipe shows us how to integrate our application with OpenID.</p></div></div>
+<div class="section" title="Setting up a basic authentication system"><div class="titlepage"><div><div><h1 class="title"><a id="ch01lvl1sec02"/>Setting up a basic authentication system</h1></div></div></div><p>The first task to be completed when we are in the process of adding authentication to an application is to identify which controllers will need user access. Normally we would make every controller and action protected by default, and then we would specify which areas of our application allow public access.<a id="id0" class="indexterm"/>
+</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec01"/>Getting ready</h2></div></div></div><p>We must have a<code class="literal"> users</code> table that should contain, at least, two fields:<code class="literal"> username</code> (to hold the username) and<code class="literal"> password</code> (to hold a hash made out of the user's password).</p><p>If you don't have a table for this purpose, you can use the following SQL statement to create it:</p><div class="informalexample"><pre class="programlisting">CREATE TABLE `users`(
+`id` INT UNSIGNED AUTO_INCREMENT NOT NULL,
+`username` VARCHAR(255) NOT NULL,
+`password` CHAR(40) NOT NULL,
+PRIMARY KEY(`id`)
+);
+</pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec02"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a file named<code class="literal"> users_controller.php</code> and place it inside your<code class="literal"> app/controllers</code> folder with the following contents:<div class="informalexample"><pre class="programlisting">&lt;?php
+class UsersController extends AppController {
+public function login() {
+}
+public function logout() {
+$this-&gt;redirect($this-&gt;Auth-&gt;logout());
+}
+}
+?&gt;
+</pre></div></li><li class="listitem">Create a file named<code class="literal"> login.ctp</code> in your<code class="literal"> app/views/users</code> folder (create the folder if you don't have one already), and add the following contents:<div class="informalexample"><pre class="programlisting">&lt;?php
+echo $this-&gt;Form-&gt;create(array('action'=&gt;'login'));
+echo $this-&gt;Form-&gt;inputs(array(
+'legend' =&gt; 'Login',
+'username',
+'password'
+));
+echo $this-&gt;Form-&gt;end('Login');
+?&gt;
+</pre></div></li><li class="listitem">Create a file named<code class="literal"> app_controller.php</code> in your<code class="literal"> app/</code> folder with the following contents:<div class="informalexample"><pre class="programlisting">&lt;?php
+class AppController extends Controller {
+public $components = array(
+'Auth' =&gt; array(
+'authorize' =&gt; 'controller'
+),
+'Session'
+);
+public function isAuthorized() {
+return true;
+}
+}
+?&gt;
+</pre></div></li><li class="listitem">Modify the<code class="literal"> UsersController</code>, and add the following code before the<code class="literal"> login</code> method:<a id="id1" class="indexterm"/><div class="informalexample"><pre class="programlisting">public function beforeFilter() {
+parent::beforeFilter();
+$this-&gt;Auth-&gt;allow('add');
+}
+public function add() {
+if (!empty($this-&gt;data)) {
+$this-&gt;User-&gt;create();
+if ($this-&gt;User-&gt;save($this-&gt;data)) {
+$this-&gt;Session-&gt;setFlash('User created!');
+$this-&gt;redirect(array('action'=&gt;'login'));
+} else {
+$this-&gt;Session-&gt;setFlash('Please correct the errors');
+}
+}
+}
+</pre></div></li><li class="listitem">Create a file named<code class="literal"> add.ctp</code> and place it in your<code class="literal"> app/views/users</code> folder with the following contents:<div class="informalexample"><pre class="programlisting">&lt;?php
+echo $this-&gt;Form-&gt;create();
+echo $this-&gt;Form-&gt;inputs(array(
+'legend' =&gt; 'Signup',
+'username',
+'password'
+));
+echo $this-&gt;Form-&gt;end('Submit');
+?&gt;
+</pre></div><p>We now have a fully working authentication system. We can add new users by browsing to <code class="literal">http://localhost/users/add</code>, logging in by browsing to <code class="literal">http://localhost/users/login</code>, and finally logging out by browsing to <code class="literal">http://localhost/users/logout</code>.
+</p><p>After creating a user, you should see the login form with a success message, as shown in the following screenshot:
+<a id="id2" class="indexterm"/>
+</p><div class="mediaobject"><img src="graphics/1926_01_01.jpg" alt="How to do it..."/></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec03"/>How it works...</h2></div></div></div><p>We start by creating two actions in the<code class="literal"> UsersController</code> class:<code class="literal"> login()</code>, to show and process submissions of the login form, and<code class="literal"> logout()</code>, to handle users logging out.</p><p>You may be surprised that the<code class="literal"> login()</code> method has no logic whatsoever. To display the form, all we need to do is display the action's view. The form submission is taken care of by the<code class="literal"> Auth</code> component, leaving us with no need to implement any controller logic. Therefore, the only implementation we need is to create a view for this action, which includes a simple form with two fields:<code class="literal"> username</code>, and<code class="literal"> password</code>.</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note02"/>Note</h3><p>The<code class="literal"> inputs</code> method of CakePHP's<code class="literal"> FormHelper</code> is a shortcut designed to avoid multiple calls to the<code class="literal"> input</code> method. By using it, we can create a full form with elements without the need to call<code class="literal"> FormHelper::input()</code> several times.</p></div><p>The<code class="literal"> logout()</code> controller action simply calls the<code class="literal"> Auth</code> component's<code class="literal"> logout()</code> method. This method removes the logged-in user data from the session, and returns the address to which the user should be redirected after logging out, obtained from the previously configured<code class="literal"> logoutRedirect</code> setting of the component (defaults to the application's home page if the setting was not configured.)<a id="id3" class="indexterm"/>
+</p><p>Next, we add two components to the controller:<code class="literal"> Session</code>, and<code class="literal"> Auth</code>. The<code class="literal"> Session</code> component is needed to create the messages (through the use of its<code class="literal"> setflash()</code> method) that informs the user if a login attempt was unsuccessful, or if a user was created.</p><p>The<code class="literal"> Auth</code> component operates between your controller's actions and the incoming request by means of the<code class="literal"> beforeFilter</code> callback method. It uses it's<code class="literal"> authorize</code> setting to check what type of authentication scheme is to be used.</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note03"/>Note</h3><p>To obtain more information about the<code class="literal"> authorize</code> setting, see the recipe<span class="emphasis"><em> Using and configuring the Auth component</em></span>.</p></div><p>Once the<code class="literal"> Auth</code> component is added to a controller, all actions in that controller are not accessible unless there is a valid user logged in. This means that if we had any actions that should be public (such as the<code class="literal"> login()</code> and<code class="literal"> add()</code> actions in our controller), we would have to tell the<code class="literal"> Auth</code> component about them.</p><p>If one wishes to make some actions public, one can add the name of these actions to the<code class="literal"> allowedActions</code> setting of the<code class="literal"> Auth</code> component, or by calling its<code class="literal"> allow()</code> method. We use the later approach to tell the<code class="literal"> Auth</code> component that the<code class="literal"> add()</code> action should be reachable without a logged-in user. The<code class="literal"> login()</code> action is automatically added to the list of public actions by the<code class="literal"> Auth</code> component.</p><p>When the user attempts to reach an action that is not within the public actions, the<code class="literal"> Auth</code> component checks the session to see if a user is already logged in. If a valid user is not found, it redirects the browser to the<code class="literal"> login</code> action. If there is a user who is logged in, it uses the controller's<code class="literal"> isAuthorized</code> method to check if the user has access. If its return value is<code class="literal"> true</code>, it allows access, otherwise access is rejected. In our case, we implemented this method in<code class="literal"> AppController</code>, our base controller class. If the attempted action requires a user who is logged in, the<code class="literal"> login()</code> action is executed. After the user submits data using the login form, the component will first hash the password field, and then issue a find operation on the<code class="literal"> User</code> model to find a valid account, using the posted username and password. If a valid record is found, it is saved to the session, marking the user as logged in.</p><div class="section" title="Hashing a password confirmation field"><div class="titlepage"><div><div><h3 class="title"><a id="ch01lvl3sec01"/>Hashing a password confirmation field</h3></div></div></div><p>When the<code class="literal"> Auth</code> component is enabled on a controller and the user submits a form with a field named<code class="literal"> password</code> (regardless if it is being rendered in the login form), the component will automatically hash the<code class="literal"> password</code> field before executing the controller's action.<a id="id4" class="indexterm"/>
+</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note04"/>Note</h3><p>The<code class="literal"> Auth</code> component uses the salt defined in the configuration setting<code class="literal"> Security.salt</code> (in your<code class="literal"> app/config/core.php</code> file) to calculate the hash. Different salt values will produce different hashes even when using the same password. Therefore, make sure you change the salt on all your CakePHP applications, thus enhancing the security of your authentication system.</p></div><p>This means that the action will never hold the plain password value, and this should be particularly noted when utilizing mechanisms to confirm password validations. When you are implementing such validation, make sure you hash the confirmation field using the proper method:</p><div class="informalexample"><pre class="programlisting">if (!empty($this-&gt;data)) {
+$this-&gt;data['User']['confirm_password'] = $this-&gt;Auth-&gt;password($this-&gt;data['User']['confirm_password']);
+// Continue with processing
+}
+</pre></div></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec04"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Using and configuring the Auth component</em></span></li><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Getting the current user's information</em></span></li></ul></div></div></div>
+<div class="section" title="Using and configuring the Auth component"><div class="titlepage"><div><div><h1 class="title"><a id="ch01lvl1sec03"/>Using and configuring the Auth component</h1></div></div></div><p>If there is something that defines the<code class="literal"> Auth</code> component, it is its flexibility that accounts for different types of authentication modes, each of these modes serving different needs. In this recipe, you will learn how to modify the component's default behavior, and how to choose between the different authentications modes.<a id="id5" class="indexterm"/>
+</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec05"/>Getting ready</h2></div></div></div><p>We should have a fully working authentication system, so follow the entire recipe<span class="emphasis"><em> Setting up a basic authentication system</em></span>.</p><p>We will also add support to have disabled user accounts. Add a field named active to your users table with the following SQL statement:</p><div class="informalexample"><pre class="programlisting">ALTER TABLE `users`
+ADD COLUMN `active` TINYINT UNSIGNED NOT NULL default 1;
+</pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec06"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Modify the definition of the<code class="literal"> Auth</code> component in your<code class="literal"> AppController</code> class, so it looks like the following:<div class="informalexample"><pre class="programlisting">public $components = array(
+'Auth' =&gt; array(
+'authorize' =&gt; 'controller',
+<span class="strong"><strong>'loginRedirect' =&gt; array(
+'admin' =&gt; false,
+'controller' =&gt; 'users',
+'action' =&gt; 'dashboard'
+),
+'loginError' =&gt; 'Invalid account specified',
+'authError' =&gt; 'You don\'t have the right permission'</strong></span>
+),
+'Session'
+);
+</pre></div></li><li class="listitem">Now while still editing your<code class="literal"> app/app_controller.php</code> file, place the following code right below the<code class="literal"> components</code> property declaration, at the beginning of the<code class="literal"> beforeFilter</code> method in your<code class="literal"> AppController</code> class:<div class="informalexample"><pre class="programlisting">public function beforeFilter() {
+if ($this-&gt;Auth-&gt;getModel()-&gt;hasField('active'))
+{$this-&gt;Auth-&gt;userScope = array('active' =&gt; 1);
+}
+}
+</pre></div></li><li class="listitem">Copy the default layout from<code class="literal"> cake/libs/view/layouts/default.ctp</code> to your<code class="literal"> app/views/layouts</code> directory, and make sure you place the following line in your layout where you wish to display authentication messages:<div class="informalexample"><pre class="programlisting">&lt;?php echo $this-&gt;Session-&gt;flash('auth'); ?&gt;
+</pre></div></li><li class="listitem">Edit your<code class="literal"> app/controllers/users_controller.php</code> file and place the following method right below the<code class="literal"> logout()</code> method:<a id="id6" class="indexterm"/><div class="informalexample"><pre class="programlisting">public function dashboard() {
+}
+</pre></div></li><li class="listitem">Finally, create the view for this newly added action in a file named<code class="literal"> dashboard.ctp</code> and place it in your<code class="literal"> app/views/users</code> folder with the following contents:<div class="informalexample"><pre class="programlisting">&lt;p&gt;Welcome!&lt;/p&gt;
+</pre></div><p>If you now browse to <code class="literal">http://localhost/users/login</code> and enter the wrong credentials (wrong username and/or password), you should see the error message shown in the following screenshot:
+</p><div class="mediaobject"><img src="graphics/1926_01_02.jpg" alt="How to do it..."/></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec07"/>How it works...</h2></div></div></div><p>As the<code class="literal"> Auth</code> component does its magic right before a controller action is executed, we either need to specify its settings in the<code class="literal"> beforeFilter</code> callback, or pass them in an array when adding the component to the<code class="literal"> components</code> property. A common place to do it is in the<code class="literal"> beforeFilter()</code> method of the<code class="literal"> AppController</code> class, as by doing so we can share the same authentication settings throughout all our controllers.</p><p>This recipe changes some<code class="literal"> Auth</code> settings, so that whenever a valid user logs in, they are automatically taken to a<code class="literal"> dashboard</code> action in the<code class="literal"> UsersController</code> (done via the<code class="literal"> loginRedirect</code> setting.) It also adds some default error messages through the component's respective settings:<code class="literal"> loginError</code> for when the given account is invalid, and<code class="literal"> authError</code> for when there is a valid account, but the action is not authorized (which can be achieved by returning<code class="literal"> false</code> from the<code class="literal"> isAuthorized()</code> method implemented in<code class="literal"> AppController</code>.)
+<a id="id7" class="indexterm"/>
+</p><p>It also sets the component's<code class="literal"> userScope</code> setting in<code class="literal"> AppController::beforeFilter()</code>. This setting allows us to define which conditions the<code class="literal"> User</code> find operation need to match to allow a user account to log in. By adding the<code class="literal"> userScope</code> setting, we ensure that only user records that have the<code class="literal"> active</code> field set to<code class="literal"> 1</code> are allowed access.</p><div class="section" title="Changing the default user model"><div class="titlepage"><div><div><h3 class="title"><a id="ch01lvl3sec02"/>Changing the default user model</h3></div></div></div><p>As you may have noticed, the role of the<code class="literal"> User</code> model is crucial, not only to fetch the right user account, but also to check the permissions on some of the authentication schemes. By default, the<code class="literal"> Auth</code> component will look for a<code class="literal"> User</code> model, but you can change which model is to be used by setting the<code class="literal"> userModel</code> property or the<code class="literal"> userModel</code> key in the settings array.<a id="id8" class="indexterm"/>
+</p><p>For example, if your user model is<code class="literal"> Account</code>, you would add the following setting when adding the<code class="literal"> Auth</code> component to your controller:</p><div class="informalexample"><pre class="programlisting">'userModel' =&gt; 'Account'
+</pre></div><p>Or equivalently, you would add the following to the<code class="literal"> beforeFilter</code> method of your<code class="literal"> AppController</code> class, in the block of code where you are setting up the component:</p><div class="informalexample"><pre class="programlisting">$this-&gt;Auth-&gt;userModel = 'Account';
+</pre></div></div></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec08"/>There's more...</h2></div></div></div><p>The<code class="literal"> $authorize</code> property of the<code class="literal"> Auth</code> component (or the<code class="literal"> authorize</code> key in the<code class="literal"> Auth</code> component settings array) defines which authentication scheme should be used. Possible values are:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">controller</code>: It makes the component use the controller's<code class="literal"> isAuthorized</code> method, which returns<code class="literal"> true</code> to allow access, or<code class="literal"> false</code> to reject it. This method is particularly useful when obtaining the logged-in user (refer to the<span class="emphasis"><em> Getting the current user's information</em></span> recipe)</li><li class="listitem" style="list-style-type: disc"><code class="literal">model</code>: It is similar to<code class="literal"> controller</code>; instead of using the controller to call the method, it looks for the<code class="literal"> isAuthorized</code> method in the<code class="literal"> User</code> model. First, it tries to map the controller's action to a CRUD operation (one of<code class="literal">'create', 'read', 'update'</code>, or<code class="literal">'delete'</code>), and then calls the method with three arguments: the user record, the controller that is being accessed, and the CRUD operation (or actual controller action) that is to be executed.</li><li class="listitem" style="list-style-type: disc"><code class="literal">object</code>: It is similar to<code class="literal"> model</code>; instead of using the model to call the method, it looks for the<code class="literal"> isAuthorized</code> method in a given class. In order to specify which class, set the<code class="literal"> AuthComponent::$object</code> property to an instance of such a class. It calls the method with three arguments: the user record, the controller that is being accessed, and the action that is to be executed.</li><li class="listitem" style="list-style-type: disc"><code class="literal">actions</code>: It uses the<code class="literal"> Acl</code> component to check for access, which allows a much more grained access control.</li><li class="listitem" style="list-style-type: disc"><code class="literal">crud</code>: It is similar to<code class="literal"> actions</code>; the difference lies in the fact that it first tries to map the controller's action to a CRUD operation (one of<code class="literal">'create', 'read', 'update'</code>, or<code class="literal">'delete'</code>.)</li></ul></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec09"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Getting the current user's information</em></span></li><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Setting up Access Control Layer based authentication</em></span></li></ul></div></div></div>
+<div class="section" title="Allowing logins with username or e-mail"><div class="titlepage"><div><div><h1 class="title"><a id="ch01lvl1sec04"/>Allowing logins with username or e-mail</h1></div></div></div><p>By default the<code class="literal"> Auth</code> component will use the given username posted in the login form to check for a valid user account. However, some applications have two separate fields: one to define the username, and another one to define the user's e-mail. This recipe shows how to allow logins using either a username or an e-mail.<a id="id9" class="indexterm"/>
+</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec10"/>Getting ready</h2></div></div></div><p>We should have a fully working authentication system, so follow the entire recipe,<span class="emphasis"><em> Setting up a basic authentication system</em></span>.</p><p>We also need the field to hold the user's e-mail address. Add a field named<code class="literal"> email</code> to your<code class="literal"> users</code> table with the following SQL statement:</p><div class="informalexample"><pre class="programlisting">ALTER TABLE `users`
+ADD COLUMN `email` VARCHAR(255) NOT NULL;
+</pre></div><p>We need to modify the signup page so users can specify their e-mail address. Edit your<code class="literal"> app/views/users/add.ctp</code> file and make the following changes:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+echo $this-&gt;Form-&gt;create();
+echo $this-&gt;Form-&gt;inputs(array(
+'legend' =&gt; 'Signup',
+<span class="strong"><strong>'email',</strong></span>
+'username',
+'password'
+));
+echo $this-&gt;Form-&gt;end('Submit');
+?&gt;
+</pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec11"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Edit your<code class="literal"> app/views/users/login.ctp</code> file and make the following changes to it:<a id="id10" class="indexterm"/><div class="informalexample"><pre class="programlisting">&lt;?php
+echo $this-&gt;Form-&gt;create(array('action'=&gt;'login'));
+echo $this-&gt;Form-&gt;inputs(array(
+'legend' =&gt; 'Login',
+<span class="strong"><strong>'username' =&gt; array('label'=&gt;'Username / Email'),</strong></span>
+'password'
+));
+echo $this-&gt;Form-&gt;end('Login');
+?&gt;
+</pre></div></li><li class="listitem">Edit your<code class="literal"> UsersController</code> class and make sure the<code class="literal"> login</code> action looks like the following:<div class="informalexample"><pre class="programlisting">public function login() {
+if (
+!empty($this-&gt;data) &amp;&amp;
+!empty($this-&gt;Auth-&gt;data['User']['username']) &amp;&amp;
+!empty($this-&gt;Auth-&gt;data['User']['password'])
+) {
+$user = $this-&gt;User-&gt;find('first', array(
+'conditions' =&gt; array(
+'User.email' =&gt; $this-&gt;Auth-&gt;data['User']['username'],
+'User.password' =&gt; $this-&gt;Auth-&gt;data['User']['password']
+),
+'recursive' =&gt; -1
+));
+if (!empty($user) &amp;&amp; $this-&gt;Auth-&gt;login($user)) {
+if ($this-&gt;Auth-&gt;autoRedirect) {
+$this-&gt;redirect($this-&gt;Auth-&gt;redirect());
+}
+} else {
+$this-&gt;Session-&gt;setFlash($this-&gt;Auth-&gt;loginError, $this-&gt;Auth-&gt;flashElement, array(), 'auth');
+}
+}
+}
+</pre></div><p>If you now browse to <code class="literal">http://localhost/users/login</code> and you can enter the user's e-mail and password to log in, as shown in the following screenshot:
+<a id="id11" class="indexterm"/>
+</p><div class="mediaobject"><img src="graphics/1926_01_03.jpg" alt="How to do it..."/></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec12"/>How it works...</h2></div></div></div><p>When the<code class="literal"> Auth</code> component is unable to find a valid user account using the username and password fields, it gives the control back to the<code class="literal"> login</code> action. Therefore, in the<code class="literal"> login</code> action we can check if there is any submitted data. If that is the case, we know that the<code class="literal"> Auth</code> component was not able to find a valid account.</p><p>With this in mind, we can try to find a user account with an e-mail that matches the given username. If there is one, we log the user in and redirect the browser to the default action, similar to what the component would do on a successful attempt.<a id="id12" class="indexterm"/>
+</p><p>If we cannot find a valid user account, we simply set the flash message to the default error message specified in the<code class="literal"> Auth</code> component.</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec13"/>There's more...</h2></div></div></div><p>You may have noticed that when looking for the user record, we used<code class="literal"> $this-&gt;Auth-&gt;data</code> rather than<code class="literal"> $this-&gt;data</code> to use the actual posted values. The reason for this is because the<code class="literal"> Auth</code> component will not only automatically hash the password field, but also remove its value from the controller's<code class="literal"> data</code> property, so if you need to show the login form again, the password field will not be pre-filled for the user.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec14"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Getting the current user's information</em></span></li></ul></div></div></div>
+<div class="section" title="Saving the user details after login"><div class="titlepage"><div><div><h1 class="title"><a id="ch01lvl1sec05"/>Saving the user details after login</h1></div></div></div><p>One of the most typical functionalities offered by sites with authentication capabilities is the ability to let the user choose (by clicking on a checkbox) whether they want the system to remember their account after logging in.<a id="id13" class="indexterm"/>
+</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec15"/>Getting ready</h2></div></div></div><p>We should have a working authentication system, so follow the entire recipe,<span class="emphasis"><em> Setting up a basic authentication system</em></span>.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec16"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Edit your<code class="literal"> app/app_controller.php</code> file and add the following<code class="literal"> Auth</code> component settings to the<code class="literal"> Auth</code> component. Also add the<code class="literal"> Cookie</code> component by making the following changes to the<code class="literal"> components</code> property:<code class="literal"> AppController</code> (in the<code class="literal"> $components</code> property) must include the following mandatory setting (if it is not there, add it inside the array of settings for the component):<div class="informalexample"><pre class="programlisting">public $components = array(
+'Auth' =&gt; array(
+'authorize' =&gt; 'controller',
+<span class="strong"><strong>'autoRedirect' =&gt; false</strong></span>
+),
+<span class="strong"><strong>'Cookie',</strong></span>
+'Session'
+);
+</pre></div></li><li class="listitem">Edit your<code class="literal"> app/views/users/login.ctp view</code> file and make the following changes:<a id="id14" class="indexterm"/><div class="informalexample"><pre class="programlisting">&lt;?php
+echo $this-&gt;Form-&gt;create(array('action'=&gt;'login'));
+echo $this-&gt;Form-&gt;inputs(array(
+'legend' =&gt; 'Login',
+'username',
+'password',
+<span class="strong"><strong>'remember' =&gt; array('type' =&gt; 'checkbox', 'label' =&gt; 'Remember me')</strong></span>
+));
+echo $this-&gt;Form-&gt;end('Login');
+?&gt;
+</pre></div></li><li class="listitem">Now, add the following code to the end of the<code class="literal"> login</code> action of your<code class="literal"> UsersController</code> class:<div class="informalexample"><pre class="programlisting">if (!empty($this-&gt;data)) {
+$userId = $this-&gt;Auth-&gt;user('id');
+if (!empty($userId)) {
+if (!empty($this-&gt;data['User']['remember'])) {
+$user = $this-&gt;User-&gt;find('first', array(
+'conditions' =&gt; array('id' =&gt; $userId),
+'recursive' =&gt; -1,
+'fields' =&gt; array('username', 'password')
+));
+$this-&gt;Cookie-&gt;write('User', array_intersect_key(
+$user[$this-&gt;Auth-&gt;userModel],
+array('username'=&gt;null, 'password'=&gt;null)
+));
+} elseif ($this-&gt;Cookie-&gt;read('User') != null) {
+$this-&gt;Cookie-&gt;delete('User');
+}
+$this-&gt;redirect($this-&gt;Auth-&gt;redirect());
+}
+}
+</pre></div></li><li class="listitem">Next, add the following code to the beginning of the<code class="literal"> logout()</code> method of your<code class="literal"> UsersController</code> class:<div class="informalexample"><pre class="programlisting">if ($this-&gt;Cookie-&gt;read('User') != null) {
+$this-&gt;Cookie-&gt;delete('User');
+}
+</pre></div></li><li class="listitem">Finally, add the following method to your<code class="literal"> AppController</code> class, right below the<code class="literal"> components</code> property declaration:<a id="id15" class="indexterm"/><div class="informalexample"><pre class="programlisting">public function beforeFilter() {
+if ($this-&gt;Auth-&gt;user() == null) {
+$user = $this-&gt;Cookie-&gt;read('User');
+if (!empty($user)) {
+$user = $this-&gt;Auth-&gt;getModel()-&gt;find('first', array(
+'conditions' =&gt; array(
+$this-&gt;Auth-&gt;fields['username'] =&gt; $user[$this-&gt;Auth-&gt;fields['username']],
+$this-&gt;Auth-&gt;fields['password'] =&gt; $user[$this-&gt;Auth-&gt;fields['password']]
+),
+'recursive' =&gt; -1
+));
+if (!empty($user) &amp;&amp; $this-&gt;Auth-&gt;login($user)) {
+$this-&gt;redirect($this-&gt;Auth-&gt;redirect());
+}
+}
+}
+}
+</pre></div></li></ol></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h3 class="title"><a id="ch01lvl2sec17"/>How it works...</h3></div></div></div><p>The first task we needed to accomplish was to disable the automatic redirect in the<code class="literal"> Auth</code> component. By doing so, we are able to catch both successful and failed log in attempts, which allows us to check if they<span class="strong"><strong> remember me</strong></span> checkbox is selected. If the checkbox is indeed checked, we create a cookie named<code class="literal"> User</code> that contains the values for the<code class="literal"> username</code> and<code class="literal"> password</code> fields with a value equal to the user ID that logged in. Remember that the<code class="literal"> password</code> value is automatically encrypted by the<code class="literal"> Auth</code> component, so it is safe for storage. The<code class="literal"> Cookie</code> component adds another layer of security by automatically encrypting and decrypting the given values.</p><p>In<code class="literal"> AppController::beforeFilter()</code>, when there is no logged-in user, we check to see if the cookie is set. If it is, we use the values for the<code class="literal"> username</code> and<code class="literal"> password</code> fields stored in the cookie to log in a user, and then redirect the browser to the<code class="literal"> login</code> action.</p><p>Finally, we delete the cookie when it is appropriate (when a user logs in without the checkbox selected, or when the user manually logs out).<a id="id16" class="indexterm"/>
+</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h3 class="title"><a id="ch01lvl2sec18"/>See also</h3></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Getting the current user's information</em></span></li></ul></div></div></div></div>
+<div class="section" title="Getting the current user's information"><div class="titlepage"><div><div><h1 class="title"><a id="ch01lvl1sec06"/>Getting the current user's information</h1></div></div></div><p>CakePHP's authentication system will provide us with the necessary tools to build a strong, flexible<code class="literal"> Auth</code> based application. We can then use it to fetch the current user information and make it available throughout our application.<a id="id17" class="indexterm"/>
+</p><p>In this recipe, we will see how to save the current logged-in user's information so it is accessible from any point of our CakePHP application, including its layout, while adding a helpful method to the<code class="literal"> User</code> model to make the job easier.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec19"/>Getting ready</h2></div></div></div><p>We should have a working authentication system, so follow the recipe,<span class="emphasis"><em> Setting up a basic authentication system</em></span>.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec20"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Add the following method to your<code class="literal"> AppController</code> class:<div class="informalexample"><pre class="programlisting">public function beforeFilter() {
+$user = $this-&gt;Auth-&gt;user();
+if (!empty($user)) {
+Configure::write('User', $user[$this-&gt;Auth-&gt;getModel()-&gt;alias]);
+}
+}
+</pre></div></li><li class="listitem">Also in your<code class="literal"> AppController</code> class, add the following method inside the class definition:<div class="informalexample"><pre class="programlisting">public function beforeRender() {
+$user = $this-&gt;Auth-&gt;user();
+if (!empty($user)) {
+$user = $user[$this-&gt;Auth-&gt;getModel()-&gt;alias];
+}
+$this-&gt;set(compact('user'));
+}
+</pre></div></li><li class="listitem">Copy the default CakePHP layout file named<code class="literal"> default.ctp</code> from your<code class="literal"> cake/libs/view/layouts</code> folder to your application's<code class="literal"> app/views/layouts</code> folder. Place the following code in the<code class="literal"> app/views/layouts/default.ctp</code> folder. While editing this layout, add the following code right where you want login / logout links to appear:<a id="id18" class="indexterm"/><div class="informalexample"><pre class="programlisting">&lt;?php if (!empty($user)) { ?&gt;
+Welcome back &lt;?php echo $user['username']; ?&gt;!
+&lt;?php
+echo $this-&gt;Html-&gt;link('Log out', array('plugin'=&gt;null, 'admin'=&gt;false, 'controller'=&gt;'users', 'action'=&gt;'logout'));
+} else {
+echo $this-&gt;Html-&gt;link('Log in', array('plugin'=&gt;null, 'admin'=&gt;false, 'controller'=&gt;'users', 'action'=&gt;'login'));
+}
+?&gt;
+</pre></div></li><li class="listitem">Add the following method to the<code class="literal"> User</code> model. If you do not have a model created for the<code class="literal"> users</code> table, proceed to create a file named<code class="literal"> user.php</code> and place it in your<code class="literal"> app/models</code> directory. If you do have one already, make sure you add the<code class="literal"> get</code> method to it:<div class="informalexample"><pre class="programlisting">&lt;?php
+class User extends AppModel {
+public static function get($field = null) {
+$user = Configure::read('User');
+if (empty($user) || (!empty($field) &amp;&amp; !array_key_exists($field, $user))) {
+return false;
+}
+return !empty($field) ? $user[$field] : $user;
+}
+}
+?&gt;
+</pre></div></li></ol></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h3 class="title"><a id="ch01lvl2sec21"/>How it works...</h3></div></div></div><p>By storing the user record in an application-wide configuration variable, we are able to obtain the current user information from anywhere in our application, whether it is controllers, components, models, and so on. This gives us the power to know if there's a logged-in user at any point.</p><p>We also need to make sure that views are able to learn whether there is a logged-in user. Even though a view could, technically speaking, still have access to the configure variable, it is normally more elegant to set a view variable to avoid any interaction with PHP classes from the view (except for the view helpers).<a id="id19" class="indexterm"/>
+</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note05"/>Note</h3><p>When you set variables for the view in<code class="literal"> AppController</code>, it is very important to make sure no controller action will overwrite the variable. Choose a unique name wisely, and make sure you don't set a view variable with the same name in your controllers.</p></div><p>Finally, we add a handy method to the<code class="literal"> User</code> model, so we can obtain the current user from our controllers without having to deal with the<code class="literal"> Configure</code> variable. We can also use the<code class="literal"> get</code> method to collect a particular bit of user information. For example, to fetch the current user's username from a controller, we would do something like the following:</p><div class="informalexample"><pre class="programlisting">$userName = User::get('username');
+</pre></div><p>You should not have to load the<code class="literal"> User</code> model class yourself, as the<code class="literal"> Auth</code> component does it for you.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h3 class="title"><a id="ch01lvl2sec22"/>See also</h3></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Allowing logins with e-mail or username</em></span>.</li></ul></div></div></div></div>
+<div class="section" title="Using prefixes for role-based access control"><div class="titlepage"><div><div><h1 class="title"><a id="ch01lvl1sec07"/>Using prefixes for role-based access control</h1></div></div></div><p>Even though CakePHP provides a very powerful access control layer, sometimes we just need to implement user roles without having to go into the details of specifying which role is allowed access to which action.<a id="id20" class="indexterm"/>
+</p><p>This recipe shows how to limit access to certain actions by role-using routing prefixes, which constitutes a perfect solution for simple role-based authentication. In order to accomplish this recipe, we will assume the need to add three user roles in our application: administrators, managers, and users.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec23"/>Getting ready</h2></div></div></div><p>We should have a working authentication system, so follow the recipe,<span class="emphasis"><em> Setting up a basic authentication system</em></span>. The<code class="literal"> users</code> table should also contain a field to hold the user's role (named<code class="literal"> role</code>.) Add this field with the following SQL statement:</p><div class="informalexample"><pre class="programlisting">ALTER TABLE `users`
+ADD COLUMN `role` VARCHAR(255) DEFAULT NULL AFTER `password`;
+</pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec24"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Edit your<code class="literal"> app/config/core.php</code> file and look for the line that defines the<code class="literal"> Routing.prefixes</code> setting. If it is commented out, uncomment it. Then change it to:<a id="id21" class="indexterm"/><div class="informalexample"><pre class="programlisting">Configure::write('Routing.prefixes', array('admin', 'manager'));
+</pre></div></li><li class="listitem">Add the following code at the end of your<code class="literal"> UsersController</code> class definition:<div class="informalexample"><pre class="programlisting">public function dashboard() {
+$role = $this-&gt;Auth-&gt;user('role');
+if (!empty($role)) {
+$this-&gt;redirect(array($role =&gt; true, 'action' =&gt; 'dashboard'));
+}
+}
+public function admin_dashboard() {
+}
+public function manager_dashboard() {
+}
+</pre></div></li><li class="listitem">Create a view for each of these actions, and put content into it to reflect which view is being rendered. Therefore, you would have to create three files:<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">app/views/users/admin_dashboard.ctp</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">app/views/users/manager_dashboard.ctp</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">app/views/users/dashboard.ctp</code></li></ul></div><p>For example, the contents for <code class="literal">dashboard.ctp</code> could simply be:</p><div class="informalexample"><pre class="programlisting">&lt;h1&gt;Dashboard (User)&lt;/h1&gt;
+</pre></div></li><li class="listitem">Edit your<code class="literal"> app/controllers/app_controller.php</code> file and change the<code class="literal"> components</code> property declaration to include the following setting for the<code class="literal"> Auth</code> component:<div class="informalexample"><pre class="programlisting">public $components = array(
+'Auth' =&gt; array(
+'authorize' =&gt; 'controller',
+'loginRedirect' =&gt; array(
+'admin' =&gt; false,
+'controller' =&gt; 'users',
+'action' =&gt; 'dashboard'
+)
+),
+'Session'
+);
+</pre></div></li><li class="listitem">While still editing your<code class="literal"> AppController</code> class, change the<code class="literal"> isAuthorized</code> method and replace it entirely with the following:<div class="informalexample"><pre class="programlisting">public function isAuthorized() {
+$role = $this-&gt;Auth-&gt;user('role');
+$neededRole = null;
+$prefix = !empty($this-&gt;params['prefix']) ?
+$this-&gt;params['prefix'] :
+null;
+if (
+!empty($prefix) &amp;&amp;
+in_array($prefix, Configure::read('Routing.prefixes'))
+) {
+$neededRole = $prefix;
+}
+return (
+empty($neededRole) ||
+strcasecmp($role, 'admin') == 0 ||
+strcasecmp($role, $neededRole) == 0
+);
+}
+</pre></div></li><li class="listitem">Copy the default CakePHP layout file named<code class="literal"> default.ctp</code> from your<code class="literal"> cake/libs/view/layouts</code> folder to your application's<code class="literal"> app/views/layouts</code> folder. While editing this layout, place the following code in the<code class="literal"> app/views/layouts/default.ctp</code> layout file, right where you want the link to the dashboard to appear.<a id="id22" class="indexterm"/><div class="informalexample"><pre class="programlisting">&lt;?php
+$dashboardUrl = array('controller'=&gt;'users', 'action'=&gt;'dashboard');
+if (!empty($user['role'])) {
+$dashboardUrl[$user['role']] = true;
+}
+echo $this-&gt;Html-&gt;link('My Dashboard', $dashboardUrl);
+?&gt;
+</pre></div></li></ol></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h3 class="title"><a id="ch01lvl2sec25"/>How it works...</h3></div></div></div><p>CakePHP will recognize prefixes defined in the<code class="literal"> Routing.prefixes</code> setting as part of the URL, when they are preceding a normal route. For example, if<code class="literal"> admin</code> is a defined prefix, the route<code class="literal"> /admin/articles/index</code> will translate to the<code class="literal"> admin_index</code> action in<code class="literal"> ArticlesController</code>.<a id="id23" class="indexterm"/>
+</p><p>Since we are utilizing the controller authentication scheme in the<code class="literal"> Auth</code> configuration, we know that every time a user is trying to access a non-public action,<code class="literal"> AppController::isAuthorized()</code> is executed, and inside the method we set<code class="literal"> true</code> if the user has access, or<code class="literal"> false</code> otherwise.</p><p>Knowing that, we can check to see if a prefix is being used when a controller action is about to be executed. If the current route being accessed includes a prefix, we can match that prefix against the user's role to make sure they have access to the requested resource.</p><p>We are able to link to a role-only resource just by prefixing it with the appropriate prefix in the route. For example, to link to the manager's dashboard, the URL would be:</p><div class="informalexample"><pre class="programlisting">array(
+'manager' =&gt; true,
+'controller' =&gt; 'users',
+'action' =&gt; 'dashboard'
+);
+</pre></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h3 class="title"><a id="ch01lvl2sec26"/>See also</h3></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Setting up Access Control Layer based authentication</em></span>.</li></ul></div></div></div></div>
+<div class="section" title="Setting up Access Control Layer-based authentication"><div class="titlepage"><div><div><h1 class="title"><a id="ch01lvl1sec09"/>Setting up Access Control Layer-based authentication</h1></div></div></div><p>The more roles an application has, the more complex its Access Control Layer becomes. Luckily, one of the authentication schemes provided by the<code class="literal"> Auth</code> component allows us to easily define which actions are accessible by certain roles (known as groups), using command-line tools. In this recipe, you will learn how to set up ACL on your application.<a id="id24" class="indexterm"/>
+</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec27"/>Getting ready</h2></div></div></div><p>We should have a table to hold the roles, named<code class="literal"> groups</code>.</p><p>If you do not have one already, create it using the following statement:</p><div class="informalexample"><pre class="programlisting">CREATE TABLE `groups`(
+`id` INT NOT NULL AUTO_INCREMENT,
+`name` VARCHAR(255) NOT NULL,
+PRIMARY KEY(`id`)
+);
+</pre></div><p>If you do not have any records in your<code class="literal"> groups</code> table, create some by running the following SQL statement:<a id="id25" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">INSERT INTO `groups`(`id`, `name`) VALUES
+(1, 'Administrator'),
+(2, 'Manager'),
+(3, 'User');
+</pre></div><p>We must also have a<code class="literal"> users</code> table to hold the users, which should contain a field (named<code class="literal"> group_id</code>) to contain a reference to the group a user belongs to. If you do not have such a table, create it using the following statement:</p><div class="informalexample"><pre class="programlisting">CREATE TABLE `users`(
+`id` INT NOT NULL AUTO_INCREMENT,
+`group_id` INT NOT NULL,
+`username` VARCHAR(255) NOT NULL,
+`password` CHAR(40) NOT NULL,
+PRIMARY KEY(`id`),
+KEY `group_id`(`group_id`),
+CONSTRAINT `users__groups` FOREIGN KEY(`group_id`) REFERENCES `groups`(`id`)
+);
+</pre></div><p>We also need to have the ARO / ACO tables initialized. Using your operating system console, switch to your application directory, and run:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">If you are on a GNU Linux / Mac / Unix system:<div class="informalexample"><pre class="programlisting">../cake/console/cake schema create DbAcl
+</pre></div></li><li class="listitem" style="list-style-type: disc">If you are on Microsoft Windows:<div class="informalexample"><pre class="programlisting">..\cake\console\cake.bat schema create DbAcl
+</pre></div></li></ul></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h3 class="title"><a id="ch01lvl2sec28"/>How to do it...</h3></div></div></div><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note06"/>Note</h3><p>The following initial steps are very similar to what is shown in<span class="emphasis"><em> Setting up a basic authentication system</em></span>. However, there are some differences between the two that are crucial, so make sure you go through these instructions carefully.</p></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a controller for the<code class="literal"> User</code> model (in a file named<code class="literal"> users_controller.php</code> placed inside your<code class="literal"> app/controllers</code> folder), which should contain the following:<div class="informalexample"><pre class="programlisting">&lt;?php
+class UsersController extends AppController {
+public function login() {
+}
+public function logout() {
+$this-&gt;redirect($this-&gt;Auth-&gt;logout());
+}
+}
+?&gt;
+</pre></div></li><li class="listitem">Create a file named<code class="literal"> login.ctp</code> in your<code class="literal"> app/views/users</code> folder (create the folder if you do not have one already), with the following contents:<a id="id26" class="indexterm"/><div class="informalexample"><pre class="programlisting">&lt;?php
+echo $this-&gt;Form-&gt;create(array('action'=&gt;'login'));
+echo $this-&gt;Form-&gt;inputs(array(
+'legend' =&gt; 'Login',
+'username',
+'password'
+));
+echo $this-&gt;Form-&gt;end('Login');
+?&gt;
+</pre></div></li><li class="listitem">Create a file named<code class="literal"> app_controller.php</code> in your<code class="literal"> app/</code> folder. Make sure it contains the following:<div class="informalexample"><pre class="programlisting">&lt;?php
+class AppController extends Controller {
+public $components = array(
+'Acl',
+'Auth' =&gt; array(
+'authorize' =&gt; 'actions',
+'loginRedirect' =&gt; array(
+'admin' =&gt; false,
+'controller' =&gt; 'users',
+'action' =&gt; 'dashboard'
+)
+),
+'Session'
+);
+}
+?&gt;
+</pre></div></li><li class="listitem">Modify the<code class="literal"> UsersController</code> class and add the following code before its<code class="literal"> login()</code> method:<div class="informalexample"><pre class="programlisting">public function beforeFilter() {
+parent::beforeFilter();
+$this-&gt;Auth-&gt;allow('add');
+}
+public function add() {
+if (!empty($this-&gt;data)) {
+$this-&gt;User-&gt;create();
+if ($this-&gt;User-&gt;save($this-&gt;data)) {
+$this-&gt;Session-&gt;setFlash('User created!');
+$this-&gt;redirect(array('action'=&gt;'login'));
+} else {
+$this-&gt;Session-&gt;setFlash('Please correct the errors');
+}
+}
+$this-&gt;set('groups', $this-&gt;User-&gt;Group-&gt;find('list'));
+}
+</pre></div></li><li class="listitem">Add the view for the action in the folder<code class="literal"> app/views/users</code> by creating a file named<code class="literal"> add.ctp</code> with the following contents:<a id="id27" class="indexterm"/><div class="informalexample"><pre class="programlisting">&lt;?php
+echo $this-&gt;Form-&gt;create();
+echo $this-&gt;Form-&gt;inputs(array(
+'legend' =&gt; 'Signup',
+'username',
+'password',
+'group_id'
+));
+echo $this-&gt;Form-&gt;end('Submit');
+?&gt;
+</pre></div></li><li class="listitem">Create a file named<code class="literal"> group.php</code> and place it in your<code class="literal"> app/models</code> folder with the following contents:<div class="informalexample"><pre class="programlisting">&lt;?php
+class Group extends AppModel {
+public $actsAs = array('Acl' =&gt; 'requester');
+public function parentNode() {
+if (empty($this-&gt;id) &amp;&amp; empty($this-&gt;data)) {
+return null;
+}
+$data = $this-&gt;data;
+if (empty($data)) {
+$data = $this-&gt;find('first', array(
+'conditions' =&gt; array('id' =&gt; $this-&gt;id),
+'fields' =&gt; array('parent_id'),
+'recursive' =&gt; -1
+));
+}
+if (!empty($data[$this-&gt;alias]['parent_id'])) {
+return $data[$this-&gt;alias]['parent_id'];
+}
+return null;
+}
+}
+?&gt;
+</pre></div></li><li class="listitem">Create a file named<code class="literal"> user.php</code> and place it in your<code class="literal"> app/models</code> folder with the following contents:<a id="id28" class="indexterm"/><div class="informalexample"><pre class="programlisting">&lt;?php
+class User extends AppModel {
+public $belongsTo = array('Group');
+public $actsAs = array('Acl' =&gt; 'requester');
+public function parentNode() {
+}
+public function bindNode($object) {
+if (!empty($object[$this-&gt;alias]['group_id'])) {
+return array(
+'model' =&gt; 'Group',
+'foreign_key' =&gt; $object[$this-&gt;alias]['group_id']
+);
+}
+}
+}
+?&gt;
+</pre></div><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title">Note</h3><p>Take note of the IDs for all the records in your<code class="literal"> groups</code> table, as they are needed to link each group to an<span class="emphasis"><em> ARO</em></span> record.</p></div></li><li class="listitem">Run the following commands in your console (change the references to 1, 2, 3 to meet your own group IDs, if they are different).<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">If you are on a GNU Linux / Mac / Unix system, the commands are:<div class="informalexample"><pre class="programlisting">../cake/console/cake acl create aro root Groups
+../cake/console/cake acl create aro Groups Group.1
+../cake/console/cake acl create aro Groups Group.2
+../cake/console/cake acl create aro Groups Group.3
+</pre></div></li><li class="listitem" style="list-style-type: disc">If you are on Microsoft Windows, the commands are:<div class="informalexample"><pre class="programlisting">..\cake\console\cake.bat acl create aro root Groups
+..\cake\console\cake.bat acl create aro Groups Group.1
+..\cake\console\cake.bat acl create aro Groups Group.2
+..\cake\console\cake.bat acl create aro Groups Group.3
+</pre></div></li></ul></div></li><li class="listitem">Add the following code at the end of your<code class="literal"> UsersController</code> class definition:<a id="id29" class="indexterm"/><div class="informalexample"><pre class="programlisting">public function dashboard() {
+$groupName = $this-&gt;User-&gt;Group-&gt;field('name',
+array('Group.id'=&gt;$this-&gt;Auth-&gt;user('group_id'))
+);
+$this-&gt;redirect(array('action'=&gt;strtolower($groupName)));
+}
+public function user() {
+}
+public function manager() {
+}
+public function administrator() {
+}
+</pre></div></li><li class="listitem">Create a view for each of these actions, and put some distinctive content on each one of them to reflect which view is being rendered. Therefore, you have to create three files:<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">app/views/users/user.ctp</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">app/views/users/manager.ctp</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">app/views/users/administrator.ctp</code>.</li></ul></div><p>For example the contents for <code class="literal">user.ctp</code> could simply be:</p><div class="informalexample"><pre class="programlisting">&lt;h1&gt;Dashboard (User)&lt;/h1&gt;
+</pre></div></li><li class="listitem">We have to tell ACL about these restricted actions. Run the following commands in your console.<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">If you are on a GNU Linux / Mac / Unix system, the commands are:<div class="informalexample"><pre class="programlisting">../cake/console/cake acl create aco root controllers
+../cake/console/cake acl create aco controllers Users
+../cake/console/cake acl create aco controllers/Users logout
+../cake/console/cake acl create aco controllers/Users user
+../cake/console/cake acl create aco controllers/Users manager
+../cake/console/cake acl create aco controllers/Users administrator
+</pre></div></li><li class="listitem" style="list-style-type: disc">If you are on Microsoft Windows, the commands are:<div class="informalexample"><pre class="programlisting">..\cake\console\cake.bat acl create aco root controllers
+..\cake\console\cake.bat acl create aco controllers Users
+..\cake\console\cake.bat acl create aco controllers/Users logout
+..\cake\console\cake.bat acl create aco controllers/Users user
+..\cake\console\cake.bat acl create aco controllers/Users manager
+..\cake\console\cake.bat acl create aco controllers/Users administrator
+</pre></div></li></ul></div></li><li class="listitem">Finally, we have to grant permissions by linking each ARO (groups) to each ACO (controller's actions). Run the following commands in your console.<a id="id30" class="indexterm"/><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">If you are on a GNU Linux / Mac / Unix system, the commands are:<div class="informalexample"><pre class="programlisting">../cake/console/cake acl grant Group.1 controllers/Users all
+../cake/console/cake acl grant Group.2 controllers/Users/logout all
+../cake/console/cake acl grant Group.2 controllers/Users/manager all
+../cake/console/cake acl grant Group.3 controllers/Users/logout all
+../cake/console/cake acl grant Group.3 controllers/Users/user all
+</pre></div></li><li class="listitem" style="list-style-type: disc">If you are on Microsoft Windows, the commands are:<div class="informalexample"><pre class="programlisting">..\cake\console\cake.bat acl grant Group.1 controllers/Users all
+..\cake\console\cake.bat acl grant Group.2 controllers/Users/logout all
+..\cake\console\cake.bat acl grant Group.2 controllers/Users/manager all
+..\cake\console\cake.bat acl grant Group.3 controllers/Users/logout all
+..\cake\console\cake.bat acl grant Group.3 controllers/Users/user all
+</pre></div></li></ul></div><p>We now have a fully working ACL based authentication system. We can add new users by browsing to <code class="literal">http://localhost/users/add</code>, logging in with http://localhost/users/login, and finally logging out with http://localhost/users/logout.
+</p></li></ol></div><p>Users should only have access to <code class="literal">http://localhost/users/user</code>, managers to <code class="literal">http://localhost/users/manager</code>, and administrators should be able to access all those actions, including <code class="literal">http://localhost/users/administrator</code>.<a id="id31" class="indexterm"/>
+</p></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h3 class="title"><a id="ch01lvl2sec29"/>How it works...</h3></div></div></div><p>When setting the<code class="literal"> authorize</code> configuration option of the<code class="literal"> Auth</code> component to<code class="literal"> actions</code>, and after adding<code class="literal"> Acl</code> to the list of controller-wide components, CakePHP will check to see if the current action being accessed is a public action. If this is not the case, it will check for a logged-in user with a matching ACO record. If there is no such record, it will deny access.</p><p>Once there is a matching ACO for the controller action, it will use the<code class="literal"> bindNode</code> method in the<code class="literal"> User</code> model to see how a user record is matched to an ARO. The method implementation we added specifies that a user record should be looked up in the<code class="literal"> aros</code> table by means of the group that the user belongs to.</p><p>After having both the matching ACO and ARO, it lastly checks to see whether there is a valid permission set up (in the<code class="literal"> aros_acos</code> table) for the given ARO and ACO records. If it finds one, it allows access, otherwise it will reject authorization.</p><p>It is of vital importance that each record in the groups table has a matching ARO record. We set that association by issuing<code class="literal"> aro create</code> commands to link each group ID to an ARO record of the form<code class="literal"> Group.ID</code>, where ID is the actual ID.</p><p>Similarly, all controller actions that are not within the defined public actions should have a matching ACO record. Just as with AROs, we create the association between controller's actions and ACOs issuing<code class="literal"> aco create</code> commands, setting the ACO name to be the action name, and making them child of an ACO which name is the controller name.</p><p>Finally, to grant the permission of an ARO (group) to an ACO (controller's actions), we issue<code class="literal"> acl grant</code> commands, specifying as the first argument the ARO (Group.ID) and the second argument either a whole controller (such as<code class="literal"> controllers/Users</code>), or a specific controller action (such as<code class="literal"> controllers/Users/logout</code>). The last argument to the grant command (all) simply gives a further control of the type of access, and makes more sense when using ACL to control access to custom objects, or when using the<code class="literal"> crud</code> authentication scheme.</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h3 class="title"><a id="ch01lvl2sec30"/>There's more...</h3></div></div></div><p>While developing an application, the task of matching each controller action to an ACO may be somewhat troublesome. Fortunately, several people in the CakePHP community felt the need for an easier solution. One of the solutions that I'd recommend is adopting<code class="literal"> acl_extras</code>, a plugin developed by Mark Story, the lead developer of the CakePHP 1.3 release. By using this plugin, you will be able to continuously synchronize your controllers with the<code class="literal"> acos</code> table. Find more about it, including its installation instructions, at <a class="ulink" href="http://github.com/markstory/acl_extras">http://github.com/markstory/acl_extras</a>.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h3 class="title"><a id="ch01lvl2sec31"/>See also</h3></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Using prefixes for role-based access control</em></span>.</li></ul></div></div></div></div>
+<div class="section" title="Integrating with OpenID"><div class="titlepage"><div><div><h1 class="title"><a id="ch01lvl1sec10"/>Integrating with OpenID</h1></div></div></div><p>
+<span class="strong"><strong>OpenID</strong></span> (<a class="ulink" href="http://openid.net">http://openid.net</a>) is a great way to allow users to log in without having to have an actual username in your application. It is a solution that is widely adopted, and has proven itself on many popular sites (such as Google, Yahoo, MySpace, and AOL).<a id="id32" class="indexterm"/>
+</p><p>This recipe shows how to add support for OpenID logins in a transparent way, while still working with a valid<code class="literal"> Auth</code> implementation.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec32"/>Getting ready</h2></div></div></div><p>We should have a working authentication system, so follow the recipe,<span class="emphasis"><em> Setting up a basic authentication system</em></span>.</p><p>We will also need the PHP OpenID Library. Download the latest release from <a class="ulink" href="http://https://github.com/openid/php-openid/downloads">https://github.com/openid/php-openid/downloads</a> and extract the folder named<code class="literal"> Auth</code> from the downloaded file into your<code class="literal"> app/vendors</code> folder. You should now have a directory named<code class="literal"> Auth</code> inside your<code class="literal"> vendors</code> folder.</p><p>Finally, we need to download the OpenID plugin for CakePHP. Go to <a class="ulink" href="http://github.com/mariano/openid/downloads">http://github.com/mariano/openid/downloads</a> and download the latest release. Uncompress the downloaded file into your<code class="literal"> app/plugins</code> folder. You should now have a directory named<code class="literal"> openid</code> inside<code class="literal"> app/plugins</code>.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec33"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Edit your<code class="literal"> AppController</code> class and change the reference for the<code class="literal"> Auth</code> component from<code class="literal"> Auth</code> to<code class="literal"> Openid.OpenAuth</code>. The<code class="literal"> components</code> property should now look like this:<div class="informalexample"><pre class="programlisting">public $components = array(
+'Openid.OpenAuth' =&gt; array(
+'authorize' =&gt; 'controller'
+),
+'Session'
+);
+</pre></div></li><li class="listitem">Next, edit the login view (in<code class="literal"> app/views/users/login.ctp</code>) and add a field to allow the user to specify their OpenID URL. The view should now look like this:<a id="id33" class="indexterm"/><div class="informalexample"><pre class="programlisting">&lt;?php
+echo $this-&gt;Form-&gt;create(array('action'=&gt;'login'));
+echo $this-&gt;Form-&gt;inputs(array(
+'legend' =&gt; 'Login',
+<span class="strong"><strong>'openid' =&gt; array('label' =&gt; 'OpenID URL'),</strong></span>
+'username',
+'password'
+));
+echo $this-&gt;Form-&gt;end('Login');
+?&gt;
+</pre></div><p>You should now be able to log in using either a valid username and password combination, or an OpenID URL, as shown in the following screenshot:
+</p><div class="mediaobject"><img src="graphics/1926_01_04.jpg" alt="How to do it..."/></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec34"/>How it works...</h2></div></div></div><p>As the<code class="literal"> OpenAuth</code> component (a part of the<code class="literal"> openid</code> plugin) extends the CakePHP built-in<code class="literal"> Auth</code> component, it works in a similar fashion. When the component cannot seem to find a way to log in the user with a username and password, it will check whether the OpenID URL is specified.<a id="id34" class="indexterm"/>
+</p><p>If this is the case, it will attempt to authenticate the URL against the OpenID server. When it does, the user is taken to the OpenID server so the application can be granted permission to access the OpenID credentials. When permission is given, the user is taken back to the application, at a point on which the<code class="literal"> OpenAuth</code> component is able to mark the user as logged in, and resume the normal application work flow.</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec35"/>There's more...</h2></div></div></div><p>The<code class="literal"> openid</code> plugin has further options to customize its behavior; including the ability to specify which user information should be given back. Check the documentation in <a class="ulink" href="http://github.com/mariano/openid">http://github.com/mariano/openid</a>.</p><p>Being a standard<code class="literal"> Auth</code> implementation, this integration can be combined with any of the other recipes we have seen in this chapter, which allows for a flexible open authentication solution. If you do, make sure to note that the user given back by the<code class="literal"> OpenAuth</code> component does not contain a valid user record, so you should create one upon log in.</p><p>Even when you are using the<code class="literal"> OpenAuth</code> component which clearly has a different name than<code class="literal"> Auth</code>, you can still use<code class="literal"> $this-&gt;Auth</code> to set properties or call, for example, the<code class="literal"> allow</code> method. This is possible because the component creates an alias.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch01lvl2sec36"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Getting the current user's information</em></span>.</li></ul></div></div></div></body></html>

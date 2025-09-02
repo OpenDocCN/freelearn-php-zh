@@ -1,0 +1,688 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;8.&#xA0;Calendaring, Right Place, and Right Time"><div class="titlepage"><div><div><h1 class="title"><a id="ch08"/>Chapter 8. Calendaring, Right Place, and Right Time</h1></div></div></div><p>In this chapter, we will cover:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Building a CodeIgniter Calendar helper with database results</li><li class="listitem" style="list-style-type: disc">Building an appointment manager with Calendar Library</li><li class="listitem" style="list-style-type: disc">Creating a helper to work with a person's date of birth</li><li class="listitem" style="list-style-type: disc">Working with fuzzy dates in CodeIgniter</li></ul></div><div class="section" title="Introduction"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec75"/>Introduction</h1></div></div></div><p>CodeIgniter comes bundled with many functions and helpers to help support your application when working with time and dates, calendars, and so on. We're going to use a few of them in this chapter, but we will also create a few helpers of our own, which can be useful in everyday tasks, such as calculating a person's age (useful for an age verification script) and working with fuzzy dates (that is, writing a description of the date or time rather than just writing out an accurate date).</p></div></div>
+<div class="section" title="Building a CodeIgniter Calendar helper with database results"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec76"/>Building a CodeIgniter Calendar helper with database results</h1></div></div></div><p>CodeIgniter comes with a <a id="id462" class="indexterm"/>really useful calendar <a id="id463" class="indexterm"/>helper that allows you to display months in a grid. It is possible to develop functionality to pull events from a database (such as a table that stores diary appointments) and indicate to the user if there is an appointment on a given day.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec161"/>Getting ready</h2></div></div></div><p>As we're storing appointments in a database, we'll need a database table. Copy the following code into your database:</p><div class="informalexample"><pre class="programlisting">CREATE TABLE `appointments` (
+  `app_id` int(11) NOT NULL AUTO_INCREMENT,
+  `app_date` varchar(11) NOT NULL,
+  `app_url` varchar(255) NOT NULL,
+  `app_name` varchar(255) NOT NULL,
+  PRIMARY KEY (`app_id`)
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=5 ;
+
+INSERT INTO `appointments` (`app_id`, `app_date`, `app_url`, `app_name`) VALUES
+(1, '1375465528', 'http://localhost/1', 'My Appointment'),
+(2, '1375638327', 'http://localhost/2', 'My Second Appointment'),
+(3, '1375897527', 'http://localhost/3', 'My Third Appointment'),
+(4, '1381167927', 'http://localhost/4', 'My Forth Name');</pre></div></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec162"/>How to do it…</h2></div></div></div><p>We're going to create <a id="id464" class="indexterm"/>two files:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/controllers/app_cal.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/models/app_cal_model.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/app_cal/view.php</code></li></ul></div><p>In order to create those <a id="id465" class="indexterm"/>two files we execute the following steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create the file <code class="literal">/path/to/codeigniter/application/controllers/app_cal.php</code> and add the following code to it:<div class="informalexample"><pre class="programlisting">&lt;?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+class App_cal extends CI_Controller {
+    function __construct() {
+        parent::__construct();
+        $this-&gt;load-&gt;helper('url');
+        $this-&gt;load-&gt;helper('date');
+    }
+
+  public function index() {
+        redirect('app_cal/show');
+    }
+
+    public function show() {
+        $prefs = array (
+           'start_day'    =&gt; 'monday',
+           'month_type'   =&gt; 'long',
+           'day_type'     =&gt; 'short',
+           'show_next_prev'  =&gt; TRUE,
+           'next_prev_url'   =&gt; 'http://www.your_domain.com/app_cal/show/'
+         );
+
+        $this-&gt;load-&gt;library('calendar', $prefs);
+
+        if ($this-&gt;uri-&gt;segment(4)) {
+            $year= $this-&gt;uri-&gt;segment(3);
+            $month = $this-&gt;uri-&gt;segment(4);
+        } else {
+            $year = date("Y", time());
+            $month = date("m", time());
+        }
+
+        $this-&gt;load-&gt;model('App_cal_model');
+        $appointments = $this-&gt;App_cal_model-&gt;get_appointments($year, $month);
+        $data = array();
+
+        foreach ($appointments-&gt;result() as $row) {
+            $data[(int)date("d",$row-&gt;app_date)] = $row-&gt;app_url;
+        }
+
+        $data['cal_data'] = $this-&gt;calendar-&gt;generate($year, $month, $data);
+
+        $this-&gt;load-&gt;view('app_cal/view', $data);
+    }        
+}</pre></div></li><li class="listitem">Create <a id="id466" class="indexterm"/>the <a id="id467" class="indexterm"/>file <code class="literal">/path/to/codeigniter/application/models/app_cal_model.php</code> and add the following code to it:<div class="informalexample"><pre class="programlisting">&lt;?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+class App_cal_model extends CI_Model {
+    function __construct() {
+        parent::__construct();
+    }
+
+    function get_appointments($year, $month) {
+        $month_as_written = array(
+            '01' =&gt; 'January',
+            '02' =&gt; 'February',
+            '03' =&gt; 'March',
+            '04' =&gt; 'April',
+            '05' =&gt; 'May',
+            '06' =&gt; 'June',
+            '07' =&gt; 'July',
+            '08' =&gt; 'August',
+            '09' =&gt; 'September',
+            '10' =&gt; 'October',
+            '11' =&gt; 'November',
+            '12' =&gt; 'December'
+        );
+
+        $start_date = '01' . ' ' . $month_as_written[$month] . ' ' . $year;
+        $start_of_month = strtotime($start_date);
+
+        $end_date = days_in_month($month, $year) . ' ' . $month_as_written[$month] . ' ' . $year;
+        $end_of_month = strtotime($end_date);
+
+        $this-&gt;db-&gt;where('app_date &gt; ', $start_of_month);
+        $this-&gt;db-&gt;where('app_date &lt; ', $end_of_month);
+        $query = $this-&gt;db-&gt;get('appointments');
+        
+        return $query;
+    }
+}</pre></div></li><li class="listitem">Create <a id="id468" class="indexterm"/>the <a id="id469" class="indexterm"/>file <code class="literal">/path/to/codeigniter/application/views/app_cal/view.php</code> and add the following code to it:<div class="informalexample"><pre class="programlisting">&lt;?php echo $cal_data ; ?&gt;</pre></div></li></ol></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec163"/>How it works…</h2></div></div></div><p>We start off by loading the controller <a id="id470" class="indexterm"/>
+<code class="literal">app_cal</code> (that stands for Appointment Calendar, in case you were wondering) in our web browser. Note that we load the helpers <code class="literal">'url'</code> and <code class="literal">'date'</code> in the constructor:</p><div class="informalexample"><pre class="programlisting">        $this-&gt;load-&gt;helper('url');
+        $this-&gt;load-&gt;helper('date');</pre></div><p>The first function loaded is <code class="literal">index()</code>, which redirects us to the <code class="literal">show()</code> function, where we immediately begin to define some <a id="id471" class="indexterm"/>preferences for the calendar functionality:</p><div class="informalexample"><pre class="programlisting">        $prefs = array (
+           'start_day'    =&gt; 'monday',
+           'month_type'   =&gt; 'long',
+           'day_type'     =&gt; 'short',
+           'show_next_prev'  =&gt; TRUE,
+           'next_prev_url'   =&gt; 'http://www.your_domain.com/app_cal/show/'
+         );</pre></div><p>Each item is fairly <a id="id472" class="indexterm"/>self-explanatory but I'll go into them anyway:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Preference </p>
+</th><th style="text-align: left" valign="bottom">
+<p>Description</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>start_day</p>
+</td><td style="text-align: left" valign="top">
+<p>Specifies which <a id="id473" class="indexterm"/>day of the week is leftmost in the calendar grid, so if you entered 'sunday', the day row (the row which describes the days) in the calendar grid will start at Sunday. If for some peculiar reason you wanted your calendar to start on a Wednesday, you would enter 'wednesday' and the calendar week would start with Wednesday. But don't really do that; it would look odd!</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>month_type</p>
+</td><td style="text-align: left" valign="top">
+<p>Specifies how the <a id="id474" class="indexterm"/>month is written. 'long' is the full month name, such as August, and 'short' is a shortened version, such as Aug.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>day_type</p>
+</td><td style="text-align: left" valign="top">
+<p>Specifies how the <a id="id475" class="indexterm"/>days of the week are written in the days row of the calendar grid. 'long' is Monday, Tuesday, Wednesday, and so on, and 'short' is Mon, Tue, Wed, and so on. </p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>show_next_prev</p>
+</td><td style="text-align: left" valign="top">
+<p>Could be either TRUE or <a id="id476" class="indexterm"/>FALSE. This lets CodeIgniter know if it should display the next and previous chevrons ( &lt;&lt; and &gt;&gt;); clicking these will advance the calendar forward or backward one month at a time. If this is set to TRUE (which it is in this recipe) you'll need to specify next_prev_url.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>next_prev_url</p>
+</td><td style="text-align: left" valign="top">
+<p>Specifies the URL <a id="id477" class="indexterm"/>CodeIgniter should use for the &lt;&lt; or &gt;&gt; links.</p>
+</td></tr></tbody></table></div><p>Next, we load the calendar library and pass the <code class="literal">$prefs</code> array to it as a second parameter. Then, we test for the existence of a fourth <code class="literal">uri</code> segment:</p><div class="informalexample"><pre class="programlisting">if ($this-&gt;uri-&gt;segment(4)) {
+$year= $this-&gt;uri-&gt;segment(3);
+$month = $this-&gt;uri-&gt;segment(4);
+} else {
+<span class="strong"><strong>$year = date("Y", time());</strong></span>
+<span class="strong"><strong>$month = date("m", time());</strong></span>
+}</pre></div><p>The third and fourth <code class="literal">uri</code> segments are years (YYYY) and months (MM) respectively, and if they don't exist, it is probably the first time the calendar is being loaded (or the calendar isn't being accessed via <code class="literal">'next_prev_url'</code>). Either way, because we don't have a third or fourth <code class="literal">uri</code> segment to pass to our model, we'll have to make them up. But what should we use? How about the current month and current year (see the preceding highlighted code)?</p><p>Now, we load the model <code class="literal">App_model</code> and pass to it our <code class="literal">$year</code> and <code class="literal">$month</code> variables:</p><div class="informalexample"><pre class="programlisting">$this-&gt;load-&gt;model('App_cal_model');
+$appointments = $this-&gt;App_cal_model-&gt;get_appointments($year, $month);</pre></div><p>Let's take a look at the <a id="id478" class="indexterm"/>model now and see what's happening. We store our appointments in the database using timestamps, <a id="id479" class="indexterm"/>and because the years and months are being passed to the <code class="literal">app_cal</code> controller as the strings 'YYYY' and 'MM' we'll need to convert the 'YYYY', 'MM' strings to timestamps, so we can query the database and work out whether we have an appointment for a particular day in the selected month. This means we'll need to use the PHP function <code class="literal">strtotime</code>.</p><p>Those of you who are familiar with the function (or even those who just read the function name) will understand that <code class="literal">strtotime</code> converts a string of written English to a Unix timestamp, so writing "last Wednesday", for example, will make <code class="literal">strtotime</code> return whatever the timestamp was for last Wednesday. It's a great way to get a timestamp, but it does mean that you'll need to generate some sort of string description for the date you wish to calculate.</p><p>We want to grab all the appointments for a particular month, which means generating a database query with a WHERE clause looking for "appointments greater than the timestamp representing the first day of a month and less than a timestamp representing the last day of a month". So, to get ready for that, let's take a look at the following <code class="literal">$month_as_written</code> array in the code:</p><div class="informalexample"><pre class="programlisting">$month_as_written = array(
+'01' =&gt; 'January',
+'02' =&gt; 'February',
+'03' =&gt; 'March',
+'04' =&gt; 'April',
+'05' =&gt; 'May',
+'06' =&gt; 'June',
+'07' =&gt; 'July',
+'08' =&gt; 'August',
+'09' =&gt; 'September',
+'10' =&gt; 'October',
+'11' =&gt; 'November',
+'12' =&gt; 'December'
+);</pre></div><p>You'll see that the key of each item in the array matches the format of <code class="literal">$month (MM)</code>. That's important, as we'll use the value in <code class="literal">$month</code> to write out in English the required month name. </p><p>We'll prepend it with <code class="literal">'01 '</code> to indicate the first of the month and append it with <code class="literal">$year</code>, like this:</p><div class="informalexample"><pre class="programlisting">$start_date = '01' . ' ' . $month_as_written[$month] . ' ' . $year;
+$start_of_month = strtotime($start_date);</pre></div><p>The written string is stored in the variable <a id="id480" class="indexterm"/>
+<code class="literal">$start_date</code>, which is then passed to <a id="id481" class="indexterm"/>
+<code class="literal">strtotime()</code>, which in turn returns <a id="id482" class="indexterm"/>the Unix timestamp for the start of the month. Next, we calculate the end date:</p><div class="informalexample"><pre class="programlisting">$end_date = days_in_month($month, $year) . ' ' . $month_as_written[$month] . ' ' . $year;
+$end_of_month = strtotime($end_date);</pre></div><p>Next, we use the CodeIgniter function <code class="literal">days_in_month()</code>; passing it <code class="literal">$month</code> and <code class="literal">$year</code> it will return the number of <a id="id483" class="indexterm"/>days in the month as an integer. We then concatenate this value with a space <code class="literal">' '</code> and the written month from <a id="id484" class="indexterm"/>the <code class="literal">$month_as_written</code> array before finishing with <code class="literal">$year</code>. The string is then passed to <code class="literal">strtotime($end_date)</code>, which gives us the Unix timestamp for the end of the month; this value is stored in the variable <code class="literal">$end_of_month</code>.</p><p>Well use the two variables <a id="id485" class="indexterm"/>
+<code class="literal">$start_of_month</code> and <code class="literal">$end_of_month</code> in <a id="id486" class="indexterm"/>our database query, asking it to return appointments after the start but before the end of the calculated month:</p><div class="informalexample"><pre class="programlisting">$this-&gt;db-&gt;where('app_date &gt; ', $start_of_month);
+$this-&gt;db-&gt;where('app_date &lt; ', $end_of_month);
+$query = $this-&gt;db-&gt;get('appointments');
+        
+return $query;</pre></div><p>Next up, we need to build an array to store the appointments and URLs. First, let's declare the array:</p><div class="informalexample"><pre class="programlisting">$data = array();</pre></div><p>Now, we'll loop through the <code class="literal">App_model</code> result (contained in the variable <code class="literal">$appointments</code>) building the array as we go:</p><div class="informalexample"><pre class="programlisting">foreach ($appointments-&gt;result() as $row) {
+$data[(int)date("d",$row-&gt;app_date)] = $row-&gt;app_url;
+}</pre></div><p>Once finished, the array should take this structure:</p><div class="informalexample"><pre class="programlisting">array(3) {
+  [2]=&gt;
+  string(18) "http://localhost/1"
+  [4]=&gt;
+  string(18) "http://localhost/2"
+  [7]=&gt;
+  string(18) "http://localhost/3"
+}</pre></div><p>The <code class="literal">$data</code> array is <a id="id487" class="indexterm"/>passed <a id="id488" class="indexterm"/>along with <code class="literal">$year</code> and <code class="literal">$month</code> to the calendar library function <code class="literal">generate()</code>:</p><div class="informalexample"><pre class="programlisting">$data['cal_data'] = $this-&gt;calendar-&gt;generate($year, $month, $data);
+
+$this-&gt;load-&gt;view('app_cal/view', $data);</pre></div><p>The product of this is stored in <code class="literal">$data['cal_data']</code> and then passed to the view <code class="literal">app_cal/view</code>, from where it is <a id="id489" class="indexterm"/>rendered to the screen.</p></div></div>
+<div class="section" title="Building an appointment manager with Calendar Library"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec77"/>Building an appointment manager with Calendar Library</h1></div></div></div><p>The preceding recipe <a id="id490" class="indexterm"/>used the CodeIgniter Calendar <a id="id491" class="indexterm"/>library to help build an interactive calendar. However, you could only view items in the calendar that were already in the database. The next logical step is building a small application that allows you to create items for the calendar with a form; a simple appointment manager would do the trick. We're basing this recipe on the previous one; however, you don't need to go back and work through that recipe. Everything you need is contained in this recipe.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec164"/>Getting ready</h2></div></div></div><p>We'll need to make a database table to store our appointments. If you have used the previous recipe, you should have the database table already; if so, run the following code in your database:</p><div class="informalexample"><pre class="programlisting">ALTER TABLE  `appointments` ADD  `app_description` VARCHAR( 255 ) NOT NULL AFTER  `app_name`</pre></div><p>Alternatively, if you haven't already got the table, run this code in your database:</p><div class="informalexample"><pre class="programlisting">CREATE TABLE `appointments` (
+  `app_id` int(11) NOT NULL AUTO_INCREMENT,
+  `app_date` varchar(11) NOT NULL,
+  `app_url` varchar(255) NOT NULL,
+  `app_name` varchar(255) NOT NULL,
+  `app_description` varchar(255) NOT NULL,
+  PRIMARY KEY (`app_id`)
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;</pre></div><p>Now that the database is sorted, let's look at the code:</p></div><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec165"/>How to do it…</h2></div></div></div><p>We're going to <a id="id492" class="indexterm"/>create <a id="id493" class="indexterm"/>the following six files:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/controllers/app_cal.php</code>: This contains all the code necessary to run the show, including the HTML 6 template for the calendar</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/models/app_cal_model.php</code>: This contains all necessary code for interacting with the database</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/app_cal/view.php</code>: This will display the calendar</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/app_cal/appointment.php</code>: This will display a form where you can add appointments</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/app_cal/new.php</code>: This displays a form allowing the user to create a new appointment</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/app_cal/delete.php</code>: This displays a delete confirmation message</li></ul></div><p>We need to execute the following steps to create those files:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create the file <code class="literal">/path/to/codeigniter/application/controllers/app_cal.php</code> and add to it the following code (this is quite a big controller, so I'm going to break down the bigger functions to explain what they do):<div class="informalexample"><pre class="programlisting">&lt;?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+class App_cal extends CI_Controller {
+    function __construct() {
+        parent::__construct();
+        $this-&gt;load-&gt;helper('url');
+        $this-&gt;load-&gt;helper('date');
+        $this-&gt;load-&gt;helper('form');
+        $this-&gt;load-&gt;model('App_cal_model');
+    }
+
+  public function index() {
+        redirect('app_cal/show');
+    }</pre></div><p>The public <a id="id494" class="indexterm"/>function <code class="literal">show()</code><a id="id495" class="indexterm"/>will display the Calendar on the screen; it is responsible for <a id="id496" class="indexterm"/>deciding what month and what year to show.</p><div class="informalexample"><pre class="programlisting">    public function show() {
+        if ($this-&gt;uri-&gt;segment(4)) {
+            $year= $this-&gt;uri-&gt;segment(3);
+            $month = $this-&gt;uri-&gt;segment(4);
+        } else {
+            $year = date("Y", time());
+            $month = date("m", time());
+        }
+
+        $tpl = '
+           {table_open}&lt;table border="1" cellpadding="15" cellspacing="1"&gt;{/table_open}
+
+           {heading_row_start}&lt;tr&gt;{/heading_row_start}
+
+           {heading_previous_cell}&lt;th&gt;&lt;a href="{previous_url}"&gt;&amp;lt;&amp;lt;&lt;/a&gt;&lt;/th&gt;{/heading_previous_cell}
+           {heading_title_cell}&lt;th colspan="{colspan}"&gt;{heading}&lt;/th&gt;{/heading_title_cell}
+           {heading_next_cell}&lt;th&gt;&lt;a href="{next_url}"&gt;&amp;gt;&amp;gt;&lt;/a&gt;&lt;/th&gt;{/heading_next_cell}
+
+           {heading_row_end}&lt;/tr&gt;{/heading_row_end}
+
+           {week_row_start}&lt;tr&gt;{/week_row_start}
+           {week_day_cell}&lt;td&gt;{week_day}&lt;/td&gt;{/week_day_cell}
+           {week_row_end}&lt;/tr&gt;{/week_row_end}
+
+           {cal_row_start}&lt;tr&gt;{/cal_row_start}
+           {cal_cell_start}&lt;td&gt;{/cal_cell_start}
+
+           {cal_cell_content}'.anchor('app_cal/create/'.$year.'/'.$month.'/{day}', '+').' &lt;a href="{content}"&gt;{day}&lt;/a&gt;{/cal_cell_content}
+           {cal_cell_content_today}&lt;div class="highlight"&gt;'.anchor('app_cal/create/'.$year.'/'.$month.'/{day}', '+').'&lt;a href="{content}"&gt;{day}&lt;/a&gt;&lt;/div&gt;{/cal_cell_content_today}
+
+           {cal_cell_no_content}'.anchor('app_cal/create/'.$year.'/'.$month.'/{day}', '+').' {day}{/cal_cell_no_content}
+           {cal_cell_no_content_today}&lt;div class="highlight"&gt;'.anchor('app_cal/create/'.$year.'/'.$month.'/{day}', '+').'{day}&lt;/div&gt;{/cal_cell_no_content_today}
+
+           {cal_cell_blank}&amp;nbsp;{/cal_cell_blank}
+
+           {cal_cell_end}&lt;/td&gt;{/cal_cell_end}
+           {cal_row_end}&lt;/tr&gt;{/cal_row_end}
+
+           {table_close}&lt;/table&gt;{/table_close}' ;
+
+        $prefs = array (
+            'start_day'         =&gt; 'monday',
+            'month_type'        =&gt; 'long',
+            'day_type'          =&gt; 'short',
+            'show_next_prev'    =&gt; TRUE,
+            'next_prev_url'     =&gt; 'http://www.your_domain.com/app_cal/show/',
+            'template'          =&gt; $tpl         
+         );
+
+        $this-&gt;load-&gt;library('calendar', $prefs);
+
+        $appointments = $this-&gt;App_cal_model-&gt;get_appointments($year, $month);
+        $data = array();
+
+        foreach ($appointments-&gt;result() as $row) {
+            $data[(int)date("d",$row-&gt;app_date)] = $row-&gt;app_url;
+        }
+
+        $data['cal_data'] = $this-&gt;calendar-&gt;generate($year, $month, $data);
+
+        $this-&gt;load-&gt;view('app_cal/view', $data);
+    }        </pre></div><p>The public function <a id="id497" class="indexterm"/>
+<code class="literal">create()</code> will handle the creation of appointments, so <a id="id498" class="indexterm"/>it'll display the appointment form, validate input, and send data to the model for insertion into the database.</p><div class="informalexample"><pre class="programlisting">    public function create() {
+        $this-&gt;load-&gt;library('form_validation');
+        $this-&gt;form_validation-&gt;set_error_delimiters('', '&lt;br /&gt;');
+
+        $this-&gt;form_validation-&gt;set_rules('app_name',  'Appointment Name', 'required|min_length[1]|max_length[255]|trim');
+        $this-&gt;form_validation-&gt;set_rules('app_description',  'Appointment Description', 'min_length[1]|max_length[255]|trim');
+        $this-&gt;form_validation-&gt;set_rules('day',  'Appointment Start Day', 'required|min_length[1]|max_length[11]|trim');
+        $this-&gt;form_validation-&gt;set_rules('month',  'Appointment Start Month', 'required|min_length[1]|max_length[11]|trim');
+        $this-&gt;form_validation-&gt;set_rules('year',  'Appointment Start Year', 'required|min_length[1]|max_length[11]|trim');
+
+        if ($this-&gt;uri-&gt;segment(3)) {
+            $year   = $this-&gt;uri-&gt;segment(3);
+            $month  = $this-&gt;uri-&gt;segment(4);
+            $day    = $this-&gt;uri-&gt;segment(5);
+        } elseif ($this-&gt;input-&gt;post()) {
+            $year   = $this-&gt;input-&gt;post('year');
+            $month  = $this-&gt;input-&gt;post('month');
+            $day    = $this-&gt;input-&gt;post('day');
+        } else {
+            $year   = date("Y", time());
+            $month  = date("m", time());
+            $day    = date("j", time());
+        }
+
+        if ($this-&gt;form_validation-&gt;run() == FALSE) { // First load, or problem with form
+            $data['app_name']           = array('name' =&gt; 'app_name', 'id' =&gt; 'app_name', 'value' =&gt; set_value('app_name', ''), 'maxlength'   =&gt; '100', 'size' =&gt; '35');
+            $data['app_description']    = array('name' =&gt; 'app_description', 'id' =&gt; 'app_description', 'value' =&gt; set_value('app_description', ''), 'maxlength' =&gt; '100', 'size' =&gt; '35');
+            
+            $days_in_this_month = days_in_month($month,$year);
+
+            $days_i = array();
+            for ($i=1;$i&lt;=$days_in_this_month;$i++) {
+                ($i&lt;10 ? $days_i['0'.$i] = '0'.$i : $days_i[$i] = $i) ;
+            }
+
+            $data['days']   = $days_i;
+            $data['months'] = array('01' =&gt; 'January','02' =&gt; 'February','03' =&gt; 'March','04' =&gt; 'April','05' =&gt; 'May','06' =&gt; 'June','07' =&gt; 'July','08' =&gt; 'August','09' =&gt; 'September','10' =&gt; 'October','11' =&gt; 'November','12' =&gt; 'December');
+            $data['years']  = array('2013' =&gt; '2013');
+            $data['day']    = $day;
+            $data['month']  = $month;
+            $data['year']   = $year;
+            $this-&gt;load-&gt;view('app_cal/new', $data);
+        } else {
+            $app_date = mktime(0,0,0,$month,$day,$year);
+
+            $data = array(
+                'app_name'          =&gt; $this-&gt;input-&gt;post('app_name'),
+                'app_description'   =&gt; $this-&gt;input-&gt;post('app_description'),
+                'app_date'          =&gt; $app_date,
+                'app_url'           =&gt; base_url('index.php/app_cal/appointment/'.$year.'/'.$month.'/'.$day)
+                );
+
+            if ($this-&gt;App_cal_model-&gt;create($data)) {
+                redirect('app_cal/show/'.$year.'/'.$month);
+            } else {
+                redirect('app_cal/index');
+            }  
+        }      
+    }</pre></div><p>The public function <a id="id499" class="indexterm"/>
+<code class="literal">delete()</code> is responsible for removing (deleting) an appointment. It <a id="id500" class="indexterm"/>will load the delete confirmation form, validate the input, and pass data to <a id="id501" class="indexterm"/>the model for deletion from the database.</p><div class="informalexample"><pre class="programlisting">        public function delete() {
+        $this-&gt;load-&gt;library('form_validation');
+        $this-&gt;form_validation-&gt;set_error_delimiters('', '&lt;br /&gt;');
+
+        if ($this-&gt;input-&gt;post('app_id')) {
+            $id = $this-&gt;input-&gt;post('app_id');
+        } else {
+            $id = $this-&gt;uri-&gt;segment(3);
+        }        
+
+        $this-&gt;form_validation-&gt;set_rules('app_id',  'Appointment ID', 'min_length[1]|max_length[11]|is_natural|trim');
+        
+        if ($this-&gt;form_validation-&gt;run() == FALSE) { // First load, or problem with form
+            $appointment = $this-&gt;App_cal_model-&gt;get_single($id);
+            $data['id'] = $id;
+
+            foreach ($appointment-&gt;result() as $row) {
+                $data['app_name'] = $row-&gt;app_name;
+                $data['app_date'] = $row-&gt;app_date;
+            }
+
+            $this-&gt;load-&gt;view('app_cal/delete', $data);
+        } else {
+            if ($this-&gt;App_cal_model-&gt;delete($id)) {
+                redirect('app_cal/index');
+            } else {
+                redirect('app_cal/index');
+            }
+        }
+    }    
+
+    public function appointment() {
+        if ($this-&gt;uri-&gt;segment(3)) {
+            $year   = $this-&gt;uri-&gt;segment(3);
+            $month  = $this-&gt;uri-&gt;segment(4);
+            $day    = $this-&gt;uri-&gt;segment(5);
+
+            $data['appointments'] = $this-&gt;App_cal_model-&gt;get_appointment($year, $month, $day);
+            $this-&gt;load-&gt;view('app_cal/appointment', $data);
+        } else {
+
+        }
+    }
+}</pre></div></li><li class="listitem">Create <a id="id502" class="indexterm"/>the <a id="id503" class="indexterm"/>file <code class="literal">/path/to/codeigniter/application/models/app_cal_model.php</code> and add the following code to it:<div class="informalexample"><pre class="programlisting">&lt;?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+class App_cal_model extends CI_Model {
+
+    function __construct() {
+        parent::__construct();
+    }
+
+    function get_appointments($year, $month) {
+        $month_as_written = array(
+            '01' =&gt; 'January',
+            '02' =&gt; 'February',
+            '03' =&gt; 'March',
+            '04' =&gt; 'April',
+            '05' =&gt; 'May',
+            '06' =&gt; 'June',
+            '07' =&gt; 'July',
+            '08' =&gt; 'August',
+            '09' =&gt; 'September',
+            '10' =&gt; 'October',
+            '11' =&gt; 'November',
+            '12' =&gt; 'December'
+        );
+
+        $sd = '01' . ' ' . $month_as_written[$month] . ' ' . $year;
+        $start_of_month = strtotime($sd);
+
+        $ed = days_in_month($month, $year) . ' ' . $month_as_written[$month] . ' ' . $year;
+        $end_of_month = strtotime($ed);
+
+        $this-&gt;db-&gt;where('app_date &gt; ', $start_of_month);
+        $this-&gt;db-&gt;where('app_date &lt; ', $end_of_month);
+        $query = $this-&gt;db-&gt;get('appointments');
+        $this-&gt;db-&gt;last_query();
+        
+        return $query;
+    }
+
+    function get_appointment($year, $month, $day) {
+        $start_of_day = mktime(0,0,0,$month,$day,$year);
+        $end_of_day = $start_of_day + 86400;
+        $this-&gt;db-&gt;where('app_date &gt;= ', $start_of_day);
+        $this-&gt;db-&gt;where('app_date &lt;= ', $end_of_day);
+        $query = $this-&gt;db-&gt;get('appointments');
+        
+        return $query;
+    }
+
+    function create($data) {
+        if ($this-&gt;db-&gt;insert('appointments', $data)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    function delete($id) {
+        $this-&gt;db-&gt;where('app_id', $id);
+        if ($this-&gt;db-&gt;delete('appointments')) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    function get_single($id) {
+        $this-&gt;db-&gt;where('app_id', $id);
+        $query = $this-&gt;db-&gt;get('appointments');
+        return $query;
+    }
+}</pre></div></li><li class="listitem">Create the file <code class="literal">/path/to/codeigniter/application/views/app_cal/view.php</code> and add the following code to it:<div class="informalexample"><pre class="programlisting">&lt;?php echo anchor ('app_cal/create', 'New Appointment') ; ?&gt;
+&lt;?php echo $cal_data ; ?&gt;</pre></div></li><li class="listitem">Create the <a id="id504" class="indexterm"/>file <code class="literal">/path/to/codeigniter/application/views/app_cal/appointment.php</code> and add the following code to it:<div class="informalexample"><pre class="programlisting">&lt;?php echo anchor ('app_cal/index', 'View Calendar') ; ?&gt;
+&lt;a href=""&gt;&lt;/a&gt;&lt;h2&gt;Appointments&lt;/h2&gt;
+
+&lt;?php foreach ($appointments-&gt;result() as $row) : ?&gt;
+	&lt;?php echo anchor('app_cal/delete/'.$row-&gt;app_id, 'Delete') ; ?&gt;&lt;br /&gt;
+	&lt;?php echo date("j-m-Y",$row-&gt;app_date) ; ?&gt;&lt;br /&gt;
+	&lt;?php echo $row-&gt;app_name ; ?&gt;&lt;br /&gt;
+	&lt;?php echo $row-&gt;app_description ; ?&gt;
+	&lt;hr&gt;
+&lt;?php endforeach ; ?&gt;</pre></div></li><li class="listitem">Create the file <code class="literal">/path/to/codeigniter/application/views/app_cal/delete.php</code> and add the following code to it:<div class="informalexample"><pre class="programlisting">&lt;h2&gt;Delete Appointment&lt;/h2&gt;
+
+&lt;?php if (validation_errors()) : ?&gt;
+    &lt;p&gt;&lt;?php echo validation_errors() ;?&gt;&lt;/p&gt;
+&lt;?php endif ; ?&gt;
+
+&lt;?php echo form_open('app_cal/delete') ; ?&gt;
+&lt;h4&gt;Are you sure you want to delete the following appointment?&lt;/h4&gt;
+
+&lt;?php echo $app_name . ' on ' . date("d-m-Y h:i:s", $app_date); ?&gt;
+
+&lt;?php echo form_hidden('app_id', $id) ; ?&gt;
+
+&lt;br /&gt;&lt;br /&gt;
+
+&lt;input type="submit" value="Delete" /&gt;
+or &lt;?php echo anchor ('app_cal', 'Cancel') ; ?&gt;
+&lt;?php echo form_close() ; ?&gt;</pre></div></li><li class="listitem">Create the <a id="id505" class="indexterm"/>file <code class="literal">/path/to/codeigniter/application/views/app_cal/new.php</code> and add the <a id="id506" class="indexterm"/>following code to it:<div class="informalexample"><pre class="programlisting">&lt;h2&gt;New Appointment&lt;/h2&gt;
+&lt;h4&gt;Appointment Name&lt;/h4&gt;
+
+&lt;?php if (validation_errors()) : ?&gt;
+    &lt;p&gt;&lt;?php echo validation_errors() ;?&gt;&lt;/p&gt;
+&lt;?php endif ; ?&gt;
+
+&lt;?php echo form_open('app_cal/create') ; ?&gt;
+&lt;?php echo form_input($app_name); ?&gt;
+&lt;h4&gt;Appointment Description&lt;/h4&gt;
+&lt;?php echo form_input($app_description); ?&gt;
+&lt;h4&gt;Appointment Date&lt;/h4&gt;
+&lt;?php echo form_dropdown('day', $days, $day); ?&gt;
+&lt;?php echo form_dropdown('month', $months, $month); ?&gt;
+&lt;?php echo form_dropdown('year', $years, $year); ?&gt;
+
+
+&lt;br /&gt;&lt;br /&gt;
+
+&lt;input type="submit" value="Save" /&gt;
+or &lt;?php echo anchor ('app_cal', 'Cancel') ; ?&gt;
+&lt;?php echo form_close() ; ?&gt;</pre></div></li></ol></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec166"/>How it works…</h2></div></div></div><p>For the most part the functionality is broadly similar to the previous recipe, but there are some differences; we've added support to manage appointments. So, let's begin with looking at <code class="literal">public function view()</code>. You'll notice that we have moved some code around; the code which either grabs the dates from the uri or makes the date on the fly is now before the <code class="literal">$prefs</code> <a id="id507" class="indexterm"/>array — this is because of the <code class="literal">$tpl</code> variable. What's <code class="literal">$tpl</code> then?</p><p>The content of the <code class="literal">$tpl</code> <a id="id508" class="indexterm"/>variable string, more specifically it is a calendar template used by the Calendar library; the template supports a tag for days—<code class="literal">{day}</code>—but not for the month or year. This means that we have to insert these values manually into the template. But to do that, we need to know the year and month values beforehand; that's why the code to calculate the month and day is <a id="id509" class="indexterm"/>now moved up before the <code class="literal">$prefs</code> array. The template code that I use is a modified version of what is available from the CodeIgniter website user guide: <a class="ulink" href="http://ellislab.com/codeigniter/user-guide/libraries/calendar.html">http://ellislab.com/codeigniter/user-guide/libraries/calendar.html</a>.</p><p>From here onwards it's the same functionality as the <code class="literal">view()</code> function in the previous recipe: we load the Calendar <a id="id510" class="indexterm"/>library, fetch all appointments for the current month, and pass it to the <code class="literal">app_cal/view.php</code> view file. Let's go through some of the newer functions in more detail:</p><div class="section" title="The public function create()"><div class="titlepage"><div><div><h3 class="title"><a id="ch08lvl3sec16"/>The public function create()</h3></div></div></div><p>When the user enters the new <a id="id511" class="indexterm"/>appointment's details and posts the create form, the public function <code class="literal">create()</code> first declares the validation rules for the new appointment. We'll then need to grab the year, month, and day for the specific appointment from either the <code class="literal">post</code> or <a id="id512" class="indexterm"/>
+<code class="literal">get</code> arrays. The public <code class="literal">create()</code>function checks for this and stores the date values in variables:</p><div class="informalexample"><pre class="programlisting">if ($this-&gt;uri-&gt;segment(3)) {
+   $year   = $this-&gt;uri-&gt;segment(3);
+   $month  = $this-&gt;uri-&gt;segment(4);
+   $day    = $this-&gt;uri-&gt;segment(5);
+} elseif ($this-&gt;input-&gt;post()) {
+   $year   = $this-&gt;input-&gt;post('year');
+   $month  = $this-&gt;input-&gt;post('month');
+   $day    = $this-&gt;input-&gt;post('day');
+} else {
+   $year   = date("Y", time());
+   $month  = date("m", time());
+   $day    = date("j", time());
+}</pre></div><p>There are three tests here as the public function <code class="literal">create()</code> can be accessed in different ways. The first test looks for whether the page is accessed by someone by clicking on an add appointment link <span class="strong"><strong>+</strong></span> in the calendar grid, the second test looks for the variables if the page has been posted, and the third (an else) is for when the <span class="strong"><strong>New Appointment</strong></span> link is clicked.</p><p>Next, we check if the page validation is passed or not; <code class="literal">FALSE</code> can mean a failure of validation or that <code class="literal">create()</code> is <a id="id513" class="indexterm"/>being accessed for the first time.</p><p>We set some form values for CodeIgniter to render in the view and begin to build the variables necessary for the date dropdowns:</p><div class="informalexample"><pre class="programlisting">$days_in_this_month = days_in_month($month,$year);
+$days_i = array();
+for ($i=1;$i&lt;=$days_in_this_month;$i++) {
+   ($i&lt;10 ? $days_i['0'.$i] = '0'.$i : $days_i[$i] = $i) ;
+}</pre></div><p>We then show the <code class="literal">view</code> file and wait for the user to submit. Upon successful submission (that is, when the form passes validation), we calculate the Unix timestamp for the appointment date variable (day, month, and year) and package everything into the <code class="literal">$data</code> array, ready for insertion into the <a id="id514" class="indexterm"/>database. A successful insertion will redirect the user to the month and year in which their appointment sits.</p></div><div class="section" title="The public function delete()"><div class="titlepage"><div><div><h3 class="title"><a id="ch08lvl3sec17"/>The public function delete()</h3></div></div></div><p>This is quite simple; we <a id="id515" class="indexterm"/>check for the existence of an appointment ID in either the <code class="literal">get</code> or <code class="literal">post</code> arrays:</p><div class="informalexample"><pre class="programlisting">if ($this-&gt;input-&gt;post('app_id')) {
+$id = $this-&gt;input-&gt;post('app_id');
+} else {
+$id = $this-&gt;uri-&gt;segment(3);
+}</pre></div><p>We look in both <code class="literal">get</code> and <code class="literal">post</code> because the function can be accessed for the first time by someone clicking on a URL, and the second time by someone posting (when they click on the <span class="strong"><strong>confirm delete</strong></span> button in the view).</p><p>If the form is being submitted with errors, or run for the first time, the appointment details are fetched from the database (having been passed <code class="literal">$id</code> from the preceding code).</p><div class="informalexample"><pre class="programlisting">$appointment = $this-&gt;App_cal_model-&gt;get_single($id);
+
+foreach ($appointment-&gt;result() as $row) {
+$data['app_name'] = $row-&gt;app_name;
+$data['app_date'] = $row-&gt;app_date;
+}
+
+$this-&gt;load-&gt;view('app_cal/delete', $data);</pre></div><p>We then fetch <code class="literal">app_name</code> and <code class="literal">app_date</code> from the database result and store them as items in the <code class="literal">$data</code> array for passing to the <code class="literal">app_cal/delete.php</code> view file. Upon a successful submit (if nothing failed the validation) the model function <code class="literal">delete()</code> is called, and if a delete occurred the user is redirected to the same month and year where their deleted appointment previously sat.</p></div></div></div>
+<div class="section" title="Creating a helper to work with a person's date of birth"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec78"/>Creating a helper to work with a person's date of birth</h1></div></div></div><p>From time to time, you'll <a id="id516" class="indexterm"/>need an age verification script, a method to ascertain whether or not a user is of a certain age. Based on their age, they may be allowed, or disallowed, from viewing content, for example, a website that promotes adult products, such as alcohol or tobacco or a games site that promotes a game rated for certain ages. The code in this recipe helps you to ascertain a user's age, compares that against a minimum age requirement, and displays an HTML file accordingly.</p><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec167"/>How to do it…</h2></div></div></div><p>We're going to create five files:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/controllers/register.php</code>: This is the controller for our recipe</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/helpers/dob_val_helper.php</code>: This file calculates the user's age, compares it to the required age, and returns true or false depending on the result</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/register/signup.php</code>: This file displays the age verification form</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/register/enter.php</code>: This is displayed if the user can enter</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/register/noenter.php</code>: This is displayed if the user cannot enter</li></ul></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create the controller file, <code class="literal">register.php</code>, and add the following code to it:<div class="informalexample"><pre class="programlisting">&lt;?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+class Register extends CI_Controller {
+  function __construct() {
+    parent::__construct();
+    $this-&gt;load-&gt;helper('form');
+    $this-&gt;load-&gt;helper('dob_val');
+  }
+  public function index() {	
+    $this-&gt;load-&gt;library('form_validation');
+    $this-&gt;form_validation-&gt;set_error_delimiters('', '&lt;br /&gt;');
+    $this-&gt;form_validation-&gt;set_rules('year', 'Year', 'required|min_length[4]|max_length[4]|trim');
+    $this-&gt;form_validation-&gt;set_rules('month', 'Month', 'required|min_length[2]|max_length[2]|trim');
+    $this-&gt;form_validation-&gt;set_rules('day', 'Day', 'required|min_length[2]|max_length[2]|trim');
+
+    if ($this-&gt;form_validation-&gt;run() == FALSE) {
+      $this-&gt;load-&gt;view('register/signup');
+    } else {
+      $dob = array(
+        'year' =&gt; $this-&gt;input-&gt;post('year'),
+        'month' =&gt; $this-&gt;input-&gt;post('month'),
+        'day' =&gt; $this-&gt;input-&gt;post('day')
+      );
+      $at_least = 18;
+      if (are_they_old_enough($dob, $at_least = 18)) {
+        $this-&gt;load-&gt;view('register/enter');
+      } else {
+        $this-&gt;load-&gt;view('register/noenter');
+      }
+    }
+  }
+}</pre></div></li><li class="listitem">Create the <a id="id517" class="indexterm"/>helper file, <code class="literal">dob_val_helper.php</code>, and add the following code to it:<div class="informalexample"><pre class="programlisting">&lt;?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+function are_they_old_enough($dob, $at_least = 18) {
+  $birthday = strtotime($dob['year'].'-'.$dob['month'].'-'.$dob['day']);
+  $diff = floor((time() - $birthday) / (60 * 60 * 24 * 365));
+
+  if ($diff &gt;= $at_least) {
+    return true;
+  } else {
+    return false;
+  }
+}</pre></div></li><li class="listitem">Create the view file, <code class="literal">signup.php</code>, and add the following code to it:<div class="informalexample"><pre class="programlisting">&lt;?php echo form_open() ; ?&gt;
+
+  &lt;?php echo validation_errors() ; ?&gt;
+
+  Day &lt;input type="text" name="day" size="5" value="&lt;?php echo set_value('day') ; ?&gt;"/&gt;
+
+  Month &lt;input type="text" name="month" size="5" value="&lt;?php echo set_value('month') ; ?&gt;"/&gt;
+
+  Year &lt;input type="text" name="year" size="5" value="&lt;?php echo set_value('year') ; ?&gt;"/&gt;
+
+  &lt;input type="submit" value="go" /&gt;
+
+&lt;?php echo form_close() ; ?&gt;</pre></div></li><li class="listitem">Create the view file <code class="literal">enter.php</code> and add the following code to it:<div class="informalexample"><pre class="programlisting">&lt;p&gt;You are old enough to view page&lt;/p&gt;</pre></div></li><li class="listitem">Create the view file <code class="literal">noenter.php</code> and add the following code to it:<div class="informalexample"><pre class="programlisting">&lt;p&gt;You are NOT old enough to view page&lt;/p&gt;</pre></div></li></ol></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec168"/>How it works…</h2></div></div></div><p>First off, we come to the <a id="id518" class="indexterm"/>controller; the controller loads the <a id="id519" class="indexterm"/>URL helper (as we're using the <code class="literal">redirect()</code> function and a helper we will create called <code class="literal">dob_val</code>):</p><div class="informalexample"><pre class="programlisting">function __construct() {
+  parent::__construct();
+  $this-&gt;load-&gt;helper('form');
+  $this-&gt;load-&gt;helper('dob_val');
+}</pre></div><p>We then set up form validation and set the rules for our day, month, and year fields from the HTML. The <code class="literal">register/signup.php</code> view file is loaded, ready for the user to enter their date of birth in the three form fields.</p><p>The user will press submit, and if the submission passes for validation, the three form values are put into the <code class="literal">$dob</code> array:</p><div class="informalexample"><pre class="programlisting">$dob = array(
+	'year' =&gt; $this-&gt;input-&gt;post('year'),
+	'month' =&gt; $this-&gt;input-&gt;post('month'),
+	'day' =&gt; $this-&gt;input-&gt;post('day')
+);</pre></div><p>We set our minimum age (the age the user must be in order to view age restricted content) like this:</p><div class="informalexample"><pre class="programlisting">$at_least = 18;</pre></div><p>Then, we pass the <code class="literal">$dob</code> <a id="id520" class="indexterm"/>array along with the <code class="literal">$at_least</code> variable to the <code class="literal">dob_val</code> helper:</p><div class="informalexample"><pre class="programlisting">if (are_they_old_enough($dob, $at_least = 18)) {
+  $this-&gt;load-&gt;view('register/enter');
+} else {
+  $this-&gt;load-&gt;view('register/noenter');
+}</pre></div><p>The helper calculates if the user is above or below the <code class="literal">$at_least</code> age, returning <code class="literal">TRUE</code> if they are above and <code class="literal">FALSE</code> if <a id="id521" class="indexterm"/>they are not. If they are, they see the <code class="literal">register/enter</code> view file, and if they aren't they see the <code class="literal">register/noenter</code> view file.</p></div></div>
+<div class="section" title="Working with fuzzy dates in CodeIgniter"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec79"/>Working with fuzzy dates in CodeIgniter</h1></div></div></div><p>What is a fuzzy date? A <a id="id522" class="indexterm"/>fuzzy date is a more familiar and general way to describe a <a id="id523" class="indexterm"/>data or time rather than an exact, precise time; it describes an event in a way that is more familiar to a reader than a precise timestamp. For example, rather than saying that an email was sent at 17:41, you could say it was sent "less than a minute ago" (assuming you sent it within the last minute) or even "a few moments ago". The precise time at which something occurred is considered unimportant—or at least unnecessary—information and it is instead replaced with a more general, informal, and conversational description of the date and time.</p><div class="section" title="How to do it…"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec169"/>How to do it…</h2></div></div></div><p>We're going to create two files:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/controllers/fuzzy_date.php</code>: This controller will call the <code class="literal">fuzzy_date_helper.php</code> file and pass to it some dates (as a Unix timestamp) for the helper to convert.</li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/helpers/fuzzy_date_helper.php</code>: This helper will be called by the controller and will convert the dates passed to it, returning a written description every time.</li></ul></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create the controller file, <code class="literal">fuzzy_date.php</code>, and add the following code to it:<div class="informalexample"><pre class="programlisting">&lt;?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+class Fuzzy_date extends CI_Controller {
+	function __construct() {
+		parent::__construct();
+		$this-&gt;load-&gt;helper('url');
+		$this-&gt;load-&gt;helper('fuzzy_date_helper');););
+	}
+
+	public function index() {
+		echo describe_the_time(time() + 30);
+	}
+}
+?&gt;</pre></div></li><li class="listitem">Create the helper <a id="id524" class="indexterm"/>file, <code class="literal">fuzzy_date_helper.php</code>, and add the following code to it:<div class="informalexample"><pre class="programlisting">&lt;?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+function describe_the_time($time_in) {
+  define('SECOND', 1);
+  define('MINUTE', 60 * SECOND);
+  define('HOUR', 60 * MINUTE);
+  define('DAY', 24 * HOUR);
+  define('MONTH', 30 * DAY);
+  define('YEAR', 12 * MONTH);
+
+  $past_descriptions = array(
+    1 =&gt; 'about a minute ago',
+    2 =&gt; 'a few minutes ago',
+    3 =&gt; 'within the last hour',
+    4 =&gt; 'earlier today',
+    5 =&gt; 'yesterday',
+    6 =&gt; 'earlier this week',
+    7 =&gt; 'earlier this month',
+    8 =&gt; 'last month',
+    9 =&gt; 'earlier this year',
+    10 =&gt; 'last year',
+    11 =&gt; 'a long time ago',
+    12 =&gt; 'I don\'t know that time'
+    );
+
+  $future_descriptions = array(
+    1 =&gt; 'a minute from now',
+    2 =&gt; 'in the next few minutes',
+    3 =&gt; 'in the next hour',
+    4 =&gt; 'later today',
+    5 =&gt; 'tomorrow',
+    6 =&gt; 'later this week',
+    7 =&gt; 'later this month',
+    8 =&gt; 'next month',
+    9 =&gt; 'later this year',
+    10 =&gt; 'next year',
+    11 =&gt; 'a long way off',
+    12 =&gt; 'I don\'t know that time'
+    );
+
+  $now = time();
+
+  if ($time_in &lt; $now) {
+    if ($time_in &gt; $now - MINUTE) { // About a minute ago
+      return $past_descriptions[1];
+    } elseif ( ($time_in &gt;= $now - (MINUTE * 5) ) &amp;&amp; ($time_in &lt;= $now ) ) { // A few minutes ago
+      return $past_descriptions[2];
+    } elseif ( ($time_in &gt;= $now - (MINUTE * 60)) &amp;&amp; ($time_in &lt;= $now ) ) { // Within the last hour
+      return $past_descriptions[3];
+    } elseif ( ($time_in &gt;= $now - (HOUR * 24)) &amp;&amp; ($time_in &lt;= $now - (MINUTE * 60) ) ) { // Earlier today
+      return $past_descriptions[4];
+    } elseif ( ($time_in &gt;= $now - (HOUR * 48)) &amp;&amp; ($time_in &lt;= $now - (HOUR * 24) ) ) { // Yesterday
+      return $past_descriptions[5];
+    } elseif ( ($time_in &gt;= $now - (DAY * 7)) &amp;&amp; ($time_in &lt;= $now - (HOUR * 48) ) ) { // Earlier this week
+      return $past_descriptions[6];
+    } elseif ( ($time_in &gt;= $now - (DAY * 31)) &amp;&amp; ($time_in &lt;= $now - (DAY * 7) ) ) { // Earlier this month
+      return $past_descriptions[7];
+    } elseif ( ($time_in &gt;= $now - (DAY * 62)) &amp;&amp; ($time_in &lt;= $now - (DAY * 31) ) ) { // Last Month
+      return $past_descriptions[8];
+    } elseif ( ($time_in &gt;= $now - (MONTH * 12)) &amp;&amp; ($time_in &lt;= $now - (MONTH * 31) ) ) { // Earlier this year
+      return $past_descriptions[9];
+    } elseif ( ($time_in &gt;= $now - (MONTH * 24)) &amp;&amp; ($time_in &lt;= $now - (MONTH * 12) ) ) { // Last year
+      return $past_descriptions[10];
+    } elseif ( ($time_in &gt;= $now - (MONTH * 24) &amp;&amp; ($time_in &lt;= $now - (MONTH * 12) ) ) ){  // Last year
+      return $past_descriptions[11];
+    } else {
+      return $past_descriptions[12];
+    }
+  } else {
+    if ($time_in &lt; $now + MINUTE) { // A minute from now
+      return $future_descriptions[1];
+    } elseif ( ($time_in &lt;= $now + (MINUTE * 5) ) &amp;&amp; ($time_in &gt;= $now ) ) { // In the next few minutes
+      return $future_descriptions[2];
+    } elseif ( ($time_in &lt;= $now + (MINUTE * 59)) &amp;&amp; ($time_in &gt;= $now ) ) { // In the next hour
+      return $future_descriptions[3];
+    } elseif ( ($time_in &lt;= $now + (HOUR * 24)) &amp;&amp; ($time_in &gt;= $now + (MINUTE * 59) ) ) { // Later today
+      return $future_descriptions[4];
+    } elseif ( ($time_in &lt;= $now + (HOUR * 48)) &amp;&amp; ($time_in &gt;= $now + (HOUR * 24) ) ) { // Yesterday
+      return $future_descriptions[5];
+    } elseif ( ($time_in &lt;= $now + (DAY * 7)) &amp;&amp; ($time_in &gt;= $now + (HOUR * 48) ) ) { // Earlier this week
+      return $future_descriptions[6];
+    } elseif ( ($time_in &lt;= $now + (DAY * 31)) &amp;&amp; ($time_in &gt;= $now + (DAY * 7) ) ) { // Earlier this month
+      return $future_descriptions[7];
+    } elseif ( ($time_in &lt;= $now + (DAY * 62)) &amp;&amp; ($time_in &gt;= $now + (DAY * 31) ) ) { // Last Month
+      return $future_descriptions[8];
+    } elseif ( ($time_in &lt;= $now + (MONTH * 12)) &amp;&amp; ($time_in &gt;= $now + (MONTH * 31) ) ) { // Earlier this year
+    return $future_descriptions[9];
+    } elseif ( ($time_in &lt;= $now + (MONTH * 24)) &amp;&amp; ($time_in &gt;= $now + (MONTH * 12) ) ) { // Last year
+      return $future_descriptions[10];
+    } elseif ( ($time_in &lt;= $now + (MONTH * 24) ) ) { // Last year
+      return $future_descriptions[11];
+    } else {
+      return $future_descriptions[12];
+    }
+  }
+}
+
+?&gt;</pre></div></li></ol></div></div><div class="section" title="How it works…"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec170"/>How it works…</h2></div></div></div><p>Let's take a look at the <code class="literal">fuzzy_date</code> <a id="id525" class="indexterm"/>controller, the controller loads in the constructor, <a id="id526" class="indexterm"/>which in turn loads our <code class="literal">fuzzy_date_helper</code>, <a id="id527" class="indexterm"/>this is the helper which will translate Unix timestamps into descriptive text for us:</p><div class="informalexample"><pre class="programlisting">  function __construct() {
+    parent::__construct();
+    $this-&gt;load-&gt;helper('url');
+    $this-&gt;load-&gt;helper('fuzzydate_helper');
+  }</pre></div><p>We then load the public function <code class="literal">index()</code>, which calls <code class="literal">fuzzydate_helper</code>,  passing to it a timestamp (at the moment, the input passed is set to be <code class="literal">time() + 30</code>).</p><p>Why <code class="literal">time() + 30</code>? Well, <code class="literal">time()</code> is the <code class="literal">php</code> function that returns the Unix timestamp for "now" (whenever "now" is for you), and the <code class="literal">+ 30</code> is 30 seconds added to the current timestamp value returned by <code class="literal">time()</code>, meaning "now plus 30 seconds" (or "30 seconds in the future"). I've set it to that for the initial demonstration, but I will describe how this can be altered later in the description.</p><p>In the controller we pass 'now plus 30 seconds' to the helper:</p><div class="informalexample"><pre class="programlisting">echo describe_the_time(time() + 30);</pre></div><p>The incoming function augment (that is, what we defined in the controller) is declared locally for the helper as <code class="literal">$time_in</code>:</p><div class="informalexample"><pre class="programlisting">function describe_the_time($time_in) {</pre></div><p>The helper takes the <a id="id528" class="indexterm"/>
+<code class="literal">$time_in</code> variable, <a id="id529" class="indexterm"/>looks at its value, and works out if the timestamp value is greater than, or <a id="id530" class="indexterm"/>less than, <code class="literal">$now</code> as defined in the helper as $now = time():</p><div class="informalexample"><pre class="programlisting">if ($time_in &lt; $now) {
+... // $time_in is in the past
+} else {
+... // $time_in is in the future
+}</pre></div><p>As 'now plus 30 seconds' is greater than now (30 seconds more, to be precise) the helper goes to the <code class="literal">else</code> part of the <code class="literal">if</code> structure and then begins a series of comparisons, trying to find a place where the value defined in <code class="literal">$time_in</code> will fit. As 'now plus 30 seconds' is less than 'now plus 60 seconds' (30 seconds less, in fact), the first <code class="literal">if</code> statement is applied and the helper returns the first item in <a id="id531" class="indexterm"/>the <code class="literal">$future_descriptions</code> array:</p><div class="informalexample"><pre class="programlisting">if ($time_in &lt; $now + MINUTE) { // A minute from now
+  return $future_descriptions[1];
+}</pre></div><p>That would be a minute from now?</p><p>You can, of course, alter the timestamp passed to the helper in the controller; you could set it to <code class="literal">time() + 250</code> (which would be now plus 250 seconds). Now, plus 250 seconds is greater than a minute (60 seconds) but less than 5 minutes (300 seconds), causing the second <code class="literal">if</code> statement to apply and return the text 'in the next few minutes'.</p><p>We can also pass a lower timestamp value than "now": <code class="literal">time() – 4000</code> (that is "now minus 4000 seconds"). Passing a lower timestamp will cause the behavior of the helper to change. How? Well, remember that initial <code class="literal">if</code> statement?</p><div class="informalexample"><pre class="programlisting">if ($time_in &lt; $now) {
+... 
+} else {
+...
+}</pre></div><p>This time, we won't go down to the else part of it; instead, the initial <code class="literal">if</code> part will be triggered and the helper will begin to process times in the past. So, by setting the helper input to <code class="literal">time() - 4000</code> (now <a id="id532" class="indexterm"/>minus 4000 seconds, which is more than a minute ago, more than 5 minutes ago, and more than an hour ago but less than a full day ago), the helper will return the text "earlier today".</p><p>You can, of course, add many, <a id="id533" class="indexterm"/>many more detailed comparisons and descriptions; in fact, I encourage you to do so—go nuts!</p><p>In a real situation, you would amend the helper function call in the controller, removing the input of <code class="literal">time() +</code> or – <code class="literal">number_of_seconds</code> to just the timestamp of the thing you want to describe – be it a blog post created date, file upload date, appointment date…whatever…you get the idea I'm sure.</p></div></div></body></html>

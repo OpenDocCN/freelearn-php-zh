@@ -1,0 +1,652 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;7.&#xA0;Creating and Consuming Web Services"><div class="titlepage"><div><div><h1 class="title"><a id="ch07"/>Chapter 7. Creating and Consuming Web Services</h1></div></div></div><p>In this chapter, we will cover:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Creating an RSS feed</li><li class="listitem" style="list-style-type: disc">Consuming a JSON service</li><li class="listitem" style="list-style-type: disc">Building REST services with JSON</li><li class="listitem" style="list-style-type: disc">Adding authentication to REST services</li><li class="listitem" style="list-style-type: disc">Implementing token-based authorization for API access</li></ul></div><div class="section" title="Introduction"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec01"/>Introduction</h1></div></div></div><p>Web services are essential when looking forward to expose application functionality to third-party applications, or when looking forward to integrate foreign services into our own applications. They offer a broad set of technologies and definitions so that systems written in different programming languages can communicate.<a id="id218" class="indexterm"/>
+</p><p>This chapter introduces a set of recipes to consume web services, and to expose parts of our application as web services.</p></div></div>
+<div class="section" title="Creating an RSS feed"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec02"/>Creating an RSS feed</h1></div></div></div><p>RSS feeds are a form of web services, as they provide a service, over the web, using a known format to expose data. Due to their simplicity, they are a great way to introduce us to the world of web services, particularly as CakePHP offers a built in method to create them.<a id="id219" class="indexterm"/>
+</p><p>In the recipe<span class="emphasis"><em> Consuming RSS feeds with a datasource</em></span> from <a class="link" href="ch05.html" title="Chapter 5. Datasources">Chapter 5</a>,<span class="emphasis"><em> Datasources</em></span>, we learned how to fetch content from a foreign RSS feed. In this recipe, will do exactly the opposite: produce a feed for our site that can be used by other applications.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec01"/>Getting ready</h2></div></div></div><p>To go through this recipe we need a sample table to work with. Create a table named<code class="literal"> posts</code>, using the following SQL statement:<a id="id220" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">CREATE TABLE `posts`(posts
+`id` INT NOT NULL AUTO_INCREMENT,
+`title` VARCHAR(255) NOT NULL,
+`body` TEXT NOT NULL,
+`created` DATETIME NOT NULL,
+`modified` DATETIME NOT NULL,
+PRIMARY KEY(`id`)
+);
+</pre></div><p>Add some sample data, using the following SQL statements:</p><div class="informalexample"><pre class="programlisting">INSERT INTO `posts`(`title`,posts `body`, `created`, `modified`) VALUES
+('Understanding Containable', 'Post body', NOW(), NOW()),
+('Creating your first test case', 'Post body', NOW(), NOW()),
+('Using bake to start an application', 'Post body', NOW(), NOW()),
+('Creating your first helper', 'Post body', NOW(), NOW()),
+('Adding indexes', 'Post body', NOW(), NOW());
+</pre></div><p>We proceed now to create the required controller. Create the class<code class="literal"> PostsController</code> in a file named<code class="literal"> posts_controller.php</code> and place it in your<code class="literal"> app/controllers</code> folder, with the following contents:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+class PostsController extends AppController {
+public function index() {
+$posts = $this-&gt;Post-&gt;find('all');
+$this-&gt;set(compact('posts'));
+}
+}
+?&gt;
+</pre></div><p>Create a folder named<code class="literal"> posts</code> in your<code class="literal"> app/views</code> folder, and then create the<code class="literal"> index</code> view in a file named<code class="literal"> index.ctp</code> and place it in your<code class="literal"> app/views/posts</code> folder, with the following contents:</p><div class="informalexample"><pre class="programlisting">&lt;h1&gt;Posts&lt;/h1&gt;
+&lt;?php if (!empty($posts)) { ?&gt;
+&lt;ul&gt;
+&lt;?php foreach($posts as $post) { ?&gt;
+&lt;li&gt;&lt;?php echo $this-&gt;Html-&gt;link(
+$post['Post']['title'],
+array(
+'action'=&gt;'view',
+$post['Post']['id']
+)
+); ?&gt;&lt;/li&gt;
+&lt;?php } ?&gt;
+&lt;/ul&gt;
+&lt;?php } ?&gt;
+</pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec02"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Edit your<code class="literal"> app/config/routes.php</code> file and add the following statement at the end:<a id="id221" class="indexterm"/><div class="informalexample"><pre class="programlisting">Router::parseExtensions('rss');
+</pre></div></li><li class="listitem">Edit your<code class="literal"> app/controllers/posts_controller.php</code> file and add the following property to the<code class="literal"> PostsController</code> class:<div class="informalexample"><pre class="programlisting">public $components = array('RequestHandler');
+</pre></div></li><li class="listitem">While still editing<code class="literal"> PostsController</code>, make the following changes to the<code class="literal"> index()</code> method:<div class="informalexample"><pre class="programlisting">public function index() {
+<span class="strong"><strong>$options = array();
+if ($this-&gt;RequestHandler-&gt;isRss()) {
+$options = array_merge($options, array(
+'order' =&gt; array('Post.created' =&gt; 'desc'),
+'limit' =&gt; 5
+));
+}
+$posts = $this-&gt;Post-&gt;find('all', $options);</strong></span>
+$this-&gt;set(compact('posts'));
+}
+</pre></div></li><li class="listitem">Create a folder named<code class="literal"> rss</code> in your<code class="literal"> app/views/posts</code> folder, and inside the<code class="literal"> rss</code> folder create a file named<code class="literal"> index.ctp</code>, with the following contents:<div class="informalexample"><pre class="programlisting">&lt;?php
+$this-&gt;set('channel', array(
+'title' =&gt; 'Recent posts',
+'link' =&gt; $this-&gt;Rss-&gt;url('/', true),
+'description' =&gt; 'Latest posts in my site'
+));
+$items = array();
+foreach($posts as $post) {
+$items[] = array(
+'title' =&gt; $post['Post']['title'],
+'link' =&gt; array('action'=&gt;'view', $post['Post']['id']),
+'description' =&gt; array('cdata'=&gt;true, 'value'=&gt;$post['Post']['body']),
+'pubDate' =&gt; $post['Post']['created']
+);
+}
+echo $this-&gt;Rss-&gt;items($items);
+?&gt;
+</pre></div></li><li class="listitem">Edit your<code class="literal"> app/views/posts/index.ctp</code> file and add the following at the end of the view:<a id="id222" class="indexterm"/><div class="informalexample"><pre class="programlisting">&lt;?php echo $this-&gt;Html-&gt;link('Feed', array('action'=&gt;'index', 'ext'=&gt;'rss')); ?&gt;
+</pre></div><p>If you now browse to <code class="literal">http://localhost/posts</code>, you should see a listing of posts with a link entitled <span class="strong"><strong>Feed</strong></span>. Clicking on this link should produce a valid RSS feed, as shown in the following screenshot:
+</p><div class="mediaobject"><img src="graphics/1926_07_01.jpg" alt="How to do it..."/></div></li></ol></div><p>If you view the source of the generated response, you can see that the source for the first item within the RSS document is:<a id="id223" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;item&gt; &lt;title&gt;Understanding Containable&lt;/title&gt; &lt;link&gt;http://rss.cookbook7.kramer/posts/view/1&lt;/link&gt; &lt;description&gt;&lt;![CDATA[Post body]]&gt;&lt;/description&gt; &lt;pubDate&gt;Fri, 20 Aug 2010 18:55:47 -0300&lt;/pubDate&gt; &lt;guid&gt;http://rss.cookbook7.kramer/posts/view/1&lt;/guid&gt; &lt;/item&gt;
+</pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec03"/>How it works...</h2></div></div></div><p>We started by telling CakePHP that our application accepts the<code class="literal"> rss</code> extension with a call to<code class="literal"> Router::parseExtensions()</code>, a method that accepts any number of extensions. Using extensions, we can create different versions of the same view. For example, if we wanted to accept both<code class="literal"> rss</code> and<code class="literal"> xml</code> as extensions, we would do:</p><div class="informalexample"><pre class="programlisting">Router::parseExtensions('rss', 'xml');
+</pre></div><p>In our recipe, we added<code class="literal"> rss</code> to the list of valid extensions. That way, if an action is accessed using that extension, for example, by using the URL <code class="literal">http://localhost/posts.rss</code>, then CakePHP will identify<code class="literal"> rss</code> as a valid extension, and will execute the<code class="literal"> ArticlesController::index()</code> action as it normally would, but using the<code class="literal"> app/views/posts/rss/index.ctp</code> file to render the view. The process also uses the file<code class="literal"> app/views/layouts/rss/default.ctp</code> as its layout, or CakePHP's default RSS layout if that file is not present.<a id="id224" class="indexterm"/>
+</p><p>We then modify how<code class="literal"> ArticlesController::index()</code> builds the list of posts, and use the<code class="literal"> RequestHandler</code> component to see if the current request uses the<code class="literal"> rss</code> extension. If so, we use that knowledge to change the number and order of posts.</p><p>In the<code class="literal"> app/views/posts/rss/index.ctp</code> view, we start by setting some view variables. Because a controller view is always rendered before the layout, we can add or change view variables from the view file, and have them available in the layout. CakePHP's default RSS layout uses a<code class="literal"> $channel</code> view variable to describe the RSS feed. Using that variable, we set our feed's<code class="literal"> title, link</code>, and<code class="literal"> description</code>.</p><p>We proceed to output the actual item files. There are different ways to do so, the first one is making a call to the<code class="literal"> RssHelper::item()</code> method for each item, and the other one requires only a call to<code class="literal"> RssHelper::items()</code>, passing it an array of items. We chose the latter method due to its simplicity.</p><p>While we build the array of items to be included in the feed, we only specify<code class="literal"> title, link, description</code>, and<code class="literal"> pubDate</code>. Looking at the generated XML source for the item, we can infer that the<code class="literal"> RssHelper</code> used our value for the<code class="literal"> link</code> element as the value for the<code class="literal"> guid</code> (globally unique identifier) element.</p><p>Note that the<code class="literal"> description</code> field is specified slightly differently than the values for the other fields in our item array. This is because our description may contain HTML code, so we want to make sure that the generated document is still a valid XML document.</p><p>By using the array notation for the<code class="literal"> description</code> field, a notation that uses the<code class="literal"> value</code> index to specify the actual value on the field, and by setting<code class="literal"> cdata</code> to<code class="literal"> true</code>, we are telling the<code class="literal"> RssHelper</code> (actually the<code class="literal"> XmlHelper</code> from which<code class="literal"> RssHelper</code> descends) that the field should be wrapped in a section that should not be parsed as part of the XML document, denoted between a <code class="literal">&lt;![CDATA[</code> prefix and a<code class="literal">]]&gt;</code> postfix.</p><p>The final task in this recipe is adding a link to our feed that is shown in the<code class="literal"> index.ctp</code> view file. While creating this link, we set the special<code class="literal"> ext</code> URL setting to<code class="literal"> rss</code>. This sets the extension for the generated link, which ends up being <code class="literal">http://localhost/posts.rss</code>.</p><div class="section" title="Adding view caching to an RSS feed"><div class="titlepage"><div><div><h3 class="title"><a id="ch07lvl3sec01"/>Adding view caching to an RSS feed</h3></div></div></div><p>Our feeds may be consumed by feed search crawlers. If we are lucky, we may get tons and tons of requests looking for updates to our blog. It is unlikely that we will update our blog so often that we would have new posts every second, so our server load may force us to add some caching.<a id="id225" class="indexterm"/>
+</p><p>When looking to improve performance, some developers are content to only cache their database queries. In our recipe, this would mean caching the results obtained from our<code class="literal"> $this-&gt;Post-&gt;find('all')</code> call. Unless we have our database engine on a separate server that suffers from some considerable network latency, chances are this sort of caching will offer little or no benefit.</p><p>A much better solution is to use view caching. That is, caching the generated RSS feed, and using that cached document whenever a request is made to our feed, provided we are within the cache time. Fortunately, CakePHP offers us a view-caching implementation right from the dispatcher, speeding up the request considerably. If a cached view file is found, that file is rendered directly to the client, without any intervention by the controller, or the need to load models, components, or helpers.</p><p>We want to add caching only when our<code class="literal"> PostsController::index()</code> action is accessed with the<code class="literal"> rss</code> extension. That is, we don't want to cache the listing of posts, but its feed. So we will make sure to only specify caching information when a feed is requested. In fact, we are going to cache all actions in our<code class="literal"> PostsController</code> whenever the<code class="literal"> rss</code> extension is used.</p><p>The first thing we need to do is tell CakePHP to take view caching into account. Edit your<code class="literal"> app/config/core.php</code> file and uncomment the following line:</p><div class="informalexample"><pre class="programlisting">Configure::write('Cache.check', true);
+</pre></div><p>Next, edit your<code class="literal"> app/controllers/posts_controller.php</code> file and add the<code class="literal"> Cache</code> helper to the<code class="literal"> PostsController</code> class. Without it, view caching will simply not work:</p><div class="informalexample"><pre class="programlisting">public $helpers = array('Cache');
+</pre></div><p>While still editing the<code class="literal"> PostsController</code> class, add the following method:</p><div class="informalexample"><pre class="programlisting">public function beforeFilter() {
+parent::beforeFilter();
+if ($this-&gt;RequestHandler-&gt;isRss()) {
+$this-&gt;cacheAction = array($this-&gt;action =&gt; '1 hour');
+}
+}
+</pre></div><p>In this<code class="literal"> beforeFilter()</code> implementation, we are checking to see if the current request was made using the<code class="literal"> rss</code> extension. If so, we add the current action (whatever that may be) to the list of cached actions, and set the cache time to be<code class="literal"> 1 hour</code>.</p><p>If we access the feed multiple times within the hour, we should see the same feed we have been getting so far, but coming from the cache instead of being built in real time.<a id="id226" class="indexterm"/>
+</p></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec04"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Consuming RSS feeds with a datasource</em></span> in <a class="link" href="ch05.html" title="Chapter 5. Datasources">Chapter 5</a>, <span class="emphasis"><em>Datasources</em></span>.</li><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Building REST services with JSON</em></span></li></ul></div></div></div>
+<div class="section" title="Consuming a JSON service"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec03"/>Consuming a JSON service</h1></div></div></div><p>
+<span class="strong"><strong>JSON</strong></span> (<span class="strong"><strong>JavaScript Object Notation</strong></span>) is probably one of the best formats available for exposing data, due to its easy-to-read syntax, which greatly simplifies the parsing. In fact, PHP (as of its 5.2.0 release) provides built-in methods to convert data from a JSON-formatted string to a PHP native data type and from PHP types to JSON.<a id="id227" class="indexterm"/>
+</p><p>In this recipe, we will learn how to use the<code class="literal"> HttpSocket</code> class to consume a JSON service from a foreign site. This time, we are going to use the YouTube JSON API to allow our users to search for YouTube videos that match a given search query.<a id="id228" class="indexterm"/>
+</p><p>The JSON service we will be consuming from YouTube uses a variant of JSON, called JSON-C. JSON-C is nothing more than JSON, but Google is making a distinction between what YouTube used to provide as JSON, and the new version it is now producing. YouTube's JSON-C-based responses are far simpler than their JSON service. Consequently, Google has decided to deprecate JSON in favor of JSON-C in the near future.</p><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec05"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Start by creating the main controller in a file named<code class="literal"> videos_controller.php</code> and place it in your<code class="literal"> app/controllers</code> folder, with the following contents:<div class="informalexample"><pre class="programlisting">&lt;?php
+class VideosController extends AppController {
+public function index() {
+if (!empty($this-&gt;data)) {
+$videos = $this-&gt;Video-&gt;search($this-&gt;data);
+$this-&gt;set(compact('videos'));
+}
+}
+}
+?&gt;
+</pre></div></li><li class="listitem">Create the required model in a file named<code class="literal"> video.php</code> and place it in your<code class="literal"> app/models</code> folder, with the following contents:<a id="id229" class="indexterm"/><div class="informalexample"><pre class="programlisting">&lt;?php
+App::import('Core', 'HttpSocket');
+class Video extends AppModel {
+public $useTable = false;
+protected $_httpSocket;
+public function __construct($id = false, $table = null, $ds = null) {
+parent::__construct($id, $table, $ds);
+$this-&gt;_httpSocket = new HttpSocket();
+}
+public function search($data) {
+$query = !empty($data[$this-&gt;alias]['q']) ?
+$data[$this-&gt;alias]['q'] :
+'';
+$this-&gt;_httpSocket-&gt;reset();
+$response = $this-&gt;_httpSocket-&gt;get(
+'http://gdata.youtube.com/feeds/api/videos',
+array(
+'v' =&gt; '2',
+'alt' =&gt; 'jsonc',
+'q' =&gt; $query,
+'orderby' =&gt; 'updated'
+)
+);
+$videos = array();
+if (!empty($response)) {
+$response = json_decode($response);
+if (empty($response) || empty($response-&gt;data-&gt;items)) {
+return $videos;
+}
+foreach($response-&gt;data-&gt;items as $item) {
+$videos[] = array('Video' =&gt; array(
+'url' =&gt; $item-&gt;player-&gt;default,
+'title' =&gt; $item-&gt;title,
+'uploaded' =&gt; strtotime($item-&gt;uploaded),
+'category' =&gt; $item-&gt;category,
+'description' =&gt; $item-&gt;description,
+'thumbnail' =&gt; $item-&gt;thumbnail-&gt;sqDefault
+));
+}
+}
+return $videos;
+}
+}
+?&gt;
+</pre></div></li><li class="listitem">Create a view folder named videos in your<code class="literal"> app/views</code> folder. Then, create a file named<code class="literal"> index.ctp</code> and place it in your<code class="literal"> app/views/videos</code> folder, with the following contents:<a id="id230" class="indexterm"/><div class="informalexample"><pre class="programlisting">&lt;?php
+echo $this-&gt;Form-&gt;create();
+echo $this-&gt;Form-&gt;input('q', array('label'=&gt;'Search terms:'));
+echo $this-&gt;Form-&gt;end('Search');
+if (!empty($videos)) {
+?&gt;
+&lt;h1&gt;Search results&lt;/h1&gt;
+&lt;?php foreach($videos as $video) { ?&gt;
+&lt;div style="float: left; clear: both; margin-bottom: 10px;"&gt;
+&lt;h4&gt;&lt;?php echo $this-&gt;Html-&gt;link($video['Video']['title'], $video['Video']['url']); ?&gt;&lt;/h4&gt;
+&lt;?php echo $this-&gt;Html-&gt;image($video['Video']['thumbnail'], array(
+'url' =&gt; $video['Video']['url'],
+'align' =&gt; 'left',
+'style' =&gt; 'margin-right: 10px;'
+)); ?&gt;
+&lt;p&gt;&lt;?php echo $video['Video']['description']; ?&gt;&lt;/p&gt;
+&lt;br /&gt;
+&lt;p&gt;&lt;small&gt;
+Uploaded on &lt;?php echo date('F d, Y H:i', $video['Video']['uploaded']); ?&gt;
+in &lt;?php echo $video['Video']['category']; ?&gt;
+-
+&lt;strong&gt;&lt;?php echo $this-&gt;Html-&gt;link('PLAY', $video['Video']['url']); ?&gt;&lt;/strong&gt;
+&lt;/small&gt;&lt;/p&gt;
+&lt;/div&gt;
+&lt;?php
+}
+}
+?&gt;
+</pre></div><p>If you now browse to <code class="literal">http://localhost/videos</code>, you will see a search form. Entering <span class="strong"><strong>CakePHP</strong></span> and clicking the button <span class="strong"><strong>Search</strong></span> should give you a set of results similar to those shown in the following screenshot:
+<a id="id231" class="indexterm"/>
+</p><div class="mediaobject"><img src="graphics/1926_07_02.jpg" alt="How to do it..."/></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec06"/>How it works...</h2></div></div></div><p>The controller class (<code class="literal">ArticlesController</code>) and the view file (<code class="literal">index.ctp</code>) have no connection with the underlying web service we are consuming. In fact, if you look closely at their code, they look like a regular controller and a standard view file. This is because we decided to encapsulate the service logic in a model.</p><p>Doing so allows us to change how we communicate with the service provider without having to modify neither the controller nor the view. That is one of the many advantages of the MVC (Model View Controller) architecture that is the foundation of CakePHP.<a id="id232" class="indexterm"/>
+</p><p>We could have taken a more complex approach, and decided to build a datasource to interact with the server. Instead, we chose a simpler route, by creating a model method that would perform the actual search and return the results in a data format typical of any CakePHP application.</p><p>This is what the<code class="literal"> Video</code> model is there for. As there's no underlying table for our videos, we set the model<code class="literal"> $useTable</code> property to<code class="literal"> false</code>. We also import the<code class="literal"> HttpSocket</code> class, part of CakePHP's core, because it will be the mechanism we will use to communicate with the server.</p><p>The<code class="literal"> search()</code> method is where the magic happens. The first thing we do is extract the search terms out of the submitted data. We then create an instance of<code class="literal"> HttpSocket</code>, and use its get method to perform the request.<a id="id233" class="indexterm"/>
+</p><p>
+<code class="literal">HttpSocket::get()</code> takes three parameters:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">$uri</code>: The URL to which we are making the request. This can be either a string, or an array that contains the different elements of the URL, such as<code class="literal"> scheme, host, port</code>, and<code class="literal"> path</code>.<a id="id234" class="indexterm"/></li><li class="listitem" style="list-style-type: disc"><code class="literal">$query</code>: An array of parameters to append to the URL. The indexes in this array are the parameter names and the values their respective values.<a id="id235" class="indexterm"/></li><li class="listitem" style="list-style-type: disc"><code class="literal">$request</code>: An array with any additional request information to send to the URL, such as<code class="literal"> method, header</code>, and<code class="literal"> body</code>.<a id="id236" class="indexterm"/></li></ul></div><p>In our case we specify the URL to the YouTube video API, and we set the following query parameters:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">v</code>: The API version to use.<a id="id237" class="indexterm"/></li><li class="listitem" style="list-style-type: disc"><code class="literal">alt</code>: The format to get results in.<a id="id238" class="indexterm"/></li><li class="listitem" style="list-style-type: disc"><code class="literal">q</code>: The query to use for searching.<a id="id239" class="indexterm"/></li><li class="listitem" style="list-style-type: disc"><code class="literal">orderby</code>: The order in which to get the results.<a id="id240" class="indexterm"/></li></ul></div><p>Once we get the response, we decode it using PHP's<code class="literal"> json_decode()</code> function, which converts a JSON string into a PHP object or to<code class="literal"> null</code> if it is not a valid JSON string. For example, the following JSON:</p><div class="informalexample"><pre class="programlisting">{
+"name": "Mariano Iglesias",
+"profile": {
+"url": "http://marianoiglesias.com.ar"
+}
+}
+</pre></div><p>Would be evaluated to a PHP class with two public attributes:<code class="literal"> name</code>, and<code class="literal"> profile</code>. The<code class="literal"> profile</code> attribute will itself be a class, with one public attribute:<code class="literal"> url</code>. If we had the above JSON string in a variable called<code class="literal"> $json</code>, the following code would output<span class="strong"><strong> Mariano Iglesias has a website in http://marianoiglesias.com.ar</strong></span>:
+<a id="id241" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">$user = json_decode($json);
+echo $user-&gt;name . ' has a website in ' . $user-&gt;profile-&gt;url;
+</pre></div><p>Back to the<code class="literal"> Video::search()</code> method. Once we have decoded the JSON response, we check to make sure there are resulting videos available in the<code class="literal"> $response-&gt;data-&gt;items</code> property. If so, we iterate through them, and we add elements to our response array, specifying only a subset of the data we obtained.</p><p>Once we have the data prepared, we return it back to the controller, which sends it to the view to render the results.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec07"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><a class="link" href="ch05.html" title="Chapter 5. Datasources">Chapter 5</a>, <span class="emphasis"><em>Datasources</em></span></li><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Building REST services with JSON</em></span></li></ul></div></div></div>
+<div class="section" title="Building REST services with JSON"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec04"/>Building REST services with JSON</h1></div></div></div><p>In the recipe<span class="emphasis"><em> Consuming a JSON service</em></span>, we learnt how lightweight and convenient the JSON format can be for exchanging data. What happens if we not only want to expose data using JSON, but also allow the possibility to modify it? This is one of the reasons why the REST architecture exists.<span class="strong"><strong> REST</strong></span> stands for<span class="strong"><strong> Representational State Transfer</strong></span>, and is no more than a set of principles that guide the concepts that describe its proper implementation.<a id="id242" class="indexterm"/>
+</p><p>One of these main principles is that the client-server communication that is part of a REST request should be stateless. This means that no context exists in the server between requests from a specific client. All the information required to perform an operation is part of the request.</p><p>In this recipe, we will learn how to add REST services to an application, using JSON as their exchange format. These services will allow any foreign application to get data from a post, create new posts, or delete existing posts.<a id="id243" class="indexterm"/>
+</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec08"/>Getting ready</h2></div></div></div><p>To go through this recipe we need sample data to work with. Follow the<span class="emphasis"><em> Getting ready</em></span> section of the<span class="emphasis"><em> Creating an RSS feed</em></span> recipe.</p><p>Create the<code class="literal"> Post</code> model in a file named<code class="literal"> post.php</code> and place it in your<code class="literal"> app/models</code> folder, with the following contents. With the validation option,<code class="literal"> required</code>, we are telling CakePHP that these fields should always be present when creating or modifying records:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+class Post extends AppModel {
+public $validate = array(
+'title' =&gt; array('required'=&gt;true, 'rule'=&gt;'notEmpty'),
+'body' =&gt; array('required'=&gt;true, 'rule'=&gt;'notEmpty')
+);
+}
+?&gt;
+</pre></div><p>Let us add actions for creating, editing, and deleting posts. Edit your<code class="literal"> app/controllers/posts_controller.php</code> file and add the following methods to the<code class="literal"> PostsController</code> class:</p><div class="informalexample"><pre class="programlisting">public function add() {
+$this-&gt;setAction('edit');
+}
+public function edit($id=null) {
+if (!empty($this-&gt;data)) {
+if (!empty($id)) {
+$this-&gt;Post-&gt;id = $id;
+} else {
+$this-&gt;Post-&gt;create();
+}
+if ($this-&gt;Post-&gt;save($this-&gt;data)) {
+$this-&gt;Session-&gt;setFlash('Post created successfully');
+$this-&gt;redirect(array('action'=&gt;'index'));
+} else {
+$this-&gt;Session-&gt;setFlash('Please correct the errors marked below');
+}
+} elseif (!empty($id)) {
+$this-&gt;data = $this-&gt;Post-&gt;find('first', array(
+'conditions' =&gt; array('Post.id' =&gt; $id)
+));
+if (empty($this-&gt;data)) {
+$this-&gt;cakeError('error404');
+}
+}
+$this-&gt;set(compact('id'));
+}
+public function delete($id) {
+$post = $this-&gt;Post-&gt;find('first', array(
+'conditions' =&gt; array('Post.id' =&gt; $id)
+));
+if (empty($post)) {
+$this-&gt;cakeError('error404');
+}
+if (!empty($this-&gt;data)) {
+if ($this-&gt;Post-&gt;delete($id)) {
+$this-&gt;Session-&gt;setFlash('Post deleted successfully');
+$this-&gt;redirect(array('action'=&gt;'index'));
+} else {
+$this-&gt;Session-&gt;setFlash('Could not delete post');
+}
+}
+$this-&gt;set(compact('post'));
+}
+</pre></div><p>We now need to add their respective views. Create a file named<code class="literal"> edit.ctp</code> and place it in your<code class="literal"> app/views/posts</code> folder, with the following contents:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+echo $this-&gt;Form-&gt;create();
+echo $this-&gt;Form-&gt;inputs(array(
+'title',
+'body'
+));
+echo $this-&gt;Form-&gt;end('Save');
+?&gt;
+</pre></div><p>Create a file named<code class="literal"> delete.ctp</code> and place it in your<code class="literal"> app/views/posts</code> folder, with the following contents:</p><div class="informalexample"><pre class="programlisting">&lt;p&gt;Click the &lt;strong&gt;Delete&lt;/strong&gt; button to delete
+the post &lt;?php echo $post['Post']['title']; ?&gt;&lt;/p&gt;
+&lt;?php
+echo $this-&gt;Form-&gt;create(array('url'=&gt;array('action'=&gt;'delete', $post['Post']['id'])));
+echo $this-&gt;Form-&gt;hidden('Post.id', array('value'=&gt;$post['Post']['id']));
+echo $this-&gt;Form-&gt;end('Delete');
+?&gt;
+</pre></div><p>Modify the<code class="literal"> app/views/posts/index.ctp</code> to add links to these actions by changing the whole view to the following:<a id="id244" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;h1&gt;Posts&lt;/h1&gt;
+&lt;?php if (!empty($posts)) { ?&gt;
+&lt;ul&gt;
+&lt;?php foreach($posts as $post) { ?&gt;
+&lt;li&gt;
+&lt;?php echo $this-&gt;Html-&gt;link($post['Post']['title'], array(
+'action'=&gt;'view',
+$post['Post']['id']
+)); ?&gt;
+:
+&lt;?php echo $this-&gt;Html-&gt;link('Edit', array(
+'action'=&gt;'edit',
+$post['Post']['id']
+)); ?&gt;
+-
+&lt;?php echo $this-&gt;Html-&gt;link('Delete', array(
+'action'=&gt;'delete',
+$post['Post']['id']
+)); ?&gt;
+&lt;/li&gt;
+&lt;?php } ?&gt;
+&lt;/ul&gt;
+&lt;?php } ?&gt;
+&lt;?php echo $this-&gt;Html-&gt;link('Create new Post', array('action'=&gt;'add')); ?&gt;
+</pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec09"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Edit your<code class="literal"> app/config/routes.php</code> file and add the following statement at the end:<div class="informalexample"><pre class="programlisting">Router::parseExtensions('json');
+</pre></div></li><li class="listitem">Edit your<code class="literal"> app/controllers/posts_controller.php</code> file and add the following property to the<code class="literal"> PostsController</code> class:<div class="informalexample"><pre class="programlisting">public $components = array('RequestHandler');
+</pre></div></li><li class="listitem">Create a folder named<code class="literal"> json</code> in your<code class="literal"> app/views/layouts</code> folder, and inside the<code class="literal"> json</code> folder, create a file named<code class="literal"> default.ctp</code>, with the following contents:<div class="informalexample"><pre class="programlisting">&lt;?php
+echo $content_for_layout;
+?&gt;
+</pre></div></li><li class="listitem">Create a folder named<code class="literal"> json</code> in your<code class="literal"> app/views/posts</code> folder, and inside the<code class="literal"> json</code> folder, create a file named<code class="literal"> index.ctp</code>, with the following contents:<a id="id245" class="indexterm"/><div class="informalexample"><pre class="programlisting">&lt;?php
+foreach($posts as $i =&gt; $post) {
+$post['Post']['url'] = $this-&gt;Html-&gt;url(array(
+'action'=&gt;'view',
+$post['Post']['id']
+), true);
+$posts[$i] = $post;
+}
+echo json_encode($posts);
+?&gt;
+</pre></div></li><li class="listitem">Edit your<code class="literal"> app/controllers/posts_controller.php</code> file and add the following method to the end of the<code class="literal"> PostsController</code> class:<div class="informalexample"><pre class="programlisting">protected function _isJSON() {
+return $this-&gt;RequestHandler-&gt;ext == 'json';
+}
+</pre></div></li><li class="listitem">Edit the<code class="literal"> PostsController::index()</code> method and make the following changes:<div class="informalexample"><pre class="programlisting">public function index() {
+if ($this-&gt;_isJSON() &amp;&amp; !$this-&gt;RequestHandler-&gt;isGet()) {
+$this-&gt;redirect(null, 400);
+}
+$posts = $this-&gt;Post-&gt;find('all');
+$this-&gt;set(compact('posts'));
+}
+</pre></div></li><li class="listitem">Add the following methods to the beginning of the<code class="literal"> PostsController</code> class below the declaration of the<code class="literal"> components</code> property:<div class="informalexample"><pre class="programlisting">public function beforeFilter() {
+parent::beforeFilter();
+if (
+$this-&gt;_isJSON() &amp;&amp;
+!$this-&gt;RequestHandler-&gt;isGet()
+) {
+if (empty($this-&gt;data) &amp;&amp; !empty($_POST)) {
+$this-&gt;data[$this-&gt;modelClass] = $_POST;
+}
+}
+}
+public function beforeRender() {
+parent::beforeRender();
+if ($this-&gt;_isJSON()) {
+Configure::write('debug', 0);
+$this-&gt;disableCache();
+}
+}
+</pre></div></li><li class="listitem">Edit the<code class="literal"> PostsController::edit()</code> method and make the following changes:<a id="id246" class="indexterm"/><div class="informalexample"><pre class="programlisting">public function edit($id=null) {
+if ($this-&gt;_isJSON() &amp;&amp; !$this-&gt;RequestHandler-&gt;isPost()) {
+$this-&gt;redirect(null, 400);
+}
+if (!empty($this-&gt;data)) {
+if (!empty($id)) {
+$this-&gt;Post-&gt;id = $id;
+} else {
+$this-&gt;Post-&gt;create();
+}
+if ($this-&gt;Post-&gt;save($this-&gt;data)) {
+$this-&gt;Session-&gt;setFlash('Post created successfully');
+<span class="strong"><strong>if ($this-&gt;_isJSON()) {
+$this-&gt;redirect(null, 200);
+} else {
+$this-&gt;redirect(array('action'=&gt;'index'));
+}
+} else {
+if ($this-&gt;_isJSON()) {
+$this-&gt;redirect(null, 403);
+} else {
+$this-&gt;Session-&gt;setFlash('Please correct the errors marked below');
+}</strong></span>
+}
+} elseif (!empty($id)) {
+$this-&gt;data = $this-&gt;Post-&gt;find('first', array(
+'conditions' =&gt; array('Post.id' =&gt; $id)
+));
+if (empty($this-&gt;data)) {
+<span class="strong"><strong>if ($this-&gt;_isJSON()) {
+$this-&gt;redirect(null, 404);
+}</strong></span>
+$this-&gt;cakeError('error404');
+}
+}
+$this-&gt;set(compact('id'));
+}
+</pre></div></li><li class="listitem">Edit the<code class="literal"> PostsController::delete()</code> method and make the following changes:<a id="id247" class="indexterm"/><div class="informalexample"><pre class="programlisting">public function delete($id) {
+<span class="strong"><strong>if ($this-&gt;_isJSON() &amp;&amp; !$this-&gt;RequestHandler-&gt;isDelete()) {
+$this-&gt;redirect(null, 400);
+}</strong></span>
+$post = $this-&gt;Post-&gt;find('first', array(
+'conditions' =&gt; array('Post.id' =&gt; $id)
+));
+if (empty($post)) {
+<span class="strong"><strong>if ($this-&gt;_isJSON()) {
+$this-&gt;redirect(null, 404);
+}</strong></span>
+$this-&gt;cakeError('error404');
+}
+<span class="strong"><strong>if (!empty($this-&gt;data) || $this-&gt;RequestHandler-&gt;isDelete()) {</strong></span>
+if ($this-&gt;Post-&gt;delete($id)) {
+$this-&gt;Session-&gt;setFlash('Post deleted successfully');
+<span class="strong"><strong>if ($this-&gt;_isJSON()) {
+$this-&gt;redirect(null, 200);
+} else {
+$this-&gt;redirect(array('action'=&gt;'index'));
+}</strong></span>
+} else {
+<span class="strong"><strong>if ($this-&gt;_isJSON()) {
+$this-&gt;redirect(null, 403);
+} else {
+$this-&gt;Session-&gt;setFlash('Could not delete post');
+}</strong></span>
+}
+}
+$this-&gt;set(compact('post'));
+}
+</pre></div></li></ol></div><p>To test these services, we are going to create a small CakePHP shell that will create a new post, edit the created post, delete it, and show the list of posts throughout the process. Create a file named<code class="literal"> consume.php</code> and place it in your<code class="literal"> app/vendors/shells</code> folder, with the following contents:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+App::import('Core', 'HttpSocket');
+class ConsumeShell extends Shell {
+protected static $baseUrl;
+protected static $httpSocket;
+public function main() {
+if (empty($this-&gt;args) || count($this-&gt;args) != 1) {
+$this-&gt;err('USAGE: cake consume &lt;baseUrl&gt;');
+$this-&gt;_stop();
+}
+self::$baseUrl = $this-&gt;args[0];
+$this-&gt;test();
+}
+protected function test() {
+$this-&gt;request('/posts/add.json', 'POST', array(
+'title' =&gt; 'New Post',
+'body' =&gt; 'Body for my new post'
+));
+$lastId = $this-&gt;listPosts();
+$this-&gt;hr();
+$this-&gt;request('/posts/edit/'.$lastId.'.json', 'POST', array(
+'title' =&gt; 'New Post Title',
+'body' =&gt; 'New body for my new post'
+));
+$this-&gt;listPosts();
+$this-&gt;hr();
+$this-&gt;request('/posts/delete/'.$lastId.'.json', 'DELETE');
+$this-&gt;listPosts();
+}
+protected function request($url, $method='GET', $data=null) {
+if (!isset(self::$httpSocket)) {
+self::$httpSocket = new HttpSocket();
+} else {
+self::$httpSocket-&gt;reset();
+}
+$body = self::$httpSocket-&gt;request(array(
+'method' =&gt; $method,
+'uri' =&gt; self::$baseUrl . '/' . $url,
+'body' =&gt; $data
+));
+if ($body === false || self::$httpSocket-&gt;response['status']['code'] != 200) {
+$error = 'ERROR while performing '.$method.' to '.$url;
+if ($body !== false) {
+$error = '[' . self::$httpSocket-&gt;response['status']['code'] . '] ' . $error;
+}
+$this-&gt;err($error);
+$this-&gt;_stop();
+}
+return $body;
+}
+protected function listPosts() {
+$response = json_decode($this-&gt;request('/posts.json'));
+$lastId = null;
+foreach($response as $item) {
+$lastId = $item-&gt;Post-&gt;id;
+$this-&gt;out($item-&gt;Post-&gt;title . ': ' . $item-&gt;Post-&gt;url);
+}
+return $lastId;
+}
+}
+?&gt;
+</pre></div><p>To run this shell script, invoke it with one argument: the base URL of your application. So change<code class="literal"> http://localhost</code> below to suit your application's URL:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">If you are on a GNU Linux / Mac / Unix system:<div class="informalexample"><pre class="programlisting">../cake/console/cake consume http://localhost
+</pre></div></li><li class="listitem" style="list-style-type: disc">If you are on Microsoft Windows:<div class="informalexample"><pre class="programlisting">..\cake\console\cake.bat consume http://localhost
+</pre></div></li></ul></div><p>The output should be similar to that shown in the following screenshot:</p><div class="mediaobject"><img src="graphics/1926_07_03.jpg" alt="How to do it..."/></div><p>We can see that the first list of posts shows our newly created post entitled<span class="strong"><strong> New Post</strong></span>. The second list shows how we successfully changed its title to<span class="strong"><strong> New Post Title</strong></span>, and the third list shows how we deleted the post.<a id="id248" class="indexterm"/>
+</p></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec10"/>How it works...</h2></div></div></div><p>Similarly to what was described in the<span class="emphasis"><em> Creating an RSS feed</em></span> recipe, we started by specifying<code class="literal"> json</code> as a valid extension and added the<code class="literal"> RequestHandler</code> component to our list of components.<a id="id249" class="indexterm"/>
+</p><p>Unlike the<code class="literal"> rss</code> and<code class="literal"> xml</code> extensions, CakePHP does not provide a default layout for<code class="literal"> json</code>, so we need to create one. Through the<code class="literal"> beforeRender</code> callback, we turn debugging off, and we disable caching when a JSON request is made, to avoid any information that would break the JSON syntax and prevent client browsers from caching JSON requests.</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note26"/>Note</h3><p>When a JSON request is made to a controller that uses the<code class="literal"> RequestHandler</code> component, the component will automatically set the content type of the response to<code class="literal"> application/json</code>.</p></div><p>Once we have our layout, we are ready to start implementing our JSON views. In this recipe, we only implement<code class="literal"> index()</code> as a JSON action that returns JSON data through a view. All the other actions—<code class="literal">add(), edit()</code>, and<code class="literal"> delete()</code>—will simply use HTTP status codes to communicate with the client. The JSON<code class="literal"> index.ctp</code> view will simply add the full URL for each post, and echo the whole data structure as a JSON-formatted string using<code class="literal"> json_encode()</code>.<a id="id250" class="indexterm"/>
+</p><p>As we will be changing some of the controller logic depending on the type of access (JSON versus normal access), we add a method named<code class="literal"> _isJSON()</code> to our controller. This method uses the<code class="literal"> ext</code> property of the<code class="literal"> RequestHandler</code> component, which is set to the extension with which our action is requested. If no extension is used, and then it defaults to<code class="literal"> html</code>. Using this property, we can check when a request is made using the<code class="literal"> json</code> extension.</p><p>With<code class="literal"> _isJSON(),</code> we can also add some extra checks to our methods, to make sure they are requested the proper way. For our<code class="literal"> index</code> action, we make sure that if the request is made with JSON, we only allow GET requests to go through. If the request was made with any other method, for example, with POST, then we return an HTTP status of<code class="literal"> 400</code> (Bad Request), and we exit the application.</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note27"/>Note</h3><p>When no data needs to be sent back to the client, HTTP status codes are a great way to inform if a REST request has succeeded or failed.</p></div><p>To help users of our REST requests, we should allow them to POST data without having to know how the data needs to be formatted for CakePHP to process it automatically. Therefore, we override the<code class="literal"> beforeFilter</code> callback, so if a request is made with JSON that is not a GET request, and if CakePHP did not find any data properly formatted (when data was indeed posted), then we set what was posted as the controller data. This way, when creating or modifying posts, client code can simply use<code class="literal"> title</code> to refer to the post<code class="literal"> title</code> field, rather than having to use<code class="literal"> data[Post][title]</code> as the name for the field.</p><p>We then proceed to make the necessary modifications to the<code class="literal"> edit()</code> method. We start by making sure that we were accessing with the proper method (POST), and we change how we report success or failure: with an HTTP status of<code class="literal"> 200</code> (OK) when the post is saved,<code class="literal"> 403</code> (Forbidden) if the post cannot be saved, or<code class="literal"> 404</code> (Not Found) if trying to edit a post that does not exist.</p><p>The modifications to the<code class="literal"> delete()</code> method are almost identical to the ones made to the<code class="literal"> edit()</code> method. The two main differences are that the expected method is DELETED, and that we don't enforce data to be posted when being accessed through JSON.</p><p>To test the code in this recipe, we built a shell script to consume our REST services. This script uses the<code class="literal"> HttpSocket</code> class to fetch the content. In this shell script, we built a generic<code class="literal"> request()</code> function that takes a URL, a method (we use GET, POST, and DELETE), and an optional array of data to post.<a id="id251" class="indexterm"/>
+</p><p>We use the<code class="literal"> request()</code> method to create a new post (notice how we specify the values for the<code class="literal"> title</code> and<code class="literal"> body</code> fields), get the list of posts that should include our newly created post, modify the created post, and finally delete it.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec11"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Creating an RSS feed</em></span></li><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Adding authentication to REST services</em></span></li></ul></div></div></div>
+<div class="section" title="Adding authentication to REST services"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec05"/>Adding authentication to REST services</h1></div></div></div><p>In the previous recipe,<span class="emphasis"><em> Building REST services with JSON</em></span>, we learnt how to enable JSON access to our actions, including the ability to create, modify, or delete posts with a simple JSON request.<a id="id252" class="indexterm"/>
+</p><p>Modification of data through REST requests can lead to sensitive data loss if we don't add some sort of authentication. This recipe shows us how to enforce that our data-changing REST services are only utilized by valid users using HTTP Basic Authentication.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec12"/>Getting ready</h2></div></div></div><p>To go through this recipe, we need some JSON-based REST services implemented. Follow the entire recipe<span class="emphasis"><em> Building REST services with JSON</em></span>.</p><p>We also need a working authentication for our application. Follow the entire recipe<span class="emphasis"><em> Setting up a basic authentication system</em></span> in the<span class="emphasis"><em> Authentication</em></span> chapter.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec13"/>How to do it...</h2></div></div></div><p>Edit your<code class="literal"> app/controller/posts_controller.php</code> file and make the following changes to the<code class="literal"> beforeFilter</code> callback:</p><div class="informalexample"><pre class="programlisting">public function beforeFilter() {
+parent::beforeFilter();
+<span class="strong"><strong>if ($this-&gt;_isJSON()) {
+$this-&gt;Auth-&gt;allow($this-&gt;action);
+$this-&gt;Security-&gt;loginOptions = array(
+'type' =&gt; 'basic',
+'realm' =&gt; 'My REST services,services
+'login' =&gt; '_restLogin'
+);
+$this-&gt;Security-&gt;requireLogin($this-&gt;action);
+$this-&gt;Security-&gt;validatePost = false;
+}</strong></span>
+if (
+$this-&gt;_isJSON() &amp;&amp;
+!$this-&gt;RequestHandler-&gt;isGet()
+) {
+if (empty($this-&gt;data) &amp;&amp; !empty($_POST)) {
+$this-&gt;data[$this-&gt;modelClass] = $_POST;
+}
+}
+}
+</pre></div><p>While still editing the<code class="literal"> PostsController</code> class, add the following method below the<code class="literal"> beforeFilter()</code> method:<a id="id253" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">public function _restLogin($credentials) {
+$login = array();
+foreach(array('username', 'password') as $field) {
+$value = $credentials[$field];
+if ($field == 'password' &amp;&amp; !empty($value)) {
+$value = $this-&gt;Auth-&gt;password($value);
+}
+$login[$this-&gt;Auth-&gt;fields[$field]] = $value;
+}
+if (!$this-&gt;Auth-&gt;login($login)) {
+$this-&gt;Security-&gt;blackhole($this, 'login');
+}
+}
+</pre></div><p>If we now browse to <code class="literal">http://localhost/posts</code>, we will be presented with a login screen. As there are no users in the system, we need to create one by browsing to<code class="literal"> http://localhost/users/add</code>, and specifying the desired user name and password.</p><p>Let us run the test shell script (remember to change<code class="literal"> http://localhost</code> to suit your application's base URL).</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">If you are on a GNU Linux / Mac / Unix system:<div class="informalexample"><pre class="programlisting">../cake/console/cake consume http://localhost
+</pre></div></li><li class="listitem" style="list-style-type: disc">If you are on Microsoft Windows:<div class="informalexample"><pre class="programlisting">..\cake\console\cake.bat consume http://localhost
+</pre></div></li></ul></div><p>Its output would inform us that the creation of the post fails with a<code class="literal"> 401</code> (Unauthorized) status code, as shown in the following screenshot:</p><div class="mediaobject"><img src="graphics/1926_07_04.jpg" alt="How to do it..."/></div><p>If you haven't done so already while following the recipe<span class="emphasis"><em> Setting up a basic authentication system</em></span>, create a user account by browsing to<code class="literal"> http://localhost/users/add</code> and specifying the desired username and password.<a id="id254" class="indexterm"/>
+</p><p>We need to modify the script to specify the user and password we created.</p><p>Edit your<code class="literal"> app/vendors/shells/consume.php</code> shell script and add the following two properties to the<code class="literal"> ConsumeShell</code> class:</p><div class="informalexample"><pre class="programlisting">protected static $user;
+protected static $password;
+</pre></div><p>While still editing the script, make the following changes to the<code class="literal"> main()</code> method:</p><div class="informalexample"><pre class="programlisting">public function main() {
+<span class="strong"><strong>if (empty($this-&gt;args) || count($this-&gt;args) != 3) {
+$this-&gt;err('USAGE: cake consume &lt;baseUrl&gt; &lt;user&gt; &lt;password&gt;');
+$this-&gt;_stop();
+}
+list(self::$baseUrl, self::$user, self::$password) = $this-&gt;args;</strong></span>
+$this-&gt;test();
+}
+</pre></div><p>Make the following changes to the<code class="literal"> request()</code> method:</p><div class="informalexample"><pre class="programlisting">protected function request($url, $method='GET', $data=null) {
+if (!isset(self::$httpSocket)) {
+self::$httpSocket = new HttpSocket();
+} else {
+self::$httpSocket-&gt;reset();
+}
+$body = self::$httpSocket-&gt;request(array(
+'method' =&gt; $method,
+'uri' =&gt; self::$baseUrl . '/' . $url,
+'body' =&gt; $data,
+<span class="strong"><strong>'auth' =&gt; array(
+'user' =&gt; self::$user,
+'pass' =&gt; self::$password
+)</strong></span>
+));
+if ($body === false || self::$httpSocket-&gt;response['status']['code'] != 200) {
+$error = 'ERROR while performing '.$method.' to '.$url;
+if ($body !== false) {
+$error = '[' . self::$httpSocket-&gt;response['status']['code'] . '] ' . $error;
+}
+$this-&gt;err($error);
+$this-&gt;_stop();
+}
+return $body;
+}
+</pre></div><p>We can now run the script specifying the username and password we created. Change<code class="literal"> http://localhost</code> to match your application's URL,<code class="literal"> user</code> to match the username, and<code class="literal"> password</code> to match the created password:<a id="id255" class="indexterm"/>
+</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">If you are on a GNU Linux / Mac / Unix system:<div class="informalexample"><pre class="programlisting">../cake/console/cake consume http://localhost user password
+</pre></div></li><li class="listitem" style="list-style-type: disc">If you are on Microsoft Windows:<div class="informalexample"><pre class="programlisting">..\cake\console\cake.bat consume http://localhost user password
+</pre></div></li></ul></div><p>Running the script should give the same successful output as shown in the recipe<span class="emphasis"><em> Building REST services with JSON</em></span>.</p></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec14"/>How it works...</h2></div></div></div><p>We started by adding some special logic to the<code class="literal"> beforeFilter</code> callback when being requested through JSON. In it, we start by telling the<code class="literal"> Auth</code> component that the action being requested is public. If we didn't, the<code class="literal"> Auth</code> component would render the login form to the client, which is obviously not a valid JSON response.<a id="id256" class="indexterm"/>
+</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note28"/>Note</h3><p>This recipe uses a database-based authentication method. A simplier approach could have been taken by implementing basic HTTP authentication, a concept covered at <a class="ulink" href="http://book.cakephp.org/view/1309/Basic-HTTP-Authentication">http://book.cakephp.org/view/1309/Basic-HTTP-Authentication</a>.</p></div><p>Once we have established that the<code class="literal"> Auth</code> component will not handle authorization for any actions requested through JSON, we need to add support for HTTP Basic Authentication. We do so by first configuring the<code class="literal"> loginOptions</code> property of the<code class="literal"> Security</code> component with the following settings:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">type</code>: Type of HTTP Authentication to use, which can be either<code class="literal"> basic</code> or<code class="literal"> digest</code>. We chose<code class="literal"> basic</code>.</li><li class="listitem" style="list-style-type: disc"><code class="literal">realm</code>: A descriptive name of the system being accessed.</li><li class="listitem" style="list-style-type: disc"><code class="literal">login</code>: An optional function that is called when a client is trying to login through HTTP authentication. As we will use the<code class="literal"> Auth</code> component to validate a login, we specify our own custom function, named<code class="literal"> _restLogin</code>, to validate a user.</li></ul></div><p>Once we configured<code class="literal"> Security</code>, we use its<code class="literal"> requireLogin()</code> method to mark the current action as one that requires HTTP authentication.</p><p>We also need to take into account a special check the<code class="literal"> Security</code> component performs on certain requests. When data is posted, the component will look for a special token that should be saved in the session, and also posted as part of the request. This is a great feature that prevents the manipulation of hidden fields, because the token contains a hash of all known form values.</p><p>Naturally, this is something that should not be applicable for REST requests because as we learnt while describing the REST architecture in the introduction to the recipe<span class="emphasis"><em> Building REST services with JSON</em></span>, REST requests are stateless. Therefore, we disable this feature by setting the<code class="literal"> validatePost</code> property of the<code class="literal"> Security</code> component to<code class="literal"> false</code>.</p><p>The final step is implementing the method that is called by the<code class="literal"> Security</code> component whenever an HTTP authentication login is attempted. We named this method<code class="literal"> _restLogin(),</code> prefixing it with an underscore to prevent direct access to it. This method takes only one parameter, an indexed array with two mandatory keys:<code class="literal"> username</code>, and<code class="literal"> password</code>.</p><p>As the<code class="literal"> Auth</code> component can be configured to use any field names for the<code class="literal"> username</code> and<code class="literal"> password</code> fields, we need to make sure we use the configured field names prior to attempting the login. The<code class="literal"> fields</code> property of the<code class="literal"> Auth</code> component contains this configuration in an array, indexed by<code class="literal"> username</code>, and<code class="literal"> password</code>.<a id="id257" class="indexterm"/>
+</p><p>When we receive a call to<code class="literal"> _restLogin()</code>, the value for the<code class="literal"> password</code> field is plain text, as this is the standard way HTTP Basic Authentication works. However, the<code class="literal"> Auth</code> component only takes hashes as passwords, so we need to hash the given password by utilizing the<code class="literal"> password()</code> method of the<code class="literal"> Auth</code> component.</p><p>Once the correct field names are utilized, and the password is hashed, we are ready to attempt the login. We call the<code class="literal"> login()</code> method of the<code class="literal"> Auth</code> component, which returns<code class="literal"> true</code> if the login is successful, or<code class="literal"> false</code> otherwise. If the login fails, we use the<code class="literal"> blackHole()</code> method of the<code class="literal"> Security</code> component, specifying the reason for failure (login, which translates to a 401 HTTP status code), which stops the client request.</p></div></div>
+<div class="section" title="Implementing token-based authorization for API access"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec07"/>Implementing token-based authorization for API access</h1></div></div></div><p>In the previous recipe,<span class="emphasis"><em> Adding authentication to REST services</em></span>, we built a REST API using JSON for our<code class="literal"> PostsController</code> actions. With it, clients that utilize our REST services use a user account to validate their requests.<a id="id258" class="indexterm"/>
+</p><p>Without neglecting the need to authorize all requests, several companies take a different approach when publishing their APIs: the use of API tokens. The advantage of using API tokens is that our user accounts are not exposed in client scripts, so the authorization information can't be used to log in to the site.</p><p>In this recipe we will take our authenticated REST service system and enable the use of tokens to use the exposed API. We will also add a usage limit, so client API usage is only allowed within a certain time and number of uses threshold.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec15"/>Getting ready</h2></div></div></div><p>To go through this recipe, we need some JSON-based REST services implemented with authentication in place, so follow the previous recipe.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec16"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">We start by adding some fields to our<code class="literal"> users</code> table. Issue the following SQL statements:<a id="id259" class="indexterm"/><div class="informalexample"><pre class="programlisting">ALTER TABLE `users`users
+ADD COLUMN `token` CHAR(40) default NULL,
+ADD COLUMN `token_used` DATETIME default NULL,
+ADD COLUMN `token_uses` INT NOT NULL default 0,
+ADD UNIQUE KEY `token`(`token`);
+</pre></div></li><li class="listitem">Edit your<code class="literal"> app/controllers/users_controller.php</code> file and add the following method to the<code class="literal"> UsersController</code> class:<div class="informalexample"><pre class="programlisting">public function token() {
+$token = sha1(String::uuid());
+$this-&gt;User-&gt;id = $this-&gt;Auth-&gt;user('id');
+if (!$this-&gt;User-&gt;saveField('token', $token)) {
+$token = null;
+$this-&gt;Session-&gt;setFlash('There was an error generating this token');
+}
+$this-&gt;set(compact('token'));
+}
+</pre></div></li><li class="listitem">Create its view in a file named<code class="literal"> token.ctp</code> and place it in your<code class="literal"> app/views/users</code> folder, with the following contents:<div class="informalexample"><pre class="programlisting">&lt;h1&gt;API access token&lt;/h1&gt;
+&lt;?php if (!empty($token)) { ?&gt;
+&lt;p&gt;Your new API access token is: &lt;strong&gt;&lt;?php echo $token; ?&gt;&lt;/strong&gt;&lt;/p&gt;
+&lt;?php } ?&gt;
+</pre></div></li><li class="listitem">Let us add the parameters that will define the API access limits. Edit your<code class="literal"> app/config/bootstrap.php</code> file and add the following at the end:<div class="informalexample"><pre class="programlisting">Configure::write('API', array(
+'maximum' =&gt; 6,
+'time' =&gt; '2 minutes'
+));
+</pre></div></li><li class="listitem">Edit your<code class="literal"> app/controllers/posts_controller.php</code> file and change the<code class="literal"> _restLogin()</code> method, replacing it with the following contents:<div class="informalexample"><pre class="programlisting">public function _restLogin($credentials) {
+$model = $this-&gt;Auth-&gt;getModel();
+try {
+$id = $model-&gt;useToken($credentials['username']);
+if (empty($id)) {
+$this-&gt;redirect(null, 503);
+}
+} catch(Exception $e) {
+$id = null;
+}
+if (empty($id) || !$this-&gt;Auth-&gt;login(strval($id))) {
+$this-&gt;Security-&gt;blackhole($this, 'login');
+}
+}
+</pre></div></li><li class="listitem">Create the<code class="literal"> User</code> model in a file named<code class="literal"> user.php</code> and place it in your<code class="literal"> app/models</code> folder, with the following contents:<a id="id260" class="indexterm"/><div class="informalexample"><pre class="programlisting">&lt;?php
+class User extends AppModel {
+public function useToken($token) {
+$user = $this-&gt;find('first', array(
+'conditions' =&gt; array($this-&gt;alias.'.token' =&gt; $token),
+'recursive' =&gt; -1
+));
+if (empty($user)) {
+throw new Exception('Token is not valid');
+}
+$apiSettings = Configure::read('API');
+$tokenUsed = !empty($user[$this-&gt;alias]['token_used']) ? $user[$this-&gt;alias]['token_used'] : null;
+$tokenUses = $user[$this-&gt;alias]['token_uses'];
+if (!empty($tokenUsed)) {
+$tokenTimeThreshold = strtotime('+' . $apiSettings['time'], strtotime($tokenUsed));
+}
+$now = time();
+if (!empty($tokenUsed) &amp;&amp; $now &lt;= $tokenTimeThreshold &amp;&amp; $tokenUses &gt;= $apiSettings['maximum']) {
+return false;
+}
+$id = $user[$this-&gt;alias][$this-&gt;primaryKey];
+if (!empty($tokenUsed) &amp;&amp; $now &lt;= $tokenTimeThreshold) {
+$this-&gt;id = $id;
+$this-&gt;saveField('token_uses', $tokenUses + 1);
+} else {
+$this-&gt;id = $id;
+$this-&gt;save(
+array('token_used'=&gt;date('Y-m-d H:i:s'), 'token_uses'=&gt;1),
+false,
+array('token_used', 'token_uses')
+);
+}
+return $id;
+}
+}
+?&gt;
+</pre></div></li><li class="listitem">Edit your<code class="literal"> app/vendors/shells/consume.php</code> test script, remove the<code class="literal"> $user</code> and<code class="literal"> $password</code> properties, and then add the following property:<a id="id261" class="indexterm"/><div class="informalexample"><pre class="programlisting">protected $token;
+</pre></div></li><li class="listitem">While still editing the shell script, make the following changes to its<code class="literal"> main()</code> method:<div class="informalexample"><pre class="programlisting">public function main() {
+<span class="strong"><strong>if (empty($this-&gt;args) || count($this-&gt;args) != 2) {
+$this-&gt;err('USAGE: cake consume &lt;baseUrl&gt; &lt;token&gt;');
+$this-&gt;_stop();
+}
+list(self::$baseUrl, self::$token) = $this-&gt;args;</strong></span>
+$this-&gt;test();
+}
+</pre></div></li><li class="listitem">Finally, make the following changes to the<code class="literal"> request()</code> method:<div class="informalexample"><pre class="programlisting">protected function request($url, $method='GET', $data=null) {
+if (!isset(self::$httpSocket)) {
+self::$httpSocket = new HttpSocket();
+} else {
+self::$httpSocket-&gt;reset();
+}
+$body = self::$httpSocket-&gt;request(array(
+'method' =&gt; $method,
+'uri' =&gt; self::$baseUrl . '/' . $url,
+'body' =&gt; $data,
+'auth' =&gt; array(
+'user' =&gt; self::$token,
+'pass' =&gt; ''
+)
+));
+if ($body === false || self::$httpSocket-&gt;response['status']['code'] != 200) {
+$error = 'ERROR while performing '.$method.' to '.$url;
+if ($body !== false) {
+$error = '[' . self::$httpSocket-&gt;response['status']['code'] . '] ' . $error;
+}
+$this-&gt;err($error);
+$this-&gt;_stop();
+}
+return $body;
+}
+</pre></div></li></ol></div><p>If you now browse to<code class="literal"> http://localhost/users/token</code>, you will be asked to Log in. Log in with the user account you created during the<span class="emphasis"><em> Getting Started</em></span> section and you will then obtain an API token.</p><p>Let us now run the testing script with the following command. Change<code class="literal"> http://localhost</code> to match your application's URL, and token to match the API token you just generated:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">If you are on a GNU Linux / Mac / Unix system:<div class="informalexample"><pre class="programlisting">../cake/console/cake consume http://localhost token
+</pre></div></li><li class="listitem" style="list-style-type: disc">If you are on Microsoft Windows:<div class="informalexample"><pre class="programlisting">..\cake\console\cake.bat consume http://localhost token
+</pre></div></li></ul></div><p>If we specified the right token, we will get the same successful output as shown in the recipe<span class="emphasis"><em> Building REST services with JSON</em></span>.</p><p>If you run the script again within 2 minutes since the last run, you will get a<code class="literal"> 503</code> (Service Unavailable) HTTP status error, indicating that we are overusing our API token. We will have to wait two minutes to be able to successfully run the script again, because each run makes six requests to the API, and six is the maximum allowed requests within two minutes, as configured in<code class="literal"> app/config/bootstrap.php</code>.</p></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec17"/>How it works...</h2></div></div></div><p>We start by adding three fields to the<code class="literal"> users</code> table:<a id="id262" class="indexterm"/>
+</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">token</code>: The API access token, unique to each user. This is what a user will use to use our API services.</li><li class="listitem" style="list-style-type: disc"><code class="literal">token_used</code>: The last time the API usage counter (<code class="literal">token_uses</code>) was reset.</li><li class="listitem" style="list-style-type: disc"><code class="literal">token_uses</code>: The number of API uses since the date and time specified in<code class="literal"> token_used</code>.</li></ul></div><p>We then create an action called<code class="literal"> token</code> in the<code class="literal"> UsersController</code> class to allow users to get new API access tokens. This action will simply create a new token by hashing a<span class="strong"><strong> UUID</strong></span> (<span class="strong"><strong>Universally Unique Identifier</strong></span>), and saving it to the<code class="literal"> users</code> table record.</p><p>We proceed to set our application configuration in<code class="literal"> bootstrap.php</code> by defining the API access limits with two settings:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">maximum</code>: The maximum number of API requests allowed within a given time frame.</li><li class="listitem" style="list-style-type: disc"><code class="literal">time</code>: The time frame that is used to check for API overuse. Any string that can be used by the PHP function<code class="literal"> strtotime()</code> is allowed.</li></ul></div><p>We set<code class="literal"> time</code> to<code class="literal"> 2</code> minutes, and<code class="literal"> maximum</code> to<code class="literal"> 6</code> requests, which means that we will allow up to six API requests per user, every two minutes.<a id="id263" class="indexterm"/>
+</p><p>As we are no longer using real accounts to authenticate our API users, we changed the<code class="literal"> _restLogin()</code> method in<code class="literal"> ProfilesController</code> to only use the given<code class="literal"> username</code> field value. This value is in fact a user's API token. The<code class="literal"> password</code> field is therefore ignored, which allows our test client script to simply pass an empty value as the password.</p><p>We use the method<code class="literal"> useToken()</code> of the<code class="literal"> User</code> model to check the validity of the token. If the method throws an<code class="literal"> Exception</code>, then the given token does not exist, so we end the request with a<code class="literal"> 401</code> status (Unauthorized) by calling the<code class="literal"> blackhole()</code> method of the<code class="literal"> Security</code> component. If the<code class="literal"> useToken()</code> method returns<code class="literal"> false</code>, then the token is being overused, so we send back a<code class="literal"> 503</code> (Service Unavailable) status. If we are given back a valid user ID, we convert this value to a string, and pass it to the<code class="literal"> login()</code> method of the<code class="literal"> Auth</code> component, which will log in a user with a given ID if the specified parameter is a string.</p><p>As we can see, the whole token usage logic relies on the<code class="literal"> User::useToken()</code>. This method starts by looking for a user record with the given token. If none is found, it throws an<code class="literal"> Exception</code>. If a valid token is being used, it checks to see if the token has been used. If so, we set the time limit since the first update of the token usage in the<code class="literal"> $tokenTimeThreshold</code> local variable. If we are within this time frame, and if the number of token uses exceeds the configured setting, we return<code class="literal"> false</code>.</p><p>If none of the above conditions are met, then the token use is valid, so we either increment the number of uses if<code class="literal"> $tokenTimeThreshold</code> is within the current time frame, or reset it.</p></div></div></body></html>

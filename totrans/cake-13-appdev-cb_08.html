@@ -1,0 +1,728 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;8.&#xA0;Working with Shells"><div class="titlepage"><div><div><h1 class="title"><a id="ch08"/>Chapter 8. Working with Shells</h1></div></div></div><p>In this chapter, we will cover:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Building and running a shell</li><li class="listitem" style="list-style-type: disc">Parsing command line parameters</li><li class="listitem" style="list-style-type: disc">Creating reusable shell tasks</li><li class="listitem" style="list-style-type: disc">Sending e-mails from shells</li><li class="listitem" style="list-style-type: disc">Creating Non-interactive tasks with the robot plugin</li></ul></div><div class="section" title="Introduction"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec01"/>Introduction</h1></div></div></div><p>One of the most powerful, yet unknown, features of CakePHP is its shell framework. It provides applications with all that is required for building command-line tools, which can be used to perform intensive tasks and any other type of non-interactive processing.<a id="id264" class="indexterm"/>
+</p><p>This chapter introduces the reader to CakePHP shells by starting with the process of building basic shells, and then moving on to more advanced features, such as sending e-mails and running controller actions from shells. It finishes by presenting the robot plugin, which offers a fully featured solution for scheduling and running tasks.</p></div></div>
+<div class="section" title="Building and running a shell"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec02"/>Building and running a shell</h1></div></div></div><p>In this recipe, we will learn how to build and run a custom shell, which will ask for a username and a password, and add the given account to a list of user accounts. Based on the system created in the recipe<span class="emphasis"><em> Setting up a basic authentication system</em></span> from <a class="link" href="ch01.html" title="Chapter 1. Authentication">Chapter 1</a>,<span class="emphasis"><em> Authentication</em></span>, this shell is a great help when looking to create test accounts.<a id="id265" class="indexterm"/>
+</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec01"/>Getting ready</h2></div></div></div><p>To go through this recipe we need an authentication system. Follow the entire recipe<span class="emphasis"><em> Setting up a basic authentication system</em></span> from<span class="emphasis"><em> Authentication</em></span> chapter.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec02"/>How to do it...</h2></div></div></div><p>Create a file named<code class="literal"> user.php</code> and place it in your<code class="literal"> app/vendors/shells</code> folder, with the following contents:<a id="id267" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;?php
+App::import('Core', 'Security');
+class UserShell extends Shell {
+public $uses = array('User');
+public function main() {
+$user = $this-&gt;in('Enter the username (ENTER to abort):');
+if (empty($user)) {
+$this-&gt;_stop();
+}
+$defaultPassword = $this-&gt;_randomPassword();;
+$password = $this-&gt;in('Enter the password (ENTER to use generated):', null, $defaultPassword);
+$this-&gt;out();
+$this-&gt;out('USER: '.$user);
+$this-&gt;out('PASSWORD: '.$password);
+$this-&gt;out();
+if (strtoupper($this-&gt;in('Proceed?', array('Y', 'N'), 'N')) != 'Y') {
+$this-&gt;_stop();
+}
+$user = array('User' =&gt; array(
+'username' =&gt; $user,
+'password' =&gt; Security::hash($password, null, true)
+));
+$this-&gt;User-&gt;create();
+if ($this-&gt;User-&gt;save($user)) {
+$this-&gt;out('User created.');
+} else {
+$this-&gt;error('Error while creating user.');
+}
+}
+protected function _randomPassword($size=10) {
+$chars = '@!#$_';
+foreach(array('A'=&gt;'Z', 'a'=&gt;'z', '0'=&gt;'9') as $start =&gt; $end) {
+for ($i=ord($start), $limiti=ord($end); $i &lt;= $limiti; $i++) {
+$chars .= chr($i);
+}
+}
+$totalChars = strlen($chars);
+$password = '';
+for($i=0; $i &lt; $size; $i++) {
+$password .= $chars[rand(0, $totalChars-1)];
+}
+return $password;
+}
+}
+?&gt;
+</pre></div><p>We are now ready to run our shell. Open a terminal window, and access the directory where your application resides. Inside this directory you should have your<code class="literal"> app/</code> and<code class="literal"> cake/</code> folders. For example, if your application is installed in<code class="literal"> /var/www/myapp</code>, then<code class="literal"> /var/www/myapp/app</code> should be your<code class="literal"> app/</code> folder, and<code class="literal"> /var/www/myapp/cake</code> your<code class="literal"> cake/</code> folder. While standing in your application's main directory (<code class="literal">/var/www/myapp</code> in this example), run:<a id="id268" class="indexterm"/>
+</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note29"/>Note</h3><p>To learn more about setting the right path when running shells, or how to add the cake shell script to your PATH environment variable see <a class="ulink" href="http://book.cakephp.org/view/1106/The-CakePHP-Console">http://book.cakephp.org/view/1106/The-CakePHP-Console</a>
+</p></div><p>If you are on a GNU Linux / Mac / Unix system:</p><div class="informalexample"><pre class="programlisting">../cake/console/cake user
+</pre></div><p>If you are on Microsoft Windows:</p><div class="informalexample"><pre class="programlisting">..\cake\console\cake.bat user
+</pre></div><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note30"/>Note</h3><p>If you receive an error message such as<span class="strong"><strong> Error: Class UserShell could not be loaded</strong></span>, this means that CakePHP is unable to find your<code class="literal"> app/</code> folder, which is probably because you have a different name for the<code class="literal"> app/</code> folder. In this case, you can specify the folder with the<code class="literal"> app</code> argument, like so:<code class="literal"> $ cake/console/cake -app /var/www/myapp/app user</code>.</p></div><p>Once the shell is run, it will ask us for the desired username and password, and will wait for a final confirmation before creating the account, as shown in the following screenshot:</p><div class="mediaobject"><img src="graphics/1926_8_01.jpg" alt="How to do it..."/></div><p>We are now able to use this account when logging in through our application's login page.<a id="id269" class="indexterm"/>
+</p></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec03"/>How it works...</h2></div></div></div><p>We started by importing the<code class="literal"> Security</code> class, which is used for hashing the password prior to saving the user record. We then created a class named<code class="literal"> UserShell</code>, extending it from CakePHP's<code class="literal"> Shell</code> class, which offers us a set of methods and properties that are helpful when building shells. One of such properties is<code class="literal"> uses</code>, which works the same way as a controller's<code class="literal"> uses</code> property—by defining a list of application models that should be instantiated and ready to use from any method in the shell.<a id="id270" class="indexterm"/>
+</p><p>Our shell's entry point is the<code class="literal"> main()</code> method. This comes as no surprise if you have any experience developing C, C++, or Java applications, as<code class="literal"> main()</code> is also their entry function. If you have no such experience, then all there is to know is that<code class="literal"> main()</code> will be automatically executed by CakePHP when our shell is invoked through the command line.</p><p>Our<code class="literal"> main()</code> method starts by asking the user for their desired username. To ask for user input, we use the<code class="literal"> in()</code> method (available through the<code class="literal"> Shell</code> parent class), which takes up to three arguments:<a id="id271" class="indexterm"/>
+</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">prompt</code>: The message that is shown to the user before asking for their input.</li><li class="listitem" style="list-style-type: disc"><code class="literal">options</code>: An optional set of values that the user should be restricted to when entering their input.</li><li class="listitem" style="list-style-type: disc"><code class="literal">default</code>: An optional default value that is to be used if the user enters no input by clicking<span class="emphasis"><em> Enter</em></span> at the prompt.</li></ul></div><p>If the user does not specify a user name, we exit the application by calling the<code class="literal"> _stop()</code> method, available to all CakePHP classes that descend from<code class="literal"> Object, Shell</code> being one of them.</p><p>Once we have our username, we need to ask for a password. As a useful alternative, we want to offer the user an automatically generated password. To generate this password, we implement a method called, not surprisingly,<code class="literal"> _randomPassword().</code>
+</p><p>This method takes one argument, the size of the generated password, and builds it by randomly selecting an element from a defined set of characters. This set is constructed by including all characters between the letters<code class="literal"> A</code> and<code class="literal"> Z, a</code> and<code class="literal"> Z</code>, and<code class="literal"> 0</code> and<code class="literal"> 9</code>. For more secure passwords, we also included the symbols<code class="literal"> @ ! # $</code> and<code class="literal"> _</code> as valid characters.</p><p>When we use the<code class="literal"> in()</code> method to ask the user for a password, we use this default generated password as its third argument (<code class="literal">default.</code>) After asking for the password, we show the user the choice for username and password, and ask for confirmation, utilizing the<code class="literal"> options</code> argument in our call to<code class="literal"> in()</code>.</p><p>If the user confirms the operation, we proceed to create the user record, hashing the entered password with the<code class="literal"> Security::hash()</code> method, which takes up to three arguments:<a id="id272" class="indexterm"/>
+</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">string</code>: The string to be hashed.</li><li class="listitem" style="list-style-type: disc"><code class="literal">method</code>: The method to use for hashing, which can be any of:<code class="literal"> sha1, sha256, md5</code>, or any other method supported by the<code class="literal"> hash()</code> PHP function. Defaults to the following PHP functions, depending on their availability:<code class="literal"> sha1()</code> (also used if<code class="literal"> sha1</code> is the chosen method),<code class="literal"> mhash()</code> (also used if<code class="literal"> sha256</code> is the chosen method),<code class="literal"> hash()</code>, and finally<code class="literal"> md5()</code>.</li><li class="listitem" style="list-style-type: disc"><code class="literal">salt</code>: If<code class="literal"> true</code>, prefixes the string with the application's salt (available in the<code class="literal"> Configure</code> setting<code class="literal"> Security.salt</code>). If a string is specified, it is prefixed to the password being hashed in place of the application's<code class="literal"> Security.salt</code> setting. If<code class="literal"> false</code>, hashes the given string without a prefix.</li></ul></div><p>If a record is created, we inform the user that the operation succeeded. Otherwise we use the<code class="literal"> error()</code> method (available through the<code class="literal"> Shell</code> parent class) which sends an error message through the standard error stream and exits the application.</p><div class="section" title="Using the Auth component for hashing passwords"><div class="titlepage"><div><div><h3 class="title"><a id="ch08lvl3sec01"/>Using the Auth component for hashing passwords</h3></div></div></div><p>In this recipe, we called the<code class="literal"> Security::hash()</code> method to hash passwords, by specifying the same exact arguments that are utilized in the<code class="literal"> Auth</code> component. If we did not do so, we would have different hash values for the same passwords, which would render our shell useless, as any user account created with it wouldn't be able to log in.<a id="id273" class="indexterm"/>
+</p><p>The problem with this approach is that if the method that is used by the<code class="literal"> Auth</code> component to hash passwords is changed, we would need to reflect such changes in our shell. Therefore, we may want to use the<code class="literal"> Auth</code> component to do the hashing instead. This solution requires a bit of extra effort, as components are not natively available in a shell. Edit your<code class="literal"> app/vendors/shells/user.php</code> file and remove the import of the<code class="literal"> Security</code> class, and then add the following import statement at the beginning of the file:</p><div class="informalexample"><pre class="programlisting">App::import('Component', 'Auth');
+</pre></div><p>We now need to instantiate the<code class="literal"> AuthComponent</code> class. Add the following code to the beginning of the<code class="literal"> main()</code> method:</p><div class="informalexample"><pre class="programlisting">$this-&gt;Auth = new AuthComponent();
+</pre></div><p>Finally change the definition of the data that is used for creating the<code class="literal"> User</code> record, so its<code class="literal"> password</code> field is hashed using the<code class="literal"> Auth</code> component:</p><div class="informalexample"><pre class="programlisting">$user = array('User' =&gt; array(
+'username' =&gt; $user,
+<span class="strong"><strong>'password' =&gt; $this-&gt;Auth-&gt;password($password)</strong></span>
+));
+</pre></div></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec04"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Parsing command line parameters</em></span></li></ul></div></div></div>
+<div class="section" title="Parsing command line parameters"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec03"/>Parsing command line parameters</h1></div></div></div><p>The recipe<span class="emphasis"><em> Building and running a shell</em></span> showed us how to create a shell that adds records based on user-provided information. This recipe adds support to import accounts from a CSV file, while allowing the user to configure different settings through the use of command-line parameters.<a id="id274" class="indexterm"/>
+</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec05"/>Getting ready</h2></div></div></div><p>To go through this recipe we need the user shell implemented. Follow the entire recipe<span class="emphasis"><em> Building and running a shell</em></span>.<a id="id275" class="indexterm"/>
+</p><p>We will also need a sample CSV file from which to import records. Create a file named<code class="literal"> users.csv</code> and place it in a directory of your choice (for example, in the application's<code class="literal"> app/tmp</code> directory) with the following contents:<a id="id276" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">"john","John","Doe"
+"jane","Jane","Doe"
+"mark","Mark","Doe"
+"mathew","Mathew","Doe"
+"peter","Peter","Doe"
+"roland","Roland","Doe"
+</pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec06"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Edit your<code class="literal"> app/vendors/shells/user.php</code> file, and change the name of the method<code class="literal"> main()</code> to<code class="literal"> add()</code>.</li><li class="listitem">Add the following method right below the<code class="literal"> add()</code> method:<div class="informalexample"><pre class="programlisting">public function help() {
+$this-&gt;out('USAGE: $ cake '.$this-&gt;shell.' &lt;import &lt;path/to/file&gt; [-limit N | -size N | -verbose] | add&gt;');
+$this-&gt;out('where:');
+$this-&gt;out();
+$this-&gt;out('-limit N: import up to N records');
+$this-&gt;out('-size N: size of generated password');
+$this-&gt;out('-verbose: Verbose output');
+}
+</pre></div></li><li class="listitem">Now add the following method above the<code class="literal"> _randomPassword()</code> method:<div class="informalexample"><pre class="programlisting">protected function _parseCSV($path) {
+$file = fopen($path, 'r');
+if (!is_resource($file)) {
+$this-&gt;error('Can\'t open '.$file);
+}
+$rows = array();
+while($row = fgetcsv($file)) {
+$rows[] = $row;
+}
+fclose($file);
+return $rows;
+}
+</pre></div></li><li class="listitem">Finally, add the following below the<code class="literal"> help()</code> method:<a id="id277" class="indexterm"/><div class="informalexample"><pre class="programlisting">public function import() {
+$this-&gt;_checkArgs(1);
+$defaults = array(
+'limit' =&gt; null,
+'size' =&gt; 10,
+'verbose' =&gt; false
+);
+$options = array_merge(
+$defaults,
+array_intersect_key($this-&gt;params, $defaults)
+);
+$path = $this-&gt;args[0];
+if (!is_file($path) || !is_readable($path)) {
+$this-&gt;error('File '.$path.' cannot be read');
+}
+$users = array();
+foreach($this-&gt;_parseCSV($path) as $i =&gt; $row) {
+$users[$row[0]] = $this-&gt;_randomPassword($options['size']);
+if (!empty($options['limit']) &amp;&amp; $i + 1 == $options['limit']) {
+break;
+}
+}
+if ($options['verbose']) {
+$this-&gt;out('Will create '.number_format(count($users)).' accounts');
+}
+foreach($users as $userName =&gt; $password) {
+if ($options['verbose']) {
+$this-&gt;out('Creating user '.$userName.'... ', false);
+}
+$user = array('User' =&gt; array(
+'username' =&gt; $userName,
+'password' =&gt; Security::hash($password, null, true)
+));
+$this-&gt;User-&gt;create();
+$saved = ($this-&gt;User-&gt;save($user) !== false);
+if (!$saved) {
+unset($users[$userName]);
+}
+if ($options['verbose']) {
+$this-&gt;out($saved ? 'SUCCESS' : 'FAIL');
+}
+}
+$this-&gt;out('Created accounts:');
+foreach($users as $userName =&gt; $password) {
+$this-&gt;out($userName.' : '.$password);
+}
+}
+</pre></div></li></ol></div><p>If we run the shell without arguments, CakePHP will say that there is no known command, and suggest that we get help by specifying<code class="literal"> help</code> as an argument to our shell. Doing so will display our help message, as shown in the following screenshot:<a id="id278" class="indexterm"/>
+</p><div class="mediaobject"><img src="graphics/1926_8_06.jpg" alt="How to do it..."/></div><p>If we run our shell with the<code class="literal"> add</code> argument, we will see exactly the same functionality implemented in the recipe<span class="emphasis"><em> Building and running a shell</em></span>.</p><p>Executing the shell with the<code class="literal"> import</code> argument and the<code class="literal"> verbose</code> parameter, and specifying the path to our CSV file with a command such as the following:</p><div class="informalexample"><pre class="programlisting">$ cake/console/cake user import app/tmp/users.csv -verbose
+</pre></div><p>would import the users listed in the CSV file, generating an output similar to what is shown in the following screenshot:</p><div class="mediaobject"><img src="graphics/1926_8_02.jpg" alt="How to do it..."/></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec07"/>How it works...</h2></div></div></div><p>We started by changing the name of the entry method to<code class="literal"> add()</code>. Doing so means we no longer have an entry method, so how does CakePHP find what to run when our shell is invoked? Through the use of commands.<a id="id279" class="indexterm"/>
+</p><p>If there is no entry method defined in a shell, CakePHP will assume that the first argument used when executing a shell is a command. A command is nothing more than a public method that does not start with an underscore sign. As such, a method named<code class="literal"> add()</code> is executed when the shell is invoked with the<code class="literal"> add</code> argument. If no argument is specified, CakePHP complains, as there is no command to run, and suggests the user use the<code class="literal"> help</code> argument, which is nothing more than a way to call the<code class="literal"> help()</code> method in our shell (as<code class="literal"> help</code> is a regular command).</p><p>We use the<code class="literal"> help()</code> method to show usage instructions for our shell, listing the available commands (add, and<code class="literal"> import)</code>, and the parameters for each of those commands. While the<code class="literal"> add</code> command has no available parameters, we support the following parameters for our<code class="literal"> import</code> command:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Setting</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Purpose</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">limit</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>A maximum number of records to process from the CSV file. If omitted, all records will be processed.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">size</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>The maximum length for the generated passwords. Defaults to<code class="literal"> 10</code>.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">verbose</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>If specified, the shell will output information as its creating the user records.</p>
+</td></tr></tbody></table></div><p>The<code class="literal"> _parseCSV()</code> method is our helper method to parse a CSV file, returning an array of rows found in a file, where each row is itself an array of values. This method uses PHP's<code class="literal"> fgetcsv()</code> function to parse a record from a file handle, obtained with the use of PHP's<code class="literal"> fopen()</code> function, and closed with<code class="literal"> fclose()</code> once the parsing is finished.</p><p>We continue by implementing the<code class="literal"> import()</code> method, the body of our<code class="literal"> import</code> command. This method uses the<code class="literal"> _checkArgs()</code> method (available through the<code class="literal"> Shell</code> class) to make sure that the command receives at least the specified number of arguments, in our case<code class="literal"> 1</code>. If the method finds that the user did not specify the minimum number of arguments, it will throw an error message and abort the execution. This is a way for us to make sure that at least the path to the CSV file is provided.<a id="id280" class="indexterm"/>
+</p><p>If the number of arguments is correct we proceed to process the optional parameters. To do so, we use the<code class="literal"> params</code> property. This property is available to all shells, and includes the following values even when no parameters are provided:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Setting</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Purpose</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">app</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>The name of the<code class="literal"> app/</code> directory.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">root</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>The full path to our application's root directory, which would contain the<code class="literal"> app/</code> and<code class="literal"> cake/</code> directories.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">webroot</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>The name of the<code class="literal"> webroot/</code> directory, which is inside the<code class="literal"> app/</code> directory.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">working</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>The full path to the<code class="literal"> app/</code> directory.</p>
+</td></tr></tbody></table></div><p>However, we are only interested in the parameters given by the user through the command line. Therefore, we define the set of valid parameters with their default values, and we merge the values for those parameters that are available in the<code class="literal"> params</code> property. We store this merged values in an array named<code class="literal"> options</code>.</p><p>Using the<code class="literal"> is_file()</code> and<code class="literal"> is_readable()</code> PHP functions, we make sure we were given a valid file. If not, we use the<code class="literal"> error()</code> method to print out an error message and abort the application.</p><p>We then proceed to use<code class="literal"> _importCSV()</code> to get a list of parsed rows, and for each of those rows we assign a random password, using the<code class="literal"> size</code> option. We stop generating passwords once we reach the value of the<code class="literal"> limit</code> option, if one is provided. By the end of this loop, we will have an array named<code class="literal"> users</code> where its index is a username, and its value is the password for the given user.</p><p>For each of the values in the<code class="literal"> users</code> array, we create the account record similar to the way we do it in the<code class="literal"> add</code> command, while outputting the status of each creation if the<code class="literal"> verbose</code> option is set. If we get an error while creating a specific record, we remove the problematic user from the<code class="literal"> users</code> array.</p><p>Once the creation process is finalized, we output the list of successfully created usernames, together with their generated passwords.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec08"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Parsing CSV files with a datasource</em></span> in <a class="link" href="ch05.html" title="Chapter 5. Datasources">Chapter 5</a>, <span class="emphasis"><em>Datasources</em></span></li><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Creating reusable shell tasks</em></span></li></ul></div></div></div>
+<div class="section" title="Creating reusable shell tasks"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec04"/>Creating reusable shell tasks</h1></div></div></div><p>Just as we have components to share functionality amongst controllers, we also have behaviors for models, and helpers for views. What about shells? CakePHP offers the concept of tasks, which are classes that also extend from the<code class="literal"> Shell</code> class, but can be reused from other shells.<a id="id281" class="indexterm"/>
+</p><p>In this recipe, we will learn how to build a task that handles argument and parameter processing for our shell, can auto-generate help messages, and check the definition of mandatory arguments and optional parameters. We will implement this task in the most generic fashion, so we can use it for any future shells we may decide to build.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec09"/>Getting ready</h2></div></div></div><p>To go through this recipe we need a shell that accepts parameters and has different commands available. Follow the entire recipe<span class="emphasis"><em> Parsing command line parameters</em></span>.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec10"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Edit your<code class="literal"> app/vendors/shells/user.php</code> file and add the following right below the declaration of the<code class="literal"> uses</code> property:<a id="id282" class="indexterm"/><div class="informalexample"><pre class="programlisting">public $tasks = array('Help');
+public static $commands = array(
+'add',
+'import' =&gt; array(
+'help' =&gt; 'Import user records from a CSV file',
+'args' =&gt; array(
+'path' =&gt; array(
+'help' =&gt; 'Path to CSV file',
+'mandatory' =&gt; true
+)
+),
+'params' =&gt; array(
+'limit' =&gt; array(
+'type' =&gt; 'int',
+'help' =&gt; 'import up to N records'
+),
+'size' =&gt; array(
+'value' =&gt; 10,
+'type' =&gt; 'int',
+'help' =&gt; 'size of generated password'
+),
+'verbose' =&gt; array(
+'value' =&gt; false,
+'type' =&gt; 'bool',
+'help' =&gt; 'Verbose output'
+)
+)
+)
+);
+</pre></div></li><li class="listitem">While still editing the shell, remove the<code class="literal"> help()</code> method, and remove the following lines from the beginning of the<code class="literal"> import()</code> method:<div class="informalexample"><pre class="programlisting">$this-&gt;_checkArgs(1);
+$defaults = array(
+'limit' =&gt; null,
+'size' =&gt; 10,
+'verbose' =&gt; false
+);
+$options = array_merge(
+$defaults,
+array_intersect_key($this-&gt;params, $defaults)
+);
+$path = $this-&gt;args[0];
+</pre></div></li><li class="listitem">Add the following lines at the beginning of the<code class="literal"> import()</code> method:<div class="informalexample"><pre class="programlisting">$options = $this-&gt;Help-&gt;parameters;
+extract($this-&gt;Help-&gt;arguments);
+</pre></div></li><li class="listitem">Create a file named<code class="literal"> help.php</code> and place it in your<code class="literal"> app/vendors/shells/tasks</code>, with the following contents:<a id="id283" class="indexterm"/><div class="informalexample"><pre class="programlisting">&lt;?php
+class HelpTask extends Shell {
+public $parameters = array();
+public $arguments = array();
+protected $commands = array();
+public function initialize() {
+$shellClass = Inflector::camelize($this-&gt;shell).'Shell';
+$vars = get_class_vars($shellClass);
+if (!empty($vars['commands'])) {
+foreach($vars['commands'] as $command =&gt; $settings) {
+if (is_numeric($command)) {
+$command = $settings;
+$settings = array();
+}
+if (!empty($settings['args'])) {
+$args = array();
+foreach($settings['args'] as $argName =&gt; $arg) {
+if (is_numeric($argName)) {
+$argName = $arg;
+$arg = array();
+}
+$args[$argName] = array_merge(array(
+'help' =&gt; null,
+'mandatory' =&gt; false
+), $arg);
+}
+$settings['args'] = $args;
+}
+if (!empty($settings['params'])) {
+$params = array();
+foreach($settings['params'] as $paramName =&gt; $param) {
+if (is_numeric($paramName)) {
+$paramName = $param;
+$param = array();
+}
+$params[$paramName] = array_merge(array(
+'help' =&gt; null,
+'type' =&gt; 'string'
+), $param);
+}
+}
+$this-&gt;commands[$command] = array_merge(array(
+'help' =&gt; null,
+'args' =&gt; array(),
+'params' =&gt; array()
+), $settings);
+}
+}
+if (empty($this-&gt;command) &amp;&amp; !in_array('main', get_class_methods($shellClass))) {
+$this-&gt;_welcome();
+$this-&gt;_help();
+} elseif (!empty($this-&gt;command) &amp;&amp; array_key_exists($this-&gt;command, $this-&gt;commands)) {
+$command = $this-&gt;commands[$this-&gt;command];
+$number = count(array_filter(Set::extract(array_values($command['args']), '/mandatory')));
+if ($number &gt; 0 &amp;&amp; (count($this-&gt;args) - 1) &lt; $number) {
+$this-&gt;err('WRONG number of parameters');
+$this-&gt;out();
+$this-&gt;_help($this-&gt;command);
+} elseif ($number &gt; 0) {
+$i = 0;
+foreach($command['args'] as $argName =&gt; $arg) {
+if ($number &gt;= $i &amp;&amp; isset($this-&gt;args[$i+1])) {
+$this-&gt;arguments[$argName] = $this-&gt;args[$i+1];
+}
+$i++;
+}
+}
+$values = array_intersect_key($this-&gt;params, $command['params']);
+foreach($command['params'] as $settingName =&gt; $setting) {
+if (!array_key_exists($settingName, $values)) {
+$this-&gt;parameters[$settingName] = array_key_exists('value', $setting) ?
+$setting['value'] :
+null;
+} elseif ($setting['type'] == 'int' &amp;&amp; !is_numeric($values[$settingName])) {
+$this-&gt;err('ERROR: wrong value for '.$settingName);
+$this-&gt;out();
+$this-&gt;_help($this-&gt;command);
+} else {
+if ($setting['type'] == 'bool') {
+$values[$settingName] = !empty($values[$settingName]);
+}
+$this-&gt;parameters[$settingName] = $values[$settingName];
+}
+}
+}
+}
+}
+</pre></div></li><li class="listitem">Add the following methods to the created<code class="literal"> HelpTask</code> class:<a id="id284" class="indexterm"/><div class="informalexample"><pre class="programlisting">public function execute() {
+$this-&gt;_help(!empty($this-&gt;args) ? $this-&gt;args[0] : null);
+}
+protected function _help($command = null) {
+$usage = 'cake '.$this-&gt;shell;
+if (empty($this-&gt;commands)) {
+$this-&gt;out($usage);
+return;
+}
+$lines = array();
+$usages = array();
+if (empty($command) || !array_key_exists($command, $this-&gt;commands)) {
+foreach(array_keys($this-&gt;commands) as $currentCommand) {
+$usages[] = $this-&gt;_usageCommand($currentCommand);
+if (!empty($lines)) {
+$lines[] = null;
+}
+$lines = array_merge($lines, $this-&gt;_helpCommand($currentCommand));
+}
+} else {
+$usages = (array) $this-&gt;_usageCommand($command);
+$lines = $this-&gt;_helpCommand($command);
+}
+if (!empty($usages)) {
+$usage .= ' ';
+if (empty($command)) {
+$usage .= '&lt;';
+}
+$usage .= implode(' | ', $usages);
+if (empty($command)) {
+$usage .= '&gt;';
+}
+}
+$this-&gt;out($usage);
+if (!empty($lines)) {
+$this-&gt;out();
+foreach($lines as $line) {
+$this-&gt;out($line);
+}
+}
+$this-&gt;_stop();
+}
+</pre></div></li><li class="listitem">While still editing the<code class="literal"> HelpTask</code> class, add the following helper methods to the class:<a id="id285" class="indexterm"/><div class="informalexample"><pre class="programlisting">protected function _usageCommand($command) {
+$usage = $command;
+if (!empty($this-&gt;commands[$command]['args'])) {
+foreach($this-&gt;commands[$command]['args'] as $argName =&gt; $arg) {
+$usage .= ' ' . ($arg['mandatory'] ? '&lt;' : '[');
+$usage .= $argName;
+$usage .= ($arg['mandatory'] ? '&gt;' : ']');
+}
+}
+if (!empty($this-&gt;commands[$command]['params'])) {
+$usages = array();
+foreach(array_keys($this-&gt;commands[$command]['params']) as $setting) {
+$usages[] = $this-&gt;_helpSetting($command, $setting);
+}
+$usage .= ' ['.implode(' | ', $usages).']';
+}
+return $usage;
+}
+protected function _helpCommand($command) {
+if (
+empty($this-&gt;commands[$command]['args']) &amp;&amp;
+empty($this-&gt;commands[$command]['params'])
+) {
+return array();
+}
+$lines = array('Options for '.$command.':');
+foreach($this-&gt;commands[$command]['args'] as $argName =&gt; $arg) {
+$lines[] = "\t".$argName . (!empty($arg['help']) ? "\t\t".$arg['help'] : '');
+}
+foreach(array_keys($this-&gt;commands[$command]['params']) as $setting) {
+$lines[] = "\t".$this-&gt;_helpSetting($command, $setting, true);
+}
+return $lines;
+}
+protected function _helpSetting($command, $settingName, $useHelp = false) {
+$types = array('int' =&gt; 'N', 'string' =&gt; 'S', 'bool' =&gt; null);
+$setting = $this-&gt;commands[$command]['params'][$settingName];
+$type = array_key_exists($setting['type'], $types) ? $types[$setting['type']] : null;
+$help = '-'.$settingName . (!empty($type) ? ' '.$type : '');
+if ($useHelp &amp;&amp; !empty($setting['help'])) {
+$help .= "\t\t".$setting['help'];
+if (array_key_exists('value', $setting) &amp;&amp; !is_null($setting['value'])) {
+$help .= '. DEFAULTS TO: ';
+if (empty($type)) {
+$help .= $setting['value'] ? 'Enabled' : 'Disabled';
+} else {
+$help .= $setting['value'];
+}
+}
+}
+return $help;
+}
+</pre></div></li></ol></div><p>If you now run the shell without any parameters, with a command such as the following:<a id="id286" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">$ cake/console/cake user
+</pre></div><p>we would get the thorough help message shown in the following screenshot:</p><div class="mediaobject"><img src="graphics/1926_8_03.jpg" alt="How to do it..."/></div><p>We can also obtain detailed help for a specific command. Running the shell with a command such as the following:</p><div class="informalexample"><pre class="programlisting">$ cake/console/cake user help import
+</pre></div><p>would show us the help message for the<code class="literal"> import</code> command, as shown in the following screenshot:</p><div class="mediaobject"><img src="graphics/1926_8_04.jpg" alt="How to do it..."/></div><p>Running the shell with the same parameters as the ones used in the recipe<span class="emphasis"><em> Parsing command line parameters</em></span> to import CSV files should work as expected.<a id="id287" class="indexterm"/>
+</p></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec11"/>How it works...</h2></div></div></div><p>When a shell includes the property<code class="literal"> tasks</code> in its declaration, it is said to use the specified tasks. Tasks are stored in the<code class="literal"> app/vendors/shells/tasks</code> folder, and are accessible in the shell as instances. In our case, we add a task named<code class="literal"> Help</code>, which should be implemented in a class named<code class="literal"> HelpTask</code> and placed in a file named<code class="literal"> help.php</code> in the<code class="literal"> tasks</code> folder, and we refer to it as<code class="literal"> $this-&gt;Help</code> from within the shell.<a id="id288" class="indexterm"/>
+</p><p>Before proceeding, a point has to be made regarding the naming of this particular task. As we want our task to automatically generate help messages for our shell, we somehow need to catch the call to the<code class="literal"> help()</code> command. This is only achievable if we first understand how the shell dispatching process works. Let us assume the following invocation:</p><div class="informalexample"><pre class="programlisting">$ cake/console/cake user import
+</pre></div><p>The shell dispatcher, implemented in the file<code class="literal"> cake/console/cake.php</code>, would go through the following steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Instantiate the shell class<code class="literal"> UserShell</code>.</li><li class="listitem">Call its<code class="literal"> initialize()</code> method.</li><li class="listitem">Load all tasks defined in the<code class="literal"> tasks</code> property of the shell.</li><li class="listitem">For each of those tasks, call their<code class="literal"> initialize()</code> method, and load any tasks that they themselves may be using.</li></ol></div><p>If the given command (<code class="literal">import</code> in this case) is the name of one of the included tasks, call the task's<code class="literal"> startup()</code> method, and then its<code class="literal"> execute()</code> method.<a id="id289" class="indexterm"/>
+</p><p>If the given command is not a task name, then call the shell's<code class="literal"> startup()</code> method, and execute the command's method, if it exists, or the entry method<code class="literal"> main()</code> if the command is not implemented.</p><p>This means that if we have a task named<code class="literal"> Help</code> included in our shell, and the user launches the shell with the following command:</p><div class="informalexample"><pre class="programlisting">$ cake/console/cake user help
+</pre></div><p>Then the shell dispatcher would call the<code class="literal"> execute()</code> method of the<code class="literal"> HelpTask</code> class, because the command,<code class="literal"> help</code>, is actually the name of one of the shell's tasks. Knowing this, we can remove the<code class="literal"> help()</code> implementation of our<code class="literal"> User</code> shell, and have the<code class="literal"> Help</code> task handle the display of help messages.</p><p>Furthermore, our<code class="literal"> Help</code> task needs to be generic enough to not be tied to a specific shell. Therefore, we need a way to tell it about our available commands, expected arguments, and optional parameters. This is what the<code class="literal"> commands</code> property is there for: an array of commands, where the key is the command name and the value any of the following settings:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Setting</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Purpose</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">help</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>The help message describing the purpose of the command. Defaults to no message.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">args</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>The list of mandatory and optional arguments the command takes. Defaults to no arguments.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">params</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>The list of optional parameters the command accepts. Defaults to no parameters.</p>
+</td></tr></tbody></table></div><p>Notice, however, that the<code class="literal"> add</code> command is defined in a different fashion: instead of being defined in the key, it is simply the name of the command added to the<code class="literal"> commands</code> array. This means that the command has no help message, no arguments, and no parameters.</p><p>The<code class="literal"> args</code> command setting is an array of arguments, indexed by argument name. Each argument may define any of the following settings:<a id="id290" class="indexterm"/>
+</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Setting</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Purpose</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">help</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>The help message that describes the argument. Defaults to no message.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">mandatory</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>If<code class="literal"> true</code>, this argument must be present. If<code class="literal"> false</code>, the argument may be omitted. Defaults to<code class="literal"> false</code>.</p>
+</td></tr></tbody></table></div><p>Similarly, the<code class="literal"> params</code> command setting is also an array, indexed by parameter name, where each parameter may define any of the following settings:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Setting</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Purpose</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">help</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>The help message that describes the parameter. Defaults to no message.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">type</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>The type of data this parameter holds. May be<code class="literal"> int, bool</code>, or<code class="literal"> string</code>. Any other type is interpreted as<code class="literal"> string</code>. Defaults to<code class="literal"> string</code>.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">value</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>A default value to use if the parameter is not specified. Defaults to no default value.</p>
+</td></tr></tbody></table></div><p>Using the<code class="literal"> commands</code> property in the<code class="literal"> UserShell</code> class, we define the set of available arguments and parameters for our<code class="literal"> import</code> command, and we then modify the<code class="literal"> import()</code> method so that the options are obtained from the<code class="literal"> parameters</code> property of the<code class="literal"> Help</code> task. We also use the<code class="literal"> extract()</code> PHP function to convert any arguments that are defined in the<code class="literal"> arguments</code> property of the<code class="literal"> Help</code> task to local variables. This way, the<code class="literal"> path</code> argument will be available to the method as the variable<code class="literal"> $path</code>.</p><p>These were all the modifications required in the<code class="literal"> UserShell</code> class. Notice how we not only removed the<code class="literal"> help()</code> method implementation, but also the processing of parameters, and the check for the right number of arguments from the<code class="literal"> import()</code> method. This is all done automatically by the<code class="literal"> Help</code> task now, based on what we define in our<code class="literal"> commands</code> property.</p><p>This means that our<code class="literal"> Help</code> task is indeed the Swiss Army knife of our shells, with most of its work being done in its<code class="literal"> initialize()</code> method. This method starts by utilizing the PHP method,<code class="literal"> get_class_vars(),</code> to obtain the<code class="literal"> commands</code> property defined in the shell, because our task has no way of getting a hold of the instance of the<code class="literal"> UserShell</code> class. It then proceeds to go through the list of commands, and normalizes all arguments and parameters thereby defined, assigning the resulting array to the<code class="literal"> commands</code> property of the<code class="literal"> HelpTask</code> class.</p><p>Once we have all our commands ready to be checked, we establish if the user has indeed selected a command to be executed through the<code class="literal"> command</code> property, available to all classes that extend from<code class="literal"> Shell</code>, and set to the current command. If the user has not, and if there is no<code class="literal"> main()</code> method implemented in the shell, we use the<code class="literal"> _help()</code> method to display the help.<a id="id291" class="indexterm"/>
+</p><p>If users have indeed specified a command that is within the list of available commands, we make sure that the specified arguments match the minimum number of mandatory arguments, if any, aborting the execution with a proper error message if the check fails. If the number of arguments is correct, we store the value of each given argument in the<code class="literal"> arguments</code> property of the task.</p><p>Once the arguments are processed, we proceed to deal with the parameters. Going through the specified parameters, we check their provided value against the data type, if any, aborting the shell with a proper error message if the value given is of an incorrect type. If no value is given, the default value is used, if any. The resulting array of parameters and values is stored in the<code class="literal"> parameters</code> property of the task.</p><p>The<code class="literal"> execute()</code> method is the one called whenever the<code class="literal"> Help</code> task is invoked, which is whenever the<code class="literal"> help</code> command is used when calling the shell. Therefore, this method will simply display the help message by calling the<code class="literal"> _help()</code> method, optionally passing to it the first argument, which would provide the user with the help message for the given command.</p><p>The<code class="literal"> _help()</code> method builds the help message, for the entire shell or a specific command. It uses the command information stored in the<code class="literal"> commands</code> property, and calls the<code class="literal"> _usageCommand()</code> helper method to get the usage message for a given command, and the<code class="literal"> _helpCommand()</code> method to get the help message for all available parameters and arguments in the command.</p></div></div>
+<div class="section" title="Sending e-mails from shells"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec05"/>Sending e-mails from shells</h1></div></div></div><p>E-mail sending is not a task that requires any interaction by visitors to our web applications, so it is pointless to make them wait for their delivery, which is exactly what we would do if we were to send an e-mail from a controller's action.<a id="id292" class="indexterm"/>
+</p><p>Deferring e-mail sending to a shell makes real sense both from a performance perspective and from the administrator point of view, as we may also add the ability to re-send failed e-mails.</p><p>This recipe uses the<code class="literal"> Email</code> component provided by CakePHP to send a fictitious newsletter, adding the ability to test the sending process through a shell parameter.<a id="id293" class="indexterm"/>
+</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec12"/>Getting ready</h2></div></div></div><p>To go through this recipe we need some data to work with. Create a<code class="literal"> subscribers</code> table with the following SQL statement:</p><div class="informalexample"><pre class="programlisting">CREATE TABLE `subscribers`(
+`id` INT UNSIGNED AUTO_INCREMENT NOT NULL,
+`name` VARCHAR(255) NOT NULL,
+`email` VARCHAR(255) NOT NULL,
+PRIMARY KEY(`id`)
+);
+</pre></div><p>Create a<code class="literal"> newsletters</code> table with the following statement:</p><div class="informalexample"><pre class="programlisting">CREATE TABLE `newsletters`(
+`id` INT UNSIGNED AUTO_INCREMENT NOT NULL,
+`title` VARCHAR(255) NOT NULL,
+`body` TEXT NOT NULL,
+`sent` TINYINT(1) UNSIGNED NOT NULL default 0,
+PRIMARY KEY(`id`)
+);
+</pre></div><p>Create a<code class="literal"> newsletters_subscribers</code> table with the following statement:</p><div class="informalexample"><pre class="programlisting">CREATE TABLE `newsletters_subscribers`(
+`id` INT UNSIGNED AUTO_INCREMENT NOT NULL,
+`newsletter_id` INT UNSIGNED NOT NULL,
+`subscriber_id` INT UNSIGNED NOT NULL,
+`sent` TINYINT(1) UNSIGNED NOT NULL default 0,
+PRIMARY KEY(`id`)
+);
+</pre></div><p>Now add some sample data to these tables with the following statements:</p><div class="informalexample"><pre class="programlisting">INSERT INTO `subscribers`(`name`, `email`) VALUES
+('John Doe', 'john.doe@email.com'),
+('Jane Doe', 'jane.doe@email.com');
+INSERT INTO `newsletters`(`title`, `body`) VALUES
+('My first newsletter', 'This is the body for &lt;strong&gt;my first newsletter&lt;/strong&gt;');
+</pre></div><p>Create a file named<code class="literal"> newsletter.php</code> and place it in your<code class="literal"> app/models</code> folder, with the following contents:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+class Newsletter extends AppModel {
+public $hasMany = array('NewslettersSubscriber');
+}
+?&gt;
+</pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec13"/>How to do it...</h2></div></div></div><p>Create a file named<code class="literal"> email.php</code> and place it in your<code class="literal"> app/vendors/shells</code>, with the following contents:<a id="id294" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;?php
+App::import('Component', 'Email');
+class EmailShell extends Shell {
+public $uses = array('Newsletter', 'Subscriber');
+public function startup() {
+$this-&gt;Email = new EmailComponent();
+$this-&gt;Email-&gt;delivery = 'smtp';
+$this-&gt;Email-&gt;smtpOptions = array(
+'host' =&gt; 'smtp.email.com',
+'username' =&gt; 'smtpUser',
+'password' =&gt; 'smtpPassword'
+);
+}
+public function main() {
+$email = !empty($this-&gt;params['to']) ? $this-&gt;params['to'] : array();
+$newsletter = $this-&gt;Newsletter-&gt;find('first', array(
+'conditions' =&gt; array('sent' =&gt; false),
+'recursive' =&gt; -1
+));
+if (empty($newsletter)) {
+$this-&gt;out('All newsletters have been sent');
+$this-&gt;_stop();
+}
+$this-&gt;out('Sending newsletter "'.$newsletter['Newsletter']['title'].'"');
+$subscribers = $this-&gt;Subscriber-&gt;find('all');
+foreach($subscribers as $subscriber) {
+$this-&gt;out('Sending to '.$subscriber['Subscriber']['email'].'... ', false);
+$currentEmail = !empty($email) ? $email : $subscriber['Subscriber']['email'];
+if (!empty($email)) {
+$this-&gt;Email-&gt;headers['Destination'] = $subscriber['Subscriber']['email'];
+}
+$this-&gt;Email-&gt;sendAs = 'html';
+$this-&gt;Email-&gt;subject = $newsletter['Newsletter']['title'];
+$this-&gt;Email-&gt;from = 'My Application &lt;info@email.com&gt;';
+$this-&gt;Email-&gt;to = $subscriber['Subscriber']['name'] . ' &lt;'.$currentEmail.'&gt;';
+$sent = $this-&gt;Email-&gt;send($newsletter['Newsletter']['body']));
+if ($sent) {
+$this-&gt;out('DONE');
+} else {
+$error = !empty($this-&gt;Email-&gt;smtpError) ? $this-&gt;Email-&gt;smtpError : '';
+$this-&gt;out('ERROR' . (!empty($error) ? ': '.$error : ''));
+}
+$this-&gt;Newsletter-&gt;NewslettersSubscriber-&gt;create(array(
+'newsletter_id' =&gt; $newsletter['Newsletter']['id'],
+'subscriber_id' =&gt; $subscriber['Subscriber']['id'],
+'sent' =&gt; $sent
+));
+$this-&gt;Newsletter-&gt;NewslettersSubscriber-&gt;save();
+$this-&gt;Email-&gt;reset();
+}
+$this-&gt;Newsletter-&gt;id = $newsletter['Newsletter']['id'];
+$this-&gt;Newsletter-&gt;saveField('sent', true);
+}
+}
+?&gt;
+</pre></div><p>Make sure to change the following lines in the<code class="literal"> startup()</code> function to match your settings:</p><div class="informalexample"><pre class="programlisting">$this-&gt;Email-&gt;delivery = 'smtp';
+$this-&gt;Email-&gt;smtpOptions = array(
+'host' =&gt; 'smtp.email.com',
+'username' =&gt; 'smtpUser',
+'password' =&gt; 'smtpPassword'
+);
+</pre></div><p>If you wish to use PHP's<code class="literal"> mail()</code> function instead of SMTP, change the<code class="literal"> delivery</code> property of the<code class="literal"> Email</code> component to<code class="literal"> mail</code>. Once configured, you can run the shell with the following command to force all e-mails to go to your specific address (in this case,<code class="literal"> my@email.com</code>):
+</p><div class="informalexample"><pre class="programlisting">$ cake/console/cake email -to my@email.com
+</pre></div><p>As all e-mails are forced to be sent to<code class="literal"> my@email.com</code> through the use of the shell parameter, we need a way to tell if each e-mail will be going to the real e-mail address. Use your e-mail program to view the headers of the e-mail, and you will notice the following header lines:<a id="id295" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">To: John Doe &lt;my@email.com&gt;
+From: My Application &lt;info@email.com&gt;
+Subject: My first newsletter
+X-Mailer: CakePHP Email Component
+X-Destination: john.doe@email.com
+</pre></div><p>From these headers we can tell that the<span class="strong"><strong> X-Destination</strong></span> header is set to the address to which the e-mail was originally intended for.</p></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec14"/>How it works...</h2></div></div></div><p>The<code class="literal"> EmailShell</code> starts by implementing the<code class="literal"> startup()</code> method, which is called before any shell command or its entry method is executed. In this method, we create an instance of the<code class="literal"> Email</code> component. Once we have the instance, we configure its delivery settings through the properties<code class="literal"> delivery</code> and<code class="literal"> smtpOptions</code>.<a id="id296" class="indexterm"/>
+</p><p>The entry method<code class="literal"> main()</code> checks to see if the<code class="literal"> to</code> parameter is given. If so, this will be the e-mail to which all e-mails will be sent to, a basic way to test the sending process. It continues to fetch the first newsletter that has not yet been sent, and the list of subscribers that should receive the newsletter.</p><p>For each of those subscribers, we set the appropriate properties of the<code class="literal"> Email</code> component:<a id="id297" class="indexterm"/>
+</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Property</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Purpose</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">sendAs</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Type of e-mail to send. Can be text,<code class="literal"> html</code>, or<code class="literal"> both</code>. We set it to<code class="literal"> html</code> to specify that we are sending an HTML-only e-mail.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">subject</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>The subject of the e-mail.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">from</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>The address sending the e-mail.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">to</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>The destination address. If the parameter is provided, this is the e-mail to send<code class="literal"> to</code>, otherwise we use the e-mail of the subscriber.</p>
+</td></tr></tbody></table></div><p>Finally, we proceed to send the actual e-mail through the component's<code class="literal"> send()</code> method, informing the user of the result of the operation, and resetting the e-mail contents with the component's<code class="literal"> reset()</code> method prior to the next loop in the<code class="literal"> for</code> operation. We end the shell by marking that the newsletter is sent.<a id="id298" class="indexterm"/>
+</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec15"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Sending an e-mail</em></span> in <a class="link" href="ch11.html" title="Chapter 11. Utility Classes and Tools">Chapter 11</a>, <span class="emphasis"><em>Utility Classes and Tools</em></span></li></ul></div></div></div>
+<div class="section" title="Non-interactive tasks with the robot plugin"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec06"/>Non-interactive tasks with the robot plugin</h1></div></div></div><p>As our application grows in size and complexity, we will find ourselves in the need to create and automate certain tasks, deferring the processing of non-interactive tasks for later execution. While we can create shells to perform these operations, some of our needs may be met by the Robot plugin.<a id="id299" class="indexterm"/>
+</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note31"/>Note</h3><p>While this recipe shows a pure CakePHP approach, there are more involved and scalable alternatives. One of the most used tools is<span class="strong"><strong> Gearman</strong></span>, available at <a class="ulink" href="http://gearman.org/">http://gearman.org/</a>.</p></div><p>The Robot plugin allows us to schedule tasks for later execution, and have those tasks run by a shell. The tasks themselves are actually CakePHP controller actions, which are run by the shell at the specified time.</p><p>This recipe shows us how to use the Robot plugin to send an e-mail after a user has signed up for our newsletters, and how to have the shell in the Robot plugin periodically check for pending tasks and run them as they become available.<a id="id300" class="indexterm"/>
+</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec16"/>Getting ready</h2></div></div></div><p>To go through this recipe we need some data to work with. Follow the<span class="emphasis"><em> Getting ready</em></span> section of the previous recipe.</p><p>We need to download the Robot plugin. Go to <a class="ulink" href="http://github.com/mariano/robot/downloads">http://github.com/mariano/robot/downloads</a> and download the latest release. Uncompress the downloaded file into your<code class="literal"> app/plugins</code> folder. You should now have a directory named<code class="literal"> robot</code> inside<code class="literal"> app/plugins</code>.<a id="id301" class="indexterm"/>
+</p><p>Run the SQL statements found in the<code class="literal"> app/plugins/robot/config/sql/robot.sql</code> file to create the tables required by the Robot plugin.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec17"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a file named<code class="literal"> subscribers_controller.php</code> and place it in your<code class="literal"> app/controllers</code> folder, with the following contents:<a id="id302" class="indexterm"/><div class="informalexample"><pre class="programlisting">&lt;?php
+class SubscribersController extends AppController {
+public function add() {
+if (!empty($this-&gt;data)) {
+$this-&gt;Subscriber-&gt;create();
+if ($this-&gt;Subscriber-&gt;save($this-&gt;data)) {
+$this-&gt;Session-&gt;setFlash('You have been subscribed!');
+$this-&gt;redirect('/');
+} else {
+$this-&gt;Session-&gt;setFlash('Please correct the errors');
+}
+}
+}
+public function welcome() {
+}
+}
+?&gt;
+</pre></div></li><li class="listitem">Create a folder named<code class="literal"> subscribers</code> in your<code class="literal"> app/views</code> folder. Create a file named<code class="literal"> add.ctp</code> and place it in the folder<code class="literal"> app/views/subscribers</code>, with the following contents:<div class="informalexample"><pre class="programlisting">&lt;?php
+echo $this-&gt;Form-&gt;create();
+echo $this-&gt;Form-&gt;inputs(array(
+'legend' =&gt; 'Subscribe',
+'name',
+'email'
+));
+echo $this-&gt;Form-&gt;end('Submit');
+?&gt;
+</pre></div></li><li class="listitem">Create a file named<code class="literal"> welcome.ctp</code> and place it in the<code class="literal"> app/views/subscribers</code> folder, with the following contents:<div class="informalexample"><pre class="programlisting">&lt;h1&gt;Welcome to my site!&lt;/h1&gt;
+</pre></div></li><li class="listitem">Add the following property to the beginning of the<code class="literal"> SubscribersController</code> class (change the delivery settings of the<code class="literal"> Email</code> component to match your needs):<div class="informalexample"><pre class="programlisting">public $components = array(
+'Email' =&gt; array(
+'delivery' =&gt; 'smtp',
+'smtpOptions' =&gt; array(
+'host' =&gt; 'smtp.email.com',
+'username' =&gt; 'smtpUser',
+'password' =&gt; 'smtpPassword'
+)
+)
+);
+</pre></div></li><li class="listitem">Edit the<code class="literal"> add()</code> method of the<code class="literal"> SubscribersController</code> class and make the following changes:<a id="id303" class="indexterm"/><div class="informalexample"><pre class="programlisting">public function add() {
+if (!empty($this-&gt;data)) {
+$this-&gt;Subscriber-&gt;create();
+if ($this-&gt;Subscriber-&gt;save($this-&gt;data)) {
+<span class="strong"><strong>ClassRegistry::init('Robot.RobotTask')-&gt;schedule(
+array('action'=&gt;'welcome'),
+array(
+'name' =&gt; $this-&gt;data['Subscriber']['email'],
+'email' =&gt; $this-&gt;data['Subscriber']['email']</strong></span>
+)
+);
+$this-&gt;Session-&gt;setFlash('You have been subscribed!');
+$this-&gt;redirect('/');
+} else {
+$this-&gt;Session-&gt;setFlash('Please correct the errors');
+}
+}
+}
+</pre></div></li><li class="listitem">While still editing the<code class="literal"> SubscribersController</code> class, replace the<code class="literal"> welcome()</code> method with the following contents:<div class="informalexample"><pre class="programlisting">public function welcome() {
+if (isset($this-&gt;params['robot'])) {
+$subscriber = $this-&gt;params['robot'];
+$this-&gt;Email-&gt;sendAs = 'html';
+$this-&gt;Email-&gt;subject = 'Welcome to my site!';
+$this-&gt;Email-&gt;from = 'My Application &lt;info@email.com&gt;';
+$this-&gt;Email-&gt;to = $subscriber['name'] . ' &lt;'.$subscriber['email'].'&gt;';
+return ($this-&gt;Email-&gt;send('Hi, and &lt;strong&gt;welcome&lt;/strong&gt; to my site!') !== false);
+}
+}
+</pre></div></li></ol></div><p>You can now browse to <code class="literal">http://localhost/subscribers/add</code> and enter your name and e-mail address. Now run the robot shell with the following command:<a id="id304" class="indexterm"/>
+</p><p>If you are on a GNU Linux / Mac / Unix system:</p><div class="informalexample"><pre class="programlisting">../cake/console/cake robot.robot run
+</pre></div><p>If you are on Microsoft Windows:</p><div class="informalexample"><pre class="programlisting">..\cake\console\cake.bat robot.robot run
+</pre></div><p>You should get an output similar to what is shown in the following screenshot:</p><div class="mediaobject"><img src="graphics/1926_8_05.jpg" alt="How to do it..."/></div><p>The robot is informing us that a task executed the CakePHP URL <code class="literal">/subscribers/welcome</code> successfully, after which we should receive a welcome e-mail.</p></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec18"/>How it works...</h2></div></div></div><p>We started with a basic controller that takes new subscriptions and saves them, redirecting to a welcome screen after the record is created. Then we added the<code class="literal"> Email</code> component to our controller, as it will be used for sending e-mails.<a id="id305" class="indexterm"/>
+</p><p>We continued by modifying the<code class="literal"> add()</code> method to create the scheduled task. We scheduled a task using the<code class="literal"> schedule()</code> method of the<code class="literal"> RobotTask</code> model located in the Robot plugin. This method takes up to three arguments:<a id="id306" class="indexterm"/>
+</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Argument</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Purpose</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">action</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>The URL to a CakePHP action, which can be given as a string or as an array.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">parameters</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Optional parameters to send to the controller action specified in<code class="literal"> action</code>. Defaults to no parameters.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">scheduled</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>The time at which the action should be executed. This can be either a specific time stamp (in seconds since the Unix Epoch, which is January 1, 1970 00:00:00 GMT), or any string that can be used by the PHP function<code class="literal"> strtotime()</code>. Defaults to<code class="literal"> null</code>, which means the task should be executed as soon as possible.</p>
+</td></tr></tbody></table></div><p>In our<code class="literal"> add()</code> method, we set the<code class="literal"> action</code> argument to the<code class="literal"> welcome</code> action of the current controller, and send two parameters:<code class="literal"> name</code>, and<code class="literal"> email</code>. These parameters are available to the called action through the<code class="literal"> $this-&gt;params['robot']</code> array.<a id="id307" class="indexterm"/>
+</p><p>In fact, whenever a controller action is called through the robot shell,<code class="literal"> $this-&gt;params['robot']</code> will be available. If no parameters were specified when scheduling the task, this array will be empty, hence the check with<code class="literal"> isset()</code> instead of<code class="literal"> !empty()</code> in the<code class="literal"> welcome()</code> method.</p><p>When called through the robot shell, the<code class="literal"> welcome()</code> method uses the given parameters to build and send the e-mail. It returns a Boolean value to indicate the success of the executed task. If no value is returned, the task is assumed to have succeeded.</p><p>To test the Robot plugin, we ended the recipe by signing up as a subscriber, and then running the robot. Naturally, the application should not have to wait for us to manually run the robot shell in order for e-mails to go out. We need to add the shell to our list of automated tasks, commonly known as CRON tasks on most operative systems.</p><p>Assuming your application lives at<code class="literal"> /var/www/myapp</code>, and that the path to your PHP binary is<code class="literal"> /usr/bin/php</code>, the following would be the command that should be included as an automated task in your operative system:</p><div class="informalexample"><pre class="programlisting">/usr/bin/php -q /var/www/myapp/cake/console/cake.php -app /var/www/myapp/app robot.robot run -silent
+</pre></div><p>Notice the<code class="literal"> silent</code> option. This tells the robot plugin to output no messages unless an error is found. This is particularly important when adding this command to our list of automated tasks, as it may be configured to e-mail the output of any executed command.</p><p>When adding this command to our list of automated tasks, we have to decide how often we want the robot to check for tasks. If we are interested in immediate results, we should set the robot to run every minute. However, what happens if at second 0 of a given minute the robot finds no tasks? We will have 59 seconds of idle time.<a id="id308" class="indexterm"/>
+</p><p>Fortunately, the plugin offers an interesting solution to this problem. Using the parameter<code class="literal"> daemon</code>, we tell the Robot plugin to wait for tasks even if there are none available. If we try to manually run it with this option using the following command:</p><div class="informalexample"><pre class="programlisting">$ cake/console/cake robot.robot run -daemon
+</pre></div><p>we will notice the shell complains, saying that there is no limit specified. This is because the robot should not be set to wait for tasks indefinitely, as any PHP fatal error that may be provoked by a called action could render the robot useless.<a id="id309" class="indexterm"/>
+</p><p>Instead, we can use the<code class="literal"> time</code> parameter to limit the number of seconds to which the robot should wait for tasks. If we wanted to run the robot every minute, this limit should be set to 59 seconds:</p><div class="informalexample"><pre class="programlisting">$ cake/console/cake robot.robot run -daemon -time 59
+</pre></div><p>This means that we would have a robot waiting up to 59 seconds for tasks, after which the next robot run will be triggered.</p></div></div></body></html>

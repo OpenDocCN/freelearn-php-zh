@@ -1,0 +1,939 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;5.&#xA0;Managing Data In and Out"><div class="titlepage"><div><div><h1 class="title"><a id="ch05"/>Chapter 5. Managing Data In and Out</h1></div></div></div><p>In this chapter, we will cover:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Sending different data to multiple views</li><li class="listitem" style="list-style-type: disc">Validating user input</li><li class="listitem" style="list-style-type: disc">Preparing user input</li><li class="listitem" style="list-style-type: disc">Sticky form elements in CodeIgniter</li><li class="listitem" style="list-style-type: disc">Displaying errors next to form items</li><li class="listitem" style="list-style-type: disc">Reading files from the filesystem</li><li class="listitem" style="list-style-type: disc">Writing files to the filesystem</li><li class="listitem" style="list-style-type: disc">Creating and downloading ZIP files</li><li class="listitem" style="list-style-type: disc">Uploading files with CodeIgniter</li><li class="listitem" style="list-style-type: disc">Creating and using validation callbacks</li><li class="listitem" style="list-style-type: disc">Using the language class</li><li class="listitem" style="list-style-type: disc">Using the language class – switching a language on the fly</li><li class="listitem" style="list-style-type: disc">Confirming cookie acceptance from the user</li></ul></div><div class="section" title="Introduction"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec38"/>Introduction</h1></div></div></div><p>Managing data is an <a id="id240" class="indexterm"/>important subject covering not only the format of output data, database structure, and access methods but also security; any discussion of data and managing that data will obviously feature discussions of security and the protection of your system and its data. As such, there will be some cross-over with the security chapter and I recommend that you also read that chapter alongside this.</p></div></div>
+<div class="section" title="Sending different data to multiple views"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec39"/>Sending different data to multiple views</h1></div></div></div><p>Someone recently asked me if <a id="id241" class="indexterm"/>they could send different data to different views in the same browser page and have the data displayed in its own section. Luckily, this can be done easily; you can pass more than one array of data to more than one view at the same time.</p><p>This can be really useful if your web page is split into sections with each section displaying its own data. For example, you may want a section displaying most read articles with another displaying most shared articles.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec68"/>Getting ready</h2></div></div></div><p>As we're going to be pulling data from a database we will need to ensure that a few <code class="literal">config</code> variables are set to allow us to do this. Open up the <code class="literal">/path/to/codeigniter/application/config/database.php</code> file and find the following settings. Then, amend them to match your requirements:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Option Name</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Valid Options</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Description</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">$db['default']['hostname']</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Usually localhost </p>
+</td><td style="text-align: left" valign="top">
+<p>This is the <a id="id242" class="indexterm"/>server on which the database sits</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">$db['default']['username']</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>?</p>
+</td><td style="text-align: left" valign="top">
+<p>The database <a id="id243" class="indexterm"/>access username</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">$db['default']['password']</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>?</p>
+</td><td style="text-align: left" valign="top">
+<p>The password <a id="id244" class="indexterm"/>for the database</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">$db['default']['database']</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>?</p>
+</td><td style="text-align: left" valign="top">
+<p>The name of the <a id="id245" class="indexterm"/>database</p>
+</td></tr></tbody></table></div><p>Now that we've configured CodeIgniter to connect to a database, copy the following code into your database:</p><div class="informalexample"><pre class="programlisting">CREATE TABLE IF NOT EXISTS `articles` ( 
+  `article_id` int(11) NOT NULL AUTO_INCREMENT, 
+  `article_title` varchar(255) NOT NULL, 
+  `article_body` text NOT NULL, 
+  `is_main` varchar(3) NOT NULL, 
+  PRIMARY KEY (`article_id`) 
+
+); 
+
+INSERT INTO `articles` (`article_id`, `article_title`, `article_body`, `is_main`) VALUES 
+(1, 'Article One', 'Article One Body', 'yes'), 
+(2, 'Article Two', 'Article Two Body', 'no'), 
+(3, 'Article Three', 'Article Three Body', 'no'), 
+(4, 'Article Four', 'Article Four Body', 'no'), 
+(5, 'Article Five', 'Article Five Body', 'no'), 
+(6, 'Article Six', 'Article Six Body', 'no'); </pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec69"/>How to do it...</h2></div></div></div><p>We're going to create four files:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/controllers/articles.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/models/content_model.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/articles/left.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/articles/right.php</code></li></ul></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create <a id="id246" class="indexterm"/>the <code class="literal">/path/to/codeigniter/application/controllers/articles.php</code> file and copy the following code into it:<div class="informalexample"><pre class="programlisting">&lt;?php if (!defined('BASEPATH')) exit('No direct script access allowed'); 
+class Articles extends CI_Controller { 
+  function __construct() { 
+    parent::__construct(); 
+    $this-&gt;load-&gt;helper('url'); 
+  } 
+
+  public function index() { 
+    // Load content model 
+    $this-&gt;load-&gt;model('content_model'); 
+    
+    // Fetch stuff from database and store in specific arrays 
+    $left_data['main_article'] = $this-&gt;content_model-&gt;get_main_article();   
+    $right_data['article_list'] = $this-&gt;content_model-&gt;get_article_list();        
+
+    // Load views and pass data to them 
+    $this-&gt;load-&gt;view('articles/left', $left_data); 
+    $this-&gt;load-&gt;view('articles/right', $right_data); 
+  } 
+} </pre></div></li><li class="listitem">Create the <code class="literal">/path/to/codeigniter/application/models/content_model.php</code> file and copy the following code into it:<div class="informalexample"><pre class="programlisting">class Content_model extends CI_Model { 
+  function get_main_article() { 
+    $this-&gt;db-&gt;where('is_main', 'yes'); 
+    return $this-&gt;db-&gt;get('articles'); 
+  } 
+  
+  function get_article_list() { 
+    return $this-&gt;db-&gt;get('articles');        
+  }    
+} </pre></div></li><li class="listitem">Create <a id="id247" class="indexterm"/>the <code class="literal">/path/to/codeigniter/application/views/articles/left.php</code> file and copy the following code into it:<div class="informalexample"><pre class="programlisting">&lt;?php foreach ($main_article-&gt;result() as $main_row) : ?&gt; 
+    &lt;h2&gt;&lt;?php echo $main_row-&gt;article_title ; ?&gt;&lt;/h2&gt; 
+    &lt;p&gt;&lt;?php echo $main_row-&gt;article_body ; ?&gt;&lt;/p&gt; 
+&lt;?php endforeach ; ?&gt; </pre></div></li><li class="listitem">Create the <code class="literal">/path/to/codeigniter/application/views/articles/right.php</code> file and copy the following code into it:<div class="informalexample"><pre class="programlisting">&lt;?php foreach ($article_list-&gt;result() as $list_row) : ?&gt; 
+    &lt;?php echo anchor('#', $list_row-&gt;article_title) ; ?&gt;&lt;br /&gt; 
+&lt;?php endforeach ; ?&gt; </pre></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec70"/>How it works...</h2></div></div></div><p>
+<code class="literal">public function index()</code> loads the <code class="literal">content_model</code> by <code class="literal">$this-&gt;load-&gt;model('content_model');</code> and calls the two model functions <code class="literal">get_main_article()</code> and <code class="literal">get_article_list()</code>. The <a id="id248" class="indexterm"/>
+<code class="literal">get_main_article()</code> function fetches the row for the left-hand view and stores it in the <code class="literal">$left_data</code> array and <code class="literal">get_article_list()</code> fetches results for the right-hand view and stores it in the <code class="literal">$right_data</code> array:</p><div class="informalexample"><pre class="programlisting">// Fetch stuff from database and store in $data 
+$left_data['main_article'] = $this-&gt;content_model-&gt;get_main_article();   
+$right_data['article_list'] = $this-&gt;content_model-&gt;get_article_list();        </pre></div><p>Both left and right views are called and both the arrays (<code class="literal">$left_data</code> and <code class="literal">$right_data</code>) passed to them:</p><div class="informalexample"><pre class="programlisting">// Load views and pass $data variable to them 
+$this-&gt;load-&gt;view('articles/left', $left_data); 
+$this-&gt;load-&gt;view('articles/right', $right_data); </pre></div><p>Each view will then loop through <a id="id249" class="indexterm"/>the specific array outputting the fields we want.</p></div></div>
+<div class="section" title="Validating user input"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec40"/>Validating user input</h1></div></div></div><p>Validating user input allows <a id="id250" class="indexterm"/>you to set rules against which input coming in from the user can be judged. For example, you may wish to enforce certain conditions on an e-mail field, most obviously checking for a valid e-mail syntax, but also the minimum and maximum length, and whether it is required. CodeIgniter can even look into a database and check for duplicate values. In this recipe, we're going to build a controller and view, which together will allow the user to input data and have it validated against rules that will be set; errors, if any, will be reported back to the user.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec71"/>Getting ready</h2></div></div></div><p>You'll need to be aware of a few things before getting started. The following is a table of all available CodeIgniter validation rules:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Rule</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Parameter</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Description</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>required</p>
+</td><td style="text-align: left" valign="top">
+<p>No</p>
+</td><td style="text-align: left" valign="top">
+<p>It specifies if <a id="id251" class="indexterm"/>the specific form element must have data when submitted by the user. It will return <code class="literal">FALSE</code> if empty.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>matches</p>
+</td><td style="text-align: left" valign="top">
+<p>Yes</p>
+</td><td style="text-align: left" valign="top">
+<p>It compares <a id="id252" class="indexterm"/>the data between two form elements to see if they match. It will return <code class="literal">FALSE</code> if they don't match and <code class="literal">TRUE</code> if they do. Example use:
+</p><div class="informalexample"><pre class="programlisting">$this-&gt;form_validation-&gt;set_rules('item1', 'Item1', ''); 
+$this-&gt;form_validation-&gt;set_rules('item2', 'Item2', 'matches[Item1]'); </pre></div>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>is_unique</p>
+</td><td style="text-align: left" valign="top">
+<p>Yes</p>
+</td><td style="text-align: left" valign="top">
+<p>It queries a <a id="id253" class="indexterm"/>database to see if the value of a table record item matches the value of the form element being submitted. It will return <code class="literal">FALSE</code> if the form element is not unique. Example use:
+</p><div class="informalexample"><pre class="programlisting">$this-&gt;form_validation-&gt;set_rules('item1','Item1', 'matches[users.username]'); </pre></div>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>min_length</p>
+</td><td style="text-align: left" valign="top">
+<p>Yes</p>
+</td><td style="text-align: left" valign="top">
+<p>It checks the <a id="id254" class="indexterm"/>length of the value in the form element to see if it is less than the parameter specified. It will return <code class="literal">FALSE</code> if the form element is smaller than the value specified. Example use:
+</p><div class="informalexample"><pre class="programlisting">$this-&gt;form_validation-&gt;set_rules('item1', 'Item1', 'min_length[12]'); </pre></div>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>max_length</p>
+</td><td style="text-align: left" valign="top">
+<p>Yes</p>
+</td><td style="text-align: left" valign="top">
+<p>It is the <a id="id255" class="indexterm"/>reverse of min_length; it checks if the length of the value in the form element is greater than the parameter specified. It will return <code class="literal">FALSE</code> if the form element is greater than the value specified. Example use:
+</p><div class="informalexample"><pre class="programlisting">$this-&gt;form_validation-&gt;set_rules('item1', 'Item1', 'max_length[12]'); </pre></div>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>exact_length</p>
+</td><td style="text-align: left" valign="top">
+<p>Yes</p>
+</td><td style="text-align: left" valign="top">
+<p>It checks if the <a id="id256" class="indexterm"/>length of the value in the form element is the exact value as compared to the specified parameter. It will return <code class="literal">FALSE</code> if the form element is anything other than what is specified. Example use:
+</p><div class="informalexample"><pre class="programlisting">$this-&gt;form_validation-&gt;set_rules('item1', 'Item1', 'exact_length [12]'); </pre></div>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>greater_than</p>
+</td><td style="text-align: left" valign="top">
+<p>Yes</p>
+</td><td style="text-align: left" valign="top">
+<p>It checks if <a id="id257" class="indexterm"/>the value in the form element is greater than a supplied parameter. It will <a id="id258" class="indexterm"/>return <code class="literal">FALSE</code> if the form element is less than the parameter value or that value is not numeric. Example use:
+</p><div class="informalexample"><pre class="programlisting">$this-&gt;form_validation-&gt;set_rules('item1', 'Item1', 'greater_than[12]'); </pre></div>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>less_than</p>
+</td><td style="text-align: left" valign="top">
+<p>Yes</p>
+</td><td style="text-align: left" valign="top">
+<p>It is the reverse of <a id="id259" class="indexterm"/>greater_than. It checks if the value in the form element is less than a supplied parameter. It will return <code class="literal">FALSE</code> if the form element is greater than the parameter value or that value is not numeric. Example use:
+</p><div class="informalexample"><pre class="programlisting">$this-&gt;form_validation-&gt;set_rules('item1', 'Item1', 'less_than[12]');</pre></div>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>alpha</p>
+</td><td style="text-align: left" valign="top">
+<p>No</p>
+</td><td style="text-align: left" valign="top">
+<p>It checks if the <a id="id260" class="indexterm"/>value in the form element contains alphabetical characters only. It will return <code class="literal">FALSE</code> if the form element value is anything other than that.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>alpha_numeric</p>
+</td><td style="text-align: left" valign="top">
+<p>No</p>
+</td><td style="text-align: left" valign="top">
+<p>It checks if the <a id="id261" class="indexterm"/>value in the form element contains alphabetical and integer values only. It will return <code class="literal">FALSE</code> if the form element value is anything other than that.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>alpha_dash</p>
+</td><td style="text-align: left" valign="top">
+<p>No</p>
+</td><td style="text-align: left" valign="top">
+<p>It checks if the <a id="id262" class="indexterm"/>value of the form element contains anything other than alpha-numeric characters, underscores or dashes. It will return <code class="literal">FALSE</code> if it contains any other value.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>numeric</p>
+</td><td style="text-align: left" valign="top">
+<p>No</p>
+</td><td style="text-align: left" valign="top">
+<p>It checks <a id="id263" class="indexterm"/>if the value of the form element <a id="id264" class="indexterm"/>contains anything other than numeric characters. It will return <code class="literal">FALSE</code> if the form element contains anything other than that.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>integer</p>
+</td><td style="text-align: left" valign="top">
+<p>No</p>
+</td><td style="text-align: left" valign="top">
+<p>It checks if the <a id="id265" class="indexterm"/>value of the form element contains anything other than integer values. It will return <code class="literal">FALSE</code> if the form element contains anything other than that.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>decimal</p>
+</td><td style="text-align: left" valign="top">
+<p>Yes</p>
+</td><td style="text-align: left" valign="top">
+<p>It checks if <a id="id266" class="indexterm"/>the value of the form element contains a decimal value, that is a number separated with a decimal point (<code class="literal">.</code>), otherwise it will return <code class="literal">FALSE</code>.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>is_natural</p>
+</td><td style="text-align: left" valign="top">
+<p>No</p>
+</td><td style="text-align: left" valign="top">
+<p>It checks if the <a id="id267" class="indexterm"/>value of the form element contains anything other than natural numbers—that is to say anything other than 1, 2, 3, 4, 5, and so on. It will return <code class="literal">FALSE</code> if the form element contains anything other than that.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>is_natural_no_zero</p>
+</td><td style="text-align: left" valign="top">
+<p>No</p>
+</td><td style="text-align: left" valign="top">
+<p>It checks <a id="id268" class="indexterm"/>if the value of the form element contains anything other than natural numbers, which are greater than zero. It will return <code class="literal">FALSE</code> if the value is anything other than natural numbers or zero.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>valid_email</p>
+</td><td style="text-align: left" valign="top">
+<p>No</p>
+</td><td style="text-align: left" valign="top">
+<p>It checks if the <a id="id269" class="indexterm"/>value of the form element contains a valid e-mail as calculated by Regular Expression within CodeIgniter. It will return <code class="literal">FALSE</code> if the form element does not contain a valid e-mail address. </p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>valid_emails</p>
+</td><td style="text-align: left" valign="top">
+<p>No</p>
+</td><td style="text-align: left" valign="top">
+<p>It checks if <a id="id270" class="indexterm"/>the value of the form element contains valid e-mail addresses as calculated by Regular Expression within CodeIgniter. It will return <code class="literal">FALSE</code> if the form element does not contain a valid e-mail address. </p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>valid_ip</p>
+</td><td style="text-align: left" valign="top">
+<p>No</p>
+</td><td style="text-align: left" valign="top">
+<p>It checks if <a id="id271" class="indexterm"/>the supplied IP address is valid.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>valid_base64</p>
+</td><td style="text-align: left" valign="top">
+<p>No</p>
+</td><td style="text-align: left" valign="top">
+<p>It returns <a id="id272" class="indexterm"/>
+<code class="literal">FALSE</code> if the supplied string contains anything other than valid Base64 characters.</p>
+</td></tr></tbody></table></div><p>There are also some basic config <a id="id273" class="indexterm"/>changes we'll need to make before we start working through our recipes. We're going to amend the <code class="literal">path/to/codeigniter/application/config/config.php</code> file.</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Config Item</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Change to Value </p>
+</th><th style="text-align: left" valign="bottom">
+<p>Description</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">$config['global_xrsf_filtering']</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>TRUE</p>
+</td><td style="text-align: left" valign="top">
+<p>It <a id="id274" class="indexterm"/>specifies whether CodeIgniter always filters for Cross-Site Scripting. For security purposes it is recommended that this is set to <code class="literal">TRUE</code>. </p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">$config['csrf_protection']</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>TRUE</p>
+</td><td style="text-align: left" valign="top">
+<p>It <a id="id275" class="indexterm"/>specifies whether to use Cross-Site Request Forgery protection. For security purposes it is recommended that this is set to <code class="literal">TRUE</code>. </p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">$config['csrf_token_name']</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Your own string</p>
+</td><td style="text-align: left" valign="top">
+<p>It specifies that if the user closes his/her <a id="id276" class="indexterm"/>browser the session becomes void.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">$config['csrf_cookie_name']</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Another string of your choice</p>
+</td><td style="text-align: left" valign="top">
+<p>It <a id="id277" class="indexterm"/>specifies whether the cookie should be encrypted on the user's computer. For security purposes this should be set to <code class="literal">TRUE</code>. </p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">$config['csrf_expire']</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>7200</p>
+</td><td style="text-align: left" valign="top">
+<p>It specifies the <a id="id278" class="indexterm"/>length of time in seconds.</p>
+</td></tr></tbody></table></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec72"/>How to do it...</h2></div></div></div><p>Create the following files in your CodeIgniter install:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/controllers/form.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/new_record.php</code></li></ul></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Add the following code into the <code class="literal">path/to/codeigniter/application/controllers/form.php</code> file:<div class="informalexample"><pre class="programlisting">&lt;?php if (!defined('BASEPATH')) exit('No direct script access allowed'); 
+
+class Form extends CI_Controller { 
+  function __construct() { 
+    parent::__construct(); 
+    $this-&gt;load-&gt;helper('form'); 
+    $this-&gt;load-&gt;helper('url'); 
+    $this-&gt;load-&gt;helper('security'); 
+    $this-&gt;load-&gt;library('form_validation'); 
+  } 
+  
+  public function index() { 
+    redirect('form/submit_form'); 
+  } 
+  
+  public function submit_form() { 
+    $this-&gt;form_validation-&gt;set_error_delimiters('', '&lt;br /&gt;'); 
+        
+    $this-&gt;form_validation-&gt;set_rules('first_name', 'First Name', 'required|min_length[1]|max_length[125]'); 
+    $this-&gt;form_validation-&gt;set_rules('last_name', 'Last Name', 'required|min_length[1]|max_length[125]'); 
+    $this-&gt;form_validation-&gt;set_rules('email', 'Email', 'required|min_length[1]|max_length[255]|valid_email'); 
+    $this-&gt;form_validation-&gt;set_rules('contact', 'Contact','required|min_length[1]|max_length[1]|integer|is_natural'); 
+    $this-&gt;form_validation-&gt;set_rules('answer', 'Question','required|min_length[1]|max_length[2]|integer|is_natural'); 
+        
+    // Begin validation 
+    if ($this-&gt;form_validation-&gt;run() == FALSE) { // First load, or problem with form 
+      $this-&gt;load-&gt;view('new_record'); 
+    } 
+    else { 
+      // Validation passed, now escape the data 
+      $data = array( 
+        'first_name'    =&gt; $this-&gt;input-&gt;post('first_name'), 
+        'last_name'     =&gt; $this-&gt;input-&gt;post('last_name'), 
+        'email'         =&gt; $this-&gt;input-&gt;post('email'), 
+        'contact'       =&gt; $this-&gt;input-&gt;post('contact'), 
+        'answer'        =&gt; $this-&gt;input-&gt;post('answer') 
+      ); 
+
+      echo '&lt;pre&gt;'; 
+      var_dump($data); 
+      echo '&lt;/pre&gt;'; 
+    }        
+  } 
+} </pre></div></li><li class="listitem">Add the following code into the <code class="literal">path /to/codeigniter/application/views/new_record.php</code> file:<div class="informalexample"><pre class="programlisting">&lt;?php echo form_open('form/submit_form') ; ?&gt; 
+    &lt;?php if (validation_errors()) : ?&gt; 
+        &lt;h3&gt;Whoops! There was an error:&lt;/h3&gt; 
+        &lt;p&gt;&lt;?php echo validation_errors(); ?&gt;&lt;/p&gt; 
+    &lt;?php endif; ?&gt; 
+    &lt;table border="0" &gt; 
+        &lt;tr&gt; 
+            &lt;td&gt;First Name&lt;/td&gt; 
+            &lt;td&gt;&lt;?php echo form_input(array('name' =&gt; 'first_name', 'id' =&gt; 'first_name', 'value' =&gt; '', 'maxlength' =&gt; '100', 'size' =&gt; '50', 'style' =&gt; 'width:100%')); ?&gt;&lt;/td&gt; 
+        &lt;/tr&gt;   
+        &lt;tr&gt; 
+            &lt;td&gt;Last Name&lt;/td&gt; 
+            &lt;td&gt;&lt;?php echo form_input(array('name' =&gt; 'last_name', 'id' =&gt; 'last_name', 'value' =&gt; '', 'maxlength' =&gt; '100', 'size' =&gt; '50', 'style' =&gt; 'width:100%')); ?&gt;&lt;/td&gt; 
+        &lt;/tr&gt; 
+        &lt;tr&gt; 
+            &lt;td&gt;User Email&lt;/td&gt; 
+            &lt;td&gt;&lt;?php echo form_input(array('name' =&gt; 'email', 'id' =&gt; 'email', 'value' =&gt; '', 'maxlength' =&gt; '100', 'size' =&gt; '50', 'style' =&gt; 'width:100%')); ?&gt;&lt;/td&gt; 
+        &lt;/tr&gt; 
+        &lt;tr&gt; 
+            &lt;td&gt;Do you want to be contacted in the future?&lt;/td&gt; 
+            &lt;td&gt;&lt;?php echo 'Yes'.form_checkbox('contact', '1', TRUE).'No'.form_checkbox('contact', '0', FALSE); ?&gt;&lt;/td&gt; 
+        &lt;/tr&gt; 
+        &lt;tr&gt; 
+            &lt;td&gt;What is 10 + 5?&lt;/td&gt; 
+            &lt;td&gt;&lt;?php echo form_input(array('name' =&gt; 'answer', 
+'id' =&gt; 'answer', 'value' =&gt; '', 'maxlength' =&gt; '100', 'size' =&gt; '50', 'style' =&gt; 'width:100%')); ?&gt;&lt;/td&gt; 
+        &lt;/tr&gt; 
+    &lt;/table&gt; 
+    &lt;?php echo form_submit('submit', 'Submit'); ?&gt; 
+    or &lt;?php echo anchor('form', 'cancel'); ?&gt; 
+&lt;?php echo form_close(); ?&gt; </pre></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec73"/>How it works...</h2></div></div></div><p>CodeIgniter will first run <code class="literal">public function index()</code>, which will immediately redirect to <code class="literal">public function submit_form()</code>.<a id="id279" class="indexterm"/>The <code class="literal">submit_form()</code> function will set our error delimiters with the line <code class="literal">$this-&gt;form_validation-&gt;set_error_delimiters('', '&lt;br /&gt;');</code> and then list the validation rules for each form element:</p><div class="informalexample"><pre class="programlisting">  $this-&gt;form_validation-&gt;set_rules('first_name', 'First Name', 'required|min_length[1]|max_length[125]'); 
+  $this-&gt;form_validation-&gt;set_rules('last_name', 'Last Name', 'required|min_length[1]|max_length[125]'); 
+  $this-&gt;form_validation-&gt;set_rules('email', 'Email', 'required|min_length[1]|max_length[255]|valid_email'); 
+  $this-&gt;form_validation-&gt;set_rules('contact', 'Contact', 'required|min_length[1]|max_length[1]|integer|is_natural'); 
+  $this-&gt;form_validation-&gt;set_rules('answer', 'Question', 'required|min_length[1]|max_length[2]|integer|is_natural'); </pre></div><p>As the form is being run for the first time <code class="literal">$this-&gt;form_validation-&gt;run()</code> will return <code class="literal">FALSE</code> and so load the view file <code class="literal">$this-&gt;load-&gt;view('new_record');</code>, which will render the form to the user. The user can then enter his/her details into the form. Once the user clicks on the <span class="strong"><strong>Submit</strong></span> button, CodeIgniter again loads public function <code class="literal">submit_form()</code>, but this time, as the form is being submitted the validation rules are applied to the data being submitted. CodeIgniter will compare the data submitted against the rules and return <code class="literal">FALSE</code> if that data fails to match the rules in validation. If those rules are not met, the user will see error messages in the view. The following code checks if there are any validation errors, if so it will <a id="id280" class="indexterm"/>display them one by one:</p><div class="informalexample"><pre class="programlisting">    &lt;?php if (validation_errors()) : ?&gt; 
+        &lt;h3&gt;Whoops! There was an error:&lt;/h3&gt; 
+        &lt;p&gt;&lt;?php echo validation_errors(); ?&gt;&lt;/p&gt; 
+    &lt;?php endif; ?&gt; </pre></div></div></div>
+<div class="section" title="Preparing user input"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec41"/>Preparing user input</h1></div></div></div><p>The validation rules can also be <a id="id281" class="indexterm"/>used to prepare input for you. For example, you can <code class="literal">trim()</code> whitespace from the input or apply <code class="literal">htmlspecialchars()</code>. Any PHP function can be used, as long as that function accepts one parameter as an argument by default.</p><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec74"/>How to do it...</h2></div></div></div><p>Let's assume that we want to <code class="literal">trim()</code> <a id="id282" class="indexterm"/>whitespaces from the beginning and end of the input and generate an <code class="literal">md5</code> hash of the input:</p><div class="informalexample"><pre class="programlisting">$this-&gt;form_validation-&gt;set_rules('input_name', 'Input Name', 'trim|md5'); </pre></div></div></div>
+<div class="section" title="Sticky form elements in CodeIgniter"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec42"/>Sticky form elements in CodeIgniter</h1></div></div></div><p>It is good for user experience <a id="id283" class="indexterm"/>to offer feedback; we do this in the preceding sections with <code class="literal">validation_errors()</code>, but it is also useful to keep user data in form elements to save them having to re-type everything, should there be an error. To do this, we need to use CodeIgniter's <code class="literal">set_value()</code> function.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec75"/>Getting ready</h2></div></div></div><p>Make sure that you load <code class="literal">$this-&gt;load-&gt;helper('form');</code> from within the <code class="literal">__constructor()</code> of the controller; however, you can always autoload the helper from <code class="literal">/path.to/codeigniter/application/config/autoload.php</code>.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec76"/>How to do it...</h2></div></div></div><p>We're going to edit the <code class="literal">/path/to/codeigniter/application/views/new_record.php</code> file.</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Amend the file to show the following (changes in bold):<div class="informalexample"><pre class="programlisting">&lt;?php echo form_open('form/submit_form') ; ?&gt; 
+    &lt;?php if (validation_errors()) : ?&gt; 
+        &lt;h3&gt;Whoops! There was an error:&lt;/h3&gt; 
+        &lt;p&gt;&lt;?php echo validation_errors(); ?&gt;&lt;/p&gt; 
+    &lt;?php endif; ?&gt; 
+    &lt;table border="0" &gt; 
+        &lt;tr&gt; 
+            &lt;td&gt;First Name&lt;/td&gt; 
+            &lt;td&gt;&lt;?php echo form_input(array('name' =&gt; 'first_name', 'id' =&gt; 'first_name', 'value' =&gt; set_value('first_name', ''), 'maxlength' =&gt; '100', 'size' =&gt; '50', 'style' =&gt; 'width:100%')); ?&gt;&lt;/td&gt; 
+        &lt;/tr&gt;   
+        &lt;tr&gt; 
+            &lt;td&gt;Last Name&lt;/td&gt; 
+            &lt;td&gt;&lt;?php echo form_input(array('name' =&gt; 'last_name', 'id' =&gt; 'last_name', 'value' =&gt; set_value('last_name', ''), 'maxlength' =&gt; '100', 'size' =&gt; '50', 'style' =&gt; 'width:100%')); ?&gt;&lt;/td&gt; 
+        &lt;/tr&gt; 
+        &lt;tr&gt; 
+            &lt;td&gt;User Email&lt;/td&gt; 
+            &lt;td&gt;&lt;?php echo form_input(array('name' =&gt; 'email', 'id' =&gt; 'email', 'value' =&gt; set_value('email', ''), 'maxlength' =&gt; '100', 'size' =&gt; '50', 'style' =&gt; 'width:100%')); ?&gt;&lt;/td&gt; 
+        &lt;/tr&gt; 
+        &lt;tr&gt; 
+            &lt;td&gt;Do you want to be contacted in the future?&lt;/td&gt; 
+            &lt;td&gt;&lt;?php echo 'Yes'.form_checkbox('contact', '1', TRUE).'No'.form_checkbox('contact', '0', FALSE); ?&gt;&lt;/td&gt; 
+        &lt;/tr&gt; 
+        &lt;tr&gt; 
+            &lt;td&gt;What is 10 + 5?&lt;/td&gt; 
+            &lt;td&gt;&lt;?php echo form_input(array('name' =&gt; 'answer', 'id' =&gt; 'answer', 'value' =&gt; set_value('answer', ''), 'maxlength' =&gt; '100', 'size' =&gt; '50', 'style' =&gt; 'width:100%')); ?&gt;&lt;/td&gt; 
+        &lt;/tr&gt; 
+    &lt;/table&gt; 
+    &lt;?php echo form_submit('submit', 'Submit'); ?&gt; 
+    or &lt;?php echo anchor('form', 'cancel'); ?&gt; 
+&lt;?php echo form_close(); ?&gt; </pre></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec77"/>How it works...</h2></div></div></div><p>Essentially, it is exactly the same functionality as the <span class="emphasis"><em>Validating User Input</em></span> recipe, except that now the CodeIgniter function, <code class="literal">set_value()</code>, populates the form element value with the data submitted <a id="id284" class="indexterm"/>previously by the user.</p></div></div>
+<div class="section" title="Displaying errors next to form items"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec43"/>Displaying errors next to form items</h1></div></div></div><p>In the preceding example, <a id="id285" class="indexterm"/>we displayed errors one by one at the top of the HTML page; however, you may wish to display each individual error closer to the form element to which it refers.</p><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec78"/>How to do it...</h2></div></div></div><p>We're going to amend the <code class="literal">/path/to/codeigniter/application/views/new_record.php</code> file.</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Amend the code to reflect the following (changes in bold):<div class="informalexample"><pre class="programlisting">&lt;?php echo form_open('form/submit_form') ; ?&gt; 
+    &lt;?php if (validation_errors()) : ?&gt; 
+        &lt;h3&gt;Whoops! There was an error:&lt;/h3&gt; 
+    &lt;?php endif; ?&gt; 
+    &lt;table border="0" &gt; 
+        &lt;tr&gt; 
+            &lt;td&gt;First Name&lt;/td&gt; 
+      &lt;?php if (form_error('first_name')) : ?&gt; 
+        &lt;?php echo form_error('first_name') ; ?&gt; 
+      &lt;?php endif ; ?&gt; 
+            &lt;td&gt;&lt;?php echo form_input(array('name' =&gt; 'first_name', 'id' =&gt; 'first_name', 'value' =&gt; set_value('first_name', ''), 'maxlength' =&gt; '100', 'size' =&gt; '50', 'style' =&gt; 'width:100%')); ?&gt;&lt;/td&gt; 
+        &lt;/tr&gt;   
+        &lt;tr&gt; 
+            &lt;td&gt;Last Name&lt;/td&gt; 
+      &lt;?php if (form_error('last_name')) : ?&gt; 
+        &lt;?php echo form_error('last_name') ; ?&gt; 
+      &lt;?php endif ; ?&gt;       
+            &lt;td&gt;&lt;?php echo form_input(array('name' =&gt; 'last_name', 'id' =&gt; 'last_name', 'value' =&gt; set_value('last_name', ''), 'maxlength' =&gt; '100', 'size' =&gt; '50', 'style' =&gt; 'width:100%')); ?&gt;&lt;/td&gt; 
+        &lt;/tr&gt; 
+        &lt;tr&gt; 
+            &lt;td&gt;User Email&lt;/td&gt; 
+      &lt;?php if (form_error('email')) : ?&gt; 
+        &lt;?php echo form_error('email') ; ?&gt; 
+      &lt;?php endif ; ?&gt;       
+            &lt;td&gt;&lt;?php echo form_input(array('name' =&gt; 'email', 'id' =&gt; 'email', 'value' =&gt; set_value('email', ''), 'maxlength' =&gt; '100', 'size' =&gt; '50', 'style' =&gt; 'width:100%')); ?&gt;&lt;/td&gt; 
+        &lt;/tr&gt; 
+        &lt;tr&gt; 
+      &lt;?php if (form_error('contact')) : ?&gt; 
+        &lt;?php echo form_error('contact') ; ?&gt; 
+      &lt;?php endif ; ?&gt;     
+            &lt;td&gt;Do you want to be contacted in the future?&lt;/td&gt; 
+            &lt;td&gt;&lt;?php echo 'Yes'.form_checkbox('contact', '1', TRUE).'No'.form_checkbox('contact', '0', FALSE); ?&gt;&lt;/td&gt; 
+        &lt;/tr&gt; 
+        &lt;tr&gt; 
+            &lt;td&gt;What is 10 + 5?&lt;/td&gt; 
+            &lt;td&gt;&lt;?php echo form_input(array('name' =&gt; 'answer', 'id' =&gt; 'answer', 'value' =&gt; set_value('answer', ''), 'maxlength' =&gt; '100', 'size' =&gt; '50', 'style' =&gt; 'width:100%')); ?&gt;&lt;/td&gt; 
+        &lt;/tr&gt; 
+    &lt;/table&gt; 
+    &lt;?php echo form_submit('submit', 'Submit'); ?&gt; 
+    or &lt;?php echo anchor('form', 'cancel'); ?&gt; 
+&lt;?php echo form_close(); ?&gt;</pre></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec79"/>How it works...</h2></div></div></div><p>Essentially, it's exactly the same validation functionality as the preceding recipe; the only change is how we're displaying the <a id="id286" class="indexterm"/>errors. We have removed the line <code class="literal">&lt;p&gt;&lt;?php echo validation_errors(); ?&gt;&lt;/p&gt;</code>, as we're not listing the errors one by one. We have added the CodeIgniter's <code class="literal">form_error()</code> statement, passing it the name of the HTML form element so that if CodeIgniter's validation class discovers that the posted form data does not meet the parameters assigned to it as validation rules, an error will be displayed above the form element.</p></div></div>
+<div class="section" title="Reading files from the filesystem"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec44"/>Reading files from the filesystem</h1></div></div></div><p>Although you're probably <a id="id287" class="indexterm"/>going to be writing and reading data in a database you <a id="id288" class="indexterm"/>will certainly come in contact with the requirement to write something to the disk, and read from files stored on it. CodeIgniter can support several methods for interacting with files.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec80"/>Getting ready</h2></div></div></div><p>There are no configuration options to change here, but ensure that you load the file helper in your controller constructor (and also the <code class="literal">url</code> helper):</p><div class="informalexample"><pre class="programlisting">    function __construct() { 
+        parent::__construct(); 
+        $this-&gt;load-&gt;helper('url'); 
+        $this-&gt;load-&gt;helper('file'); 
+    } </pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec81"/>How to do it...</h2></div></div></div><p>We're going to read files <a id="id289" class="indexterm"/>from the <a id="id290" class="indexterm"/>disk and display details about them to a view. Firstly, we're going to create two files:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/controllers/file.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/file/view_file.php</code></li></ul></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Add the following code into <code class="literal">/path/to/codeigniter/application/controllers/file.php</code>:<div class="informalexample"><pre class="programlisting">&lt;?php if (!defined('BASEPATH')) exit('No direct script access allowed'); 
+
+class File extends CI_Controller { 
+    function __construct() { 
+        parent::__construct(); 
+        $this-&gt;load-&gt;helper('url'); 
+        $this-&gt;load-&gt;helper('file'); 
+    } 
+
+    public function index() { 
+        redirect('file/view_all_files'); 
+    } 
+
+    public function view_all_files() { 
+        $data['dir'] = '/full/path/to/read';        
+        $data['files'] = get_dir_file_info($data['dir']); 
+        $this-&gt;load-&gt;view('files/view_file', $data); 
+    } 
+} </pre></div></li><li class="listitem">Add the following code into <code class="literal">/path/to/codeigniter/application/views/files/view_file.php</code>:<div class="informalexample"><pre class="programlisting">&lt;html&gt; 
+    &lt;head&gt; 
+        &lt;title&gt;Viewing Files&lt;/title&gt; 
+    &lt;/head&gt; 
+    &lt;body&gt; 
+        &lt;?php echo anchor('file/create_file', 'Create File'); ?&gt; 
+        &lt;?php echo anchor('file/read_file', 'Read File'); ?&gt; 
+        &lt;?php echo anchor('file/view_all_files', 'View Files'); ?&gt; 
+        &lt;table border="1"&gt; 
+            &lt;tr&gt; 
+                &lt;td&gt;&lt;b&gt;Filename&lt;/b&gt;&lt;/td&gt; 
+                &lt;td&gt;&lt;b&gt;Size&lt;/b&gt;&lt;/td&gt; 
+                &lt;td&gt;&lt;b&gt;Created&lt;/b&gt;&lt;/td&gt; 
+                &lt;td colspan="3"&gt;Actions&lt;/td&gt; 
+            &lt;/tr&gt; 
+            &lt;?php foreach ($files as $file) : ?&gt; 
+                &lt;tr&gt; 
+                    &lt;td&gt; 
+                        &lt;?php if (is_dir($file['server_path'])) : ?&gt; 
+                            &lt;b&gt;&lt;?php echo $file['name']; ?&gt;&lt;/b&gt; 
+                        &lt;?php else : ?&gt; 
+                            &lt;?php echo $file['name']; ?&gt; 
+                        &lt;?php endif; ?&gt; 
+                    &lt;/td&gt; 
+                    &lt;td&gt; 
+                        &lt;?php echo $file['size']; ?&gt; 
+                    &lt;/td&gt; 
+                    &lt;td&gt; 
+                        &lt;?php echo date("d/m/Y H:i:s", $file['date']); ?&gt; 
+                    &lt;/td&gt; 
+                    &lt;td&gt; 
+                        &lt;?php echo anchor('file/edit_file/' . $file['name'], 'Edit'); ?&gt;&amp;nbsp; 
+                        &lt;?php echo anchor('file/delete_file/' . $file['name'], 'Delete'); ?&gt;&amp;nbsp; 
+                        &lt;?php echo anchor('file/view_file/' . $file['name'], 'View'); ?&gt; 
+                    &lt;/td&gt; 
+                &lt;/tr&gt; 
+            &lt;?php endforeach; ?&gt; 
+        &lt;/table&gt;
+&lt;/body&gt; 
+&lt;/html&gt; </pre></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec82"/>How it works...</h2></div></div></div><p>The business end of this is the controller, <code class="literal">function view_all_files()</code>. We're doing three things. First, is setting the target directory with which we wish to read the line <code class="literal">$data['dir'] = '/full/path/to/read';</code> obviously replacing '<code class="literal">/full/path/to/read'</code> with the actual path.</p><p>We then pass <code class="literal">$data['dir']</code> to the <a id="id291" class="indexterm"/>CodeIgniter function, which does the heavy lifting for us, <code class="literal">get_dir_file_info()</code> returns <a id="id292" class="indexterm"/>an array for every item in the target directory. We store this in <code class="literal">$data['files']</code>.</p><p>
+<code class="literal">$this-&gt;load-&gt;view('files/view_file', $data);</code> calls the HTML template, passing to it the files array, which in turn loops through the <code class="literal">$files</code> array, outputting to an HTML table.</p><p>We also use the PHP function <code class="literal">is_dir()</code> to test whether an item is a directory or not; if it is, we make it bold in the HTML code—for no other reason than it's good to know what you're looking at.</p><p>It would be a great idea to move much of this functionality to a library or helper so that it can be more easily shared by other parts of your application if necessary.</p></div></div>
+<div class="section" title="Writing files to the filesystem"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec45"/>Writing files to the filesystem</h1></div></div></div><p>If you're reading from a disk <a id="id293" class="indexterm"/>(as we have seen previously), you'll probably want to <a id="id294" class="indexterm"/>write to a disk. Now, we'll look at creating several types of files and writing them to a location on the disk.</p><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec83"/>How to do it...</h2></div></div></div><p>We're going to amend the file:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/controllers/write_file.php</code></li></ul></div><p>Amend <code class="literal">/path/to/codeigniter/application/controllers/file/file.php</code> to reflect the following:</p><div class="informalexample"><pre class="programlisting">  public function write() { 
+    // Set data 
+    $data_to_write = 'This is text which will be written to the file'; 
+    // Define path for file 
+    $path = "/path/to/write/to/with/filename.extension"; 
+
+    if (!write_file($path, $data_to_write)) { // Error 
+      echo 'Error writing to file: ' . $path; 
+    } else { // Everything worked 
+    echo 'Data written to '. $path; 
+  } 
+} </pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec84"/>How it works...</h2></div></div></div><p>The <code class="literal">public function write()</code> function <a id="id295" class="indexterm"/>sets the <code class="literal">$data_to_write</code> variable <a id="id296" class="indexterm"/>to a string; however, this could be amended to accept user input, database results, <a id="id297" class="indexterm"/>and so on. The <code class="literal">$path</code> array is also defined, this should be the full path with the file extension. The destination directory should have <a id="id298" class="indexterm"/>enough permissions to allow CodeIgniter to write to it. Then, we test for the return result of the CodeIgniter function, <code class="literal">write_file()</code>. If there was <a id="id299" class="indexterm"/>an error, we display a short message; however, you can amend this, perhaps report to the error log. If successful it displays a success message; again this can also be amended to other behavior.</p></div></div>
+<div class="section" title="Creating and downloading ZIP files"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec46"/>Creating and downloading ZIP files</h1></div></div></div><p>You may wish to generate <a id="id300" class="indexterm"/>ZIP folders from your application and force a download for your <a id="id301" class="indexterm"/>users; for example, if you have a group of files, such as a press pack, which you wish to be kept together, or a set of CSV files. Saving them into a ZIP file and allowing a download is a great way to do this.</p><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec85"/>How to do it...</h2></div></div></div><p>We're going to create a new file:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/controllers/zip.php </code></li></ul></div><p>And copy the following code into it:</p><div class="informalexample"><pre class="programlisting">&lt;?php if (!defined('BASEPATH')) exit('No direct script access allowed'); 
+class Zip extends CI_Controller { 
+  function __construct() { 
+    parent::__construct(); 
+    $this-&gt;load-&gt;helper('form'); 
+    $this-&gt;load-&gt;helper('url'); 
+    $this-&gt;load-&gt;library('zip'); 
+  } 
+
+  public function index() { 
+    redirect('zip/zipme'); 
+  } 
+
+  public function zipme() {        
+
+  $file_name = '/path/to/zip/tozip.txt'; 
+
+  // Create some data for the file 
+  $data = 'This is a string of text which we will use to write to the file in the variable $file_name'; 
+
+  // Set the time (to be used as ZIP filename) 
+  $date = date("d-m-Y", time()); 
+
+  // Save some data to the ZIP archive 
+  $this-&gt;zip-&gt;add_data($file_name, $data); 
+
+  // Create the ZIP archive on your server - make sure this path is 
+  // outside of your web root 
+  $this-&gt;zip-&gt;archive('/path/in/zip/'.$date.'.zip'); 
+
+  // Download the ZIP archive 
+  $this-&gt;zip-&gt;download($date.'.zip'); 
+
+  // Clear the cached ZIP archive 
+  $this-&gt;zip-&gt;clear_data(); 
+  } 
+} </pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec86"/>How it works...</h2></div></div></div><p>This is actually quite simple, we start by declaring a <code class="literal">$file_name</code>. This is a string, you'll notice that the filename also contains a folder name <code class="literal">my_zipped_files_folder</code>—you don't have to include a folder but if you do CodeIgniter will automatically create a folder in the ZIP archive.</p><p>We then create some data—in this <a id="id302" class="indexterm"/>case it is written as a string of text; however, it could easily be <a id="id303" class="indexterm"/>output from a database. For example, we could change the <code class="literal">$data</code> line to:</p><div class="informalexample"><pre class="programlisting">$data = ''; 
+
+foreach ($database_result-&gt;result() as $row) { 
+  $data .= $row-&gt;item_1; 
+  $data .= $row-&gt;item_2; 
+  $data .= $row-&gt;item_3; 
+} </pre></div><p>After we create our <code class="literal">$data</code> we then create the date, which we'll use in the filename for our ZIP. The line <code class="literal">$this-&gt;zip-&gt;add_data($file_name, $data);</code> takes as argument the filename and data we created earlier and <a id="id304" class="indexterm"/>creates a file inside the ZIP file and fills it with the <a id="id305" class="indexterm"/>string in <code class="literal">$data</code>. <code class="literal">$this-&gt;zip-&gt;archive('/path/to/your/zip/folder/'.$date.'.zip');</code> will write the ZIP to the disc using <code class="literal">$date</code> as the ZIP filename. <code class="literal">$this-&gt;zip-&gt;download($date.'.zip');</code> forces the ZIP file to open in the client browser and <code class="literal">$this-&gt;zip-&gt;clear_data();</code> will clear the ZIP file from the cache.</p></div></div>
+<div class="section" title="Uploading files with CodeIgniter"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec47"/>Uploading files with CodeIgniter</h1></div></div></div><p>CodeIgniter comes with very <a id="id306" class="indexterm"/>good file uploading support, which can take a <a id="id307" class="indexterm"/>lot of the hassle out of writing upload functions.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec87"/>Getting ready</h2></div></div></div><p>There are some settings you should be aware of which you'll probably need to change for your environment. Firstly, ensure that you load the upload library using:</p><div class="informalexample"><pre class="programlisting">$this-&gt;load-&gt;library('upload'); </pre></div><p>The following is a table of settings that should be placed in the <code class="literal">$config</code> array in the controller you are using, such as the following <code class="literal">Fileupload</code> controller:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Setting</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Default</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Change to</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Description</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">upload_path</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>None</p>
+</td><td style="text-align: left" valign="top">
+<a id="id308" class="indexterm"/>
+<p>None</p>
+</td><td style="text-align: left" valign="top">
+<p>It specifies the path to the folder where the uploaded file should go. Ensure that you have set the correct permissions to enable CodeIgniter to write to it.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">allowed_types</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>None</p>
+</td><td style="text-align: left" valign="top">
+<p>None</p>
+</td><td style="text-align: left" valign="top">
+<p>It <a id="id309" class="indexterm"/>specifies the allowed mime types, which are allowed in the upload. This can be useful as it allows you to white list uploaded file types; that is, it allows you to define only allowed types. You should separate each type with a pipe (<code class="literal">|</code>). For example:
+</p><div class="informalexample"><pre class="programlisting">$config['allowed_types'] ="jpg|gif|bmp|png"; </pre></div>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">file_name</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>None</p>
+</td><td style="text-align: left" valign="top">
+<p>Desired file name</p>
+</td><td style="text-align: left" valign="top">
+<p>If this <a id="id310" class="indexterm"/>value is set, CodeIgniter will attempt to rename the file to this value on upload. </p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">overwrite</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>FALSE</p>
+</td><td style="text-align: left" valign="top">
+<p>TRUE/FALSE </p>
+</td><td style="text-align: left" valign="top">
+<a id="id311" class="indexterm"/>
+<p>CodeIgniter looks in the upload destination folder to see if a file with a matching file name already exists. If this is set to <code class="literal">TRUE</code> that file will be overwritten; if it is set to <code class="literal">FALSE</code>, a number will be appended to the file name.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">max_size</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>0 </p>
+</td><td style="text-align: left" valign="top">
+<p>None</p>
+</td><td style="text-align: left" valign="top">
+<p>It specifies <a id="id312" class="indexterm"/>the maximum size in kilobytes that the file is allowed to be. Setting it to zero will tell CodeIgniter that there is no limit.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">max_width</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>0 </p>
+</td><td style="text-align: left" valign="top">
+<p>None</p>
+</td><td style="text-align: left" valign="top">
+<p>It specifies <a id="id313" class="indexterm"/>the maximum width in pixels. <a id="id314" class="indexterm"/>Setting it to zero will tell CodeIgniter that there is no limit.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">max_height</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>0 </p>
+</td><td style="text-align: left" valign="top">
+<p>None</p>
+</td><td style="text-align: left" valign="top">
+<p>It <a id="id315" class="indexterm"/>specifies the maximum <a id="id316" class="indexterm"/>height in pixels. Setting it to zero will tell CodeIgniter that there is no limit.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">max_filename</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>0 </p>
+</td><td style="text-align: left" valign="top">
+<p>None </p>
+</td><td style="text-align: left" valign="top">
+<p>It <a id="id317" class="indexterm"/>specifies the maximum character file name length of the uploaded file. Setting it to zero will tell CodeIgniter that there is no limit.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">encrypt_name</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>FALSE</p>
+</td><td style="text-align: left" valign="top">
+<p>TRUE/FALSE </p>
+</td><td style="text-align: left" valign="top">
+<p>It tells <a id="id318" class="indexterm"/>CodeIgniter that you wish to encrypt the file name of the image on upload.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">remove_spaces</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>TRUE</p>
+</td><td style="text-align: left" valign="top">
+<p>TRUE/FALSE</p>
+</td><td style="text-align: left" valign="top">
+<p>It specifies <a id="id319" class="indexterm"/>if you want whitespace removed from the filename on upload.</p>
+</td></tr></tbody></table></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec88"/>How to do it...</h2></div></div></div><p>We're going to create <a id="id320" class="indexterm"/>two files:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/controllers/fileupload.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/upload/upload.php</code></li></ul></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Add the following <a id="id321" class="indexterm"/>code into the file <code class="literal">/path/to/codeigniter/application/controllers/fileupload.php</code>:<div class="informalexample"><pre class="programlisting">&lt;?php if ( ! defined('BASEPATH')) exit('No direct script access allowed'); 
+class Fileupload extends CI_Controller { 
+    function __construct() { 
+        parent::__construct(); 
+        $this-&gt;load-&gt;helper('form'); 
+        $this-&gt;load-&gt;helper('url'); 
+    } 
+
+    function index() { 
+        $this-&gt;load-&gt;view('upload/upload_form'); 
+    } 
+
+    function upload() { 
+        $config['upload_path'] = '/path/to/upload/dir/'; 
+        $config['allowed_types'] = 'gif|jpg|png'; 
+        $config['max_size'] = '100'; 
+
+        $this-&gt;load-&gt;library('upload', $config); 
+
+        if (!$this-&gt;upload-&gt;do_upload()) { // Upload error, display form &amp; errors 
+            $data['error'] = $this-&gt;upload-&gt;display_errors(); 
+            $this-&gt;load-&gt;view('upload/upload_form', $data); 
+        } else { // Success, display success message 
+            $data['upload_data'] = $this-&gt;upload-&gt;data(); 
+            $data['success'] = TRUE; 
+            $this-&gt;load-&gt;view('upload/upload_success', $data); 
+        } 
+    } 
+} </pre></div></li><li class="listitem">Add the following <a id="id322" class="indexterm"/>code into the file <code class="literal">/path/to/codeigniter/application/views/upload.php</code>:<div class="informalexample"><pre class="programlisting">&lt;html&gt; 
+&lt;body&gt; 
+    &lt;?php if (isset($error)) : ?&gt; 
+        &lt;?php echo $error;?&gt; 
+    &lt;?php endif ; ?&gt; 
+    &lt;?php echo form_open_multipart('fileupload/upload');?&gt; 
+        &lt;input type="file" name="userfile" size="20" /&gt;&lt;br /&gt; 
+        &lt;input type="submit" value="Upload File!" /&gt; 
+    &lt;/form&gt; 
+&lt;?php if (isset($success)) : ?&gt; 
+        &lt;h2&gt;Success&lt;/h2&gt; 
+        &lt;p&gt;The file was successfully uploaded, here's some information about the file:&lt;/p&gt; 
+        &lt;ul&gt; 
+            &lt;?php foreach ($upload_data as $key =&gt; $value):?&gt; 
+                &lt;li&gt;&lt;?php echo $key . " : " . $value ;?&gt;&lt;/li&gt; 
+            &lt;?php endforeach; ?&gt; 
+        &lt;/ul&gt; 
+&lt;?php endif ; ?&gt; 
+&lt;/body&gt; 
+&lt;/html&gt; </pre></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec89"/>How it works...</h2></div></div></div><p>This is thankfully very simple; when <code class="literal">Fileupload </code>is run <code class="literal">function index()</code> will <code class="literal">redirect()</code> to <code class="literal">function upload()</code>, which will in turn load the HTML upload form. Once a user has submitted that form <code class="literal">function upload()</code> will run again and attempt to upload the file with the CodeIgniter function, <code class="literal">do_upload()</code>. The <code class="literal">do_upload()</code> function will perform the task of uploading the file and preparing it for writing to the filesystem such as checking that the file size, file <a id="id323" class="indexterm"/>type, and so on match your settings, ensuring that the upload destination directory exists and is writable, and finally using the PHP <a id="id324" class="indexterm"/>function <code class="literal">move_uploaded_file()</code> it'll complete the task of uploading the file.</p><p>The <code class="literal">if</code> statement catches the result of this; if <code class="literal">TRUE</code> the file is uploaded successfully and the success form is displayed, the <code class="literal">$data</code> array is populated with the output of the CodeIgniter function <code class="literal">$this-&gt;upload-&gt;data()</code>.</p><p>However, if <code class="literal">do_upload()</code> returned <code class="literal">FALSE</code>, the HTML upload form is displayed again, this time with an error message to the user.</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec90"/>There's more...</h2></div></div></div><p>You'll probably get a few errors the first time you try this, usually because you have an incorrect upload path, or that destination <a id="id325" class="indexterm"/>folder could have the wrong permissions assigned to it. It'll take a little tweaking to get it right. The following are some of the more common errors you'll get:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>The upload path does not appear to be valid</strong></span>: This means you've put the wrong value in <code class="literal">$config['upload_path']</code>, check that you have the correct path to your uploads folder. Ensure that you have a trailing slash / at the end of your path.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>The upload destination folder does not appear to be writable</strong></span>: This means the directory you want to upload doesn't have write permissions; usually this can be fixed on the command line by <code class="literal">chmod 777 -R [dir _name]</code> where <code class="literal">[dir_name]</code> is the path to the directory you want to upload to. Naturally, having a folder with permissions of <code class="literal">777</code> might cause you a headache later on, so ensure that the upload folder is outside of the web root.</li></ul></div></div></div>
+<div class="section" title="Creating and using validation callbacks"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec48"/>Creating and using validation callbacks</h1></div></div></div><p>Callbacks are used when you <a id="id326" class="indexterm"/>want to validate data in a way that may not be supported by the CodeIgniter's validation class. The benefit of using callbacks is that posted data can be easily validated by a custom function you define, and errors, if any, are passed into the error reporting functions.</p><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec91"/>How to do it...</h2></div></div></div><p>We're going to amend the file:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/controllers/form.php </code></li></ul></div><p>Amend that file to show <a id="id327" class="indexterm"/>the following:</p><div class="informalexample"><pre class="programlisting">        $this-&gt;form_validation-&gt;set_rules('first_name', 'First Name', 'required|min_length[1]|max_length[125]'); 
+        $this-&gt;form_validation-&gt;set_rules('last_name', 'Last Name', 'required|min_length[1]|max_length[125]'); 
+        $this-&gt;form_validation-&gt;set_rules('email', 'Email', 'required|min_length[1]|max_length[255]|valid_email|callback_email_check'); 
+        $this-&gt;form_validation-&gt;set_rules('contact', 'Contact', 'required|min_length[1]|max_length[1]|integer|is_natural'); 
+        $this-&gt;form_validation-&gt;set_rules('answer', 'Question', 'required|min_length[1]|max_length[2]|integer|
+            is_natural'); 
+
+public function email_check($email) { 
+  if ($email_is_unique == false) { 
+    $this-&gt;form_validation-&gt;set_message('email_check', 'The value entered in %s already exists in the database.'); 
+    return false; 
+  } else { 
+    return true; 
+  } 
+} </pre></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec92"/>How it works...</h2></div></div></div><p>This is actually very simple, especially if you have used callbacks in other applications. When the user submits the form, <a id="id328" class="indexterm"/>CodeIgniter validates the form as it would do normally, except that when CodeIgniter comes to validate the user's e-mail, the function, <code class="literal">callback_email_check($email)</code>, is run. This function can perform any test and return <code class="literal">TRUE</code> or <code class="literal">FALSE</code>, and if <code class="literal">FALSE</code> a message too.</p></div></div>
+<div class="section" title="Using the language class"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec49"/>Using the language class</h1></div></div></div><p>One of the most useful features of <a id="id329" class="indexterm"/>CodeIgniter is its language class and support. It allows you to store content and set that content to belong to various languages; it is then possible to switch between languages to display different text in the same place holders in the view files. It's really easy to set up and this is how you do it.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec93"/>Getting ready</h2></div></div></div><p>A little information about language files. You'll need to know the rules for naming them. Language files are stored at <code class="literal">/path/to/codeigniter/application/system/language/[language_name]/</code>.</p><p>Where <code class="literal">[language_name]</code> is the name of the language you wish to support. So, for example, if you want to support English, French, and German you will create three file names:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/language/english/en_lang.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/language/french/fr_lang.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/language/german/de_lang.php</code></li></ul></div><p>You can see above that the three files are named 'en', 'fr', and 'de'. Appended to the names is <code class="literal">_lang.php</code>; you must append each file with <code class="literal">_lang.php</code> so that CodeIgniter knows it is a language file.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec94"/>How to do it...</h2></div></div></div><p>So, in order to create an English <a id="id330" class="indexterm"/>language file create the following files:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/system/language/english/en_lang.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/controllers/lang.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/lang/english.php</code></li></ul></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Add the following code into <code class="literal">/path/to/codeigniter/application/controllers/lang.php</code><div class="informalexample"><pre class="programlisting">&lt;?php if (!defined('BASEPATH')) exit('No direct script access allowed'); 
+class Lang extends CI_Controller { 
+  function __construct() { 
+    parent::__construct(); 
+    $this-&gt;load-&gt;helper('form'); 
+    $this-&gt;load-&gt;helper('url'); 
+    $this-&gt;load-&gt;helper('language'); 
+    $this-&gt;lang-&gt;load('en', 'english'); 
+  } 
+
+  public function index() { 
+    redirect('lang/submit'); 
+  } 
+
+  public function submit() {  
+    $this-&gt;load-&gt;library('form_validation'); 
+    $this-&gt;form_validation-&gt;set_error_delimiters('', '&lt;br /&gt;'); 
+
+    // Set validation rules 
+    $this-&gt;form_validation-&gt;set_rules('email', $this-&gt;lang-&gt;line('form_email'), 'required|min_length[1]|max_length[50]|valid_email'); 
+
+    // Begin validation 
+    if ($this-&gt;form_validation-&gt;run() == FALSE) {	 
+      $this-&gt;load-&gt;view('lang/form'); 
+    } else { 
+      echo $this-&gt;lang-&gt;line('form_confirm_email') . $this-&gt;input-&gt;post('email');
+    } 
+  } 
+} </pre></div></li><li class="listitem">Add the following <a id="id331" class="indexterm"/>code into <code class="literal">/path/to/codeigniter/application/views/lang/form.php</code><div class="informalexample"><pre class="programlisting">&lt;html&gt; 
+&lt;body&gt; 
+
+&lt;h2&gt;&lt;?php echo $this-&gt;lang-&gt;line('form_title') ; ?&gt;&lt;/h2&gt; 
+&lt;?php echo validation_errors() ; ?&gt;
+&lt;?php echo form_open('lang/submit') ; ?&gt; 
+&lt;?php echo $this-&gt;lang-&gt;line('form_email') ; ?&gt; 
+&lt;?php echo form_input(array('name' =&gt; 'email','id' =&gt; 'email','value' =&gt; '','maxlength' =&gt; '100','size' =&gt; '50','style' =&gt; 'width:10%')) ; ?&gt; 
+
+&lt;?php echo form_submit('', $this-&gt;lang-&gt;line('form_submit_button')) ; ?&gt; 
+&lt;?php echo form_close() ; ?&gt; 
+
+&lt;/body&gt; 
+&lt;/html&gt; </pre></div></li><li class="listitem">Add the following code into <code class="literal">/path/to/codeigniter/language/english/en_lang.php</code><div class="informalexample"><pre class="programlisting">&lt;?php 
+$lang['form_title'] = "Form title in English"; 
+$lang['form_email'] = "Email"; 
+$lang['form_submit_button'] = "Submit"; 
+$lang['form_confirm_email'] = "Your email is: "; 
+?&gt;</pre></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec95"/>How it works...</h2></div></div></div><p>In the constructor of the controller <code class="literal">/path/to/codeigniter/application/controllers/lang.php</code> we're loading helpers, such as form and URL, but we're also doing two language-related things, loading the language helper and setting the language to be used:</p><div class="informalexample"><pre class="programlisting">$this-&gt;load-&gt;helper('language'); 
+$this-&gt;lang-&gt;load('en', 'english'); </pre></div><p>Where <code class="literal">'en'</code> is the language <a id="id332" class="indexterm"/>and <code class="literal">'English'</code> is the folder we're storing all English-related content in.</p><p>We're loading the language helper and declaring the language filename and the language to be used, specifically the line:</p><div class="informalexample"><pre class="programlisting">$this-&gt;lang-&gt;load('filename','language');</pre></div><p>Here, the first parameter is the name of the language file minus the <code class="literal">_lang.php</code> (so en_lang.php will be just <code class="literal">'en'</code>, <code class="literal">fr_lang.php</code> will just be <code class="literal">'fr'</code> and so on). The second parameter is the language (in this case, it is the folder in the <code class="literal">/path/to/codeigniter/application/language/</code> folder).</p><p>Once we have loaded the language class and defined the correct language and filename, we can then begin to pull out items in the <code class="literal">$lang</code> array. The way we pull items out of the <code class="literal">$lang</code> array is by echoing <code class="literal">$this-&gt;lang-&gt;line(array_element_name);</code> so, to pull out the form title we would write echo <code class="literal">$this-&gt;lang-&gt;line('form_title');</code>
+</p></div></div>
+<div class="section" title="Confirming cookie acceptance from the user"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec50"/>Confirming cookie acceptance from the user</h1></div></div></div><p>Various states and regions <a id="id333" class="indexterm"/>now require websites to ask their users if they approve of that website writing cookies to their computer. There is some debate as to how this can be provisioned by the website and what constitutes approval from the user. You may have noticed that recently websites display a notice to the user requesting approval. Something called Implied Consent is the current thinking; a notice is shown informing the user that if they continue to use the site they are happy with the cookies being written.</p><p>The following recipe does just that; and a notice is shown to the user that will disappear if they click on a link indicating they are happy with cookies being written.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec96"/>Getting ready</h2></div></div></div><p>We need to make sure some config variables are set for us to be able to read and write cookies to a user’s computer. </p><p>Open the <code class="literal">/path/to/codeigniter/application/config/config.php</code> file and make the following changes:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>$config array items</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Description</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">$config[‘cookie_prefix’] = “”;</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>It specifies <a id="id334" class="indexterm"/>if you wish for a character to be there before the cookie name; for example, <code class="literal">$config[‘cookie_prefix’] = “thisprefix_”;</code> will produce a cookie called <code class="literal">thisprefix_cookie_con</code>’ (<code class="literal">cookie_conf</code> being the example cookie, in your application you will replace it with the cookie name you are working with).</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">$config[‘cookie_domain’] = “”;</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>It specifies the <a id="id335" class="indexterm"/>domain of the server; if you are developing on local host, it is best to leave this value as blank, replacing with the domain name and path once you move out of a localhost environment. </p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">$config[‘cookie_path’] = “/”;</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>It specifies the <a id="id336" class="indexterm"/>path to the cookie—chances are you’ll want this to remain <code class="literal">/</code>.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">$config[‘cookie_secure’]	 = FALSE;</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>It <a id="id337" class="indexterm"/>specifies if you wish to encrypt the cookie value, TRUE if you want it to be encrypted and FALSE if not. </p>
+</td></tr></tbody></table></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec97"/>How to do it...</h2></div></div></div><p>We’re going to create <a id="id338" class="indexterm"/>two files:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/controllers/cookie_conf.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/cookie_conf/cookie_conf.php</code></li></ul></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create the file <code class="literal">/path/to/codeigniter/application/controllers/cookie_conf.php</code> and copy the following code into it:<div class="informalexample"><pre class="programlisting">&lt;?php if (!defined(‘BASEPATH’)) exit(‘No direct script access allowed’); 
+
+class Cookie_conf extends CI_Controller { 
+  function __construct() { 
+    parent::__construct(); 
+    $this-&gt;load-&gt;helper(‘url’); 
+    $this-&gt;load-&gt;helper(‘cookie’); 
+  } 
+
+  public function index() { 
+    // If the cookie doesn’t exist, make it 
+    if ( ! $this-&gt;input-&gt;cookie(‘cookie_conf’)) { 
+    $cookie = array( 
+      ‘name’   =&gt; ‘cookie_conf’, 
+      ‘value’  =&gt; ‘cookie-conf-unconfirmed’, 
+      ‘expire’ =&gt; 7200, 
+      ‘domain’ =&gt; ‘’, 
+      ‘path’   =&gt; ‘/’, 
+      ‘prefix’ =&gt; ‘’, 
+      ‘secure’ =&gt; FALSE 
+    ); 
+
+    $this-&gt;input-&gt;set_cookie($cookie); 
+  } 
+
+  if ( $this-&gt;input-&gt;cookie(‘cookie_conf’)) { // If cookie exists 
+  // Is the cookie unconfirmed? 
+  if ($this-&gt;input-&gt;cookie(‘cookie_conf’, FALSE) == ‘cookie-conf-unconfirmed’) { 
+  $data[‘display_cookie_conf’] = TRUE; 
+  } else { 
+  $data[‘display_cookie_conf’] = FALSE; 
+  } 
+  } else { // If cookie doesn’t exist yet 
+$data[‘display_cookie_conf’] = TRUE; 
+        } 
+
+        $this-&gt;load-&gt;view(‘cookie_conf/cookie_conf’, $data); 
+  } 
+
+  public function agree() { 
+    $cookie = array( 
+      ‘name’   =&gt; ‘cookie_conf’, 
+      ‘value’  =&gt; ‘confirmed’, 
+      ‘expire’ =&gt; 7200, 
+      ‘domain’ =&gt; ‘’, 
+      ‘path’   =&gt; ‘/’, 
+      ‘prefix’ =&gt; ‘’, 
+      ‘secure’ =&gt; FALSE 
+    ); 
+    
+    // Set the cookie to confirmed 
+    $this-&gt;input-&gt;set_cookie($cookie); 
+    echo ‘You agree to the cookie’; 
+  } 
+
+  public function disagree() { 
+  echo ‘You don\’t agree to the cookie’; 
+  } 
+} </pre></div></li><li class="listitem">Create the <a id="id339" class="indexterm"/>file <code class="literal">/path/to/codeigniter/application/views/cookie_conf/cookie_conf.php</code> and copy the following code into it:<div class="informalexample"><pre class="programlisting">&lt;html&gt; 
+    &lt;head&gt; 
+        &lt;script type=”text/javascript” src=”http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js”&gt;&lt;/script&gt; 
+        &lt;?php if (isset($display_cookie_conf) &amp;&amp; ($display_cookie_conf == TRUE)) : ?&gt; 
+            &lt;script type=”text/javascript”&gt; 
+                $(document).ready(function() { 
+                    // User has agreed 
+                    $(‘#agree’).click(function(answer){ 
+                        $.ajax({ 
+                            type: “POST”, 
+                            url: “cookie_conf/agree”, 
+                            success: function(data) { 
+                                // If they have agreed then remove the cookie-conf-container from their browser 
+                                $(‘#cookie-conf-container’).slideUp(500); 
+                            }, 
+                            error: function(){alert(‘error in agree response’);} 
+                        }); 
+                    }); 
+
+                    // User has disagreed 
+                    $(‘#disagree’).click(function(answer) { 
+                        $.ajax({ 
+                            type: “POST”, 
+                            url: “cookie_conf/disagree”, 
+                            success: function(data){ 
+                                // They’ve not approved - we can display an error if we want 
+                                $(‘#response’).html(data); 
+                            }, 
+                            error: function(){alert(‘error in disagree response’);} 
+                        }); 
+                    }); 
+                }); 
+
+            &lt;/script&gt; 
+        &lt;?php endif; ?&gt; 
+    &lt;/head&gt; 
+    &lt;body&gt; 
+        &lt;?php if (isset($display_cookie_conf) &amp;&amp; ($display_cookie_conf == TRUE)) : ?&gt; 
+            &lt;span id=”cookie-conf-container”&gt; 
+                &lt;p&gt;This is a message to the user regarding cookies - obviously replace it with the text appropriate to your site. &lt;/p&gt; 
+                &lt;span id=’agree’&gt;Agree&lt;/span&gt; 
+                &lt;span id=’disagree’&gt;Disagree&lt;/span&gt; 
+                &lt;div id=’response’&gt;&lt;/div&gt; 
+            &lt;/span&gt; 
+        &lt;?php endif; ?&gt; 
+
+    &lt;/body&gt; 
+&lt;/html&gt;</pre></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec98"/>How it works...</h2></div></div></div><p>There are a few things going on here <a id="id340" class="indexterm"/>but essentially it’s quite simple. Take a look at the following flowchart, it gives a pretty good overview of what is happening:</p><div class="mediaobject"><img src="graphics/2308OS_05_1.jpg" alt="How it works..."/></div><p>We start with the page being loaded. Does the cookie exist? The following code is from the <code class="literal">cookie_conf</code> controller. It checks to see if a cookie named <code class="literal">cookie_conf</code> already exists and if not will create that cookie <a id="id341" class="indexterm"/>with a value of <code class="literal">cookie-conf-unconfirmed</code>.</p><div class="informalexample"><pre class="programlisting">if ( ! $this-&gt;input-&gt;cookie(‘cookie_conf’)) { 
+  $cookie = array( 
+    ‘name’   =&gt; ‘cookie_conf’, 
+    ‘value’  =&gt; ‘cookie-conf-unconfirmed’, 
+    ‘expire’ =&gt; 7200, 
+    ‘domain’ =&gt; ‘’, 
+    ‘path’   =&gt; ‘/’,
+    ‘prefix’ =&gt; ‘’, 
+    ‘secure’ =&gt; FALSE 
+  ); 
+
+  $this-&gt;input-&gt;set_cookie($cookie); 
+} </pre></div><p>The following code is also from <code class="literal">cookie_conf</code>. After checking for an existence of a cookie (creating one if it doesn’t exist), the controller then looks at the value of that cookie. If the cookie does not exist or contains the value <code class="literal">cookie-conf-unconfirmed</code>, <code class="literal">$data[‘display_cookie_conf’]</code> is set to <code class="literal">TRUE</code>, otherwise it is set to <code class="literal">FALSE</code>.</p><div class="informalexample"><pre class="programlisting">if ( $this-&gt;input-&gt;cookie(‘cookie_conf’)) { // If cookie exists 
+  // Is the cookie unconfirmed? 
+  if ($this-&gt;input-&gt;cookie(‘cookie_conf’, FALSE) == ‘cookie-conf-unconfirmed’) { 
+  $data[‘display_cookie_conf’] = TRUE; 
+  } else { 
+    $data[‘display_cookie_conf’] = FALSE; 
+  } 
+} else { // If cookie doesn’t exist yet 
+  $data[‘display_cookie_conf’] = TRUE; 
+} </pre></div><p>
+<code class="literal">cookie_conf</code> then loads the view. In the view is some PHP code, which checks if <code class="literal">$display_cookie_conf</code> is set and if so looks at its value. If it is <code class="literal">FALSE</code>, the code is skipped over; however, if it is <code class="literal">TRUE</code>, <a id="id342" class="indexterm"/>the HTML code is displayed. The user is given two options, one to agree with the cookie policy and the other to disagree.</p><p>If the user disagrees, you’ll have to implement your own action on this event. The preceding code will respond by echoing out the text <code class="literal">‘You don’t agree to the cookie’</code>; but in real situations you’ll have to decide how you want to proceed.</p><p>If the user agrees, the <code class="literal">cookie-conf-container</code> will slide up and <code class="literal">public function agree()</code> in the <code class="literal">Cookie_conf</code> controller is called by AJAX, setting the value of the cookie from <code class="literal">cookie-cong’unconfirmed’</code> to <code class="literal">‘confirmed’</code>.</p><div class="informalexample"><pre class="programlisting">public function agree() { 
+  $cookie = array( 
+    ‘name’   =&gt; ‘cookie_conf’, 
+    ‘value’  =&gt; ‘confirmed’, 
+    ‘expire’ =&gt; 7200, 
+    ‘domain’ =&gt; ‘’, 
+    ‘path’   =&gt; ‘/’, 
+    ‘prefix’ =&gt; ‘’, 
+    ‘secure’ =&gt; FALSE 
+  ); 
+  
+  // Set the cookie to confirmed 
+  $this-&gt;input-&gt;set_cookie($cookie); 
+  echo ‘You agree to the cookie’; 
+} </pre></div><p>Any subsequent visit will make <code class="literal">cookie_conf</code> look for that cookie, and as long as it exists and contains the value <code class="literal">‘confirmed’</code> the <code class="literal">‘cookie-cong-container’</code> will not be displayed. </p></div><div class="section" title="There’s more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec99"/>There’s more...</h2></div></div></div><p>I want to mention a couple of gotchas <a id="id343" class="indexterm"/>which you might experience while implementing the cookie authorization recipe.</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Localhost and Cookies</strong></span>: Firstly, the domain attribute. If you are developing on localhost, you should leave this value blank. Reason being that web browsers often have trouble with implementing cookies if domain is set to local host. Why? Because browsers are programmed to expect at least two items in the domain attribute those being the domain name and a tld, so the browser is expecting something similar to domain.com—localhost obviously doesn’t look like that. So for developing in localhost, leave the domain attribute blank, replacing with the correct domain and path once you move out of the localhost environment.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Expire value</strong></span>: Make sure that you define the expire value as an integer rather than a string; so don’t put the expire value in single or double quotes, you want this: 12345, and not this: ‘12345’.</li></ul></div></div></div></body></html>

@@ -1,0 +1,210 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;7.&#xA0;Creating a Secure User Environment"><div class="titlepage"><div><div><h1 class="title"><a id="ch07"/>Chapter 7. Creating a Secure User Environment</h1></div></div></div><p>In this chapter, we will cover:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Escaping user input</li><li class="listitem" style="list-style-type: disc">Preventing cross-site request forgery</li><li class="listitem" style="list-style-type: disc">Escaping data – for a database</li><li class="listitem" style="list-style-type: disc">Using HTTPS with CodeIgniter</li></ul></div><div class="section" title="Introduction"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec70"/>Introduction</h1></div></div></div><p>Firstly, a disclaimer: no method or system can ever be entirely foolproof and secure all the time, and you should be aware of the correct security measures that you should apply for the programming task or context in which you are coding. I will put some links to other information resources at the end of this chapter. Having said that, CodeIgniter offers some useful techniques for reducing the chance that something can go wrong, for example, in this chapter are several recipes that can help reduce the chances of something untoward--however, you should always remain vigilant and ensure that you're building securely.</p></div></div>
+<div class="section" title="Escaping user input"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec71"/>Escaping user input</h1></div></div></div><p>The CodeIgniter security class <a id="id424" class="indexterm"/>function, <code class="literal">xss_clean()</code>, attempts to clean input from the <code class="literal">POST</code> or <code class="literal">COOKIE</code> data to mitigate against techniques that can allow for the injection of code <a id="id425" class="indexterm"/>into a website. For example, it would seek to prevent JavaScript code from being executed if it is included in a blog post submitted by a user, or look at the data submitted in a text input field and escape disallowed characters.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec148"/>Getting ready</h2></div></div></div><p>You can apply this to any controller you're creating, or if you've extended using <code class="literal">MY_Controller</code>, you can add it to that if you wish. You can also autoload the security helper by adding it to <code class="literal">$autoload['helper'] = array()</code> in the <code class="literal">/path/to/codeigniter/application/config/autoload.php</code> file. To be explicitly clear, here we're loading the security helper in the constructor of the controller (that is, any controller you have):</p><div class="informalexample"><pre class="programlisting">    function __construct() {
+        parent::__construct();
+<span class="strong"><strong>        $this-&gt;load-&gt;helper('security');</strong></span>
+    }</pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec149"/>How to do it...</h2></div></div></div><p>There are two ways to do this, globally (CodeIgniter does it every time it encounters the <code class="literal">POST</code> or <code class="literal">COOKIE</code> data), and individually (CodeIgniter lets you define when to call the clean <code class="literal">COOKIE</code> or <code class="literal">POST</code> data).</p><div class="section" title="Globally"><div class="titlepage"><div><div><h3 class="title"><a id="ch07lvl3sec13"/>Globally</h3></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">CodeIgniter can call xss_clean() <a id="id426" class="indexterm"/>automatically each time it encounters the POST or COOKIE data without you <a id="id427" class="indexterm"/>needing to explicitly call xss_clean(). To do this, you'll need to amend the following file:<p>
+<code class="literal">/path/to/codeigniter/application/config/config.php</code>
+</p></li><li class="listitem">Change the value of <code class="literal">$config['global_xss_filtering']</code> to <code class="literal">TRUE</code>, as follows:<div class="informalexample"><pre class="programlisting">$config['global_xss_filtering'] = TRUE;</pre></div><p>However, be aware that there is a computational overhead in doing so and it may not always be necessary for <a id="id428" class="indexterm"/>you to run this all the time.</p></li></ol></div></div><div class="section" title="Individually"><div class="titlepage"><div><div><h3 class="title"><a id="ch07lvl3sec14"/>Individually</h3></div></div></div><p>Ensure that <code class="literal">$config['global_xss_filtering']</code> is set to <code class="literal">FALSE</code>, as follows:</p><div class="informalexample"><pre class="programlisting">$config['global_xss_filtering'] = FALSE</pre></div><p>This will turn off global <a id="id429" class="indexterm"/>XSS filtering. When you wish to use <code class="literal">xss_cean()</code>, enter the following code into your controller or model:</p><div class="informalexample"><pre class="programlisting">$cleaned_data = $this-&gt;security-&gt;xss_clean($data_to_be_cleaned);</pre></div></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec150"/>How it works...</h2></div></div></div><p>In either example, you're calling the same CodeIgniter method; one is being called automatically and the other is calling it on a case-by-case basis. The code in question can be found at <code class="literal">/path/to/codeigniter/system/core/Security.php</code> (find the function, <code class="literal">xss_clean()</code>).</p></div></div>
+<div class="section" title="Preventing cross-site request forgery"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec72"/>Preventing cross-site request forgery</h1></div></div></div><p>A cross-site request forgery <a id="id430" class="indexterm"/>is where an attacker pretends to be a user that the website recognizes (such as a logged-in user), and the attacker is then able to access a logged-in user's profile as though they were the genuine user. There is a wealth of technical information available, such as websites, books, and so on, on how that happens, which is why we're not going to look into that here. Instead, we're going to look at how CodeIgniter mitigates against cross-site request forgeries.</p><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec151"/>How to do it...</h2></div></div></div><p>We're going to amend one file and create two files by performing the following steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">First, we need to amend some configuration items. To do that, we'll need to open the following file: <code class="literal">/path/to/codeigniter/application/config/config.php</code><p>Find the following configuration options and make the amendments as listed in the table:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Configuration Item</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Default Value</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Change to/Description</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">$config['csrf_protection']</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">TRUE</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Specifies <a id="id431" class="indexterm"/>whether to turn request forgery protection on or off</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">$config['csrf_token_name']</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">csrf_test_name</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Specifies the <a id="id432" class="indexterm"/>name of the hidden form element used in a form (see the <span class="emphasis"><em>How it works...</em></span> section)</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">$config['csrf_cookie_name']</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">csrf_cookie_name</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Specifies the <a id="id433" class="indexterm"/>name of the cookie that is set on the user's machine</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">$config['csrf_expire']</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">7200</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>The <a id="id434" class="indexterm"/>number of seconds that a single token is allowed to exist for; after this time, if a form is submitted, CodeIgniter will throw an error</p>
+</td></tr></tbody></table></div></li><li class="listitem">Next, we create the following two files:<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/controllers/csrf.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/csrf/csrf.php</code></li></ul></div></li><li class="listitem">Add the following code into the, <code class="literal">csrf.php</code> controller. This controller will load the required helpers and display the simple form in the <code class="literal">views/csrf/csrf.php</code> file:<div class="informalexample"><pre class="programlisting">&lt;?php if (! defined('BASEPATH')) exit('No direct script access allowed');
+
+class Csrf extends CI_Controller {
+    function __construct() {
+        parent::__construct();
+        $this-&gt;load-&gt;helper('form');
+        $this-&gt;load-&gt;helper('security');
+    }
+
+    public function index() {
+        $this-&gt;load-&gt;view('csrf/csrf');
+        if ($this-&gt;input-&gt;post()) {
+            var_dump($this-&gt;input-&gt;post());
+        }
+    }
+}</pre></div></li><li class="listitem">Add the following code <a id="id435" class="indexterm"/>into the, <code class="literal">csrf.php</code> view file. This view will create the HTML form. We're using CodeIgniter's <code class="literal">form_open()</code> facility to do the work for us so that we don't have to it:<div class="informalexample"><pre class="programlisting">&lt;?php echo form_open('csrf') ; ?&gt;
+  What's your name? &lt;input type="text" name="firstname" /&gt;
+  &lt;input type="submit" value="Submit" /&gt;
+&lt;?php echo form_close() ; ?&gt;</pre></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec152"/>How it works...</h2></div></div></div><p>If you load the controller in the web browser and view the HTML source of the page, you should see the following code snippet:</p><div class="informalexample"><pre class="programlisting">&lt;form action="http://path/to/codeigniter/csrf" method="post" accept-charset="utf-8"&gt;&lt;div style="display:none"&gt;
+<span class="strong"><strong>&lt;input type="hidden" name="csrf_test_name" value="577052974b00424157586e40b4c09756" /&gt;</strong></span>
+&lt;/div&gt;What's your name? &lt;input type="text" name="firstname" /&gt;
+  &lt;input type="submit" value="Submit" /&gt;
+&lt;/form&gt;</pre></div><p>Take a close look at the highlighted line. CodeIgniter has added a hidden form element named <code class="literal">csrf_test_name</code>. We set the name in the configuration file, <code class="literal">config.php</code> (details explained earlier) The actual value of this field will be different every time you run it.</p><p>So, what happens when you click on the <span class="strong"><strong>Submit</strong></span> button? Well, CodeIgniter compares the value set in the cookie on the user's machine (set as <code class="literal">csrf_cookie_name</code> in <code class="literal">config.php</code>) to the value set in the hidden form element (set as <code class="literal">csrf_test_name</code> in <code class="literal">config.php</code>). If the two values do not <a id="id436" class="indexterm"/>match, CodeIgniter assumes that there is a problem and throws an error, as shown in the following screenshot:</p><div class="mediaobject"><img src="graphics/2308OS_07_01.jpg" alt="How it works..."/></div><p>You can see this yourself by adjusting the <code class="literal">csrf_exipre</code> value from the default, <code class="literal">7200</code> seconds, to something a little easier to wait for, such as <code class="literal">10</code> seconds. Then load the controller in a browser, wait for the new set value of seconds, and click on the <span class="strong"><strong>Submit</strong></span> button. You'll see the preceding error. Remember to put this value back to <code class="literal">7200</code> (or whatever you wish) after you have finished.</p><p>This CSRF check enables CodeIgniter to mitigate against CSRF as the cookie set on a user's machine is unlikely to be guessed and imitated by an attacker on another machine who can then set that value in <code class="literal">csrf_cookie_name</code> and <code class="literal">csrf_test_name</code>.</p><div class="tip" title="Tip" style=""><div class="inner"><h3 class="title"><a id="tip10"/>Tip</h3><p>CSRF protection in CodeIgniter is unsuitable for AJAX forms.</p></div></div></div></div>
+<div class="section" title="Escaping data &#x2013; for a database"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec73"/>Escaping data – for a database</h1></div></div></div><p>It's never a good idea to trust any information or data that comes the user; you should always consider any data from the <a id="id437" class="indexterm"/>user to be untrustworthy and potentially dangerous. You are strongly advised to ensure that you escape any data coming in from the user, and never trust any <a id="id438" class="indexterm"/>data from the user unless you have passed it through various processes that should make that data safe enough to work with. One of these techniques is <span class="strong"><strong>escaping data</strong></span>. This recipe demonstrates the escaping of variables in a database query.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec153"/>Getting ready</h2></div></div></div><p>First, we'll need to create a database table. For this example, let's assume the database table is named <code class="literal">escape</code>. Enter the following SQL into your database:</p><div class="informalexample"><pre class="programlisting">CREATE TABLE  `escape` (
+`id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY ,
+`firstname` VARCHAR( 25 ) NOT NULL ,
+`lastname` VARCHAR( 25 ) NOT NULL
+) ENGINE = INNODB;</pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec154"/>How to do it...</h2></div></div></div><p>Now that we've created the database table, we'll begin escaping input from the user. We're going to create the following three files:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/controllers/escape.php </code></li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/models/escape_model.php </code></li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/escape/escape.php</code></li></ul></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create the, <code class="literal">/path/to/codeigniter/application/controllers/escape.php </code>file, and add the following code to it:<div class="informalexample"><pre class="programlisting">&lt;?php if (!defined('BASEPATH')) exit('No direct script access allowed');
+
+class Escape extends CI_Controller {
+    function __construct() {
+        parent::__construct();
+        $this-&gt;load-&gt;helper('form');
+        $this-&gt;load-&gt;helper('security');
+        $this-&gt;load-&gt;helper('url');
+        $this-&gt;load-&gt;database();
+    }
+    
+    public function index() {
+        redirect('escape/display_form');
+    }
+
+    public function display_form() {
+        $this-&gt;load-&gt;view('escape/escape');
+    }
+    
+    public function escape_post() {
+        $data = array(
+            'firstname' =&gt; $this-&gt;input-&gt;post('firstname'),
+            'lastname'  =&gt; $this-&gt;input-&gt;post('lastname')
+        );
+        
+        $this-&gt;load-&gt;model('Escape_model');
+        if ($this-&gt;Escape_model-&gt;insert_data($data)) {
+            echo 'Success';
+      } else {
+            echo 'Did not write to database';
+      }
+    }
+}</pre></div></li><li class="listitem">Create the, <code class="literal">/path/to/codeigniter/application/views/escape/escape.php </code>file, and add the following code to it. <a id="id439" class="indexterm"/>The <code class="literal">escape.php</code> controller will display a simple form to the user asking <a id="id440" class="indexterm"/>them to enter their first and last name, as follows:<div class="informalexample"><pre class="programlisting">&lt;p&gt;Please enter your first and last names.&lt;/p&gt;
+&lt;?php echo form_open('escape/escape_post') ; ?&gt;
+    &lt;p&gt;First Name&lt;/p&gt;
+    &lt;?php echo form_input(array('name' =&gt; 'firstname', 'id' =&gt; 'firstname', 'value' =&gt; set_value('firstname', ''))); ?&gt;
+    &lt;p&gt;Last Name&lt;/p&gt;
+    &lt;?php echo form_input(array('name' =&gt; 'lastname', 'id' =&gt; 'lastname', 'value' =&gt; set_value('lastname', ''))); ?&gt;
+    &lt;br /&gt;
+    &lt;?php echo form_submit('submit', 'Submit'); ?&gt;
+&lt;?php echo form_close(); ?&gt;</pre></div></li><li class="listitem">Create the, <code class="literal">/path/to/codeigniter/application/models/escape_model.php </code>file, and add the following code to it. As we're explicitly typing the query, we're going to use <code class="literal">$this-&gt;db-&gt;escape()</code> to do the escaping for us as follows:<div class="informalexample"><pre class="programlisting">&lt;?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+class Escape_model extends CI_Model {
+
+    function __construct() {
+        parent::__construct();
+    }
+
+    function insert_data($data) {
+        $query = "INSERT INTO `escape` (`firstname`, `lastname`) VALUES (<span class="strong"><strong>                ".$this-&gt;db-&gt;escape($data['firstname']).", ".$this-&gt;db-&gt;escape($data['lastname']).") ";</strong></span>
+        if ($this-&gt;db-&gt;query($query)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+}</pre></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec155"/>How it works...</h2></div></div></div><p>Okay, if you load the controller in your browser, you'll see the form. This form asks the user to enter their first file  name and last () name, so let's enter <code class="literal">Rob's</code> as the first name and <code class="literal">Foster</code> as the last name. You'll notice that there's an apostrophe at the end of word <span class="emphasis"><em>Rob</em></span>, go ahead and click on the <span class="strong"><strong>Submit</strong></span> <a id="id441" class="indexterm"/>button. The form should submit to the <code class="literal">escape.php</code> controller, which will package up the post input into an array and send to the model. This is where the work begins; take a look at the highlighted text in the preceding model script, check out the lines, <code class="literal">$this-&gt;db-&gt;escape($data['firstname'])</code> and <code class="literal">$this-&gt;db-&gt;escape($data['lastname'])</code>, the CodeIgniter function is escaping the <a id="id442" class="indexterm"/>input passed to it, and inserting it safely into the database. You can see this by looking in the database; to do this, run  the command:</p><div class="informalexample"><pre class="programlisting">select * from escape</pre></div><p>And you should see something similar to the following screenshot:</p><div class="mediaobject"><img src="graphics/2308OS_07_02.jpg" alt="How it works..."/></div><p>You can, for the sake of demonstration, remove <code class="literal">$this-&gt;db-&gt;escape()</code> from the model query and see what happens. Amend the code in the model to reflect the following:</p><div class="informalexample"><pre class="programlisting"> function insert_data($data) {
+        $query = "INSERT INTO `escape` (`firstname`, `lastname`) VALUES ('".$data['firstname']."', '".$data['lastname']."') ";
+        if ($this-&gt;db-&gt;query($query)) {
+            return true;
+        } else {
+            return false;
+        }
+    }</pre></div><p>You'll see a database error, as <a id="id443" class="indexterm"/>shown in the following screenshot:</p><div class="mediaobject"><img src="graphics/2308OS_07_03.jpg" alt="How it works..."/></div><p>You can see from the preceding error that <a id="id444" class="indexterm"/>the values for first name and last name haven't been properly escaped. In fact, the apostrophe in <span class="emphasis"><em>Rob</em></span> (<code class="literal">Rob's</code>) is treated as SQL query syntax rather than an actual variable. You can see how <code class="literal">$this-&gt;db-&gt;escape()</code> works for you to make queries safer and easier.</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec156"/>There's more...</h2></div></div></div><p>There are two more escaping functions you <a id="id445" class="indexterm"/>should be aware of, these are <code class="literal">escape_str()</code> and <code class="literal">escape_like_str()</code>. <a id="id446" class="indexterm"/>Their use is identical to <code class="literal">escape()</code>; however, you would call each function with <code class="literal">$this-&gt;db-&gt;escape_str()</code> and <code class="literal">$this-&gt;db-&gt;escape_like_str()</code> respectively.</p><p>What are they for? Well, <code class="literal">escape_str()</code> will still escape data passed to it like the <code class="literal">escape()</code> function does, but it can also <a id="id447" class="indexterm"/>escape data other than just strings (which <code class="literal">escape()</code> is <a id="id448" class="indexterm"/>limited to). <code class="literal">escape_like_str()</code> can be used when you're relying on wildcards to narrow down query results. For more information, go to <a class="ulink" href="http://ellislab.com/codeigniter/user-guide/database/queries.html">http://ellislab.com/codeigniter/user-guide/database/queries.html</a>.</p></div></div>
+<div class="section" title="Using HTTPS with CodeIgniter"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec74"/>Using HTTPS with CodeIgniter</h1></div></div></div><p>Using SSL is a huge topic, <a id="id449" class="indexterm"/>as is online security in general; therefore, I strongly <a id="id450" class="indexterm"/>recommend you read widely about web security (because this recipe isn't really a security primer). However, if you specifically wish to protect certain pages with an SSL certificate, there is an easy way to do it. We can create a CodeIgniter helper file to toggle SSL support on or off. Let's see how to do it.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec157"/>Getting ready</h2></div></div></div><p>I'm sure you know of the benefits of requiring certain pages in a website to be protected with an SSL certificate. The sight of that green address bar and little padlock can go a long way in allaying a user's concerns with entering data in a website. CodeIgniter doesn't come with SSL support built-in; however, it is perfectly easy to implement using a simple helper. Obviously, SSL support isn't the be-all and end-all of website security, and should always be implemented alongside other security measures to mitigate against unwanted visitors.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec158"/>How to do it...</h2></div></div></div><p>We're going to create a recipe that enables a user to view a page that isn't secured behind a HTTPS connection, and have them click on a link that will redirect them to a page that is secured behind a HTTPS connection. The parts of the code that implement the HTTPS connection and check whether a page is being viewed via HTTPS are highlighted, so you can quickly get into the bones of what's happening.</p><p>We're going to create the following five files:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/https/with_https.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/views/https/without_https.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/controllers/with_https.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/controllers/without_https.php</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">/path/to/codeigniter/application/helpers/ssl_helper.php</code></li></ul></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create the, <code class="literal">/path/to/codeigniter/application/views/https/with_https.php </code>file, and add the following code to it:<div class="informalexample"><pre class="programlisting">&lt;?php
+echo '&lt;p&gt;This page is being viewed with HTTPS.&lt;/p&gt;';
+
+echo anchor ('without_https','Click here to view a page without HTTPS') ;
+?&gt;</pre></div></li><li class="listitem">Create the <code class="literal">/path/to/codeigniter/application/views/https/without_https.php </code>file, and add the following code to it:<div class="informalexample"><pre class="programlisting">&lt;?php
+echo '&lt;p&gt;This page is being viewed without HTTPS.&lt;/p&gt;';
+
+echo anchor('with_https', 'Click here to view a page with HTTPS');
+?&gt;</pre></div></li><li class="listitem">Create the <code class="literal">/path/to/codeigniter/application/controllers/with_https.php </code>file. This controller will load <a id="id451" class="indexterm"/>the <code class="literal">ssl_helper</code> and set support to <code class="literal">on.</code>It will also display a link to the <code class="literal">without_https</code> controller. Add <a id="id452" class="indexterm"/>the following code to the <code class="literal">With_https</code> controller:<div class="informalexample"><pre class="programlisting">&lt;?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+class With_https extends CI_Controller {
+    function __construct() {
+        parent::__construct();
+        $this-&gt;load-&gt;helper('url');
+<span class="strong"><strong>        $this-&gt;load-&gt;helper('ssl_helper');</strong></span>
+
+<span class="strong"><strong>        toggle_ssl("on");</strong></span>
+    }
+
+    public function index() {
+        $this-&gt;load-&gt;view('https/with_https');
+    }
+}</pre></div></li><li class="listitem">Create the <code class="literal">/path/to/codeigniter/application/controllers/without_https.php </code>file, and add the following code to it. This controller will load the <code class="literal">ssl_helper</code> and set SSL support to <code class="literal">off</code>. It will also display a link to the <code class="literal">with_https</code> controller. Add the following code to the <code class="literal">Without_https</code> controller:<div class="informalexample"><pre class="programlisting">&lt;?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+class Without_https extends CI_Controller {
+    function __construct() {
+        parent::__construct();
+        $this-&gt;load-&gt;helper('url');
+<span class="strong"><strong>        $this-&gt;load-&gt;helper('ssl_helper');</strong></span>
+
+<span class="strong"><strong>        toggle_ssl("off");</strong></span>
+    }
+
+    public function index() {
+        $this-&gt;load-&gt;view('https/without_https');
+    }
+}</pre></div></li><li class="listitem">Create the <code class="literal">/path/to/codeigniter/application/helpers/ssl_helper.php </code>file. This helper will take one function argument passed to it by the calling controllers and alter the <code class="literal">base_url</code> value depending <a id="id453" class="indexterm"/>on whether we need SSL support <a id="id454" class="indexterm"/>or not. Add the following code to the helper, <code class="literal">ssl_helper</code>:<div class="informalexample"><pre class="programlisting">&lt;?php if (! defined('BASEPATH')) exit('No direct script access allowed');
+
+function toggle_ssl($action) {
+    $CI =&amp; get_instance();
+    
+    if ($action == "on") {
+        $CI-&gt;config-&gt;config['base_url'] = str_replace('http://', 'https://', $CI-&gt;config-&gt;config['base_url']);
+
+        if ($_SERVER['SERVER_PORT'] != 443) {
+            redirect($CI-&gt;uri-&gt;uri_string());
+        }
+    } elseif ($action == "off") {
+        $CI-&gt;config-&gt;config['base_url'] = str_replace('https://', 'http://', $CI-&gt;config-&gt;config['base_url']);
+
+        if ($_SERVER['SERVER_PORT'] != 80) {
+            redirect($CI-&gt;uri-&gt;uri_string());
+        }
+    } else { // if neither turn https support off
+        $CI-&gt;config-&gt;config['base_url'] = str_replace('https://', 'http://', $CI-&gt;config-&gt;config['base_url']);
+
+        if ($_SERVER['SERVER_PORT'] != 80) {
+            redirect($CI-&gt;uri-&gt;uri_string());
+        }
+    }
+}</pre></div><div class="tip" title="Tip" style=""><div class="inner"><h3 class="title"><a id="tip11"/>Tip</h3><p>Port 443 is the default HTTPS port; however, this might not always be the case, and the SSL port may be configured differently on your environment and it may be another number on the system you're developing on or developing for. Remember to use the correct port in your environment.</p></div></div></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec159"/>How it works...</h2></div></div></div><p>Whichever controller we load (<code class="literal">with_https</code> or <code class="literal">without_https</code>), one of the first things done in the constructor is to load the helper, <code class="literal">ssl_helper</code>, with the following line:</p><div class="informalexample"><pre class="programlisting">$this-&gt;load-&gt;helper('ssl_helper')</pre></div><p>You can see this line highlighted in each controller. We then need to call the helper function, <code class="literal">toggle_ssl(string)</code>, passing a string of either <code class="literal">on</code> or <code class="literal">off to it</code>. Obviously, <code class="literal">on</code> will enforce SSL and <code class="literal">off</code> will remove it. When the <code class="literal">ssl_helper</code> is called, it <a id="id455" class="indexterm"/>immediately calls (by reference: using <code class="literal">&amp;</code> to copy by reference) the main CodeIgniter super object. We can see it being called by reference by inclusion of the ampersand character before the PHP function, <code class="literal">get_instance()</code>. The object is then stored for us to use in the helper as the variable, <code class="literal">$CI,</code> as follows:</p><div class="informalexample"><pre class="programlisting">$CI =&amp; get_instance()</pre></div><p>Depending on the value passed to it, the helper will do one of the following three things:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">If the value is <code class="literal">on</code>, then we wish to turn on SSL support. Using the PHP function, <code class="literal">str_replace</code>, we swap the <code class="literal">http://</code> part of the <code class="literal">base_url</code> value to <code class="literal">https://</code>, saving that on the fly as CodeIgniter's new <code class="literal">base_url</code> value as follows:<div class="informalexample"><pre class="programlisting">$CI-&gt;config-&gt;config['base_url'] = str_replace('https://', 'http://', $CI-&gt;config-&gt;config['base_url']);</pre></div></li><li class="listitem" style="list-style-type: disc">If the value is <code class="literal">off</code>, we do exactly the same but in reverse. We swap the <code class="literal">https://</code> part of the current <code class="literal">base_url</code> value to <code class="literal">http://</code> as follows:<div class="informalexample"><pre class="programlisting">$CI-&gt;config-&gt;config['base_url'] = str_replace('https://', 'http://', $CI-&gt;config-&gt;config['base_url']);</pre></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">After both preceding <code class="literal">str_replace</code>, we test the current value of the <code class="literal">$_SERVER</code> array element, <code class="literal">SERVER_PORT;</code>, redirecting accordingly.</li></ul></div></li><li class="listitem" style="list-style-type: disc">If the value passed to <code class="literal">toggle_ssl</code> isn't either <code class="literal">on</code> or <code class="literal">off</code>, then the default action will set SSL support to <code class="literal">off</code>.</li></ul></div></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec160"/>There's more...</h2></div></div></div><p>Some of you may not be familiar with setting up SSL on your machine. Setting SSL up is out of the scope of this book; however, it's quite simple to do. There's a great link from the Apache Foundation in the <a id="id456" class="indexterm"/>following section that details how to set up an SSL certificate.</p><div class="section" title="Setting up HTTPS on localhost"><div class="titlepage"><div><div><h3 class="title"><a id="ch07lvl3sec15"/>Setting up HTTPS on localhost</h3></div></div></div><p>It is possible to set up HTTPS on <a id="id457" class="indexterm"/>localhost (assuming that's what you're developing on). I've found an URL that's particularly helpful in getting a self-certified SSL certificate on localhost.</p><p>A self-certified SSL certificate<a id="id458" class="indexterm"/> is just an SSL certificate which you've made yourself. It's going to be just as <a id="id459" class="indexterm"/>good as one you purchase; however, if you push it to a live production environment and an actual user visits. Their browser will tell them the issuing authority is unknown (because you made it yourself), the user will probably think that this means that the site is dangerous and leave. Therefore, for a live site, you'll need a certificate from a recognized issuing authority while for testing, you can make one yourself. The following links will help you make one:</p><p>
+<a class="ulink" href="http://httpd.apache.org/docs/2.2/ssl/ssl_faq.html">http://httpd.apache.org/docs/2.2/ssl/ssl_faq.html</a>
+</p><p>
+<a class="ulink" href="https://www.verisign.com ">https://www.verisign.com</a>
+</p><p>
+<a class="ulink" href="https://www.globalsign.co.uk/">https://www.globalsign.co.uk/</a>
+</p><p>Alternatively, if you have managed hosting a lot, your package or product from the host providing company will come with an SSL <a id="id460" class="indexterm"/>certificate, or it is likely that the host <a id="id461" class="indexterm"/>provider will be able to set one up for you (check the terms of the contract).</p></div></div></div></body></html>

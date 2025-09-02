@@ -1,0 +1,536 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;6.&#xA0;Routing Magic"><div class="titlepage"><div><div><h1 class="title"><a id="ch06"/>Chapter 6. Routing Magic</h1></div></div></div><p>In this chapter, we will cover:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Using<code class="literal"> named</code> and<code class="literal"> GET</code> parameters</li><li class="listitem" style="list-style-type: disc">Using routes with prefixes</li><li class="listitem" style="list-style-type: disc">Working with route elements</li><li class="listitem" style="list-style-type: disc">Adding catch-all routes for profile pages</li><li class="listitem" style="list-style-type: disc">Adding validation for catch-all routes</li><li class="listitem" style="list-style-type: disc">Creating custom<code class="literal"> Route</code> classes</li></ul></div><div class="section" title="Introduction"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec01"/>Introduction</h1></div></div></div><p>Almost every web-based application will eventually have to develop a successful strategy to obtain better search engine position through a technique known as<span class="strong"><strong> search engine optimization</strong></span>.<a id="id184" class="indexterm"/>
+</p><p>This chapter starts by introducing some basic concepts of routing through the use of route parameters, and continues to build optimized routes to leverage our search engine placement.</p><p>The final section in this chapter shows us how to create highly optimized URLs for our user profiles, and how to build custom<code class="literal"> Route</code> classes to obtain even more flexibility.</p></div></div>
+<div class="section" title="Using named and GET parameters"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec02"/>Using named and GET parameters</h1></div></div></div><p>CakePHP already offers a very useful set of default routes that allow any set of URL elements to be sent to the controller action as arguments. For example, a URL such as<code class="literal"> http://localhost/tags/view/cakephp</code> is interpreted as a call to the<code class="literal"> TagsController::view()</code> method, sending<code class="literal"> cakephp</code> as its first argument.<a id="id185" class="indexterm"/>
+</p><p>However, there are times when we need more flexibility when creating URLs with arguments, such as the ability to omit certain arguments or add others that may not have been specified in the method signature.<code class="literal"> Named</code> and<code class="literal"> GET</code> parameters allow us to have such flexibility, without losing the advantage of letting CakePHP deal with its automatic URL parsing.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec01"/>Getting ready</h2></div></div></div><p>To go through this recipe we need a sample table to work with. Create a table named<code class="literal"> categories</code>, using the following SQL statement:<a id="id186" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">CREATE TABLE `categories`(
+`id` INT UNSIGNED AUTO_INCREMENT NOT NULL,
+`name` VARCHAR(255) NOT NULL,
+PRIMARY KEY(`id`)
+);
+</pre></div><p>Create a table named<code class="literal"> articles</code>, using the following SQL statement:</p><div class="informalexample"><pre class="programlisting">CREATE TABLE `articles`(
+`id` INT UNSIGNED AUTO_INCREMENT NOT NULL,
+`category_id` INT UNSIGNED NOT NULL,
+`title` VARCHAR(255) NOT NULL,
+`body` TEXT NOT NULL,
+PRIMARY KEY(`id`),
+KEY `category_id`(`category_id`),
+FOREIGN KEY `articles__categories`(`category_id`) REFERENCES `categories`(`id`)
+);
+</pre></div><p>Add some sample data, using the following SQL statements:</p><div class="informalexample"><pre class="programlisting">INSERT INTO `categories`(`id`, `name`) VALUES
+(1, 'Frameworks'),
+(2, 'Databases');
+INSERT INTO `articles`(`id`, `category_id`, `title`, `body`) VALUES
+(1, 1, 'Understanding Containable', 'Body of article'),
+(2, 1, 'Creating your first test case', 'Body of article'),
+(3, 1, 'Using bake to start an application', 'Body of article'),
+(4, 1, 'Creating your first helper', 'Body of article'),
+(5, 2, 'Adding indexes', 'Body of article');
+</pre></div><p>We proceed now to create the required model. Create the model,<code class="literal"> Article</code>, in a file named<code class="literal"> article.php</code> and place it in your<code class="literal"> app/models</code> folder, with the following contents:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+class Article extends AppModel {
+public $belongsTo = array(
+'Category'
+);
+}
+?&gt;
+</pre></div><p>Create its appropriate controller,<code class="literal"> ArticlesController</code>, in a file named<code class="literal"> articles_controller.php</code> and place it in your<code class="literal"> app/controllers</code> folder, with the following contents:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+class ArticlesController extends AppController {
+public function view($id) {
+$article = $this-&gt;Article-&gt;find('first', array(
+'conditions' =&gt; array('Article.id' =&gt; $id)
+));
+if (empty($article)) {
+$this-&gt;cakeError('error404');
+}
+$articles = $this-&gt;Article-&gt;find('all', array(
+'conditions' =&gt; array(
+'Category.id' =&gt; $article['Category']['id'],
+'Article.id !=' =&gt; $article['Article']['id']
+),
+'order' =&gt; 'RAND()'
+));
+$this-&gt;set(compact('article', 'articles'));
+}
+}
+?&gt;
+</pre></div><p>Create a folder named<code class="literal"> articles</code> in your<code class="literal"> app/views</code> folder, then create the view in a file named<code class="literal"> view.ctp</code> and place it in your<code class="literal"> app/views/articles</code> folder, with the following contents:<a id="id187" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;h1&gt;&lt;?php echo $article['Article']['title']; ?&gt;&lt;/h1&gt;
+&lt;p&gt;&lt;?php echo $article['Article']['body']; ?&gt;&lt;/p&gt;
+&lt;?php if (!empty($articles)) { ?&gt;
+&lt;br /&gt;&lt;p&gt;Related articles:&lt;/p&gt;
+&lt;ul&gt;
+&lt;?php foreach($articles as $related) { ?&gt;
+&lt;li&gt;&lt;?php echo $this-&gt;Html-&gt;link(
+$related['Article']['title'],
+array(
+'action'=&gt;'view',
+$related['Article']['id']
+)
+); ?&gt;&lt;/li&gt;
+&lt;?php } ?&gt;
+&lt;/ul&gt;
+&lt;?php } ?&gt;
+</pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec02"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">We start by adding the possibility to change the number of related articles through a<code class="literal"> GET</code> parameter. Edit your<code class="literal"> app/controllers/articles_controller.php</code> file and make the following changes to the<code class="literal"> view()</code> method:<div class="informalexample"><pre class="programlisting">public function view($id) {
+$article = $this-&gt;Article-&gt;find('first', array(
+'conditions' =&gt; array('Article.id' =&gt; $id)
+));
+if (empty($article)) {
+$this-&gt;cakeError('error404');
+}
+<span class="strong"><strong>$limit = !empty($this-&gt;params['url']['related']) ?
+$this-&gt;params['url']['related'] :
+0;</strong></span>
+$articles = $this-&gt;Article-&gt;find('all', array(
+'conditions' =&gt; array(
+'Category.id' =&gt; $article['Category']['id'],
+'Article.id !=' =&gt; $article['Article']['id']
+),
+'order' =&gt; 'RAND()',
+<span class="strong"><strong>'limit' =&gt; $limit &gt; 0 ? $limit : null</strong></span>
+));
+$this-&gt;set(compact('article', 'articles', 'limit'));
+}
+</pre></div></li><li class="listitem">If we now browse to <code class="literal">http://localhost/articles/view/1?related=2</code> we should see the article content, along with up to two related articles, as shown in the following screenshot:<a id="id188" class="indexterm"/><div class="mediaobject"><img src="graphics/1926_06_01.jpg" alt="How to do it..."/></div></li><li class="listitem">We will now use named parameters to pass a search engine-friendly version of the article title, even though it is not needed to show the article or its related content. Edit your<code class="literal"> ArticlesController</code> class and add the following at the end of the<code class="literal"> view()</code> method:<div class="informalexample"><pre class="programlisting">$slug = !empty($this-&gt;params['named']['title']) ?
+$this-&gt;params['named']['title'] :
+null;
+$categorySlug = !empty($this-&gt;params['named']['category']) ?
+$this-&gt;params['named']['category'] :
+null;
+$this-&gt;set(compact('slug', 'categorySlug'));
+</pre></div></li><li class="listitem">Now edit the<code class="literal"> app/views/articles/view.ctp</code> file and make the following changes:<a id="id189" class="indexterm"/><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>&lt;?php if (!empty($slug)) { ?&gt;
+Slug: &lt;?php echo $this-&gt;Html-&gt;clean($slug); ?&gt;&lt;br /&gt;
+&lt;?php } ?&gt;
+&lt;?php if (!empty($categorySlug)) { ?&gt;
+Category slug: &lt;?php echo $this-&gt;Html-&gt;clean($categorySlug); ?&gt;&lt;br /&gt;
+&lt;?php } ?&gt;</strong></span>
+&lt;h1&gt;&lt;?php echo $article['Article']['title']; ?&gt;&lt;/h1&gt;
+&lt;p&gt;&lt;?php echo $article['Article']['body']; ?&gt;&lt;/p&gt;
+&lt;?php if (!empty($articles)) { ?&gt;
+&lt;br /&gt;&lt;p&gt;Related articles:&lt;/p&gt;
+&lt;ul&gt;
+&lt;?php foreach($articles as $related) { ?&gt;
+&lt;li&gt;&lt;?php echo $this-&gt;Html-&gt;link(
+$related['Article']['title'],
+array(
+'action'=&gt;'view',
+$related['Article']['id'],
+<span class="strong"><strong>'?' =&gt; array('related' =&gt; $limit),
+'category' =&gt; strtolower(Inflector::slug($related['Category']['name'])),
+'title' =&gt; strtolower(Inflector::slug($related['Article']['title']))</strong></span>
+)
+); ?&gt;&lt;/li&gt;
+&lt;?php } ?&gt;
+&lt;/ul&gt;
+&lt;?php } ?&gt;
+</pre></div></li><li class="listitem">If we hover over the links to the related articles, we will notice they include two new parameters:<code class="literal"> category</code> and<code class="literal"> title</code>. An example generated URL could be <code class="literal">http://localhost/articles/view/4/category:frameworks/title:creating_your_first_helper</code>. Clicking on this link would take us to the article page, which also shows the specified parameters.<a id="id190" class="indexterm"/></li></ol></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec03"/>How it works...</h2></div></div></div><p>Both<code class="literal"> GET</code> and<code class="literal"> named</code> parameters work in a similar fashion, by being automatically available in our application code as an array.<code class="literal"> GET</code> parameters are available in<code class="literal"> $this-&gt;params['url']</code>, while named parameters are available in<code class="literal"> $this-&gt;params['named']</code>. Checking the existence of a parameter is as simple as verifying that one of these given arrays contains a value whose key is the wanted parameter.<a id="id191" class="indexterm"/>
+</p><p>Creating links that specify either<code class="literal"> named</code> or<code class="literal"> GET</code> parameters (or both) is done by also specifying an indexed array of parameters (where the key is the parameter name, and the value its value.) For<code class="literal"> GET</code> parameters, this array is set in the special<code class="literal"> ?</code> route index key, while for named parameters each parameter is specified as part of the actual array based URL.</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec04"/>There's more...</h2></div></div></div><p>We learnt how to specify named parameters just by setting a<code class="literal"> key =&gt; value</code> pair in the array-based URL. However, we may want to also specify which of the named parameters should actually be parsed, and to make sure they are only parsed when the value matches a certain regular expression.</p><p>As an example, we can define the<code class="literal"> title</code> named parameter for all actions in the<code class="literal"> articles</code> controller, so it is parsed only when it follows a certain regular expression, where title can only contain lower case letters, numbers, or the underscore sign. To do so, we add the following sentence to our<code class="literal"> app/config/routes.php</code> file:</p><div class="informalexample"><pre class="programlisting">Router::connectNamed(
+array('title' =&gt; array('match' =&gt; '^[a-z0-9_]+$', 'controller' =&gt; 'articles')),
+array('default' =&gt; true)
+);
+</pre></div><p>The first argument is an array, indexed by parameter name, and whose value contains another array that may include any of the following settings, all of which are optional:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Setting</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Purpose</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">action</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>If specified, the named parameter will be parsed only for the given action.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">controller</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>If specified, the named parameter will be parsed only for the given controller.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">match</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>A regular expression that will be used to see if the provided value matches the named parameter. If specified, the named parameter will be parsed only when the value matches the expression.</p>
+</td></tr></tbody></table></div><p>The second argument to<code class="literal"> Router::connectNamed()</code> is an optional array of settings, which may include any of the following:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Setting</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Purpose</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">default</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>If set to<code class="literal"> true</code>, it will also load the named parameters needed for pagination to work. If you call<code class="literal"> Router::connectNamed()</code> several times, this is only needed once, unless you set the<code class="literal"> reset</code> option to<code class="literal"> true</code>. Defaults to<code class="literal"> false</code>.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">greedy</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>If set to<code class="literal"> false</code>, it will only parse the named parameters that are explicitly defined through a<code class="literal"> Router::connectNamed()</code> call. Defaults to<code class="literal"> true</code>.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">reset</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>If set to<code class="literal"> true</code>, it will wipe out any named parameters defined prior to this call. Defaults to<code class="literal"> false</code>.</p>
+</td></tr></tbody></table></div><p>To further understand the<code class="literal"> greedy</code> option, we could still allow the URL to include the<code class="literal"> category</code> and<code class="literal"> title</code> parameters, but may want to only parse the<code class="literal"> title</code> value. To do this, we would set<code class="literal"> greedy</code> to<code class="literal"> false</code> when defining the named parameter. That way,<code class="literal"> $this-&gt;params['named']</code> would only contain the value for<code class="literal"> title</code>, even when<code class="literal"> category</code> is specified in the requested URL. We also want to do this only for the<code class="literal"> view</code> action of the<code class="literal"> articles</code> controller:</p><div class="informalexample"><pre class="programlisting">Router::connectNamed(
+array('title' =&gt; array('match' =&gt; '^[a-z0-9_]+$', 'controller'=&gt;'articles', 'action'=&gt;'view')),
+array('greedy' =&gt; false)
+);
+</pre></div><p>Notice how we had to specify the regular expression for the<code class="literal"> title</code> named parameter again, even though we specified it before. This is because we are configuring a named parameter whose name already exists, so our definition would override the previous one.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec05"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Working with route elements</em></span></li></ul></div></div></div>
+<div class="section" title="Using routes with prefixes"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec03"/>Using routes with prefixes</h1></div></div></div><p>Often enough we find ourselves needing to separate different areas of our application, not only in terms of code and user interface, but also in terms of functionality. With CakePHP's flexible routing system, we can achieve this and more by using prefixes, which provide us with a way to reimplement certain controller actions in different ways, and reach a particular implementation depending on the prefix being used, if any.<a id="id192" class="indexterm"/>
+</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec06"/>Getting ready</h2></div></div></div><p>To go through this recipe we need a sample table to work with. Create a table named<code class="literal"> profiles</code>, using the following SQL statement:</p><div class="informalexample"><pre class="programlisting">CREATE TABLE `profiles`(
+`id` INT UNSIGNED AUTO_INCREMENT NOT NULL,
+`name` VARCHAR(255) NOT NULL,
+`email` VARCHAR(255) NOT NULL,
+`active` TINYINT(1) NOT NULL default 1,
+PRIMARY KEY(`id`)
+);
+</pre></div><p>Add some sample data, using the following SQL statements:</p><div class="informalexample"><pre class="programlisting">INSERT INTO `profiles`(`id`, `name`, `email`, `active`) VALUES
+(1, 'John Doe', 'john.doe@email.com', 1),
+(2, 'Jane Doe', 'jane.doe@email.com', 1),
+(3, 'Mark Doe', 'mark.doe@email.com', 0);
+</pre></div><p>Next, create the required<code class="literal"> ProfilesController</code> class in a file named<code class="literal"> profiles_controller.php</code> and place it in your<code class="literal"> app/controllers</code> folder, with the following contents:<a id="id193" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;?php
+class ProfilesController extends AppController {
+public function index() {
+$profiles = $this-&gt;paginate();
+$this-&gt;set(compact('profiles'));
+}
+public function edit($id) {
+if (!empty($this-&gt;data)) {
+if ($this-&gt;Profile-&gt;save($this-&gt;data)) {
+$this-&gt;Session-&gt;setFlash('Profile saved');
+$this-&gt;redirect(array('action'=&gt;'index'));
+} else {
+$this-&gt;Session-&gt;setFlash('Please correct the errors');
+}
+} else {
+$this-&gt;data = $this-&gt;Profile-&gt;find('first', array(
+'conditions' =&gt; array('Profile.id' =&gt; $id),
+'recursive' =&gt; -1
+));
+}
+}
+}
+?&gt;
+</pre></div><p>Create a folder named<code class="literal"> profiles</code> in your<code class="literal"> app/views</code> folder, then create the view in a file named<code class="literal"> index.ctp</code> and place it in your<code class="literal"> app/views/profiles</code> folder, with the following contents:</p><div class="informalexample"><pre class="programlisting">&lt;p&gt;
+&lt;?php echo $this-&gt;Paginator-&gt;prev(); ?&gt;&amp;nbsp;
+&lt;?php echo $this-&gt;Paginator-&gt;numbers(); ?&gt;&amp;nbsp;
+&lt;?php echo $this-&gt;Paginator-&gt;next(); ?&gt;
+&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;&lt;tr&gt;&lt;th&gt;Name&lt;/th&gt;&lt;th&gt;Email&lt;/th&gt;&lt;th&gt;Actions&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;?php foreach($profiles as $profile) { ?&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;?php echo $profile['Profile']['name']; ?&gt;&lt;/td&gt;
+&lt;td&gt;&lt;?php echo $profile['Profile']['email']; ?&gt;&lt;/td&gt;
+&lt;td&gt;
+&lt;?php echo $this-&gt;Html-&gt;link('Edit', array('action'=&gt;'edit', $profile['Profile']['id'])); ?&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;?php } ?&gt;
+&lt;/tbody&gt;&lt;/table&gt;
+</pre></div><p>Create the view for the<code class="literal"> edit</code> action in a file named<code class="literal"> edit.ctp</code> and place it in your<code class="literal"> app/views/profiles</code> folder, with the following contents:<a id="id194" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;?php echo $this-&gt;Form-&gt;create('Profile'); ?&gt;
+&lt;?php echo $this-&gt;Form-&gt;input('name'); ?&gt;
+&lt;?php echo $this-&gt;Form-&gt;input('email'); ?&gt;
+&lt;?php echo $this-&gt;Form-&gt;end('Save'); ?&gt;
+</pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec07"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">We start by adding two prefixes to CakePHP:<code class="literal"> admin</code>, and<code class="literal"> manager</code>. Edit your<code class="literal"> app/config/core.php</code> file and look for the line that defines the<code class="literal"> Routing.prefixes</code> setting. If it is commented out, uncomment it. Then change it to:<div class="informalexample"><pre class="programlisting">Configure::write('Routing.prefixes', array('admin', 'manager'));
+</pre></div></li><li class="listitem">Let us modify the<code class="literal"> ProfilesController</code> class to add the overridden<code class="literal"> index</code> and<code class="literal"> edit</code> actions for both prefixes. We will also add a new action so that when accessed with the<code class="literal"> admin</code> prefix, we can add new profile records. Edit your<code class="literal"> app/controllers/profiles_controller.php</code> file and add the following methods at the beginning of the<code class="literal"> ProfilesController</code> class:<div class="informalexample"><pre class="programlisting">public function beforeFilter() {
+parent::beforeFilter();
+$prefixes = Configure::read('Routing.prefixes');
+if (!empty($prefixes)) {
+foreach($prefixes as $prefix) {
+$hasPrefix = false;
+if (!empty($this-&gt;params['prefix'])) {
+$hasPrefix = ($this-&gt;params['prefix'] == $prefix);
+}
+$prefixName = 'is' . Inflector::classify($prefix);
+$this-&gt;$prefixName = $hasPrefix;
+$this-&gt;set($prefixName, $hasPrefix);
+}
+}
+}
+public function manager_index() {
+$this-&gt;setAction('index');
+}
+public function manager_edit($id) {
+$this-&gt;setAction('edit', $id);
+}
+public function admin_index() {
+$this-&gt;setAction('index');
+}
+public function admin_edit($id) {
+$this-&gt;setAction('edit', $id);
+}
+public function admin_add() {
+$this-&gt;setAction('edit');
+}
+public function index() {
+$profiles = $this-&gt;paginate();
+$this-&gt;set(compact('profiles'));
+}
+</pre></div></li><li class="listitem">We now need to change the<code class="literal"> edit</code> action so that it can handle the creation of new records. While still editing your<code class="literal"> app/controllers/profiles_controller.php</code> file, make the following changes to the<code class="literal"> edit()</code> method of the<code class="literal"> ProfilesController</code> class:<a id="id195" class="indexterm"/><div class="informalexample"><pre class="programlisting"><span class="strong"><strong>public function edit($id = null) {
+if (!empty($id) &amp;&amp; !$this-&gt;isAdmin &amp;&amp; !$this-&gt;isManager) {
+$this-&gt;redirect(array('action' =&gt; 'index'));
+}</strong></span>
+if (!empty($this-&gt;data)) {
+<span class="strong"><strong>if (empty($id)) {
+$this-&gt;Profile-&gt;create();
+}</strong></span>
+if ($this-&gt;Profile-&gt;save($this-&gt;data)) {
+$this-&gt;Session-&gt;setFlash('Profile saved');
+$this-&gt;redirect(array('action'=&gt;'index'));
+} else {
+$this-&gt;Session-&gt;setFlash('Please correct the errors');
+}
+<span class="strong"><strong>} elseif (!empty($id)) {</strong></span>
+$this-&gt;data = $this-&gt;Profile-&gt;find('first', array(
+'conditions' =&gt; array('Profile.id' =&gt; $id),
+'recursive' =&gt; -1
+));
+}
+}
+</pre></div></li><li class="listitem">The next step is changing the views. Edit your<code class="literal"> app/views/profiles/index.ctp</code> view file and add the following at the end:<a id="id196" class="indexterm"/><div class="informalexample"><pre class="programlisting">&lt;?php
+if ($isAdmin) {
+echo $this-&gt;Html-&gt;link('Create Profile', array('admin' =&gt; true, 'action'=&gt;'add'));
+}
+?&gt;
+</pre></div></li><li class="listitem">Finally, edit your<code class="literal"> app/views/profiles/edit.ctp</code> view file and make the following changes:<div class="informalexample"><pre class="programlisting">&lt;?php echo $this-&gt;Form-&gt;create('Profile'); ?&gt;
+&lt;?php echo $this-&gt;Form-&gt;input('name'); ?&gt;
+&lt;?php echo $this-&gt;Form-&gt;input('email'); ?&gt;
+<span class="strong"><strong>&lt;?php
+if ($isManager || $isAdmin) {
+echo $this-&gt;Form-&gt;input('active', array(
+'options' =&gt; array(1 =&gt; 'Yes', 0 =&gt; 'No')
+));
+}
+?&gt;</strong></span>
+&lt;?php echo $this-&gt;Form-&gt;end('Save'); ?&gt;
+</pre></div></li></ol></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl2sec08"/>How it works...</h3></div></div></div><p>Any set of values specified in the configuration setting,<code class="literal"> Routing.prefixes</code>, act as routing prefixes. In this example, we have added two prefixes:<code class="literal"> admin</code> and<code class="literal"> manager</code>. Whenever we use a prefix in an URL (where the prefix precedes a normal CakePHP URL), CakePHP will set the current prefix in<code class="literal"> $this-&gt;params['prefix']</code> and execute an action whose name is the same as if the prefix were not used, but preceded with the prefix and an underscore sign, in the same controller as if the prefix were not used.</p><p>When we access<code class="literal"> http://localhost/manager/profiles/index</code> in our example, CakePHP will process this request by executing the action<code class="literal"> manager_index</code> located in the<code class="literal"> ProfilesController</code>, and setting<code class="literal"> $this-&gt;params['prefix']</code> to<code class="literal"> manager</code>. Knowing this, we can add controller and view variables to tell actions and views if we are accessing the application as a manager (when the<code class="literal"> manager</code> prefix is set) or as an administrator (when the<code class="literal"> admin</code> prefix is set.) We implement this through a more general approach by creating an appropriate controller and view variable for each prefix (isManager for the<code class="literal"> manager</code> prefix, and<code class="literal"> isAdmin</code> for the<code class="literal"> admin</code> prefix) in the<code class="literal"> beforeFilter</code> callback.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl2sec09"/>See also</h3></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Using prefixes for role based access controller</em></span> in <a class="link" href="ch01.html" title="Chapter 1. Authentication">Chapter 1</a>, <span class="emphasis"><em>Authentication</em></span></li></ul></div></div></div></div>
+<div class="section" title="Working with route elements"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec04"/>Working with route elements</h1></div></div></div><p>Even when<code class="literal"> GET</code> and<code class="literal"> named</code> parameters can be useful in most situations, we may need to further optimize our application URLs for better search engine rankings.<a id="id197" class="indexterm"/>
+</p><p>Fortunately, CakePHP provides us with route elements, a solution that maintains the flexibility of<code class="literal"> GET</code> and named parameters, and improves the way intra-application URLs are built.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec10"/>Getting ready</h2></div></div></div><p>We need some sample data to work with. Follow the<span class="emphasis"><em> Getting ready</em></span> section of the recipe<span class="emphasis"><em> Using GET and named parameters</em></span>.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec11"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">We want our article URLs to be further optimized for search engines, so we start by creating a new route. Edit your<code class="literal"> app/config/routes.php</code> file and add the following route at the end of the file:<div class="informalexample"><pre class="programlisting">Router::connect('/article/:category/:id-:title',
+array('controller' =&gt; 'articles', 'action' =&gt; 'view'),
+array(
+'pass' =&gt; array('id'),
+'id' =&gt; '\d+',
+'category' =&gt; '[^-]+',
+'title' =&gt; '[^-]+'
+)
+);
+</pre></div></li><li class="listitem">As our route defines three elements (<code class="literal">id</code>,<code class="literal"> category</code>, and<code class="literal"> title</code>), we need to modify the view to specify the values for those elements. Edit your<code class="literal"> app/views/articles/index.ctp</code> view file and make the following changes:<div class="informalexample"><pre class="programlisting">&lt;h1&gt;&lt;?php echo $article['Article']['title']; ?&gt;&lt;/h1&gt;
+&lt;p&gt;&lt;?php echo $article['Article']['body']; ?&gt;&lt;/p&gt;
+&lt;?php if (!empty($articles)) { ?&gt;
+&lt;br /&gt;&lt;p&gt;Related articles:&lt;/p&gt;
+&lt;ul&gt;
+&lt;?php foreach($articles as $related) { ?&gt;
+&lt;li&gt;&lt;?php echo $this-&gt;Html-&gt;link(
+$related['Article']['title'],
+array(
+'action'=&gt;'view',
+<span class="strong"><strong>'id' =&gt; $related['Article']['id'],
+'category' =&gt; strtolower(Inflector::slug($related['Category']['name'])),
+'title' =&gt; strtolower(Inflector::slug($related['Article']['title']))</strong></span>
+)
+); ?&gt;&lt;/li&gt;
+&lt;?php } ?&gt;
+&lt;/ul&gt;
+&lt;?php } ?&gt;
+</pre></div></li></ol></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl2sec12"/>How it works...</h3></div></div></div><p>CakePHP uses the routes defined in the<code class="literal"> routes.php</code> configuration file to generate URLs, and parse requested URLs. When we want different URLs than those provided by the framework, we add new routes to this configuration file.<a id="id198" class="indexterm"/>
+</p><p>Routes are created by specifying up to three arguments when calling the<code class="literal"> Router::connect()</code> method:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The first argument is the route URL, a string representation of our route. It can include a wildcard and route elements.</li><li class="listitem" style="list-style-type: disc">The second argument is utilized to specify the default route values, an array which may include<code class="literal"> plugin, controller, action</code>, and action arguments. You may omit parts of these default values, for example, to define a route for all actions in a specific controller.</li><li class="listitem" style="list-style-type: disc">The third argument defines the route elements, an optional array that defines the route elements a route utilizes. It may also include a list of those elements that are to be sent as arguments when calling the controller action</li></ul></div><p>Using<code class="literal"> Router::connect()</code>, we defined a route that includes all these arguments:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">We set<code class="literal"> /article/:category/:id-:title</code> as our route URL. Notice how we are referring to route elements by prefixing their names with a colon.</li><li class="listitem" style="list-style-type: disc">In the second argument, we specify that this route will match any link to the<code class="literal"> view</code> action of the<code class="literal"> articles</code> controller. Similarly, if a URL that matches the route URL specified in the first argument is requested, this is the action that will be executed.</li><li class="listitem" style="list-style-type: disc">We specify three route elements in the third argument, with their respective regular expression matching expressions:<code class="literal"> id</code> (a number),<code class="literal"> category</code> (any string that does not include a dash), and<code class="literal"> title</code> (also a string that does not include a dash.) We use the special<code class="literal"> pass</code> option to specify which route elements are passed as regular action arguments.</li></ul></div><p>When CakePHP finds a URL that includes the same default values as those specified in the first argument of our route, and also includes the route elements specified in its third argument, it will convert the route to our provided string representation. For example, if we create a link using the following statement:<a id="id199" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;?php echo $this-&gt;Html-&gt;link(
+'My article',
+array(
+'controller' =&gt; 'articles',
+'action' =&gt; 'view',
+'id' =&gt; 1,
+'category' =&gt; 'my_category',
+'title' =&gt; 'my_title'
+)
+); ?&gt;
+</pre></div><p>We would be matching all our route requirements, and the resulting generated URL would look like<code class="literal"> http://localhost/article/my_category/1-my_title</code>.</p></div><div class="section" title="There's more..."><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl2sec13"/>There's more...</h3></div></div></div><p>When our controller action is executed as a result of a route that uses route elements, we can obtain the values for all the specified elements using the<code class="literal"> $this-&gt;params</code> array available to every controller.</p><p>In our example, we set the<code class="literal"> id</code> route element to be passed as a regular action argument, but we did not do so for the remaining elements (category and<code class="literal"> title.)</code> To obtain the given value for<code class="literal"> category</code>, we would do:</p><div class="informalexample"><pre class="programlisting">$category = $this-&gt;params['category']
+</pre></div><div class="section" title="Using reverse routing"><div class="titlepage"><div><div><h4 class="title"><a id="ch06lvl3sec01"/>Using reverse routing</h4></div></div></div><p>Even though CakePHP allows us to specify a string-based URL when creating links, it is recommended that we always use arrays to define link URLs unless the URL is an absolute reference to a foreign site.<a id="id200" class="indexterm"/>
+</p><p>URLs that are defined using an array allow for the reverse routing system to work, which is the part of the framework that allows us to use custom routes.<a id="id201" class="indexterm"/>
+</p></div></div><div class="section" title="See also"><div class="titlepage"><div><div><h3 class="title"><a id="ch06lvl2sec14"/>See also</h3></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Adding catch-all routes for profile pages</em></span></li><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Using GET and named parameters</em></span></li></ul></div></div></div></div>
+<div class="section" title="Adding catch-all routes for profile pages"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec05"/>Adding catch-all routes for profile pages</h1></div></div></div><p>Several websites include direct URLs to access user profiles, and those addresses live alongside a broad set of other URLs. For example, Twitter allows <a class="ulink" href="http://twitter.com/mgiglesias">http://twitter.com/mgiglesias</a> to list tweets created by the user<code class="literal"> mgiglesias</code>, while an address like <a class="ulink" href="http://twitter.com/about">http://twitter.com/about</a> would take us to their service description.<a id="id202" class="indexterm"/>
+</p><p>This recipe shows us how to create direct URLs for our profile records, allowing the generated URLs to coexist with other application routes we may have.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec15"/>Getting ready</h2></div></div></div><p>To go through this recipe we need a sample table to work with. Create a table named<code class="literal"> profiles</code>, using the following SQL statement:</p><div class="informalexample"><pre class="programlisting">CREATE TABLE `profiles`(
+`id` INT UNSIGNED AUTO_INCREMENT NOT NULL,
+`username` VARCHAR(255) NOT NULL,
+`name` VARCHAR(255) NOT NULL,
+PRIMARY KEY(`id`)
+);
+</pre></div><p>Add some sample data, using the following SQL statements:</p><div class="informalexample"><pre class="programlisting">INSERT INTO `profiles`(`id`, `username`, `name`) VALUES
+(1, 'john', 'John Doe'),
+(2, 'jane', 'Jane Doe');
+</pre></div><p>Proceed now to create the required model. Create a file named<code class="literal"> profile.php</code> and place it in your<code class="literal"> app/models</code> folder, with the following contents:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+class Profile extends AppModel {
+}
+?&gt;
+</pre></div><p>Create the<code class="literal"> ProfilesController</code> class in a file named<code class="literal"> profiles_controller.php</code> and place it in your<code class="literal"> app/controllers</code> folder, with the following contents:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+class ProfilesController extends AppController {
+public function index() {
+$profiles = $this-&gt;Profile-&gt;find('all');
+$this-&gt;set(compact('profiles'));
+}
+public function view($username) {
+$profile = $this-&gt;Profile-&gt;find('first', array(
+'conditions' =&gt; array('Profile.username' =&gt; $username)
+));
+if (empty($profile)) {
+$this-&gt;cakeError('error404');
+}
+$this-&gt;set(compact('profile'));
+}
+}
+?&gt;
+</pre></div><p>Create a folder named<code class="literal"> profiles</code> in your<code class="literal"> app/views</code> folder. Create the view for the<code class="literal"> index</code> action in a file named<code class="literal"> index.ctp</code> and place it in your<code class="literal"> app/views/profiles</code> folder, with the following contents:<a id="id203" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">&lt;ul&gt;
+&lt;?php foreach($profiles as $profile) { ?&gt;
+&lt;li&gt;&lt;?php echo $this-&gt;Html-&gt;link($profile['Profile']['name'], array(
+'action' =&gt; 'view',
+'userName' =&gt; $profile['Profile']['username']
+)); ?&gt;&lt;/li&gt;
+&lt;?php } ?&gt;
+&lt;/ul&gt;
+</pre></div><p>Create the view for the<code class="literal"> view</code> action in a file named<code class="literal"> view.ctp</code> and place it in your<code class="literal"> app/views/profiles</code> folder, with the following contents:</p><div class="informalexample"><pre class="programlisting">&lt;h1&gt;&lt;?php echo $profile['Profile']['name']; ?&gt;&lt;/h1&gt;
+Username: &lt;?php echo $profile['Profile']['username']; ?&gt;
+&lt;p&gt;&lt;?php echo $this-&gt;Html-&gt;link('Profiles', array('action'=&gt;'index')); ?&gt;&lt;/p&gt;
+</pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec16"/>How to do it...</h2></div></div></div><p>Edit your<code class="literal"> app/config/routes.php</code> file and add the following routes at the end of the file:</p><div class="informalexample"><pre class="programlisting">Router::connect('/:userName',
+array('controller' =&gt; 'profiles', 'action' =&gt; 'view'),
+array(
+'userName' =&gt; '[A-Za-z0-9\._-]+',
+'pass' =&gt; array('userName')
+)
+);
+Router::connect('/:controller/index/*', array('action' =&gt; 'index'));
+</pre></div><p>If you now browse to <code class="literal">http://localhost/profiles/index</code>, you will see that the generated link for the<code class="literal"> jane</code> user account is <code class="literal">http://localhost/jane</code>. Clicking on it should show us Jane's profile page, as shown in the following screenshot:<a id="id204" class="indexterm"/>
+</p><div class="mediaobject"><img src="graphics/1926_06_02.jpg" alt="How to do it..."/></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec17"/>How it works...</h2></div></div></div><p>We created two routes. The first one uses a route element called<code class="literal"> userName</code> to set the URL as consisting solely on its value. Using a regular expression, our route guarantees that it is only used when the value for<code class="literal"> userName</code> consists of letters, numbers, dots, dashes, or underscore signs. Using the<code class="literal"> controller</code> and<code class="literal"> action</code> settings, we link the route to the<code class="literal"> view</code> action of the<code class="literal"> profiles</code> controller. Finally, the<code class="literal"> userName</code> element is set to be passed as a regular argument to the<code class="literal"> ProfilesController::view()</code> method.<a id="id205" class="indexterm"/>
+</p><p>With this route defined, if we created a link with the following statement:</p><div class="informalexample"><pre class="programlisting">&lt;?php echo $this-&gt;Html-&gt;link('My Profile', array(
+'controller' =&gt; 'profiles',
+'action' =&gt; 'view',
+'userName' =&gt; 'john'
+)); ?&gt;
+</pre></div><p>The generated URL would be<code class="literal"> http://localhost/john</code>. Clicking on this link would execute the same action, using the same arguments, as if we used the URL<code class="literal"> http://localhost/profiles/view/john</code>.</p><p>However, there is a noticeable problem. CakePHP provides a short URL for the index action for all our controllers. Because of it, we can access the<code class="literal"> ProfilesController::index()</code> method using the URL<code class="literal"> http://localhost/profiles</code>, the equivalent of the URL<code class="literal"> http://localhost/profiles/index</code>. This default route would conflict with our custom route, as the word<code class="literal"> profiles</code> matches our regular expression.</p><p>Fortunately, this functionality would not conflict with our route when generating a URL out of an array-based route. Because we linked our route to the<code class="literal"> view</code> action of the<code class="literal"> profiles</code> controller, CakePHP will only use our custom route when linking to this action and specifying the<code class="literal"> userName</code> element.</p><p>We still need to fix the conflict that is produced when parsing a URL such as<code class="literal"> http://localhost/profiles</code>. To do so, we create another route so CakePHP's built-in<code class="literal"> index</code> routes are not utilized when producing a link. This route uses the special<code class="literal"> :controller</code> route element (set to the controller the link points to), and forcing the<code class="literal"> index</code> action as part of the URL. We link this route to all routes that use the<code class="literal"> index</code> action, regardless of the controller.</p><div class="note" title="Note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title"><a id="note25"/>Note</h3><p>To learn about another, more effective approach to this problem, see Creating custom Route classes</p></div><p>After adding this route, if we created a link with:</p><div class="informalexample"><pre class="programlisting">&lt;?php echo $this-&gt;Html-&gt;link('Profiles', array(
+'controller' =&gt; 'profiles',
+'action' =&gt; 'index'
+)); ?&gt;
+</pre></div><p>the generated URL would be<code class="literal"> http://localhost/profiles/index</code>.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec18"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Working with route elements</em></span></li><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Adding validation for catch-all routes</em></span></li><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Creating custom route classes</em></span></li></ul></div></div></div>
+<div class="section" title="Adding validation for catch-all routes"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec06"/>Adding validation for catch-all routes</h1></div></div></div><p>In the recipe<span class="emphasis"><em> Adding catch-all routes for profile pages</em></span>, we created routes so that profile pages can be accessed, specifying only the username in the URL.<a id="id206" class="indexterm"/>
+</p><p>In this recipe, we will learn how to implement a custom validation method so that these usernames do not conflict with other custom routes.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec19"/>Getting ready</h2></div></div></div><p>We need some sample data to work with, and we need a catch-all route. Follow the entire recipe<span class="emphasis"><em> Adding catch-all routes</em></span> for profile pages.</p><p>We also need the sign-up page, where new profile records are created. Edit your<code class="literal"> app/controller/profiles_controller.php</code> file and place the following method inside the<code class="literal"> ProfilesController</code> class definition:</p><div class="informalexample"><pre class="programlisting">public function add() {
+if (!empty($this-&gt;data)) {
+$this-&gt;Profile-&gt;create($this-&gt;data);
+if ($this-&gt;Profile-&gt;save()) {
+$this-&gt;Session-&gt;setFlash('Profile created');
+$this-&gt;redirect(array(
+'action'=&gt;'view',
+'userName' =&gt; $this-&gt;data['Profile']['username']
+));
+} else {
+$this-&gt;Session-&gt;setFlash('Please correct the errors below');
+}
+}
+}
+</pre></div><p>Create the appropriate view in a file named<code class="literal"> add.ctp</code> and place it in your<code class="literal"> app/views/profiles</code> folder, with the following contents:</p><div class="informalexample"><pre class="programlisting">&lt;?php
+echo $this-&gt;Form-&gt;create();
+echo $this-&gt;Form-&gt;inputs(array(
+'username',
+'name'
+));
+echo $this-&gt;Form-&gt;end('Save');
+?&gt;
+</pre></div><p>We also need a custom route to try out the validation. Edit your<code class="literal"> app/config/routes.php</code> file and add the following route at the beginning:<a id="id207" class="indexterm"/>
+</p><div class="informalexample"><pre class="programlisting">Router::connect('/home', array(
+'controller' =&gt; 'pages', 'action' =&gt; 'display', 'home'
+));
+</pre></div></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec20"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Edit your<code class="literal"> app/models/profile.php</code> file and make the following changes:<div class="informalexample"><pre class="programlisting">&lt;?php
+class Profile extends AppModel {
+public $validate = array(
+'username' =&gt; array(
+'notEmpty',
+'valid' =&gt; array(
+'rule' =&gt; 'validateUsername',
+'message' =&gt; 'This user name is reserved'
+)
+),
+'name' =&gt; 'notEmpty'
+);
+}
+?&gt;
+</pre></div></li><li class="listitem">While still editing your<code class="literal"> app/models/profile.php</code> file, add the following method to the<code class="literal"> Profile</code> class:<div class="informalexample"><pre class="programlisting">public function validateUsername($value, $params) {
+$reserved = Router::prefixes();
+$controllers = array_diff(
+Configure::listObjects('controller'),
+(array) 'App'
+);
+if (!empty($controllers)) {
+$reserved = array_merge($reserved, array_map(array('Inflector', 'underscore'), $controllers));
+}
+$routes = Router::getInstance()-&gt;routes;
+if (!empty($routes)) {
+foreach($routes as $route) {
+if (!empty($route-&gt;template) &amp;&amp; preg_match('/^\/([^\/:]+)/', $route-&gt;template, $matches)) {
+$reserved[] = strtolower($matches[1]);
+}
+}
+}
+return !in_array(strtolower(array_shift($value)), $reserved);
+}
+</pre></div></li></ol></div><p>If you now browse to<code class="literal"> http://localhost/profiles/add</code> and specify<span class="strong"><strong> home</strong></span> as the user name and<span class="strong"><strong> Mark Doe</strong></span> as the name, you will get a validation error message informing you that the username is reserved, as shown in the following screenshot:<a id="id208" class="indexterm"/>
+</p><div class="mediaobject"><img src="graphics/1926_06_03.jpg" alt="How to do it..."/></div></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec21"/>How it works...</h2></div></div></div><p>First we add validation rules for two fields:<code class="literal"> username</code>, and<code class="literal"> name</code>. The validation for the<code class="literal"> username</code> field consists of two rules: a built-in<code class="literal"> notEmpty</code> rule, and a custom validation rule named<code class="literal"> validateUsername</code>. The<code class="literal"> name</code> field has only one rule:<code class="literal"> notEmpty</code>.<a id="id209" class="indexterm"/>
+</p><p>In our<code class="literal"> validateUsername</code> rule implementation, we start by storing all routing prefixes into a list of reserved words. We then get a list of all controllers, using the<code class="literal"> Configure::listObjects()</code> method, and excluding the value<code class="literal"> App</code>, which is the base of our controllers (and as such not directly accessible). Then we convert each name to its lower case, underscored form.</p><p>We then obtain the list of all defined routes by getting the instance of the<code class="literal"> Router</code> class and accessing its<code class="literal"> routes</code> public property, and for each of those routes we look for their<code class="literal"> template</code> property.</p><p>This property stores the string representation of a route. For the route we defined during the<span class="emphasis"><em> Getting ready</em></span> section, this would be<code class="literal"> /home</code>. We are only interested in the starting portion of this value (that is, anything after the first slash, and before the second one), so we use a regular expression to match and extract that value, and then we add it to the list of reserved words.<a id="id210" class="indexterm"/>
+</p><p>In our example, the list of reserved words would be:<code class="literal"> pages, profiles</code>, and<code class="literal"> home</code>. The first two come from the list of our application controllers, and the last one comes from our custom route.</p><p>Once we have the list of reserved words, we set the field as valid only if the given value is not within this list.</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec22"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Adding catch-all routes for profile pages</em></span></li></ul></div></div></div>
+<div class="section" title="Creating custom Route classes"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec07"/>Creating custom Route classes</h1></div></div></div><p>In the recipe<span class="emphasis"><em> Adding catch-all routes for profile pages</em></span> we created routes so that profile pages can be accessed specifying only the user name in the URL. However, that implementation had a problem: we had to disallow the automatic access of the<code class="literal"> index</code> action.<a id="id211" class="indexterm"/>
+</p><p>This recipe shows a different approach to our profile URL generation, by creating a custom route implementation that not only overcomes this problem, but makes sure the route is utilized only for existing profile records.</p><div class="section" title="Getting ready"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec23"/>Getting ready</h2></div></div></div><p>We need some sample data to work with. Follow the<span class="emphasis"><em> Getting ready</em></span> section of the recipe<span class="emphasis"><em> Adding catch-all routes for profile pages</em></span>.</p></div><div class="section" title="How to do it..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec24"/>How to do it...</h2></div></div></div><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Edit your<code class="literal"> app/config/routes.php</code> file and add the following routes at the end of the file:<div class="informalexample"><pre class="programlisting">App::import('Lib', 'ProfileRoute');
+Router::connect('/:userName',
+array('controller' =&gt; 'profiles', 'action' =&gt; 'view'),
+array(
+'routeClass' =&gt; 'ProfileRoute',
+'pass' =&gt; array('userName')
+)
+);
+</pre></div></li><li class="listitem">Now create a file named<code class="literal"> profile_route.php</code> and place it in your<code class="literal"> app/libs</code> folder, with the following contents:<a id="id212" class="indexterm"/><div class="informalexample"><pre class="programlisting">&lt;?php
+App::import('Core', 'Router');
+class ProfileRoute extends CakeRoute {
+public function match($url) {
+if (!empty($url['userName']) &amp;&amp; $this-&gt;_exists($url['userName'])) {
+return parent::match($url);
+}
+return false;
+}
+public function parse($url) {
+$params = parent::parse($url);
+if (!empty($params) &amp;&amp; $this-&gt;_exists($params['userName'])) {
+return $params;
+}
+return false;
+}
+protected function _exists($userName) {
+$userNames = Cache::read('usernames');
+if (empty($userNames)) {
+$profiles = ClassRegistry::init('Profile')-&gt;find('all', array(
+'fields' =&gt; array('username'),
+'recursive' =&gt; -1
+));
+if (!empty($profiles)) {
+$userNames = array_map(
+'strtolower',
+Set::extract('/Profile/username', $profiles)
+);
+Cache::write('usernames', $userNames);
+}
+}
+return in_array($userName, (array) $userNames);
+}
+}
+?&gt;
+</pre></div></li><li class="listitem">Next, edit your<code class="literal"> app/models/profile.php</code> file and add the following methods to the<code class="literal"> Profile</code> class:<div class="informalexample"><pre class="programlisting">public function afterSave($created) {
+parent::afterSave($created);
+Cache::delete('usernames');
+}
+public function afterDelete() {
+parent::afterDelete();
+Cache::delete('usernames');
+}
+</pre></div></li></ol></div><p>You can now browse to<code class="literal"> http://localhost/john</code> to see John's profile page. Specifying an invalid name in the URL (such as <code class="literal">http://localhost/kate</code>) would produce the regular CakePHP error page, while browsing to<code class="literal"> http://localhost/profiles</code> will correctly take us to the profile index page.</p></div><div class="section" title="How it works..."><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec25"/>How it works...</h2></div></div></div><p>We start by first importing our custom route class file, and then defining a catch-all route for the<code class="literal"> view</code> action of the<code class="literal"> profiles</code> controller, using the custom<code class="literal"> ProfileRoute</code> class, and setting the<code class="literal"> userName</code> route element to be passed as a regular argument.<a id="id213" class="indexterm"/>
+</p><p>The<code class="literal"> ProfileRoute</code> implementation implements two of the most typical route class methods:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem"><code class="literal"> match()</code>: It is used during reverse routing to convert an array-based URL into its string representation. If the method returns<code class="literal"> false</code>, then the provided URL does not fall into this route.<a id="id214" class="indexterm"/></li><li class="listitem"><code class="literal"> parse()</code>: It is used when parsing a requested URL into an array-based URL, specifying<code class="literal"> controller, action</code>, and other parameters. If the method returns<code class="literal"> false</code>, then this tells CakePHP that the given URL is not handled by this route.<a id="id215" class="indexterm"/></li></ol></div><p>We created a helper method, called<code class="literal"> _exists()</code>, to assist us, which looks for the given username amongst the registered records. We cache the list of usernames for obvious performance reasons, and we invalidate this cache whenever a record is created, modified, or deleted, by implementing the<code class="literal"> afterSave</code> and<code class="literal"> afterDelete</code> callbacks in the<code class="literal"> Profile</code> model.</p><p>Our<code class="literal"> match()</code> implementation first checks to make sure the<code class="literal"> userName</code> route element is provided. If so, and if the given user exists, it will use the parent implementation to return the string representation. In any other case (no username provided, or nonexistent), it will not process the given URL.<a id="id216" class="indexterm"/>
+</p><p>The<code class="literal"> parse()</code> implementation starts by calling its parent implementation to convert the string URL into an array based URL. If that call is successful (which means it contains the<code class="literal"> userName</code> route element), and if the given user name exists, it returns the conversion. Otherwise it returns<code class="literal"> false</code> to not process the given URL. Another route handler, or CakePHP's default route handler, will process it.<a id="id217" class="indexterm"/>
+</p></div><div class="section" title="See also"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec26"/>See also</h2></div></div></div><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Adding catch-all routes for profile pages</em></span></li><li class="listitem" style="list-style-type: disc"><span class="emphasis"><em>Custom route classes</em></span></li></ul></div></div></div></body></html>
