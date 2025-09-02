@@ -1,6 +1,6 @@
-# Python 卖空算法教程
+# 通过构建项目学习 WordPress 主题创建
 
-> 原文：[`zh.annas-archive.org/md5/ceefdd89e585c59c20db6a7760dc11f1`](https://zh.annas-archive.org/md5/ceefdd89e585c59c20db6a7760dc11f1)
+> 原文：[`zh.annas-archive.org/md5/fee03013415e4cf667ae8ebd04f177fc`](https://zh.annas-archive.org/md5/fee03013415e4cf667ae8ebd04f177fc)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 
