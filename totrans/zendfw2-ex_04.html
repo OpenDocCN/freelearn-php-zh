@@ -1,0 +1,374 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;4.&#xA0;Data Management and Document Sharing"><div class="titlepage"><div><div><h1 class="title"><a id="ch04"/>Chapter 4. Data Management and Document Sharing</h1></div></div></div><p>
+<span class="emphasis"><em>After getting ready to write your own basic models in the previous chapters, you can now learn how to make the most out of your Zend Framework's data and file management concepts in this chapter.</em></span>
+</p><p>In this chapter we will cover the following key topics:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Zend Framework 2 ServiceManager</li><li class="listitem" style="list-style-type: disc">The <code class="literal">TableGateway</code> pattern</li><li class="listitem" style="list-style-type: disc">File uploads and file sharing using Zend Framework</li></ul></div><div class="section" title="Zend Framework 2 ServiceManager"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec37"/>Zend Framework 2 ServiceManager</h1></div></div></div><p>The ZF2 ServiceManager implements the service locator design pattern. The service locator is a service/object<a id="id270" class="indexterm"/> locator used for retrieving other objects.</p><p>The ServiceManager<a id="id271" class="indexterm"/> configurations are classified into six main categories; your application/module configuration will fall under one or more of the categories listed in the following table:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Configuration type</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Description</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>abstract_factories</p>
+</td><td style="text-align: left" valign="top">
+<p>Used<a id="id272" class="indexterm"/> to define<a id="id273" class="indexterm"/> an array of abstract classes.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>aliases</p>
+</td><td style="text-align: left" valign="top">
+<p>Used<a id="id274" class="indexterm"/> to define an associative <a id="id275" class="indexterm"/>array of alias name / target name pairs.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>factories</p>
+</td><td style="text-align: left" valign="top">
+<p>Used<a id="id276" class="indexterm"/> to define an<a id="id277" class="indexterm"/> array of service name / factory class name pairs. The factory classes defined here should either implement Zend/ServiceManager/FactoryInterface or invokable classes.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>invokables</p>
+</td><td style="text-align: left" valign="top">
+<p>Used <a id="id278" class="indexterm"/>to define an<a id="id279" class="indexterm"/> array of service name / class name pairs. The classes listed here may be directly instantiated without any constructor arguments.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>services</p>
+</td><td style="text-align: left" valign="top">
+<p>Used <a id="id280" class="indexterm"/>to define an array<a id="id281" class="indexterm"/> of service name / object pairs. The service is basically an instance of a class. Services can be used to register classes which are already initialized.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>shared</p>
+</td><td style="text-align: left" valign="top">
+<p>Used <a id="id282" class="indexterm"/>to define an array<a id="id283" class="indexterm"/> of service name / Boolean pairs, indicating whether or not a service should be shared. All services are shared by default; this ServiceManager option can be used to disable sharing on specific services.</p>
+</td></tr></tbody></table></div><p>The ServiceManager configuration can be stored either in the application configuration or in the module configuration; this can be chosen according to the needs, application, or module. <a id="id284" class="indexterm"/>Usually, the configuration, which is static across the application, is stored in the application-level configuration; all other information is stored at a module level.</p><p>The configuration for ServiceManager is merged in the following order:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Module<a id="id285" class="indexterm"/> configuration provided by the <code class="literal">Module</code> lass using the <code class="literal">getServiceConfig()</code> method. This will be processed in the same order in which the modules are processed:<div class="informalexample"><pre class="programlisting">    public function getServiceConfig()
+    {
+        return array(
+            'abstract_factories' =&gt; array(),
+            'aliases' =&gt; array(),
+            'factories' =&gt; array(),
+            'invokables' =&gt; array(),
+            'services' =&gt; array(),
+            'shared' =&gt; array(),
+        );
+    }</pre></div></li><li class="listitem">Module configuration is present in the <code class="literal">service_manager</code> key; again, this is processed in the same order in which the modules are processed.</li><li class="listitem">Application configuration is present in various configuration files in the <code class="literal">config/autoload/</code> <a id="id286" class="indexterm"/>directory in the order in which they are processed:<div class="informalexample"><pre class="programlisting">&lt;?php
+return array(
+    'service_manager' =&gt; array(
+        'abstract_factories' =&gt; array(),
+        'aliases' =&gt; array(),
+        'factories' =&gt; array(),
+        'invokables' =&gt; array(),
+        'services' =&gt; array(),
+        'shared' =&gt; array(),
+    ),
+);</pre></div></li></ol></div></div></div>
+<div class="section" title="Time for action &#x2013; migrating existing code to ServiceManager"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec38"/>Time for action – migrating existing code to ServiceManager</h1></div></div></div><p>Our next <a id="id287" class="indexterm"/>step will be to migrate existing <a id="id288" class="indexterm"/>code blocks to make use of ServiceManager. <a id="id289" class="indexterm"/>Some of the key factories that can be moved into ServiceManager are as follows:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Database connections</li><li class="listitem" style="list-style-type: disc">Models and table gateways</li><li class="listitem" style="list-style-type: disc">Forms and filters</li><li class="listitem" style="list-style-type: disc">Authentication service</li></ul></div><p>If you review the existing code, you will be able to figure out that all the database connections are already using the Zend Framework 2 ServiceManager model for storing credentials. We will take one step forward and move the rest of the factories into ServiceManager using the following steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Modify <code class="literal">Module.php</code> and add a new function to load the ServiceManager configuration:<div class="informalexample"><pre class="programlisting">public function getServiceConfig()
+{
+  return array(
+    'abstract_factories' =&gt; array(),
+    'aliases' =&gt; array(),
+    'factories' =&gt; array(
+     
+      // DB
+      'UserTable' =&gt;  function($sm) {
+        $tableGateway = $sm-&gt;get('UserTableGateway');
+        $table = new UserTable($tableGateway);
+        return $table;
+      },
+      'UserTableGateway' =&gt; function ($sm) {
+        $dbAdapter = $sm-&gt;get('Zend\Db\Adapter\Adapter');
+        $resultSetPrototype = new ResultSet();
+        $resultSetPrototype-&gt;setArrayObjectPrototype(new User());
+        return new TableGateway('user', $dbAdapter, null, $resultSetPrototype);
+      },
+
+      // FORMS
+      'LoginForm' =&gt; function ($sm) {
+        $form = new \Users\Form\LoginForm();
+        $form-&gt;setInputFilter($sm-&gt;get('LoginFilter'));
+        return $form;
+      },
+      'RegisterForm' =&gt; function ($sm) {
+        $form = new \Users\Form\RegisterForm();
+        $form-&gt;setInputFilter($sm-&gt;get('RegisterFilter'));
+        return $form;
+      },
+      
+      // FILTERS
+      'LoginFilter' =&gt; function ($sm) {
+        return new \Users\Form\LoginFilter();
+      },
+      'RegisterFilter' =&gt; function ($sm) {
+        return new \Users\Form\RegisterFilter();
+      },
+    ),
+    'invokables' =&gt; array(),
+    'services' =&gt; array(),
+    'shared' =&gt; array(),
+  );
+}</pre></div></li><li class="listitem">Make<a id="id290" class="indexterm"/> sure <a id="id291" class="indexterm"/>that the <code class="literal">Module.php</code> file<a id="id292" class="indexterm"/> includes all the necessary<a id="id293" class="indexterm"/> namespaces:<div class="informalexample"><pre class="programlisting">use Users\Model\User;
+use Users\Model\UserTable;
+
+use Zend\Db\ResultSet\ResultSet;
+use Zend\Db\TableGateway\TableGateway;</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip21"/>Tip</h3><p>
+<span class="strong"><strong>Using namespaces</strong></span>
+</p><p>Namespaces<a id="id294" class="indexterm"/> can be utilized by making use of PHP 5.3's <code class="literal">namespace</code> and <code class="literal">use</code> keywords. All ZF2 classes have a namespace which directly matches with the folder<a id="id295" class="indexterm"/> structure of the folder holding that class; all classes stored within that folder are directly determined by their namespace.</p><p>By <a id="id296" class="indexterm"/>default, the <code class="literal">use</code> keyword creates an alias<a id="id297" class="indexterm"/> for the last segment of the namespace, and this can be changed by using the <code class="literal">as</code> option on the keyword. For example, see the following code:</p><div class="informalexample"><pre class="programlisting">use Zend\Form\Element as Element;
+use Zend\Form\Element; // same as previous line</pre></div></div></div></li><li class="listitem">Make necessary changes to the controllers to fetch the instances from ServiceManager:<div class="informalexample"><pre class="programlisting">// to get Login Form
+$form = $this-&gt;getServiceLocator()-&gt;get('LoginForm');
+
+// to get User Table
+$userTable = $this-&gt;getServiceLocator()-&gt;get('UserTable');</pre></div></li><li class="listitem">To<a id="id298" class="indexterm"/> check if the changes are working as expected, try to register and log in with new credentials.</li></ol></div><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec37"/>
+<span class="emphasis"><em>What just happened?</em></span>
+</h2></div></div></div><p>We have <a id="id299" class="indexterm"/>migrated our code to make use of Zend's ServiceManager framework. ServiceManager provides enormous benefits in terms of a cleaner code, highly effective refactoring ability, and a centralized register for core application components.</p></div><div class="section" title="Have a go hero"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec38"/>Have a go hero</h2></div></div></div><p>Now <a id="id300" class="indexterm"/>that you have understood Zend ServiceManager functionality, here is a simple task for you. The login controller (<code class="literal">CommunicationApp/module/Users/src/Users/Controller/LoginController.php</code>) makes use of <code class="literal">getAuthService()</code><a id="id301" class="indexterm"/> for the authentication service. Modify the function, so that the authentication service is obtained from ServiceManger.</p></div></div>
+<div class="section" title="Database operations"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec39"/>Database operations</h1></div></div></div><p>In the<a id="id302" class="indexterm"/> previous chapter we learned how to implement a basic database operation, namely, <code class="literal">table insert</code>. In this section, you will learn all the basic database<a id="id303" class="indexterm"/> operations necessary for building a simple <span class="strong"><strong>CRUD</strong></span> (<span class="strong"><strong>Create, Read, Update and Delete</strong></span>) interface.</p><div class="section" title="More on TableGateway"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec39"/>More on TableGateway</h2></div></div></div><p>The <code class="literal">TableGateway</code> class<a id="id304" class="indexterm"/> extends <code class="literal">AbstractTableGateway</code>, which implements <code class="literal">TableGatewayInterface</code>. The interface definition of <code class="literal">TableGatewayInterface</code> is provided in the following code snippet; all the basic table operations are defined in the interface:</p><div class="informalexample"><pre class="programlisting">interface Zend\Db\TableGateway\TableGatewayInterface
+{
+    public function getTable();
+    public function select($where = null);
+    public function insert($set);
+    public function update($set, $where = null);
+    public function delete($where);
+}</pre></div><p>The <code class="literal">TableGateway</code> class<a id="id305" class="indexterm"/> offers a wide range of methods to perform basic database operations; some of the most frequently used methods are explained in the following section:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">getTable()</code>: Returns<a id="id306" class="indexterm"/> a string<a id="id307" class="indexterm"/> which contains the table name mapped with the <code class="literal">TableGateway</code> object. For example, see the following code:<div class="informalexample"><pre class="programlisting">$myTableName = $myTableGateway-&gt;getTable();</pre></div></li><li class="listitem" style="list-style-type: disc"><code class="literal">select($where = null)</code>: Used to select a set of rows with the criteria specified<a id="id308" class="indexterm"/> in <code class="literal">$where</code>;<a id="id309" class="indexterm"/> it can either be a <code class="literal">where</code> condition<a id="id310" class="indexterm"/> based on <code class="literal">Zend\Db\Sql\Where</code> or an array of criteria. For example, see the following code:<div class="informalexample"><pre class="programlisting">$rowset = $myTableGateway-&gt;select( array('id' =&gt; 2));</pre></div></li><li class="listitem" style="list-style-type: disc"><code class="literal">insert($set)</code>: Used<a id="id311" class="indexterm"/> to insert<a id="id312" class="indexterm"/> the data defined in <code class="literal">$set</code> into the table as a new record. For example, see the following code:<div class="informalexample"><pre class="programlisting">$myTableGateway-&gt;insert( array('id' =&gt; 2, 'name'=&gt;'Ravi'));</pre></div></li><li class="listitem" style="list-style-type: disc"><code class="literal">update($set, $where = null)</code>: Used<a id="id313" class="indexterm"/> to update a set of rows with the criteria <a id="id314" class="indexterm"/>specified in <code class="literal">$where</code>; it can either be a <code class="literal">where</code> condition based on <code class="literal">Zend\Db\Sql\Where</code> or an array of criteria. <code class="literal">$set</code> holds the data that will be updated for all the records matched with <code class="literal">$where</code>. For example, see the following code:<div class="informalexample"><pre class="programlisting">$rowset = $myTableGateway-&gt;update(array('name' =&gt; 'Jerry') , array('id' =&gt; 2));</pre></div></li><li class="listitem" style="list-style-type: disc"><code class="literal">delete($where)</code>: Used to delete a set of rows with the criteria specified in <code class="literal">$where</code>;<a id="id315" class="indexterm"/> it can either be a <code class="literal">where</code> condition <a id="id316" class="indexterm"/>based on <code class="literal">Zend\Db\Sql\Where</code> or an array of criteria. For example, see the following code:<div class="informalexample"><pre class="programlisting">$myTableGateway-&gt;delete( array('id' =&gt; 2));</pre></div></li><li class="listitem" style="list-style-type: disc"><code class="literal">getLastInsertValue()</code>: Returns<a id="id317" class="indexterm"/> the last <code class="literal">insert</code> value<a id="id318" class="indexterm"/> for the table's primary<a id="id319" class="indexterm"/> key. the return type is an integer. For example, see the following code:<div class="informalexample"><pre class="programlisting">$myTableGateway-&gt;insert( array('name'=&gt;'Ravi'));
+$insertId = $myTableGateway-&gt; getLastInsertValue ();</pre></div></li></ul></div></div></div>
+<div class="section" title="Time for action &#x2013; implementing an admin UI to manage users"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec40"/>Time for action – implementing an admin UI to manage users</h1></div></div></div><p>In this<a id="id320" class="indexterm"/> task we will be creating <a id="id321" class="indexterm"/>an administration user interface<a id="id322" class="indexterm"/> for managing users in our application. The following operations will include listing all users, editing existing users, deleting users, and adding users:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Modify <code class="literal">CommunicationApp/module/Users/src/Users/Model/UserTable.php</code> using<a id="id323" class="indexterm"/> the <a id="id324" class="indexterm"/>following code. Add the following functions:<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">fetchAll()</code><a id="id325" class="indexterm"/></li><li class="listitem" style="list-style-type: disc"><code class="literal">getUser($id)</code><a id="id326" class="indexterm"/></li><li class="listitem" style="list-style-type: disc"><code class="literal">getUserByEmail($userEmail)</code><a id="id327" class="indexterm"/></li><li class="listitem" style="list-style-type: disc"><code class="literal">deleteUser($id)</code><a id="id328" class="indexterm"/><div class="informalexample"><pre class="programlisting">public function fetchAll()
+{
+  $resultSet = $this-&gt;tableGateway-&gt;select();
+  return $resultSet;
+}
+
+public function getUser($id)
+{
+  $id  = (int) $id;
+  $rowset = $this-&gt;tableGateway-&gt;select(array('id' =&gt; $id));
+  $row = $rowset-&gt;current();
+  if (!$row) {
+    throw new \Exception("Could not find row $id");
+  }
+  return $row;
+}
+
+public function getUserByEmail($userEmail)
+{
+  $rowset = $this-&gt;tableGateway-&gt;select(array('email' =&gt; $userEmail));
+  $row = $rowset-&gt;current();
+  if (!$row) {
+    throw new \Exception("Could not find row $ userEmail");
+  }
+  return $row;
+}
+
+public function deleteUser($id)
+{
+  $this-&gt;tableGateway-&gt;delete(array('id' =&gt; $id));
+}</pre></div></li></ul></div></li><li class="listitem">Create<a id="id329" class="indexterm"/> a new<a id="id330" class="indexterm"/> controller<a id="id331" class="indexterm"/> for <a id="id332" class="indexterm"/>user management<a id="id333" class="indexterm"/> under <code class="literal">CommunicationApp/module/Users/src/Users/Controller/UserManagerController.php</code>.</li><li class="listitem">The <code class="literal">UserManagerController</code><a id="id334" class="indexterm"/> controller will <a id="id335" class="indexterm"/>have the following actions:<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">indexAction()</code>: This<a id="id336" class="indexterm"/> is used to render <a id="id337" class="indexterm"/>all available users in the system, and we will also render links to add/edit and delete links as shown in the following code:<div class="informalexample"><pre class="programlisting">$userTable = $this-&gt;getServiceLocator()
+                              -&gt;get('UserTable');
+$viewModel  = new ViewModel(array(
+                 'users' =&gt; $userTable-&gt;fetchAll())); 
+return $viewModel;</pre></div></li><li class="listitem" style="list-style-type: disc"><code class="literal">editAction()</code>: This <a id="id338" class="indexterm"/>action<a id="id339" class="indexterm"/> is used to render the <code class="literal">edit</code> form to modify the information related to the user:<div class="informalexample"><pre class="programlisting">$userTable = $this-&gt;getServiceLocator()
+                              -&gt;get('UserTable');
+$user = $userTable-&gt;getUser(
+                       $this-&gt;params()-&gt;fromRoute('id')); 
+$form = $this-&gt;getServiceLocator()
+                         -&gt;get('UserEditForm');
+$form-&gt;bind($user);
+$viewModel  = new ViewModel(array(
+           'form' =&gt; $form, 
+           'user_id' =&gt; $this-&gt;params()-&gt;fromRoute('id')
+          ));
+return $viewModel;</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip22"/>Tip</h3><p>
+<span class="strong"><strong>The bind method</strong></span>
+</p><p>The <code class="literal">bind</code> method used in the <code class="literal">Form</code> function allows the mapping of the model to a form. The function works in two directions—it updates the form in the view with<a id="id340" class="indexterm"/> the<a id="id341" class="indexterm"/> data from the model and<a id="id342" class="indexterm"/> it updates the model with the form submission data if the form is validated, that is, <code class="literal">$form-&gt;isValid()</code>.</p><p>Read more here:</p><p>
+<a class="ulink" href="http://framework.zend.com/manual/2.2/en/modules/zend.form.quick-start.html#binding-an-object">http://framework.zend.com/manual/2.2/en/modules/zend.form.quick-start.html#binding-an-object</a>
+</p></div></div></li><li class="listitem" style="list-style-type: disc"><code class="literal">processAction()</code>: The <a id="id343" class="indexterm"/><code class="literal">processAction</code><a id="id344" class="indexterm"/> action is used when the user <code class="literal">edit</code> form is submitted; <code class="literal">processAction</code> saves the updated record and returns to <code class="literal">indexAction</code>:<div class="informalexample"><pre class="programlisting">// Get User ID from POST
+$post = $this-&gt;request-&gt;getPost();
+$userTable = $this-&gt;getServiceLocator()
+                              -&gt;get('UserTable');       
+// Load User entity
+$user = $userTable-&gt;getUser($post-&gt;id);
+
+// Bind User entity to Form
+$form = $this-&gt;getServiceLocator()
+                         -&gt;get('UserEditForm');
+$form-&gt;bind($user);	
+$form-&gt;setData($post);
+
+// Save user
+$this-&gt;getServiceLocator()
+                 -&gt;get('UserTable')-&gt;saveUser($user);</pre></div></li><li class="listitem" style="list-style-type: disc"><code class="literal">deleteAction()</code>: This<a id="id345" class="indexterm"/> action is used to<a id="id346" class="indexterm"/> delete the user record:<div class="informalexample"><pre class="programlisting">$this-&gt;getServiceLocator()-&gt;get('UserTable')
+        -&gt;deleteUser($this-&gt;params()
+        -&gt;fromRoute('id'));</pre></div></li></ul></div></li><li class="listitem">Create the <a id="id347" class="indexterm"/>necessary <a id="id348" class="indexterm"/>views<a id="id349" class="indexterm"/> and modify the <a id="id350" class="indexterm"/>module's <code class="literal">config/module.config.php</code> file to <a id="id351" class="indexterm"/>specify a unique child route to access this controller:<div class="informalexample"><pre class="programlisting">'user-manager' =&gt; array(
+  'type'    =&gt; 'Segment',
+  'options' =&gt; array(
+    'route'    =&gt; '/user-manager[/:action[/:id]]',
+    'constraints' =&gt; array(
+      'action'     =&gt; '[a-zA-Z][a-zA-Z0-9_-]*',
+      'id'     =&gt; '[a-zA-Z0-9_-]*',
+    ),
+    'defaults' =&gt; array(
+      'controller' =&gt; 'Users\Controller\UserManager',
+      'action'     =&gt; 'index',
+    ),
+  ),
+),</pre></div></li><li class="listitem">Finally add <a id="id352" class="indexterm"/>the new controller to the <code class="literal">invokables</code> array:<div class="informalexample"><pre class="programlisting">'Users\Controller\UserManager' =&gt; 'Users\Controller\UserManagerController',</pre></div></li><li class="listitem">Now open your web browser and access the controller, log in to your application, and open <code class="literal">http://comm.-app.local/users/user-manager</code>. You should be able to see a page similar to the one given in the following screenshot:<div class="mediaobject"><img src="graphics/1929OS_04_01.jpg" alt="Time for action – implementing an admin UI to manage users"/></div></li></ol></div><p>The <a id="id353" class="indexterm"/>
+<span class="strong"><strong>Edit user</strong></span> <a id="id354" class="indexterm"/>link <a id="id355" class="indexterm"/>should <a id="id356" class="indexterm"/>redirect you to an user edit form like the one in the following screenshot:</p><div class="mediaobject"><img src="graphics/1929OS_04_02.jpg" alt="Time for action – implementing an admin UI to manage users"/></div><p>The <span class="strong"><strong>Delete user</strong></span><a id="id357" class="indexterm"/> link<a id="id358" class="indexterm"/> can be used to remove <a id="id359" class="indexterm"/>the user from the user list:</p><div class="mediaobject"><img src="graphics/1929OS_04_03.jpg" alt="Time for action – implementing an admin UI to manage users"/></div><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec40"/>
+<span class="emphasis"><em>What just happened?</em></span>
+</h2></div></div></div><p>We have<a id="id360" class="indexterm"/> now created an administration user interface for adding, modifying, and removing <a id="id361" class="indexterm"/>users from our communication application. We have utilized all the core functionalities of the <code class="literal">TableGateway</code> model and created functions for performing CRUD operations on the table access objects.</p><p>Going forward, we will be making use of some of the more advanced applications of <code class="literal">TableGateway</code>. </p></div><div class="section" title="Have a go hero"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec41"/>Have a go hero</h2></div></div></div><p>Before we move on to the next section, here is a small task for you to practice. Your task for this section will be to create a new <code class="literal">Add User</code> form. Refer to the following screenshot:</p><div class="mediaobject"><img src="graphics/1929OS_04_04.jpg" alt="Have a go hero"/></div><p>This form will be similar to the <code class="literal">Register Form</code> that we created in the previous chapter. Once the <a id="id362" class="indexterm"/>form is<a id="id363" class="indexterm"/> submitted, the user will be taken back to the user listing page. A link to this form will have to be added in the user listing page.</p></div></div>
+<div class="section" title="Document management"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec41"/>Document management</h1></div></div></div><p>In this section we will create a new document management interface. The document management interface will allow users to upload documents, manage uploads, and share uploaded documents with other users. The user interface will also allow users to manage sharing, and add/remove shares.</p><p>In this section, we will focus on providing users with options to create file uploads and manage those uploads. We will be using the filesystem to store the uploaded file and the relative path of the uploaded file will be stored in the database mapped to the user who uploaded the file.</p><p>Some of the<a id="id364" class="indexterm"/> important Zend Framework components used in file uploads are:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">File upload form element (<code class="literal">Zend\Form\Element\File</code>): The <code class="literal">File</code> upload element<a id="id365" class="indexterm"/> is used in<a id="id366" class="indexterm"/> the upload form to display a file input box. This element is an equivalent of the <code class="literal">&lt;input type='file'../&gt;</code> style element in HTML used for allowing users to upload files. The file input element can be rendered by setting <code class="literal">'type' =&gt; 'file'</code> in the form definition.</li><li class="listitem" style="list-style-type: disc">File transfer adapter (<code class="literal">Zend\File\Transfer\Adapter\Http</code>): The file transfer<a id="id367" class="indexterm"/> adapter handle<a id="id368" class="indexterm"/> file uploads upon form submission. The <code class="literal">setDestination()</code> method<a id="id369" class="indexterm"/> in the file transfer adapter allows the user to set a destination and receive the file in that destination. The <code class="literal">receive()</code> method<a id="id370" class="indexterm"/> is used to initiate the transfer.</li></ul></div></div>
+<div class="section" title="Time for action &#x2013; creating a file upload form"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec42"/>Time for action – creating a file upload form</h1></div></div></div><p>In this <a id="id371" class="indexterm"/>task, we will be creating a new document upload form; file uploads will be stored in the filesystem, and the information regarding the file upload will be stored in the database in a table named <code class="literal">uploads</code>. The file uploads are stored in a folder location defined in the module configuration. Perform the following steps to do so:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Our first step will be to define a location where files can be uploaded in the module's configuration (<code class="literal">config/module.config.php</code>):<div class="informalexample"><pre class="programlisting">&lt;?php
+return array(
+  // Other configurations
+  // ..
+  // ..
+  // MODULE CONFIGURATIONS
+  'module_config' =&gt; array(
+    'upload_location' =&gt; __DIR__ . '/../data/uploads',
+  ),
+);</pre></div></li><li class="listitem">Next, we need to create a table which will store the upload information:<div class="informalexample"><pre class="programlisting">CREATE TABLE IF NOT EXISTS uploads (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY ,
+  filename VARCHAR( 255 ) NOT NULL ,
+  label VARCHAR( 255 ) NOT NULL ,
+  user_id INT NOT NULL,
+  UNIQUE KEY (filename)
+);</pre></div></li><li class="listitem">Create<a id="id372" class="indexterm"/> the <code class="literal">Upload</code> and <code class="literal">UploadTable</code> classes for interacting with the <code class="literal">uploads</code> table. Add default methods such as <code class="literal">saveUpload()</code><a id="id373" class="indexterm"/>, <code class="literal">fetchAll()</code>, <code class="literal">getUpload()</code><a id="id374" class="indexterm"/>, and <code class="literal">deleteUpload()</code>.<a id="id375" class="indexterm"/> Also, <a id="id376" class="indexterm"/>add a method to get uploads made by a specific user <code class="literal">getUploadsByUserId($userId)</code>:<div class="informalexample"><pre class="programlisting">public function getUploadsByUserId($userId)
+{
+  $userId  = (int) $userId;
+  $rowset = $this-&gt;tableGateway-&gt;select(
+        array('user_id' =&gt; $userId));
+  return $rowset;
+}</pre></div></li><li class="listitem">Create an <code class="literal">UploadManagerController</code> controller for managing file uploads. Add<a id="id377" class="indexterm"/> <code class="literal">indexAction()</code><a id="id378" class="indexterm"/> to display the list of uploads done by the user:<div class="informalexample"><pre class="programlisting">$uploadTable = $this-&gt;getServiceLocator()
+                             -&gt;get('UploadTable');
+$userTable = $this-&gt;getServiceLocator()
+                             -&gt;get('UserTable');
+// Get User Info from Session
+$userEmail = $this-&gt;getAuthService()
+                             -&gt;getStorage()-&gt;read();
+$user = $userTable-&gt;getUserByEmail($userEmail);
+
+$viewModel  = new ViewModel( array(
+'myUploads' =&gt; $uploadTable-&gt;getUploadsByUserId($user-&gt;id),
+));
+return $viewModel;</pre></div></li><li class="listitem">Create<a id="id379" class="indexterm"/> an upload form with a file input as described in the following code snippet:<div class="informalexample"><pre class="programlisting">$this-&gt;add(array(
+  'name' =&gt; 'fileupload',
+  'attributes' =&gt; array(
+    'type'  =&gt; 'file',
+  ),
+  'options' =&gt; array(
+    'label' =&gt; 'File Upload',
+  ),
+));</pre></div><div class="mediaobject"><img src="graphics/1929OS_04_05.jpg" alt="Time for action – creating a file upload form"/><div class="caption"><p>Upload form</p></div></div></li><li class="listitem">Create views for the file upload form, and the <code class="literal">index</code> action. Now we have all the necessary elements to handle a file upload. We need to read the configuration for the file upload path and use the Zend HTTP file transfer adapter<a id="id380" class="indexterm"/> to receive the file in the configuration location. The <code class="literal">get('config')</code> method on the service<a id="id381" class="indexterm"/> locator is used to retrieve the configuration. The following code is used to read the file upload location from the configuration:<div class="informalexample"><pre class="programlisting">public function getFileUploadLocation()
+{
+  // Fetch Configuration from Module Config
+  $config  = $this-&gt;getServiceLocator()-&gt;get('config');
+  return $config['module_config']['upload_location'];
+}</pre></div></li><li class="listitem">The last step is to handle the file upload process. There are two actions that need to happen once the form is successfully submitted:<div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">The uploaded file has to be moved to the file upload locations.</li><li class="listitem">An entry needs to be added describing the upload in the <code class="literal">'uploads'</code> table using the following code:<div class="informalexample"><pre class="programlisting">$uploadFile = $this-&gt;params()-&gt;fromFiles('fileupload');
+$form-&gt;setData($request-&gt;getPost());
+
+if ($form-&gt;isValid()) {
+  // Fetch Configuration from Module Config
+  $uploadPath    = $this-&gt;getFileUploadLocation();
+  
+  // Save Uploaded file    	
+  $adapter = new \Zend\File\Transfer\Adapter\Http();
+  $adapter-&gt;setDestination($uploadPath);
+  if ($adapter-&gt;receive($uploadFile['name'])) {
+    // File upload sucessfull
+    $exchange_data = array();
+    $exchange_data['label'] = $request-&gt;getPost()-&gt;get('label');
+    $exchange_data['filename'] = $uploadFile['name'];
+    $exchange_data['user_id'] = $user-&gt;id;
+
+    $upload-&gt;exchangeArray($exchange_data);
+    $uploadTable = $this-&gt;getServiceLocator()-&gt;get('UploadTable');
+    $uploadTable-&gt;saveUpload($upload);
+
+    return $this-&gt;redirect()
+            -&gt;toRoute('users/upload-manager' , 
+                  array('action' =&gt;  'index'
+              ));
+  }
+}</pre></div></li></ol></div></li><li class="listitem">Add <a id="id382" class="indexterm"/>a child route (upload manger) for the <code class="literal">UploadManager</code> controller<a id="id383" class="indexterm"/> and the controller to the <code class="literal">invokables</code> list.</li><li class="listitem">Open the web browser and test the upload form.</li></ol></div><p>The final form will look like the following screenshot:</p><div class="mediaobject"><img src="graphics/1929OS_04_06.jpg" alt="Time for action – creating a file upload form"/></div><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec42"/>
+<span class="emphasis"><em>What just happened?</em></span>
+</h2></div></div></div><p>We have now created a file upload process, which allows users to upload files into the application and view the files that are uploaded. We have used Zend Framework's file upload handling components to handle a file upload. In our next section, we will set up a file<a id="id384" class="indexterm"/> sharing mechanism such that the documents can be shared with different users. Before we move on to implement file sharing, please complete the following task.</p></div><div class="section" title="Have a go hero"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec43"/>Have a go hero</h2></div></div></div><p>Your next task will be to add a <span class="strong"><strong>Delete</strong></span> option<a id="id385" class="indexterm"/> that allows users to delete uploaded files as shown in the following screenshot. Also, ensure that the file is removed from the filesystem when the delete action is triggered.</p><div class="mediaobject"><img src="graphics/1929OS_04_07.jpg" alt="Have a go hero"/></div></div></div>
+<div class="section" title="Managing file sharing"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec43"/>Managing file sharing</h1></div></div></div><p>Now that we<a id="id386" class="indexterm"/> have a fully functional document management section, our next task is to extend this document management system to support file sharing with other users. The most important part of implementing a file sharing mechanism is to store the information about upload sharing; we do this by linking documents with user IDs in a table called <code class="literal">upload_sharing</code>.</p></div>
+<div class="section" title="Time for action &#x2013; implementing a file sharing system"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec44"/>Time for action – implementing a file sharing system</h1></div></div></div><p>For <a id="id387" class="indexterm"/>implementing file sharing, we will need to create a new table called <code class="literal">upload_sharing</code><a id="id388" class="indexterm"/> and store all sharing-related information in that table. The following steps will explain how this is implemented in our application:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new table called <code class="literal">upload_sharing</code>; this table will hold the relationship about uploads shared with users:<div class="informalexample"><pre class="programlisting">CREATE TABLE IF NOT EXISTS uploads_sharing (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY ,
+  upload_id INT NOT NULL ,
+  user_id INT NOT NULL,
+  UNIQUE KEY (upload_id, user_id)
+);</pre></div></li><li class="listitem">In<a id="id389" class="indexterm"/> the module definition <code class="literal">Module.php</code>, add a simple <code class="literal">TableGateway</code> object<a id="id390" class="indexterm"/> for the <code class="literal">uploads_sharing</code> table:<div class="informalexample"><pre class="programlisting">'UploadSharingTableGateway' =&gt; function ($sm) {
+  $dbAdapter = $sm-&gt;get('Zend\Db\Adapter\Adapter');
+  return new TableGateway('uploads_sharing', $dbAdapter);
+},</pre></div></li><li class="listitem">Modify <a id="id391" class="indexterm"/>the constructor of the <code class="literal">UploadTable</code> class to take in an additional parameter of the upload sharing <code class="literal">TableGateway</code> object:<div class="informalexample"><pre class="programlisting">public function __construct(TableGateway $tableGateway, 
+                TableGateway $uploadSharingTableGateway)
+{
+    $this-&gt;tableGateway = $tableGateway;
+    $this-&gt;uploadSharingTableGateway = $uploadSharingTableGateway;
+}</pre></div></li><li class="listitem">Modify the module configuration (<code class="literal">Module.php</code>) for the <code class="literal">UploadTable</code> factory to <a id="id392" class="indexterm"/>support <code class="literal">UploadSharingTableGateway</code>:<div class="informalexample"><pre class="programlisting">'UploadTable' =&gt;  function($sm) {
+  $tableGateway = $sm-&gt;get('UploadTableGateway');
+  $uploadSharingTableGateway = $sm-&gt;get('UploadSharingTableGateway');
+  $table = new UploadTable($tableGateway, $uploadSharingTableGateway);
+  return $table;
+},</pre></div></li><li class="listitem">Modify the <code class="literal">UploadTable</code> class<a id="id393" class="indexterm"/> to support the following file sharing functions:<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">addSharing()</code>: Adds<a id="id394" class="indexterm"/> a new<a id="id395" class="indexterm"/> sharing permission for the given upload with the user</li><li class="listitem" style="list-style-type: disc"><code class="literal">removeSharing()</code>: Removes <a id="id396" class="indexterm"/>the sharing permission for the specific<a id="id397" class="indexterm"/> upload/user combination</li><li class="listitem" style="list-style-type: disc"><code class="literal">getSharedUsers()</code>: Gets<a id="id398" class="indexterm"/> the list of users for which the upload<a id="id399" class="indexterm"/> is shared</li><li class="listitem" style="list-style-type: disc"><code class="literal">getSharedUploadsForUserId()</code>: Gets<a id="id400" class="indexterm"/> the list of uploads<a id="id401" class="indexterm"/> that are shared for that user</li></ul></div><p>This <a id="id402" class="indexterm"/>can be done using the following code:</p><div class="informalexample"><pre class="programlisting">public function addSharing($uploadId, $userId)
+{
+  $data = array(
+    'upload_id' =&gt; (int)$uploadId,
+    'user_id'  =&gt; (int)$userId,
+  );
+  $this-&gt;uploadSharingTableGateway-&gt;insert($data);
+}
+
+public function removeSharing($uploadId, $userId)
+{
+  $data = array(
+    'upload_id' =&gt; (int)$uploadId,
+    'user_id'  =&gt; (int)$userId,
+  );
+  $this-&gt;uploadSharingTableGateway-&gt;delete($data);
+}
+
+public function getSharedUsers($uploadId)
+{
+  $uploadId  = (int) $uploadId;
+  $rowset = $this-&gt;uploadSharingTableGateway-&gt;select(
+                      array('upload_id' =&gt; $uploadId));
+  return $rowset;
+}    
+
+public function getSharedUploadsForUserId($userId)
+{
+  $userId  = (int) $userId;
+
+  $rowset = $this-&gt;uploadSharingTableGateway-&gt;select(
+  function (Select $select) use ($userId){
+    $select-&gt;columns(array()) 
+      -&gt;where(array('uploads_sharing.user_id'=&gt;$userId))
+      -&gt;join('uploads', 'uploads_sharing.upload_id = uploads.id');
+  });
+          
+  return $rowset;
+}</pre></div><p>The<a id="id403" class="indexterm"/> <span class="strong"><strong>Manage Documents</strong></span> section lists all uploads<a id="id404" class="indexterm"/> for a specific user and also lists uploads shared by others with the user:</p><div class="mediaobject"><img src="graphics/1929OS_04_08.jpg" alt="Time for action – implementing a file sharing system"/></div></li><li class="listitem">Modify the edit upload form to display the list of users the upload is shared with; this can be achieved by passing the upload ID to the <code class="literal">getSharedUsers()</code>method<a id="id405" class="indexterm"/> of the <code class="literal">UploadTable</code><a id="id406" class="indexterm"/> object.</li><li class="listitem">Add a new section in the edit upload form which allows the addition of new shares; this is achieved by displaying the list of all users in the system in a drop-down list. When the user clicks on <span class="strong"><strong>Add Share</strong></span><a id="id407" class="indexterm"/>, a new record is added to the <code class="literal">upload_sharing</code> table:<div class="informalexample"><pre class="programlisting">$userTable = $this-&gt;getServiceLocator()
+              -&gt;get('UserTable');
+$uploadTable = $this-&gt;getServiceLocator()
+              -&gt;get('UploadTable');
+$form = $this-&gt;getServiceLocator()-&gt;get('UploadForm');
+$request = $this-&gt;getRequest();
+if ($request-&gt;isPost()) {
+  $userId = $request-&gt;getPost()-&gt;get('user_id');
+  $uploadId = $request-&gt;getPost()-&gt;get('upload_id');
+  $uploadTable-&gt;addSharing($uploadId, $userId);
+}</pre></div><p>The<a id="id408" class="indexterm"/> following screenshot shows the <span class="strong"><strong>Upload Sharing</strong></span> page<a id="id409" class="indexterm"/> with a drop-down list to add shares:</p><div class="mediaobject"><img src="graphics/1929OS_04_09.jpg" alt="Time for action – implementing a file sharing system"/></div></li><li class="listitem">The last section of the file sharing implementation is to allow an option for users <a id="id410" class="indexterm"/>to download shared files. This is provided by the <code class="literal">fileDownloadAction()</code> function defined in our file sharing application:<div class="informalexample"><pre class="programlisting">public function fileDownloadAction()
+{  
+  $uploadId = $this-&gt;params()-&gt;fromRoute('id');
+  $uploadTable = $this-&gt;getServiceLocator()-&gt;get('UploadTable');
+  $upload = $uploadTable-&gt;getUpload($uploadId);
+   
+  // Fetch Configuration from Module Config
+  $uploadPath    = $this-&gt;getFileUploadLocation();
+  $file = file_get_contents($uploadPath ."/" . $upload-&gt;filename);
+
+  // Directly return the Response 
+  $response = $this-&gt;getEvent()-&gt;getResponse();
+  $response-&gt;getHeaders()-&gt;addHeaders(array(
+    'Content-Type' =&gt; 'application/octet-stream',
+    'Content-Disposition' =&gt; 'attachment;filename="' .$upload-&gt;filename . '"',
+  
+  ));
+  $response-&gt;setContent($file);
+  
+  return $response;      
+}</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip23"/>Tip</h3><p>
+<span class="strong"><strong>File download</strong></span>
+</p><p>For<a id="id411" class="indexterm"/> implementing a file download, we need to disable the layout. This can be achieved by directly providing the HTTP response object as output for that particular action as shown in the previous code. This can also be achieved by <code class="literal">setTerminal()</code>,<a id="id412" class="indexterm"/> as shown in the following code:</p><div class="informalexample"><pre class="programlisting">   $result = new ViewModel();
+   $result-&gt;setTerminal(true);
+   return $result;</pre></div><p>
+<span class="strong"><strong>Large file downloads</strong></span>
+</p><p>The <code class="literal">file_get_contents()</code> method<a id="id413" class="indexterm"/> is capable of handling small file uploads and consume a lot of memory when processing large files. For better performance, you can create a stream HTTP<a id="id414" class="indexterm"/> response object <code class="literal">Zend\Http\Response\Stream()</code> and stream the file download.</p></div></div></li><li class="listitem">Now<a id="id415" class="indexterm"/> we have a fully functional file sharing system in place. Test the file sharing system; start by sharing the file with different users, and log in and out as different users.</li></ol></div><p>The final form should look like the following screenshot:</p><div class="mediaobject"><img src="graphics/1929OS_04_10.jpg" alt="Time for action – implementing a file sharing system"/></div><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec44"/>
+<span class="emphasis"><em>What just happened?</em></span>
+</h2></div></div></div><p>You<a id="id416" class="indexterm"/> created a table that can store user and upload relationships; you modified the <code class="literal">UploadTable</code> class to support additional sharing functions. <a id="id417" class="indexterm"/>You created controllers and views to enable file sharing, and finally you provided the ability for the user to download the shared file using a file download script. With this, you have successfully implemented the file sharing system, where users can now upload, edit, and share documents within the system.</p></div><div class="section" title="Pop quiz – data management and document sharing"><div class="titlepage"><div><div><h2 class="title"><a id="ch04lvl2sec45"/>Pop quiz – data management and document sharing</h2></div></div></div><p>Q1. In <code class="literal">TableGateway</code>, which function is used to determine the last inserted record ID?</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem"><code class="literal">getLastId()</code></li><li class="listitem"><code class="literal">getLastInsertId()</code></li><li class="listitem"><code class="literal">get('last_insert_id')</code></li><li class="listitem"><code class="literal">getLastInsertValue()</code></li></ol></div><p>Q2. Which method can be used to disable layouts in a view model?</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem"><code class="literal">$viewModel-&gt;setNoLayouts(true)</code></li><li class="listitem"><code class="literal">$ viewModel-&gt;Layouts(false)</code></li><li class="listitem"><code class="literal">$viewModel-&gt;setTerminal(true)</code></li><li class="listitem"><code class="literal">$viewModel-&gt;setLayouts(false)</code></li></ol></div></div></div>
+<div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch04lvl1sec45"/>Summary</h1></div></div></div><p>In this chapter, we have discussed several topics in the context of data and file management. First, we elaborated on the usage of the <code class="literal">TableGateway</code> database pattern. We then implemented a simple file upload service by making use of Zend Framework's file transfer components. Finally, we implemented a simple file sharing service by utilizing both Zend Framework's file transfer components and the <code class="literal">TableGateway</code> pattern. In the next chapter, we will be working closely on the frontend, especially with JavaScript and AJAX calls.</p></div></body></html>

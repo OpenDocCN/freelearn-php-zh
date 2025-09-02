@@ -1,0 +1,340 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;3.&#xA0;Creating a Communication Application"><div class="titlepage"><div><div><h1 class="title"><a id="ch03"/>Chapter 3. Creating a Communication Application</h1></div></div></div><p>
+<span class="emphasis"><em>In the previous chapter, we covered creating controllers and views in a new Zend Framework module. In this chapter we will create our first registration form, and set up login and authentication for registered users using Zend Framework components.</em></span>
+</p><p>Some of the key components that we will focus on in this chapter are listed as follows:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">Zend\Form</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">Zend\InputFilter</code></li><li class="listitem" style="list-style-type: disc"><code class="literal">Zend\Validator</code></li><li class="listitem" style="list-style-type: disc">Models and <code class="literal">Zend\Db</code></li></ul></div><div class="section" title="Zend\Form"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec29"/>Zend\Form</h1></div></div></div><p>Forms are usually built by creating the HTML page for the form, writing separate validation and filtering for various form events, and finally writing the controllers and actions for the form actions. With Zend Framework, the <code class="literal">Zend\Form</code> component provides all the previously stated features in a single component.</p><p>
+<code class="literal">Zend\Form</code><a id="id134" class="indexterm"/> allows developers to programmatically create and handle forms in your applications. <code class="literal">Zend\Form</code> supports form rendering, form handling, input filtering and validation, and form configurations. In our next task we will set up our first form in ZF2.</p></div></div>
+<div class="section" title="Time for action &#x2013; creating a registration form"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec30"/>Time for action – creating a registration form</h1></div></div></div><p>To create <a id="id135" class="indexterm"/>our first registration form, we will create a new controller<a id="id136" class="indexterm"/> to display a registration form; we will also create new forms and views. We need to make the following changes to the <code class="literal">Users</code> module:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem"><span class="strong"><strong>Form</strong></span> – We<a id="id137" class="indexterm"/> will also need to create a registration<a id="id138" class="indexterm"/> form under <code class="literal">src/Users/Form/RegisterForm.php</code>:<div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">The <code class="literal">RegisterForm</code> class<a id="id139" class="indexterm"/> extends <code class="literal">Zend\Form\Form</code>; the form's configuration<a id="id140" class="indexterm"/> is added to the constructor:<div class="informalexample"><pre class="programlisting">&lt;?php
+// filename : module/Users/src/Users/Form/RegisterForm.php
+namespace Users\Form;
+use Zend\Form\Form;
+class RegisterForm extends Form
+{
+    public function __construct($name = null)
+    {
+        parent::__construct('Register');
+        $this-&gt;setAttribute('method', 'post');
+        $this-&gt;setAttribute('enctype','multipart/form-data');</pre></div></li><li class="listitem">All fields are added to the form using the <code class="literal">$this-&gt;add()</code> method on the form's constructor:<div class="informalexample"><pre class="programlisting">        $this-&gt;add(array(
+            'name' =&gt; 'name',
+            'attributes' =&gt; array(
+                'type'  =&gt; 'text',
+            ),
+            'options' =&gt; array(
+                'label' =&gt; 'Full Name',
+            ),
+        ));</pre></div></li><li class="listitem">Additional validators/filters can be added to the fields while declaring the fields in the form. In this case we are adding special <a id="id141" class="indexterm"/>validation for the <code class="literal">EmailAddress</code> field:<div class="informalexample"><pre class="programlisting">        $this-&gt;add(array(
+            'name' =&gt; 'email',
+            'attributes' =&gt; array(
+                'type'  =&gt; 'email',
+            ),
+            'options' =&gt; array(
+                'label' =&gt; 'Email',
+            ),
+            'attributes' =&gt; array( 
+                'required' =&gt; 'required' 
+            ), 
+            'filters' =&gt; array( 
+                array('name' =&gt; 'StringTrim'), 
+            ), 
+            'validators' =&gt; array( 
+                array( 
+                    'name' =&gt; 'EmailAddress', 
+                    'options' =&gt; array( 
+                        'messages' =&gt; array( 
+                            \Zend\Validator\EmailAddress::INVALID_FORMAT =&gt; 'Email address format is invalid' 
+                        ) 
+                    ) 
+                ) 
+            ) 
+        ));</pre></div></li><li class="listitem">Use the<a id="id142" class="indexterm"/> same method to add <code class="literal">password</code><a id="id143" class="indexterm"/>, <code class="literal">confirm_password</code>, and <code class="literal">submit</code> fields; <a id="id144" class="indexterm"/><code class="literal">password</code> and <code class="literal">confirm_password</code> will <a id="id145" class="indexterm"/>be of type <code class="literal">password</code>, whereas <code class="literal">submit</code> will be of type <code class="literal">button</code>.</li></ol></div></li><li class="listitem"><span class="strong"><strong>Views</strong></span> – The<a id="id146" class="indexterm"/> following views will have to be created<a id="id147" class="indexterm"/> to support the registration<a id="id148" class="indexterm"/> process:<div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem"><span class="strong"><strong>Registration page</strong></span>: The <a id="id149" class="indexterm"/>view for registration page is created in <code class="literal">src/view/users/register/index.phtml</code>.</li><li class="listitem">The <a id="id150" class="indexterm"/>view consists of three main sections—the section to display error messages, the view logic which <a id="id151" class="indexterm"/>is used to generate the form tag, and the view helpers<a id="id152" class="indexterm"/> used to generate the actual form elements. The following logic is used to display error messages:<div class="informalexample"><pre class="programlisting">&lt;section class="register"&gt;
+&lt;h2&gt;Register&lt;/h2&gt;
+&lt;?php if ($this-&gt;error): ?&gt;
+&lt;p class="error"&gt;
+    There were one or more issues with your submission. Please correct them as 
+    indicated below.
+&lt;/p&gt;
+&lt;?php endif ?&gt;</pre></div></li><li class="listitem">The<a id="id153" class="indexterm"/> following block is used to generate the <code class="literal">&lt;form&gt;</code> HTML tag using<a id="id154" class="indexterm"/> the <code class="literal">form</code> object assigned <a id="id155" class="indexterm"/>to the view in the controller:<div class="informalexample"><pre class="programlisting">&lt;?php 
+$form = $this-&gt;form;
+$form-&gt;prepare();
+$form-&gt;setAttribute('action', $this-&gt;url(NULL, array('controller'=&gt;'Register', 'action' =&gt; 'process')));
+$form-&gt;setAttribute('method', 'post');
+echo $this-&gt;form()-&gt;openTag($form);
+?&gt;</pre></div></li><li class="listitem">The <a id="id156" class="indexterm"/>following section is used to generate individual<a id="id157" class="indexterm"/> form<a id="id158" class="indexterm"/> elements <a id="id159" class="indexterm"/>for the <span class="strong"><strong>Name</strong></span><a id="id160" class="indexterm"/>, <span class="strong"><strong>Email</strong></span>, <span class="strong"><strong>Password</strong></span>, <span class="strong"><strong>Confirm Password</strong></span>, and <span class="strong"><strong>Submit</strong></span> fields:<div class="informalexample"><pre class="programlisting">&lt;dl class="zend_form"&gt;
+&lt;dt&gt;&lt;?php echo $this-&gt;formLabel($form-&gt;get('name')); ?&gt;&lt;/dt&gt;
+&lt;dd&gt;&lt;?php 
+    echo $this-&gt;formElement($form-&gt;get('name'));
+    echo $this-&gt;formElementErrors($form-&gt;get('name'));
+?&gt;&lt;/dd&gt;
+&lt;dt&gt;&lt;?php echo $this-&gt;formLabel($form-&gt;get('email')); ?&gt;&lt;/dt&gt;
+&lt;dd&gt;&lt;?php 
+    echo $this-&gt;formElement($form-&gt;get('email'));
+    echo $this-&gt;formElementErrors($form-&gt;get('email'));
+?&gt;&lt;/dd&gt;
+&lt;dt&gt;&lt;?php echo $this-&gt;formLabel($form-&gt;get('password')); ?&gt;&lt;/dt&gt;
+&lt;dd&gt;&lt;?php 
+    echo $this-&gt;formElement($form-&gt;get('password'));
+    echo $this-&gt;formElementErrors($form-&gt;get('password'));
+?&gt;&lt;/dd&gt;
+&lt;dt&gt;&lt;?php echo $this-&gt;formLabel($form-&gt;get('confirm_password')); ?&gt;&lt;/dt&gt;
+&lt;dd&gt;&lt;?php 
+    echo $this-&gt;formElement($form-&gt;get('confirm_password'));
+    echo $this-&gt;formElementErrors($form-&gt;get('confirm_password'));
+?&gt;&lt;/dd&gt;
+&lt;dd&gt;&lt;?php 
+    echo $this-&gt;formElement($form-&gt;get('submit'));
+    echo $this-&gt;formElementErrors($form-&gt;get('submit'));
+?&gt;&lt;/dd&gt;
+&lt;/dl&gt;</pre></div></li><li class="listitem">Finally the <code class="literal">form</code> HTML tag needs to be closed:<div class="informalexample"><pre class="programlisting">&lt;?php echo $this-&gt;form()-&gt;closeTag() ?&gt;
+&lt;/section&gt;</pre></div></li><li class="listitem"><span class="strong"><strong>Confirmation page</strong></span>: The<a id="id161" class="indexterm"/> view for the confirmation page is pretty straightforward, the view is created in <code class="literal">src/view/users/register/confirm.phtml</code>.<div class="informalexample"><pre class="programlisting">&lt;section class="register-confirm"&gt;
+&lt;h2&gt;Register Sucessfull&lt;/h2&gt;
+&lt;p&gt; Thank you for your registration. &lt;/p&gt;
+&lt;/section&gt;</pre></div></li></ol></div></li><li class="listitem"><span class="strong"><strong>Controller</strong></span> – Now<a id="id162" class="indexterm"/> that we have the form and<a id="id163" class="indexterm"/> views ready, our next step will be to have a controller in place, which will<a id="id164" class="indexterm"/> help us to access this form. We will create a new <code class="literal">RegisterController</code> class and load the newly created form in its index <a id="id165" class="indexterm"/>action. The new controller will be created in the <code class="literal">src/Users/Controller/RegisterController.php</code> file:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace Users\Controller;
+use Zend\Mvc\Controller\AbstractActionController;
+use Zend\View\Model\ViewModel;
+use Users\Form\RegisterForm;
+class RegisterController extends AbstractActionController
+{
+        
+    public function indexAction()
+    {
+                $form = new RegisterForm();
+                $viewModel  = new ViewModel(array('form' =&gt; $form)); 
+                return $viewModel; 
+    }
+    public function confirmAction()
+    {
+                $viewModel  = new ViewModel(); 
+                return $viewModel; 
+    }
+}</pre></div></li><li class="listitem"><span class="strong"><strong>Configuration</strong></span> – Now we have created all the necessary components to display<a id="id166" class="indexterm"/> our form, we need to add our controller to the <code class="literal">invokables</code> list in the module config (<code class="literal">config/module.config.php</code>):<div class="informalexample"><pre class="programlisting">'controllers' =&gt; array(
+  'invokables' =&gt; array(
+    'Users\Controller\Index' =&gt; 'Users\Controller\IndexController',
+    'Users\Controller\Register' =&gt; 'Users\Controller\RegisterController',
+  ),</pre></div></li><li class="listitem">To test<a id="id167" class="indexterm"/> the registration form's display, open any<a id="id168" class="indexterm"/> web browser and try accessing the following URL:<p><code class="literal">http://comm-app.local/users/register</code></p><p>The <a id="id169" class="indexterm"/>registration form should look like the following:</p><div class="mediaobject"><img src="graphics/1929OS_03_01.jpg" alt="Time for action – creating a registration form"/></div></li></ol></div><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec27"/>
+<span class="emphasis"><em>What just happened?</em></span>
+</h2></div></div></div><p>Until now we have created a form that can be used to display all the necessary fields that can be used during the registration process. Let us try to understand how the form is being rendered. When we invoke the <code class="literal">http://comm-app.local/users/register</code> page, the <a id="id170" class="indexterm"/>controller creates a new instance of the <code class="literal">RegisterForm</code> class<a id="id171" class="indexterm"/> and displays it on the web browser. We have <a id="id172" class="indexterm"/>added the following fields to the <code class="literal">RegisterForm</code> class using its constructor:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Name</strong></span></li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Email</strong></span></li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Password</strong></span></li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Confirm Password</strong></span></li><li class="listitem" style="list-style-type: disc">The <span class="strong"><strong>Submit</strong></span> button</li></ul></div><p>These fields are added to the newly created <code class="literal">Form</code> object<a id="id173" class="indexterm"/>. The <code class="literal">ViewModel</code> pattern renders the form, and the <code class="literal">form</code> object gets passed over to the view for rendering,<a id="id174" class="indexterm"/> and each field is rendered as per the logic in the view using the <code class="literal">FormElement</code> view helper.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip19"/>Tip</h3><p>
+<code class="literal">FormElement</code><a id="id175" class="indexterm"/> works as a magic helper to render any form field based on the type of the <code class="literal">Zend\Form\Element</code> tag that is passed on to it. There are individual helpers for rendering specific form fields. The complete list of form view helpers can be obtained from the ZF documentation on <span class="emphasis"><em>Form View Helpers</em></span><a id="id176" class="indexterm"/>
+<span class="emphasis"><em> </em></span>found at<span class="emphasis"><em> </em></span>
+<a class="ulink" href="http://framework.zend.com/manual/2.0/en/modules/zend.form.view.helpers.html">http://framework.zend.com/manual/2.0/en/modules/zend.form.view.helpers.html</a>.</p></div></div></div><div class="section" title="Have a go hero"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec28"/>Have a go hero</h2></div></div></div><p>Before we move on to the next section, please create a login form in the same way that we used to create the registration form. The form will contain the following fields:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Email</strong></span></li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Password</strong></span></li><li class="listitem" style="list-style-type: disc">The <span class="strong"><strong>Submit</strong></span> button</li></ul></div><p>We will<a id="id177" class="indexterm"/> be using this login form to perform authentication towards the end of this chapter.</p></div></div>
+<div class="section" title="Form validation"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec31"/>Form validation</h1></div></div></div><p>If you had taken a closer look at the form code, you would have noticed that we have added <a id="id178" class="indexterm"/>some validation for the <span class="strong"><strong>Email Address</strong></span> field as shown in the<a id="id179" class="indexterm"/> following snippet:</p><div class="informalexample"><pre class="programlisting">            'attributes' =&gt; array( 
+                'required' =&gt; 'required' 
+            ), 
+            'filters' =&gt; array( 
+                array('name' =&gt; 'StringTrim'), 
+            ), 
+            'validators' =&gt; array( 
+                array( 
+                    'name' =&gt; 'EmailAddress', 
+                    'options' =&gt; array( 
+                        'messages' =&gt; array( 
+                            \Zend\Validator\EmailAddress::INVALID_FORMAT =&gt; 'Email address format is invalid' 
+                        )</pre></div><p>So, we added the following:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">An attribute<a id="id180" class="indexterm"/> to make the field a <code class="literal">required</code> field</li><li class="listitem" style="list-style-type: disc">A filter to trim the string that is passed</li><li class="listitem" style="list-style-type: disc">A validator to verify if the e-mail address is in the valid format</li></ul></div><p>With the introduction on Zend Framework's InputFilter, we can validate entire forms instead<a id="id181" class="indexterm"/> of attaching validation to each and every form field. This allows much cleaner code and better scalability of Zend Forms. So effectively we can have the same form being used in multiple sections of the website, each having its own set of validation rules that are not dependant on the form's validation. In our next section we will set up a new validator for the registration form.</p><div class="section" title="Zend\InputFilter"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec29"/>Zend\InputFilter</h2></div></div></div><p>Validation for forms and various other inputs can be performed by making use of <code class="literal">Zend\InputFilter</code><a id="id182" class="indexterm"/>. This component allows filtering and validation of generic sets of input data. For specific form elements you can apply validation and filtering on the specific elements, but if we have to filter an input set like a <code class="literal">$_GET</code> request or a <code class="literal">$_POST</code> request, this can be implemented using the <code class="literal">InputFilter</code> class.</p><p>In our next task, we<a id="id183" class="indexterm"/> will be adding the <code class="literal">InputFilter</code> class to our registration form.</p></div></div>
+<div class="section" title="Time for action &#x2013; adding validation to the registration form"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec32"/>Time for action – adding validation to the registration form</h1></div></div></div><p>To add an <code class="literal">InputFilter</code> class<a id="id184" class="indexterm"/> to an existing form, we need<a id="id185" class="indexterm"/> to create a new <code class="literal">InputFilter</code> class and use it<a id="id186" class="indexterm"/> during form submission <a id="id187" class="indexterm"/>for validation, as shown in the following steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Create a new <code class="literal">InputFilter</code> class in <code class="literal">src/Users/Form/RegisterFilter.php</code>. The <code class="literal">RegisterFilter</code> class<a id="id188" class="indexterm"/> will extend the <code class="literal">Zend\InputFilter\InputFilter</code> class and will add all the necessary validators in its constructor:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace Users\Form;
+use Zend\InputFilter\InputFilter;
+
+class RegisterFilter extends InputFilter
+{
+    public function __construct()
+    {</pre></div></li><li class="listitem">Using the <code class="literal">$this-&gt;add()</code> method<a id="id189" class="indexterm"/>, we can add various filter options to the registration form:<div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">For the <span class="strong"><strong>Email Address</strong></span> field<a id="id190" class="indexterm"/>, we will add a validator to check if the value entered is a valid e-mail address:<div class="informalexample"><pre class="programlisting">        $this-&gt;add(array(
+            'name'       =&gt; 'email',
+            'required'   =&gt; true,
+            'validators' =&gt; array(
+                array(
+                    'name'    =&gt; 'EmailAddress',
+                    'options' =&gt; array(
+                        'domain' =&gt; true,
+                    ),
+                ),
+            ),
+        ));</pre></div></li><li class="listitem">For the <span class="strong"><strong>Name</strong></span> field<a id="id191" class="indexterm"/>, we will add a validator to limit the size between <code class="literal">2</code> to <code class="literal">140</code> characters and will also add a filter to strip the HTML tags:<div class="informalexample"><pre class="programlisting">        $this-&gt;add(array(
+            'name'       =&gt; 'name',
+            'required'   =&gt; true,
+            'filters'    =&gt; array(
+                array(
+                    'name'    =&gt; 'StripTags',
+                ),
+            ),
+            'validators' =&gt; array(
+                array(
+                    'name'    =&gt; 'StringLength',
+                    'options' =&gt; array(
+                        'encoding' =&gt; 'UTF-8',
+                        'min'      =&gt; 2,
+                        'max'      =&gt; 140,
+                    ),
+                ),
+            ),
+        ));</pre></div></li><li class="listitem">For<a id="id192" class="indexterm"/> the <span class="strong"><strong>Password</strong></span> and <a id="id193" class="indexterm"/><span class="strong"><strong>Confirm Password</strong></span> fields<a id="id194" class="indexterm"/>, we will not add any validators but <a id="id195" class="indexterm"/>will make them mandatory:<div class="informalexample"><pre class="programlisting">'password'        ));
+        $this-&gt;add(array(
+            'name'       =&gt; 'confirm_password',
+            'required'   =&gt; true,
+        ));</pre></div></li></ol></div></li><li class="listitem">This <code class="literal">InputFilter</code> class<a id="id196" class="indexterm"/> is not mapped to the <code class="literal">RegisterForm</code> class yet; we will be performing the validation during form submission. We <a id="id197" class="indexterm"/>need to modify the <code class="literal">RegisterController</code> class to enable the <code class="literal">processAction</code> method and validate<a id="id198" class="indexterm"/> the form upon submission.</li><li class="listitem">Modify the <code class="literal">RegisterController</code> class<a id="id199" class="indexterm"/> to enable the <code class="literal">processAction</code> method:<div class="informalexample"><pre class="programlisting">public function processAction()
+{
+  if (!$this-&gt;request-&gt;isPost()) {
+    return $this-&gt;redirect()-&gt;toRoute(NULL , 
+      array( 'controller' =&gt; 'register', 
+            'action' =&gt;  'index' 
+      ));
+  }
+  $post = $this-&gt;request-&gt;getPost();
+  $form = new RegisterForm();
+  $inputFilter = new RegisterFilter();
+  $form-&gt;setInputFilter($inputFilter);
+  $form-&gt;setData($post);
+  if (!$form-&gt;isValid()) {
+    $model = new ViewModel(array(
+      'error' =&gt; true,
+      'form'  =&gt; $form,
+    ));
+    $model-&gt;setTemplate('users/register/index');
+    return $model;
+  }
+  return $this-&gt;redirect()-&gt;toRoute(NULL , array( 
+    'controller' =&gt; 'register', 
+    'action' =&gt;  'confirm' 
+  ));
+}</pre></div></li><li class="listitem">Now<a id="id200" class="indexterm"/> open the registration page in <a id="id201" class="indexterm"/>your web browser<a id="id202" class="indexterm"/> and test the validation:<div class="mediaobject"><img src="graphics/1929OS_03_02.jpg" alt="Time for action – adding validation to the registration form"/></div></li></ol></div><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec30"/>
+<span class="emphasis"><em>What just happened?</em></span>
+</h2></div></div></div><p>We have now enabled validation on the registration form. In the <code class="literal">processAction()</code> function<a id="id203" class="indexterm"/> of the <code class="literal">RegisterController</code> class, you<a id="id204" class="indexterm"/> will see that a new instance<a id="id205" class="indexterm"/> of the <code class="literal">RegisterFrom</code> class is created<a id="id206" class="indexterm"/> and <code class="literal">RegisterFilter</code> is applied to the form using the <code class="literal">$form-&gt;setInputFilter()</code> method<a id="id207" class="indexterm"/>. The data entered as input to the form is added again and validation is performed by using the <code class="literal">isValid()</code> method<a id="id208" class="indexterm"/>. Error messages are rendered in the form using the <code class="literal">FormElementErrors</code> view helper.</p><p>We need <a id="id209" class="indexterm"/>to ensure that the names in the <code class="literal">InputFilter</code> class properly map to the names in the form while adding validation to <code class="literal">InputFilter</code>.</p></div><div class="section" title="Have a go hero"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec31"/>Have a go hero</h2></div></div></div><p>You've just learned about adding a custom <code class="literal">InputFilter</code> class to a Zend form using the previous <a id="id210" class="indexterm"/>task; before you move on to the next<a id="id211" class="indexterm"/> section, set up a validation <code class="literal">InputFilter</code> <a id="id212" class="indexterm"/>for the <code class="literal">Login</code> form that you have built in your previous exercise.</p></div></div>
+<div class="section" title="Models and database access"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec33"/>Models and database access</h1></div></div></div><p>Models provide a representation of data in the MVC application. There is no <code class="literal">Zend\Model</code> component that is provided by Zend Framework, so developers have to decide on the implementation part of models. Models by themselves cannot talk to databases and fetch or process data, so they are usually connected to mapper objects or use ORM to connect to databases. <a id="id213" class="indexterm"/>For this example, we will be using a <code class="literal">TableGateway</code> pattern for storing data in the database.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note05"/>Note</h3><p>
+<code class="literal">TableGateway</code><a id="id214" class="indexterm"/> is a built-in Zend Framework 2 DB pattern which acts as a gateway to a database table, having access to all table rows for performing various SQL operations including <code class="literal">select</code>, <code class="literal">insert</code>, <code class="literal">update</code>, and <code class="literal">delete</code>.</p></div></div><div class="section" title="TableGateway"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec32"/>TableGateway</h2></div></div></div><p>The <code class="literal">TableGateway</code><a id="id215" class="indexterm"/> pattern is used for creating an object that represents a table in the database; in this example, we will need a <code class="literal">TableGateway</code> object for the <code class="literal">User</code> table.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip20"/>Tip</h3><p>The <code class="literal">exchangeArray()</code> method<a id="id216" class="indexterm"/> needs to be declared in the model if the model uses <code class="literal">TableGateway</code> for database storage.</p></div></div></div></div>
+<div class="section" title="Time for action &#x2013; creating models and saving the form"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec34"/>Time for action – creating models and saving the form</h1></div></div></div><p>In this <a id="id217" class="indexterm"/>task, <a id="id218" class="indexterm"/>we will be creating a<a id="id219" class="indexterm"/> new user model, creating a table in MySQL database to save the registration data using <code class="literal">TableGateway</code> to store registration data to the table. We will, finally, connect our registration form to <code class="literal">UserTable</code> so that new <a id="id220" class="indexterm"/>registrations are stored in the database. Perform the following steps to do so:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">A new <a id="id221" class="indexterm"/>table needs to be created to store the registration information in the MySQL database:<div class="informalexample"><pre class="programlisting">CREATE TABLE user (
+  id INTEGER UNSIGNED NOT NULL AUTO_INCREMENT,
+  name TEXT NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  password TEXT NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE INDEX idx_email(email)
+);</pre></div></li><li class="listitem">The application's<a id="id222" class="indexterm"/> global configuration needs to be modified to add references to the database connection as shown in the following snippet. This is available under <code class="literal">&lt;Application_Home&gt;/config/autoload/global.php</code>.<div class="informalexample"><pre class="programlisting">return array(
+    'db' =&gt; array(
+        'driver'         =&gt; 'Pdo',
+        'dsn'            =&gt; 'mysql:dbname=test;host=localhost',
+        'username'         =&gt; 'db_user',
+        'password'         =&gt; '',
+        'driver_options' =&gt; array(
+            PDO::MYSQL_ATTR_INIT_COMMAND =&gt; 'SET NAMES \'UTF8\''
+        ),
+    ),
+    'service_manager' =&gt; array(
+        'factories' =&gt; array(
+            'Zend\Db\Adapter\Adapter'
+                    =&gt; 'Zend\Db\Adapter\AdapterServiceFactory',
+        ),
+    ),
+);</pre></div></li><li class="listitem">Create a new model for the <code class="literal">User</code> class<a id="id223" class="indexterm"/>. This needs to be created under <code class="literal">src/Users/Model/User.php</code>.<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace Users\Model;
+class User
+{
+  public $id;
+  public $name;
+  public $email;
+  public $password;
+}</pre></div></li><li class="listitem">The <code class="literal">User</code> model <a id="id224" class="indexterm"/>will<a id="id225" class="indexterm"/> define<a id="id226" class="indexterm"/> the <code class="literal">setPassword()</code> and<a id="id227" class="indexterm"/> the <code class="literal">exchangeArray()</code> methods:<div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Implement<a id="id228" class="indexterm"/> a <code class="literal">setPassword()</code> method which will assign a MD5 version password to the <code class="literal">UserTable</code> entity<a id="id229" class="indexterm"/> for storage:<div class="informalexample"><pre class="programlisting">  public function setPassword($clear_password)
+  {
+    $this-&gt;password = md5($clear_password);
+  }</pre></div></li><li class="listitem">Implement<a id="id230" class="indexterm"/> the <code class="literal">exchangeArray()</code> method; this method is used while mapping the <code class="literal">User</code><a id="id231" class="indexterm"/> entity to the <code class="literal">UserTable</code> entity:<div class="informalexample"><pre class="programlisting">  function exchangeArray($data)
+  {
+    $this-&gt;name = (isset($data['name'])) ? $data['name'] : null;
+    $this-&gt;email = (isset($data['email'])) ? $data['email'] : null;
+    if (isset($data["password"]))
+    {
+      $this-&gt;setPassword($data["password"]);
+    }
+  }</pre></div></li></ol></div></li><li class="listitem">Create a new table reference for <code class="literal">User</code>. This needs to be created under <code class="literal">src/Users/Model/UserTable.php</code>:<div class="informalexample"><pre class="programlisting">&lt;?php
+namespace Users\Model;
+use Zend\Db\Adapter\Adapter;
+use Zend\Db\ResultSet\ResultSet;
+use Zend\Db\TableGateway\TableGateway;
+class UserTable
+{
+  protected $tableGateway;
+  public function __construct(TableGateway $tableGateway)
+  {
+    $this-&gt;tableGateway = $tableGateway;
+  }
+  public function saveUser(User $user)
+  {
+    $data = array(
+      'email' =&gt; $user-&gt;email,
+      'name'  =&gt; $user-&gt;name,
+      'password'  =&gt; $user-&gt;password,
+    );
+    $id = (int)$user-&gt;id;
+    if ($id == 0) {
+      $this-&gt;tableGateway-&gt;insert($data);
+    } else {
+      if ($this-&gt;getUser($id)) {
+        $this-&gt;tableGateway-&gt;update($data, array('id' =&gt; $id));
+      } else {
+        throw new \Exception('User ID does not exist');
+      }
+    }
+  }
+  public function getUser($id)
+  {
+    $id  = (int) $id;
+    $rowset = $this-&gt;tableGateway-&gt;select(array('id' =&gt; $id));
+    $row = $rowset-&gt;current();
+    if (!$row) {
+      throw new \Exception("Could not find row $id");
+    }
+    return $row;
+  }
+}</pre></div></li><li class="listitem">Now we <a id="id232" class="indexterm"/>can use <code class="literal">UserTable</code> to save new registrations<a id="id233" class="indexterm"/> to the database. To save registrations,<a id="id234" class="indexterm"/> we need to make changes to the <code class="literal">RegisterController</code> class<a id="id235" class="indexterm"/>. First, we will create a new function for saving user registration:<div class="informalexample"><pre class="programlisting">protected function createUser(array $data)
+{
+  $sm = $this-&gt;getServiceLocator();
+  $dbAdapter = $sm-&gt;get('Zend\Db\Adapter\Adapter');
+  $resultSetPrototype = new \Zend\Db\ResultSet\ResultSet();
+  $resultSetPrototype-&gt;setArrayObjectPrototype(new \Users\Model\User);
+  $tableGateway = new \Zend\Db\TableGateway\TableGateway('user', $dbAdapter, null, $resultSetPrototype);
+
+  $user = new User();
+  $user-&gt;exchangeArray($data);
+  $userTable = new UserTable($tableGateway);
+  $userTable-&gt;saveUser($user);
+  return true;
+}</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note06"/>Note</h3><p>The <code class="literal">TableGateway</code> constructor<a id="id236" class="indexterm"/> takes the following parameters and generates a <code class="literal">TableGateway</code> object in response:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>$table</strong></span>: Used <a id="id237" class="indexterm"/>to provide<a id="id238" class="indexterm"/> the table name for the <code class="literal">TableGateway</code> object.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Adapter $adapter</strong></span>: Used <a id="id239" class="indexterm"/>to<a id="id240" class="indexterm"/> provide the database adapter name.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>$features</strong></span> (optional): TableGateway<a id="id241" class="indexterm"/> Feature API allows the extension of the <code class="literal">TableGateway</code> functionality <a id="id242" class="indexterm"/>without having to extend the base class. The features can be specified here.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>ResultSet $resultSetPrototype</strong></span> (optional): Used <a id="id243" class="indexterm"/>to provide<a id="id244" class="indexterm"/> the <code class="literal">ResultSet</code> type.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Sql $sql</strong></span> (optional): Used<a id="id245" class="indexterm"/> to<a id="id246" class="indexterm"/> provide any additional SQL criteria; make sure that the SQL object is bound to the same table as in <code class="literal">$table</code>.</li><li class="listitem" style="list-style-type: disc">For more information refer to: <a class="ulink" href="http://framework.zend.com/manual/2.0/en/modules/zend.db.table-gateway.html#zend-db-tablegateway">http://framework.zend.com/manual/2.0/en/modules/zend.db.table-gateway.html#zend-db-tablegateway</a></li></ul></div></div></div></li><li class="listitem">Next,<a id="id247" class="indexterm"/> we need to make sure that the <code class="literal">processAction()</code> method <a id="id248" class="indexterm"/>calls this function before redirecting to the confirmation page:<div class="informalexample"><pre class="programlisting">// Create user
+$this-&gt;createUser($form-&gt;getData());</pre></div></li><li class="listitem">Open<a id="id249" class="indexterm"/> the<a id="id250" class="indexterm"/> registration <a id="id251" class="indexterm"/>page in your favourite browser and use the MySQL database to check if the registration information is properly stored in the database. The registration confirmation page should look like the following screenshot:<div class="mediaobject"><img src="graphics/1929OS_03_03.jpg" alt="Time for action – creating models and saving the form"/></div></li></ol></div><p>You can check the MySQL database to see if the records have been inserted properly:</p><div class="mediaobject"><img src="graphics/1929OS_03_04.jpg" alt="Time for action – creating models and saving the form"/></div><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec33"/>
+<span class="emphasis"><em>What just happened?</em></span>
+</h2></div></div></div><p>We have <a id="id252" class="indexterm"/>now <a id="id253" class="indexterm"/>modified the form <a id="id254" class="indexterm"/>to save new user registrations to the database; our next step will be to set up authentication based on the information stored in the<a id="id255" class="indexterm"/> database.</p></div><div class="section" title="Zend\Authentication"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec34"/>Zend\Authentication</h2></div></div></div><p>
+<code class="literal">Zend\Authentication</code><a id="id256" class="indexterm"/> is an authentication component provided by Zend Framework which can be used for authentication against a wide number of authentication mechanisms including database table, HTTP authentication, and LDAP authentication. The component also lets you store the session information to a wide range of storages.</p><p>In this example, we will be using the <code class="literal">Zend\Authentication</code> component to validate the user<a id="id257" class="indexterm"/> credentials submitted in the login form.</p></div></div>
+<div class="section" title="Time for action &#x2013; user authentication"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec35"/>Time for action – user authentication</h1></div></div></div><p>In this task we will be authenticating the login form using the <code class="literal">Zend\Authentication</code> component <a id="id258" class="indexterm"/>using the following steps:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">Add a <a id="id259" class="indexterm"/>function to return the authentication service in the login controller <code class="literal">src/Users/Controller/LoginController.php</code>:<div class="informalexample"><pre class="programlisting">// References
+use Zend\Authentication\AuthenticationService;
+use Zend\Authentication\Adapter\DbTable as DbTableAuthAdapter;
+// Class definition
+public function getAuthService()
+{
+  if (! $this-&gt;authservice) {
+    $dbAdapter = $this-&gt;getServiceLocator()-&gt;get('Zend\Db\Adapter\Adapter');
+    $dbTableAuthAdapter = new DbTableAuthAdapter($dbAdapter, 'user','email','password', 'MD5(?)');
+    $authService = new AuthenticationService();
+    $authService-&gt;setAdapter($dbTableAuthAdapter);
+    $this-&gt;authservice = $authService;
+  }
+  return $this-&gt;authservice;
+}</pre></div></li><li class="listitem">In the <code class="literal">processAction()</code> method<a id="id260" class="indexterm"/> for <code class="literal">LoginController</code>, check if the form submission is valid, and use the <code class="literal">AuthService</code> method to validate the credentials<a id="id261" class="indexterm"/> using the <code class="literal">authenticate</code> method:<div class="informalexample"><pre class="programlisting">public function processAction()
+//
+$this-&gt;getAuthService()-&gt;getAdapter()
+                              -&gt;setIdentity($this-&gt;request-&gt;getPost('email'))
+                              -&gt;setCredential($this-&gt;request-&gt;getPost('password'));
+$result = $this-&gt;getAuthService()-&gt;authenticate();
+if ($result-&gt;isValid()) {
+  $this-&gt;getAuthService()-&gt;getStorage()-&gt;write($this-&gt;request-&gt;getPost('email'));
+  return $this-&gt;redirect()-&gt;toRoute(NULL , array( 
+                                      'controller' =&gt; 'login', 
+                                      'action' =&gt;  'confirm' 
+                                      ));			
+}</pre></div></li><li class="listitem">The <code class="literal">ConfirmAction</code> function<a id="id262" class="indexterm"/> will render the logged in user's welcome screen:<div class="informalexample"><pre class="programlisting">    public function confirmAction()
+    {
+  $user_email = $this-&gt;getAuthService()-&gt;getStorage()-&gt;read();
+  $viewModel  = new ViewModel(array(
+            'user_email' =&gt; $user_email 
+        )); 
+  return $viewModel; 
+    }</pre></div></li><li class="listitem">The view for the user's home page created under <code class="literal">/view/users/login/confirm.phtml</code> will be as follows:<div class="informalexample"><pre class="programlisting">&lt;section class="login-confirm"&gt;
+&lt;h2&gt;Login Successful&lt;/h2&gt;	
+&lt;p&gt; Welcome!  &lt;?php echo $this-&gt;user_email; ?&gt; &lt;/p&gt;
+&lt;/section&gt;</pre></div></li><li class="listitem">Open<a id="id263" class="indexterm"/> the login page in your browser and try to log in with the credentials that you used during registration. The login form should look like the following:<div class="mediaobject"><img src="graphics/1929OS_03_05.jpg" alt="Time for action – user authentication"/></div></li></ol></div><p>Upon<a id="id264" class="indexterm"/> successful login, you will be redirected<a id="id265" class="indexterm"/> to the login success page as shown below.</p><div class="mediaobject"><img src="graphics/1929OS_03_06.jpg" alt="Time for action – user authentication"/></div><div class="section" title="What just happened?"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec35"/>
+<span class="emphasis"><em>What just happened?</em></span>
+</h2></div></div></div><p>We created<a id="id266" class="indexterm"/> a new database table authentication adapter for the <code class="literal">user</code> table to validate the <code class="literal">email</code> and <code class="literal">password</code> fields. Using <a id="id267" class="indexterm"/>the<a id="id268" class="indexterm"/> authentication adapter we have been able <a id="id269" class="indexterm"/>to perform authentication for registered users.</p></div><div class="section" title="Pop quiz – Zend Framework 2.0"><div class="titlepage"><div><div><h2 class="title"><a id="ch03lvl2sec36"/>Pop quiz – Zend Framework 2.0</h2></div></div></div><p>Q1. Which file should be modified to store the database credentials application-wide?</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem"><code class="literal">&lt;App&gt;/module/&lt;Module&gt;/config.inc</code></li><li class="listitem"><code class="literal">&lt;App&gt;/config/autoload/global.php</code></li><li class="listitem"><code class="literal">&lt;App&gt;/module/&lt;Module&gt;/module.config.php</code></li><li class="listitem"><code class="literal">&lt;App&gt;/module/&lt;Module&gt;/config/module.config.php</code></li></ol></div><p>Q2. What is the correct method to assign an input filter to a form?</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem"><code class="literal">$form-&gt;setInputFilter($inputFilter)</code></li><li class="listitem"><code class="literal">$form-&gt;useInputFilter($inputFilter)</code></li><li class="listitem"><code class="literal">$form-&gt;assignInputFilter($inputFilter)</code></li><li class="listitem"><code class="literal">$form-&gt;mapInputFilter($inputFilter)</code></li></ol></div></div></div>
+<div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch03lvl1sec36"/>Summary</h1></div></div></div><p>In this chapter we have learned creating forms, doing basic validations, storing form data to the database, using models, and authenticating with the database. In the next chapter we will be learning about advanced database operations, which will be based on the <code class="literal">TableGateway</code> pattern that we have covered in this chapter.</p></div></body></html>
