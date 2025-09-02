@@ -1,0 +1,1745 @@
+- en: Chapter 2. Mastering PHP Software Management with the PEAR Installer
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we learn how to turn PHP software into distributable PEAR packages.
+    In September 2005, version 1.4.0 of the PEAR installer was released. This release
+    was a milestone, marking the transformation of PEAR from a niche-market tool for
+    installing small libraries distributed by `pear.php.net` to a full-fledged application
+    installation tool. For the first time, it is possible to distribute large-scale
+    applications, and even complete web-based database-intensive applications can
+    be installed and configured in one step.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The PEAR installer now can be used to install traditional web-based applications
+    like phpMyAdmin and non-PEAR libraries like the popular Smarty template engine
+    (both happen to be installable through the [http://pearified.com](http://pearified.com)
+    PEAR channel). Two of the primary design goals of the PEAR installer are to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Make it possible to distribute application development across multiple development
+    teams (i.e. stop re-inventing the wheel)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Prevent conflicting packages from overwriting each other
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: All of this magic is made possible by the `package.xml` file format. `package.xml`
+    is the heart and soul of the PEAR installer, and in order to take full advantage
+    of PEAR's power, you need to understand its structure. Contained in `package.xml`
+    is a list of files to be installed, information used by the PEAR installer to
+    distinguish between different packages and releases, and information that is useful
+    to humans, such as a description of what the package is and a changelog. This
+    file is in fact all the PEAR installer needs to properly install software. The
+    PEAR installer also uses the information in `package.xml` to create an installable
+    archive in either `.tar` format or compressed `.tar` (`.tgz`) using the `pear
+    package` command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The PEAR installer is not limited to installation of local files, and in fact
+    is designed to communicate over the Internet with **PEAR channel servers**. What
+    is a channel server? A channel server provides downloadable releases for each
+    package, and web service interfaces to meta-information about those packages and
+    releases through XML-RPC, REST, or SOAP. Channels are discussed in depth in [Chapter
+    5](ch05.html "Chapter 5. Releasing to the World: PEAR Channels"). Now that PEAR
+    1.4.0+ and packages like Chiara_PEAR_Server ( [http://pear.chiaraquartet.net/index.php?package=Chiara_PEAR_Server](http://pear.chiaraquartet.net/index.php?package=Chiara_PEAR_Server))
+    are available, it is simple to set up your own PEAR channel server and distribute
+    libraries and applications with all of the sophistication you''ve come to expect
+    from the `pear` command.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**CLI versus Web/Gtk2 Installer**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some of you reading this have probably installed the Web front end (PEAR_Frontend_Web
+    package from `pear.php.net`) or the Gtk2 front end (PEAR_Frontend_Gtk2 package
+    from `pear.php.net`). If so, then you have probably noticed that installing packages
+    from other channels is even simpler, as the end user simply needs to choose the
+    channel to install from, and all packages are listed with the most recent version
+    and available upgrades.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will be working with the command-line (CLI) front end to the PEAR installer
+    in the next few chapters, as a much greater level of sophistication is available
+    than what is possible through the Web front end, which is designed more for end
+    users of PEAR packages than it is for developers of PEAR packages. At the time
+    of writing this chapter, the Gtk2 front end is far more sophisticated than the
+    Web installer, and is worth using if you are running PHP 5.1.0 or newer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, if your server is `pear.example.com`, and you release a package
+    named `Foo`, the only thing your users need to type in order to install your package
+    is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: However, the most dynamic and important feature of the PEAR installer is the
+    sophisticated way in which it handles dependencies on other packages, on PHP version,
+    on PHP extensions, and on the system architecture. Through very simple syntax
+    in `package.xml`, incredibly complex dependency scenarios can be easily and securely
+    managed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we can get started with the actual work of creating our own packages,
+    it is important to understand the core concepts behind the design of the PEAR
+    installer and how you will need to shape your software design to best utilize
+    its strengths.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Distributing Libraries and Applications
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The most important thing to understand is how the PEAR installer actually installs
+    files. Most PHP developers distribute their applications as unzip-and-go archives.
+    As such, we tend to assume that files will be in the exact same relative locations
+    on the end user's machine that they are on our development machine. PEAR, however,
+    is designed to be far more flexible than this.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For instance, it is common for shared web hosts to install a global copy of
+    PEAR, but users can also install local copies and use the `include_path` from
+    `php.ini` to choose local packages when available and global ones when they are
+    not. In order to make this flexibility possible, PEAR groups and installs files
+    by their type or file *role*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each file role has a corresponding configuration entry that defines the location
+    at which all files of that file role will be installed. For instance, the php
+    file role has a configuration variable named `php_dir` that defines the directory
+    into which all PHP files are installed, the data file role has a configuration
+    variable named `data_dir`, and so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is a radical break from the traditional unzip-and-go philosophy, as it
+    allows users to configure the installation locations in any way they desire on
+    their own machine. This also means that the use of clever constructs to locate
+    installed files such as `dirname(__FILE__)` are dangerous ways to code in a PEAR
+    package. Fortunately, there are other clever ways around this that are even more
+    flexible and secure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**PEAR Configuration**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To retrieve all configuration variables and their values, use the `config-show`
+    command. Configuration variables that correspond to file roles generally have
+    `_dir` in their name, such as `doc_dir`, and `php_dir`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This also changes the development process slightly: instead of testing by running
+    code right out of the development directory, the code should first be installed
+    via its `package.xml` file and tested as the PEAR equivalent of unzip-and-go.
+    For this reason, the most common `pear` command to be used is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: or
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: This command allows the "upgrade" from (for instance) PEAR version 1.5.0a1 to
+    PEAR version 1.5.0a1 when a bug has been fixed or a new feature has been added.
+    This command in actuality facilitates rapid development by allowing one to quickly
+    replace the existing files within a version after having made changes without
+    requiring a bump in version number. In other words, if we had to change the version
+    every time a minor change was made on a development machine, this would be onerous.
+    The `--force` option circumvents this problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although managing installations using PEAR may seem to be more complicated on
+    the surface, a quick investigation of *useful* unzip-and-go packages show that
+    many unzip-and-go packages actually require a large amount of manual configuration
+    that could easily be supplanted by the automated features of the PEAR installer.
+    In short, once you get used to it, you'll wonder how you ever developed in PHP
+    without using the PEAR installer to manage your packages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Differences between Libraries and Applications from the Installer's Point of
+    View
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The acronym **PEAR**means **P***HP***E***xtension*and **A***pplication* **R***epository*,
+    but until PEAR version 1.4.0, support for applications was minimal. Most PEAR
+    packages are libraries designed to be integrated into other external applications.
+    The initial design of the PEAR installer supported this model very effectively,
+    but did not provide all of the customization that applications need in order to
+    be installed and configured effectively. One of the primary motivations for the
+    new features introduced in PEAR version 1.4.0 was better support for application
+    installation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In spite of the obvious differences in functionality between libraries and complete
+    applications, from the installer's point of view, libraries and applications don't
+    need to be handled very differently. Both are distributed using `package.xml`,
+    both are stored in the registry in the same way, and the same rules of versioning
+    and dependencies are applied. In fact, this is one of PEAR installer's greatest
+    strengths, in that it both follows the **KISS** (**Keep It Simple, Stupid**) principle
+    and leaves application design to the way `package.xml` is used. Consequently,
+    a thorough understanding of the design of `package.xml` is necessary to use its
+    capabilities to the fullest for any application or library package.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'New features designed to simplify application development include:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Customizable file roles
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Customizable file tasks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: More advanced dependency possibilities and pre-download dependency resolution
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The ability to bundle several packages into a single tarball
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Static dependencies based on a single release rather than an abstract package
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: After reading this list, if your head is spinning or you're seeing spots resembling
+    question marks, fear not — all of these features will be simply and extensively
+    explored in the next few sections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we launch into the new features, lets take a closer look at some basic
+    principles that provide the foundation for best use of the new features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using Versioning and Dependencies to Help Track and Eliminate Bugs
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Versioning and dependencies are two features that every enterprise-level distribution
+    system must support at a very high level. With both simple dependencies and advanced
+    versioning features, the PEAR installer makes depending on external packages safer
+    and easier than ever before.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Versioning
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The most basic foundation of the PEAR installer is the concept of versioning.
+    Versioning should be familiar to all of us in the form of "Software package version
+    X.Y.Z" such as "PHP version 5.1.4". The basic idea is that older versions of software
+    have a lower number. In other words, PHP version 4.0.6 is older than PHP version
+    4.1.1beta1, which is older than PHP version 4.1.1.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'How does versioning help track and eliminate bugs? Imagine this scenario:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You are working on a Wiki, and allowing users to grab the source from your FTP
+    site at any time and use it themselves. One of them finds a bug and reports, "It
+    is doing this weird thing where it tries to delete all of my files." The user
+    can't remember when he or she downloaded the source, as he or she had to restore
+    from a backup and the file modification time has been reset. At this point, the
+    only way to figure out the problem and whether it still exists in the current
+    source is to grab the user project and compare it to the current source line by
+    line. At best, this is tedious and at worst completely impossible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Taking a fluid, ever-changing software project and making releases at specific
+    times and assigning them a version number makes it much simpler for an end user
+    to report a bug. The end user can simply say "Version 1.2.3 of your software package
+    does this weird thing where it tries to delete all of my files" and you as the
+    developer can ask the user to try the latest version, or the current development
+    copy, making bug fixing much simpler.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition, it is possible to maintain two branches of the same code, a stable
+    version, and an unstable version with innovative new features. There are many
+    subtle ways of using versioning to provide more information about a software release.
+    For instance, the Linux kernel versioning system is described in detail at [http://en.wikipedia.org/wiki/Linux_kernel#Version_Numbering](http://en.wikipedia.org/wiki/Linux_kernel#Version_Numbering).
+    In this case, one of the decimal places is used to denote the stability of the
+    kernel, such that it is possible to have version 1.2.9 released after 1.3.0.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The PEAR installer takes a more explicit approach to versioning. Rather than
+    providing stability information inside the version number, a separate field in
+    `package.xml, <stability>`, is used to designate the stability of the code. This
+    does not preclude the use of Linux-style versioning, or any other versioning scheme,
+    as long as the basic premise (1.3.0 is always newer than 1.2.9) still holds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**Versioning Time versus Absolute Time**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: PEAR's simple versioning rules can actually be kind of confusing in the real
+    world. The PEAR installer doesn't particularly care when a version was released
+    in real-world time but about its stability and version number.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This can mean that, for instance, PEAR 1.3.6 (stable) released on August 18,
+    2005 is older than PEAR 1.4.0a1 (alpha) released on February 26, 2005 because
+    1.3.6 is less than 1.4.0\. Absolute time has nothing to do with versioning time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The end user can tell the PEAR installer through a configuration variable called
+    `preferred_state` how stable packages must be in order to be installed. In our
+    hypothetical example, if this variable is set to `stable` or to `beta`, then PEAR
+    1.3.6 would be installed instead of 1.4.0a1; otherwise for values less stable
+    than beta (`alpha, devel`, and `snapshot`) version 1.4.0a1 would be installed,
+    even though version 1.3.6 was released months later, because 1.4.0 is always *newer*
+    than 1.3.6 in *versioning time*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PEAR Packaging and Strict Version Validation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The PEAR package repository at [pear.php.net](http://pear.php.net) uses a strict
+    versioning protocol. All package versions are of format X.Y.Z, as in "1.3.0".
+    The first digit (X) is used to describe the **Applications Program Interface**
+    (**API**) version, the second digit (Y) is used to describe the feature set version,
+    and the third digit (Z) is used to describe the bugfix revision level. As examples,
+    here are some version numbers and their meaning:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Sample PEAR version numbers and their meanings |   |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Version Number | Meaning |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1.0.0 | Stable API version 1.0, initial stable release of package |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 0.4.5 | Unstable (developing) API, 4th feature set design, 5th bugfix release
+    of this feature set |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2.4.0 | Stable API version 2.0, 4th feature set design, initial release of
+    this new feature set |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1.3.4 | Stable API version 1.0, 3rd set of new features since the initial
+    stable release, 4th bugfix release of this feature set |'
+  prefs: []
+  type: TYPE_TB
+- en: 'At installation time, this information is irrelevant: The PEAR installer will
+    install anything it is given, including version numbering schemes like 24.25094.39.430
+    or 23.4.0-r1 and so on. However, the validation used when packaging up a package
+    via:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'is much stricter than that used when downloading a PEAR package. In order to
+    assist developers trying to meet the PEAR package repository''s strict coding
+    standards, there are a set of validation routines within the PEAR package located
+    in `PEAR/Validate.php` that check a number of important aspects of the PEAR coding
+    standards, and emit warnings for anything that does not comply. For instance,
+    version 1.0.0 must be stable (and not `devel, alpha`, or `beta` stability), and
+    so the following snippet from a `package.xml` will cause a warning:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Specifically, it would look something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**$ pear package**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Although this is extremely helpful for anyone who wishes to adhere to PEAR''s
+    strict coding standards, in some cases this warning is not helpful, but is instead
+    annoying or distracting. For instance, a private project may wish to use the Linux
+    versioning scheme. Fortunately, there is a way to control the way custom validation
+    routines are handled at the packaging, download, or installation phases of the
+    PEAR installer. By extending the `PEAR_Validate` class located in `PEAR/Validate.php`,
+    a special validator can be created using object-oriented inheritance. To activate
+    it, the validator must be associated with a channel. Although this process will
+    be discussed in detail in [Chapter 5](ch05.html "Chapter 5. Releasing to the World:
+    PEAR Channels"), here is a simple example.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The developers of PHP extensions at `pecl.php.net` have a much looser version
+    validation system, and there is a wide variation of versioning accepted, from
+    a two-digit 1.0 to the 7.5.00.26 used by the maxdb package ( [http://pecl.php.net/maxdb](http://pecl.php.net/maxdb))
+    to mirror versioning used by MySQL''s MaxDB database. As such, [pecl.php.net](http://pecl.php.net)
+    is a separate channel from [pear.php.net](http://pear.php.net), and in its channel
+    definition file `channel.xml` (also discussed in depth in [Chapter 5](ch05.html
+    "Chapter 5. Releasing to the World: PEAR Channels")) defines a channel validator:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This particular channel validator is distributed with the PEAR installer in
+    the file `PEAR/Validator/PECL.php`. This file is both the perfect example of a
+    customized channel validator and the simplest, so here it is, in all of its glory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: This class simply overrides the strict version validation of its parent, and
+    then adds in a PECL-specific check to see if an extension package is claiming
+    to distribute a differently-named extension from the package name. In addition,
+    it checks for a release candidate with (lower-case) `rc` in the version, as PHP's
+    `version_compare()` function ( [http://www.php.net/version_compare](http://www.php.net/version_compare))
+    treats this very differently from versions containing (upper-case) `RC`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**Why are pear.php.net and pecl.php.net Separate Channels?**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In earlier PEAR versions, the `pear` command was used to install both PEAR packages
+    and **PHP Extension Community Library** (**PECL**) packages. This was changed
+    in version 1.4.0 for a number of reasons. First of all, the developers at [pear.php.net](http://pear.php.net)
+    are developing packages written in PHP. Developers at [pecl.php.net](http://pecl.php.net)
+    are developing packages written in C that are compiled to shared `.dll` or `.so`
+    files as internal components (extensions) of PHP itself. There are intrinsic differences
+    in the way PEAR-style packages are installed and maintained compared to the PECL-style
+    packages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One of these differences is the importance given to proper versioning. PECL
+    and PHP extensions can't co-exist with conflicting extensions; only one can run
+    at a time. PEAR packages do not have this restriction, as several different versions
+    of a PEAR package can co-exist and be loaded interchangeably through the `include_path`,
+    so versioning becomes much more important.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition, because of file locking, an extension that is loaded into memory
+    cannot be uninstalled, making upgrading PHP extensions impossible unless `php.ini`
+    is not used.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are a number of other small reasons that all added up to the need for
+    a split, such as confusion over the function of packages (is this a PHP extension
+    or a script written in PHP?) and so now we have both the `pear` and the new `pecl`
+    command for managing PECL-packages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enterprise-Level Dependency Management
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Dependencies are a natural evolution in software design. If your forum package
+    attempts to separate business logic from display by using a template engine, it
+    is far better to focus your energies on developing the forum functionality than
+    it is to design a new template engine. Not only have the authors of existing template
+    engines spent more time working on and thinking about template engines, their
+    template engine has been used by thousands of other developers just like you.
+    All of the common and most of the unusual problems have been encountered and solved.
+    In the event that you do find a new problem, you can report it to the maintainers,
+    or even exercise the full strength of open source and fix the problem yourself
+    and give the solution back to the maintainers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the other hand, this requires putting trust in the maintainers of the template
+    engine. By using the template engine, you implicitly trust the maintainers to
+    effectively manage it, to fix all bugs discovered, and to prevent introducing
+    new bugs into future releases. You also trust the maintainers to continue maintaining
+    the package and to respond to issues you encounter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PEAR developers have been around long enough to know that at its worst, this
+    trust can be naïve or stupid, as software is still maintained by humans who have
+    the capacity to screw up. Fortunately, because of this knowledge, `package.xml`
+    provides complete control over the "trust" of a dependency.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**Dependencies in package.xml**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For more details on how dependencies work in `package.xml`, see the section
+    *External Dependencies*
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The simplest dependency tells the installer that a package must be used but
+    that we don''t need to check for versioning issues: it is enough that it is installed.
+    In `package.xml 2.0`, this dependency looks something like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'A slightly more restrictive dependency might tell the installer to only install
+    versions newer than a minimum of version 1.2.0:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Going further, it may be the case that there were a few bungled releases. We
+    can tell the installer to ignore specific releases 1.2.0 and 1.4.2, but that every
+    other version newer than 1.2.0 is OK to install:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we can also tell the installer that we want to strongly recommend
+    version 1.4.5, and to never upgrade unless we say it is OK:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this last case, we are given a tremendous amount of control over the dependency.
+    The end user cannot accidentally break our package by upgrading to a newer release
+    of a dependency unless the maintainers of the dependency have worked with you
+    on your package and certified its compatibility with another tag,`<compatible>`,
+    or you do another release of your package that recommends the newer version.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The differing levels of trust afforded by dependencies in `package.xml` mean
+    you can securely depend on other packages, but this is only the beginning of PEAR's
+    dependency features. The other common problem solved by the use of dependencies
+    is basic incompatibilities with the end user's computer, operating system, PHP
+    version, or enabled extensions in `php.ini`. PEAR provides dependency tags for
+    each one of these situations. In addition, optional features or plug-ins can be
+    implemented through optional dependencies or dependency groups. The list of possibilities
+    is staggering, and yet the syntax in `package.xml` is simple and very easy to
+    learn.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Distribution and Upgrades for the End User
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: From the end user's perspective, one of the most complex tasks faced when using
+    an unzip-and-go package is upgrading. In the closed-source world, newer versions
+    of a package break something that used to work with the old package as a means
+    of forcing their users to upgrade, which sometimes requires significant work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the open-source world, many developers continue to follow this model by introducing
+    exciting new features that mean you can no longer use the old version. The actual
+    upgrade process usually means overwriting the current version with the new files,
+    possibly with new configuration needed. In addition, it opens up the scary prospect
+    of completely breaking a live site, prompting the need for some kind of backup
+    system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By using the PEAR installer, all of these fears and dangers are a thing of
+    the past. It is simple to upgrade to a new version by using:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It is just as simple to downgrade to a previous version of the package:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: This makes the task of maintaining a live site both easy and secure — a rare
+    and wonderful combination. Note that this example assumes the old version of the
+    package is `1.2.3`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In addition, upgrading or installing dependencies is just as easy. Required
+    dependencies are always downloaded and installed for packages that make use of
+    `package.xml 2.0`, and for packages that use `package.xml 1.0`, dependencies can
+    be automatically downloaded and installed with the `--onlyreqdeps` (only required
+    dependencies) option like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Optional dependencies can also be automatically installed using the `--alldeps`
+    (all dependencies) option:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In addition, creating feature groups, or grouping several related packages
+    into a single dependency, is easily accomplished with dependency groups, meaning
+    users can install feature groups like PEAR''s web installer feature like so:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: When configuring a package, there is often a large amount of work that needs
+    to be performed to configure file locations, set up databases, and so on. PEAR
+    provides some simple ways to automate configuration, and also provides ways to
+    standardize any level of complex setup through post-installation scripts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you're anything like me, thinking of all the possibilities built into the
+    PEAR installer makes your heart race faster with anticipation. Even if you're
+    not quite that geeky, I'm sure you will find that the power of the PEAR installer
+    will make your programming life easier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An Overview of package.xml Structure
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '`package.xml` contains all of the information the PEAR installer needs to install
+    and configure PEAR packages. By leveraging standards such as XML and XSchema to
+    document package structure ( [http://pear.php.net/dtd/package1.xsd](http://pear.php.net/dtd/package1.xsd)
+    and [http://pear.php.net/dtd/package2.xsd](http://pear.php.net/dtd/package2.xsd)
+    have full definitions of `package.xml 1.0` and `package.xml 2.0` respectively),
+    PEAR opens up future programming possibilities that would not be available otherwise.
+    For instance, using XSchema allows future extensibility of `package.xml` using
+    XML namespaces to provide custom functionality.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When discussing `package.xml`, it is important to understand both the commonality
+    and the differences between `package.xml 1.0` and `package.xml 2.0`. The `package.xml
+    2.0` is a superset of `package.xml 1.0`. In other words, it is possible to represent
+    every single possible `package.xml` version 1.0 as a `package.xml 2.0`, but there
+    is a large set of `package.xml 2.0` that cannot be reduced to unique `package.xml
+    1.0`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The best way to get acquainted with the structure of `package.xml 1.0` is to
+    peruse the CVS of the PEAR repository at [cvs.php.net](http://cvs.php.net). Each
+    subdirectory contains a `package.xml` file. If that `package.xml` file begins
+    with`<package version="1.0"...` then it is a `package.xml 1.0`. Many packages
+    are already taking advantage of `package.xml 2.0`, using a file named `package2.xml`.
+    Also useful is to investigate the PECL repository at [http://cvs.php.net/pecl/](http://cvs.php.net/pecl/)
+    and see how PHP extension developers are using `package.xml`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To explore the equivalent `package.xml 2.0`, there is a convenient PEAR command
+    that can be used to convert a `package.xml 1.0` into a `package.xml 2.0`. This
+    command is invoked as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will parse a file in the current directory named `package.xml` and spit
+    out a file named `package2.xml` in the new format.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition, full up-to-date documentation on `package.xml` is always available
+    in the PEAR manual at [http://pear.php.net/manual/](http://pear.php.net/manual/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: For the purposes of this book, we will be primarily discussing `package.xml
+    2.0`, and only mentioning 1.0 to remark on important conceptual changes for those
+    who are familiar with the old format.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here is a sample `package.xml` file. This one is taken from the PEAR package
+    itself, and demonstrates a number of `package.xml's` features that will be explored
+    in the sections to come. Feel free to skim this example and then refer back to
+    it later on. For now, just absorb the basic structure and the specifics will make
+    sense when you read about them later on in this text.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: Tags Shared between package.xml 1.0 and 2.0
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: If you have a basic understanding of `package.xml 1.0` and just want to see
+    what has changed in `package.xml 2.0`, it is best to skim the next few sections.
+    Differences are always presented at the beginning of each section, followed by
+    an in-depth exploration of the reasoning behind the changes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before launching into the advanced new features of `package.xml 2.0`, it is
+    important to explore the tags and attributes that have been carried over from
+    `package.xml 1.0` that both formats have in common. Most tags are unchanged. A
+    few have either added information or changed their name slightly, and others have
+    been completely redesigned. Let's get started.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Package Metadata
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Both `package.xml` versions provide similar package metadata. Some basic information
+    that must be present in any package includes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Package name/channel
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Maintainers (authors)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Package description
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Package summary (one-line description)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Most of this information remains unchanged from release to release. For instance,
+    the package name and channel are constant. The package description and summary
+    will change rarely. The maintainers may change more frequently, depending on the
+    community, so even though this is grouped under package metadata, it is probably
+    reasonable to think of this as release-based information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Package Name/Channel
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'These two fields are at the beginning of a `package.xml`, and form the heart
+    of the PEAR installer''s package differentiation. These are like the primary key
+    in a database table: a unique combination of package/channel = a unique package.
+    Note that the`<channel>` and`<uri>` tags are only present in `package.xml 2.0`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**Channels and package.xml 1.0**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you learned earlier, the concept of channels is introduced in `package.xml
+    2.0`. How does `package.xml 1.0` define the channel when it is not a part of its
+    specification?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'PEAR handles this problem in a simple way: all packages packaged using `package.xml
+    1.0` are installed as if they had a`<channel>pear.php.net</channel>` tag inserted
+    right after the package name declaration. Note that [pecl.php.net](http://pecl.php.net)
+    packages that used `package.xml 1.0` are allowed to migrate to the [pecl.php.net](http://pecl.php.net)
+    channel when they upgrade to using a `package.xml 2.0`, but all other packages
+    must start over with a new channel.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The package name is declared using the`<name>` tag, and must begin with a letter,
+    and otherwise contain only letters, numbers and the underscore character, unless
+    the channel-specific validator allows another format for the package name. Channel-specific
+    validators are covered in depth in [Chapter 5](ch05.html "Chapter 5. Releasing
+    to the World: PEAR Channels"). If you are simply creating a package, you need
+    not know anything about channel-specific validators. If your package satisfies
+    the requirements for a package, when you run:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Your package will be created without errors. Otherwise, packaging will fail,
+    and one or more error messages will be presented describing the reasons for failure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The`<channel>` tag cannot co-exist with the`<uri>` tag. A package that uses
+    the`<uri>` tag is in fact automatically part of the pseudo-channel `__uri`, a
+    channel that does not have a server or protocols associated with it. The `__uri`
+    channel is in fact a true magic channel that only serves to act as a namespace
+    preventing URI-based packages from conflicting with packages from other channels.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For instance, consider a package whose `package.xml` begins with:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: This package is *not* the same as a package whose `package.xml` begins with
+    the following code even if the version number of the package is `1.2.3`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: URI-based packages are strictly release-based. The`<uri>` tag must be an absolute,
+    real-world URI that can be used to access the package. However, the URI should
+    not include a `.tgz` or `.tar` file extension, but both should be present. In
+    our example above, both [http://pear.php.net/Packagename-1.2.3.tgz](http://pear.php.net/Packagename-1.2.3.tgz)
+    and [http://pear.php.net/Packagename-1.2.3.tar](http://pear.php.net/Packagename-1.2.3.tar)
+    should exist and be identical except for the use of zlib compression on the `.tgz`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Maintainers (Authors)
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The list of maintainers in `package.xml` should serve the same function that
+    a traditional `AUTHORS` file serves. However, this list of authors is more than
+    just useful information. The`<user>` tag is used by a channel server to match
+    up package maintainers with the release of a package, allowing non-channel administrators
+    to upload releases of software packages that they maintain. If you are maintaining
+    a package that is released through [pear.php.net](http://pear.php.net), for instance,
+    the`<user>` tag must contain your PEAR username. For non-channel releases, the
+    contents of these tags are informational only, and let end users of your package
+    know how to contact you.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The`<role>` tag in `package.xml 1.0` may only contain the values `lead, developer,
+    contributor`, or `helper`. This proves to be impossible to validate using XSchema,
+    and so to make things easier, `package.xml 2.0` has taken the contents of the`<role>`
+    tag and extracted them out to new tags`<lead>, <developer>, <contributor>`, and`<helper>`.
+    In addition, the`<maintainers>` and`<maintainer>` tag have been removed to simplify
+    parsing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For `package.xml 1.0:`
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: For `package.xml 2.0:`
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: Package Description and Summary
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The example summary/description pair below shows how the`<summary>` and`<description>`
+    tags should be used in both `package.xml 1.0` and `package.xml 2.0`. These tags
+    are strictly informational, and are not used by the installation portions of the
+    PEAR installer. If a package is served through a channel, commands like `list-all`
+    will display the summary. The description is displayed when a user types commands
+    like `info` or `remote-info` to display information about a particular package
+    or release.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Be sure that these tags are clear, concise, and understandable. Too often, I
+    have seen summaries like `GBRL` for a package named `File_GBRL` — define your
+    acronyms if they are not commonly known!
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: Basic Release Metadata
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The rest of `package.xml` is generally release-specific data, with a few exceptions.
+    Release-specific data is more apt to change than things like the name of a package.
+    Specifically, the areas of release-specific information documented in `package.xml`
+    are:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Package version
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Package stability
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: External dependencies
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Release notes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Release license
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Changelog
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: File list, or contents of the package
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In `package.xml 1.0`, this data was enclosed in a redundant`<release>` tag.
+    This tag has been removed in version 2.0.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Package Version
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The package version is very important, as this is the primary mechanism used
+    by the installer to determine the relative age of different releases. Versions
+    are sequential, meaning version 1.3.6 is older than version 1.4.0b1, even if version
+    1.3.6 was released a month after 1.4.0b1.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: For `package.xml 2.0:`
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The API version of a release is strictly for informational purposes. This can,
+    however, be used in a `replace` task as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This reduces redundancy in maintaining versioning inside files. In fact, providing
+    API version through an API method is a very good idea. In my packages, I usually
+    provide this code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Upon packaging, the `Foo.php` file containing the above code would look like
+    this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: In other words, all instances of the `@API-VER@` token will be replaced with
+    the contents of the`<api>` version tag. Replacement file tasks are used to perform
+    this magic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Package Stability
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In `package.xml 1.0`, the`<state>` tag was used to describe the stability of
+    code. In `package.xml 2.0`, the`<release>` tag inside`<stability>` is used to
+    describe the stability of code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: For `package.xml 2.0:`
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The PEAR installer uses the release stability in conjunction with an end user''s
+    `preferred_state` configuration variable to determine whether a release is stable
+    enough to install. If the user wishes to install the `Foo` package, and these
+    releases are available:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Version | Stability |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1.0.1 | stable |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1.1.0a1 | alpha |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1.0.0 | stable |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 0.9.0 | beta |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 0.8.0 | alpha |'
+  prefs: []
+  type: TYPE_TB
+- en: The installer will choose versions to install based on the user's `preferred_state`
+    setting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| preferred_state value | Foo version that would be installed |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| stable | 1.0.1 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| beta | 1.0.1 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| alpha | 1.1.0a1 |'
+  prefs: []
+  type: TYPE_TB
+- en: Note that for a `preferred_state` of `beta`, when there is a choice of a newer
+    version 1.0.1 `(stable)` and older version 0.9.0 `(beta)`, the installer will
+    choose the latest, most stable version — version 1.0.1\. For a `preferred_state`
+    of `alpha`, the installer will choose the newer and less stable version 1.1.0a1
+    `(alpha)` over the older version 1.0.1 `(stable)`, even though version 1.0.1 was
+    released *after* version 1.1.0a1.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The list of legal stabilities for release stability in order of diminishing
+    stability is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`stable:` code should be working in all situations.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`beta:` code should be working in all situations, and is feature-complete,
+    but needs real-world testing.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`alpha:` code is in a state of flux, features may change at any time, stability
+    is uncertain.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`devel:` code is not yet feature-complete, and may not work in most situations.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`snapshot:` this is a current copy of development code from source during live
+    development in between normal releases.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: API stability serves the same informational purpose as API version. It is not
+    used by the installer, but can be used to track the rate of change of an API.
+    An API marked stable should in fact never change except for adding new features
+    — users need to be able to depend upon a stable API in order for package dependencies
+    to work. This is a key feature of enterprise-level dependencies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The list of legal stabilities for API differs slightly in that an API snapshot
+    is not allowed. API stability should be thought of as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`stable:` API is set, and will not break backward compatibility.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`beta:` API is probably set, and will only change to fix serious bugs in design
+    that are encountered during testing.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`alpha:` API is fluid, and may change, breaking any existing features, as well
+    as adding new ones.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`devel:` API is extremely unstable, and may change dramatically at any time.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: External Dependencies
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'There are two kinds of dependencies that the PEAR installer recognizes: *required*
+    and *optional* dependencies. In addition, there are two classes of dependencies,
+    those that restrict installation, and those that describe other resources (packages/extensions)
+    used by the primary package. Restrictive dependencies are defined by the`<php>,
+    <pearinstaller>, <arch>, <extension>`, and`<os>` dependencies. Resource-based
+    dependencies are defined by the`<package>, <subpackage>`, and`<extension>` dependencies.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Although the `package.xml 1.0` DTD defined several dependency types, only three
+    were ever implemented:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`pkg:` dependencies on packages'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`ext:` dependencies on extensions'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`php:` dependencies on PHP versions'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The structure of dependencies in `package.xml 1.0` was quite simple:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The legal values of the `rel` attribute are:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`has:` the dependency must exist'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`not:` the dependency must not be present'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`gt:` in conjunction with `version` attribute, the dependency must have version
+    > the required version.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`ge:` in conjunction with `version` attribute, the dependency must have version
+    >= the required version'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`eq:` in conjunction with `version` attribute, the dependency must have version
+    == the required version.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`lt:` in conjunction with `version` attribute, the dependency must have version
+    < the required version.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`le:` in conjunction with `version` attribute, the dependency must have version
+    <= the required version.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`ne:` in conjunction with `version` attribute, the dependency must have version
+    != the required version. (PEAR version 1.3.6 only.)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**How is Version Comparison Done?**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The PHP function `version_compare()` is used to determine whether a version-based
+    dependency validates. Documentation for `version_compare()` is at [http://www.php.net/version_compare](http://www.php.net/version_compare).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Only after a great deal of experience did the serious design flaws of this
+    approach reveal themselves:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*XML validation with tools like xmllint cannot reveal invalid dependencies*.
+    Consider the following dependency`<dep type="php" rel="has" version="4.3.0"/>`.
+    This dependency is not valid because `rel="has"` ignores the version attribute,
+    and so the dependency validation will not be performed — every PEAR installation
+    has PHP installed by definition.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*Trust level of dependency upgrades cannot be controlled*. The PEAR package
+    depends upon the Console_Getopt package. At one point, the maintainer of Console_Getopt
+    *fixed* a bug that suddenly caused PEAR to stop working upon upgrade. A good deal
+    of scrambling resulted in a fix, but the event highlighted the fatal flaw in the
+    design of the PEAR installer pre-version 1.4.0: dependencies upon packages are
+    inherently unsafe. There is no way to restrict trust of dependencies. The `rel="eq"`
+    attribute does not have the desired effect because this prevents upgrading safely
+    for any reason, effectively freezing development. In addition, flaws in the validation
+    of dependencies meant that even upgrading to a newer package version is forbidden.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If the current version has a dependency tag of `<dep type="pkg" rel="eq" version="1.0">Deppackage</dep>`,
+    the PEAR installer would look at the dependencies for the new version with `<dep
+    type="pkg" rel="eq" version="1.1">Deppackage</dep>` then look on disk to see that
+    Deppackage version 1.0 was installed, and fail to upgrade. Even if both the main
+    package and Deppackage were passed in, upgrade of Deppackage would fail because
+    the installed version of the main package requires version 1.0 of Deppackage.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: If the current version has a dependency tag of `<dep type="pkg" rel="eq" version="1.0">Deppackage</dep>`,
+    the PEAR installer would look at the dependencies for the new version with `<dep
+    type="pkg" rel="eq" version="1.1">Deppackage</dep>` then look on disk to see that
+    Deppackage version 1.0 was installed, and fail to upgrade. Even if both the main
+    package and Deppackage were passed in, upgrade of Deppackage would fail because
+    the installed version of the main package requires version 1.0 of Deppackage.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '*Dependencies on PECL extension-based packages cannot work*. A`<dep type="ext"
+    rel="has">peclextension</dep>` will only check for an extension in memory. Most
+    PECL extensions can either be built directly into PHP (non-shared), distributed
+    with PHP as a shared module, or downloaded and installed. If a PECL extension
+    is built into PHP, distributed as a shared module, or installed via PECL, the
+    `type="ext"` dependency will work just fine. Unfortunately, in order to upgrade
+    the extension using the PEAR installer, `php.ini` must be disabled otherwise file
+    locking will prevent overwriting the extension when it is in use by the current
+    PHP process. Newer extensions such as PDO have drivers that depend on the PDO
+    extension being present for installation. If `php.ini` is disabled, there is no
+    way to detect extensions to validate dependencies!'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Simplifying XML Validation of package.xml
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'In order to make it possible to validate dependencies with external tools,
+    the structure needed to be redesigned. Generally, using tags in preference to
+    attributes and particularly in preference to attribute values is the approach
+    used in `package.xml 2.0`. The dependency examples from `package.xml 1.0` can
+    be represented in `package.xml 2.0` with:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that attributes `optional="yes"` and the implied `optional="no"` have both
+    been extracted out of the`<dep>` tag into the tags`<required>` and`<optional>`.
+    In addition, the `type` attribute has been extracted out into the tags`<package>,
+    <php>`, and the previously undefined`<pearinstaller>` tag. Finally, both the `rel`
+    and the `version` attributes have been completely replaced with a new set of tags.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In `package.xml 1.0`, in order to define a version set for a single dependency,
+    multiple`<dep>` tags were needed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This can be compared to the `package.xml 2.0` equivalent:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: In fact, this change promotes much simpler debugging of dependency problems
+    in complex `package.xml` file. The above dependency easily translates into English
+    as "Package PackageName from channel [pear.php.net](http://pear.php.net), minimum
+    version 1.2.3, maximum version 2.0.0, excluding versions 1.3.0 and 2.0.0." Not
+    only is it easier to detect errors using tools like `xmllint`, it is much easier
+    to comprehend complex versioning of dependencies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `rel/version` duo has been effectively made obsolete by the combination
+    of`<min>/<max>/<exclude>` tags. These three tags can be thought of as newer implementations
+    of `rel's ge, le`, and `ne:`
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`<min>1.2.0</min>` =`<dep rel="ge" version="1.2.0">`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`<max>1.2.0</max>` =`<dep rel="le" version="1.2.0">`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`<exclude>1.2.0</exclude>` =`<dep rel="ne" version="1.2.0">`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: With these three tags, we can effectively and simply define any version set
+    in a single dependency, without needing to think in terms of mathematical comparison
+    operators.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Managing Trust of Dependencies
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The PEAR installer is extremely lithe, making upgrading to newer versions of
+    packages so simple; until PEAR version 1.4.0 its greatest strength was also its
+    greatest weakness. The ability to easily upgrade packages, as well as the ability
+    to perform batch-automated upgrades with commands like `upgrade-all` and `download-all`
+    followed by `upgrade` is one of the key selling points of the installer. However,
+    this ease is built upon an implicit trust in the quality of newer versions. By
+    depending on packages with a simple`<dep type="pkg" rel="ge" version="X.Y.Z">`,
+    this gives a carte blanche to the developers of the dependent package. If a dependent
+    package's developer introduces a break with previous releases, whether through
+    carelessness or lack of sympathy for your code, your end users are in trouble.
+    For this reason, bundling dependencies directly in the code has become a favored
+    means of distributing applications. This, however, negates the primary benefit
+    of the PEAR installer — the ability to quickly and easily upgrade in case of the
+    discovery of serious bugs like functionality failures, or worse, subtle security
+    vulnerabilities that open up a site to external attack. This also puts the burden
+    of maintaining the bundled dependencies directly upon the application maintainer,
+    reducing the efficiency of distributed development and all of its contingent benefits.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`package.xml 2.0` solves this dilemma simply and elegantly through the introduction
+    of a new dependency concept: recommended version. This dependency can be taken
+    from PEAR''s `package.xml:`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This instructs the installer to upgrade `Console_Getopt` at will to any release
+    of `Console_Getopt`, version `1.2` or newer. By changing the dependency to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: This changes everything. Now, the installer will not automatically upgrade to
+    version 1.3.0 upon release, unless the `--force` or `--loose` option is passed,
+    or a`<compatible>` tag is present in the release of `Console_Getopt`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The syntax of`<compatible>` is simple:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: As in dependencies,`<min>/<max>/<exclude>` is used to define a set of versions
+    that the package is guaranteed to be compatible with. Unlike dependencies, the`<max>`
+    tag is required to limit the set of versions. In addition, the set of versions
+    must be limited to actual existing releases that have been tested.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In theory, it is still possible for lazy developers to implement a`<compatible>`
+    tag that is every bit as dangerous as the old `rel="ge"-based` technique of dependency
+    management, but this is both unlikely due to the principle of developer inertia
+    and easy to catch and correct for the developer whose application depends on the
+    dependency.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**The Principle of Developer Inertia**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Developers, like electrons, will choose the path of least resistance to achieve
+    their goals. Make it difficult to write bad code and easy to write good code,
+    and developers will write good code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reliably Depending on PECL Packages
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Reliably depending on PECL packages has become possible due to two innovations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The split of the `pear` script into two scripts: `pear` and `pecl`'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The introduction of the`<providesextension>` tag
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The primary difference between the `pear` and `pecl` commands can be summarized
+    as: "Use `pear` to manage packages written in PHP like those at [pear.php.net](http://pear.php.net),
+    and use `pecl` to manage packages extending PHP like those at [pecl.php.net](http://pecl.php.net)."
+    Technically, the `pecl` command disables `php.ini`, and defaults to the [pecl.php.net](http://pecl.php.net)
+    channel, but otherwise it is identical to the `pear` command. Disabling `php.ini`
+    makes it possible to upgrade extensions that are inside `php.ini` without unloading
+    them.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The`<providesextension>` tag is used in dependencies as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This simple addition instructs the installer to treat the package dependency
+    on `PDO` as if it were a combination of these two dependencies:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: The installer will first check to see if the `PDO` extension is present in memory,
+    version 1.0 or newer, and if it is not, it will check the package registry to
+    see if [pecl.php.net/PDO](http://pecl.php.net/PDO) version 1.0 or newer is installed.
+    This allows, for instance, installation of production extensions for an Apache-based
+    PEAR installation using a CLI-based PEAR installer without requiring the CLI-based
+    installer to load each extension into its `php.ini`. In addition, it allows extensions
+    like `PDO_mysql` to depend on `PDO` without requiring the `PDO` extension to be
+    loaded in memory, greatly simplifying the end user experience.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Release Notes
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In both `package.xml 1.0` and `package.xml 2.0`, release notes are defined by
+    the`<notes>` tag. The format of this tag is any text.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: Release License
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The text of the`<license>` tag is not validated — anything may be entered there.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: In `package.xml 2.0` there are optional attributes `uri` and `filesource` for
+    linking a license to an online version and also to a specific license file within
+    the package itself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: Changelog
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The format of changelog in `package.xml 1.0` matches the format of a`<release>`
+    tag with the exception that`<filelist>` is not allowed. The changelog is purely
+    information for human purposes, and is not processed at all by the installer.
+    The format for a changelog in `package.xml 2.0` is very similar to that of `package.xml
+    1.0`, and is best illustrated by an example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: Like the release section of `package.xml`, the tags`<version>, <stability>,
+    <date>, <license>`, and`<notes>` are all present. This is identical to `package.xml
+    1.0`. The only difference is the format of the`<version>, <stability>`, and`<license>`
+    tags, which match the changes made in `package.xml 2.0`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: File List, or Contents of the Package
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The primary purpose of PEAR, and by consequence, `package.xml` is to distribute
+    files containing programming code. This is ultimately controlled by the list of
+    files that are in a package, as defined by`<filelist>` or`<contents>.`
+  prefs: []
+  type: TYPE_NORMAL
+- en: For `package.xml 1.0:`
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: For `package.xml 2.0:`
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: This tag is the heart of `package.xml` file. Once our trusty package has weathered
+    dependency tests, this is the section of `package.xml` that is actually used during
+    installation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The file listing inside a `package.xml` is used to define the directory structure
+    inside a release. It must reflect exactly the relative locations of files as they
+    were on the computer of the developer. In other words, if the `package.xml` is
+    in directory `/home/frank/mypackage/`, and a file in `package.xml` is located
+    at `/home/frank /mypackage/foo/test.php`, it must be listed as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Or, alternately as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: Either alternative will yield the same result. At installation time, PEAR will
+    automatically convert all recursive directory trees like the second example into
+    a single flat branch like the first example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: New Tags in package.xml
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '`package.xml 2.0` introduced the new tags`<phprelease>, <extsrcrelease>`, and`<extbinrelease>`
+    to differentiate between the different kinds of packages the PEAR installer handles.
+    `package.xml 2.1` introduces`<zendextsrcrelease>` and `<zendextbinrelease>` in
+    order to differentiate between regular PHP extensions and Zend extensions like
+    `xdebug` ( [http://pecl.php.net/xdebug](http://pecl.php.net/xdebug)).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You may have noticed that the primary tag in `package.xml 1.0` is named`<filelist>`,
+    whereas the primary tag in `package.xml 2.0` is named`<contents>`. This change
+    came about as a result of a simple feature request. When PEAR 1.3.3 was popular,
+    the need to customize installations grew; more and more attributes and information
+    were crammed into the`<file>` tag. The `platform` attribute tells the installer
+    that a file should only be installed on a particular platform, such as UNIX or
+    Windows. This is used in the PEAR package in order to install the `pear` command
+    using a `schell` script on UNIX, and using a `.bat` batch file on Windows. The
+    feature request that came in was to implement an additional `platform="!windows"`
+    hack that would tell the installer to install the file on every platform except
+    Windows. This introduces a number of problems. As package complexity grows, and
+    more systems are supported, it may be necessary to specify a limited list of systems
+    a file can be installed on, or different names to install the file as required
+    on different systems. Implementation of this would require a sophisticated mapping
+    between the `install-as` and the `platform` attributes, something that was not
+    anticipated by the designers of `package.xml 1.0`, and something that would introduce
+    a miserable mess into a single file tag. Imagine encountering this nightmare and
+    trying to debug it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: Do you see the typo buried deep in the install-as attribute?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'One day while working on the problem caused by the spectre of such horribly
+    complex features, it struck me that attributes like the `platform` attribute were
+    actually kludgy ways of implementing dependencies for a specific file. Suddenly,
+    the answer was clear. Far better than extending the attribute''s meaning would
+    be abstracting the information into separate release tags. Each release tag would
+    have a file list and installation conditions that would define which one should
+    be used on an end user''s computer. For instance, instead of:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We would have:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'However, the most obvious benefit comes from the horrible "Darwin" example.
+    This would translate from:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here, the potential for simple validation is obvious: the`<os>` install condition
+    is limited to a few known possibilities such as `windows, unix, linux, Darwin`,
+    and so on. The OS "Darwim" would simply refuse to validate. In addition, the complexity
+    of how `Foo.scr` is handled is grouped by OS rather than stuffed into a couple
+    of attributes with error-prone non-XML syntax.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'File/Directory Attributes: name, role, and baseinstalldir'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The`<file>` and`<dir>` tags have a number of options available to them. Both
+    tags require a `name` attribute, defining the name of the element as located on
+    disk. Unlike an operating system, `package.xml` does not allow empty directories.
+    All`<dir>` tags must contain at least one`<file>` tag. As described in the previous
+    section, there are two ways to describe the location of a file in `package.xml`,
+    either with a complete relative path separated by the UNIX path separator `/:`
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Or, alternately as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'All files must have a **role** attribute. This attribute tells the installer
+    how to handle a file. The default list of allowed file roles is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Default File Roles |   |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Role | Description |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| php | PHP script files, like "PEAR.php" |'
+  prefs: []
+  type: TYPE_TB
+- en: '| data | Data files used by the script (read-only) |'
+  prefs: []
+  type: TYPE_TB
+- en: '| doc | Documentation files |'
+  prefs: []
+  type: TYPE_TB
+- en: '| test | Test scripts, unit test files |'
+  prefs: []
+  type: TYPE_TB
+- en: '| script | Executable script files `(pear.bat, pear.sh)` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| ext | PHP Extension binaries `(php_mysql.dll)` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| src | PHP Extension source files `(mysql.c)` |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Each file role has a configuration value associated with it. For instance,
+    on my Windows XP system, here is what I see when I list configuration values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In some cases, especially for subpackages like `HTML_QuickForm_Controller`
+    ( [http://pear.php.net/package/HTML_QuickForm_Controller](http://pear.php.net/package/HTML_QuickForm_Controller)),
+    all files should be installed into a subdirectory (HTML/QuickForm/Controller in
+    our example). In order to reflect this installation path in our file, we would
+    need to prepend all files with the full path, like so:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Or, alternately use`<dir>` tags as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In addition, our actual development path would need to reflect this. This does
+    not fit the "make everything easy for lazy developers" development paradigm very
+    well, and so PEAR provides the `baseinstalldir` attribute to simplify things.
+    Now, all we need is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE60]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Or, the far more common:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE61]'
+  prefs: []
+  type: TYPE_PRE
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**Path Locations on the Development Machine**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Note that as a developer, in order for this to work, the actual paths on disk
+    must match the`<dir>/<file>` tags. In our example above, the files should be in:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`Controller/Action.php Controller.php package.xml`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Rather than:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`HTML/QuickForm/Controller/Action.php HTML/QuickForm/Controller.php package.xml`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Otherwise the PEAR installer will be unable to find the files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Generally speaking, if a file is listed in `package.xml` as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE62]'
+  prefs: []
+  type: TYPE_PRE
+- en: And `php_dir` is `C:\php4\PEAR`, the file will be installed into `C:\php4\PEAR\Path\To\Foo.php`.
+    This is not always advantageous, especially for things like scripts. PEAR, for
+    instance, places all of its scripts in the `scripts/` subdirectory for easier
+    organization. However, this would mean that if `bin_dir` is `C:\php4`,
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE63]'
+  prefs: []
+  type: TYPE_PRE
+- en: will be installed into `C:\php4\scripts\pear.bat`, which may not necessarily
+    be in the path. To change the base installation directory in PEAR 1.4.x, you need
+    to use an`<install>` tag inside a release tag, In addition, it is possible to
+    perform text transformations on the contents of files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we discovered the basics of how the PEAR installer's internals
+    work through the lens of `package.xml's` structure. First, we explored the basic
+    design philosophies of the PEAR installer, and how PEAR packages differ from the
+    old-fashioned unzip-and-go approach. We learned about PEAR's configuration options,
+    and the versatile ways in which PEAR deals with libraries versus applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we explored the importance of versioning in controlling the quality of
+    packages installed, and the importance of dependencies, and how the PEAR installer
+    manages this important link between libraries and applications. Then, we explored
+    how easy it is to upgrade when using the PEAR installer, as compared to upgrading
+    traditional unzip-and-go applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After this, we dove headfirst into the structure of `package.xml`, learning
+    how package metadata such as the package name, authors, release notes, and changelog
+    are organized. This was coupled with a look at how critical installation data
+    such as files, dependencies, and versioning is organized.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next chapter will examine advanced topics, specifically how `package.xml
+    2.0` introduces better application support, and how to leverage these new features
+    in your own packages.
+  prefs: []
+  type: TYPE_NORMAL

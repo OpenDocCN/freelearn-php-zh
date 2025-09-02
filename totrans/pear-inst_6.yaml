@@ -1,0 +1,1813 @@
+- en: 'Chapter 6. Embedding the PEAR Installer: Designing a Custom Plug-In System'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: At this point, practically everything that can be done with the `pear` and `pecl`
+    commands and existing PEAR software has been revealed. In the previous chapter,
+    we learned how to set up a custom PEAR channel, completing our quest to master
+    the usage of the PEAR installer. Now that we can conquer the universe of PEAR,
+    let's look even further, and see how we can solve some of the most common problems
+    of a web-based framework with the PEAR installer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we will design a custom plug-in system for a fake blog application,
+    called **MyBlog**. For MyBlog, we will design a plug-in system to manage templates,
+    and use the PEAR installer to manage the details of querying the remote server
+    for templates, handling dependencies between versioning, and doing the actual
+    installation process as well. In addition, it will use an extension of REST on
+    the remote server to store thumbnail images of the templates to aid in choosing
+    a template. Of course, since this is a fake blog, the thumbnail images are pictures
+    of cats, but they would be screenshots of the templates for a real blog.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For those who do not wish to type in every character, the code for MyBlog is
+    always available for download directly from Packt website, or by direct installation
+    using the PEAR installer (the fun way) via:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Although a bit ugly (I never claimed to be a designer), here is the administration
+    page of our fake MyBlog application, demonstrating the image pulled from a remote
+    server and pagination:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Embedding the PEAR Installer: Designing a Custom Plug-In System](img/1904811191_6_1.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Here is a screenshot of the post-install process after clicking on the second
+    template to install it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Embedding the PEAR Installer: Designing a Custom Plug-In System](img/1904811191_6_2.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Why Embed PEAR?
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In many cases, PHP applications are web applications like Content Management
+    Systems (CMS) or some other customizable framework that can be extended. Inevitably,
+    at some point, end users will think: "Wouldn''t it be nice to just click and get
+    the functionality that I want downloaded and installed automatically?"'
+  prefs: []
+  type: TYPE_NORMAL
+- en: At this point, it would be simpler for you to require users to install the extra
+    functionality using the PEAR installer, but what if we don't want our application's
+    users to have to learn how to use PEAR at all? Users who download your CMS or
+    framework (let's call it the XYZ framework) already have a lot to learn about
+    how the framework is designed, how to customize and use it to author content.
+    The last thing they want to learn is some external tool just in order to install
+    a special voting plug-in or a new template.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What we really need is a simple page on the administration portion of the XYZ
+    framework that allows the user to browse plug-ins, and click on one for installation,
+    without worrying about details. Even better would be to allow the possibility
+    for advanced users to customize the remote server used for download, whether to
+    install experimental plug-ins, and so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In other words, we need to embed the PEAR installer directly inside the XYZ
+    framework, and use it to handle the dirty work of querying remote servers, retrieving
+    plug-ins, and doing the actual installing/upgrading process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Simplify User Choices for Installation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Embedding the PEAR installer makes it possible to focus on the important part
+    of your application: ease of use and features for your users. The last thing you
+    need is for confused users to simply give up on your application because you wasted
+    too much time on re-inventing the internals, and not enough time on the visual
+    and logical layout.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Relying on the PEAR installer will give both, more time for streamlining the
+    look and flow of the plug-ins page, and also allow creation of simple "click here
+    to install" links that will properly download the right plug-in for the current
+    combination of PHP version, framework version, and requested stability level.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Eliminate Chances for Error
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As always, by avoiding the urge to re-invent the wheel, this cuts down on the
+    complexity of your application, making it much less likely that a bug will be
+    introduced, and saving both time and future effort. PEAR's robust test suite and
+    large community of users can be relied upon to ensure the stability of the PEAR
+    installer, freeing you to work on the robustness of your own code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Other Plug-In Systems
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Before diving in, let''s take a look at other possibilities for bundling plug-ins.
+    There are three models currently employed by major PHP applications:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bundling plug-ins directly in the source code
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using PEAR dependencies for subpackages
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Customized remote plug-in servers
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Bundling Plug-Ins Directly in the Source Code
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: By far, the most common solution employed in the PHP world is bundling plug-ins
+    directly in the source code. This method, as explored in previous chapters results
+    in code that can be simpler to create, but is far more difficult to maintain,
+    and particularly to upgrade, often resulting in out-of-date code. As recent security
+    vulnerabilities in popular programs demonstrate, keeping code up-to-date and bug-free
+    is not just important for minor annoyances; it can make the difference between
+    a secure and an insecure application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although it is the most common choice, bundling plug-ins directly in the source
+    code is just not a very flexible idea, and so we won't explore this idea in depth.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Subpackages - PEAR Dependencies
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Using the PEAR installer's facility to manage dependencies is another approach
+    to bundling plug-ins, which is starting to gain momentum at `pear.php.net`. This
+    approach was first suggested by the work I did on maintaining phpDocumentor. I
+    noticed that when implementing a new template or a new converter for phpDocumentor,
+    this often meant that point releases of the entire phpDocumentor package was necessary
+    even when a small change was made to a template or to a converter. Although it
+    is not necessarily bad to be releasing often, it is important to provide a good
+    reason for users to upgrade. In this case, it meant choosing between a release
+    with a small change and postponing the release.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition, when a new experimental converter, such as the PDF converter, was
+    introduced, the stability level of the converter could only be documented as being
+    less stable. Users often became confused about why an unstable converter was released
+    with a stable phpDocumentor.
+  prefs: []
+  type: TYPE_NORMAL
+- en: All of the problems pointed to the need for a better way to handle sub-sections
+    of an application. The answer came in the form of subpackages. Subpackages are
+    discrete PEAR packages that define a parent-child relationship between the larger
+    application and a smaller section of the application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: A subpackage is a self-contained portion of an application that can not work
+    without a parent application; for example, the **MDB2_mysqli** subpackage to the
+    **MDB2** package. MDB2 can handle connections to the mysqli driver for MySQL versions
+    4.1 and newer if the MDB2_mysqli package is installed. MDB2_mysqli cannot work
+    on its own, and requires MDB2 in order to be useful. Hence, MDB2_mysqli is a subpackage
+    of MDB2.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Case Study: MDB2'
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The first package to take advantage of this idea was the MDB2 package ( [http://pear.php.net/MDB2](http://pear.php.net/MDB2))
+    designed by Lukas Smith and Lorenzo Alberton to supersede the MDB package designed
+    by Smith, Alberton, and inspired by Metabase created by Manuel Lemos.
+  prefs: []
+  type: TYPE_NORMAL
+- en: MDB2 is a database abstraction layer that has a core set of functionality contained
+    in the basic MDB2 package. Each specific database is accessed using a driver package.
+    For instance, the mysqli driver is accessed using the MDB2_Driver_mysqli package.
+    Unlike older database abstraction packages like the popular DB package, MDB2 has
+    split off these drivers, so that each driver is maintained separately.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Each driver encapsulates the functionality of a single database, and as such,
+    the subpackages are:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: MDB2_Driver_mssql ( [http://pear.php.net/MDB2_Driver_mssql](http://pear.php.net/MDB2_Driver_mssql))
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: MDB2_Driver_sqlite ( [http://pear.php.net/MDB2_Driver_sqlite](http://pear.php.net/MDB2_Driver_sqlite))
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: MDB2_Driver_querysim ( [http://pear.php.net/MDB2_Driver_querysim](http://pear.php.net/MDB2_Driver_querysim))
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: MDB2_Driver_pgsql ( [http://pear.php.net/MDB2_Driver_pgsql](http://pear.php.net/MDB2_Driver_pgsql))
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: MDB2_Driver_oci8 ( [http://pear.php.net/MDB2_Driver_oci8](http://pear.php.net/MDB2_Driver_oci8))
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: MDB2_Driver_mysqli ( [http://pear.php.net/MDB2_Driver_mysqli](http://pear.php.net/MDB2_Driver_mysqli))
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: MDB2_Driver_mysql ( [http://pear.php.net/MDB2_Driver_mysql](http://pear.php.net/MDB2_Driver_mysql))
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: MDB2_Driver_ibase ( [http://pear.php.net/MDB2_Driver_ibase](http://pear.php.net/MDB2_Driver_ibase))
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: MDB2_Driver_fbsql ( [http://pear.php.net/MDB2_Driver_fbsql](http://pear.php.net/MDB2_Driver_fbsql))
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Each driver has its own versioning, stability, and more importantly, a dependency
+    on the database driver needed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The old model used by the DB package makes it impossible to specify dependencies
+    on database extensions. In other words, to require the needed extensions for each
+    driver would mean a dependency on the mssql, sqlite, pgsql, oci8, mysqli, mysql,
+    ibase, and fbsql PHP extensions. Not only would this force unnecessary database
+    extensions to be loaded in `php.ini`, it would cause potential conflicts between
+    database extensions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition, if a new driver was introduced, the stability of the DB package
+    (stable) would automatically filter down to the extension. To get around this
+    problem, DB uses a text file in the documentation describing the stability of
+    each driver using a table. This information does not show up at installation time.
+    If a new driver is introduced for MDB2, it could have a stability of `devel` or
+    `alpha` even though MDB2 is `stable`. Also beneficial is the ability to release
+    a new version of a driver independent from the parent MDB2 package. Any time a
+    change is made to a DB driver, the entire DB package with all of its other drivers
+    must be released.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are some drawbacks to the MDB2 approach. First, in order to install MDB2,
+    there are two steps needed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This requires knowing how to use the pear command-line as well as the name
+    of the drivers. A common mistake (one I, myself, have made) is to instead type:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This, of course, results in a very unhelpful error message:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In addition, uninstalling requires the same two steps, or passing both packages
+    on the command-line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: There is, however, a better way to implement the subpackages model when using
+    `package.xml` version 2.0 (MDB2 still uses the original version 1.0 implementation
+    of `package.xml` as of the writing of this chapter). If MDB2 were to define install
+    groups for each driver, this would allow users to install MDB2 and the proper
+    database. For instance, consider this approach in `package.xml:`
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This `package.xml` would allow users much more flexibility. When installing,
+    users would see:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In order to install MDB2 with mysqli support, the user would simply type:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, the MDB2_Driver_mysqli package would be downloaded and installed. Better
+    yet, if at some point in time, MDB2 needs to be uninstalled, MDB2 and all of its
+    drivers could be installed with a single command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: The disadvantage to this approach is that the output when installing or upgrading
+    MDB2 is quite wordy, and could make it difficult to notice a stray error or warning.
+    In addition, should a new driver be released, it must be added to `package.xml`
+    in order to make the handy feature available. On the other hand, this could be
+    an easy way to differentiate between recommended and experimental drivers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In short, this approach is ripe for exploration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Custom Plug-In Systems: Remote Server'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The primary drawback of the subpackage approach used by MDB2 is that the end-user
+    of MDB2 must have a working understanding of the PEAR installer in order to properly
+    install the drivers. This can be a significant stumbling block for graphically-oriented
+    users who are expecting to go to one location in order to manage and use your
+    application. For instance, bloggers expect to be able to concentrate on authoring
+    and the tasks associated with blogging. Very few bloggers want to spend time studying
+    the intricacies of a subtle and powerful installation system like the PEAR installer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Instead, they want to be able to customize the look and feel of their blog,
+    add or remove functional components of the blog at will, and do all of this from
+    the same visual interface that is used for blogging.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If your application fits into a similar one-stop-for-everything model (and
+    most web-based applications do fit this model), you will want to consider a way
+    to remotely manage plug-ins and/or templates. In order to do this, your application
+    needs to have three abstract components:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The application plug-in manager
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The remote plug-in server
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A plug-in downloader/installer
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'If you''ve been paying attention in the last four chapters, you might note
+    the striking similarity this bears to the goals of the PEAR Installer. Pairing
+    up a PEAR Channel Server (refer [Chapter 5](ch05.html "Chapter 5. Releasing to
+    the World: PEAR Channels")) with a customized embedded PEAR installer will enable
+    construction of a highly sophisticated plug-in manager with minimal coding.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, before we dive into the PEAR-based solution, let's look at another
+    example from the current state of affairs, the fantastic **Serendipity** blog
+    ( [http://www.s9y.org](http://www.s9y.org)). The Serendipity blog is an easy-to-install,
+    highly configurable PHP-based blogging program that is very stable and feature-rich.
+    In addition, it has had full support for PHP 5 and the latest database extensions
+    for longer than most PHP-based blogging software, and has just recently reached
+    the landmark of version 1.0\. Serendipity is licensed under the BSD license.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Case Study: Serendipity Blog''s Spartacus Plug-In Manager'
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The Serendipity blog manages plug-ins through the use of a specialized plug-in
+    called **Spartacus**. Spartacus is designed to work in the same way as any other
+    Serendipity plug-in, but has the ability to query a list of trusted servers for
+    both plug-ins and templates for the Serendipity blog, and then to easily allow
+    users to download and/or upgrade the plug-ins.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Case Study: Serendipity Blog''s Spartacus Plug-In Manager](img/1904811191_6_3.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The structure of a Serendipity plug-in consists of a single PHP file located
+    at a special location. Each plug-in resides within a separate directory, and the
+    directory may contain a number of additional files. As such, the Spartacus plug-in
+    consists of the `serendipity_event_spartacus.php` file and a number of different
+    language translations for text prompts used in the plug-in.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Within the `serendipity_event_spartacus.php` file, there is a single class
+    containing a number of different methods. The methods can be roughly grouped into
+    a few simple categories:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Utility methods such as `microtime_float()`, which works around deficiencies
+    in PHP's internal `microtime()` function in PHP versions prior to 5.0.0.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Universal plug-in methods, common to every plug-in needed for introspection
+    of plug-in name/author, Serendipity events hooked into, configuration variables,
+    and so on.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: XML-manipulation methods for processing remote meta-data about plug-ins and
+    templates.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: File-management methods for installing and uninstalling plug-ins and templates.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Remote HTTP download methods based on PEAR's **HTTP_Request** package.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Data-caching methods for storing downloaded plug-in information.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Methods for building plug-in list.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Methods for building the template list and downloading the preview thumbnail.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Even with all of this functionality, the entire plug-in file weighs in at 805
+    lines with comments.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The basic design behind Spartacus is to fetch a descriptive XML file (basically
+    a REST service) from a trusted server, parse information about plug-ins or templates
+    from the file, format this into the style needed by Serendipity to display plug-ins,
+    and then to process user requests from Serendipity's event hooks and download/install
+    plug-ins and templates.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In order to download the plug-ins, Serendipity uses a simple but inflexible
+    system based on static URLs. Constructing the URL for a plug-in''s meta-data takes
+    place in this manner:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `$url` is then used to download the actual meta-data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Displaying the meta-data requires a check to see if the plug-in is already
+    installed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note the highlighted entries showing the essential test of whether the plug-in
+    can be upgraded. This is used to decide whether a plug-in is clickable (installable/upgradable).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once a user decides to download a plug-in, Spartacus cycles through the list
+    of files from the plug-in''s metadata, and downloads them one-by-one using a static
+    URL and a ViewCVS trick (highlighted in the following example) to retrieve them.
+    Here is the code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: This ViewCVS trick (retrieving revision 1.9999) is a very simple way of retrieving
+    the correct version of files to install, but it does not allow for much flexibility,
+    and requires strict control over revisions on the server — a single mistake will
+    bring down the installation of an entire plug-in, and potentially the entire local
+    install of our personal Serendipity blog.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As such, the Serendipity developers have placed a to-do note at the top of
+    the page with some ideas for the next implementation of Spartacus to address these
+    issues:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Both of these are hard problems to solve. To solve the first, we need to be
+    able to do some relatively complex dependency validation, and have the ability
+    to cycle through available versions of the plug-in until we find one that can
+    work with the current Serendipity version. The second also requires some sophisticated
+    server/client communication, and could add significant bloat to Serendipity as
+    they move forward in development of Spartacus.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fortunately, there is a solution to this issue. The PEAR installer is specifically
+    designed to handle situations even more complex than what Serendipity's Spartacus
+    plug-in is attempting to grapple with, and can be embedded within an application
+    with surprisingly minimal effort.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Case Study: Seagull Framework''s Embedded PEAR Installer'
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**Seagull Framework** ( [http://www.seagullproject.org/](http://www.seagullproject.org/))
+    is an example of a web-based application that takes an extremely minimal approach
+    to embedding the'
+  prefs: []
+  type: TYPE_NORMAL
+- en: PEAR installer. Unlike Serendipity, Seagull is more of a general-purpose framework,
+    designed to make it easy to build other things. Seagull provides glue and more
+    than a few handy buzzword-friendly ideas for your development pleasure, like software
+    patterns implemented in PHP (Front Controller, Observer, Service Locator, Task
+    Runner, Wizard, etc.), and utility classes such as HtmlRenderer, UrlParser, and
+    Emailer.php. A quick browse of [http://trac.seagullproject.org/browser/trunk/lib/SGL](http://trac.seagullproject.org/browser/trunk/lib/SGL)
+    shows the full range of power available.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Like phpDocumentor, Seagull is available as a one-stop unzip-and-go zip file,
+    or can be installed using the PEAR installer. Also like phpDocumentor, lesser
+    configuration is needed on installation or upgrade, when installing via the PEAR
+    Installer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In addition, Seagull bases much of its work on the pre-existing foundation
+    of PEAR packages available from [http://pear.php.net](http://pear.php.net). Seagull
+    uses a full range of PEAR packages. Here''s a sampling of some of the dependencies:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Archive_Tar
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Cache_Lite
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Config
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Date
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: DB
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: DB_DataObject
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: DB_NestedSet
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: File
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: HTML_Common
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: HTML_TreeMenu
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: HTML_QuickForm
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: HTML_Template_Flexy
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: HTTP_Header
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: HTTP_Download
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Log
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Mail_Mime
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Net_Socket
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Net_Useragent_Detect
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Pager
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Text_Password
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Translation2
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Validate
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: XML_Parser
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: XML_Util
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Whew!
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition, Seagull makes use of the **Role_Web** package available from the
+    `pearified.com` channel so that installation and upgrading is a one-stop shop.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Managing all of these PEAR dependencies can be a real pain in the rear end,
+    especially when users are installing Seagull expecting to only use Seagull. When
+    they discover that they need to use the PEAR installer to manage Seagull's dependencies,
+    this confuses the issue.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As such, Seagull creator Demian Turner has developed the first-ever experimental
+    embedding of the PEAR installer into Seagull. The embedding is only available
+    in the latest versions of Seagull, and is considered to be of alpha-code quality,
+    but is well worth examining for the principles the code employs. Here is a screenshot
+    of the actual Seagull PEAR Manager:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Case Study: Seagull Framework''s Embedded PEAR Installer](img/1904811191_6_4.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Found in the `modules/default/classes/PearMgr.php` file, the PEAR Manager for
+    Seagull provides a customized web-based front end to any PEAR channel for listing
+    of packages, installation, and upgrading.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**Location of PearMgr.php**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Seagull takes advantage of the subpackage feature of `package.xml` version 2.0,
+    and has split its large code base into a base package and three subpackages. The
+    `PearMgr.php` file is found in the `pear.phpkitchen.com/Seagull_Default` package,
+    which is required and automatically installed by default when installing Seagull.
+    Users installing from SourceForge unzip-and-go will get all the files in one zip
+    file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Seagull uses a customized version (one line is changed, and the templates are
+    different) of the **PEAR_Frontend_Web** package available from `pear.php.net`
+    along with `PearMgr.php` to manage PEAR installation/upgrading. Seagull also adds
+    seven commands to the PEAR installer: `sgl-clear-cache, sgl-download, sgl-list-all,
+    sgl-list-upgrades, sgl-remote-info`, and `sgl-search`. These commands are again
+    implemented in a near carbon-copy of the PEAR equivalents, except they remove
+    all calls to the `outputData()` method, something we will address later on in
+    the text.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The code in `PearMgr.php` is approximately 200 lines. So, in a quarter of the
+    length of Serendipity's Spartacus, Seagull has implemented a fully functional
+    remote plug-in installer that can also be used to upgrade Seagull itself!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s take a look at the code that is used to determine which channels can
+    be used:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: As with Spartacus, the servers are hard-coded. However, unlike Spartacus, should
+    any of these channels add a mirror at any point in the future, PEAR will take
+    care of updating this information, and the mirror will automatically be available
+    to the user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The actual package download/install/upgrade management all uses PEAR''s abstract
+    command interface:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: The PEAR-specific code has been highlighted in the example. The entire complexity
+    of listing packages is taken care of in just two lines of code. The same is true
+    of installation, uninstallation, and upgrading.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There is a rather curious usage of output buffering to capture the informational
+    output of the PEAR command. This appears to be necessary because PEAR will output
+    information to the screen if given a choice, but in fact it is possible to capture
+    this output without resorting to hacks. In defense of the Seagull developers,
+    I can't imagine much more cutting edge code than what they are trying to do, and
+    they did it without the benefit of this book!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The key to capturing the output of the PEAR-installation process is in fact
+    to register a front-end object. The code below shows an example of the right way
+    to do this kind of thing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: At this point, the `$capture->data` array contains all of the information that
+    would normally be displayed by the PEAR installer in the order in which it occurred,
+    and it can be ignored or displayed in appropriate fashion.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that we have seen an example of embedding the PEAR installer, it is time
+    for our feature attraction: designing a customized PEAR channel-based plug-in
+    system that takes full advantage of the customizability of the PEAR installer.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Designing a Custom PEAR Channel-Based Plug-In System
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'For this system, we will design a template installer that is for the fictional
+    blogging program "MyBlog." Before we look at the code, it is important to understand
+    the problem. Here are the requirements of the MyBlog template system:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Templates need to have thumbnail images associated with them that the user can
+    use to visually preview the template.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Templates must be listed without requiring scrolling (paginated results).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It must be possible to label new templates as experimental.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Templates must be matched to the MyBlog version they are intended for.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Any template that does not fit the needs of the blog user should not be displayed
+    in the list of templates, like the templates that are too experimental or do not
+    work with the current version of MyBlog.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Templates must be remotely installable only from a discrete list of trusted
+    servers.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Template should also be installable from a locally downloaded template.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The plug-in manager should work in PHP 5.0.0 and later. PEAR is of course compatible
+    with PHP versions 4.2.0 and newer, but let's assume that MyBlog is designed to
+    take advantage of some of the fantastic new features in PHP version 5\. Porting
+    this code to work with PHP 4 is a simple task, it would involve replacing a few
+    keywords and using PEAR_Error instead of exceptions; an exercise left to the reader.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: With all of these requirements, we will need to take advantage of `channel.xml's`
+    ability to specify customized web services, in this case an additional REST protocol
+    for the template thumbnail images. In addition, we will need to implement a customized
+    remote listing of templates that is able to filter out templates that will not
+    work with the current version of MyBlog, and also filter by stability. The rest
+    of the requirements can be handled easily by existing PEAR functionality.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we will implement the PEAR-specific code. As such, we will
+    not make the next cool CMS out of our MyBlog program nor will we implement the
+    server-side template thumbnail uploader, as this is a common task that is easily
+    implemented using PHP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In order to implement the tasks required, we will create a class responsible
+    for downloading and processing REST from the remote server, a class for organizing
+    and paginating the templates, and a class for downloading and installing the templates.
+    In this case, once a template is installed, there is no need to uninstall directly,
+    but implementing this is quite simple once the basic principles are understood.
+    Our template switcher simply installs or upgrades if necessary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reusing Existing Functionality
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this example, we will make full use of the `PEAR_REST` class, `PEAR_Downloader`
+    and `PEAR_Installer` classes, and also the `PEAR_Config/PEAR_Registry` internal
+    classes. Re-using components is the primary strength of this approach, and is
+    of course the primary purpose of the PEAR repository. It cannot be overstressed
+    how important this is for both cutting down on initial development time and on
+    the pain of debugging later on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When re-using code, it is important to verify the stability and the robustness
+    of the user community surrounding the code. The PEAR installer of course has an
+    extensive test suite and both a large user base and a core of experienced and
+    dedicated developers from all over the planet, who work to maintain and enhance
+    the package.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's take a look at the classes from the PEAR package that we will be using.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'PEAR Installer Infrastructure: REST and PEAR Installer Classes'
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The PEAR installer primarily consists of several classes. The classes that
+    we will need to understand for our template plug-in system are:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`PEAR_Config`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`PEAR_Dependency2`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`PEAR_REST`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`PEAR_REST_11`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`PEAR_REST_10`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`PEAR_Downloader`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`PEAR_Downloader_Package`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`PEAR_Installer`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The complexity of these multi-purpose classes can be quite daunting; so let's
+    take a step back and examine what we will actually need from each class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PEAR_Config
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The `PEAR_Config` class is used to manage basic configuration issues for the
+    PEAR installer. As such, it is designed to easily retrieve the related internal-package
+    registry, a REST object, and all kinds of other features that we don't really
+    need to care about.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For our purposes, we only really need to understand three things about the
+    `PEAR_Config` object as it is used by the PEAR installer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A `PEAR_Config` object is generally used as a singleton by the installer.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `get()` method is used to retrieve configuration values.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `set()` method is used to set configuration values in-memory only, and will
+    not affect on-disk configuration files unless `writeConfigFile()` is used to save
+    the values.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When the PEAR installer is initialized, the `PEAR_Config::singleton()` method
+    is called with default values. If these values are not set to the proper location,
+    then our template plug-in system will save templates in the global PEAR location.
+    In some cases, this is great, as the application is designed to work within the
+    system context.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If your application instead uses a local install for plug-ins internal to the
+    application, you''ll need to set all of the configuration values before performing
+    installation tasks. Seagull Framework is a good example of a program that needs
+    to set the configuration values, and the method with which they are set, is the
+    best practice. Here it is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: At a minimum, you will need to set all of the `_dir` configuration values (`bin_dir,
+    doc_dir, ext_dir, php_dir, cache_dir, data_dir, download_dir, temp_dir`, and `test_dir`
+    as of PEAR 1.4.10) to valid values. The `preferred_state` variable should be set
+    to `stable` unless the user expects to be able to install experimental templates,
+    then one of `beta, alpha`, or `devel` should be used.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will also be using the low-level registry in order to determine whether
+    a template package is already installed, in a similar fashion to the method used
+    by Serendipity''s Spartacus plug-in:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: In our example, we retrieve the currently installed version of the template,
+    and as a sanity check, ensure that we are not attempting to install the currently
+    installed version.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It should be noted that it may be desirable to allow the user to force re-installation.
+    If this is the case, the code should be modified such that if the versions are
+    the same, the `force` option is passed to installation. The topic of installation
+    options will be discussed in the later section on `PEAR_Installer`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PEAR_Dependency2
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The `PEAR_Dependency2` class is a simple utility class that is used by the PEAR
+    installer to validate `package.xml` dependencies against all of the variables
+    on a system. This is a low-level class that in fact expects as its input the unserialized
+    XML dependency straight from `package.xml`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In other words, consider the following to be the dependency you are trying
+    to validate:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`PEAR_Dependency2` then expects the variable representing the dependency to
+    contain this array:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: For our application, the only use we have for the `PEAR_Dependency2` class is
+    to validate the dependency against the parent MyBlog application. We need to make
+    sure that the template actually works with the current MyBlog version. As such,
+    the only dependency we will need to validate is the required package dependency
+    on the MyBlog package.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This greatly simplifies the usage of `PEAR_Dependency2`, and all we need to
+    understand is how to use it to validate a package dependency. The method that
+    will be used for this task is called `validatePackageDependency()`, as one might
+    expect. The method signature expects the dependency array as our example above,
+    a boolean representing whether the dependency is required or optional, and an
+    array containing the list of all packages that will attempt to be installed in
+    this iteration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The third parameter is irrelevant to our task, as only one template will ever
+    be installed at a time, and so we will always pass an empty array for this parameter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In PHP code, the signature as we use it will look something like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: As with all of `PEAR_Dependency2's` validation methods, `validatePackageDependency()`
+    returns either `true`, an array, or a `PEAR_Error` object. `true` is returned
+    upon success, an array containing an error message is returned if there is a warning
+    that does not invalidate the dependency, and a `PEAR_Error` object is returned
+    if the dependency validation fails.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As PEAR''s error handling allows registering a callback, it is very important
+    to disable any callbacks while calling the dependency validation, and so our total
+    code looks like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: The above code tells PEAR to simply return `PEAR_Error` objects, temporarily
+    ignoring any special handling the user has specified, attempt to validate the
+    dependency, and then if the validation fails, to skip this release of the template.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'How do we extract the `$pdep` variable from dependency information? The answer
+    is semi-intuitive, actually. Just as the example dependency from above is extracted
+    to an array matching the XML tag name to the tag contents, the same is true of
+    its parent tag. The full array for the dependency above is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Note that if we have more than one required package dependency, the array will
+    look like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this case, the package tags are in fact an array of arrays. I've found that
+    the easiest way to handle this fact is to always convert the package element into
+    an array of itself if it does not contain numeric indices.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is the full code that accesses the required package dependencies of a
+    template:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that we can also easily skip static uri-based dependencies by checking
+    for the existence of a`<channel>` tag inside the dependency, and skip them accordingly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PEAR_REST and PEAR_REST_10/PEAR_REST_11
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The `PEAR_REST` class is a general utility class for downloading, parsing, and
+    caching remote REST files. It is the REST equivalent of the XML-RPC class that
+    PEAR used to use for the older XMLRPC-based channels. We will be using this low-level
+    class to retrieve the PNG thumbnail image of templates, and so need to know about
+    the `retrieveCacheFirst()` method. This method first checks the local cache, and
+    if it exists, never attempts to query the remote server. If the file has never
+    been downloaded, it then queries the server to retrieve it. As its argument, it
+    simply takes a full URL to the file that one wishes to download, and returns its
+    contents in a string.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `retrieveData()` method takes a different approach. If the cache is young
+    enough (3600 seconds by default), it is used without querying the remote server.
+    After this time, the server is queried using HTTP 1.1 and HTTP caching is used
+    to determine whether downloading is necessary. This can dramatically cut down
+    on bandwidth, as the file is only downloaded if there are any changes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It should be noted that XML files (as identified by the Content-Type HTTP header)
+    will be parsed into an array automatically by both `retrieveData()` and `retrieveCacheFirst()`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`PEAR_REST_10` and `PEAR_REST_11` implement the REST1.0 and REST1.1 PEAR REST
+    standards, as described in [Chapter 5](ch05.html "Chapter 5. Releasing to the
+    World: PEAR Channels"). As such, the methods implement ways of retrieving useful
+    information from the raw REST data, such as the download information for a particular
+    package, or a list of all packages with current releases. For our purposes, we
+    will need to implement a modified version of the REST1.1 `listAll()` method, one
+    that filters out incompatible templates and experimental templates. In order to
+    implement this, we will cut-and-paste the code from `PEAR_REST_11` and use that
+    to implement our `listTemplates()` method by tweaking the loop that examines each
+    package.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Cutting and pasting from `PEAR_REST_11` may seem to be an unclean approach,
+    as cut and paste is generally frowned upon by the purist element, but in our case
+    it demonstrates an important principle of the REST design. If PEAR still used
+    XML-RPC, it would in fact be impossible to implement the customized template listing
+    that we desire, because some of the necessary information would have been stripped
+    on the server side.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The REST model makes the data available and expects the client to do any filtering
+    of that data. This is in fact both more efficient and more flexible, which cuts
+    down on programming time and completely eliminates the hacks that used to be necessary
+    when designing around the system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Yes, we are cutting and pasting, but the code is drawing upon a well-defined,
+    simple system of remote REST resources, and so we can be certain it will continue
+    to work as the standards evolve.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In our simple implementation, the only method of the REST1.0-based `PEAR_REST_10`
+    class that we will need is the `getDownloadURL()` method, in order to implement
+    our customized template download with restrictions. The API signature of `getDownloadURL()`
+    is somewhat complex, and as such it is helpful to examine the actual code with
+    comment from the `PEAR_REST_10` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`getDownloadURL()` either returns a `PEAR_Error` or an array. The array will
+    contain an associative index `url` if the package can be successfully downloaded.
+    If none of the releases meet the conditions specified, then the `url` index will
+    not be present. As such, we can use the `getDownloadURL()` method very simply:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that the `url` does not contain a file extension, as this is determined
+    by the presence of the zlib extension. If we have zlib, then we can download the
+    compressed release, and save some time and bandwidth. Otherwise, the uncompressed
+    `.tar` is downloaded and installed instead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is essentially all of the code needed to successfully leverage our remote
+    server querying! The only task left is the actual downloading and installation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PEAR_Downloader and PEAR_Downloader_Package
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Downloading, as seen by the PEAR installer, is not just a simple task of grabbing
+    a url via HTTP and saving its contents locally as a file. The PEAR installer intelligently
+    downloads the right version of a package based on its dependencies and the local
+    system, and also automatically downloads package dependencies in certain situations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `PEAR Downloader` mechanism understands three different kinds of installable
+    packages:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Abstract package names, i.e. `pear install PEAR` or `pear install PEAR-beta`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Absolute URLs, i.e. `pear install` [http://pear.example.com/Blah-1.2.3.tgz](http://pear.example.com/Blah-1.2.3.tgz)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Local files, i.e. `pear install /path/to/Blah-1.2.3.tgz`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Each instance is handled very differently. Local packages are handled in a simple
+    manner, as one might expect. Absolute URLs are first downloaded, and then treated
+    in the same way as local packages. Abstract packages are treated very differently.
+    No downloading is performed until the installer is sure that all dependencies
+    have been satisfied. This ensures that if a complex application's dependencies
+    are not satisfied, no time or bandwidth will be wasted downloading large package
+    files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, in each of the three kinds of downloadable packages, the way their
+    dependencies and package information are handled is the same. Because of this,
+    to avoid unnecessary code duplication, the three kinds of downloadable packages
+    are abstracted into the `PEAR_Downloader_Package` class. Many of the API functions
+    in `PEAR_Downloader` and `PEAR_Installer` expect or return a `PEAR_Downloader_Package`
+    object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, the first and most important method to investigate is `PEAR_Downloader''s
+    download()` method. This method expects as input a simple array of strings, each
+    string representing one of the three forms of downloadable packages. Here is an
+    example demonstrating all three:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Options can be passed to the `download()` method, but they must be specified
+    when creating the `PEAR_Downloader` object:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: Options available for the `PEAR_Downloader` include `force, downloadonly, soft,
+    offline, packagingroot, nodeps, pretend, ignore-errors, nocompress, alldeps, onlyreqdeps`,
+    and `installroot`. In other words, the options that are displayed when executing
+    `pear help install` are all available, plus the internal option `downloadonly`,
+    which is used by the `pear download` command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The main options that may be of interest when designing an embedded PEAR installer
+    are the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`force:` This option forcibly installs even if dependencies are invalid, or
+    the package is already installed. The best usage of the `force` option is to repair
+    a corrupted installation.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`offline:` This option prevents any attempts to contact remote servers, and
+    can be useful in installation settings.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`nocompress:` This option instructs the installer to download uncompressed
+    `.tar` files rather than `.tgz` files, and is useful when the zlib extension is
+    not present.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`nodeps:` This option prevents the downloader from attempting to validate dependencies,
+    or from downloading required package dependencies.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pretend:` This option instructs the downloader to simply grab a listing of
+    all packages that would be downloaded, and to return that, but not to do any actual
+    downloading. This is useful for displaying to the user what packages would need
+    to be installed or upgraded.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`alldeps/onlyreqdeps:` These options instruct the downloader to automatically
+    download package dependencies. The `onlyreqdeps` option instructs the installer
+    to only download required dependencies, whereas `alldeps` downloads all dependencies.
+    `onlyreqdeps` is obsolete by `package.xml` version 2.0, but is still useful for
+    the many PEAR packages that still use `package.xml 1.0` at `pear.php.net`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `download()` method can return either a `PEAR_Error` object, or an `array()`.
+    Now this is where things get a bit tricky. A `PEAR_Error` object is only returned
+    in the case of an egregious error, such as the inability to access the local package
+    registry, or some other exceptional circumstance. An array is returned in other
+    situations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In other words, if downloading fails because every package passed in failed
+    dependency validation, an empty array will be returned instead of a `PEAR_Error`
+    object. Another way of thinking about this is that `PEAR_Downloader` is smart
+    enough to skip downloads that fail and continue with ones that work, rather than
+    halting the entire download experience just because a single package depended
+    on the Gronk_Wzilnk package and it was unavailable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To handle the condition of multiple errors, `PEAR_Downloader` provides a `getErrorMsgs()`
+    method that should always be checked after downloading. This method implements
+    a simplistic array of multiple error messages that predated the advanced `PEAR_ErrorStack`
+    class (and incidentally helped to inspire its creation). As such, the code that
+    is used to download should look something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that the `$info` variable should contain the name of a template to download
+    in this example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PEAR_Installer
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Finally, we arrive at the `PEAR_Installer` class. This class is monstrous, containing
+    code for handling file transactions, basic installation, uninstallation, and is
+    very significantly huge in general. `PEAR_Installer` is also one of the oldest
+    classes in the PEAR package and although it has undergone a serious liposuction
+    in PEAR 1.4.0 and newer, it will undergo further trimming in future versions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: File transactions are the PEAR installer's equivalent to database transactions.
+    When installing a package, the PEAR installer either fully installs a package,
+    or rolls back the installation completely. When upgrading, the PEAR installer
+    makes a backup copy of the previous version. If there are any problems in upgrading,
+    the previous version is completely restored. This ensures that it is *impossible*
+    for the package to be in a half-installed state of limbo if there are any errors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The method we need to know about in our quest to install templates is not too
+    surprisingly named `install()`. The `install()` method is rather flexible in its
+    input, because of backwards compatibility. It is possible to pass in the array
+    that we would pass to `PEAR_Downloader->download()`, but this results in significant
+    guesswork by the installer to do what you should be telling it to do, and is deprecated.
+    It is better is to pass in the array returned from `PEAR_Downloader->downloader()`,
+    and to prepare for installation with a few helper methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: Code specifically relating to installation has been highlighted above. Again,
+    because the `PEAR_Installer` class is an older relic within the larger PEAR installer
+    package, some of the things we can do with `PEAR_Downloader` must be done manually.
+    For instance, options should be set with the `setOptions()` method. In addition,
+    packages should be sorted for proper installation order using `sortPackagesForInstall()`.
+    This ensures that dependencies are installed before any packages that depend upon
+    them, as packages are installed by the `install()` method one at a time, without
+    knowledge of the other packages that are being installed. This system also helps
+    to ensure that the packages are rarely left in a dangerously corrupted state,
+    should installation of any package fail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Immediately preceding the `install()` method, packages that have already been
+    downloaded should be registered as such so that pre-installation validation is
+    only performed once. This must be done with the `setDownloadedPackages()` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have a working understanding of the internals of the PEAR installer,
+    let's look at the server side.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Extending REST with Custom Information
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In order to implement thumbnails on the server, first we need to implement customized
+    REST for the server. Let's look at a typical `channel.xml:`
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If we want to add support for our custom-thumbnail REST, all we need to do
+    is add another`<baseurl>` tag:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The new `baseurl` is highlighted in the previous example. This allows us to
+    retrieve a template-thumbnail image with one line of code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, we finally have enough information to actually implement our template manager!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Designing a Lightweight Installer Plug-In: The Code At Last'
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'For our fake MyBlog, we will use this directory tree:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The PEAR-embedding occurs in the files located in the `Template/` subdirectory.
+    The blog is implemented in the abstract by the `Config.php` and `Main.php` files,
+    and the actual web files are `index.php, image.php`, and `admin.php`. We won''t
+    concern ourselves yet with the design of the fake MyBlog blog. If you would like
+    to play around with the fake MyBlog, you can install it via these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The MyBlog package from `pear.chiaraquartet.net` makes use of a post-installation
+    script that has no prompting of the user at all. We'll go into the details of
+    the post-install script in greater detail later on, as it shows another side of
+    PEAR's versatility.
+  prefs: []
+  type: TYPE_NORMAL
+- en: MyBlog_Template_IConfig and MyBlog_Template_Config
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Let's dive in; first, `Interfaces.php:`
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: It doesn't get much simpler than that! This allows flexibility, loosely coupling
+    the embedded PEAR with the template's configuration, and is always a good idea.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, let''s see the exception class, yet another example of complexity:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'OK, I know what you''re thinking: that doesn''t look very complex. Actually,
+    you''re right. I was just kidding. Now for the real deal; let''s start off with
+    the configuration class from the MyBlog package. The `getTemplateChannel()` and'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`getCurrentTemplate()` methods are simply hard-coded strings for our sample
+    application, but let''s look at the `getPearConfig()` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: Much like Seagull's package, we grab the `PEAR_Config` singleton object and
+    customize it. However, our blog's templates will only ever use the php or the
+    data role, and we are installing into an internal PEAR repository, so we can take
+    advantage of PEAR's replacement tasks (see [Chapter 3](ch03.html "Chapter 3. Leveraging
+    Full Application Support with the PEAR Installer") for a refresher on replacement
+    tasks) to replace `@php-dir@` with the value of the `php_dir` configuration variable
+    on the local computer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In essence, this instructs PEAR to install templates into `@php-dir@/MyBlog/templates/`,
+    which is exactly where we want them to go.
+  prefs: []
+  type: TYPE_NORMAL
+- en: MyBlog_Template_REST
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Next, let''s jump into the REST class. This class simply requires a `PEAR_Config`
+    object to get started, and is instantiated in `admin.php` like so:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Again, simplicity of use is the emphasis. Let''s see the complete code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: MyBlog_Template_Lister
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Next, let''s look at the template lister. The template lister class, aptly
+    named `MyBlog_Template_Lister`, is instantiated via this simple code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The primary method is `listRemoteTemplates()` and is called like so:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: The only argument passed is the number of templates to include per page. We
+    pass in `1` because there are two sample templates for the fake MyBlog that are
+    available for installation. The return value is a simple array, the first element
+    being an array of data for paging, and the second a Pager object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is a good example of code re-use. When I first began designing the code,
+    I thought it would make the most sense to write my own pager, as it seemed to
+    be a 10-line deal. However, as I began to get further involved in the implementation,
+    the complexity spiraled out of control, and I quickly switched to using the Pager
+    package from `pear.php.net` ( [http://pear.php.net/Pager](http://pear.php.net/Pager)).
+    This well-designed package is also well documented, and became a 10-minute job
+    to implement the paging.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'From our example usage above, the `$info` variable is an array in our application,
+    and its format is simply a numerically indexed array of arrays:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: This can be iterated over quite easily to create the template listings. At this
+    point, we should be ready to see the entire `MyBlog_Template_Lister` class file
+    `Lister.php:`
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: MyBlog_Template_Fetcher
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Finally, let''s look at the installation manager class, which we''ll call `MyBlog_Template_Fetcher`.
+    This class is also instantiated simply, but is a bit more involved than the other
+    classes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: A `MyBlog_Template_Fetcher` is instantiated by a factory method because it must
+    be registered as a `PEAR_Frontend` object in order for the PEAR installer to use
+    it to display output (as was mentioned in the section on the Seagull Framework
+    earlier).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The primary method we''ll be using is `installTemplate()` and its usage is
+    like so:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: As the `MyBlog_Template_Fetcher` class mimics a `PEAR Frontend`, we need to
+    define three methods, `log(), outputData()`, and `userConfirm()`. The first two
+    simply store their input in an internal array for display later, and the last
+    is a dummy method that will not be used in our sample application.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, here is the class listing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is all we need to embed the PEAR installer, a mere 610 lines of code including
+    extensive comments!
+  prefs: []
+  type: TYPE_NORMAL
+- en: The MyBlog Post-Install Script
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To wrap up the installation, we''ll need a post-install script to initialize
+    the environment. This time, let''s see the code before we learn about it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: As with all post-installation scripts, this one has a class named according
+    to the file name with `DIRECTORY_SEPARATOR` replaced by`'_'` in the class name,
+    and `_postinstall` appended. In other words, since this is `blogsetup.php` and
+    is in the root directory of our `package.xml`, our class name is `blogsetup_postinstall`.
+    The script has required `init()` and `run()` methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This script is needed because we are going to set up a customized internal
+    PEAR repository inside the working directory of the application. In other words,
+    the templates will be installed in their own internal universe with a unique registry
+    and configuration settings. As such, the directory structure will need to look
+    like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: Registry files for installed templates will go in `pear/MyBlog/templates/.registry/.channel.pear.chiaraquartet.net_template/`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition, in our design, the default template is copied over and is always
+    available, so that the blog can work out of the box.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Although we did not implement this in the fake blog or the lister class, the
+    `MyBlog_Template_Fetcher` class is also capable of installing local template files,
+    which allows blog maintainers to design their own templates, or modify existing
+    ones and install them directly. For a challenge, see if you can implement local
+    listing of installed templates. Hint: check out code from the `PEAR_Registry`
+    class found in `PEAR/Registry.php`, and how it is used by the `pear list` command
+    in `PEAR/Command/Registry.php`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The last new feature to look at is how we can retrieve and display the thumbnail
+    images for each template. To do this, we'll set up a small file called `image.php`,
+    and our `src` attributes in`<img>` tags will refer to it in order to grab images.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`image.php` simply takes a template name and version, and then grabs the remote
+    thumbnail. It is important that a file of this nature is not in fact reading local
+    files and displaying them, as it constitutes a severe security risk. For instance,
+    if `image.php` simply read local files relative to the current path and displayed
+    them, a few guesses later, something like this request would retrieve the `/etc/passwd`
+    file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: In our case, if the requested template doesn't have a thumbnail on the remote
+    server, it won't be displayed. Here is `image.php:`
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: Again, note the highlighted security-conscious code. Security must always be
+    a concern!
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Rest of the Fake MyBlog Package
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'At this point, we have examined all of the PEAR-specific code, so let''s look
+    at the fake MyBlog package (again, installable from `pear.chiaraquartet.net` as
+    package `chiara/MyBlog`). First, let''s see the code for the `MyBlog_Config` class,
+    controlling basic configuration needs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: Simplicity itself, eh? Next, we'll look at the main MyBlog class. To implement
+    the MyBlog, I chose to use the excellent Savant3 package (installable from the
+    `savant.pearified.com` channel at [http://savant.pearified.com](http://savant.pearified.com))),
+    a PHP template system that uses PHP as the templating language. For our fake blog,
+    we will have two (or three) template files, one for the`<head>` element, another
+    optional template for the attributes of the`<body>` tag, and a third for the contents
+    of the blog. For our sample templates, we only use `head.tpl.php` and `body.tpl.php`.
+    Here is the main blog file, `MyBlog_Main:`
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We have a few unused methods that are there just to show what could be done.
+    Templates are actually displayed by `index.php`, which consists of this code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The actual templates should be looked at for completeness, so here is `head.tpl.php`
+    from one of the sample templates:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: And `body.tpl.php:`
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now I think it is clear why I keep referring to MyBlog as a fake blog! To demonstrate
+    how the templates are installed, here is a `package.xml` file from the example1
+    template:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To conclude this final chapter, let''s look at `admin.php`, the administrative
+    control center, to see how all of these elements are brought together to display
+    templates, download the right template versions, and install them:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For experimentation purposes, there are two `package.xml` files available for
+    the MyBlog package in the code included with this book. The first, `package1.xml`,
+    describes itself as MyBlog version 0.1.0, and will display the templates example1
+    version 1.0.0 and example2 version 1.0.0 as being available for installation.
+    After testing this, execute a from the MyBlog directory, a simple:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You will be upgraded to MyBlog version 0.2.0\. Immediately, you''ll notice
+    that only example1 version 2.0.0 is available for installation. This is based
+    upon the fact that example1''s `package1.xml` (version 1.0.0) has this required
+    dependency in it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE60]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Whereas `package.xml` (version 2.0.0) has this required dependency in it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE61]'
+  prefs: []
+  type: TYPE_PRE
+- en: These dependencies ensure that the templates are only available for blog versions
+    they are compatible with. As such, if you decide to adopt this model, you'll need
+    to ensure that all templates are released with a`<max>` element in their dependency
+    on the blog, defining the highest version they are known to work with. As new
+    versions are released, the templates can be released with updated`<max>` tags,
+    or modified and then released. In this way, working templates will always be available
+    for the differing blog versions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In short: complexity is all managed by the internals of the PEAR installer,
+    freeing you to write great programs!'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Improvements for the Ambitious
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: One of the vexing problems of all web-based plug-in installation systems involves
+    security of directory permissions. In order to install something, the web server's
+    user (nobody or apache are common web users) must have write access to the plug-in
+    directory. This means that anyone with an account on the machine and a public
+    web page can write and read from your application's plug-in directory, simply
+    by creating a web page that does this.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In our sample MyBlog, I made the dubious assumption that you are the sole owner
+    of the blog server and do not need to worry about such issues, and did not implement
+    a system for this important security issue.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, there is a simple solution that requires a bit of work, and is a wonderful
+    exercise for the ambitious. The trick is to provide a link on the page that is
+    a little lock. The user must unlock the directory prior to installation, and it
+    must be locked after.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Locking the page consists of recursively iterating over the internal plug-in
+    directory, and running this simple command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE62]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Unlocking is its opposite, recursively iterating over the internal plug-in
+    directory and running this simple command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE63]'
+  prefs: []
+  type: TYPE_PRE
+- en: Why, you might ask, are there no blog or other applications performing this
+    task? There are several answers. First of all, the same task can be accomplished
+    quite easily using a shell script. In other words "let the user take care of their
+    own dang security." Also, this particular security issue simply hasn't been on
+    the radar because it requires a malicious hacker to already have access to the
+    machine to take advantage of it — or so one would think.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The fact is, if the application happens to have a PHP code injection vulnerability,
+    this would allow a malicious hacker to inject code that creates a malicious PHP
+    script on the server, thereby gaining control over the server through the fact
+    that the plug-in directory is writeable! Although it takes a very, very serious
+    vulnerability to become a problem, having writeable directories can make the difference
+    between having and losing control over a production server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Keep this in mind as you develop — security is always an important task! Try
+    to think like an evildoer as you design, and you will have (and cause) far fewer
+    security vulnerabilities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter has been quite a ride. In it, we investigated common practice methods
+    for embedding plug-ins into web applications. Specifically, we examined three
+    examples — MDB2 (subpackages), Serendipity (Spartacus), Seagull (partially embedded
+    PEAR installer). For each of these examples, we weighed the pros and cons of their
+    respective approaches.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Having determined that there may be a better way to do things, we learned how
+    to embed the PEAR installer most effectively, in order to create a plug-in manager.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For this purpose, we created a fake blog program in just under 1000 lines of
+    code that provides the ability to seamlessly query a remote PEAR Channel server
+    designed to distribute templates. Using the internal classes of the PEAR installer,
+    our MyBlog web application can intelligently install and upgrade templates with
+    all of the sophistication expected from the PEAR installer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We took full advantage of the PEAR installer's built-in REST client to query
+    the remote server, the PEAR installer's download capabilities, and its robust
+    file installer complete with file transactions. In addition, we learned how to
+    extend the remote server's REST code to include a thumbnail image, and instructed
+    our MyBlog's administration page to display these thumbnail images.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, I would like to thank you for reading this guide to the exciting and
+    innovative PEAR installer, and I hope it will serve you well in your quest for
+    the perfect website and developing environment!
+  prefs: []
+  type: TYPE_NORMAL

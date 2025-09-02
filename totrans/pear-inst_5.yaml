@@ -1,0 +1,1416 @@
+- en: 'Chapter 5. Releasing to the World: PEAR Channels'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'One of the premier features of PEAR version 1.4.0 and newer versions is the
+    ability to publicly distribute your own applications for installation with the
+    PEAR installer. Although this was feasible with PEAR 1.3.6 and earlier versions,
+    it was far more difficult, and so was rarely attempted. PEAR version 1.4.0+ adds
+    ease to distributing packages by the use of a new distribution medium called **channels**.
+    Each PEAR channel provides a unique set of packages that can be installed quite
+    easily using the PEAR installer. For instance, to install a package from the `pear.chiaraquartet.net`
+    channel, one need only type:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the past, this was simply not possible. A non-intuitive set of keystrokes
+    would be needed to install a package from `pear.chiaraquartet.net:`
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The complexity is confounded by cross-channel dependencies. The `pear.chiaraquartet.net/Chiara_PEAR_Server`
+    package depends on `pear.php.net/HTML_QuickForm`, and so the sequence would in
+    fact need to be:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The same process would need to be repeated upon upgrading, introducing both
+    painful memory requirements ("Where did I get this Chiara_PEAR_Server from again?")
+    and the chance for error. What if `pear.chiaraquartet.net` happened to provide
+    a package named `LogXML` and `pear.php.net` introduced one? If you were to accidentally
+    type:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Without the necessary:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: You could unknowingly upgrade to the wrong package! Channels remove all of these
+    troubles, and do so with rigorous security.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So how do you set up your own channel? This chapter will investigate the steps
+    needed to install Chiara_PEAR_Server, and the structure of a channel definition
+    file used to document your channel's unique features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition, we will learn how to distribute customized PEAR applications per-user,
+    even for pay-for-use applications. We'll discover the **Crtx_PEAR_Channel_Frontend**
+    package used to provide a public front door for users browsing the web, and finally,
+    we will talk about security issues.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Distributing a package.xml-Based Package
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'There are two ways of distributing packages (either of which can be used):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Channel server
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Static tarball
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You will learn about both approaches in this section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before the release of PEAR 1.4.0, the user typed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: The PEAR installer would then use XML-RPC to send a request for the `package.listAll`
+    method to [http://pear.php.net/xmlrpc.php](http://pear.php.net/xmlrpc.php). Meanwhile,
+    at `pear.php.net`, the database of all packages, releases, and dependencies would
+    be queried for data (or a server-side cache accessed), and then it would be dynamically
+    encoded into an XML-RPC response, decoded at the user end, and converted into
+    a PHP array containing a list of all packages and their releases. This would then
+    be formatted into a pretty list of package names and spewed out on to the screen.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**XML-RPC** stands for **XML Remote Procedure Call**, and is a protocol that
+    allows a program to call a function on a remote server as if it were implemented
+    on the local machine.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**SOAP** (until recently it was **Simple Object Access Protocol**, but now
+    just "SOAP", because the developers realized there was nothing simple about it
+    and it was a confusing name as well) is a more complex implementation of the same
+    idea.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'From the end user''s perspective, there are two ways of installing a remote
+    package using the PEAR installer. The first way is to install an abstraction,
+    as in:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Each of these examples takes the information passed in by the user and converts
+    it into an actual, existing URL for retrieving a file from the channel server
+    (`pear.php.net` in this case), and then downloads that package for installation.
+    In fact, at the time of writing this chapter, each of these examples essentially
+    converts into this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: The second way of installing a package is to directly specify a URL to install,
+    as above.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These two approaches appear to be the same to the end user. However, behind
+    the scenes they differ significantly. When downloading and installing a package
+    via an abstract package like `PEAR` or `PEAR-stable`, it is possible to validate
+    all dependencies prior to downloading a single file, saving considerable time
+    in the slowest part of installation — downloading. When installing a static URL
+    ( [http://pear.php.net/get/PEAR-1.4.3.tgz](http://pear.php.net/get/PEAR-1.4.3.tgz)),
+    it is necessary to download the entire package before any dependency validation
+    can occur, possibly resulting in wasted bandwidth.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In order to convert abstract-package requests into actual physical URLs, a small
+    amount of information is retrieved from the remote channel server. This information
+    is used to validate dependencies prior to downloading a full package, and also
+    to determine the correct version of a package to be downloaded based on the user's
+    requirements.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, the following call first retrieves a list of all releases of PEAR
+    organized by version number and stability:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Assume the server returns a list like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Version | Stability |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1.5.0a1 | alpha |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1.4.3 | stable |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1.4.2 | stable |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1.4.1 | stable |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1.4.0 | stable |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1.4.0RC1 | beta |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1.4.0a14 | alpha |'
+  prefs: []
+  type: TYPE_TB
+- en: 'The PEAR installer will examine version 1.5.0a1, the newest version available,
+    and will determine it is not stable enough to install. Next, it will examine version
+    1.4.3 and (assuming the installed version is 1.4.2 or older) determine that this
+    is the version that should be downloaded. Next, it will query the server and retrieve
+    the list of dependencies for version 1.4.3, which is something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Dependency type | Dependency name (if any) | Dependency version requirements
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| PHP |   | 4.2.0 or newer |'
+  prefs: []
+  type: TYPE_TB
+- en: '| PEAR installer |   | 1.3.3 1.3.6, 1.4.0a12 or newer |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Package | Archive_Tar | 1.3.1 or newer (1.3.1 recommended) |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Package | Console_Getopt | 1.2 or newer (1.2 recommended) |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Package | XML_RPC | 1.4.3 or newer (1.4.3 recommended) |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Conflicting package | PEAR_Frontend_Web | 0.4 or older |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Conflicting package | PEAR_Frontend_Gtk | 0.3 or older |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Remote installer group | PEAR_RemoteInstaller | 0.1.0 or newer |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Web installer group | PEAR_Frontend_Web | 0.5.0 or newer |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Gtk installer group | PEAR_Frontend_Gtk | 0.4.0 or newer |'
+  prefs: []
+  type: TYPE_TB
+- en: Before downloading PEAR 1.4.3 to install it, the PEAR installer will use this
+    information to determine whether the package is compatible with existing installed
+    packages, and the running version of PHP and the PEAR installer. Only if all checks
+    pass, will the PEAR installer continue with the downloading/installation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition, because PEAR 1.4.3 has a `package.xml` version 2.0, when upgrading
+    from PEAR 1.4.0 or newer, the list of required dependencies will also be automatically
+    downloaded and installed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How, you might be asking yourself, can I distribute my applications and libraries
+    to take advantage of the power and elegance built into the PEAR installer? The
+    answer turns out to be quite simple, as evidenced by the small explosion of channel
+    servers since the release of PEAR version 1.4.0, like eZ components (http://www.ez.no),
+    and the popular pearified channel ( [http://www.pearified.com](http://www.pearified.com)).
+    The **Chiara_PEAR_Server** package is a fully functional PEAR channel server available
+    for installation from the `pear.chiaraquartet.net` channel server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Originally, Chiara_PEAR_Server was named PEAR_Server. The intention was to propose
+    a package named "PEAR_Server" or "PEAR_Channel_Server" to the `pear.php.net` repository
+    when the code is stable enough. Until that point, however, there are potential
+    naming conflicts (PEAR is generally reserved for packages that originate from
+    `pear.php.net)`, and the package will be named Chiara_PEAR_Server as long as it
+    is distributed from `pear.chiaraquartet.net`
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once you have Chiara_PEAR_Server up and running (prerequisites include a working
+    PEAR installation and a MySQL server, plus PHP 5.0.0 or newer with the mysql or
+    mysqli extensions), you might also consider installing Davey Shafik's public front
+    end, **Crtx_Channel_PEAR_Server_Frontend**, available from the `crtx.org` channel.
+    This is discussed later on in this chapter, in the section entitled *Configuring
+    the Server; Obtaining a Front End for End Users*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Distributing Packages through a Channel Server
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When distributing packages through a channel server, there are a few things
+    that the PEAR installer needs in order to determine which packages to install.
+    Most important is how to communicate with the channel server. Does the server
+    expect an incoming XML-RPC request, or is REST supported? Which XML-RPC functions
+    are implemented, and which REST information is provided? Are there any mirrors
+    available? What, if any, are the custom-package validation requirements?
+  prefs: []
+  type: TYPE_NORMAL
+- en: All of these questions are answered by the simple `channel.xml` structure. Before
+    installing Chiara_PEAR_Server, it is important to understand the underpinnings
+    of the package, as it will make it possible to get up and run very quickly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The channel.xml File
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The first thing a channel needs in order to exist is a `channel.xml` file. The
+    official definition of `channel.xml` in XSchema format is found at [http://pear.php.net/dtd/channel-1.0.xsd](http://pear.php.net/dtd/channel-1.0.xsd).
+    The `channel.xml` file *must* be named `channel.xml` and must be located in the
+    root directory of your channel; otherwise the PEAR installer's auto-discovery
+    mechanism will not work. For instance, the channel definition file for `pear.php.net`
+    is located at [http://pear.php.net/channel.xml](http://pear.php.net/channel.xml),
+    and the channel definition file for `pear.chiaraquartet.net` is located at [http://pear.chiaraquartet.net/channel.xml](http://pear.chiaraquartet.net/channel.xml).
+  prefs: []
+  type: TYPE_NORMAL
+- en: This file allows the PEAR installer to quickly and efficiently determine the
+    capabilities offered by a channel server without wasting any bandwidth. A `channel.xml`
+    file must define the channel name (its server hostname and path), a brief summary
+    of the channel's purpose, and then metadata used to retrieve package information
+    for installation purposes. In addition, the `channel.xml` file allows explicit
+    definition of channel mirrors, for the first time making it possible to mirror
+    a channel repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is an example `channel.xml` file containing every possible tag:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: A quick glance over the `channel.xml` file reveals a large amount of information
+    contained in a very simple format. With this file, we tell the PEAR installer
+    whether to use a secure connection or not, how to access the package metadata
+    (with XML-RPC, SOAP, or REST), and how the user can access/use the channel (suggested
+    alias, validation package).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**Does PEAR Installer Support SOAP?**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: No. Sorry to burst your bubble, but SOAP is not necessary for the relatively
+    simple remote communication needed by the PEAR installer; so no, SOAP is not implemented.
+    However, should the need arise in the future, or should a channel wish to advertise
+    custom SOAP methods implemented, the `channel.xml` spec supports SOAP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, this should only be used to inform the client that a **WSDL** (**Web
+    Services Description Language**) file is present, as this format is much richer
+    than `channel.xml`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A channel may be located at a hostname''s root directory (**pear.example.com**),
+    or at a subdirectory (pear.example.com/subdirectory). Note that `pear.example.com`
+    is a different channel from `pear.example.com/subdirectory`. Users would install
+    packages from the `pear.example.com/subdirectory` channel as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Other packages would depend on packages from the `pear.example.com/subdirectory`
+    channel with a `package.xml` tag like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: channel.xml Tag Summary
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A channel's`<summary>` should be a one-line description of the channel, such
+    as "The PHP Extension and Application Repository".
+  prefs: []
+  type: TYPE_NORMAL
+- en: The`<suggestedalias>` of a channel is the short name that a user can use on
+    the command line.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For instance, the `pear.php.net` channel''s suggested alias is `pear`, the
+    `pecl.php.net` channel''s suggested alias is `pecl`, and the `pear.chiaraquartet.net`
+    channel''s suggested alias is `chiara`. These aliases can be used to install packages
+    quickly, such as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The alias is a suggested alias because the end user has the option to redefine
+    the alias via the `channel-alias` command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This would allow the quick installation of packages with:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You cannot use a channel's suggested alias in the dependencies section of a
+    `package.xml` file. You must use the full name of channel.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A channel's validation package (controlled by the`<validatepackage>` tag) is
+    used by the installer to perform customized validation specific to the channel.
+    The default validation (found in the `PEAR/Validate.php` file of the PEAR package)
+    is quite strict in terms of versioning and package naming, and attempts to implement
+    coding standards that are specific to `pear.php.net-based` packages. These rules
+    are stricter than the rules implemented by the `pecl.php.net` channel, and so
+    `pecl.php.net` packages are validated using the custom channel validator found
+    in the `PEAR/Validate/PECL.php` file of the PEAR package.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Most channels external to `pear.php.net` will want to copy the `channel.xml`
+    file for the `pecl.php.net` channel, and use the `PEAR_Validate_PECL` validation
+    package.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A custom channel validator must provide a class that matches the path (PEAR/Validate/PECL.php
+    provides the `PEAR_Validate_PECL` class), and the package name must be identical
+    to the class name. In addition, the class must extend `PEAR_Validate`, and implement
+    validation with the `validate*()` methods (such as `validateVersion(), validatePackage(),
+    validateSummary()`, and so on). In addition, the class *must* be a package distributed
+    from the channel itself, unless the class is already loaded in memory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The default validation class `PEAR_Validate` and the PECL validation class `PEAR_Validate_PECL`
+    will always be available for use by channels as custom validation packages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To use the `PEAR_Validate_PECL` class, simply add this line to `channel.xml:`
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`<validatepackage version="1.0"> PEAR_Validate_PECL</validatepackage>`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The most important part of the `channel.xml` channel definition file is the`<servers>`
+    tag. This is where the PEAR installer determines how to connect to a channel (via
+    REST or XML-RPC) and whether any mirrors are available.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The protocols supported by the primary channel server (which must be the same
+    as the channel name) are defined in the`<primary>` tag. Mirrors are (logically)
+    defined by the`<mirror>` tag, which is described at the end of this section. The`<primary>`
+    tag has a few optional attributes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**ssl** — legal values are *yes* and *no*. By default, `ssl` is set to *no*.
+    If set to *yes*, then the channel server will be contacted through a secure socket.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**port** — legal values are any positive integer. By default, `port` is set
+    to *80*, the default HTTP port for contacting a remote web server. All data from
+    channels are transported via HTTP, and so this is a natural choice.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_IND
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: REST, although very new, has several significant advantages over XML-RPC. First
+    of all, REST content (as implemented in the PEAR channel standard) is all static
+    files. This means that a lightweight server like thttpd can be used for high-volume
+    sites to serve the content. In addition, channel aggregators like [http://www.pearified.com](http://www.pearified.com)
+    and [http://www.pearadise.com](http://www.pearadise.com) can crawl through your
+    channel and provide a searchable index of the packages.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Mirroring of REST-based channels is straightforward because of the same design
+    principles, and can be done with a simple web crawler script.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: In addition, as of PEAR 1.4.3, XML-RPC support is optional in the PEAR installer,
+    so not all users will support XML-RPC on the client-side.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'There are only a few protocols recognized by the PEAR Installer. For XML-RPC,
+    the functions recognized are:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`logintest(1.0)` : This simply returns true'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`package.listLatestReleases(1.0)` : This returns an array indexed by package
+    name containing the file size, version, state, and dependencies of its latest
+    release, if any.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`package.listAll(1.0)` : This returns an array of packages with extreme details
+    about their releases.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`package.info(1.0)` : This returns an array of detailed information about a
+    single package.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`package.getDownloadURL(1.0)` : This returns an array with simple information
+    about a release and a precise URL from which to download a specific release.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`package.getDownloadURL(1.1)` : Like version 1.0, this returns an array with
+    simple information about a release and a precise URL. In addition, this accepts
+    as a parameter the currently installed version of a package to narrow down the
+    search.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`package.getDepDownloadURL(1.0)` : Like `package.getDownloadURL`, this returns
+    information about a release and a precise URL to download the release from. However,
+    as input, it accepts a dependency as parsed from `package.xml`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`package.getDepDownloadURL (1.1)`: Like `package.getDepDownloadURL`, this returns
+    information about a release and a precise URL to download the release from. It
+    also accepts the currently installed version of the dependency as a parameter.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`package.search(1.0)`: Like `package.listAll`, this returns a list of packages
+    with detailed information. However, this function limits the search of information
+    based on input parameters.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`channel.listAll(1.0)`: This function returns a simple list of channels known
+    by the current channel.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This detail is provided for informational purposes only, as XML-RPC support
+    is deprecated for all channels.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Instead, your channel should support REST-based static files conveying information
+    about the categories, maintainers, packages, and releases available through the
+    channel. There are two protocols supported by the PEAR installer at the time of
+    writing this chapter. The first is collectively known as **REST1.0**, and is defined
+    by a set of path-related assumptions the installer makes and several XSchema files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Inside `channel.xml`, REST is declared using a`<baseurl>` tag much like this
+    one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is in fact all that the installer needs in order to fully implement REST.
+    From this information, the installer is able to build any necessary query to determine
+    remote information. Astute readers may have noticed a familiar word from their
+    work with databases — query — querying is exactly what the PEAR installer does;
+    accessing data directly rather than through an API wrapper like SOAP or XML-RPC.
+    Unlike the procedural protocol used by XML-RPC and by RPC-based SOAP, REST is
+    based on the principle of providing hyperlinked data, or resources, with a unique
+    URL for each resource.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PEAR is an unusual REST interface in that it is strictly read-only, but this
+    is an even better reason to use REST. Not only can the installer grab any data
+    it wants without relying upon an intrinsically limited API, we can also take advantage
+    of some of the more powerful features of the HTTP protocol itself, and implement
+    a client-side HTTP cache, saving a tremendous amount of bandwidth and time that
+    would otherwise be spent downloading redundant information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This also provides an inherent security benefit to both the client and the server.
+    The client is simply working with static XML files, and the server is not required
+    to accept any input from the client whatsoever. In short, REST is simply the best
+    choice from all ends.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The path structure expected by the PEAR installer when accessing REST1.0 is
+    the following one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that PackageName3 has no releases, and so has no REST entry.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'REST1.1 adds these files to the structure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: The primary purpose of REST1.1 is to enable spidering of a channel without requiring
+    that old-fashioned directory crawling to be allowed, eliminating the potential
+    security vulnerability intrinsic to all web servers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A channel server mirror is defined by the`<mirror>` tag. This tag is identical
+    to the`<primary>` tag except that it requires an additional attribute, `host`.
+    The `host` attribute defines the URL that should be used to contact the mirror.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Obtaining Chiara_PEAR_Server
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The Chiara_PEAR_Server package is easily obtained. First, you need to meet
+    a few prerequisites. The Chiara_PEAR_Server package requires:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: PHP 5.0.0 or newer; PHP 5.1.0 or newer is recommended
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A MySQL database server
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The mysql or mysqli PHP extension
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A working web server such as Apache
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: PEAR version 1.4.3 or newer
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To obtain PEAR version 1.4.3 or newer, if you have PHP version 5.1.0, all you
+    need to do on UNIX is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will install and configure PEAR automatically. Note that the `configure`
+    command accepts a large number of options, and it is easy to learn about them
+    through `./configure --help`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that installing PHP in a web server is more complicated, and is necessary
+    to install the Chiara_PEAR_Server package. If you are using Apache, all you need
+    to do is pass in the `--with-apache` or `--with-apache2` directives to `configure`,
+    and you will be up and running.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'On Windows, for all PHP versions prior to version 5.2.0, you need to download
+    the `.zip` version of PHP, *not* the `.msi` version. Then change to the directory
+    you uncompressed PHP into and type:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Answer the prompts and choose installation locations. In both cases, after
+    installing, be sure to upgrade:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will ensure that you have the latest stable version of PEAR.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Installing the mysql or mysqli PHP extensions is documented at [http://www.php.net/mysql](http://www.php.net/mysql).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After everything is ready, you can obtain the Chiara_PEAR_Server package via
+    these simple steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: That's it! Note that Chiara_PEAR_Server currently requires `pear.php.net` packages
+    DB_DataObject and HTML_QuickForm, so be sure that you either have a working internet
+    connection or have installed these packages prior to attempting to install Chiara_PEAR_Server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configuring the server requires running a post-installation script, which we
+    cover in the following section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configuring the Server; Obtaining a Front End for End Users
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Before we run the post-installation script, it is important to understand what
+    it will need in order to function properly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, we need to create a MySQL user that will be used by the post-installation
+    script to initialize the database and create tables. As such, this user needs
+    to have `create` and `alter` permissions (use the `GRANT` command from within
+    MySQL to do this). As this will be the database user used by public web scripts,
+    for security reasons, it is best to remove `create/alter` permissions once the
+    database has been properly initialized. The only permissions needed for everyday
+    operations by the Chiara_PEAR_Server administrative back end are `insert/delete/update`.
+    Note that, when upgrading Chiara_PEAR_Server, `create/alter` permissions should
+    be re-granted again temporarily, just in case there are modifications or additions
+    to the database.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Running the Chiara_PEAR_Server post-installation script is a simple task in
+    PEAR, all you need to do is type:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: The PEAR installer will walk you through several questions. After you are finished
+    with them, and if there are no errors, the channel server will be ready for operation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Configuring the Server; Obtaining a Front End for End Users](img/1904811191_5_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The first set of questions will ask for database-connection information, and
+    for the `Handle` of the primary-channel administrator (you) and the name of the
+    channel. Your `Handle` is the same as your handle or username in a `package.xml`
+    file, and should be a single lower-cased word. For examples of choices of handles,
+    you might browse the list of maintainers at [http://pear.php.net/accounts.php](http://pear.php.net/accounts.php).
+    Your channel name must be the same as the server. So, for instance, if you are
+    setting up a test server at localhost, your channel must be named `localhost`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Configuring the Server; Obtaining a Front End for End Users](img/1904811191_5_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The next set of questions you will need to answer relates to the basics of your
+    channel. It is at this time that you should have a server name in mind. Generally
+    speaking, it is easier for users to remember a channel name if there is a direct
+    connection to the content it serves. For instance, if your channel serves financial
+    software, perhaps a channel name like *software.companyname.com* would be good,
+    with an alias like *companysoftware*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After this, information will be requested about the primary-channel administrator.
+    Finally, information will be asked about the document root of your web server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This section is the most important, as it will be used to create both the administrative
+    front end used to maintain packages and upload releases, and the REST files used
+    to support the REST protocols needed by the PEAR installer in order to function.
+    In general, the default values provided in parentheses should be acceptable. However,
+    it is helpful to understand the purpose of the different prompts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**PEAR Configuration File Location:** This specifies the location of the file
+    that should be used to retrieve channel information. The Chiara_PEAR_Server channel
+    simply will not function at all unless it can retrieve information about its own
+    channel, so this value needs to be right.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Path to document root of web server for localhost:** This should be the full
+    path on your local file system to the base of your web server. If your web server
+    reads `/var/lib/web/htdocs/servername/index.php` when a user requests [http://servername/index.php](http://servername/index.php),
+    then your document root is `/var/lib/web/htdocs/servername`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**name of frontend.php HTML admin frontend file:** This is the filename of
+    your administrative front-end file. Choosing a unique file name will help prevent
+    annoying or prevent malicious people from unwanted attempts to access the channel
+    administrative interface.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**temporary path to save release uploads in:** This should be a web server-writeable
+    location in which you initially save uploaded releases.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**port clients should connect to (443 is SSI, 80 is regular HTTP):** Follow
+    the instructions. If you have a typical configuration, 80 is normal for `http://`
+    and 443 is typical for `https://`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**protocol clients should use to connect (http or https):** Again, choose one
+    of the two options.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Adding a Package and Releasing Packages
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Once you have completed the post-installation script, navigate to the administrative
+    front-end file, whose name you specified in the **name of frontend.php HTML admin
+    frontend file** section. For instance, if your front-end file is named `foo.php`,
+    and your channel is localhost, navigate to `http://localhost/foo.php`. You should
+    see something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Adding a Package and Releasing Packages](img/1904811191_5_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: To log in as the administrator, enter the handle and password that you specified
+    for the administrator in the post-installation script. After logging in, prior
+    to uploading a release, you first need to create the package on the server, and
+    then add maintainers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When you log in, you will see a screen similar to this one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Adding a Package and Releasing Packages](img/1904811191_5_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Links for configuring the channel are on the left side of the screen. To get
+    started, you may also want to create some categories for the software you are
+    releasing, such as "Database" or "XML Processing." For examples of categories,
+    see [http://pear.php.net/packages.php](http://pear.php.net/packages.php).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After you have created categories, you will want to add maintainers and create
+    packages. Creating a package is straightforward. First, click **Create a Package**,
+    and you will see a screen like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Adding a Package and Releasing Packages](img/1904811191_5_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Fill in the required fields (marked by a red asterisk), and then click **Save
+    Changes**. The next step is very important: before you can upload a release, you
+    will need to create maintainers and add them as maintainers to the package. To
+    do this, click on the **(Maintainers)** link next to your newly created package
+    seen at the left side of the screen:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Adding a Package and Releasing Packages](img/1904811191_5_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Once you have chosen the maintainer, and the role, and whether the maintainer
+    is active, click **Add Maintainer**, and the maintainer will show up on the list
+    of package maintainers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**Who can Upload Releases?**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The channel administrator can upload a release for any package on the channel,
+    and also package maintainers who are listed as a lead at the channel can upload
+    packages. Note that a maintainer listed as lead in the `package.xml` file but
+    not at the channel's administrative front end will *not* be able to upload a release
+    for security reasons.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Installing a Public Channel Front End
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: After Chiara_PEAR_Server is configured and running, you may wish to install
+    Davey Shafik's **Crtx_PEAR_Channel_Frontend** package from channel `pear.crtx.org`.
+    The Crtx_PEAR_Channel_Frontend package provides a browsable website that allows
+    developers to look at the packages your channel offers and how to acquire them.
+    In addition, it has a support for linking to a bug tracker, online revision control
+    browser, and other features. Crtx_PEAR_Channel_Frontend is to Chiara_PEAR_Server
+    as [http://pear.php.net](http://pear.php.net) is to the installer data provided
+    at [http://pear.php.net/rest](http://pear.php.net/rest).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Acquiring Crtx_PEAR_Channel_Frontend can be done via these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: Once you have installed the package, there are some minor configurations to
+    be performed (this may be automated by a post-installation script in future releases).
+    First, you need to locate the `pear_frontend.css` file, which is installed into
+    `data_dir/Crtx_PEAR_Channel_Frontend/data/pear_frontend.css`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`data_dir` is the path to data (normally `/usr/local/lib/php/data` on UNIX,
+    and `C:\php5\PEAR\data` or `C:\php4\PEAR\data` on Windows) as defined by the PEAR
+    `data_dir` configuration variable. Once the file is located, copy this to the
+    document root of your channel.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After copying the `pear_frontend.css` file, you need to create the public front-end
+    PHP file. A sample front end follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This file, if saved as `index.php` in the document root of the `localhost`
+    web server, will provide an attractive screen similar to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Installing a Public Channel Front End](img/1904811191_5_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: There are several nice features built into this package, including RSS feeds
+    and the ability to email maintainers. In addition, customization of the look and
+    feel is straightforward, accomplished through elementary modification of the `pear_frontend.css`
+    file and the `index.php` front end. With very little work, a very attractive front
+    end can be created. Examples of the diversity of possibilities include [http://pear.crtx.org](http://pear.crtx.org)
+    and [http://pear.php-tools.net](http://pear.php-tools.net).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Distributing Pay-For-Use PHP Applications through a Channel
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'One of the more common questions posed about channels is: "Can my business
+    distribute pay-for-use PHP applications through a channel, and restrict access?"
+    The answer is a resounding yes.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The PEAR installer implements HTTP authentication through the use of the `pear
+    login` command. To distribute your non-free applications, it is best to rely upon
+    the strengths of web servers like Apache. For instance, by making "get" a file
+    and using the `ForceType` directive in `httpd.conf` like the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can use a file named `get` that contains PHP code to process the login/password
+    supplied by a user and direct them to a restricted package customized for their
+    login. In fact, normal users could be directed to a trial version of the software,
+    without any change to their installation process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Note that the PEAR Installer only supports HTTP Basic authentication, and for
+    a truly secure connection, SSL (HTTPS) should be used, otherwise anyone can glean
+    the restricted passwords. Here is a sample script for the `get` file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: The above example shows how easily even complex version validation can be accomplished.
+    However, this approach does not scale very efficiently — every download is funneled
+    through the PHP interpreter, which is considerably slower than fetching a static
+    file. Another option, which will only work with PEAR versions 1.4.9 or newer,
+    is to send a redirect header (402), and allow Apache to handle the actual file
+    download. However, the savings are minimal enough over using `readfile()` that
+    it may not be worth requiring users to upgrade.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another option is to simply restrict access to files using HTTP Basic authentication
+    in `.htaccess` files for individual tarballs. This is most likely to be scalable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, instruct users to take these steps when first setting their login/password:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: The user/password will only be sent when the user requests a package from `your.channel.com`,
+    taking advantage of per-channel configuration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is highly recommended to use SSL for your channel, so that username/password
+    pairs are never sent in plaintext.
+  prefs: []
+  type: TYPE_NORMAL
+- en: That's all that is necessary!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Distributing Packages through Static tarballs for Single-Client Installations
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In addition to distributing packages via a channel, it is also possible to distribute
+    a single release and post it to the Web.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**PEAR 1.4.10 is needed to Install Static Releases with Dependencies**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A bug in the PEAR installer prevents installing static tarballs; use version
+    1.4.10 or newer to get the fix for this problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This basically involves packaging up a release via `pear package` and then
+    uploading it to a website, where it can then be downloaded, or installed directly
+    via:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is nothing new: the earliest versions of the PEAR installer supported
+    this syntax. What is new is the ability to depend on these **static tarballs**
+    in other package releases.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Who Needs this Feature?
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In some cases, it is not necessary to set up a channel server. In general, it
+    is better to set up a channel server and distribute packages in that manner. However,
+    a common real-world situation is a PHP consultant who is providing services to
+    multiple clients, and also maintaining their websites for them. Although every
+    site is unique, it is very helpful to have a set of utility packages that can
+    be used by each specific site. To provide a channel for these packages only introduces
+    unneeded complexity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By installing your client's website as a PEAR package, it becomes possible for
+    you as the software consultant to easily maintain the site and regulate its content
+    in a much stricter manner than channels allow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Differences in package.xml and Dependencies
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In order to prevent name collisions between channels and static tarballs, a
+    static tarball''s `package.xml` file cannot use the [<channel>](http://<channel>)
+    tag, and must instead use the`<uri>` tag. In addition, the`<uri>` tag must contain
+    the actual location of the tarball on the Internet. If the static tarball is located
+    at [http://www.example.com/tarballs/Package-1.0.0.tgz](http://www.example.com/tarballs/Package-1.0.0.tgz),
+    the `package.xml` file should begin with something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: It is very important to notice that the `uri` has the file extension, `.tgz`,
+    removed. This is because when providing a static tarball, it is expected that
+    you will also provide an uncompressed `.tar` for users who do not have the zlib
+    extension enabled.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To depend on this static tarball, a dependency tag like the following should
+    be used:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: Versioning has no meaning when working with static tarballs as dependencies,
+    and so none of the normal versioning tags (`<min>,<max>, <recommended>`) are allowed.
+    However, it is possible to upgrade static tarballs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Each static tarball package has an implied`<channel>__uri</channel>` tag —
+    all static tarballs are installed/upgraded/uninstalled as if in the pseudo-channel
+    `__uri`. This channel is treated just like other channels except that it cannot
+    be modified via the `channel-update` command, deleted via the `channel-delete`
+    command, and it does not contain a server, and so will never attempt to contact
+    the Internet to query a remote channel server. Running `pear channel-info __uri`
+    results in:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: In addition to demonstrating the qualities of the `__uri` pseudo-channel, it
+    tells us that static tarball packages are validated with the same strictness that
+    `pear.php.net` channel packages are validated (using `PEAR_Validate`). If you
+    need flexibility of validation, it is necessary to use a channel instead of distributing
+    your software as a static tarball.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, this also means that after installing our static package via:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It is possible to upgrade this package, should a new version be released, via:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In addition, it is possible to uninstall the package via the simple:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you wish to see a list of all static tarball packages installed, simply
+    run the `list` command with the -c option:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Beware the simplicity of static tarballs! If there is any chance your end user
+    will install static tarballs from any other source, you must distribute your packages
+    from a channel. Otherwise, the user could run into a name collision between two
+    different packages, as illustrated by these two hypothetical install commands:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In this case, the package named `Foo` distributed from `www.example.com/tarballs`
+    is not the same code-base as the package named `Foo` distributed from `www.notexample.com`,
+    but the PEAR installer treats them both as if you had typed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this situation, the chance of subtle to severe breakage is immediate and
+    difficult to debug. Don't push your luck; use a channel if there is any chance
+    that this situation could occur.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Releasing Equals Uploading
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'As stated earlier, the biggest advantage to using a static tarball instead
+    of a channel is that releasing a new package simply involves uploading both a
+    `.tgz` and a `.tar` of the release as created by the commands:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: It doesn't get any easier than this!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Security Issues Inherent in Remote Installation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As evidenced by the advent of internet worms taking advantage of vulnerabilities
+    in phpBB, MySpace.com, and XML_RPC, security holes are no laughing matter, and
+    it is critical that you are aware of the potential risks involved in installing
+    software you have not written yourself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fortunately, the PEAR-installer model provides both ease of upgrading to obtain
+    needed security fixes and intrinsic security to ensure you won't become a victim
+    of malicious hackers just by using the PEAR installer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although the PEAR developers have taken every step to ensure the safety of your
+    code without restricting its usefulness, it is still very important that you understand
+    some basics of security, as PEAR will not be able to protect you from yourself,
+    should you choose to use or write insecure code. There are several excellent references
+    written recently on PHP security and on internet security in general. Both Ilia
+    Alshanetsky's *php|architect's Guide to PHP Security* and Chris Shiflett's *Essential
+    PHP Security* guide are a good place to start if you are unfamiliar with concepts
+    such as escaping output, filtering input, or terms like XSS, arbitrary code execution,
+    security through obscurity, and so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Many developers mistakenly develop and operate under the old golden rule: "Do
+    unto others as you would have them do unto you." This approach is fatally flawed
+    when you are developing code that has a component of internet connectivity. If
+    it is possible for anyone other than you to access the PHP application you have
+    written, then you need to assume that they have only the worst intentions.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As you design a feature, think to yourself: "How could I use this feature to
+    modify the environment of the machine it is running on? Can I use it to perform
+    unexpected actions?"'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the answer is "yes" or even "maybe" then the feature is intrinsically insecure
+    and must be restricted until the answer is "no" or "only in extreme circumstances
+    that would render it useless by other safeguards that are in place".
+  prefs: []
+  type: TYPE_NORMAL
+- en: How do PEAR Installer and Chiara_PEAR_Server Provide Security?
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The PEAR installer has taken a number of important steps to provide security.
+    However, at its essence, the PEAR installer is ultimately designed to install
+    arbitrary PHP code — this is its raison d''être, so the first rule of security
+    with PEAR must be:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '*Never* install a package on a live, production site without first looking
+    at the code it provides on a development server.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Extra Security beyond what PEAR Provides
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Although most basic actions taken by the PEAR installer have a reasonable expectation
+    of security, there are a few that should be avoided.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This means, for instance, that `upgrade-all` should be avoided at all costs
+    on production servers. This command upgrades all existing packages to the latest
+    version, which intrinsically removes your ability to control upgrades. This command
+    is best used on a development server when testing newer versions of packages prior
+    to upgrading them individually on the production server.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In addition, if you are installing a package distributed by a channel other
+    than those hosted at `php.net` (`pear.php.net` and `pecl.php.net` at the time
+    of writing this chapter), first download the package and run two commands on the
+    package to learn more about it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: The first will tell you dependencies that the package has. If you don't recognize
+    those dependencies, then you will need to perform the same steps on them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `list-files` command lists all files in the archive. Look for files installed
+    into the `PEAR/` subdirectory. Unless the package is providing a custom file role,
+    custom file task, or a custom command, a package generally has no business installing
+    files into this location, as this is the directory used by the PEAR Installer.
+    Any files installed into this directory could be attempting to maliciously affect
+    the way the installer works.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The most obvious exceptions to this rule are packages whose names contain PEAR
+    such as `PEAR_PackageFileManager`. If a package is installing files into locations
+    that don't appear to have much to do with the stated purpose, you should immediately
+    be suspicious. Contact the package maintainer, and ask why the package needs to
+    install files there.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you do not receive a satisfactory response, notify the PEAR developer's mailing
+    list immediately at `<[pear-dev@lists.php.net](mailto:pear-dev@lists.php.net)>`.
+    Any channel that attempts to provide malicious packages will be blacklisted by
+    the PEAR installer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Even more importantly, if there is only one thing that you remember from this
+    book, let it be this one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '*Never* run post-installation scripts without looking over the PHP source of
+    the post-installation script.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Post-installation scripts are by definition arbitrary PHP code. Anything that
+    can be done in PHP can be done by a post-installation script. This includes actions
+    like installing spyware, erasing your hard disk, and other things you probably
+    don't intend when running the `pear run-scripts` command. It is never worth risking
+    your entire system for the minor convenience of not looking at a script.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ultimately, the chance of a malicious package being distributed by a channel
+    is extremely low, due to the extreme ease of tracing a malicious package to the
+    source, as well as requiring explicit user installation of the package. Both of
+    these factors will not be enough to discourage evildoers out there unless you
+    also are vigilant about installing packages from unknown sources, so that they
+    are caught before any significant damage is done.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition, it is crucial that you upgrade the PEAR installer to version 1.4.3
+    or newer, and continually upgrade as new versions of the installer are released.
+    Bugs, security issues, and minor fixes are sure to be addressed in newer versions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Specific Security Principles Applied in Designing the PEAR Installer and Chiara_PEAR_Server
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: When designing and implementing the latest versions of the PEAR installer, one
+    of the primary concerns was preventing unanticipated modifications of the user
+    environment. By opening up the installer to take advantage of sources other than
+    `pear.php.net/pecl.php.net` for packages, and adding features like post-installation
+    scripts, custom file roles, and custom file tasks, there is an element of risk.
+    Every new feature balances openness to legitimate activity with restriction of
+    dangerous activity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For instance, channels are defined by their server name. This means that you
+    cannot automatically and secretly change the source of packages distributed by
+    `pear.php.net`. In addition, when a user runs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: The PEAR installer attempts to retrieve [http://mychannel.example.com/channel.xml](http://mychannel.example.com/channel.xml).
+    A clever and evil channel administrator could in fact serve a `channel.xml` file
+    that did not define `mychannel.example.com`. This kind of mischief is immediately
+    detected by the installer, and is disallowed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The addition of channel mirrors also introduces an element of risk. By defining
+    these mirrors in `channel.xml`, it is not possible to subvert the installer into
+    believing another channel is a legitimate mirror of a channel.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When downloading a package from a channel, strict verification of the `package.xml`
+    is performed. If a package is downloaded from channel `foo.example.com` and its
+    `package.xml` claims to be from `pear.php.net`, the PEAR installer refuses to
+    install or upgrade the package, as this would be a blatant security exploit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition, if the requested package name is not the same as the package name
+    in `package.xml`, the PEAR installer will refuse to install or upgrade the package.
+    Otherwise, it would be possible to distribute a package claiming to be `foo.example.com/Foo`
+    and actually distributing `pear.php.net/PEAR`. The same mechanism prevents dependencies
+    on malicious packages. A package downloaded from a channel/package must be that
+    channel/package, period. The same is true for static tarballs. A package depended
+    on using a static-tarball package dependency cannot distribute a channel-based
+    package.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The most potentially dangerous features implemented in the PEAR installer are
+    post-installation scripts and custom file tasks. Both of these features automatically
+    execute arbitrary code when invoked. PEAR provides a layer of security by making
+    it extremely difficult to accidentally execute malicious code. A user must:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Explicitly install a malicious file task
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Explicitly install a package that uses the malicious file task
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'For post-installation scripts, the end user must:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Explicitly install a package containing malicious post-installation scripts
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Explicitly type pear `run-scripts maliciouschannel/maliciouspackage` for the
+    malicious package
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: These extra steps allow the PEAR installer to make it very difficult to accidentally
+    compromise a system, and also to provide extreme visibility to the fact that an
+    unusual circumstance is being executed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is important to note that until PEAR version 1.4.3, the PEAR installer had
+    two security vulnerabilities. Both require a user to install a publicly distributed
+    malicious package. Both were caused by improper implementation of the command
+    pattern.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The command pattern is a method of providing extensibility based on loading
+    files in a special subdirectory. The PEAR installer has been using this pattern
+    since version 1.0 to load the actual commands shown when you type:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: The files implementing this pattern are located in `PEAR/Command/*.php` (PEAR/Command/Auth.php,
+    `PEAR/Command/Install.php`, etc.), and in PEAR versions 1.4.2 and older, these
+    files were loaded up every time the user used the `pear` command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This ultimately provides a vector for a malicious package to execute arbitrary
+    PHP code in an uncontrolled situation. PEAR 1.4.3 and newer versions fix this
+    through the implementation of an XML format describing commands. No actual PHP
+    code is loaded unless the user explicitly requests a command other than `help`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The command pattern is also used for custom file roles, first introduced in
+    PEAR 1.4.x. All files `PEAR/Installer/Role/*.php` were loaded up every time the
+    `pear` command was executed in order to construct the list of custom configuration
+    variables. The same solution that fixed the arbitrary code execution vulnerability
+    in commands is implemented to fix this vulnerability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'This chapter showed us that channels are designed to make it easy to install
+    packages from any location, but difficult to compromise your system in the process,
+    following a basic security principle: always make the easiest way to do things
+    the most secure way.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Channels open up `pear.php.net's` monopoly over the PEAR installer to the entire
+    Internet. Custom-built packages distributed through your channel can even be sold
+    and made available to specific users while co-existing peacefully with publicly
+    available open source-packages.
+  prefs: []
+  type: TYPE_NORMAL
