@@ -1,6 +1,6 @@
-# Python 卖空算法教程
+# 精通 Yii
 
-> 原文：[`zh.annas-archive.org/md5/ceefdd89e585c59c20db6a7760dc11f1`](https://zh.annas-archive.org/md5/ceefdd89e585c59c20db6a7760dc11f1)
+> 原文：[`zh.annas-archive.org/md5/e04b5155417b0f1bfc19f1cfd8e116d4`](https://zh.annas-archive.org/md5/e04b5155417b0f1bfc19f1cfd8e116d4)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

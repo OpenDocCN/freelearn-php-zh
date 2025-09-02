@@ -1,6 +1,6 @@
-# Python 卖空算法教程
+# PHP 研讨会
 
-> 原文：[`zh.annas-archive.org/md5/ceefdd89e585c59c20db6a7760dc11f1`](https://zh.annas-archive.org/md5/ceefdd89e585c59c20db6a7760dc11f1)
+> 原文：[`zh.annas-archive.org/md5/c54baf6b6cd63a42f77a772a97717117`](https://zh.annas-archive.org/md5/c54baf6b6cd63a42f77a772a97717117)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

@@ -1,6 +1,6 @@
-# Python 卖空算法教程
+# Magento2 开发者指南
 
-> 原文：[`zh.annas-archive.org/md5/ceefdd89e585c59c20db6a7760dc11f1`](https://zh.annas-archive.org/md5/ceefdd89e585c59c20db6a7760dc11f1)
+> 原文：[`zh.annas-archive.org/md5/22e3fb2c2e59e824ce1774e2331a1019`](https://zh.annas-archive.org/md5/22e3fb2c2e59e824ce1774e2331a1019)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 

@@ -1,6 +1,6 @@
-# Python 卖空算法教程
+# WordPress5 大全第七版
 
-> 原文：[`zh.annas-archive.org/md5/ceefdd89e585c59c20db6a7760dc11f1`](https://zh.annas-archive.org/md5/ceefdd89e585c59c20db6a7760dc11f1)
+> 原文：[`zh.annas-archive.org/md5/35724d6a5a0cbfe2813127c868c7ad16`](https://zh.annas-archive.org/md5/35724d6a5a0cbfe2813127c868c7ad16)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 
