@@ -1,6 +1,6 @@
 
 
-# 理解 Laravel Web 应用程序架构
+# 第一章：理解 Laravel Web 应用程序架构
 
 本书是为希望以更可扩展的方式设计和构建他们的 Laravel Web 应用程序，并使其更高效性能的 **Laravel** 开发者而写的。
 

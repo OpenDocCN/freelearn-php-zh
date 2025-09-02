@@ -1,4 +1,4 @@
-# WordPress APIs 的实际应用
+# 第六章：WordPress APIs 的实际应用
 
 在现代网站上，应用程序编程接口的使用很常见。我们使用 Google Maps、Google Analytics 和 Facebook 等 API 来利用第三方服务的功能。基本上，API 是由开发者创建的，以使他们的功能对其他开发者和平台可用。同样，WordPress APIs 让我们能够以标准方式使用核心功能来改变和扩展功能。我们还可以使用这些功能在 WordPress 之上创建自己的 API，并将它们暴露给第三方服务和平台。
 

@@ -1,6 +1,6 @@
 
 
-# 使用 Drupal 构建 API
+# 第十二章：使用 Drupal 构建 API
 
 Drupal 10 自带了一些很棒的功能，可以帮助您使用核心序列化和 JSON:API 模块构建 RESTful API。这些功能使您能够构建无头和/或解耦的解决方案，同时仍然可以与 Drupal 交互并查询数据。
 

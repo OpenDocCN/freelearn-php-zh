@@ -1,4 +1,4 @@
-# 使用 PHP 的六边形架构
+# 第十三章：使用 PHP 的六边形架构
 
 以下文章由 Carlos Buenosvinos 于 2014 年 6 月发布在 php|architect 杂志上。
 

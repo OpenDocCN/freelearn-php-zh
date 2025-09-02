@@ -1,4 +1,4 @@
-# 扩展 Drupal
+# 第四章：扩展 Drupal
 
 本章深入探讨使用自定义模块扩展 Drupal：
 

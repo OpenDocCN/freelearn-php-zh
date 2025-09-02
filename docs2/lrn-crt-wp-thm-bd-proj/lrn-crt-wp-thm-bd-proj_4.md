@@ -1,4 +1,4 @@
-# 构建 Twitter Bootstrap WordPress 主题
+# 第四章：构建 Twitter Bootstrap WordPress 主题
 
 在本章中，我们将集成 Bootstrap 与 WordPress。我们之前创建的模板的外观相当简单。我们没有追求一些壮观的设计。这个项目的目标是让你看到我们如何将 Bootstrap 和 WordPress 结合起来，并使用它来构建更多 WordPress 的 Bootstrap 主题。
 

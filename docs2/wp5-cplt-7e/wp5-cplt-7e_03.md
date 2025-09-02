@@ -1,4 +1,4 @@
-# WordPress 入门
+# 第二章：WordPress 入门
 
 本章将指导你完成设置 WordPress 和自定义其基本功能的过程。你可以选择几个关于你的 WordPress 网站将驻留的选项。WordPress 是一个相对较小的软件包（小于 10 MB），同时易于安装和管理。
 

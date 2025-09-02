@@ -1,4 +1,4 @@
-# 利用 JavaScript、jQuery 和 AJAX 脚本
+# 第九章：利用 JavaScript、jQuery 和 AJAX 脚本
 
 本章通过探讨以下主题来专注于在插件中集成 JavaScript：
 
