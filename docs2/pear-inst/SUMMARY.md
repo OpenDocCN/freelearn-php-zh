@@ -1,0 +1,8 @@
++   [PEAR 安装指南](README.md)
++   [前言](pear-inst_0.md)
++   [第一章。获取 PEAR：它是什么以及如何获取它？](pear-inst_1.md)
++   [第二章。使用 PEAR 安装程序精通 PHP 软件管理](pear-inst_2.md)
++   [第三章：利用 PEAR 安装程序的全应用支持](pear-inst_3.md)
++   [第四章. 使用 PEAR 安装程序进行巧妙的网站协调](pear-inst_4.md)
++   [第五章。向世界发布：PEAR 渠道](pear-inst_5.md)
++   [第六章。嵌入 PEAR 安装程序：设计自定义插件系统](pear-inst_6.md)
