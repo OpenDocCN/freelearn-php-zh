@@ -1,6 +1,6 @@
-# Python 卖空算法教程
+# PEAR 安装指南
 
-> 原文：[`zh.annas-archive.org/md5/ceefdd89e585c59c20db6a7760dc11f1`](https://zh.annas-archive.org/md5/ceefdd89e585c59c20db6a7760dc11f1)
+> 原文：[`zh.annas-archive.org/md5/394e0cc061c0274ab8d9077f10d345d5`](https://zh.annas-archive.org/md5/394e0cc061c0274ab8d9077f10d345d5)
 > 
 > 译者：[飞龙](https://github.com/wizardforcel)
 > 
