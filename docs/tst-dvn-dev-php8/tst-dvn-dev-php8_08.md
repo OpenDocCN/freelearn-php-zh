@@ -124,17 +124,8 @@ default:
 
     ```php
     /var/www/html/behat# ./vendor/bin/behat --init
-    ```
-
-    ```php
     /var/www/html/behat# ./vendor/bin/behat features/
-    ```
-
-    ```php
      create_toy_car_record.feature --append-snippets –
-    ```
-
-    ```php
      suite=suite_create
     ```
 
@@ -144,9 +135,6 @@ default:
 
     ```php
     /var/www/html/behat# ./vendor/bin/behat features/
-    ```
-
-    ```php
     create_toy_car_record.feature --suite=suite_create
     ```
 
@@ -185,9 +173,6 @@ class InventoryControllerTest extends WebTestCase
 
     ```php
     /var/www/html/symfony# ./vendor/bin/phpunit --filter 
-    ```
-
-    ```php
      InventoryAdminControllerTest
     ```
 
@@ -601,129 +586,36 @@ interface ValidatorInterface
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace App\Processor;
-    ```
-
-    ```php
     use App\DAL\Writer\WriterInterface;
-    ```
-
-    ```php
     use App\Model\ToyCar;
-    ```
-
-    ```php
     use App\Validator\ToyCarValidationException;
-    ```
-
-    ```php
     use App\Validator\ValidatorInterface;
-    ```
-
-    ```php
     class ToyCarCreator
-    ```
-
-    ```php
     {
-    ```
-
-    ```php
         /**
-    ```
-
-    ```php
          * @var ValidatorInterface
-    ```
-
-    ```php
          */
-    ```
-
-    ```php
         private $validator;
-    ```
-
-    ```php
         /**
-    ```
-
-    ```php
          * @var WriterInterface
-    ```
-
-    ```php
          */
-    ```
-
-    ```php
         private $dataWriter;
-    ```
-
-    ```php
         /**
-    ```
-
-    ```php
          * @param ToyCar $toyCar
-    ```
-
-    ```php
          * @return bool
-    ```
-
-    ```php
          * @throws ToyCarValidationException
-    ```
-
-    ```php
          */
-    ```
-
-    ```php
         public function create(ToyCar $toyCar): bool
-    ```
-
-    ```php
         {
-    ```
-
-    ```php
             // Do some validation here and so on...
-    ```
-
-    ```php
             $this->getValidator()->validate($toyCar);
-    ```
-
-    ```php
             // Write the data
-    ```
-
-    ```php
             $result = $this->getDataWriter()->write
-    ```
-
-    ```php
                 ($toyCar);
-    ```
-
-    ```php
             // Do other stuff.
-    ```
-
-    ```php
             return $result;
-    ```
-
-    ```php
         }
-    ```
-
-    ```php
     }
     ```
 
@@ -1401,89 +1293,26 @@ class ToyCarTooOldException extends
 
     ```php
     /**
-    ```
-
-    ```php
      * @param $data
-    ```
-
-    ```php
      * @param $expected
-    ```
-
-    ```php
      * @dataProvider provideLongNames
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
     public function testCanValidateNameLength(string 
-    ```
-
-    ```php
         $name, bool $expected): void
-    ```
-
-    ```php
     {
-    ```
-
-    ```php
         $validator  = new NameValidator();
-    ```
-
-    ```php
         $isValid    = $validator->validateLength($name);
-    ```
-
-    ```php
         $this->assertEquals($expected, $isValid);
-    ```
-
-    ```php
     }
-    ```
-
-    ```php
     /**
-    ```
-
-    ```php
      * @return array
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
     public function provideLongNames(): array
-    ```
-
-    ```php
     {
-    ```
-
-    ```php
         return [
-    ```
-
-    ```php
             [‘TheQuickBrownFoxJumpsOverTheLazyDog’, 
-    ```
-
-    ```php
                 false],
-    ```
-
-    ```php
         ];
-    ```
-
-    ```php
     }
     ```
 

@@ -141,65 +141,20 @@ docker exec -it docker_server-web_1 /bin/bash
 
     ```php
     {
-    ```
-
-    ```php
         “Version”: “2012-10-17”,
-    ```
-
-    ```php
         “Statement”: [
-    ```
-
-    ```php
             {
-    ```
-
-    ```php
                 “Effect”: “Allow”,
-    ```
-
-    ```php
                 “Principal”: {
-    ```
-
-    ```php
                     “Service”: [
-    ```
-
-    ```php
                         “ec2.amazonaws.com”,
-    ```
-
-    ```php
                         “codedeploy.ap-southeast-2.
-    ```
-
-    ```php
                             amazonaws.com”
-    ```
-
-    ```php
                     ]
-    ```
-
-    ```php
                 },
-    ```
-
-    ```php
                 “Action”: “sts:AssumeRole”
-    ```
-
-    ```php
             }
-    ```
-
-    ```php
         ]
-    ```
-
-    ```php
     }
     ```
 
@@ -355,29 +310,11 @@ docker exec -it docker_server-web_1 /bin/bash
 
     ```php
     sudo yum update -y
-    ```
-
-    ```php
     sudo yum install -y ruby
-    ```
-
-    ```php
     sudo yum install -y wget
-    ```
-
-    ```php
     wget https://aws-codedeploy-ap-southeast-2.s3.ap-
-    ```
-
-    ```php
      southeast-2.amazonaws.com/latest/install
-    ```
-
-    ```php
     chmod +x ./install
-    ```
-
-    ```php
     sudo ./install auto
     ```
 
@@ -405,17 +342,8 @@ docker exec -it docker_server-web_1 /bin/bash
 
     ```php
     sudo amazon-linux-extras install -y docker
-    ```
-
-    ```php
     sudo service docker start
-    ```
-
-    ```php
     sudo usermod -aG docker ec2-user
-    ```
-
-    ```php
     sudo chkconfig docker on
     ```
 
@@ -455,9 +383,6 @@ docker exec -it docker_server-web_1 /bin/bash
 
     ```php
     sudo curl -L “https://github.com/docker/compose/releases/download/v2.11.2/docker-compose-$(uname -s)-$(uname -m)” -o /usr/local/bin/docker-compose
-    ```
-
-    ```php
     sudo chmod +x /usr/local/bin/docker-compose
     ```
 

@@ -738,9 +738,6 @@ composer require drupal/restui:¹.0
 
     ```php
     openssl genrsa -out private.key 2048
-    ```
-
-    ```php
     openssl rsa -in private.key -pubout > public.key
     ```
 
@@ -756,25 +753,10 @@ composer require drupal/restui:¹.0
 
     ```php
     curl -X POST https://localhost/oauth/token \
-    ```
-
-    ```php
       -H 'content-type: application/x-www-form-
-    ```
-
-    ```php
         urlencoded' \
-    ```
-
-    ```php
       -d 'grant_type=client_credentials&client_id=
-    ```
-
-    ```php
         CLIENT_ID&username=chapter12&client_secret=
-    ```
-
-    ```php
           chapter12'
     ```
 
@@ -784,13 +766,7 @@ composer require drupal/restui:¹.0
 
     ```php
     curl -X GET 'https://localhost/node/8?_format=json' \
-    ```
-
-    ```php
      -H 'accept: application/json' \
-    ```
-
-    ```php
      -H 'authorization: Bearer ACCESS_TOKEN'
     ```
 

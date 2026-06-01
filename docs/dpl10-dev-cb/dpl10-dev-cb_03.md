@@ -518,9 +518,6 @@ php vendor/bin/drush en devel_generate statistics --yes
 
     ```php
     composer require drupal/charts
-    ```
-
-    ```php
     php vendor/bin/drush en charts charts_google --yes
     ```
 

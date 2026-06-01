@@ -269,109 +269,31 @@ Behat 已经自动生成了表示我们在 `home.feature` 文件中定义的 `Gi
 
     ```php
     <?php
-    ```
-
-    ```php
     use Behat\Behat\Tester\Exception\PendingException;
-    ```
-
-    ```php
     class HomeContext implements \Behat\Behat\Context
-    ```
-
-    ```php
          \Context
-    ```
-
-    ```php
     {
-    ```
-
-    ```php
         /**
-    ```
-
-    ```php
          * @Given I have access to the home page URL
-    ```
-
-    ```php
          */
-    ```
-
-    ```php
         public function iHaveAccessToTheHomePageUrl()
-    ```
-
-    ```php
         {
-    ```
-
-    ```php
             throw new PendingException();
-    ```
-
-    ```php
         }
-    ```
-
-    ```php
         /**
-    ```
-
-    ```php
          * @When I visit the home page
-    ```
-
-    ```php
          */
-    ```
-
-    ```php
         public function iVisitTheHomePage()
-    ```
-
-    ```php
         {
-    ```
-
-    ```php
             throw new PendingException();
-    ```
-
-    ```php
         }
-    ```
-
-    ```php
         /**
-    ```
-
-    ```php
          * @Then I should see the Symfony Logo
-    ```
-
-    ```php
          */
-    ```
-
-    ```php
         public function iShouldSeeTheSymfonyLogo()
-    ```
-
-    ```php
         {
-    ```
-
-    ```php
             throw new Exception();
-    ```
-
-    ```php
         }
-    ```
-
-    ```php
     }
     ```
 

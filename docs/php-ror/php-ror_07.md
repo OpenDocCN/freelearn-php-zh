@@ -221,13 +221,6 @@
 
     ```php
     echo 'eval "$(rbenv init -)"' >> ~/.bashrc
-    ```
-
-    ```php
-
-    ```
-
-    ```php
 
     ```
 
@@ -242,9 +235,6 @@
 
     ```php
     rbenv global 2.6.10
-    ```
-
-    ```php
 
     ```
 

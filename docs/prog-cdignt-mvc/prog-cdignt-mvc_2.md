@@ -76,9 +76,6 @@ $config['index_page'] = 'index.php';
     RewriteEngine On
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
-    ```
-
-    ```php
     RewriteRule ^(.*)$ index.php/$1 [L]
 
     <Files "index.php">

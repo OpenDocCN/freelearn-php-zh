@@ -772,9 +772,6 @@ Content-Type: application/json; charset=UTF-8
             {
                 public $modelClass = 'app\models\Film';
             }
-    ```
-
-    ```php
     <?php
         namespace app\modules\v1;
 

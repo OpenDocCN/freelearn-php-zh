@@ -815,9 +815,6 @@ foreach ($projects as $project) {
     ```php
     SELECT … FROM `tasks` AS `t0` WHERE
        `t0`.`project_id` = '2'
-    ```
-
-    ```php
     SELECT … FROM `tasks` AS `t0` WHERE
        `t0`.`project_id` = '3'
     ```

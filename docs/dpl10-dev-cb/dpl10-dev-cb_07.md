@@ -38,45 +38,15 @@
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Form;
-    ```
-
-    ```php
     use Drupal\Core\Form\FormBase;
-    ```
-
-    ```php
     use Drupal\Core\Form\FormStateInterface;
-    ```
-
-    ```php
     class CompanyForm extends FormBase {
-    ```
-
-    ```php
       public function getFormId() {}
-    ```
-
-    ```php
       public function buildForm(array $form,
-    ```
-
-    ```php
         FormStateInterface $form_state) {}
-    ```
-
-    ```php
       public function submitForm(array &$form,
-    ```
-
-    ```php
         FormStateInterface $form_state) {}
-    ```
-
-    ```php
     }
     ```
 
@@ -88,13 +58,7 @@
 
     ```php
       public function getFormId() {
-    ```
-
-    ```php
         return 'company_form';
-    ```
-
-    ```php
       }
     ```
 
@@ -102,49 +66,16 @@
 
     ```php
       public function buildForm(array $form,
-    ```
-
-    ```php
         FormStateInterface $form_state) {
-    ```
-
-    ```php
         $form['company_name'] = [
-    ```
-
-    ```php
           '#type' => 'textfield',
-    ```
-
-    ```php
           '#title' => 'Company name',
-    ```
-
-    ```php
         ];
-    ```
-
-    ```php
         $form['company_telephone'] = [
-    ```
-
-    ```php
           '#type' => 'tel',
-    ```
-
-    ```php
           '#title' => 'Company telephone',
-    ```
-
-    ```php
         ];
-    ```
-
-    ```php
         return $form;
-    ```
-
-    ```php
       }
     ```
 
@@ -154,73 +85,22 @@
 
     ```php
       public function buildForm(array $form,
-    ```
-
-    ```php
         FormStateInterface $form_state) {
-    ```
-
-    ```php
         $company_settings = $this->config
-    ```
-
-    ```php
              ('company_settings');
-    ```
-
-    ```php
         $form['company_name'] = [
-    ```
-
-    ```php
           '#type' => 'textfield',
-    ```
-
-    ```php
           '#title' => 'Company name',
-    ```
-
-    ```php
           '#default_value' => $company_settings->
-    ```
-
-    ```php
             get('company_name'),
-    ```
-
-    ```php
         ];
-    ```
-
-    ```php
         $form['company_telephone'] = [
-    ```
-
-    ```php
           '#type' => 'tel',
-    ```
-
-    ```php
           '#title' => 'Company telephone',
-    ```
-
-    ```php
           '#default_value' => $company_settings->
-    ```
-
-    ```php
             get('company_telephone'),
-    ```
-
-    ```php
         ];
-    ```
-
-    ```php
         return $form;
-    ```
-
-    ```php
       }
     ```
 
@@ -230,93 +110,27 @@
 
     ```php
       public function buildForm(array $form,
-    ```
-
-    ```php
         FormStateInterface $form_state) {
-    ```
-
-    ```php
         $company_settings = $this->
-    ```
-
-    ```php
             config('mymodule.company_settings');
-    ```
-
-    ```php
         $form['company_name'] = [
-    ```
-
-    ```php
           '#type' => 'textfield',
-    ```
-
-    ```php
           '#title' => 'Company name',
-    ```
-
-    ```php
           '#default_value' => $company_settings->
-    ```
-
-    ```php
             get('company_name'),
-    ```
-
-    ```php
         ];
-    ```
-
-    ```php
         $form['company_telephone'] = [
-    ```
-
-    ```php
           '#type' => 'tel',
-    ```
-
-    ```php
           '#title' => 'Company telephone',
-    ```
-
-    ```php
           '#default_value' => $company_settings->
-    ```
-
-    ```php
             get('company_telephone'),
-    ```
-
-    ```php
         ];
-    ```
-
-    ```php
         $form['actions']['#type'] = 'actions';
-    ```
-
-    ```php
         $form['actions']['submit'] = [
-    ```
-
-    ```php
           '#type' => 'submit',
-    ```
-
-    ```php
           '#value' => 'Submit',
-    ```
-
-    ```php
         ];
-    ```
-
-    ```php
         return $form;
-    ```
-
-    ```php
       }
     ```
 
@@ -326,49 +140,16 @@
 
     ```php
       public function submitForm(array &$form,
-    ```
-
-    ```php
         FormStateInterface $form_state) {
-    ```
-
-    ```php
         $config = $this->configFactory()->
-    ```
-
-    ```php
             getEditable('mymodule.company_settings');
-    ```
-
-    ```php
         $config->set('company_name', $form_state->
-    ```
-
-    ```php
             getValue('company_name'));
-    ```
-
-    ```php
         $config->set('company_telephone', $form_state->
-    ```
-
-    ```php
             getValue('company_telephone'));
-    ```
-
-    ```php
         $config->save();
-    ```
-
-    ```php
         $this->messenger()->addStatus('Updated company
-    ```
-
-    ```php
             information');
-    ```
-
-    ```php
       }
     ```
 
@@ -378,29 +159,11 @@
 
     ```php
     mymodule.company_form:
-    ```
-
-    ```php
       path: /company-form
-    ```
-
-    ```php
       defaults:
-    ```
-
-    ```php
         _form: Drupal\mymodule\Form\CompanyForm
-    ```
-
-    ```php
         _title: Company form
-    ```
-
-    ```php
       requirements:
-    ```
-
-    ```php
         _access: 'TRUE'
     ```
 
@@ -511,57 +274,18 @@ class CompanyForm extends ConfigFormBase {
 
     ```php
         $form['company_name'] = [
-    ```
-
-    ```php
           '#type' => 'textfield',
-    ```
-
-    ```php
           '#title' => 'Company name',
-    ```
-
-    ```php
           '#required' => TRUE,
-    ```
-
-    ```php
           '#default_value' => $company_settings->
-    ```
-
-    ```php
             get('company_name'),
-    ```
-
-    ```php
         ];
-    ```
-
-    ```php
         $form['company_telephone'] = [
-    ```
-
-    ```php
           '#type' => 'tel',
-    ```
-
-    ```php
           '#title' => 'Company telephone',
-    ```
-
-    ```php
           '#required' => TRUE,
-    ```
-
-    ```php
           '#default_value' => $company_settings->
-    ```
-
-    ```php
             get('company_telephone'),
-    ```
-
-    ```php
         ];
     ```
 
@@ -571,33 +295,12 @@ class CompanyForm extends ConfigFormBase {
 
     ```php
         $form['company_telephone'] = [
-    ```
-
-    ```php
           '#type' => 'tel',
-    ```
-
-    ```php
           '#title' => 'Company telephone',
-    ```
-
-    ```php
           '#required' => TRUE,
-    ```
-
-    ```php
           '#pattern' => '^[0-9-+\s()]*$',
-    ```
-
-    ```php
           '#default_value' => $company_settings->
-    ```
-
-    ```php
             get('company_telephone'),
-    ```
-
-    ```php
         ];
     ```
 
@@ -607,41 +310,14 @@ class CompanyForm extends ConfigFormBase {
 
     ```php
       public function validateForm(array &$form, FormStateInterface $form_state) {
-    ```
-
-    ```php
         $company_name = $form_state->
-    ```
-
-    ```php
             getValue('company_name');
-    ```
-
-    ```php
         if (str_contains($company_name, 'foo')) {
-    ```
-
-    ```php
           $form_state->setErrorByName(
-    ```
-
-    ```php
             'company_name',
-    ```
-
-    ```php
             'Name cannot contain "foo"'
-    ```
-
-    ```php
           );
-    ```
-
-    ```php
         }
-    ```
-
-    ```php
       }
     ```
 
@@ -675,65 +351,20 @@ class CompanyForm extends ConfigFormBase {
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Form;
-    ```
-
-    ```php
     use Drupal\Core\Form\FormBase;
-    ```
-
-    ```php
     use Drupal\Core\Form\FormStateInterface;
-    ```
-
-    ```php
     class ApprovalRequiredForm extends FormBase {
-    ```
-
-    ```php
       public function getFormId() {
-    ```
-
-    ```php
         return 'mymodule_approval_form';
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
       public function buildForm(array $form,
-    ```
-
-    ```php
         FormStateInterface $form_state) {
-    ```
-
-    ```php
         return $form;
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
       public function submitForm(array &$form,
-    ```
-
-    ```php
         FormStateInterface $form_state) {
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     }
     ```
 
@@ -741,37 +372,13 @@ class CompanyForm extends ConfigFormBase {
 
     ```php
       public function buildForm(array $form,
-    ```
-
-    ```php
         FormStateInterface $form_state) {
-    ```
-
-    ```php
         $form['approval'] = [
-    ```
-
-    ```php
           '#type' => 'checkbox',
-    ```
-
-    ```php
           '#title' => 'I acknowledge',
-    ```
-
-    ```php
           '#required' => TRUE,
-    ```
-
-    ```php
         ];
-    ```
-
-    ```php
         return $form;
-    ```
-
-    ```php
       }
     ```
 
@@ -781,45 +388,15 @@ class CompanyForm extends ConfigFormBase {
 
     ```php
         $form['actions']['#type'] = 'actions';
-    ```
-
-    ```php
         $form['actions']['submit'] = [
-    ```
-
-    ```php
           '#type' => 'submit',
-    ```
-
-    ```php
           '#value' => 'Submit',
-    ```
-
-    ```php
           '#states' => [
-    ```
-
-    ```php
             'disabled' => [
-    ```
-
-    ```php
               ':input[name="approval"]' => ['checked' =>
-    ```
-
-    ```php
                 FALSE],
-    ```
-
-    ```php
             ],
-    ```
-
-    ```php
           ],
-    ```
-
-    ```php
         ];
     ```
 
@@ -829,29 +406,11 @@ class CompanyForm extends ConfigFormBase {
 
     ```php
     mymodule.approval_form:
-    ```
-
-    ```php
       path: /approval-form
-    ```
-
-    ```php
       defaults:
-    ```
-
-    ```php
         _form: Drupal\mymodule\Form\ApprovalRequiredForm
-    ```
-
-    ```php
         _title: Approval form
-    ```
-
-    ```php
       requirements:
-    ```
-
-    ```php
         _access: 'TRUE'
     ```
 
@@ -895,65 +454,20 @@ data-drupal-states="{&quot;disabled&quot;:{&quot;:input
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Form;
-    ```
-
-    ```php
     use Drupal\Core\Form\FormBase;
-    ```
-
-    ```php
     use Drupal\Core\Form\FormStateInterface;
-    ```
-
-    ```php
     class CounterForm extends FormBase {
-    ```
-
-    ```php
       public function getFormId() {
-    ```
-
-    ```php
         return 'mymodule_counter_form';
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
       public function buildForm(array $form,
-    ```
-
-    ```php
         FormStateInterface $form_state) {
-    ```
-
-    ```php
         return $form;
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
       public function submitForm(array &$form,
-    ```
-
-    ```php
         FormStateInterface $form_state) {
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     }
     ```
 
@@ -961,33 +475,12 @@ data-drupal-states="{&quot;disabled&quot;:{&quot;:input
 
     ```php
       public function buildForm(array $form,
-    ```
-
-    ```php
         FormStateInterface $form_state) {
-    ```
-
-    ```php
         $count = $form_state->get('count') ?: 0;
-    ```
-
-    ```php
         $form['count'] = [
-    ```
-
-    ```php
           '#markup' => "<p>Total count: $count",
-    ```
-
-    ```php
         ];
-    ```
-
-    ```php
         return $form;
-    ```
-
-    ```php
       }
     ```
 
@@ -997,21 +490,9 @@ data-drupal-states="{&quot;disabled&quot;:{&quot;:input
 
     ```php
         $form['count'] = [
-    ```
-
-    ```php
           '#markup' => "<p>Total count: $count",
-    ```
-
-    ```php
           '#prefix' => '<div id="counter">',
-    ```
-
-    ```php
           '#suffix' => '</div>',
-    ```
-
-    ```php
         ];
     ```
 
@@ -1021,33 +502,12 @@ data-drupal-states="{&quot;disabled&quot;:{&quot;:input
 
     ```php
         $form['increment'] = [
-    ```
-
-    ```php
           '#type' => 'submit',
-    ```
-
-    ```php
           '#value' => 'Increment',
-    ```
-
-    ```php
           '#ajax' => [
-    ```
-
-    ```php
             'callback' => [$this, 'ajaxRefresh'],
-    ```
-
-    ```php
             'wrapper' => 'counter',
-    ```
-
-    ```php
           ],
-    ```
-
-    ```php
         ];
     ```
 
@@ -1057,17 +517,8 @@ data-drupal-states="{&quot;disabled&quot;:{&quot;:input
 
     ```php
       public function ajaxRefresh(array $form,
-    ```
-
-    ```php
         FormStateInterface $form_state) {
-    ```
-
-    ```php
         return $form['count'];
-    ```
-
-    ```php
       }
     ```
 
@@ -1077,29 +528,11 @@ data-drupal-states="{&quot;disabled&quot;:{&quot;:input
 
     ```php
       public function submitForm(array &$form,
-    ```
-
-    ```php
         FormStateInterface $form_state) {
-    ```
-
-    ```php
         $count = $form_state->get('count') ?: 0;
-    ```
-
-    ```php
         $count++;
-    ```
-
-    ```php
         $form_state->set('count', $count);
-    ```
-
-    ```php
         $form_state->setRebuild();
-    ```
-
-    ```php
       }
     ```
 
@@ -1109,29 +542,11 @@ data-drupal-states="{&quot;disabled&quot;:{&quot;:input
 
     ```php
     mymodule.counter_form:
-    ```
-
-    ```php
       path: /counter-form
-    ```
-
-    ```php
       defaults:
-    ```
-
-    ```php
         _form: Drupal\mymodule\Form\CounterForm
-    ```
-
-    ```php
         _title: Counter form
-    ```
-
-    ```php
       requirements:
-    ```
-
-    ```php
         _access: 'TRUE'
     ```
 
@@ -1187,29 +602,11 @@ $element['#ajax']['type'] = 'keyup';
 
     ```php
     <?php
-    ```
-
-    ```php
     use Drupal\Core\Form\FormStateInterface;
-    ```
-
-    ```php
     function mymodule_form_system_site_information
-    ```
-
-    ```php
       _settings_alter(array &$form, FormStateInterface
-    ```
-
-    ```php
         $form_state) {
-    ```
-
-    ```php
       // Code to alter form or form state here
-    ```
-
-    ```php
     }
     ```
 
@@ -1221,49 +618,16 @@ Drupal 将调用此钩子，并传递当前表单数组及其表单状态对象�
 
     ```php
     <?php
-    ```
-
-    ```php
     use Drupal\Core\Form\FormStateInterface;
-    ```
-
-    ```php
     function mymodule_form_system_site_information_
-    ```
-
-    ```php
       settings_alter(array &$form, FormStateInterface
-    ```
-
-    ```php
         $form_state) {
-    ```
-
-    ```php
       $form['site_information']['site_phone'] = [
-    ```
-
-    ```php
         '#type' => 'tel',
-    ```
-
-    ```php
         '#title' => 'Site phone',
-    ```
-
-    ```php
         '#default_value' => \Drupal::config('system.site')
-    ```
-
-    ```php
             ->get('phone'),
-    ```
-
-    ```php
       ];
-    ```
-
-    ```php
     }
     ```
 
@@ -1273,85 +637,25 @@ Drupal 将调用此钩子，并传递当前表单数组及其表单状态对象�
 
     ```php
     <?php
-    ```
-
-    ```php
     use Drupal\Core\Form\FormStateInterface;
-    ```
-
-    ```php
     function mymodule_form_system_site_information
-    ```
-
-    ```php
       _settings_alter(array &$form, FormStateInterface
-    ```
-
-    ```php
         $form_state) {
-    ```
-
-    ```php
       $form['site_information']['site_phone'] = [
-    ```
-
-    ```php
         '#type' => 'tel',
-    ```
-
-    ```php
         '#title' => 'Site phone',
-    ```
-
-    ```php
         '#default_value' => \Drupal::config('system.site')
-    ```
-
-    ```php
             ->get('phone'),
-    ```
-
-    ```php
       ];
-    ```
-
-    ```php
       $form['#submit'][] = 'mymodule_system_site_
-    ```
-
-    ```php
         information_phone_submit';
-    ```
-
-    ```php
     }
-    ```
-
-    ```php
     function mymodule_system_site_information_phone_submit
-    ```
-
-    ```php
       (array &$form, FormStateInterface $form_state) {
-    ```
-
-    ```php
       $config = Drupal::configFactory()->
-    ```
-
-    ```php
         getEditable('system.site');
-    ```
-
-    ```php
       $config ->set('phone', $form_state->
-    ```
-
-    ```php
         getValue('site_phone'));
-    ```
-
-    ```php
     }
     ```
 

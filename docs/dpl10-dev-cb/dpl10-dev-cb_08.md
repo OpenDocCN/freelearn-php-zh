@@ -50,21 +50,9 @@ Drupal 小版本中插件系统的即将到来的变化
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Plugin\Block;
-    ```
-
-    ```php
     use Drupal\Core\Block\BlockBase;
-    ```
-
-    ```php
     class Copyright extends BlockBase {
-    ```
-
-    ```php
     }
     ```
 
@@ -74,49 +62,16 @@ Drupal 小版本中插件系统的即将到来的变化
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Plugin\Block;
-    ```
-
-    ```php
     use Drupal\Core\Block\BlockBase;
-    ```
-
-    ```php
     /**
-    ```
-
-    ```php
      * @Block(
-    ```
-
-    ```php
      *   id = "copyright_block",
-    ```
-
-    ```php
      *   admin_label = @Translation("Copyright"),
-    ```
-
-    ```php
      *   category = @Translation("Custom"),
-    ```
-
-    ```php
      * )
-    ```
-
-    ```php
     */
-    ```
-
-    ```php
     class Copyright extends BlockBase {
-    ```
-
-    ```php
     }
     ```
 
@@ -126,97 +81,28 @@ Drupal 小版本中插件系统的即将到来的变化
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Plugin\Block;
-    ```
-
-    ```php
     use Drupal\Core\Block\BlockBase;
-    ```
-
-    ```php
     /**
-    ```
-
-    ```php
      * @Block(
-    ```
-
-    ```php
      * id = "copyright_block",
-    ```
-
-    ```php
      * admin_label = @Translation("Copyright"),
-    ```
-
-    ```php
      * category = @Translation("Custom")
-    ```
-
-    ```php
      * )
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
     class Copyright extends BlockBase {
-    ```
-
-    ```php
       /**
-    ```
-
-    ```php
        * {@inheritdoc}
-    ```
-
-    ```php
        */
-    ```
-
-    ```php
       public function build() {
-    ```
-
-    ```php
         $date = new \DateTime();
-    ```
-
-    ```php
         return [
-    ```
-
-    ```php
           '#markup' => t('Copyright @year&copy; My
-    ```
-
-    ```php
             Company', [
-    ```
-
-    ```php
             '@year' => $date->format('Y'),
-    ```
-
-    ```php
           ]),
-    ```
-
-    ```php
         ];
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     }
     ```
 
@@ -459,29 +345,11 @@ function mymodule_block_access(
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Plugin\Field\FieldType;
-    ```
-
-    ```php
     use Drupal\Core\Field\FieldItemBase;
-    ```
-
-    ```php
     use Drupal\Core\Field\FieldStorageDefinitionInterface;
-    ```
-
-    ```php
     use Drupal\Core\TypedData\DataDefinition;
-    ```
-
-    ```php
     class RealName extends FieldItemBase {
-    ```
-
-    ```php
     }
     ```
 
@@ -491,81 +359,24 @@ function mymodule_block_access(
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Plugin\Field\FieldType;
-    ```
-
-    ```php
     use Drupal\Core\Field\FieldItemBase;
-    ```
-
-    ```php
     use Drupal\Core\Field\FieldStorageDefinitionInterface;
-    ```
-
-    ```php
     use Drupal\Core\TypedData\DataDefinition;
-    ```
-
-    ```php
     /**
-    ```
-
-    ```php
      * Plugin implementation of the 'realname' field type.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @FieldType(
-    ```
-
-    ```php
      *   id = "realname",
-    ```
-
-    ```php
      *   label = @Translation("Real name"),
-    ```
-
-    ```php
      *   description = @Translation("This field stores a
-    ```
-
-    ```php
             first and last name."),
-    ```
-
-    ```php
      *   category = @Translation("General"),
-    ```
-
-    ```php
      *   default_widget = "string_textfield",
-    ```
-
-    ```php
      *   default_formatter = "string"
-    ```
-
-    ```php
      * )
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
     class RealName extends FieldItemBase {
-    ```
-
-    ```php
     }
     ```
 
@@ -587,113 +398,32 @@ function mymodule_block_access(
 
     ```php
       /**
-    ```
-
-    ```php
        * {@inheritdoc}
-    ```
-
-    ```php
        */
-    ```
-
-    ```php
       public static function schema(FieldStorage
-    ```
-
-    ```php
         DefinitionInterface $field_definition)  {
-    ```
-
-    ```php
         return [
-    ```
-
-    ```php
           'columns' => [
-    ```
-
-    ```php
             'first_name' => [
-    ```
-
-    ```php
               'description' => 'First name.',
-    ```
-
-    ```php
               'type' => 'varchar',
-    ```
-
-    ```php
               'length' => '255',
-    ```
-
-    ```php
               'not null' => TRUE,
-    ```
-
-    ```php
               'default' => '',
-    ```
-
-    ```php
             ],
-    ```
-
-    ```php
             'last_name' => [
-    ```
-
-    ```php
               'description' => 'Last name.',
-    ```
-
-    ```php
               'type' => 'varchar',
-    ```
-
-    ```php
               'length' => '255',
-    ```
-
-    ```php
               'not null' => TRUE,
-    ```
-
-    ```php
               'default' => '',
-    ```
-
-    ```php
             ],
-    ```
-
-    ```php
           ],
-    ```
-
-    ```php
           'indexes' => [
-    ```
-
-    ```php
             'first_name' => ['first_name'],
-    ```
-
-    ```php
             'last_name' => ['last_name'],
-    ```
-
-    ```php
           ],
-    ```
-
-    ```php
         ];
-    ```
-
-    ```php
       }
     ```
 
@@ -703,57 +433,18 @@ function mymodule_block_access(
 
     ```php
       /**
-    ```
-
-    ```php
        * {@inheritdoc}
-    ```
-
-    ```php
        */
-    ```
-
-    ```php
       public static function propertyDefinitions
-    ```
-
-    ```php
          (FieldStorageDefinitionInterface
-    ```
-
-    ```php
             $field_definition) {
-    ```
-
-    ```php
         $properties['first_name'] =
-    ```
-
-    ```php
             DataDefinition::create('string')
-    ```
-
-    ```php
           ->setLabel(t('First name'));
-    ```
-
-    ```php
         $properties['last_name'] =
-    ```
-
-    ```php
             DataDefinition::create('string')
-    ```
-
-    ```php
           ->setLabel(t('Last name'));
-    ```
-
-    ```php
         return $properties;
-    ```
-
-    ```php
       }
     ```
 
@@ -763,25 +454,10 @@ function mymodule_block_access(
 
     ```php
       /**
-    ```
-
-    ```php
        * {@inheritdoc}
-    ```
-
-    ```php
        */
-    ```
-
-    ```php
       public static function mainPropertyName() {
-    ```
-
-    ```php
         return 'first_name';
-    ```
-
-    ```php
       }
     ```
 
@@ -843,29 +519,11 @@ function mymodule_block_access(
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Plugin\Field\FieldWidget;
-    ```
-
-    ```php
     use Drupal\Core\Field\FieldItemListInterface;
-    ```
-
-    ```php
     use Drupal\Core\Field\WidgetBase;
-    ```
-
-    ```php
     use Drupal\Core\Form\FormStateInterface;
-    ```
-
-    ```php
     class RealNameDefaultWidget extends WidgetBase {
-    ```
-
-    ```php
     }
     ```
 
@@ -875,77 +533,23 @@ function mymodule_block_access(
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Plugin\Field\FieldWidget;
-    ```
-
-    ```php
     use Drupal\Core\Field\FieldItemListInterface;
-    ```
-
-    ```php
     use Drupal\Core\Field\WidgetBase;
-    ```
-
-    ```php
     use Drupal\Core\Form\FormStateInterface;
-    ```
-
-    ```php
     /**
-    ```
-
-    ```php
      * Plugin implementation of the 'realname_default'
-    ```
-
-    ```php
         widget.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @FieldWidget(
-    ```
-
-    ```php
      *   id = "realname_default",
-    ```
-
-    ```php
      *   label = @Translation("Real name"),
-    ```
-
-    ```php
      *   field_types = {
-    ```
-
-    ```php
      *     "realname"
-    ```
-
-    ```php
      *   }
-    ```
-
-    ```php
      * )
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
     class RealNameDefaultWidget extends WidgetBase {
-    ```
-
-    ```php
     }
     ```
 
@@ -955,105 +559,30 @@ function mymodule_block_access(
 
     ```php
       /**
-    ```
-
-    ```php
        * {@inheritdoc}
-    ```
-
-    ```php
        */
-    ```
-
-    ```php
       public function formElement(
-    ```
-
-    ```php
         FieldItemListInterface $items,
-    ```
-
-    ```php
         $delta,
-    ```
-
-    ```php
         array $element,
-    ```
-
-    ```php
         array &$form,
-    ```
-
-    ```php
         FormStateInterface $form_state
-    ```
-
-    ```php
       ) {
-    ```
-
-    ```php
         $element['first_name'] = [
-    ```
-
-    ```php
           '#type' => 'textfield',
-    ```
-
-    ```php
           '#title' => t('First name'),
-    ```
-
-    ```php
           '#default_value' => '',
-    ```
-
-    ```php
           '#size' => 25,
-    ```
-
-    ```php
           '#required' => $element['#required'],
-    ```
-
-    ```php
         ];
-    ```
-
-    ```php
         $element['last_name'] = [
-    ```
-
-    ```php
           '#type' => 'textfield',
-    ```
-
-    ```php
           '#title' => t('Last name'),
-    ```
-
-    ```php
           '#default_value' => '',
-    ```
-
-    ```php
           '#size' => 25,
-    ```
-
-    ```php
           '#required' => $element['#required'],
-    ```
-
-    ```php
         ];
-    ```
-
-    ```php
         return $element;
-    ```
-
-    ```php
       }
     ```
 
@@ -1063,57 +592,18 @@ function mymodule_block_access(
 
     ```php
     /**
-    ```
-
-    ```php
      * Plugin implementation of the 'realname' field type.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @FieldType(
-    ```
-
-    ```php
      *   id = "realname",
-    ```
-
-    ```php
      *   label = @Translation("Real name"),
-    ```
-
-    ```php
      *   description = @Translation("This field stores a
-    ```
-
-    ```php
             first and last name."),
-    ```
-
-    ```php
      *   category = @Translation("General"),
-    ```
-
-    ```php
      *   default_widget = "realname_default",
-    ```
-
-    ```php
      *   default_formatter = "string"
-    ```
-
-    ```php
      * )
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
     class RealName extends FieldItemBase {
     ```
 
@@ -1175,25 +665,10 @@ function mymodule_block_access(
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Plugin\Field\FieldFormatter;
-    ```
-
-    ```php
     use Drupal\Core\Field\FormatterBase;
-    ```
-
-    ```php
     use Drupal\Core\Field\FieldItemListInterface;
-    ```
-
-    ```php
     class RealNameFormatter extends FormatterBase {
-    ```
-
-    ```php
     }
     ```
 
@@ -1203,73 +678,22 @@ function mymodule_block_access(
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Plugin\Field\FieldFormatter;
-    ```
-
-    ```php
     use Drupal\Core\Field\FormatterBase;
-    ```
-
-    ```php
     use Drupal\Core\Field\FieldItemListInterface;
-    ```
-
-    ```php
     /**
-    ```
-
-    ```php
      * Plugin implementation of the 'realname_one_line'
-    ```
-
-    ```php
         formatter.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @FieldFormatter(
-    ```
-
-    ```php
      *   id = "realname_one_line",
-    ```
-
-    ```php
      *   label = @Translation("Real name (one line)"),
-    ```
-
-    ```php
      *   field_types = {
-    ```
-
-    ```php
      *     "realname"
-    ```
-
-    ```php
      *   }
-    ```
-
-    ```php
      * )
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
     class RealNameFormatter extends FormatterBase {
-    ```
-
-    ```php
     }
     ```
 
@@ -1279,73 +703,22 @@ function mymodule_block_access(
 
     ```php
       /**
-    ```
-
-    ```php
        * {@inheritdoc}
-    ```
-
-    ```php
        */
-    ```
-
-    ```php
       public function viewElements(
-    ```
-
-    ```php
         FieldItemListInterface $items,
-    ```
-
-    ```php
         $langcode
-    ```
-
-    ```php
       ) {
-    ```
-
-    ```php
         $element = [];
-    ```
-
-    ```php
         foreach ($items as $delta => $item) {
-    ```
-
-    ```php
           $element[$delta] = [
-    ```
-
-    ```php
             '#markup' => $this->t('@first @last', [
-    ```
-
-    ```php
               '@first' => $item->first_name,
-    ```
-
-    ```php
               '@last' => $item->last_name,
-    ```
-
-    ```php
             ]),
-    ```
-
-    ```php
           ];
-    ```
-
-    ```php
         }
-    ```
-
-    ```php
         return $element;
-    ```
-
-    ```php
       }
     ```
 
@@ -1355,57 +728,18 @@ function mymodule_block_access(
 
     ```php
     /**
-    ```
-
-    ```php
      * Plugin implementation of the 'realname' field type.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @FieldType(
-    ```
-
-    ```php
      *   id = "realname",
-    ```
-
-    ```php
      *   label = @Translation("Real name"),
-    ```
-
-    ```php
      *   description = @Translation("This field stores a
-    ```
-
-    ```php
             first and last name."),
-    ```
-
-    ```php
      *   category = @Translation("General"),
-    ```
-
-    ```php
      *   default_widget = "realname_default",
-    ```
-
-    ```php
      *   default_formatter = "realname_one_line"
-    ```
-
-    ```php
      * )
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
     class RealName extends FieldItemBase {
     ```
 
@@ -1457,29 +791,11 @@ function mymodule_block_access(
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule;
-    ```
-
-    ```php
     use Drupal\Core\Plugin\DefaultPluginManager;
-    ```
-
-    ```php
     use Drupal\Core\Cache\CacheBackendInterface;
-    ```
-
-    ```php
     use Drupal\Core\Extension\ModuleHandlerInterface;
-    ```
-
-    ```php
     class GeoLocatorManager extends DefaultPluginManager {
-    ```
-
-    ```php
     }
     ```
 
@@ -1489,89 +805,26 @@ function mymodule_block_access(
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule;
-    ```
-
-    ```php
     use Drupal\Core\Plugin\DefaultPluginManager;
-    ```
-
-    ```php
     use Drupal\Core\Cache\CacheBackendInterface;
-    ```
-
-    ```php
     use Drupal\Core\Extension\ModuleHandlerInterface;
-    ```
-
-    ```php
     class GeoLocatorManager extends DefaultPluginManager {
-    ```
-
-    ```php
       public function __construct(
-    ```
-
-    ```php
         \Traversable $namespaces,
-    ```
-
-    ```php
         CacheBackendInterface $cache_backend,
-    ```
-
-    ```php
         ModuleHandlerInterface
-    ```
-
-    ```php
         $module_handler
-    ```
-
-    ```php
       ) {
-    ```
-
-    ```php
         parent::__construct(
-    ```
-
-    ```php
           'Plugin/GeoLocator',
-    ```
-
-    ```php
           $namespaces,
-    ```
-
-    ```php
           $module_handler,
-    ```
-
-    ```php
           'Drupal\mymodule\Plugin\GeoLocator
-    ```
-
-    ```php
             \GeoLocatorInterface',
-    ```
-
-    ```php
           'Drupal\mymodule\Annotation\GeoLocator'
-    ```
-
-    ```php
         );
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     }
     ```
 
@@ -1581,17 +834,8 @@ function mymodule_block_access(
 
     ```php
     services:
-    ```
-
-    ```php
       plugin.manager.geolocator:
-    ```
-
-    ```php
         class: Drupal\mymodule\GeoLocatorManager
-    ```
-
-    ```php
         parent: default_plugin_manager
     ```
 
@@ -1601,69 +845,21 @@ function mymodule_block_access(
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Annotation;
-    ```
-
-    ```php
     use Drupal\Component\Annotation\Plugin;
-    ```
-
-    ```php
     /**
-    ```
-
-    ```php
      * @Annotation
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
     class GeoLocator extends Plugin
-    ```
-
-    ```php
     {
-    ```
-
-    ```php
       /**
-    ```
-
-    ```php
        * The human-readable name.
-    ```
-
-    ```php
        *
-    ```
-
-    ```php
        * @var \Drupal\Core\Annotation\Translation
-    ```
-
-    ```php
        *
-    ```
-
-    ```php
        * @ingroup plugin_translatable
-    ```
-
-    ```php
        */
-    ```
-
-    ```php
       public $label;
-    ```
-
-    ```php
     }
     ```
 
@@ -1673,97 +869,28 @@ function mymodule_block_access(
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Plugin\GeoLocator;
-    ```
-
-    ```php
     use Symfony\Component\HttpFoundation\Request;
-    ```
-
-    ```php
     interface GeoLocatorInterface {
-    ```
-
-    ```php
       /**
-    ```
-
-    ```php
        * Get the plugin's label.
-    ```
-
-    ```php
        *
-    ```
-
-    ```php
        * @return string
-    ```
-
-    ```php
        *   The geolocator label
-    ```
-
-    ```php
        */
-    ```
-
-    ```php
       public function label();
-    ```
-
-    ```php
       /**
-    ```
-
-    ```php
        * Performs geolocation on an address.
-    ```
-
-    ```php
        *
-    ```
-
-    ```php
        * @param Request $request
-    ```
-
-    ```php
        *   The request.
-    ```
-
-    ```php
        *
-    ```
-
-    ```php
        * @return string|NULL
-    ```
-
-    ```php
        *   The geolocated country code, or NULL if not
-    ```
-
-    ```php
             found.
-    ```
-
-    ```php
        */
-    ```
-
-    ```php
       public function geolocate(Request $request):
-    ```
-
-    ```php
         ?string;
-    ```
-
-    ```php
     }
     ```
 
@@ -1773,77 +900,23 @@ function mymodule_block_access(
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Plugin\GeoLocator;
-    ```
-
-    ```php
     use Drupal\Core\Plugin\PluginBase;
-    ```
-
-    ```php
     use Symfony\Component\HttpFoundation\Request;
-    ```
-
-    ```php
     /**
-    ```
-
-    ```php
      * @GeoLocator(
-    ```
-
-    ```php
      *   id = "cloudflare",
-    ```
-
-    ```php
      *   label = "Cloudflare"
-    ```
-
-    ```php
      * )
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
     class Cloudflare extends PluginBase implements
-    ```
-
-    ```php
         GeoLocatorInterface {
-    ```
-
-    ```php
       public function label() {
-    ```
-
-    ```php
         return $this->pluginDefinition['label'];
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
       public function geolocate(Request $request): ?string {
-    ```
-
-    ```php
         return $request->headers->get('CF-IPCountry');
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     }
     ```
 
@@ -1853,81 +926,24 @@ Cloudflare 通过一个名为`CF-IPCountry`的 HTTP 头提供访问者的国家�
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Plugin\GeoLocator;
-    ```
-
-    ```php
     use Drupal\Core\Plugin\PluginBase;
-    ```
-
-    ```php
     use Symfony\Component\HttpFoundation\Request;
-    ```
-
-    ```php
     /**
-    ```
-
-    ```php
      * @GeoLocator(
-    ```
-
-    ```php
      *   id = "cloudfront",
-    ```
-
-    ```php
      *   label = "CloudFront"
-    ```
-
-    ```php
      * )
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
     class CloudFront extends PluginBase implements
-    ```
-
-    ```php
         GeoLocatorInterface {
-    ```
-
-    ```php
       public function label() {
-    ```
-
-    ```php
         return $this->pluginDefinition['label'];
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
       public function geolocate(Request $request): ?string {
-    ```
-
-    ```php
         return $request->headers->get('CloudFront-Viewer-
-    ```
-
-    ```php
             Country');
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     }
     ```
 
@@ -1937,77 +953,23 @@ AWS CloudFront 通过一个名为`CloudFront-Viewer-Country`的 HTTP 头提供�
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Plugin\GeoLocator;
-    ```
-
-    ```php
     use Drupal\Core\Plugin\PluginBase;
-    ```
-
-    ```php
     use Symfony\Component\HttpFoundation\Request;
-    ```
-
-    ```php
     /**
-    ```
-
-    ```php
      * @GeoLocator(
-    ```
-
-    ```php
      *   id = "request_query",
-    ```
-
-    ```php
      *   label = "Request query"
-    ```
-
-    ```php
      * )
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
     class RequestQuery extends PluginBase implements
-    ```
-
-    ```php
         GeoLocatorInterface {
-    ```
-
-    ```php
       public function label() {
-    ```
-
-    ```php
         return $this->pluginDefinition['label'];
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
       public function geolocate(Request $request): ?string {
-    ```
-
-    ```php
         return $request->query->get('countryCode');
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     }
     ```
 
@@ -2017,93 +979,27 @@ AWS CloudFront 通过一个名为`CloudFront-Viewer-Country`的 HTTP 头提供�
 
     ```php
     <?php
-    ```
-
-    ```php
     /**
-    ```
-
-    ```php
      * Implements hook_page_top().
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
     function mymodule_page_top() {
-    ```
-
-    ```php
       $request = \Drupal::request();
-    ```
-
-    ```php
       /** @var \Drupal\mymodule\GeoLocatorManager $manager
-    ```
-
-    ```php
         */
-    ```
-
-    ```php
       $manager = \Drupal::service
-    ```
-
-    ```php
         ('plugin.manager.geolocator');
-    ```
-
-    ```php
       foreach ($manager->getDefinitions() as $plugin_id =>
-    ```
-
-    ```php
         $definition) {
-    ```
-
-    ```php
         /** @var \Drupal\mymodule\Plugin\GeoLocator
-    ```
-
-    ```php
             \GeoLocatorInterface */
-    ```
-
-    ```php
         $instance = $manager->createInstance($plugin_id);
-    ```
-
-    ```php
         $country_code = $instance->geolocate($request);
-    ```
-
-    ```php
         if ($country_code) {
-    ```
-
-    ```php
           \Drupal::messenger()->addStatus("Country:
-    ```
-
-    ```php
             $country_code");
-    ```
-
-    ```php
           break;
-    ```
-
-    ```php
         }
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     }
     ```
 

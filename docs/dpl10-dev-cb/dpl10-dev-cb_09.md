@@ -48,21 +48,9 @@
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Entity;
-    ```
-
-    ```php
     use Drupal\node\Entity\Node;
-    ```
-
-    ```php
     class Recipe extends Node {
-    ```
-
-    ```php
     }
     ```
 
@@ -72,33 +60,12 @@
 
     ```php
     class Recipe extends Node {
-    ```
-
-    ```php
       public function getTags(): array {
-    ```
-
-    ```php
         /** @var \Drupal\Core\Field\EntityReferenceField
-    ```
-
-    ```php
             ItemListInterface $field_tags */
-    ```
-
-    ```php
         $field_tags = $this->get('field_tags');
-    ```
-
-    ```php
         return $field_tags->referencedEntities();
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     }
     ```
 
@@ -108,37 +75,13 @@
 
     ```php
     <?php
-    ```
-
-    ```php
     /**
-    ```
-
-    ```php
      * Implements hook_entity_bundle_info_alter().
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
     function mymodule_entity_bundle_info_alter(&$bundles) {
-    ```
-
-    ```php
       $bundles ['node']['recipe']['label'] = t('Recipe');
-    ```
-
-    ```php
       $bundles['node']['recipe']['class'] = Drupal\
-    ```
-
-    ```php
         mymodule\Entity\Recipe::class;
-    ```
-
-    ```php
     }
     ```
 
@@ -148,13 +91,7 @@
 
     ```php
     {% for tag in node.getTags %}
-    ```
-
-    ```php
       <div>Tag: {{ tag.label }}</div>
-    ```
-
-    ```php
     {% endfor %}
     ```
 
@@ -200,29 +137,11 @@ $entities[$entity->id()] = $entity;
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Entity;
-    ```
-
-    ```php
     use Drupal\Core\Config\Entity\ConfigEntityBase;
-    ```
-
-    ```php
     class Announcement extends ConfigEntityBase {
-    ```
-
-    ```php
       public string $label = '';
-    ```
-
-    ```php
       public string $message = '';
-    ```
-
-    ```php
     }
     ```
 
@@ -236,69 +155,21 @@ $entities[$entity->id()] = $entity;
 
     ```php
     /**
-    ```
-
-    ```php
      * @ConfigEntityType(
-    ```
-
-    ```php
      *   id = "announcement",
-    ```
-
-    ```php
      *   label = "Announcement",
-    ```
-
-    ```php
      *   entity_keys = {
-    ```
-
-    ```php
      *     "id" = "id",
-    ```
-
-    ```php
      *     "label" = "label"
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      *   config_export = {
-    ```
-
-    ```php
      *     "id",
-    ```
-
-    ```php
      *     "label",
-    ```
-
-    ```php
      *     "message",
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      *   admin_permission = "administer announcement",
-    ```
-
-    ```php
      * )
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
     class Announcement extends ConfigEntityBase {
     ```
 
@@ -310,125 +181,35 @@ $entities[$entity->id()] = $entity;
 
     ```php
     /**
-    ```
-
-    ```php
      * @ConfigEntityType(
-    ```
-
-    ```php
      *   id = "announcement",
-    ```
-
-    ```php
      *   label = "Announcement",
-    ```
-
-    ```php
      *   entity_keys = {
-    ```
-
-    ```php
      *     "id" = "id",
-    ```
-
-    ```php
      *     "label" = "label"
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      *   config_export = {
-    ```
-
-    ```php
      *     "id",
-    ```
-
-    ```php
      *     "label",
-    ```
-
-    ```php
      *     "message",
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      *   admin_permission = "administer announcement",
-    ```
-
-    ```php
      *   handlers = {
-    ```
-
-    ```php
      *     "list_builder" = "Drupal\mymodule
-    ```
-
-    ```php
                 \AnnouncementListBuilder",
-    ```
-
-    ```php
      *     "form" = {
-    ```
-
-    ```php
      *       "default" = "Drupal\mymodule
-    ```
-
-    ```php
                 \AnnouncementForm",
-    ```
-
-    ```php
      *       "delete" = "Drupal\Core\Entity
-    ```
-
-    ```php
                 \EntityDeleteForm"
-    ```
-
-    ```php
      *     },
-    ```
-
-    ```php
      *     "route_provider" = {
-    ```
-
-    ```php
      *       "html" = "Drupal\Core\Entity\Routing
-    ```
-
-    ```php
                 \AdminHtmlRouteProvider",
-    ```
-
-    ```php
      *     },
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      * )
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
     class Announcement extends ConfigEntityBase {
     ```
 
@@ -438,165 +219,45 @@ $entities[$entity->id()] = $entity;
 
     ```php
     /**
-    ```
-
-    ```php
      * @ConfigEntityType(
-    ```
-
-    ```php
      *   id = "announcement",
-    ```
-
-    ```php
      *   label = "Announcement",
-    ```
-
-    ```php
      *   entity_keys = {
-    ```
-
-    ```php
      *     "id" = "id",
-    ```
-
-    ```php
      *     "label" = "label"
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      *   config_export = {
-    ```
-
-    ```php
      *     "id",
-    ```
-
-    ```php
      *     "label",
-    ```
-
-    ```php
      *     "message",
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      *   admin_permission = "administer announcement",
-    ```
-
-    ```php
      *   handlers = {
-    ```
-
-    ```php
      *     "list_builder" = "Drupal\mymodule
-    ```
-
-    ```php
                 \AnnouncementListBuilder",
-    ```
-
-    ```php
      *     "form" = {
-    ```
-
-    ```php
      *       "default" = "Drupal\mymodule
-    ```
-
-    ```php
                 \AnnouncementForm",
-    ```
-
-    ```php
      *       "delete" = "Drupal\Core\Entity\
-    ```
-
-    ```php
                 EntityDeleteForm"
-    ```
-
-    ```php
      *     },
-    ```
-
-    ```php
      *     "route_provider" = {
-    ```
-
-    ```php
      *       "html" = "Drupal\Core\Entity\Routing\
-    ```
-
-    ```php
                 AdminHtmlRouteProvider",
-    ```
-
-    ```php
      *     },
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      *   links = {
-    ```
-
-    ```php
      *     "collection" = "/admin/config/system/
-    ```
-
-    ```php
                 announcements",
-    ```
-
-    ```php
      *     "add-form" = "/admin/config/system/
-    ```
-
-    ```php
                 announcements/add",
-    ```
-
-    ```php
      *     "delete-form" = "/admin/config/system/
-    ```
-
-    ```php
               announcements/manage/{announcement}/delete",
-    ```
-
-    ```php
      *     "edit-form" = "/admin/config/system/
-    ```
-
-    ```php
               announcements/manage/{announcement}",
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      * )
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
     class Announcement extends ConfigEntityBase {
     ```
 
@@ -606,153 +267,42 @@ $entities[$entity->id()] = $entity;
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule;
-    ```
-
-    ```php
     use Drupal\Core\Config\Entity\ConfigEntityListBuilder;
-    ```
-
-    ```php
     use Drupal\Core\Entity\EntityInterface;
-    ```
-
-    ```php
     class AnnouncementListBuilder extends
-    ```
-
-    ```php
         ConfigEntityListBuilder {
-    ```
-
-    ```php
     /**
-    ```
-
-    ```php
      * Builds the header row for the entity listing.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @return array
-    ```
-
-    ```php
      *   A render array structure of header strings.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @see \Drupal\Core\Entity
-    ```
-
-    ```php
             \EntityListBuilder::render()
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
         public function buildHeader() 
-    ```
-
-    ```php
       {
-    ```
-
-    ```php
           $header['label'] = $this->t('Label');
-    ```
-
-    ```php
           return $header + parent::buildHeader();
-    ```
-
-    ```php
         }
-    ```
-
-    ```php
     /**
-    ```
-
-    ```php
      * Builds a row for an entity in the entity listing.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @param \Drupal\Core\Entity\EntityInterface $entity
-    ```
-
-    ```php
      *   The entity for this row of the list.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @return array
-    ```
-
-    ```php
      *   A render array structure of fields for this
-    ```
-
-    ```php
             entity.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @see \Drupal\Core\Entity\
-    ```
-
-    ```php
           EntityListBuilder::render()
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
       public function buildRow(EntityInterface $entity) {
-    ```
-
-    ```php
         $row['label'] = $entity->label();
-    ```
-
-    ```php
         return $row + parent::buildRow($entity);
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     }
     ```
 
@@ -762,301 +312,79 @@ $entities[$entity->id()] = $entity;
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule;
-    ```
-
-    ```php
     use Drupal\Core\Entity\EntityForm;
-    ```
-
-    ```php
     use Drupal\Core\Form\FormStateInterface;
-    ```
-
-    ```php
     use Drupal\mymodule\Entity\Announcement;
-    ```
-
-    ```php
     class AnnouncementForm extends EntityForm {
-    ```
-
-    ```php
     /**
-    ```
-
-    ```php
      * Gets the actual form array to be built.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @see \Drupal\Core\Entity\EntityForm::processForm()
-    ```
-
-    ```php
      * @see \Drupal\Core\Entity\EntityForm::afterBuild()
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
       public function form(array $form, FormStateInterface
-    ```
-
-    ```php
         $form_state) {
-    ```
-
-    ```php
         $form = parent::form($form, $form_state);
-    ```
-
-    ```php
         /** @var \Drupal\mymodule\Entity\Announcement
-    ```
-
-    ```php
             $entity */
-    ```
-
-    ```php
         $entity = $this->entity;
-    ```
-
-    ```php
         $form['label'] = [
-    ```
-
-    ```php
           '#type' => 'textfield',
-    ```
-
-    ```php
           '#title' => $this->t('Label'),
-    ```
-
-    ```php
           '#required' => TRUE,
-    ```
-
-    ```php
           '#default_value' => $entity->label,
-    ```
-
-    ```php
         ];
-    ```
-
-    ```php
         $form['id'] = [
-    ```
-
-    ```php
           '#type' => 'machine_name',
-    ```
-
-    ```php
           '#default_value' => $entity->id(),
-    ```
-
-    ```php
           '#disabled' => !$entity->isNew(),
-    ```
-
-    ```php
           '#machine_name' => [
-    ```
-
-    ```php
             'exists' => [Announcement::class, 'load'],
-    ```
-
-    ```php
           ],
-    ```
-
-    ```php
         ];
-    ```
-
-    ```php
         $form['message'] = [
-    ```
-
-    ```php
           '#type' => 'textarea',
-    ```
-
-    ```php
           '#title' => $this->t('Message'),
-    ```
-
-    ```php
           '#required' => TRUE,
-    ```
-
-    ```php
           '#default_value' => $entity->message,
-    ```
-
-    ```php
         ];
-    ```
-
-    ```php
         return $form;
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     /**
-    ```
-
-    ```php
      * Form submission handler for the 'save' action.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * Normally this method should be overridden to
-    ```
-
-    ```php
         provide specific messages to
-    ```
-
-    ```php
      * the user and redirect the form after the entity has
-    ```
-
-    ```php
           been saved.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @param array $form
-    ```
-
-    ```php
      *   An associative array containing the structure of
-    ```
-
-    ```php
             the form.
-    ```
-
-    ```php
      * @param \Drupal\Core\Form\FormStateInterface
-    ```
-
-    ```php
             $form_state
-    ```
-
-    ```php
      *   The current state of the form.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @return int
-    ```
-
-    ```php
      *   Either SAVED_NEW or SAVED_UPDATED, depending on
-    ```
-
-    ```php
             the operation performed.
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
       public function save(array $form, FormStateInterface
-    ```
-
-    ```php
         $form_state) {
-    ```
-
-    ```php
         $result = parent::save($form, $form_state);
-    ```
-
-    ```php
         if ($result === SAVED_NEW) {
-    ```
-
-    ```php
           $this->messenger()->addMessage('The announcement
-    ```
-
-    ```php
               has been created.');
-    ```
-
-    ```php
         }
-    ```
-
-    ```php
         else {
-    ```
-
-    ```php
           $this->messenger()->addMessage('The announcement
-    ```
-
-    ```php
               has been updated.');
-    ```
-
-    ```php
         }
-    ```
-
-    ```php
         $form_state->setRedirectUrl($this->entity->
-    ```
-
-    ```php
             toUrl('collection'));
-    ```
-
-    ```php
         return $result;
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     }
     ```
 
@@ -1068,21 +396,9 @@ $entities[$entity->id()] = $entity;
 
     ```php
     mymodule.announcements:
-    ```
-
-    ```php
       title: 'Announcements'
-    ```
-
-    ```php
       parent: system.admin_config_system
-    ```
-
-    ```php
       description: 'Manage announcements.'
-    ```
-
-    ```php
       route_name: entity.announcement.collection
     ```
 
@@ -1092,21 +408,9 @@ $entities[$entity->id()] = $entity;
 
     ```php
     announcement.add:
-    ```
-
-    ```php
       route_name: entity.announcement.add_form
-    ```
-
-    ```php
       title: 'Add announcement'
-    ```
-
-    ```php
       appears_on:
-    ```
-
-    ```php
         - entity.announcement.collection
     ```
 
@@ -1122,53 +426,17 @@ $entities[$entity->id()] = $entity;
 
     ```php
     mymodule.announcement.*:
-    ```
-
-    ```php
       type: config_entity
-    ```
-
-    ```php
       label: 'Announcement'
-    ```
-
-    ```php
       mapping:
-    ```
-
-    ```php
         id:
-    ```
-
-    ```php
           type: string
-    ```
-
-    ```php
           label: 'ID'
-    ```
-
-    ```php
         label:
-    ```
-
-    ```php
           type: label
-    ```
-
-    ```php
           label: 'Label'
-    ```
-
-    ```php
         message:
-    ```
-
-    ```php
           type: text
-    ```
-
-    ```php
           label: 'Text'
     ```
 
@@ -1178,9 +446,6 @@ $entities[$entity->id()] = $entity;
 
     ```php
     administer announcement:
-    ```
-
-    ```php
       title: 'Administer announcements'
     ```
 
@@ -1287,29 +552,11 @@ string:
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Entity;
-    ```
-
-    ```php
     use Drupal\Core\Entity\ContentEntityBase;
-    ```
-
-    ```php
     use Drupal\Core\Entity\EntityTypeInterface;
-    ```
-
-    ```php
     use Drupal\Core\Field\BaseFieldDefinition;
-    ```
-
-    ```php
     class Message extends ContentEntityBase {
-    ```
-
-    ```php
     }
     ```
 
@@ -1319,141 +566,39 @@ string:
 
     ```php
     class Message extends ContentEntityBase {
-    ```
-
-    ```php
       public static function baseFieldDefinitions
-    ```
-
-    ```php
          (EntityTypeInterface $entity_type) {
-    ```
-
-    ```php
         $fields = parent::baseFieldDefinitions
-    ```
-
-    ```php
            ($entity_type);
-    ```
-
-    ```php
         $fields['title'] = BaseFieldDefinition
-    ```
-
-    ```php
             ::create('string')
-    ```
-
-    ```php
           ->setLabel(t('Title'))
-    ```
-
-    ```php
           ->setRequired(TRUE)
-    ```
-
-    ```php
           ->setDisplayOptions('form', [
-    ```
-
-    ```php
             'type' => 'string_textfield',
-    ```
-
-    ```php
           ])
-    ```
-
-    ```php
           ->setDisplayConfigurable('form', TRUE)
-    ```
-
-    ```php
           ->setDisplayOptions('view', [
-    ```
-
-    ```php
             'label' => 'hidden',
-    ```
-
-    ```php
             'type' => 'string',
-    ```
-
-    ```php
           ])
-    ```
-
-    ```php
           ->setDisplayConfigurable('view', TRUE);
-    ```
-
-    ```php
         $fields['content'] = BaseFieldDefinition
-    ```
-
-    ```php
             ::create('text_long')
-    ```
-
-    ```php
           ->setLabel(t('Content'))
-    ```
-
-    ```php
           ->setRequired(TRUE)
-    ```
-
-    ```php
           ->setDescription(t('Content of the message'))
-    ```
-
-    ```php
           ->setDisplayOptions('form', [
-    ```
-
-    ```php
             'type' => 'text_textarea',
-    ```
-
-    ```php
           ])
-    ```
-
-    ```php
           ->setDisplayConfigurable('form', TRUE)
-    ```
-
-    ```php
           ->setDisplayOptions('view', [
-    ```
-
-    ```php
             'label' => 'hidden',
-    ```
-
-    ```php
             'type' => 'text_default',
-    ```
-
-    ```php
           ])
-    ```
-
-    ```php
           ->setDisplayConfigurable('view', TRUE);
-    ```
-
-    ```php
         return $fields;
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     }
     ```
 
@@ -1463,73 +608,22 @@ string:
 
     ```php
     /**
-    ```
-
-    ```php
      * Defines the message entity class.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @ContentEntityType(
-    ```
-
-    ```php
      *   id = "message",
-    ```
-
-    ```php
      *   label = @Translation("Message"),
-    ```
-
-    ```php
      *   base_table = "message",
-    ```
-
-    ```php
      *   entity_keys = {
-    ```
-
-    ```php
      *     "id" = "message_id",
-    ```
-
-    ```php
      *     "label" = "title",
-    ```
-
-    ```php
      *     "uuid" = "uuid"
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      *   admin_permission = "administer message",
-    ```
-
-    ```php
      *   field_ui_base_route =
-    ```
-
-    ```php
             "entity.message.collection",
-    ```
-
-    ```php
      * )
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
     class Message extends ContentEntityBase {
     ```
 
@@ -1541,125 +635,35 @@ string:
 
     ```php
     /**
-    ```
-
-    ```php
      * Defines the message entity class.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @ContentEntityType(
-    ```
-
-    ```php
      *   id = "message",
-    ```
-
-    ```php
      *   label = @Translation("Message"),
-    ```
-
-    ```php
      *   base_table = "message",
-    ```
-
-    ```php
      *   entity_keys = {
-    ```
-
-    ```php
      *     "id" = "message_id",
-    ```
-
-    ```php
      *     "label" = "title",
-    ```
-
-    ```php
      *     "uuid" = "uuid"
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      *   admin_permission = "administer message",
-    ```
-
-    ```php
      *   field_ui_base_route =
-    ```
-
-    ```php
             "entity.message.collection",
-    ```
-
-    ```php
      *   handlers = {
-    ```
-
-    ```php
      *     "list_builder" = "Drupal\mymodule\
-    ```
-
-    ```php
                 MessageListBuilder",
-    ```
-
-    ```php
      *     "form" = {
-    ```
-
-    ```php
      *       "default" = "Drupal\mymodule\MessageForm",
-    ```
-
-    ```php
      *       "delete" = "Drupal\Core\Entity\
-    ```
-
-    ```php
                 ContentEntityDeleteForm",
-    ```
-
-    ```php
      *     },
-    ```
-
-    ```php
      *     "route_provider" = {
-    ```
-
-    ```php
      *       "html" = "Drupal\Core\Entity\
-    ```
-
-    ```php
                 Routing\DefaultHtmlRouteProvider",
-    ```
-
-    ```php
      *     },
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      * )
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
     class Message extends ContentEntityBase {
     ```
 
@@ -1669,153 +673,42 @@ string:
 
     ```php
     /**
-    ```
-
-    ```php
      * Defines the message entity class.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @ContentEntityType(
-    ```
-
-    ```php
      *   id = "message",
-    ```
-
-    ```php
      *   label = @Translation("Message"),
-    ```
-
-    ```php
      *   base_table = "message",
-    ```
-
-    ```php
      *   entity_keys = {
-    ```
-
-    ```php
      *     "id" = "message_id",
-    ```
-
-    ```php
      *     "label" = "title",
-    ```
-
-    ```php
      *     "uuid" = "uuid"
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      *   admin_permission = "administer message",
-    ```
-
-    ```php
      *   field_ui_base_route =
-    ```
-
-    ```php
             "entity.message.collection",
-    ```
-
-    ```php
      *   handlers = {
-    ```
-
-    ```php
      *     "list_builder" = "Drupal\mymodule
-    ```
-
-    ```php
                 \MessageListBuilder",
-    ```
-
-    ```php
      *     "form" = {
-    ```
-
-    ```php
      *       "default" = "Drupal\mymodule\MessageForm",
-    ```
-
-    ```php
      *       "delete" = "Drupal\Core\Entity\
-    ```
-
-    ```php
                 ContentEntityDeleteForm",
-    ```
-
-    ```php
      *     },
-    ```
-
-    ```php
      *     "route_provider" = {
-    ```
-
-    ```php
      *       "html" = "Drupal\Core\Entity\Routing
-    ```
-
-    ```php
                 \DefaultHtmlRouteProvider",
-    ```
-
-    ```php
      *     },
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      *   links = {
-    ```
-
-    ```php
      *     "canonical" = "/messages/{message}",
-    ```
-
-    ```php
      *     "add-form" = "/messages/add",
-    ```
-
-    ```php
      *     "edit-form" = "/messages/{message}/edit",
-    ```
-
-    ```php
      *     "delete-form" = "/messages/{message}/delete",
-    ```
-
-    ```php
      *     "collection" = "/admin/structure/messages"
-    ```
-
-    ```php
      * },
-    ```
-
-    ```php
      * )
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
     class Message extends ContentEntityBase {
     ```
 
@@ -1825,57 +718,18 @@ string:
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule;
-    ```
-
-    ```php
     use Drupal\Core\Entity\EntityInterface;
-    ```
-
-    ```php
     use Drupal\Core\Entity\EntityListBuilder;
-    ```
-
-    ```php
     class MessageListBuilder extends EntityListBuilder {
-    ```
-
-    ```php
       public function buildHeader() {
-    ```
-
-    ```php
         $header['title'] = $this->t('Title');
-    ```
-
-    ```php
         return $header + parent::buildHeader();
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
       public function buildRow(EntityInterface $entity) {
-    ```
-
-    ```php
         $row['title'] = $entity->toLink();
-    ```
-
-    ```php
         return $row + parent::buildRow($entity);
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     }
     ```
 
@@ -1885,85 +739,25 @@ string:
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule;
-    ```
-
-    ```php
     use Drupal\Core\Entity\ContentEntityForm;
-    ```
-
-    ```php
     use Drupal\Core\Form\FormStateInterface;
-    ```
-
-    ```php
     class MessageForm extends ContentEntityForm {
-    ```
-
-    ```php
       public function save(array $form, FormStateInterface
-    ```
-
-    ```php
         $form_state) {
-    ```
-
-    ```php
         $result = parent::save($form, $form_state);
-    ```
-
-    ```php
         if ($result === SAVED_NEW) {
-    ```
-
-    ```php
           $this->messenger()->addMessage('The message has
-    ```
-
-    ```php
             been created.');
-    ```
-
-    ```php
         }
-    ```
-
-    ```php
         else {
-    ```
-
-    ```php
           $this->messenger()->addMessage('The message has
-    ```
-
-    ```php
             been updated.');
-    ```
-
-    ```php
         }
-    ```
-
-    ```php
         $form_state->setRedirectUrl($this->entity->
-    ```
-
-    ```php
             toUrl('collection'));
-    ```
-
-    ```php
         return $result;
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     }
     ```
 
@@ -1973,21 +767,9 @@ string:
 
     ```php
     mymodule.messages:
-    ```
-
-    ```php
       title: 'Messages'
-    ```
-
-    ```php
       parent: system.admin_structure
-    ```
-
-    ```php
       description: 'Manage messages.'
-    ```
-
-    ```php
       route_name: entity.message.collection
     ```
 
@@ -1997,21 +779,9 @@ string:
 
     ```php
     message.add:
-    ```
-
-    ```php
       route_name: entity.message.add_form
-    ```
-
-    ```php
       title: 'Add message'
-    ```
-
-    ```php
       appears_on:
-    ```
-
-    ```php
         - entity.message.collection
     ```
 
@@ -2021,17 +791,8 @@ string:
 
     ```php
     entity.message.collection_tab:
-    ```
-
-    ```php
       route_name: entity.message.collection
-    ```
-
-    ```php
       base_route: system.admin_content
-    ```
-
-    ```php
       title: 'Messages'
     ```
 
@@ -2039,9 +800,6 @@ string:
 
     ```php
     administer message:
-    ```
-
-    ```php
       title: 'Administer messages'
     ```
 
@@ -2194,25 +952,10 @@ $fields['title'] = BaseFieldDefinition::create('string')
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Entity;
-    ```
-
-    ```php
     use Drupal\Core\Config\Entity\ConfigEntityBundleBase;
-    ```
-
-    ```php
     class MessageType extends ConfigEntityBundleBase {
-    ```
-
-    ```php
       public string $label = '';
-    ```
-
-    ```php
     }
     ```
 
@@ -2222,69 +965,21 @@ $fields['title'] = BaseFieldDefinition::create('string')
 
     ```php
     /**
-    ```
-
-    ```php
      * @ConfigEntityType(
-    ```
-
-    ```php
      *   id = "message_type",
-    ```
-
-    ```php
      *   label = "Message type",
-    ```
-
-    ```php
      *   config_prefix = "message_type",
-    ```
-
-    ```php
      *   bundle_of = "message",
-    ```
-
-    ```php
      *   entity_keys = {
-    ```
-
-    ```php
      *     "id" = "id",
-    ```
-
-    ```php
      *     "label" = "label"
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      *   config_export = {
-    ```
-
-    ```php
      *     "id",
-    ```
-
-    ```php
      *     "label",
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      *   admin_permission = "administer message_type",
-    ```
-
-    ```php
     */
-    ```
-
-    ```php
     class MessageType extends ConfigEntityBundleBase {
     ```
 
@@ -2294,129 +989,36 @@ $fields['title'] = BaseFieldDefinition::create('string')
 
     ```php
     /**
-    ```
-
-    ```php
      * @ConfigEntityType(
-    ```
-
-    ```php
      *   id = "message_type",
-    ```
-
-    ```php
      *   label = @Translation("Message type"),
-    ```
-
-    ```php
      *   config_prefix = "message_type",
-    ```
-
-    ```php
      *   bundle_of = "message",
-    ```
-
-    ```php
      *   entity_keys = {
-    ```
-
-    ```php
      *     "id" = "id",
-    ```
-
-    ```php
      *     "label" = "label"
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      *   config_export = {
-    ```
-
-    ```php
      *     "id",
-    ```
-
-    ```php
      *     "label",
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      *   admin_permission = "administer message_type",
-    ```
-
-    ```php
      *   handlers = {
-    ```
-
-    ```php
      *     "list_builder" = "Drupal\mymodule\
-    ```
-
-    ```php
              MessageTypeListBuilder",
-    ```
-
-    ```php
      *     "form" = {
-    ```
-
-    ```php
      *       "default" = "Drupal\mymodule
-    ```
-
-    ```php
                 \MessageTypeForm",
-    ```
-
-    ```php
      *       "delete" = "Drupal\Core\Entity
-    ```
-
-    ```php
                 \EntityDeleteForm"
-    ```
-
-    ```php
      *     },
-    ```
-
-    ```php
      *     "route_provider" = {
-    ```
-
-    ```php
      *       "html" = "Drupal\Core\Entity\Routing
-    ```
-
-    ```php
                 \AdminHtmlRouteProvider",
-    ```
-
-    ```php
      *     },
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      * )
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
     class MessageType extends ConfigEntityBundleBase {
     ```
 
@@ -2426,169 +1028,46 @@ $fields['title'] = BaseFieldDefinition::create('string')
 
     ```php
     /**
-    ```
-
-    ```php
      * @ConfigEntityType(
-    ```
-
-    ```php
      *   id = "message_type",
-    ```
-
-    ```php
      *   label = @Translation("Message type"),
-    ```
-
-    ```php
      *   config_prefix = "message_type",
-    ```
-
-    ```php
      *   bundle_of = "message",
-    ```
-
-    ```php
      *   entity_keys = {
-    ```
-
-    ```php
      *     "id" = "id",
-    ```
-
-    ```php
      *     "label" = "label"
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      *   config_export = {
-    ```
-
-    ```php
      *     "id",
-    ```
-
-    ```php
      *     "label",
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      *   admin_permission = "administer message_type",
-    ```
-
-    ```php
      *   handlers = {
-    ```
-
-    ```php
      *     "list_builder" = "Drupal\mymodule\
-    ```
-
-    ```php
             MessageTypeListBuilder",
-    ```
-
-    ```php
      *     "form" = {
-    ```
-
-    ```php
      *       "default" = "Drupal\mymodule\
-    ```
-
-    ```php
                 MessageTypeForm",
-    ```
-
-    ```php
      *       "delete" = "Drupal\Core\Entity\
-    ```
-
-    ```php
                 EntityDeleteForm"
-    ```
-
-    ```php
      *     },
-    ```
-
-    ```php
      *     "route_provider" = {
-    ```
-
-    ```php
      *       "html" = "Drupal\Core\Entity\Routing
-    ```
-
-    ```php
                 \AdminHtmlRouteProvider",
-    ```
-
-    ```php
      *     },
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      *   links = {
-    ```
-
-    ```php
      *     "collection" = "/admin/structure/message-
-    ```
-
-    ```php
             types",
-    ```
-
-    ```php
      *     "add-form" = "/admin/structure/message-
-    ```
-
-    ```php
               types/add",
-    ```
-
-    ```php
      *     "delete-form" = "/admin/structure/message-
-    ```
-
-    ```php
               types/{message_type}/delete",
-    ```
-
-    ```php
      *     "edit-form" = "/admin/structure/message-
-    ```
-
-    ```php
               types/{message_type}/edit",
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      * )
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
     class MessageType extends ConfigEntityBundleBase {
     ```
 
@@ -2598,149 +1077,41 @@ $fields['title'] = BaseFieldDefinition::create('string')
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule;
-    ```
-
-    ```php
     use Drupal\Core\Config\Entity\ConfigEntityListBuilder;
-    ```
-
-    ```php
     use Drupal\Core\Entity\EntityInterface;
-    ```
-
-    ```php
     class MessageTypeListBuilder extends
-    ```
-
-    ```php
         ConfigEntityListBuilder {
-    ```
-
-    ```php
     /**
-    ```
-
-    ```php
      * Builds the header row for the entity listing.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @return array
-    ```
-
-    ```php
      *   A render array structure of header strings.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @see \Drupal\Core\Entity\EntityListBuilder
-    ```
-
-    ```php
         ::render()
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
       public function buildHeader() {
-    ```
-
-    ```php
         $header['label'] = $this->t('Label');
-    ```
-
-    ```php
         return $header + parent::buildHeader();
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     /**
-    ```
-
-    ```php
      * Builds a row for an entity in the entity listing.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @param \Drupal\Core\Entity\EntityInterface $entity
-    ```
-
-    ```php
      *   The entity for this row of the list.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @return array
-    ```
-
-    ```php
      *   A render array structure of fields for this
-    ```
-
-    ```php
             entity.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @see \Drupal\Core\Entity\EntityListBuilder
-    ```
-
-    ```php
         ::render()
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
       public function buildRow(EntityInterface $entity) {
-    ```
-
-    ```php
         $row['label'] = $entity->label();
-    ```
-
-    ```php
         return $row + parent::buildRow($entity);
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     }
     ```
 
@@ -2748,269 +1119,71 @@ $fields['title'] = BaseFieldDefinition::create('string')
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule;
-    ```
-
-    ```php
     use Drupal\Core\Entity\BundleEntityFormBase;
-    ```
-
-    ```php
     use Drupal\Core\Form\FormStateInterface;
-    ```
-
-    ```php
     use Drupal\mymodule\Entity\MessageType;
-    ```
-
-    ```php
     class MessageTypeForm extends BundleEntityFormBase {
-    ```
-
-    ```php
     /**
-    ```
-
-    ```php
      * Gets the actual form array to be built.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @see \Drupal\Core\Entity\EntityForm::processForm()
-    ```
-
-    ```php
      * @see \Drupal\Core\Entity\EntityForm::afterBuild()
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
       public function form(array $form, FormStateInterface
-    ```
-
-    ```php
         $form_state) {
-    ```
-
-    ```php
         $form = parent::form($form, $form_state);
-    ```
-
-    ```php
         /** @var \Drupal\mymodule\Entity\MessageType
-    ```
-
-    ```php
             $entity */
-    ```
-
-    ```php
         $entity = $this->entity;
-    ```
-
-    ```php
         $form['label'] = [
-    ```
-
-    ```php
           '#type' => 'textfield',
-    ```
-
-    ```php
           '#title' => $this->t('Label'),
-    ```
-
-    ```php
           '#required' => TRUE,
-    ```
-
-    ```php
           '#default_value' => $entity->label,
-    ```
-
-    ```php
         ];
-    ```
-
-    ```php
         $form['id'] = [
-    ```
-
-    ```php
           '#type' => 'machine_name',
-    ```
-
-    ```php
           '#default_value' => $entity->id(),
-    ```
-
-    ```php
           '#machine_name' => [
-    ```
-
-    ```php
             'exists' => [MessageType::class, 'load'],
-    ```
-
-    ```php
           ],
-    ```
-
-    ```php
         ];
-    ```
-
-    ```php
         return $this->protectBundleIdElement($form);
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     /**
-    ```
-
-    ```php
      * Form submission handler for the 'save' action.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * Normally this method should be overridden to provide specific messages to
-    ```
-
-    ```php
      * the user and redirect the form after the entity has
-    ```
-
-    ```php
           been saved.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @param array $form
-    ```
-
-    ```php
      *   An associative array containing the structure of
-    ```
-
-    ```php
             the form.
-    ```
-
-    ```php
      * @param \Drupal\Core\Form\FormStateInterface
-    ```
-
-    ```php
           $form_state
-    ```
-
-    ```php
      *   The current state of the form.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @return int
-    ```
-
-    ```php
      *   Either SAVED_NEW or SAVED_UPDATED, depending on
-    ```
-
-    ```php
             the operation performed.
-    ```
-
-    ```php
      */
-    ```
-
-    ```php
       public function save(array $form, FormStateInterface
-    ```
-
-    ```php
         $form_state) {
-    ```
-
-    ```php
         $result = parent::save($form, $form_state);
-    ```
-
-    ```php
         if ($result === SAVED_NEW) {
-    ```
-
-    ```php
           $this->messenger()->addMessage('The message type
-    ```
-
-    ```php
             has been created.');
-    ```
-
-    ```php
         }
-    ```
-
-    ```php
         else {
-    ```
-
-    ```php
           $this->messenger()->addMessage('The message type
-    ```
-
-    ```php
             has been updated.');
-    ```
-
-    ```php
         }
-    ```
-
-    ```php
         $form_state->setRedirectUrl($this->entity->
-    ```
-
-    ```php
             toUrl('collection'));
-    ```
-
-    ```php
         return $result;
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     }
     ```
 
@@ -3020,21 +1193,9 @@ $fields['title'] = BaseFieldDefinition::create('string')
 
     ```php
     mymodule.message_types:
-    ```
-
-    ```php
       title: 'Message types'
-    ```
-
-    ```php
       parent: system.admin_structure
-    ```
-
-    ```php
       description: 'Manage message types.'
-    ```
-
-    ```php
       route_name: entity.message_type.collection
     ```
 
@@ -3044,41 +1205,14 @@ $fields['title'] = BaseFieldDefinition::create('string')
 
     ```php
     message.add:
-    ```
-
-    ```php
       route_name: entity.message.add_page
-    ```
-
-    ```php
       title: 'Add message'
-    ```
-
-    ```php
       appears_on:
-    ```
-
-    ```php
         - entity.message.collection
-    ```
-
-    ```php
     message_type.add:
-    ```
-
-    ```php
       route_name: entity.message_type.add_form
-    ```
-
-    ```php
       title: 'Add message type'
-    ```
-
-    ```php
       appears_on:
-    ```
-
-    ```php
         - entity.message_type.collection
     ```
 
@@ -3088,17 +1222,8 @@ $fields['title'] = BaseFieldDefinition::create('string')
 
     ```php
     entity.message_type.edit_form:
-    ```
-
-    ```php
       route_name: entity.message_type.edit_form
-    ```
-
-    ```php
       base_route: entity.message_type.edit_form
-    ```
-
-    ```php
       title: Edit
     ```
 
@@ -3106,9 +1231,6 @@ $fields['title'] = BaseFieldDefinition::create('string')
 
     ```php
     administer message_types:
-    ```
-
-    ```php
       title: 'Administer message types'
     ```
 
@@ -3116,41 +1238,14 @@ $fields['title'] = BaseFieldDefinition::create('string')
 
     ```php
     mymodule.message_type.*:
-    ```
-
-    ```php
       type: config_entity
-    ```
-
-    ```php
       label: 'Message type settings'
-    ```
-
-    ```php
       mapping:
-    ```
-
-    ```php
         id:
-    ```
-
-    ```php
           type: string
-    ```
-
-    ```php
           label: 'Machine-readable name'
-    ```
-
-    ```php
         label:
-    ```
-
-    ```php
           type: label
-    ```
-
-    ```php
           label: 'Label'
     ```
 
@@ -3158,161 +1253,44 @@ $fields['title'] = BaseFieldDefinition::create('string')
 
     ```php
     /**
-    ```
-
-    ```php
      * Defines the message entity class.
-    ```
-
-    ```php
      *
-    ```
-
-    ```php
      * @ContentEntityType(
-    ```
-
-    ```php
      *   id = "message",
-    ```
-
-    ```php
      *   label = @Translation("Message"),
-    ```
-
-    ```php
      *   base_table = "message",
-    ```
-
-    ```php
      *   entity_keys = {
-    ```
-
-    ```php
      *     "id" = "message_id",
-    ```
-
-    ```php
      *     "label" = "title",
-    ```
-
-    ```php
      *     "uuid" = "uuid",
-    ```
-
-    ```php
      *     "bundle" = "type",
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      *   admin_permission = "administer message",
-    ```
-
-    ```php
      *   bundle_entity_type = "message_type",
-    ```
-
-    ```php
      *   field_ui_base_route =
-    ```
-
-    ```php
             "entity.message_type.edit_form",
-    ```
-
-    ```php
      *   handlers = {
-    ```
-
-    ```php
      *     "list_builder" = "Drupal\mymodule\
-    ```
-
-    ```php
                 MessageListBuilder",
-    ```
-
-    ```php
      *     "form" = {
-    ```
-
-    ```php
      *       "default" = "Drupal\mymodule\MessageForm",
-    ```
-
-    ```php
      *       "delete" = "Drupal\Core\Entity\
-    ```
-
-    ```php
                 ContentEntityDeleteForm",
-    ```
-
-    ```php
      *     },
-    ```
-
-    ```php
      *     "route_provider" = {
-    ```
-
-    ```php
      *       "html" = "Drupal\Core\Entity\Routing\
-    ```
-
-    ```php
                 DefaultHtmlRouteProvider",
-    ```
-
-    ```php
      *     },
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      *   links = {
-    ```
-
-    ```php
      *     "canonical" = "/messages/{message}",
-    ```
-
-    ```php
      *     "add-page" = "/messages/add",
-    ```
-
-    ```php
      *     "add-form" = "/messages/add/{message_type}",
-    ```
-
-    ```php
      *     "edit-form" = "/messages/{message}/edit",
-    ```
-
-    ```php
      *     "delete-form" = "/messages/{message}/delete",
-    ```
-
-    ```php
      *     "collection" = "/admin/structure/messages"
-    ```
-
-    ```php
      *   },
-    ```
-
-    ```php
      * )
-    ```
-
-    ```php
      */
     ```
 
@@ -3359,29 +1337,11 @@ php vendor/bin/drush en entity --yes
 
     ```php
     name: My Module
-    ```
-
-    ```php
     type: module
-    ```
-
-    ```php
     description: This is an example module from the Drupal
-    ```
-
-    ```php
       Development Cookbook!
-    ```
-
-    ```php
     core_version_requirement: '>=10'
-    ```
-
-    ```php
     dependencies:
-    ```
-
-    ```php
       - entity:entity
     ```
 
@@ -3391,21 +1351,9 @@ php vendor/bin/drush en entity --yes
 
     ```php
     *   admin_permission = "administer message",
-    ```
-
-    ```php
     *   permission_granularity = "bundle",
-    ```
-
-    ```php
     *   bundle_entity_type = "message_type",
-    ```
-
-    ```php
     *   field_ui_base_route =
-    ```
-
-    ```php
             "entity.message_type.edit_form",
     ```
 
@@ -3415,33 +1363,12 @@ php vendor/bin/drush en entity --yes
 
     ```php
     *   handlers = {
-    ```
-
-    ```php
     *     "list_builder" = "Drupal\mymodule\
-    ```
-
-    ```php
             MessageListBuilder",
-    ```
-
-    ```php
     *     "form" = {...},
-    ```
-
-    ```php
     *     "route_provider" = {...},
-    ```
-
-    ```php
     *     "permission_provider" = "\Drupal\entity\
-    ```
-
-    ```php
             EntityPermissionProvider",
-    ```
-
-    ```php
     *   },
     ```
 
@@ -3449,41 +1376,14 @@ php vendor/bin/drush en entity --yes
 
     ```php
     *   handlers = {
-    ```
-
-    ```php
     *     "list_builder" = "Drupal\mymodule\
-    ```
-
-    ```php
             MessageListBuilder",
-    ```
-
-    ```php
     *     "form" = {...},
-    ```
-
-    ```php
     *     "route_provider" = {...},
-    ```
-
-    ```php
     *     "permission_provider" = "\Drupal\entity\
-    ```
-
-    ```php
             EntityPermissionProvider",
-    ```
-
-    ```php
     *     "access" = "\Drupal\entity\
-    ```
-
-    ```php
             EntityAccessControlHandler",
-    ```
-
-    ```php
     *   },
     ```
 
@@ -3491,77 +1391,23 @@ php vendor/bin/drush en entity --yes
 
     ```php
     *   handlers = {
-    ```
-
-    ```php
     *     "list_builder" = "Drupal\mymodule\
-    ```
-
-    ```php
             MessageListBuilder",
-    ```
-
-    ```php
     *     "form" = {
-    ```
-
-    ```php
     *       "default" = "Drupal\mymodule\MessageForm",
-    ```
-
-    ```php
     *       "delete" = "Drupal\Core\Entity\
-    ```
-
-    ```php
               ContentEntityDeleteForm",
-    ```
-
-    ```php
     *     },
-    ```
-
-    ```php
     *     "route_provider" = {
-    ```
-
-    ```php
     *       "html" = "Drupal\Core\Entity\Routing\
-    ```
-
-    ```php
               DefaultHtmlRouteProvider",
-    ```
-
-    ```php
     *     },
-    ```
-
-    ```php
     *     "permission_provider" = "\Drupal\entity\
-    ```
-
-    ```php
             EntityPermissionProvider",
-    ```
-
-    ```php
     *     "access" = "\Drupal\entity\
-    ```
-
-    ```php
               EntityAccessControlHandler",
-    ```
-
-    ```php
     *     "query_access" = "\Drupal\entity\QueryAccess\
-    ```
-
-    ```php
             QueryAccessHandler",
-    ```
-
-    ```php
     *   },
     ```
 
@@ -3633,21 +1479,9 @@ php vendor/bin/drush en entity --yes
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule;
-    ```
-
-    ```php
     use Drupal\Core\Entity\Sql\SqlContentEntityStorage;
-    ```
-
-    ```php
     class MessageStorage extends SqlContentEntityStorage {
-    ```
-
-    ```php
     }
     ```
 
@@ -3657,29 +1491,11 @@ php vendor/bin/drush en entity --yes
 
     ```php
     public function loadMultipleByType(string $type): array {
-    ```
-
-    ```php
       $message_ids = $this->getQuery()
-    ```
-
-    ```php
         ->accessCheck(TRUE)
-    ```
-
-    ```php
         ->condition('type', $type)
-    ```
-
-    ```php
         ->execute();
-    ```
-
-    ```php
       return $this->loadMultiple($message_ids);
-    ```
-
-    ```php
     }
     ```
 
@@ -3689,57 +1505,18 @@ php vendor/bin/drush en entity --yes
 
     ```php
     *   handlers = {
-    ```
-
-    ```php
     *     "list_builder" = "Drupal\mymodule\
-    ```
-
-    ```php
             MessageListBuilder",
-    ```
-
-    ```php
     *     "form" = {
-    ```
-
-    ```php
     *       "default" = "Drupal\mymodule\MessageForm",
-    ```
-
-    ```php
     *       "delete" = "Drupal\Core\Entity\
-    ```
-
-    ```php
                 ContentEntityDeleteForm",
-    ```
-
-    ```php
     *     },
-    ```
-
-    ```php
     *     "route_provider" = {
-    ```
-
-    ```php
     *       "html" = "Drupal\Core\Entity\Routing\
-    ```
-
-    ```php
                 DefaultHtmlRouteProvider",
-    ```
-
-    ```php
     *     },
-    ```
-
-    ```php
     *     "storage" = "\Drupal\mymodule\MessageStorage",
-    ```
-
-    ```php
     *   },
     ```
 
@@ -3747,13 +1524,7 @@ php vendor/bin/drush en entity --yes
 
     ```php
     $messages = \Drupal::entityTypeManager()
-    ```
-
-    ```php
       ->getStorage('message')
-    ```
-
-    ```php
       ->loadMultipleByType('alert');
     ```
 

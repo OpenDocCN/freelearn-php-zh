@@ -213,29 +213,11 @@ public function scopeOfType($query, $type)
 
     ```php
     mysql> SHOW STATUS LIKE 'Last_query_cost';
-    ```
-
-    ```php
     +-----------------+----------+
-    ```
-
-    ```php
     | Variable_name   | Value    |
-    ```
-
-    ```php
     +-----------------+----------+
-    ```
-
-    ```php
     | Last_query_cost | 5.209000 |
-    ```
-
-    ```php
     +-----------------+----------+
-    ```
-
-    ```php
     1 row in set (0.00 sec)
     ```
 

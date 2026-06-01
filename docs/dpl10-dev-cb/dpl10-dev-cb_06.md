@@ -36,41 +36,14 @@
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Controller;
-    ```
-
-    ```php
     use Drupal\Core\Controller\ControllerBase;
-    ```
-
-    ```php
     use Symfony\Component\HttpFoundation\JsonResponse;
-    ```
-
-    ```php
     use Symfony\Component\HttpFoundation\Request;
-    ```
-
-    ```php
     class ArticleController extends ControllerBase {
-    ```
-
-    ```php
       public function store(Request $request):
-    ```
-
-    ```php
           JsonResponse {
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     }
     ```
 
@@ -80,25 +53,10 @@
 
     ```php
       public function store(Request $request):
-    ```
-
-    ```php
        JsonResponse {
-    ```
-
-    ```php
        $content = $request->getContent();
-    ```
-
-    ```php
        $json = \Drupal\Component\Serialization\
-    ```
-
-    ```php
           Json::decode($content);
-    ```
-
-    ```php
       }
     ```
 
@@ -108,37 +66,13 @@
 
     ```php
       public function store(Request $request):
-    ```
-
-    ```php
        JsonResponse {
-    ```
-
-    ```php
        $content = $request->getContent();
-    ```
-
-    ```php
        $json = \Drupal\Component\Serialization\
-    ```
-
-    ```php
           Json::decode($content);
-    ```
-
-    ```php
        $entity_type_manager = $this->entityTypeManager();
-    ```
-
-    ```php
        $node_storage = $entity_type_manager->
-    ```
-
-    ```php
           getStorage('node');
-    ```
-
-    ```php
       }
     ```
 
@@ -148,49 +82,16 @@
 
     ```php
       public function store(Request $request):
-    ```
-
-    ```php
        JsonResponse {
-    ```
-
-    ```php
        $content = $request->getContent();
-    ```
-
-    ```php
        $json = \Drupal\Component\Serialization\
-    ```
-
-    ```php
           Json::decode($content);
-    ```
-
-    ```php
        $entity_type_manager = $this->entityTypeManager();
-    ```
-
-    ```php
        $node_storage = $entity_type_manager->
-    ```
-
-    ```php
           getStorage('node');
-    ```
-
-    ```php
        $article = $node_storage->create([
-    ```
-
-    ```php
         'type' => 'article',
-    ```
-
-    ```php
        ]);
-    ```
-
-    ```php
       }
     ```
 
@@ -200,53 +101,17 @@
 
     ```php
       public function store(Request $request): JsonResponse {
-    ```
-
-    ```php
        $content = $request->getContent();
-    ```
-
-    ```php
        $json = \Drupal\Component\Serialization\
-    ```
-
-    ```php
           Json::decode($content);
-    ```
-
-    ```php
        $entity_type_manager = $this->entityTypeManager();
-    ```
-
-    ```php
        $node_storage = $entity_type_manager->
-    ```
-
-    ```php
           getStorage('node');
-    ```
-
-    ```php
        $article = $node_storage->create([
-    ```
-
-    ```php
         'type' => 'article',
-    ```
-
-    ```php
         'title' => $json['title'],
-    ```
-
-    ```php
         'body' => $json['body'],
-    ```
-
-    ```php
        ]);
-    ```
-
-    ```php
       }
     ```
 
@@ -254,61 +119,19 @@
 
     ```php
       public function store(Request $request):
-    ```
-
-    ```php
         JsonResponse {
-    ```
-
-    ```php
        $content = $request->getContent();
-    ```
-
-    ```php
        $json = \Drupal\Component\Serialization\
-    ```
-
-    ```php
           Json::decode($content);
-    ```
-
-    ```php
        $entity_type_manager = $this->entityTypeManager();
-    ```
-
-    ```php
        $node_storage = $entity_type_manager->
-    ```
-
-    ```php
           getStorage('node');
-    ```
-
-    ```php
        $article = $node_storage->create([
-    ```
-
-    ```php
         'type' => 'article',
-    ```
-
-    ```php
         'title' => $json['title'],
-    ```
-
-    ```php
         'body' => $json['body'],
-    ```
-
-    ```php
        ]);
-    ```
-
-    ```php
        $article->save();
-    ```
-
-    ```php
       }
     ```
 
@@ -316,89 +139,26 @@
 
     ```php
       public function store(Request $request):
-    ```
-
-    ```php
         JsonResponse {
-    ```
-
-    ```php
        $content = $request->getContent();
-    ```
-
-    ```php
        $json = \Drupal\Component\Serialization\
-    ```
-
-    ```php
           Json::decode($content);
-    ```
-
-    ```php
        $entity_type_manager = $this->entityTypeManager();
-    ```
-
-    ```php
        $node_storage = $entity_type_manager->
-    ```
-
-    ```php
           getStorage('node');
-    ```
-
-    ```php
        $article = $node_storage->create([
-    ```
-
-    ```php
         'type' => 'article',
-    ```
-
-    ```php
         'title' => $json['title'],
-    ```
-
-    ```php
         'body' => $json['body'],
-    ```
-
-    ```php
        ]);
-    ```
-
-    ```php
        $article->save();
-    ```
-
-    ```php
        $article_url = $article->toUrl()->setAbsolute()->
-    ```
-
-    ```php
           toString();
-    ```
-
-    ```php
        return new JsonResponse(
-    ```
-
-    ```php
         $article->toArray(),
-    ```
-
-    ```php
         201,
-    ```
-
-    ```php
         ['Location' => $article_url],
-    ```
-
-    ```php
        );
-    ```
-
-    ```php
       }
     ```
 
@@ -408,33 +168,12 @@
 
     ```php
     mymodule.create_article:
-    ```
-
-    ```php
       path: /articles
-    ```
-
-    ```php
       defaults:
-    ```
-
-    ```php
        _controller: Drupal\mymodule\Controller\
-    ```
-
-    ```php
           ArticleController::store
-    ```
-
-    ```php
       methods: [POST]
-    ```
-
-    ```php
       requirements:
-    ```
-
-    ```php
        _access: 'TRUE'
     ```
 
@@ -450,29 +189,11 @@
 
     ```php
     POST http://localhost/articles
-    ```
-
-    ```php
     Content-Type: application/json
-    ```
-
-    ```php
     Accept: application/json
-    ```
-
-    ```php
     {
-    ```
-
-    ```php
       "title": "New article",
-    ```
-
-    ```php
       "body": "Test body"
-    ```
-
-    ```php
     }
     ```
 
@@ -504,41 +225,14 @@
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Controller;
-    ```
-
-    ```php
     use Drupal\Core\Controller\ControllerBase;
-    ```
-
-    ```php
     use Symfony\Component\HttpFoundation\JsonResponse;
-    ```
-
-    ```php
     use Symfony\Component\HttpFoundation\Request;
-    ```
-
-    ```php
     class ArticleController extends ControllerBase {
-    ```
-
-    ```php
       public function index(Request $request):
-    ```
-
-    ```php
        JsonResponse {
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     }
     ```
 
@@ -548,17 +242,8 @@
 
     ```php
       public function index(Request $request):
-    ```
-
-    ```php
         JsonResponse {
-    ```
-
-    ```php
        $sort = $request->query->get('sort', 'DESC');
-    ```
-
-    ```php
       }
     ```
 
@@ -566,29 +251,11 @@
 
     ```php
       public function index(Request $request):
-    ```
-
-    ```php
         JsonResponse {
-    ```
-
-    ```php
        $sort = $request->query->get('sort', 'DESC');
-    ```
-
-    ```php
        $entity_type_manager = $this->entityTypeManager();
-    ```
-
-    ```php
        $node_storage = $entity_type_manager->
-    ```
-
-    ```php
           getStorage('node');
-    ```
-
-    ```php
       }
     ```
 
@@ -598,37 +265,13 @@
 
     ```php
       public function index(Request $request):
-    ```
-
-    ```php
         JsonResponse {
-    ```
-
-    ```php
        $sort = $request->query->get('sort', 'DESC');
-    ```
-
-    ```php
        $entity_type_manager = $this->entityTypeManager();
-    ```
-
-    ```php
         $node_storage = $entity_type_manager->
-    ```
-
-    ```php
             getStorage('node');
-    ```
-
-    ```php
        $query = $node_storage->getQuery()
-    ```
-
-    ```php
         ->accessCheck(TRUE);
-    ```
-
-    ```php
       }
     ```
 
@@ -638,45 +281,15 @@ Drupal 要求指定在查询内容实体时实体查询是否应执行实体访�
 
     ```php
       public function index(Request $request):
-    ```
-
-    ```php
         JsonResponse {
-    ```
-
-    ```php
        $sort = $request->query->get('sort', 'DESC');
-    ```
-
-    ```php
        $entity_type_manager = $this->entityTypeManager();
-    ```
-
-    ```php
        $node_storage = $entity_type_manager->
-    ```
-
-    ```php
           getStorage('node');
-    ```
-
-    ```php
        $query = $node_storage->getQuery();
-    ```
-
-    ```php
         ->accessCheck(TRUE);
-    ```
-
-    ```php
        $query->condition('type', 'article');
-    ```
-
-    ```php
        $query->condition('status', TRUE);
-    ```
-
-    ```php
       }
     ```
 
@@ -686,49 +299,16 @@ Drupal 要求指定在查询内容实体时实体查询是否应执行实体访�
 
     ```php
       public function index(Request $request):
-    ```
-
-    ```php
         JsonResponse {
-    ```
-
-    ```php
        $sort = $request->query->get('sort', 'DESC');
-    ```
-
-    ```php
        $entity_type_manager = $this->entityTypeManager();
-    ```
-
-    ```php
        $node_storage = $entity_type_manager->
-    ```
-
-    ```php
           getStorage('node');
-    ```
-
-    ```php
        $query = $node_storage->getQuery();
-    ```
-
-    ```php
         ->accessCheck(TRUE);
-    ```
-
-    ```php
        $query->condition('type', 'article');
-    ```
-
-    ```php
        $query->condition('status', TRUE);
-    ```
-
-    ```php
        $query->sort('created', $sort);
-    ```
-
-    ```php
       }
     ```
 
@@ -738,53 +318,17 @@ Drupal 要求指定在查询内容实体时实体查询是否应执行实体访�
 
     ```php
       public function index(Request $request):
-    ```
-
-    ```php
         JsonResponse {
-    ```
-
-    ```php
        $sort = $request->query->get('sort', 'DESC');
-    ```
-
-    ```php
        $entity_type_manager = $this->entityTypeManager();
-    ```
-
-    ```php
        $node_storage = $entity_type_manager->
-    ```
-
-    ```php
           getStorage('node');
-    ```
-
-    ```php
        $query = $node_storage->getQuery()
-    ```
-
-    ```php
         ->accessCheck(TRUE);
-    ```
-
-    ```php
        $query->condition('type', 'article');
-    ```
-
-    ```php
        $query->condition('status', TRUE);
-    ```
-
-    ```php
        $query->sort('created', $sort);
-    ```
-
-    ```php
        $node_ids = $query->execute();
-    ```
-
-    ```php
       }
     ```
 
@@ -792,57 +336,18 @@ Drupal 要求指定在查询内容实体时实体查询是否应执行实体访�
 
     ```php
       public function index(Request $request):
-    ```
-
-    ```php
         JsonResponse {
-    ```
-
-    ```php
        $sort = $request->query->get('sort', 'DESC');
-    ```
-
-    ```php
        $entity_type_manager = $this->entityTypeManager();
-    ```
-
-    ```php
        $node_storage = $entity_type_manager->
-    ```
-
-    ```php
           getStorage('node');
-    ```
-
-    ```php
        $query = $node_storage->getQuery()
-    ```
-
-    ```php
         ->accessCheck(TRUE);
-    ```
-
-    ```php
        $query->condition('type', 'article');
-    ```
-
-    ```php
        $query->condition('status', TRUE);
-    ```
-
-    ```php
        $query->sort('created', $sort);
-    ```
-
-    ```php
        $node_ids = $query->execute();
-    ```
-
-    ```php
        $nodes = $node_storage->loadMultiple($node_ids);
-    ```
-
-    ```php
       }
     ```
 
@@ -850,77 +355,23 @@ Drupal 要求指定在查询内容实体时实体查询是否应执行实体访�
 
     ```php
       public function index(Request $request):
-    ```
-
-    ```php
         JsonResponse {
-    ```
-
-    ```php
        $sort = $request->query->get('sort', 'DESC');
-    ```
-
-    ```php
        $entity_type_manager = $this->entityTypeManager();
-    ```
-
-    ```php
        $node_storage = $entity_type_manager->
-    ```
-
-    ```php
           getStorage('node');
-    ```
-
-    ```php
        $query = $node_storage->getQuery()
-    ```
-
-    ```php
         ->accessCheck(TRUE);
-    ```
-
-    ```php
        $query->condition('type', 'article');
-    ```
-
-    ```php
        $query->condition('status', TRUE);
-    ```
-
-    ```php
        $query->sort('created', $sort);
-    ```
-
-    ```php
        $node_ids = $query->execute();
-    ```
-
-    ```php
        $nodes = $node_storage->loadMultiple($node_ids);
-    ```
-
-    ```php
        $nodes = array_map(function (\Drupal\node\
-    ```
-
-    ```php
           NodeInterface $node) {
-    ```
-
-    ```php
         return $node->toArray();
-    ```
-
-    ```php
        }, $nodes);
-    ```
-
-    ```php
        return new JsonResponse($nodes);
-    ```
-
-    ```php
       }
     ```
 
@@ -930,33 +381,12 @@ Drupal 要求指定在查询内容实体时实体查询是否应执行实体访�
 
     ```php
     mymodule.get_articles:
-    ```
-
-    ```php
       path: /articles
-    ```
-
-    ```php
       defaults:
-    ```
-
-    ```php
        _controller: Drupal\mymodule\Controller\
-    ```
-
-    ```php
           ArticleController::index
-    ```
-
-    ```php
       methods: [GET]
-    ```
-
-    ```php
       requirements:
-    ```
-
-    ```php
        _permission: 'access content'
     ```
 
@@ -972,9 +402,6 @@ Drupal 要求指定在查询内容实体时实体查询是否应执行实体访�
 
     ```php
     GET http://localhost/articles
-    ```
-
-    ```php
     Accept: application/json
     ```
 
@@ -1013,45 +440,15 @@ $node_storage->getQuery()
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Controller;
-    ```
-
-    ```php
     use Drupal\Core\Controller\ControllerBase;
-    ```
-
-    ```php
     use Drupal\node\NodeInterface;
-    ```
-
-    ```php
     use Symfony\Component\HttpFoundation\JsonResponse;
-    ```
-
-    ```php
     use Symfony\Component\HttpFoundation\Request;
-    ```
-
-    ```php
     class ArticleController extends ControllerBase {
-    ```
-
-    ```php
       public function get(NodeInterface $node):
-    ```
-
-    ```php
         JsonResponse {
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     }
     ```
 
@@ -1061,25 +458,10 @@ $node_storage->getQuery()
 
     ```php
       public function get(NodeInterface $node):
-    ```
-
-    ```php
         JsonResponse {
-    ```
-
-    ```php
        $entity_type_manager = $this->entityTypeManager();
-    ```
-
-    ```php
        $access_handler = $entity_type_manager->
-    ```
-
-    ```php
           getAccessControlHandler('node');
-    ```
-
-    ```php
       }
     ```
 
@@ -1089,33 +471,12 @@ $node_storage->getQuery()
 
     ```php
       public function get(NodeInterface $node):
-    ```
-
-    ```php
         JsonResponse {
-    ```
-
-    ```php
        $entity_type_manager = $this->entityTypeManager();
-    ```
-
-    ```php
        $access_handler = $entity_type_manager->
-    ```
-
-    ```php
           getAccessControlHandler('node');
-    ```
-
-    ```php
        $node_access = $access_handler->access($node,
-    ```
-
-    ```php
           'view');
-    ```
-
-    ```php
       }
     ```
 
@@ -1125,45 +486,15 @@ $node_storage->getQuery()
 
     ```php
       public function get(NodeInterface $node):
-    ```
-
-    ```php
         JsonResponse {
-    ```
-
-    ```php
        $entity_type_manager = $this->entityTypeManager();
-    ```
-
-    ```php
        $access_handler = $entity_type_manager->
-    ```
-
-    ```php
           getAccessControlHandler('node');
-    ```
-
-    ```php
        $node_access = $access_handler->access($node,
-    ```
-
-    ```php
           'view');
-    ```
-
-    ```php
        if (!$node_access) {
-    ```
-
-    ```php
         return new JsonResponse(NULL, 404);
-    ```
-
-    ```php
        }
-    ```
-
-    ```php
       }
     ```
 
@@ -1173,57 +504,18 @@ $node_storage->getQuery()
 
     ```php
       public function get(NodeInterface $node):
-    ```
-
-    ```php
         JsonResponse {
-    ```
-
-    ```php
        $entity_type_manager = $this->entityTypeManager();
-    ```
-
-    ```php
        $access_handler = $entity_type_manager->
-    ```
-
-    ```php
           getAccessControlHandler('node');
-    ```
-
-    ```php
        $node_access = $access_handler->access($node,
-    ```
-
-    ```php
           'view');
-    ```
-
-    ```php
        if (!$node_access) {
-    ```
-
-    ```php
         return new JsonResponse(NULL, 404);
-    ```
-
-    ```php
        }
-    ```
-
-    ```php
        return new JsonResponse(
-    ```
-
-    ```php
         $node->toArray(),
-    ```
-
-    ```php
        );
-    ```
-
-    ```php
       }
     ```
 
@@ -1231,29 +523,11 @@ $node_storage->getQuery()
 
     ```php
     mymodule.get_article:
-    ```
-
-    ```php
       path: /articles/{node}
-    ```
-
-    ```php
       defaults:
-    ```
-
-    ```php
        _controller: Drupal\mymodule\Controller\
-    ```
-
-    ```php
           ArticleController::get
-    ```
-
-    ```php
       requirements:
-    ```
-
-    ```php
        _permission: 'access content'
     ```
 
@@ -1269,9 +543,6 @@ $node_storage->getQuery()
 
     ```php
     GET http://localhost/articles/1
-    ```
-
-    ```php
     Accept: application/json
     ```
 
@@ -1315,45 +586,15 @@ $node_access = $node->access('view', $other_user);
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Controller;
-    ```
-
-    ```php
     use Drupal\Core\Controller\ControllerBase;
-    ```
-
-    ```php
     use Drupal\node\NodeInterface;
-    ```
-
-    ```php
     use Symfony\Component\HttpFoundation\JsonResponse;
-    ```
-
-    ```php
     use Symfony\Component\HttpFoundation\Request;
-    ```
-
-    ```php
     class ArticleController extends ControllerBase {
-    ```
-
-    ```php
       public function update(Request $request,
-    ```
-
-    ```php
         NodeInterface $node): JsonResponse {
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     }
     ```
 
@@ -1363,25 +604,10 @@ $node_access = $node->access('view', $other_user);
 
     ```php
       public function update(Request $request,
-    ```
-
-    ```php
         NodeInterface $node): JsonResponse {
-    ```
-
-    ```php
        $content = $request->getContent();
-    ```
-
-    ```php
        $json = \Drupal\Component\Serialization\
-    ```
-
-    ```php
           Json::decode($content);
-    ```
-
-    ```php
       }
     ```
 
@@ -1391,37 +617,13 @@ $node_access = $node->access('view', $other_user);
 
     ```php
       public function update(Request $request,
-    ```
-
-    ```php
         NodeInterface $node): JsonResponse {
-    ```
-
-    ```php
        $content = $request->getContent();
-    ```
-
-    ```php
        $json = \Drupal\Component\Serialization\
-    ```
-
-    ```php
           Json::decode($content);
-    ```
-
-    ```php
        if (!empty($json['title'])) {
-    ```
-
-    ```php
         $node->setTitle($json['title']);
-    ```
-
-    ```php
        }
-    ```
-
-    ```php
       }
     ```
 
@@ -1431,49 +633,16 @@ $node_access = $node->access('view', $other_user);
 
     ```php
       public function update(Request $request,
-    ```
-
-    ```php
         NodeInterface $node): JsonResponse {
-    ```
-
-    ```php
        $content = $request->getContent();
-    ```
-
-    ```php
        $json = \Drupal\Component\Serialization\
-    ```
-
-    ```php
           Json::decode($content);
-    ```
-
-    ```php
        if (!empty($json['title'])) {
-    ```
-
-    ```php
         $node->setTitle($json['title']);
-    ```
-
-    ```php
        }
-    ```
-
-    ```php
        if (!empty($json['body'])) {
-    ```
-
-    ```php
         $node->set('field_body', $json['body']);
-    ```
-
-    ```php
        }
-    ```
-
-    ```php
       }
     ```
 
@@ -1483,65 +652,20 @@ $node_access = $node->access('view', $other_user);
 
     ```php
       public function update(Request $request,
-    ```
-
-    ```php
         NodeInterface $node): JsonResponse {
-    ```
-
-    ```php
        $content = $request->getContent();
-    ```
-
-    ```php
        $json = \Drupal\Component\Serialization\
-    ```
-
-    ```php
           Json::decode($content);
-    ```
-
-    ```php
        if (isset($json['title'])) {
-    ```
-
-    ```php
         $node->setTitle($json['title']);
-    ```
-
-    ```php
        }
-    ```
-
-    ```php
        if (isset($json['body'])) {
-    ```
-
-    ```php
         $node->set('body', $json['body']);
-    ```
-
-    ```php
        }
-    ```
-
-    ```php
        $node->save();
-    ```
-
-    ```php
        return new JsonResponse(
-    ```
-
-    ```php
         $node->toArray()
-    ```
-
-    ```php
        );
-    ```
-
-    ```php
       }
     ```
 
@@ -1549,33 +673,12 @@ $node_access = $node->access('view', $other_user);
 
     ```php
     mymodule.update_article:
-    ```
-
-    ```php
       path: /articles/{node}
-    ```
-
-    ```php
       defaults:
-    ```
-
-    ```php
        _controller: Drupal\mymodule\Controller\
-    ```
-
-    ```php
           ArticleController::update
-    ```
-
-    ```php
       methods: [PATCH]
-    ```
-
-    ```php
       requirements:
-    ```
-
-    ```php
        _access: 'TRUE'
     ```
 
@@ -1591,29 +694,11 @@ $node_access = $node->access('view', $other_user);
 
     ```php
     PATCH http://localhost/articles/1
-    ```
-
-    ```php
     Content-Type: application/json
-    ```
-
-    ```php
     Accept: application/json
-    ```
-
-    ```php
     {
-    ```
-
-    ```php
       "title": "New updated title!",
-    ```
-
-    ```php
       "body": "Modified body text"
-    ```
-
-    ```php
     }
     ```
 
@@ -1643,65 +728,20 @@ $node_access = $node->access('view', $other_user);
 
     ```php
       public function update(Request $request,
-    ```
-
-    ```php
         NodeInterface $node): JsonResponse {
-    ```
-
-    ```php
        $content = $request->getContent();
-    ```
-
-    ```php
        $json = \Drupal\Component\Serialization\
-    ```
-
-    ```php
           Json::decode($content);
-    ```
-
-    ```php
        if (isset($json['title'])) {
-    ```
-
-    ```php
         $node->setTitle($json['title']);
-    ```
-
-    ```php
        }
-    ```
-
-    ```php
        if (isset($json['body'])) {
-    ```
-
-    ```php
         $node->set('body', $json['body']);
-    ```
-
-    ```php
        }
-    ```
-
-    ```php
        $node->save();
-    ```
-
-    ```php
        return new JsonResponse(
-    ```
-
-    ```php
         $node->toArray()
-    ```
-
-    ```php
        );
-    ```
-
-    ```php
       }
     ```
 
@@ -1709,69 +749,21 @@ $node_access = $node->access('view', $other_user);
 
     ```php
       public function update(Request $request,
-    ```
-
-    ```php
         NodeInterface $node): JsonResponse {
-    ```
-
-    ```php
        $content = $request->getContent();
-    ```
-
-    ```php
        $json = \Drupal\Component\Serialization\
-    ```
-
-    ```php
           Json::decode($content);
-    ```
-
-    ```php
        if (isset($json['title'])) {
-    ```
-
-    ```php
         $node->setTitle($json['title']);
-    ```
-
-    ```php
        }
-    ```
-
-    ```php
        if (isset($json['body'])) {
-    ```
-
-    ```php
         $node->set('body', $json['body']);
-    ```
-
-    ```php
        }
-    ```
-
-    ```php
        $constraint_violations = $node->validate();
-    ```
-
-    ```php
        $node->save();
-    ```
-
-    ```php
        return new JsonResponse(
-    ```
-
-    ```php
         $node->toArray()
-    ```
-
-    ```php
        );
-    ```
-
-    ```php
       }
     ```
 
@@ -1781,77 +773,23 @@ $node_access = $node->access('view', $other_user);
 
     ```php
       public function update(Request $request,
-    ```
-
-    ```php
         NodeInterface $node): JsonResponse {
-    ```
-
-    ```php
        $content = $request->getContent();
-    ```
-
-    ```php
        $json = \Drupal\Component\Serialization\
-    ```
-
-    ```php
           Json::decode($content);
-    ```
-
-    ```php
        if (isset($json['title'])) {
-    ```
-
-    ```php
         $node->setTitle($json['title']);
-    ```
-
-    ```php
        }
-    ```
-
-    ```php
        if (isset($json['body'])) {
-    ```
-
-    ```php
         $node->set('body', $json['body']);
-    ```
-
-    ```php
        }
-    ```
-
-    ```php
        $constraint_violations = $node->validate();
-    ```
-
-    ```php
        if (count($constraint_violations) > 0) {
-    ```
-
-    ```php
        }
-    ```
-
-    ```php
        $node->save();
-    ```
-
-    ```php
        return new JsonResponse(
-    ```
-
-    ```php
         $node->toArray()
-    ```
-
-    ```php
        );
-    ```
-
-    ```php
       }
     ```
 
@@ -1861,101 +799,29 @@ $node_access = $node->access('view', $other_user);
 
     ```php
       public function update(Request $request,
-    ```
-
-    ```php
         NodeInterface $node): JsonResponse {
-    ```
-
-    ```php
        $content = $request->getContent();
-    ```
-
-    ```php
        $json = \Drupal\Component\Serialization\
-    ```
-
-    ```php
           Json::decode($content);
-    ```
-
-    ```php
        if (isset($json['title'])) {
-    ```
-
-    ```php
         $node->setTitle($json['title']);
-    ```
-
-    ```php
        }
-    ```
-
-    ```php
        if (isset($json['body'])) {
-    ```
-
-    ```php
         $node->set('body', $json['body']);
-    ```
-
-    ```php
        }
-    ```
-
-    ```php
        $constraint_violations = $node->validate();
-    ```
-
-    ```php
        if (count($constraint_violations) > 0) {
-    ```
-
-    ```php
         $errors = [];
-    ```
-
-    ```php
         foreach ($constraint_violations as $violation) {
-    ```
-
-    ```php
           $errors[] = $violation->getPropertyPath()
-    ```
-
-    ```php
             . ': ' . $violation->getMessage();
-    ```
-
-    ```php
         }
-    ```
-
-    ```php
         return new JsonResponse($errors, 400);
-    ```
-
-    ```php
        }
-    ```
-
-    ```php
        $node->save();
-    ```
-
-    ```php
        return new JsonResponse(
-    ```
-
-    ```php
         $node->toArray()
-    ```
-
-    ```php
        );
-    ```
-
-    ```php
       }
     ```
 
@@ -1965,29 +831,11 @@ $node_access = $node->access('view', $other_user);
 
     ```php
     PATCH https://localhost/articles/1
-    ```
-
-    ```php
     Content-Type: application/json
-    ```
-
-    ```php
     Accept: application/json
-    ```
-
-    ```php
     {
-    ```
-
-    ```php
       "title": "",
-    ```
-
-    ```php
       "body": "Modified body text"
-    ```
-
-    ```php
     }
     ```
 
@@ -2033,45 +881,15 @@ $node->get('body')->validate();
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Controller;
-    ```
-
-    ```php
     use Drupal\Core\Controller\ControllerBase;
-    ```
-
-    ```php
     use Drupal\node\NodeInterface;
-    ```
-
-    ```php
     use Symfony\Component\HttpFoundation\JsonResponse;
-    ```
-
-    ```php
     use Symfony\Component\HttpFoundation\Request;
-    ```
-
-    ```php
     class ArticleController extends ControllerBase {
-    ```
-
-    ```php
       public function delete(NodeInterface $node):
-    ```
-
-    ```php
         JsonResponse {
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     }
     ```
 
@@ -2079,17 +897,8 @@ $node->get('body')->validate();
 
     ```php
       public function delete(NodeInterface $node):
-    ```
-
-    ```php
         JsonResponse {
-    ```
-
-    ```php
        $node->delete();
-    ```
-
-    ```php
       }
     ```
 
@@ -2099,21 +908,9 @@ $node->get('body')->validate();
 
     ```php
       public function delete(NodeInterface $node):
-    ```
-
-    ```php
         JsonResponse {
-    ```
-
-    ```php
        $node->delete();
-    ```
-
-    ```php
        return new JsonResponse(null, 204);
-    ```
-
-    ```php
       }
     ```
 
@@ -2123,33 +920,12 @@ $node->get('body')->validate();
 
     ```php
     mymodule.delete_article:
-    ```
-
-    ```php
       path: /articles/{node}
-    ```
-
-    ```php
       defaults:
-    ```
-
-    ```php
        _controller: Drupal\mymodule\Controller\
-    ```
-
-    ```php
           ArticleController::delete
-    ```
-
-    ```php
       methods: [DELETE]
-    ```
-
-    ```php
       requirements:
-    ```
-
-    ```php
        _access: 'TRUE'
     ```
 
@@ -2165,9 +941,6 @@ $node->get('body')->validate();
 
     ```php
     DELETE http://localhost/articles/1
-    ```
-
-    ```php
     Accept: application/json
     ```
 
@@ -2175,9 +948,6 @@ $node->get('body')->validate();
 
     ```php
     GET http://localhost/articles/1
-    ```
-
-    ```php
     Accept: application/json
     ```
 

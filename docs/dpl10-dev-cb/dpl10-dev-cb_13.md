@@ -90,41 +90,14 @@ composer require --dev drupal/core-dev:¹⁰
 
     ```php
     <env name="SIMPLETEST_BASE_URL"
-    ```
-
-    ```php
         value="http://localhost"/>
-    ```
-
-    ```php
     <env name="SIMPLETEST_DB" value="
-    ```
-
-    ```php
         mysql://database:database@database/database"/>
-    ```
-
-    ```php
     <env name="BROWSERTEST_OUTPUT_DIRECTORY" value=""/>
-    ```
-
-    ```php
     <env name="SYMFONY_DEPRECATIONS_HELPER" value="weak"/>
-    ```
-
-    ```php
     <env name="MINK_DRIVER_ARGS_WEBDRIVER" value="
-    ```
-
-    ```php
          ["chrome", {"browserName":"chrome",
-    ```
-
-    ```php
          "chromeOptions":{"args":["--disable-gpu","--
-    ```
-
-    ```php
          headless"]}}, "http://chrome:9515"] "/>
     ```
 
@@ -136,89 +109,26 @@ DDEV、Lando、Docksal 或 Docker？
 
     ```php
       <testsuites>
-    ```
-
-    ```php
         <testsuite name="unit">
-    ```
-
-    ```php
           <directory>
-    ```
-
-    ```php
             web/modules/custom/*/tests/src/Unit
-    ```
-
-    ```php
           </directory>
-    ```
-
-    ```php
         </testsuite>
-    ```
-
-    ```php
         <testsuite name="kernel">
-    ```
-
-    ```php
           <directory>
-    ```
-
-    ```php
             web/modules/custom/*/tests/src/Kernel
-    ```
-
-    ```php
           </directory>
-    ```
-
-    ```php
         </testsuite>
-    ```
-
-    ```php
         <testsuite name="functional">
-    ```
-
-    ```php
           <directory>
-    ```
-
-    ```php
             web/modules/custom/*/tests/src/Functional
-    ```
-
-    ```php
           </directory>
-    ```
-
-    ```php
         </testsuite>
-    ```
-
-    ```php
         <testsuite name="functional-javascript">
-    ```
-
-    ```php
           <directory>
-    ```
-
-    ```php
        web/modules/custom/*/tests/src/FunctionalJavascript
-    ```
-
-    ```php
           </directory>
-    ```
-
-    ```php
         </testsuite>
-    ```
-
-    ```php
     </testsuites>
     ```
 

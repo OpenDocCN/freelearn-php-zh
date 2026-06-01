@@ -40,21 +40,9 @@
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Controller;
-    ```
-
-    ```php
     use Drupal\Core\Controller\ControllerBase;
-    ```
-
-    ```php
     class HelloWorldController extends ControllerBase {
-    ```
-
-    ```php
     }
     ```
 
@@ -66,45 +54,15 @@
 
     ```php
       /**
-    ```
-
-    ```php
        * Returns markup for our custom page.
-    ```
-
-    ```php
        *
-    ```
-
-    ```php
        * @returns array
-    ```
-
-    ```php
        *   The render array.
-    ```
-
-    ```php
        */
-    ```
-
-    ```php
       public function page(): array {
-    ```
-
-    ```php
         return [
-    ```
-
-    ```php
           '#markup' => '<p>Hello world!</p>'
-    ```
-
-    ```php
         ];
-    ```
-
-    ```php
       }
     ```
 
@@ -122,9 +80,6 @@
 
     ```php
     mymodule.hello_world:
-    ```
-
-    ```php
       path: /hello-world
     ```
 
@@ -132,25 +87,10 @@
 
     ```php
     mymodule.hello_world:
-    ```
-
-    ```php
       path: /hello-world
-    ```
-
-    ```php
       defaults:
-    ```
-
-    ```php
         _controller: Drupal\mymodule\Controller\
-    ```
-
-    ```php
             HelloWorldController::page
-    ```
-
-    ```php
         _title: 'Hello world!'
     ```
 
@@ -160,33 +100,12 @@
 
     ```php
     mymodule.hello_world:
-    ```
-
-    ```php
       path: /hello-world
-    ```
-
-    ```php
       defaults:
-    ```
-
-    ```php
         _controller: Drupal\mymodule\Controller\
-    ```
-
-    ```php
             HelloWorldController::page
-    ```
-
-    ```php
         _title: 'Hello world!'
-    ```
-
-    ```php
       requirements:
-    ```
-
-    ```php
         _permission: 'access content'
     ```
 
@@ -353,13 +272,7 @@ services:
 
     ```php
       requirements:
-    ```
-
-    ```php
         user: '\d+'
-    ```
-
-    ```php
         _entity_access: 'user.view'
     ```
 
@@ -371,17 +284,8 @@ services:
 
     ```php
       options:
-    ```
-
-    ```php
         parameters:
-    ```
-
-    ```php
           user:
-    ```
-
-    ```php
             type: 'entity:user'
     ```
 
@@ -393,57 +297,18 @@ services:
 
     ```php
       /**
-    ```
-
-    ```php
        * Returns markup for our custom page.
-    ```
-
-    ```php
        *
-    ```
-
-    ```php
        * @param \Drupal\user\UserInterface $user
-    ```
-
-    ```php
        *   The user parameter.
-    ```
-
-    ```php
        *
-    ```
-
-    ```php
        * @returns array
-    ```
-
-    ```php
        *   The render array.
-    ```
-
-    ```php
        */
-    ```
-
-    ```php
       public function page(UserInterface $user): array {
-    ```
-
-    ```php
         return [
-    ```
-
-    ```php
           '#markup' => '<p>Hello world!</p>'
-    ```
-
-    ```php
         ];
-    ```
-
-    ```php
       }
     ```
 
@@ -453,17 +318,8 @@ services:
 
     ```php
         return [
-    ```
-
-    ```php
           '#markup' => sprintf('<p>Hello %s!</p>',
-    ```
-
-    ```php
              $user->getEmail()),
-    ```
-
-    ```php
         ];
     ```
 
@@ -525,21 +381,9 @@ Drupal 中路由的控制器可以返回由 Symfony 的`HttpFoundation`组件提
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Controller;
-    ```
-
-    ```php
     use Drupal\Core\Controller\ControllerBase;
-    ```
-
-    ```php
     class RedirectController extends ControllerBase {
-    ```
-
-    ```php
     }
     ```
 
@@ -551,85 +395,25 @@ Drupal 中路由的控制器可以返回由 Symfony 的`HttpFoundation`组件提
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Controller;
-    ```
-
-    ```php
     use Drupal\Core\Controller\ControllerBase;
-    ```
-
-    ```php
     use Symfony\Component\HttpFoundation\RedirectResponse;
-    ```
-
-    ```php
     class RedirectController extends ControllerBase {
-    ```
-
-    ```php
       /**
-    ```
-
-    ```php
        * Returns redirect to home or user login form.
-    ```
-
-    ```php
        *
-    ```
-
-    ```php
        * @return \Symfony\Component\HttpFoundation\
-    ```
-
-    ```php
             RedirectResponse
-    ```
-
-    ```php
        *   The redirect response.
-    ```
-
-    ```php
        */
-    ```
-
-    ```php
       public function page(): RedirectResponse {
-    ```
-
-    ```php
         if ($this->currentUser()->isAuthenticated()) {
-    ```
-
-    ```php
           // Redirect to the homepage.
-    ```
-
-    ```php
         }
-    ```
-
-    ```php
         else {
-    ```
-
-    ```php
           // Redirect to the user login form.
-    ```
-
-    ```php
         }
-    ```
-
-    ```php
       }
-    ```
-
-    ```php
     }
     ```
 
@@ -639,41 +423,14 @@ Drupal 中路由的控制器可以返回由 Symfony 的`HttpFoundation`组件提
 
     ```php
       public function page(): RedirectResponse {
-    ```
-
-    ```php
         if ($this->currentUser()->isAuthenticated()) {
-    ```
-
-    ```php
           $route_name = '<front>';
-    ```
-
-    ```php
         }
-    ```
-
-    ```php
         else {
-    ```
-
-    ```php
           $route_name = 'user.login';
-    ```
-
-    ```php
         }
-    ```
-
-    ```php
         $url = \Drupal\Core\Url::fromRoute($route_name);
-    ```
-
-    ```php
         return new RedirectResponse($url->toString());
-    ```
-
-    ```php
       }
     ```
 
@@ -693,9 +450,6 @@ Drupal 中路由的控制器可以返回由 Symfony 的`HttpFoundation`组件提
 
     ```php
     mymodule.user_redirect:
-    ```
-
-    ```php
       path: /user-redirect
     ```
 
@@ -703,21 +457,9 @@ Drupal 中路由的控制器可以返回由 Symfony 的`HttpFoundation`组件提
 
     ```php
     mymodule.user_redirect:
-    ```
-
-    ```php
       path: /user-redirect
-    ```
-
-    ```php
       defaults:
-    ```
-
-    ```php
         _controller: Drupal\mymodule\Controller\
-    ```
-
-    ```php
             RedirectController::page
     ```
 
@@ -727,29 +469,11 @@ Drupal 中路由的控制器可以返回由 Symfony 的`HttpFoundation`组件提
 
     ```php
     mymodule.user_redirect:
-    ```
-
-    ```php
       path: /user-redirect
-    ```
-
-    ```php
       defaults:
-    ```
-
-    ```php
         _controller: Drupal\mymodule\Controller\
-    ```
-
-    ```php
             RedirectController::page
-    ```
-
-    ```php
       requirements:
-    ```
-
-    ```php
         _access: 'TRUE'
     ```
 
@@ -793,25 +517,10 @@ Drupal 可以从给定的路由名称生成 URL。正如我们在之前的菜谱
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Controller;
-    ```
-
-    ```php
     use Drupal\Core\Controller\ControllerBase;
-    ```
-
-    ```php
     use Symfony\Component\HttpFoundation\JsonResponse;
-    ```
-
-    ```php
     class SiteInfoController extends ControllerBase {
-    ```
-
-    ```php
     }
     ```
 
@@ -823,41 +532,14 @@ Drupal 可以从给定的路由名称生成 URL。正如我们在之前的菜谱
 
     ```php
        /**
-    ```
-
-    ```php
        * Returns site info in a JSON response.
-    ```
-
-    ```php
        *
-    ```
-
-    ```php
        * @return \Symfony\Component\HttpFoundation\
-    ```
-
-    ```php
             JsonResponse
-    ```
-
-    ```php
        *   The JSON response.
-    ```
-
-    ```php
        */
-    ```
-
-    ```php
       public function page(): JsonResponse {
-    ```
-
-    ```php
         return new JsonResponse();
-    ```
-
-    ```php
       }
     ```
 
@@ -867,61 +549,19 @@ Drupal 可以从给定的路由名称生成 URL。正如我们在之前的菜谱
 
     ```php
       /**
-    ```
-
-    ```php
        * Returns site info in a JSON response.
-    ```
-
-    ```php
        *
-    ```
-
-    ```php
        * @return \Symfony\Component\HttpFoundation\
-    ```
-
-    ```php
             JsonResponse
-    ```
-
-    ```php
        *   The JSON response.
-    ```
-
-    ```php
        */
-    ```
-
-    ```php
       public function page(): JsonResponse {
-    ```
-
-    ```php
         $config = $this->config('system.site');
-    ```
-
-    ```php
         return new JsonResponse([
-    ```
-
-    ```php
           'name' => $config->get('name'),
-    ```
-
-    ```php
           'slogan' => $config->get('slogan'),
-    ```
-
-    ```php
           'email' => $config->get('mail')
-    ```
-
-    ```php
         ]);
-    ```
-
-    ```php
       }
     ```
 
@@ -939,9 +579,6 @@ Drupal 可以从给定的路由名称生成 URL。正如我们在之前的菜谱
 
     ```php
     mymodule.site_info:
-    ```
-
-    ```php
       path: /site-info
     ```
 
@@ -949,21 +586,9 @@ Drupal 可以从给定的路由名称生成 URL。正如我们在之前的菜谱
 
     ```php
     mymodule.site_info:
-    ```
-
-    ```php
       path: /site-info
-    ```
-
-    ```php
       defaults:
-    ```
-
-    ```php
         _controller: Drupal\mymodule\Controller\
-    ```
-
-    ```php
             SiteInfoController::page
     ```
 
@@ -973,29 +598,11 @@ Drupal 可以从给定的路由名称生成 URL。正如我们在之前的菜谱
 
     ```php
     mymodule.site_info:
-    ```
-
-    ```php
       path: /site-info
-    ```
-
-    ```php
       defaults:
-    ```
-
-    ```php
         _controller: Drupal\mymodule\Controller\
-    ```
-
-    ```php
             SiteInfoController::page
-    ```
-
-    ```php
       requirements:
-    ```
-
-    ```php
         _access: 'TRUE'
     ```
 
@@ -1011,25 +618,10 @@ Drupal 可以从给定的路由名称生成 URL。正如我们在之前的菜谱
 
     ```php
     {
-    ```
-
-    ```php
       "name": "Drupal Development Cookbook",
-    ```
-
-    ```php
       "slogan": "Practical recipes to harness the power of
-    ```
-
-    ```php
         Drupal 10.",
-    ```
-
-    ```php
       "email": "admin@example.com"
-    ```
-
-    ```php
     }
     ```
 
@@ -1097,17 +689,8 @@ class SiteInfoController extends ControllerBase {
 
     ```php
     <?php
-    ```
-
-    ```php
     namespace Drupal\mymodule\Controller;
-    ```
-
-    ```php
     class SiteInfoController {
-    ```
-
-    ```php
     }
     ```
 
@@ -1117,65 +700,20 @@ class SiteInfoController extends ControllerBase {
 
     ```php
       /**
-    ```
-
-    ```php
        * Downloads a file.
-    ```
-
-    ```php
        *
-    ```
-
-    ```php
        * @return \Symfony\Component\HttpFoundation\
-    ```
-
-    ```php
             BinaryFileResponse
-    ```
-
-    ```php
        *   The file response.
-    ```
-
-    ```php
        */
-    ```
-
-    ```php
       public function page(): BinaryFileResponse {
-    ```
-
-    ```php
         // File paths are relative to the document root
-    ```
-
-    ```php
              (web.)
-    ```
-
-    ```php
         $file_path = 'modules/custom/mymodule/dummy.pdf';
-    ```
-
-    ```php
         $response = new BinaryFileResponse($file_path);
-    ```
-
-    ```php
         $response->setContentDisposition('attachment',
-    ```
-
-    ```php
             basename($file_path));
-    ```
-
-    ```php
         return $response;
-    ```
-
-    ```php
       }
     ```
 
@@ -1185,93 +723,27 @@ class SiteInfoController extends ControllerBase {
 
     ```php
       /**
-    ```
-
-    ```php
        * Downloads a file.
-    ```
-
-    ```php
        *
-    ```
-
-    ```php
        * @return \Symfony\Component\HttpFoundation\
-    ```
-
-    ```php
             BinaryFileResponse
-    ```
-
-    ```php
        *   The file response.
-    ```
-
-    ```php
        */
-    ```
-
-    ```php
       public function page(): BinaryFileResponse {
-    ```
-
-    ```php
         // File paths are relative to the document root
-    ```
-
-    ```php
              (web.)
-    ```
-
-    ```php
         $file_path = 'modules/custom/mymodule/dummy.pdf';
-    ```
-
-    ```php
         /** @var \Drupal\Core\File\MimeType\
-    ```
-
-    ```php
             MimeTypeGuesser $guesser */
-    ```
-
-    ```php
         $guesser = \Drupal::service
-    ```
-
-    ```php
              ('file.mime_type.guesser');
-    ```
-
-    ```php
         $mime_type = $guesser->guessMimeType($file_path);
-    ```
-
-    ```php
         $response = new BinaryFileResponse($file_path);
-    ```
-
-    ```php
         $response->headers->set('Content-Type',
-    ```
-
-    ```php
             $mimetype);
-    ```
-
-    ```php
         $response->setContentDisposition('attachment',
-    ```
-
-    ```php
             basename($file_path));
-    ```
-
-    ```php
         return $response;
-    ```
-
-    ```php
       }
     ```
 
@@ -1289,9 +761,6 @@ class SiteInfoController extends ControllerBase {
 
     ```php
     mymodule.pdf_download:
-    ```
-
-    ```php
       path: /pdf-download
     ```
 
@@ -1299,21 +768,9 @@ class SiteInfoController extends ControllerBase {
 
     ```php
     mymodule.pdf_download:
-    ```
-
-    ```php
       path: /pdf-download
-    ```
-
-    ```php
       defaults:
-    ```
-
-    ```php
         _controller: Drupal\mymodule\Controller
-    ```
-
-    ```php
             \DownloadController::page
     ```
 
@@ -1323,29 +780,11 @@ class SiteInfoController extends ControllerBase {
 
     ```php
     mymodule.pdf_download:
-    ```
-
-    ```php
       path: /pdf-download
-    ```
-
-    ```php
       defaults:
-    ```
-
-    ```php
         _controller: Drupal\mymodule\Controller
-    ```
-
-    ```php
             \DownloadController::page
-    ```
-
-    ```php
       requirements:
-    ```
-
-    ```php
         _user_is_logged_in: 'TRUE'
     ```
 
